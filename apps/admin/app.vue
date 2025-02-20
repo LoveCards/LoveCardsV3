@@ -1,6 +1,7 @@
+<!-- 应用入口 -->
 <template>
-  <div>
-    <NuxtRouteAnnouncer />
-    <NuxtWelcome />
-  </div>
+	<!-- vuetify -->
+	<v-app>
+		<NuxtPage />
+	</v-app>
 </template>
