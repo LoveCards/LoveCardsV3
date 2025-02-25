@@ -111,7 +111,7 @@
 					<v-card>
 						<v-list lines="three">
 							<v-list-item title="'Item ' + n" subtitle="Lorem ipsum dolor sit amet consectetur adipisicing elit"
-								prepend-avatar="http://192.168.3.142:7001/view/admin/assets/img/lcl.png" @click="alert('点击了')">
+								prepend-avatar="http://192.168.3.142:7001/view/admin/assets/img/lcl.png">
 							</v-list-item>
 						</v-list>
 					</v-card>

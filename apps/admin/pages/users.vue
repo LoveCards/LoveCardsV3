@@ -17,14 +17,14 @@
 						<v-row>
 							<!-- 工具栏 -->
 							<v-col cols="4" md="8" class="d-flex align-center">
-								<v-btn color="accent" variant="flat" @click="onClick">
+								<v-btn color="accent" variant="flat">
 									添加用户
 								</v-btn>
 							</v-col>
 							<!-- 搜索栏 -->
 							<v-col cols="8" md="4" class="d-flex justify-end">
-								<v-text-field color="accent" :loading="loading" append-inner-icon="mdi-magnify" density="compact"
-									label="搜索用户" variant="outlined" hide-details single-line @click:append-inner="onClick"></v-text-field>
+								<v-text-field color="accent" append-inner-icon="mdi-magnify" density="compact" label="搜索用户"
+									variant="outlined" hide-details single-line></v-text-field>
 							</v-col>
 						</v-row>
 
@@ -33,7 +33,8 @@
 							<v-col cols="12">
 								<v-card variant="outlined" color="#E0E0E0">
 
-									<v-data-table :headers="headers" :items="items" item-value="id" show-select v-model="selected">
+									<v-data-table :headers="tableHeaders" :items="tableItems" item-value="id" v-model="tableSelected"
+										show-select>
 										<template v-slot:header.data-table-select="{ allSelected, selectAll, someSelected }">
 											<v-checkbox-btn :indeterminate="someSelected && !allSelected" :model-value="allSelected"
 												color="accent" @update:model-value="selectAll(!allSelected)"></v-checkbox-btn>
@@ -57,13 +58,14 @@
 						<v-row>
 							<!-- 批量操作 -->
 							<v-col cols="12" md="6" class="d-flex justify-start align-center">
-								<v-select :items="items" density="compact" label="请选择操作" max-width="160px" hide-details
-									variant="outlined" color="accent"></v-select>
-								<v-btn color="accent" variant="flat" @click="onClick" class="ml-2">批量操作</v-btn>
+								<v-select density="compact" label="请选择操作" max-width="160px" hide-details variant="outlined"
+									color="accent"></v-select>
+								<v-btn color="accent" variant="flat" class="ml-2">批量操作</v-btn>
 							</v-col>
 							<!-- 分页按钮 -->
 							<v-col cols="12" md="6" class="d-flex justify-end align-center">
-								<v-pagination :length="4" color="accent" size="small" variant="flat"></v-pagination>
+								<v-pagination v-model="tableCurrentPage" :length="tablePaginationLength" :total-visible="5"
+									color="accent" size="small" variant="flat"></v-pagination>
 							</v-col>
 						</v-row>
 					</v-card>
@@ -74,9 +76,10 @@
 </template>
 
 <script setup lang="ts">
+import { userIndex } from '@/api/app/users';
 
-const selected = ref([]);
-const headers = [
+//表格头部
+const tableHeaders = [
 	{ title: 'ID', value: 'id' },
 	{ title: '头像', value: 'avatar' },
 	{ title: '账号', value: 'number' },
@@ -87,39 +90,33 @@ const headers = [
 	{ title: '状态', value: 'status' },
 	{ title: '操作', value: 'operate' },
 ];
-const items = [
-	{
-		id: '1',
-		avatar: 'Avatar1',
-		number: 'user001',
-		username: 'Alice',
-		email: 'alice@example.com',
-		phone: '1234567890',
-		created_at: '2025-01-01',
-		status: 'Active',
-		operate: 'Edit/Delete',
-	},
-	{
-		id: '2',
-		avatar: 'Avatar2',
-		number: 'user002',
-		username: 'Bob',
-		email: 'bob@example.com',
-		phone: '0987654321',
-		created_at: '2025-01-02',
-		status: 'Inactive',
-		operate: 'Edit/Delete',
-	},
-	{
-		id: '3',
-		avatar: 'Avatar3',
-		number: 'user003',
-		username: 'Charlie',
-		email: 'charlie@example.com',
-		phone: '1122334455',
-		created_at: '2025-01-03',
-		status: 'Active',
-		operate: 'Edit/Delete',
-	},
-];
+//表格数据
+const tableItems = ref([]);
+//批量选择数据
+const tableSelected = ref([]);
+//页面数量
+const tablePaginationLength = ref(0);
+//当前页面
+const tableCurrentPage = ref(1);
+
+
+
+const shuaxin = (currentPage: number) => {
+
+	userIndex().then(response => {
+		console.log(response.data);
+		const data = response.data;
+		tableCurrentPage.value = data.current_page;
+		tablePaginationLength.value = data.last_page;
+		tableItems.value = data.data;
+	})
+		.catch(err => console.error(err));
+};
+shuaxin(tableCurrentPage.value);
+
+//翻页
+watchEffect(async () => {
+	console.log(`当前页码为: ${tableCurrentPage.value}`);
+	await shuaxin(tableCurrentPage.value);
+});
 </script>
