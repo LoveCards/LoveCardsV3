@@ -72,8 +72,10 @@
 
 </template>
 
-<script setup>
-const drawer = ref(null)
+<script setup lang="ts">
+
+//抽屉栏控制
+const drawer = ref(false)
 const toggleDrawer = () => {
 	//console.log(drawer.value);
 	drawer.value = !drawer.value

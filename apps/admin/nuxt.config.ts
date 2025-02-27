@@ -2,6 +2,9 @@
 import vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
 
 export default defineNuxtConfig({
+    app: {
+        baseURL: '/admin'  // 设置静态资源的基础路径
+    },
     nitro: {
         devProxy: {
             "/api": {

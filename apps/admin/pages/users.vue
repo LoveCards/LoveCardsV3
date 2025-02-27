@@ -33,16 +33,24 @@
 							<v-col cols="12">
 								<v-card variant="outlined" color="#E0E0E0">
 
-									<v-data-table :headers="tableHeaders" :items="tableItems" item-value="id" v-model="tableSelected"
-										show-select>
+									<v-data-table :style="{ 'white-space': 'nowrap' }" :headers="TableHeaders" :items="tableItems"
+										item-value="id" v-model="tableSelected" show-select>
+										<!-- 头部选择框 -->
 										<template v-slot:header.data-table-select="{ allSelected, selectAll, someSelected }">
 											<v-checkbox-btn :indeterminate="someSelected && !allSelected" :model-value="allSelected"
 												color="accent" @update:model-value="selectAll(!allSelected)"></v-checkbox-btn>
 										</template>
 
+										<!-- 内容选择框 -->
 										<template v-slot:item.data-table-select="{ internalItem, isSelected, toggleSelect }">
 											<v-checkbox-btn :model-value="isSelected(internalItem)" color="accent"
 												@update:model-value="toggleSelect(internalItem)"></v-checkbox-btn>
+										</template>
+
+										<!-- 操作 -->
+										<template v-slot:[`item.operate`]="{ item }">
+											<v-btn icon="mdi-pencil" elevation="0" size="small" color="accent" variant="text"></v-btn>
+											<v-btn icon="mdi-delete" elevation="0" size="small" color="accent" variant="text"></v-btn>
 										</template>
 
 										<template v-slot:bottom>
@@ -59,11 +67,24 @@
 							<!-- 批量操作 -->
 							<v-col cols="12" md="6" class="d-flex justify-start align-center">
 								<v-select density="compact" label="请选择操作" max-width="160px" hide-details variant="outlined"
-									color="accent"></v-select>
+									color="accent" :items="TableBatchOptions" item-title="text" item-value="value"></v-select>
 								<v-btn color="accent" variant="flat" class="ml-2">批量操作</v-btn>
 							</v-col>
 							<!-- 分页按钮 -->
 							<v-col cols="12" md="6" class="d-flex justify-end align-center">
+								<v-menu>
+									<template v-slot:activator="{ props }">
+										<v-btn elevation="0" icon="mdi-table-row-plus-after" size="small" v-bind="props" variant="text" color="accent"></v-btn>
+									</template>
+									<v-list>
+										<v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
+											<v-list-item-title @click="tableListRows = item.value">{{ item.text }}</v-list-item-title>
+										</v-list-item>
+									</v-list>
+								</v-menu>
+								<v-divider vertical></v-divider>
+								<!-- <v-select density="compact" label="行/页" max-width="80px" hide-details variant="outlined" color="accent"
+									:items="TableListRowsOptions" v-model="tableListRows"></v-select> -->
 								<v-pagination v-model="tableCurrentPage" :length="tablePaginationLength" :total-visible="5"
 									color="accent" size="small" variant="flat"></v-pagination>
 							</v-col>
@@ -76,10 +97,10 @@
 </template>
 
 <script setup lang="ts">
-import { userIndex } from '@/api/app/users';
+import { getUserIndex } from '@/api/app/users';
 
 //表格头部
-const tableHeaders = [
+const TableHeaders = [
 	{ title: 'ID', value: 'id' },
 	{ title: '头像', value: 'avatar' },
 	{ title: '账号', value: 'number' },
@@ -90,6 +111,21 @@ const tableHeaders = [
 	{ title: '状态', value: 'status' },
 	{ title: '操作', value: 'operate' },
 ];
+//批量操作选项
+const TableBatchOptions = [
+	{ text: '封禁/解封', value: 'delete' },
+	{ text: '删除', value: 'disable' },
+	{ text: '启用', value: 'enable' },
+];
+//每一页项目数量
+const TableListRowsOptions = [
+	{ text: '10 / 页', value: 10 },
+	{ text: '20 / 页', value: 20 },
+	{ text: '50 / 页', value: 50 },
+	{ text: '100 / 页', value: 100 },
+];
+
+
 //表格数据
 const tableItems = ref([]);
 //批量选择数据
@@ -99,24 +135,21 @@ const tablePaginationLength = ref(0);
 //当前页面
 const tableCurrentPage = ref(1);
 
+//每页项目数量
+const tableListRows = ref(TableListRowsOptions[0].value);
 
 
-const shuaxin = (currentPage: number) => {
-
-	userIndex().then(response => {
-		console.log(response.data);
+const getTableData = () => {
+	getUserIndex(tableCurrentPage.value, tableListRows.value).then((response) => {
 		const data = response.data;
 		tableCurrentPage.value = data.current_page;
 		tablePaginationLength.value = data.last_page;
 		tableItems.value = data.data;
-	})
-		.catch(err => console.error(err));
-};
-shuaxin(tableCurrentPage.value);
+	}).catch(err => console.error(err));
+}; getTableData();
 
-//翻页
-watchEffect(async () => {
-	console.log(`当前页码为: ${tableCurrentPage.value}`);
-	await shuaxin(tableCurrentPage.value);
+//数据获取监控
+watch([tableCurrentPage, tableListRows], (newValue, oldValue) => {
+	getTableData();
 });
 </script>

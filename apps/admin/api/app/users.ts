@@ -2,7 +2,7 @@ import instance from "../axios";
 
 const APP_PATH = "/users";
 
-const userIndex = (page: number = 1, listRows: number = 12) => {
+const getUserIndex = (page: number = 1, listRows: number = 10) => {
     return instance.get(APP_PATH + "/index", {
         params: {
             page: page,
@@ -13,4 +13,4 @@ const userIndex = (page: number = 1, listRows: number = 12) => {
 
 
 
-export { userIndex };
+export { getUserIndex };
