@@ -1,13 +1,17 @@
 <!-- 用户管理 -->
 <template>
 	<NuxtLayout name="root">
+
 		<v-container max-width="sm">
+			<!-- <VNotifierContainer /> -->
 			<!-- 标题 -->
 			<v-row class="pt-2">
 				<v-col cols="6">
 					<h1 class="text-primary font-weight-bold">用户管理</h1>
 				</v-col>
 			</v-row>
+			<!-- 提示框 -->
+			<v-alert text="到仓库随机发v大家卡萨活佛会计核算大家" type="success"></v-alert>
 
 			<!-- 内容 -->
 			<v-row>
@@ -47,9 +51,17 @@
 												@update:model-value="toggleSelect(internalItem)"></v-checkbox-btn>
 										</template>
 
+										<!-- 头像 -->
+										<template v-slot:[`item.avatar`]="{ item }">
+											<v-avatar>
+												<v-img :alt="item.username" :src="'http://192.168.3.142:7001/' + item.avatar"></v-img>
+											</v-avatar>
+										</template>
+
 										<!-- 操作 -->
 										<template v-slot:[`item.operate`]="{ item }">
-											<v-btn icon="mdi-pencil" elevation="0" size="small" color="accent" variant="text"></v-btn>
+											<v-btn icon="mdi-pencil" elevation="0" size="small" color="accent" variant="text"
+												@click="openEditUserDialog(item)"></v-btn>
 											<v-btn icon="mdi-delete" elevation="0" size="small" color="accent" variant="text"></v-btn>
 										</template>
 
@@ -67,18 +79,19 @@
 							<!-- 批量操作 -->
 							<v-col cols="12" md="6" class="d-flex justify-start align-center">
 								<v-select density="compact" label="请选择操作" max-width="160px" hide-details variant="outlined"
-									color="accent" :items="TableBatchOptions" item-title="text" item-value="value"></v-select>
+									color="accent" :items="TableBatchOptions" item-title="title" item-value="value"></v-select>
 								<v-btn color="accent" variant="flat" class="ml-2">批量操作</v-btn>
 							</v-col>
 							<!-- 分页按钮 -->
 							<v-col cols="12" md="6" class="d-flex justify-end align-center">
 								<v-menu>
 									<template v-slot:activator="{ props }">
-										<v-btn elevation="0" icon="mdi-table-row-plus-after" size="small" v-bind="props" variant="text" color="accent"></v-btn>
+										<v-btn elevation="0" icon="mdi-table-row-plus-after" size="small" v-bind="props"
+											variant="text"></v-btn>
 									</template>
 									<v-list>
 										<v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
-											<v-list-item-title @click="tableListRows = item.value">{{ item.text }}</v-list-item-title>
+											<v-list-item-title @click="tableListRows = item.value">{{ item.title }}</v-list-item-title>
 										</v-list-item>
 									</v-list>
 								</v-menu>
@@ -86,7 +99,7 @@
 								<!-- <v-select density="compact" label="行/页" max-width="80px" hide-details variant="outlined" color="accent"
 									:items="TableListRowsOptions" v-model="tableListRows"></v-select> -->
 								<v-pagination v-model="tableCurrentPage" :length="tablePaginationLength" :total-visible="5"
-									color="accent" size="small" variant="flat"></v-pagination>
+									color="accent" size="small" variant="elevated"></v-pagination>
 							</v-col>
 						</v-row>
 					</v-card>
@@ -94,10 +107,87 @@
 			</v-row>
 		</v-container>
 	</NuxtLayout>
+
+	<!-- 编辑用户对话框 -->
+	<v-dialog v-model="editUserDialogState" max-width="600">
+		<v-card prepend-icon="mdi-account" title="修改用户">
+			<v-card-text>
+				<v-row dense>
+
+					<v-col cols="12" class="d-flex justify-center">
+						<v-btn class="rounded-circle" size="auto" target="_blank">
+							<v-avatar color="grey" size="150">
+								<v-img :src="'http://192.168.3.142:7001/' + editUserDialogData.edit.avatar" cover></v-img>
+								<v-icon
+									style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);color: rgba(255, 255, 255, 0.5);"
+									class="camera-icon" size="30">mdi-camera</v-icon>
+							</v-avatar>
+						</v-btn>
+					</v-col>
+
+					<v-col cols="12" sm="6">
+						<v-select label="帐号状态" :items="[
+							{ title: '封禁', value: -1 },
+							{ title: '正常', value: 0 },
+							{ title: '冻结', value: 1 }
+						]" item-title="title" item-value="value" v-model="editUserDialogData.edit.status" variant="underlined"
+							color="accent"></v-select>
+					</v-col>
+
+					<v-col cols="12" sm="6">
+						<v-text-field label="账号" v-model="editUserDialogData.edit.number" variant="underlined" color="accent"
+							required></v-text-field>
+					</v-col>
+
+					<v-col cols="12" sm="6">
+						<v-text-field label="用户名" v-model="editUserDialogData.edit.username" variant="underlined" color="accent"
+							required></v-text-field>
+					</v-col>
+
+					<v-col cols="12" sm="6">
+						<v-text-field label="邮箱" v-model="editUserDialogData.edit.email" variant="underlined" color="accent"
+							required></v-text-field>
+					</v-col>
+
+					<v-col cols="12" sm="6">
+						<v-text-field label="手机号" v-model="editUserDialogData.edit.phone" variant="underlined"
+							color="accent"></v-text-field>
+					</v-col>
+
+					<v-col cols="12" sm="6">
+						<v-text-field label="密码" v-model="editUserDialogData.edit.password" variant="underlined" color="accent"
+							type="password"></v-text-field>
+					</v-col>
+				</v-row>
+
+				<small class="text-caption text-medium-emphasis">密码留空默认不修改</small>
+			</v-card-text>
+
+			<v-divider></v-divider>
+
+			<v-card-actions>
+				<v-spacer></v-spacer>
+				<v-btn color="accent" text="取消" variant="text" @click="editUserDialogState = false"></v-btn>
+				<v-btn color="accent" text="保存" variant="flat" @click="submitEditUser()"></v-btn>
+			</v-card-actions>
+		</v-card>
+	</v-dialog>
+
 </template>
 
 <script setup lang="ts">
-import { getUserIndex } from '@/api/app/users';
+import UserApi from '@/api/app/users';
+import CommonUtils from '@/api/utils/common';
+const notifier = useNotifier();
+
+//组件状态
+const editUserDialogState = ref(false);
+const editUserDialogData = ref({ origin: {}, edit: {} } as any);//后面API完善类型待规范
+const openEditUserDialog = (data: {}) => {
+	editUserDialogData.value.origin = CommonUtils.deepClone(data);
+	editUserDialogData.value.edit = CommonUtils.deepClone(data);
+	editUserDialogState.value = true
+};
 
 //表格头部
 const TableHeaders = [
@@ -113,21 +203,21 @@ const TableHeaders = [
 ];
 //批量操作选项
 const TableBatchOptions = [
-	{ text: '封禁/解封', value: 'delete' },
-	{ text: '删除', value: 'disable' },
-	{ text: '启用', value: 'enable' },
+	{ title: '封禁/解封', value: 'delete' },
+	{ title: '删除', value: 'disable' },
+	{ title: '启用', value: 'enable' },
 ];
 //每一页项目数量
 const TableListRowsOptions = [
-	{ text: '10 / 页', value: 10 },
-	{ text: '20 / 页', value: 20 },
-	{ text: '50 / 页', value: 50 },
-	{ text: '100 / 页', value: 100 },
+	{ title: '10 / 页', value: 10 },
+	{ title: '20 / 页', value: 20 },
+	{ title: '50 / 页', value: 50 },
+	{ title: '100 / 页', value: 100 },
 ];
 
 
 //表格数据
-const tableItems = ref([]);
+const tableItems = ref([{} as any]);
 //批量选择数据
 const tableSelected = ref([]);
 //页面数量
@@ -138,15 +228,58 @@ const tableCurrentPage = ref(1);
 //每页项目数量
 const tableListRows = ref(TableListRowsOptions[0].value);
 
-
+//获取表格数据
 const getTableData = () => {
-	getUserIndex(tableCurrentPage.value, tableListRows.value).then((response) => {
+	UserApi.getUserIndex(tableCurrentPage.value, tableListRows.value).then((response) => {
 		const data = response.data;
 		tableCurrentPage.value = data.current_page;
 		tablePaginationLength.value = data.last_page;
 		tableItems.value = data.data;
 	}).catch(err => console.error(err));
 }; getTableData();
+
+//修改用户资料
+const patchUser = (data: { edit: any, origin: any }) => {
+	//获取修改参数
+	let params = CommonUtils.removeCommonProperties(data.edit, data.origin);
+	//密码留空默认不修改
+	if (params.password === '') {
+		delete params.password;
+	}
+	if (Object.keys(params).length === 0) {
+		//请修改后再提交
+		return Promise.reject('请修改后再提交');
+	};
+	//插入用户ID
+	params.id = data.origin.id;
+	console.log(params);
+	//返回原生Promise
+	return UserApi.patchUser(params);
+};
+
+//页面操作提交修改用户
+const submitEditUser = () => {
+	notifier.toast({
+		"text": "This is toast content",
+		"onClick": () => console.log("Toast clicked"),
+		"onClose": () => console.log("Close")
+	})
+	// console.log(editUserDialogData.value);
+
+	// patchUser(editUserDialogData.value).then((response) => {
+	// 	console.log(response);
+
+	// 	//弹出正确提示并退出对话框并刷新列表
+	// 	editUserDialogState.value = false;
+	// 	getTableData();
+	// }).catch((err) => {
+	// 	//弹出错误提示
+	// 	console.error(err)
+	// });
+
+
+	//editUserDialogState.value = false;
+}
 
 //数据获取监控
 watch([tableCurrentPage, tableListRows], (newValue, oldValue) => {

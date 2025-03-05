@@ -1,6 +1,9 @@
 <!-- 基础布局 -->
 <template>
 
+	<!-- 通知队列 -->
+	<VNotifierContainer />
+
 	<!-- 系统栏 -->
 	<!-- <v-system-bar>
 			<v-spacer></v-spacer>

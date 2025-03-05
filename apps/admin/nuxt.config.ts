@@ -1,40 +1,49 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
-import vuetify, { transformAssetUrls } from "vite-plugin-vuetify";
-
+// nuxt.config.ts
 export default defineNuxtConfig({
     app: {
-        baseURL: '/admin'  // 设置静态资源的基础路径
+        baseURL: '/admin'
     },
     nitro: {
         devProxy: {
             "/api": {
-                target: "http://192.168.3.142:7001/api", // 后端接口地址
-                changeOrigin: true, // 是否改变请求源
-                prependPath: true, // 是否自动添加路径
+                target: "http://192.168.3.142:7001/api",
+                changeOrigin: true,
+                prependPath: true,
             },
         },
     },
     ssr: false,
     compatibilityDate: "2024-11-01",
     devtools: { enabled: true },
-    build: {
-        transpile: ["vuetify"],
+    modules: [// 直接使用模块名称
+        'vuetify-nuxt-module', 'vuetify-notifier/nuxt', '@pinia/nuxt', "vuetify-notifier"],
+    notifier: {
+        /* module specific options */
+        position: 'bottom-right', // 可选配置项
+        timeout: 3000
     },
-    modules: [
-        (_options, nuxt) => {
-            nuxt.hooks.hook("vite:extendConfig", (config) => {
-                // @ts-expect-error
-                config.plugins.push(vuetify({ autoImport: true }));
-            });
+    vuetify: { // 模块的专属配置项
+        moduleOptions: {
+            /* 模块选项 */
         },
-        '@pinia/nuxt',
-        //...
-    ],
-    vite: {
-        vue: {
-            template: {
-                transformAssetUrls,
-            },
-        },
-    },
+        vuetifyOptions: { // Vuetify 初始化配置
+            theme: {
+                defaultTheme: 'indigoTheme',
+                themes: {
+                    indigoTheme: {
+                        dark: false,
+                        colors: {
+                            primary: "#3F51B5",
+                            secondary: "#FFC107",
+                            accent: "#FF4081",
+                            error: "#F44336",
+                            info: "#2196F3",
+                            success: "#43A047",
+                            warning: "#FF9800",
+                        }
+                    }
+                }
+            }
+        }
+    }
 });

@@ -17,7 +17,9 @@
     "nuxt": "^3.15.4",
     "pinia": "^3.0.1",
     "vue": "latest",
-    "vue-router": "latest"
+    "vue-router": "latest",
+    "vuetify-notifier": "^2.0.18",
+    "vuetify-nuxt-module": "^0.18.3"
   },
   "devDependencies": {
     "@types/js-cookie": "^3.0.6",
