@@ -1,17 +1,13 @@
 <!-- 用户管理 -->
 <template>
 	<NuxtLayout name="root">
-
 		<v-container max-width="sm">
-			<!-- <VNotifierContainer /> -->
 			<!-- 标题 -->
 			<v-row class="pt-2">
 				<v-col cols="6">
 					<h1 class="text-primary font-weight-bold">用户管理</h1>
 				</v-col>
 			</v-row>
-			<!-- 提示框 -->
-			<v-alert text="到仓库随机发v大家卡萨活佛会计核算大家" type="success"></v-alert>
 
 			<!-- 内容 -->
 			<v-row>
@@ -115,7 +111,9 @@
 				<v-row dense>
 
 					<v-col cols="12" class="d-flex justify-center">
-						<v-btn class="rounded-circle" size="auto" target="_blank">
+
+						<v-btn class="rounded-circle" size="auto" @click="triggerFileInput">
+							<input type="file" ref="fileInput" hidden accept="image/*" @change="handleFileUpload">
 							<v-avatar color="grey" size="150">
 								<v-img :src="'http://192.168.3.142:7001/' + editUserDialogData.edit.avatar" cover></v-img>
 								<v-icon
@@ -177,7 +175,11 @@
 
 <script setup lang="ts">
 import UserApi from '@/api/app/users';
+import UploadApi from '@/api/app/upload';
 import CommonUtils from '@/api/utils/common';
+//import { useNotifier } from 'vuetify-notifier';
+
+
 const notifier = useNotifier();
 
 //组件状态
@@ -257,28 +259,58 @@ const patchUser = (data: { edit: any, origin: any }) => {
 	return UserApi.patchUser(params);
 };
 
+// 触发文件选择
+const fileInput = ref<HTMLInputElement>();
+const triggerFileInput = () => {
+	fileInput.value?.click();
+};
+// 处理文件上传
+const handleFileUpload = (e: Event) => {
+	const input = e.target as HTMLInputElement;
+	if (!input.files?.length) return;
+
+	const file = input.files[0];
+
+	const data = {
+		file: file,
+		aid: 0,
+		pid: 0,
+		uid: editUserDialogData.value.edit.id,
+	}
+
+	UploadApi.postUserImages(data).then((response: any) => {
+		// 更新头像显示（假设接口返回新的头像路径）
+		editUserDialogData.value.edit.avatar = response.data;
+		notifier.toast({ text: "头像上传成功", type: 'success' });
+	}).catch((error) => {
+		console.error('上传失败:', error);
+		notifier.toast({ text: "头像上传失败", type: 'error' });
+	}).finally(() => {
+		// 清空文件选择
+		input.value = '';
+	})
+};
+
 //页面操作提交修改用户
 const submitEditUser = () => {
-	notifier.toast({
-		"text": "This is toast content",
-		"onClick": () => console.log("Toast clicked"),
-		"onClose": () => console.log("Close")
-	})
-	// console.log(editUserDialogData.value);
-
-	// patchUser(editUserDialogData.value).then((response) => {
-	// 	console.log(response);
-
-	// 	//弹出正确提示并退出对话框并刷新列表
-	// 	editUserDialogState.value = false;
-	// 	getTableData();
-	// }).catch((err) => {
-	// 	//弹出错误提示
-	// 	console.error(err)
-	// });
-
-
-	//editUserDialogState.value = false;
+	patchUser(editUserDialogData.value).then((response) => {
+		notifier.toast({
+			"text": "修改成功",
+			"color": "success",
+			"type": "success",
+		})
+		//弹出正确提示并退出对话框并刷新列表
+		editUserDialogState.value = false;
+		getTableData();
+	}).catch((err) => {
+		notifier.toast({
+			"text": "修改失败",
+			"color": "error",
+			"type": "error",
+		})
+		//弹出错误提示
+		console.error(err)
+	});
 }
 
 //数据获取监控
