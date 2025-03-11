@@ -58,6 +58,8 @@ watch(
       //   })
       // });
 
+      //判断请求方法 post get put delete 默认通知
+
       //默认通知
       newList.forEach((item, index) => {
         let text;
@@ -75,6 +77,7 @@ watch(
           text = `提交成功`;
         }
         if (error) {
+          //备注 可以再API类中写一个通用错误处理方法
           type = 'error';
           let detail = '';
           Object.entries(error.response?.data.detail).forEach(([key, value]) => {

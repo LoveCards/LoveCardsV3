@@ -14,7 +14,7 @@ const instance = axios.create({
 instance.interceptors.request.use(
     function (config) {
         // 在发送请求之前做些什么
-        config = ApiMonitor.request(config);
+        ApiMonitor.request(config);
         // 读取Token并添加到请求头
         config.headers[
             "authorization"

@@ -177,8 +177,7 @@
 import UserApi from '@/api/app/users';
 import UploadApi from '@/api/app/upload';
 import CommonUtils from '@/api/utils/common';
-//import { useNotifier } from 'vuetify-notifier';
-
+import ApiMonitor from '~/api/interceptors/monitor';
 
 const notifier = useNotifier();
 
@@ -237,7 +236,9 @@ const getTableData = () => {
 		tableCurrentPage.value = data.current_page;
 		tablePaginationLength.value = data.last_page;
 		tableItems.value = data.data;
-	}).catch(err => console.error(err));
+	}).catch((error) => {
+		//弹出列表加载失败提示
+	});
 }; getTableData();
 
 //修改用户资料
@@ -250,11 +251,15 @@ const patchUser = (data: { edit: any, origin: any }) => {
 	}
 	if (Object.keys(params).length === 0) {
 		//请修改后再提交
-		return Promise.reject('请修改后再提交');
+		notifier.toast({
+			"text": "请修改后再提交",
+			"type": "warning",
+		})
+		return Promise.reject();
 	};
 	//插入用户ID
 	params.id = data.origin.id;
-	console.log(params);
+	// console.log(params);
 	//返回原生Promise
 	return UserApi.patchUser(params);
 };
@@ -281,10 +286,6 @@ const handleFileUpload = (e: Event) => {
 	UploadApi.postUserImages(data).then((response: any) => {
 		// 更新头像显示（假设接口返回新的头像路径）
 		editUserDialogData.value.edit.avatar = response.data;
-		notifier.toast({ text: "头像上传成功", type: 'success' });
-	}).catch((error) => {
-		console.error('上传失败:', error);
-		notifier.toast({ text: "头像上传失败", type: 'error' });
 	}).finally(() => {
 		// 清空文件选择
 		input.value = '';
@@ -294,22 +295,9 @@ const handleFileUpload = (e: Event) => {
 //页面操作提交修改用户
 const submitEditUser = () => {
 	patchUser(editUserDialogData.value).then((response) => {
-		notifier.toast({
-			"text": "修改成功",
-			"color": "success",
-			"type": "success",
-		})
-		//弹出正确提示并退出对话框并刷新列表
+		//退出对话框并刷新列表
 		editUserDialogState.value = false;
 		getTableData();
-	}).catch((err) => {
-		notifier.toast({
-			"text": "修改失败",
-			"color": "error",
-			"type": "error",
-		})
-		//弹出错误提示
-		console.error(err)
 	});
 }
 
