@@ -70,10 +70,10 @@
                     <!-- 账号状态 -->
                     <template v-slot:[`item.status`]="{ item }">
                       <v-chip :color="item.status === 0
-                          ? 'success'
-                          : item.status === -1
-                            ? 'error'
-                            : 'warning'
+                        ? 'success'
+                        : item.status === -1
+                          ? 'error'
+                          : 'warning'
                         " variant="outlined" size="small">
                         {{
                           AccountStates.find(
@@ -129,72 +129,8 @@
     </v-container>
   </NuxtLayout>
 
-  <!-- 编辑用户对话框 -->
-  <v-dialog v-model="editUserDialogState" max-width="600">
-    <v-card prepend-icon="mdi-account" title="修改用户">
-      <v-card-text>
-        <v-row dense>
-          <v-col cols="12" class="d-flex justify-center">
-            <v-btn class="rounded-circle" size="auto" @click="triggerFileInput">
-              <input type="file" ref="fileInput" hidden accept="image/*" @change="handleFileUpload" />
-              <v-avatar color="grey" size="150">
-                <v-img :src="'http://192.168.3.142:7001/' +
-                  editUserDialogData.edit.avatar
-                  " cover></v-img>
-                <v-icon style="
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    color: rgba(255, 255, 255, 0.5);
-                  " class="camera-icon" size="30">mdi-camera</v-icon>
-              </v-avatar>
-            </v-btn>
-          </v-col>
-
-          <v-col cols="12" sm="6">
-            <v-select label="帐号状态" :items="AccountStates" item-title="title" item-value="value"
-              v-model="editUserDialogData.edit.status" variant="underlined" color="accent"></v-select>
-          </v-col>
-
-          <v-col cols="12" sm="6">
-            <v-text-field label="账号" v-model="editUserDialogData.edit.number" variant="underlined" color="accent"
-              required></v-text-field>
-          </v-col>
-
-          <v-col cols="12" sm="6">
-            <v-text-field label="用户名" v-model="editUserDialogData.edit.username" variant="underlined" color="accent"
-              required></v-text-field>
-          </v-col>
-
-          <v-col cols="12" sm="6">
-            <v-text-field label="邮箱" v-model="editUserDialogData.edit.email" variant="underlined" color="accent"
-              required></v-text-field>
-          </v-col>
-
-          <v-col cols="12" sm="6">
-            <v-text-field label="手机号" v-model="editUserDialogData.edit.phone" variant="underlined"
-              color="accent"></v-text-field>
-          </v-col>
-
-          <v-col cols="12" sm="6">
-            <v-text-field label="密码" v-model="editUserDialogData.edit.password" variant="underlined" color="accent"
-              type="password"></v-text-field>
-          </v-col>
-        </v-row>
-
-        <small class="text-caption text-medium-emphasis">密码留空默认不修改</small>
-      </v-card-text>
-
-      <v-divider></v-divider>
-
-      <v-card-actions>
-        <v-spacer></v-spacer>
-        <v-btn color="accent" text="取消" variant="text" @click="editUserDialogState = false"></v-btn>
-        <v-btn color="accent" text="保存" variant="flat" @click="submitEditUser()"></v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+  <EditUserDialog v-model:thisDialogState="EditUserDialog_state" v-model:editUserData="EditUserDialog_data"
+    :getTableData="getTableData" :ACCOUNT_STATUS="AccountStates"></EditUserDialog>
 
   <!-- 删除确认对话框 -->
   <v-dialog v-model="deleteConfirmDialogState" max-width="400">
@@ -230,26 +166,17 @@
 
 <script setup lang="ts">
 import UserApi from "@/api/app/users";
-import UploadApi from "@/api/app/upload";
 import CommonUtils from "@/api/utils/common";
+import EditUserDialog from "~/components/users/EditUserDialog.vue";
 
 const notifier = useNotifier();
 
-//组件状态
-const editUserDialogState = ref(false);
-const editUserDialogData = ref({ origin: {}, edit: {} } as any); //后面API完善类型待规范
-const openEditUserDialog = (data: {}) => {
-  editUserDialogData.value.origin = CommonUtils.deepClone(data);
-  editUserDialogData.value.edit = CommonUtils.deepClone(data);
-  editUserDialogState.value = true;
-};
 //封禁状态
 const AccountStates = [
   //   { title: "冻结", value: -1 },
   { title: "正常", value: 0 },
   { title: "封禁", value: 1 },
 ];
-
 //表格头部
 const TableHeaders = [
   { title: "ID", value: "id" },
@@ -262,6 +189,16 @@ const TableHeaders = [
   { title: "状态", value: "status" },
   { title: "操作", value: "operate" },
 ];
+
+//EditUserDialog组件
+const EditUserDialog_state = ref(false);
+const EditUserDialog_data = ref({ origin: {}, edit: {} } as any); //后面API完善类型待规范
+const openEditUserDialog = (data: {}) => {
+  EditUserDialog_data.value.origin = CommonUtils.deepClone(data);
+  EditUserDialog_data.value.edit = CommonUtils.deepClone(data);
+  EditUserDialog_state.value = true;
+};
+
 //批量操作选项
 const TableBatchOptions = [
   // { title: '封禁/解封', value: 'delete' },
@@ -302,68 +239,6 @@ const getTableData = () => {
     });
 };
 getTableData();
-
-//修改用户资料
-const patchUser = (data: { edit: any; origin: any }) => {
-  //获取修改参数
-  let params = CommonUtils.removeCommonProperties(data.edit, data.origin);
-  //密码留空默认不修改
-  if (params.password === "") {
-    delete params.password;
-  }
-  if (Object.keys(params).length === 0) {
-    //请修改后再提交
-    notifier.toast({
-      text: "请修改后再提交",
-      type: "warning",
-    });
-    return Promise.reject();
-  }
-  //插入用户ID
-  params.id = data.origin.id;
-  // console.log(params);
-  //返回原生Promise
-  return UserApi.patchUser(params);
-};
-
-// 触发文件选择
-const fileInput = ref<HTMLInputElement>();
-const triggerFileInput = () => {
-  fileInput.value?.click();
-};
-// 处理文件上传
-const handleFileUpload = (e: Event) => {
-  const input = e.target as HTMLInputElement;
-  if (!input.files?.length) return;
-
-  const file = input.files[0];
-
-  const data = {
-    file: file,
-    aid: 0,
-    pid: 0,
-    uid: editUserDialogData.value.edit.id,
-  };
-
-  UploadApi.postUserImages(data)
-    .then((response: any) => {
-      // 更新头像显示（假设接口返回新的头像路径）
-      editUserDialogData.value.edit.avatar = response.data;
-    })
-    .finally(() => {
-      // 清空文件选择
-      input.value = "";
-    });
-};
-
-//页面操作提交修改用户
-const submitEditUser = () => {
-  patchUser(editUserDialogData.value).then((response) => {
-    //退出对话框并刷新列表
-    editUserDialogState.value = false;
-    getTableData();
-  });
-};
 
 //数据获取监控
 watch([tableCurrentPage, tableListRows], (newValue, oldValue) => {
