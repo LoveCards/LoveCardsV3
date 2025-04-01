@@ -64,7 +64,7 @@
                       <v-btn icon="mdi-pencil" elevation="0" size="small" color="accent" variant="text"
                         @click="openEditUserDialog(item)"></v-btn>
                       <v-btn icon="mdi-delete" elevation="0" size="small" color="accent" variant="text"
-                        @click="openDeleteConfirmDialog(item)"></v-btn>
+                        @click="openDeleteUserDialog(item)"></v-btn>
                     </template>
 
                     <!-- 账号状态 -->
@@ -129,24 +129,12 @@
     </v-container>
   </NuxtLayout>
 
+  <!-- 编辑用户对话框 -->
   <EditUserDialog v-model:thisDialogState="EditUserDialog_state" v-model:editUserData="EditUserDialog_data"
     :getTableData="getTableData" :ACCOUNT_STATUS="AccountStates"></EditUserDialog>
-
-  <!-- 删除确认对话框 -->
-  <v-dialog v-model="deleteConfirmDialogState" max-width="400">
-    <v-card>
-      <v-card-title class="text-h5"> 确认删除 </v-card-title>
-      <v-card-text>
-        确定要删除用户 "{{ deleteConfirmDialogData.username }}"
-        吗？此操作不可恢复。
-      </v-card-text>
-      <v-card-actions>
-        <v-spacer></v-spacer>
-        <v-btn color="accent" text="取消" variant="text" @click="deleteConfirmDialogState = false"></v-btn>
-        <v-btn color="accent" text="删除" variant="flat" @click="submitDeleteUser"></v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+  <!-- 删除用户对话框 -->
+  <DeleteUserDialog v-model:thisDialogState="DeleteUserDialog_state" v-model:delUserData="DeleteUserDialog_data"
+    :getTableData="getTableData"></DeleteUserDialog>
 
   <!-- 批量删除确认对话框 -->
   <v-dialog v-model="batchDeleteConfirmDialogState" max-width="400">
@@ -167,6 +155,7 @@
 <script setup lang="ts">
 import UserApi from "@/api/app/users";
 import CommonUtils from "@/api/utils/common";
+import DeleteUserDialog from "~/components/users/DeleteUserDialog.vue";
 import EditUserDialog from "~/components/users/EditUserDialog.vue";
 
 const notifier = useNotifier();
@@ -198,6 +187,15 @@ const openEditUserDialog = (data: {}) => {
   EditUserDialog_data.value.edit = CommonUtils.deepClone(data);
   EditUserDialog_state.value = true;
 };
+
+//DeleteUserDialog组件
+const DeleteUserDialog_state = ref(false);
+const DeleteUserDialog_data = ref({} as any); //后面API完善类型待规范
+const openDeleteUserDialog = (data: {}) => {
+  DeleteUserDialog_data.value = data;
+  DeleteUserDialog_state.value = true;
+};
+
 
 //批量操作选项
 const TableBatchOptions = [
@@ -244,25 +242,6 @@ getTableData();
 watch([tableCurrentPage, tableListRows], (newValue, oldValue) => {
   getTableData();
 });
-
-//删除确认对话框状态
-const deleteConfirmDialogState = ref(false);
-const deleteConfirmDialogData = ref({} as any);
-
-//打开删除确认对话框
-const openDeleteConfirmDialog = (data: any) => {
-  deleteConfirmDialogData.value = data;
-  deleteConfirmDialogState.value = true;
-};
-
-//提交删除用户
-const submitDeleteUser = () => {
-  UserApi.deleteUser(deleteConfirmDialogData.value.id).then(() => {
-    //关闭对话框并刷新列表
-    deleteConfirmDialogState.value = false;
-    getTableData();
-  });
-};
 
 // 批量操作相关
 const selectedBatchOperation = ref("");
