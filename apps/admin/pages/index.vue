@@ -64,10 +64,12 @@
 						<v-card-text>
 							<v-row>
 								<v-col cols="3" class="text-center">
-									<v-avatar class="h-100 w-100 hidden-md-and-down" image="http://192.168.3.142:7001/view/admin/assets/img/lcl.png" ></v-avatar>
-									<v-avatar class="w-100 hidden-lg-and-up" image="http://192.168.3.142:7001/view/admin/assets/img/lcl.png" ></v-avatar>
+									<v-avatar class="h-100 w-100 hidden-md-and-down"
+										image="http://192.168.3.142:7001/view/admin/assets/img/lcl.png"></v-avatar>
+									<v-avatar class="w-100 hidden-lg-and-up"
+										image="http://192.168.3.142:7001/view/admin/assets/img/lcl.png"></v-avatar>
 								</v-col>
-								
+
 								<v-col cols="9">
 									<h6 class="text-h6 font-weight-black">LoveCards</h6>
 									<div class="text-subtitle-1">2.3.2</div>

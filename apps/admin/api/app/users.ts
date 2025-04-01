@@ -10,20 +10,20 @@ const getUserIndex = (page: number = 1, listRows: number = 10) => {
     return instance.get(APP_PATH + "/index", {
         params: {
             page: page,
-            list_rows: listRows,
+            list_rows: listRows
         },
     });
 };
 
 interface PatchUser {
-    id: number
-    number: string
-    avatar: string
-    email: string
-    phone: string
-    username: string
-    password: string
-    status: string
+    id: number;
+    number: string;
+    avatar: string;
+    email: string;
+    phone: string;
+    username: string;
+    password: string;
+    status: string;
 }
 const patchUser = (data: PatchUser) => {
     return instance.patch(APP_PATH + "/patch", {
@@ -38,9 +38,19 @@ const patchUser = (data: PatchUser) => {
     });
 };
 
+const deleteUser = (id: number | number[]) => {
+    const idArray = Array.isArray(id) ? JSON.stringify(id)  : id;
+    return instance.delete(APP_PATH + "/delete", {
+        params: {
+            id: idArray
+        }
+    });
+};
+
 const UserApi = {
     getUserIndex,
-    patchUser
+    patchUser,
+    deleteUser
 };
 
 export default UserApi;
