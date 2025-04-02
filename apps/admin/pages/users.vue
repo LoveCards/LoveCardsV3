@@ -97,8 +97,8 @@
               <v-col cols="12" md="6" class="d-flex justify-start align-center">
                 <v-select density="compact" label="请选择操作" max-width="160px" hide-details variant="outlined"
                   color="accent" :items="TableBatchOptions" item-title="title" item-value="value"
-                  v-model="selectedBatchOperation"></v-select>
-                <v-btn color="accent" variant="flat" class="ml-2" @click="executeBatchOperation"
+                  v-model="BatchUserBtnStatus"></v-select>
+                <v-btn color="accent" variant="flat" class="ml-2" @click="openBatchUserDialog"
                   :disabled="tableSelected.length === 0">批量操作</v-btn>
               </v-col>
               <!-- 分页按钮 -->
@@ -112,7 +112,7 @@
                     <v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
-                        }}</v-list-item-title>
+                      }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -135,21 +135,9 @@
   <!-- 删除用户对话框 -->
   <DeleteUserDialog v-model:thisDialogState="DeleteUserDialog_state" v-model:delUserData="DeleteUserDialog_data"
     :getTableData="getTableData"></DeleteUserDialog>
-
-  <!-- 批量删除确认对话框 -->
-  <v-dialog v-model="batchDeleteConfirmDialogState" max-width="400">
-    <v-card>
-      <v-card-title class="text-h5"> 批量删除确认 </v-card-title>
-      <v-card-text>
-        确定要删除选中的 {{ tableSelected.length }} 个用户吗？此操作不可恢复。
-      </v-card-text>
-      <v-card-actions>
-        <v-spacer></v-spacer>
-        <v-btn color="accent" text="取消" variant="text" @click="batchDeleteConfirmDialogState = false"></v-btn>
-        <v-btn color="accent" text="删除" variant="flat" @click="submitBatchDeleteUsers"></v-btn>
-      </v-card-actions>
-    </v-card>
-  </v-dialog>
+  <!-- 批量处理用户对话框 -->
+  <BatchUserDialog v-model:thisDialogState="BatchUserDialog_state" v-model:batchUserData="tableSelected"
+    :getTableData="getTableData"></BatchUserDialog>
 </template>
 
 <script setup lang="ts">
@@ -157,6 +145,7 @@ import UserApi from "@/api/app/users";
 import CommonUtils from "@/api/utils/common";
 import DeleteUserDialog from "~/components/users/DeleteUserDialog.vue";
 import EditUserDialog from "~/components/users/EditUserDialog.vue";
+import BatchUserDialog from "~/components/users/BatchUserDialog.vue";
 
 const notifier = useNotifier();
 
@@ -178,25 +167,6 @@ const TableHeaders = [
   { title: "状态", value: "status" },
   { title: "操作", value: "operate" },
 ];
-
-//EditUserDialog组件
-const EditUserDialog_state = ref(false);
-const EditUserDialog_data = ref({ origin: {}, edit: {} } as any); //后面API完善类型待规范
-const openEditUserDialog = (data: {}) => {
-  EditUserDialog_data.value.origin = CommonUtils.deepClone(data);
-  EditUserDialog_data.value.edit = CommonUtils.deepClone(data);
-  EditUserDialog_state.value = true;
-};
-
-//DeleteUserDialog组件
-const DeleteUserDialog_state = ref(false);
-const DeleteUserDialog_data = ref({} as any); //后面API完善类型待规范
-const openDeleteUserDialog = (data: {}) => {
-  DeleteUserDialog_data.value = data;
-  DeleteUserDialog_state.value = true;
-};
-
-
 //批量操作选项
 const TableBatchOptions = [
   // { title: '封禁/解封', value: 'delete' },
@@ -223,6 +193,41 @@ const tableCurrentPage = ref(1);
 //每页项目数量
 const tableListRows = ref(TableListRowsOptions[0].value);
 
+//EditUserDialog组件
+const EditUserDialog_state = ref(false);
+const EditUserDialog_data = ref({ origin: {}, edit: {} } as any); //后面API完善类型待规范
+const openEditUserDialog = (data: {}) => {
+  EditUserDialog_data.value.origin = CommonUtils.deepClone(data);
+  EditUserDialog_data.value.edit = CommonUtils.deepClone(data);
+  EditUserDialog_state.value = true;
+};
+
+//DeleteUserDialog组件
+const DeleteUserDialog_state = ref(false);
+const DeleteUserDialog_data = ref({} as any); //后面API完善类型待规范
+const openDeleteUserDialog = (data: {}) => {
+  DeleteUserDialog_data.value = data;
+  DeleteUserDialog_state.value = true;
+};
+
+// 批量操作相关
+const BatchUserBtnStatus = ref("");
+//BatchUserDialog组件
+const BatchUserDialog_state = ref(false);
+const openBatchUserDialog = () => {
+  if (tableSelected.value.length === 0) {
+    notifier.toast({
+      text: "请选择要操作的用户",
+      type: "warning",
+    });
+    return;
+  }
+
+  if (BatchUserBtnStatus.value === "disable") {
+    BatchUserDialog_state.value = true;
+  }
+};
+
 //获取表格数据
 const getTableData = () => {
   UserApi.getUserIndex(tableCurrentPage.value, tableListRows.value)
@@ -242,38 +247,4 @@ getTableData();
 watch([tableCurrentPage, tableListRows], (newValue, oldValue) => {
   getTableData();
 });
-
-// 批量操作相关
-const selectedBatchOperation = ref("");
-const batchDeleteConfirmDialogState = ref(false);
-
-// 执行批量操作
-const executeBatchOperation = () => {
-  if (tableSelected.value.length === 0) {
-    notifier.toast({
-      text: "请选择要操作的用户",
-      type: "warning",
-    });
-    return;
-  }
-
-  if (selectedBatchOperation.value === "disable") {
-    // 打开批量删除确认对话框
-    batchDeleteConfirmDialogState.value = true;
-  }
-};
-
-// 提交批量删除用户
-const submitBatchDeleteUsers = () => {
-  // 提取选中用户的ID
-  const selectedIds = tableSelected.value;
-
-  UserApi.deleteUser(selectedIds).then(() => {
-    // 关闭对话框并刷新列表
-    batchDeleteConfirmDialogState.value = false;
-    // 清空选择
-    tableSelected.value = [];
-    getTableData();
-  });
-};
 </script>
