@@ -20,7 +20,8 @@ export default defineNuxtConfig({
         'vuetify-nuxt-module',
         'vuetify-notifier/nuxt',
         '@pinia/nuxt',
-        "vuetify-notifier"
+        "vuetify-notifier",
+        "nuxt-lodash"
     ],
     notifier: {
         /* module specific options */

@@ -17,12 +17,15 @@
             <v-row>
               <!-- 工具栏 -->
               <v-col cols="4" md="8" class="d-flex align-center">
-                <!-- <v-btn color="accent" variant="flat"> 添加用户 </v-btn> -->
+                <v-btn color="accent" variant="flat"> 添加用户 </v-btn>
               </v-col>
               <!-- 搜索栏 -->
               <v-col cols="8" md="4" class="d-flex justify-end">
-                <v-text-field color="accent" append-inner-icon="mdi-magnify" density="compact" label="搜索用户"
-                  variant="outlined" hide-details single-line></v-text-field>
+                <!-- <v-btn elevation="0" icon="mdi-filter" size="small" variant="text"
+                  @click="openSearchUserDialog()"></v-btn> -->
+                <v-text-field color="accent" append-inner-icon="mdi-magnify" density="compact" label="搜索用户名"
+                  variant="outlined" v-model="tableSearchValue" @input="searchTableData" hide-details
+                  single-line></v-text-field>
               </v-col>
             </v-row>
 
@@ -83,6 +86,10 @@
                       </v-chip>
                     </template>
 
+                    <!-- 无结果时的显示内容 -->
+                    <template v-slot:no-data>
+                      没有找到相关数据
+                    </template>
                     <template v-slot:bottom>
                       <!-- 隐藏默认分页器 -->
                     </template>
@@ -105,8 +112,7 @@
               <v-col cols="12" md="6" class="d-flex justify-end align-center">
                 <v-menu>
                   <template v-slot:activator="{ props }">
-                    <v-btn elevation="0" icon="mdi-table-row-plus-after" size="small" v-bind="props"
-                      variant="text"></v-btn>
+                    <v-btn elevation="0" icon="mdi-table-cog" size="small" v-bind="props" variant="text"></v-btn>
                   </template>
                   <v-list>
                     <v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
@@ -138,6 +144,9 @@
   <!-- 批量处理用户对话框 -->
   <BatchUserDialog v-model:thisDialogState="BatchUserDialog_state" v-model:batchUserData="tableSelected"
     :getTableData="getTableData"></BatchUserDialog>
+  <!-- 搜索用户对话框 -->
+  <!-- <SearchUserDialog v-model:thisDialogState="SearchUserDialog_state" v-model:searchUserData="SearchUserDialog_data"
+    :getTableData="getTableData"></SearchUserDialog> -->
 </template>
 
 <script setup lang="ts">
@@ -146,6 +155,7 @@ import CommonUtils from "@/api/utils/common";
 import DeleteUserDialog from "~/components/users/DeleteUserDialog.vue";
 import EditUserDialog from "~/components/users/EditUserDialog.vue";
 import BatchUserDialog from "~/components/users/BatchUserDialog.vue";
+//import SearchUserDialog from "~/components/users/SearchUserDialog.vue";
 
 const notifier = useNotifier();
 
@@ -189,6 +199,8 @@ const tableSelected = ref([]);
 const tablePaginationLength = ref(0);
 //当前页面
 const tableCurrentPage = ref(1);
+//搜索值
+const tableSearchValue = ref(undefined);
 
 //每页项目数量
 const tableListRows = ref(TableListRowsOptions[0].value);
@@ -228,9 +240,22 @@ const openBatchUserDialog = () => {
   }
 };
 
+//SearchUserDialog组件-未完成
+// const SearchUserDialog_state = ref(false);
+// const SearchUserDialog_data = ref({} as any); //后面API完善类型待规范
+// const openSearchUserDialog = () => {
+//   //SearchUserDialog_data.value = data;
+//   SearchUserDialog_state.value = true;
+// };
+
 //获取表格数据
 const getTableData = () => {
-  UserApi.getUserIndex(tableCurrentPage.value, tableListRows.value)
+  const params = {
+    page: tableCurrentPage.value,
+    list_rows: tableListRows.value,
+    search_value: tableSearchValue.value == '' ? undefined : tableSearchValue.value,
+  };
+  UserApi.getUserIndex(params)
     .then((response) => {
       const data = response.data;
       tableCurrentPage.value = data.current_page;
@@ -242,6 +267,10 @@ const getTableData = () => {
     });
 };
 getTableData();
+//搜索防抖
+const searchTableData = useDebounce(() => {
+  getTableData();
+}, 500);
 
 //数据获取监控
 watch([tableCurrentPage, tableListRows], (newValue, oldValue) => {
