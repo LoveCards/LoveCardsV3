@@ -12,14 +12,7 @@ interface UserIndex {
 }
 const getUserIndex = (params: UserIndex) => {
     return instance.get(APP_PATH + "/index", {
-        params: {
-            page: params.page,
-            list_rows: params.list_rows,
-            search_value: params.search_value,
-            search_keys: params.search_keys,
-            order_key: params.order_key,
-            order_desc: params.order_desc,
-        },
+        params: params,
     });
 };
 
@@ -34,16 +27,7 @@ interface PatchUser {
     status: string;
 }
 const patchUser = (params: PatchUser) => {
-    return instance.patch(APP_PATH + "/patch", {
-        id: params.id,
-        number: params.number,
-        avatar: params.avatar,
-        email: params.email,
-        phone: params.phone,
-        username: params.username,
-        password: params.password,
-        status: params.status
-    });
+    return instance.patch(APP_PATH + "/patch", params);
 };
 
 const deleteUser = (id: number | number[]) => {
