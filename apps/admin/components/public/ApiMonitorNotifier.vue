@@ -2,6 +2,7 @@
 
 <script setup lang="ts">
 import { useApiMonitorStore } from '~/stores/apiMonitorStore';
+import ErrorUtils from '~/api/utils/error';
 
 const notifier = useNotifier();
 
@@ -79,11 +80,7 @@ watch(
         if (error) {
           //备注 可以再API类中写一个通用错误处理方法
           type = 'error';
-          let detail = '';
-          Object.entries(error.response?.data.detail).forEach(([key, value]) => {
-            detail += `${value}\n`;
-          });
-          text = `${error.response?.data.error}: ${detail}`;
+          text = ErrorUtils.common(error);
         }
 
         notifier.toast({

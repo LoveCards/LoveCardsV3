@@ -152,6 +152,7 @@
 <script setup lang="ts">
 import UserApi from "@/api/app/users";
 import CommonUtils from "@/api/utils/common";
+import ApiMonitor from "@/api/interceptors/monitor";
 import DeleteUserDialog from "~/components/users/DeleteUserDialog.vue";
 import EditUserDialog from "~/components/users/EditUserDialog.vue";
 import BatchUserDialog from "~/components/users/BatchUserDialog.vue";
@@ -265,15 +266,21 @@ const getTableData = () => {
     ...tableSearchFilter.value
   };
   //请求API
+  if (tableSearchFilter.value) {
+    //搜索时激活错误提醒
+    ApiMonitor.setGetState(true);
+  }
   UserApi.getUserIndex(params)
     .then((response) => {
       const data = response.data;
       tableCurrentPage.value = data.current_page;
       tablePaginationLength.value = data.last_page;
       tableItems.value = data.data;
-    })
-    .catch((error) => {
-      //弹出列表加载失败提示
+    }).finally(() => {
+      if (tableSearchFilter.value) {
+        //搜索后关闭错误提醒
+        ApiMonitor.setGetState(false);
+      }
     });
 };
 getTableData();

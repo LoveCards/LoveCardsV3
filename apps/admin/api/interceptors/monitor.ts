@@ -33,7 +33,11 @@ import { useApiMonitorStore } from '~/stores/apiMonitorStore';
 let requestState = true;    // 请求监控状态
 let responseState = true;   // 响应监控状态
 let errorState = true;      // 错误监控状态
-let getMethodState = false; // GET请求监控状态
+let getMethodState = {
+    request: false,   // GET请求监控状态
+    response: false,  // GET请求响应状态
+    error: false      // GET请求错误状态
+}; // GET请求监控状态
 
 /**
  * 请求拦截器
@@ -51,7 +55,7 @@ let getMethodState = false; // GET请求监控状态
 const request = (config: AxiosRequestConfig) => {
     if (!requestState) { return config; }
     //console.log('请求拦截器监控', config);
-    if (!getMethodState) {
+    if (!getMethodState.request) {
         if (config.method === 'get') {
             return config;
         }
@@ -75,7 +79,7 @@ const request = (config: AxiosRequestConfig) => {
 const response = (response: AxiosResponse) => {
     //console.log('响应拦截器监控', response);
     if (!responseState) { return; }
-    if (!getMethodState) {
+    if (!getMethodState.response) {
         if (response.config.method === 'get') {
             return;
         }
@@ -98,7 +102,7 @@ const response = (response: AxiosResponse) => {
 const error = (error: AxiosError) => {
     //console.log('错误拦截器监控', error);
     if (!errorState) { return; }
-    if (!getMethodState) {
+    if (!getMethodState.error) {
         if (error.config.method === 'get') {
             return;
         }
@@ -124,12 +128,19 @@ const setState = (req: boolean | null = true, res: boolean | null = true, err: b
     errorState = err === null ? errorState : err;
 }
 
+const setGetState = (err: boolean | null = false, req: boolean | null = false, res: boolean | null = false) => {
+    getMethodState.request = req === null ? getMethodState.request : req;
+    getMethodState.response = res === null ? getMethodState.response : res;
+    getMethodState.error = err === null ? getMethodState.error : err;
+}
+
 // 导出API监控对象
 const ApiMonitor = {
     request,
     response,
     error,
-    setState
+    setState,
+    setGetState
 };
 
 export default ApiMonitor;
