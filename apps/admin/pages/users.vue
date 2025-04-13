@@ -55,6 +55,13 @@
                         @update:model-value="toggleSelect(internalItem)"></v-checkbox-btn>
                     </template>
 
+                    <!-- 权限 -->
+                    <template v-slot:[`item.roles_id`]="{ item }">
+                      <v-chip size="x-small" v-for="(role, index) in renderUserRoles(item.roles_id)" :key="index">
+                        {{ role }}
+                      </v-chip>
+                    </template>
+
                     <!-- 头像 -->
                     <template v-slot:[`item.avatar`]="{ item }">
                       <v-avatar>
@@ -77,7 +84,7 @@
                         : item.status === -1
                           ? 'error'
                           : 'warning'
-                        " variant="outlined" size="small">
+                        " variant="flat" size="small">
                         {{
                           AccountStates.find(
                             (state) => state.value === item.status
@@ -118,7 +125,7 @@
                     <v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
-                        }}</v-list-item-title>
+                      }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -169,6 +176,7 @@ const AccountStates = [
 //表格头部
 const TableHeaders = [
   { title: "ID", value: "id" },
+  { title: "权限组", value: "roles_id" },
   { title: "头像", value: "avatar" },
   { title: "账号", value: "number" },
   { title: "用户名", value: "username" },
@@ -194,6 +202,28 @@ const TableListRowsOptions = [
   { title: "50 / 页", value: 50 },
   { title: "100 / 页", value: 100 },
 ];
+//用户组
+const UserRoles = [
+  { title: "超级管理员", value: 0 },
+  { title: "管理员", value: 1 },
+  { title: "用户", value: 2 },
+];
+//渲染用户标签数据预处理
+const renderUserRoles = (roles_id: any) => {
+  if (roles_id != null) {
+    roles_id = JSON.parse(roles_id);
+    let roles_title: string[] = [];
+    roles_id.forEach((item: any) => {
+      const roles = UserRoles.find((role) => role.value === item);
+      if (roles) {
+        roles_title.push(roles.title);
+      }
+    });
+    return roles_title;
+  } else {
+    return [];
+  }
+};
 
 //表格数据
 const tableItems = ref([{} as any]);
