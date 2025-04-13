@@ -17,13 +17,13 @@
             <v-row>
               <!-- 工具栏 -->
               <v-col cols="4" md="8" class="d-flex align-center">
-                <v-btn color="accent" variant="flat"> 添加用户 </v-btn>
+                <!-- <v-btn color="accent" variant="flat"> 添加用户 </v-btn> -->
               </v-col>
               <!-- 搜索栏 -->
               <v-col cols="8" md="4" class="d-flex justify-end">
-                <!-- <v-btn elevation="0" icon="mdi-filter" size="small" variant="text"
-                  @click="openSearchUserDialog()"></v-btn> -->
-                <v-text-field color="accent" append-inner-icon="mdi-magnify" density="compact" label="搜索用户名"
+                <v-btn elevation="0" icon="mdi-filter" size="small" variant="text"
+                  @click="openSearchUserDialog()"></v-btn>
+                <v-text-field color="accent" append-inner-icon="mdi-magnify" density="compact" label="搜索"
                   variant="outlined" v-model="tableSearchValue" @input="searchTableData" hide-details
                   single-line></v-text-field>
               </v-col>
@@ -118,7 +118,7 @@
                     <v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
-                      }}</v-list-item-title>
+                        }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -145,8 +145,8 @@
   <BatchUserDialog v-model:thisDialogState="BatchUserDialog_state" v-model:batchUserData="tableSelected"
     :getTableData="getTableData"></BatchUserDialog>
   <!-- 搜索用户对话框 -->
-  <!-- <SearchUserDialog v-model:thisDialogState="SearchUserDialog_state" v-model:searchUserData="SearchUserDialog_data"
-    :getTableData="getTableData"></SearchUserDialog> -->
+  <SearchUserDialog v-model:thisDialogState="SearchUserDialog_state" :KEYS="SearchKeys"
+    :setFilter="setTableSearchFilter" :getTableData="getTableData"></SearchUserDialog>
 </template>
 
 <script setup lang="ts">
@@ -155,7 +155,7 @@ import CommonUtils from "@/api/utils/common";
 import DeleteUserDialog from "~/components/users/DeleteUserDialog.vue";
 import EditUserDialog from "~/components/users/EditUserDialog.vue";
 import BatchUserDialog from "~/components/users/BatchUserDialog.vue";
-//import SearchUserDialog from "~/components/users/SearchUserDialog.vue";
+import SearchUserDialog from "~/components/users/SearchUserDialog.vue";
 
 const notifier = useNotifier();
 
@@ -177,6 +177,9 @@ const TableHeaders = [
   { title: "状态", value: "status" },
   { title: "操作", value: "operate" },
 ];
+//搜索字段
+const SearchKeys = [...TableHeaders];
+SearchKeys.pop();
 //批量操作选项
 const TableBatchOptions = [
   // { title: '封禁/解封', value: 'delete' },
@@ -201,13 +204,15 @@ const tablePaginationLength = ref(0);
 const tableCurrentPage = ref(1);
 //搜索值
 const tableSearchValue = ref(undefined);
+//搜索过滤器
+const tableSearchFilter = ref([]);
 
 //每页项目数量
 const tableListRows = ref(TableListRowsOptions[0].value);
 
 //EditUserDialog组件
 const EditUserDialog_state = ref(false);
-const EditUserDialog_data = ref({ origin: {}, edit: {} } as any); //后面API完善类型待规范
+const EditUserDialog_data = ref({ origin: {}, edit: {} } as any);
 const openEditUserDialog = (data: {}) => {
   EditUserDialog_data.value.origin = CommonUtils.deepClone(data);
   EditUserDialog_data.value.edit = CommonUtils.deepClone(data);
@@ -216,7 +221,7 @@ const openEditUserDialog = (data: {}) => {
 
 //DeleteUserDialog组件
 const DeleteUserDialog_state = ref(false);
-const DeleteUserDialog_data = ref({} as any); //后面API完善类型待规范
+const DeleteUserDialog_data = ref({} as any);
 const openDeleteUserDialog = (data: {}) => {
   DeleteUserDialog_data.value = data;
   DeleteUserDialog_state.value = true;
@@ -240,21 +245,26 @@ const openBatchUserDialog = () => {
   }
 };
 
-//SearchUserDialog组件-未完成
-// const SearchUserDialog_state = ref(false);
-// const SearchUserDialog_data = ref({} as any); //后面API完善类型待规范
-// const openSearchUserDialog = () => {
-//   //SearchUserDialog_data.value = data;
-//   SearchUserDialog_state.value = true;
-// };
+//SearchUserDialog组件
+const SearchUserDialog_state = ref(false);
+//子父传参
+const setTableSearchFilter = (data: any) => {
+  tableSearchFilter.value = data;
+}
+const openSearchUserDialog = () => {
+  SearchUserDialog_state.value = true;
+};
 
 //获取表格数据
 const getTableData = () => {
+  //合并参数
   const params = {
     page: tableCurrentPage.value,
     list_rows: tableListRows.value,
-    search_value: tableSearchValue.value == '' ? undefined : tableSearchValue.value,
+    search_value: tableSearchValue.value,
+    ...tableSearchFilter.value
   };
+  //请求API
   UserApi.getUserIndex(params)
     .then((response) => {
       const data = response.data;
