@@ -26,6 +26,10 @@
 						<v-select label="帐号状态" :items="ACCOUNT_STATUS" item-title="title" item-value="value"
 							v-model="editUserData.edit.status" variant="underlined" color="accent"></v-select>
 					</v-col>
+					<v-col cols="12" sm="6">
+						<v-select clearable chips label="权限组" item-title="title" item-value="value"
+							v-model="roles_id" :items="USER_ROLES" variant="underlined" multiple></v-select>
+					</v-col>
 
 					<v-col cols="12" sm="6">
 						<v-text-field label="账号" v-model="editUserData.edit.number" variant="underlined" color="accent"
@@ -76,6 +80,7 @@ const notifier = useNotifier();
 
 //Props
 const props = defineProps({
+	USER_ROLES: Array,
 	ACCOUNT_STATUS: Array,
 	getTableData: Function,
 });
@@ -85,6 +90,7 @@ const getTableData = () => {
 	}
 };
 const ACCOUNT_STATUS = props.ACCOUNT_STATUS;
+const USER_ROLES = props.USER_ROLES;
 
 //Model
 //对话框状态
@@ -95,6 +101,23 @@ interface EditUserData {
 	origin: any;
 }
 const editUserData = defineModel<EditUserData>('editUserData', { default: { edit: {}, origin: {} } });
+//JSON解析计算属性
+const roles_id = computed({
+	get: () => {
+		try {
+			const roles_id = JSON.parse(editUserData.value.edit.roles_id);
+			if(typeof roles_id == "number") {
+				return [];
+			}
+			return roles_id;
+		} catch (error) {
+			return [];
+		}
+	},
+	set: (value) => {
+		editUserData.value.edit.roles_id = JSON.stringify(value);
+	}
+});
 
 // 触发文件选择
 const fileInput = ref<HTMLInputElement>();

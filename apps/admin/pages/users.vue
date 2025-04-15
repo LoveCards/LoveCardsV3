@@ -125,7 +125,7 @@
                     <v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
-                      }}</v-list-item-title>
+                        }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -144,7 +144,7 @@
 
   <!-- 编辑用户对话框 -->
   <EditUserDialog v-model:thisDialogState="EditUserDialog_state" v-model:editUserData="EditUserDialog_data"
-    :getTableData="getTableData" :ACCOUNT_STATUS="AccountStates"></EditUserDialog>
+    :getTableData="getTableData" :ACCOUNT_STATUS="AccountStates" :USER_ROLES="UserRoles"></EditUserDialog>
   <!-- 删除用户对话框 -->
   <DeleteUserDialog v-model:thisDialogState="DeleteUserDialog_state" v-model:delUserData="DeleteUserDialog_data"
     :getTableData="getTableData"></DeleteUserDialog>
@@ -213,12 +213,19 @@ const renderUserRoles = (roles_id: any) => {
   if (roles_id != null) {
     roles_id = JSON.parse(roles_id);
     let roles_title: string[] = [];
-    roles_id.forEach((item: any) => {
-      const roles = UserRoles.find((role) => role.value === item);
+    if (typeof roles_id === "number") {
+      const roles = UserRoles.find((role) => role.value === roles_id);
       if (roles) {
-        roles_title.push(roles.title);
+        return roles.title;
       }
-    });
+    } else {
+      roles_id.forEach((item: any) => {
+        const roles = UserRoles.find((role) => role.value === item);
+        if (roles) {
+          roles_title.push(roles.title);
+        }
+      });
+    }
     return roles_title;
   } else {
     return [];
