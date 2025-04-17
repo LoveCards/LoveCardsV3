@@ -26,6 +26,7 @@
 						<v-select label="帐号状态" :items="ACCOUNT_STATUS" item-title="title" item-value="value"
 							v-model="editUserData.edit.status" variant="underlined" color="accent"></v-select>
 					</v-col>
+					
 					<v-col cols="12" sm="6">
 						<v-select clearable chips label="权限组" item-title="title" item-value="value"
 							v-model="roles_id" :items="USER_ROLES" variant="underlined" multiple></v-select>

@@ -66,7 +66,7 @@ const filter = ref({
 	//排序字段
 	order_key: [],
 	//排序规则
-	order_desc: false,
+	order_desc: true,
 });
 const submit = () => {
 	setFilter(filter.value);
