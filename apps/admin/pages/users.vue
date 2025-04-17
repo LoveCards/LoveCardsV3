@@ -125,7 +125,7 @@
                     <v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
-                        }}</v-list-item-title>
+                      }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -243,7 +243,7 @@ const tableCurrentPage = ref(1);
 //搜索值
 const tableSearchValue = ref(undefined);
 //搜索过滤器
-const tableSearchFilter = ref([]);
+const tableSearchFilter = ref({});
 
 //每页项目数量
 const tableListRows = ref(TableListRowsOptions[0].value);
@@ -320,7 +320,7 @@ const getTableData = () => {
       }
     });
 };
-getTableData();
+
 //搜索防抖
 const searchTableData = useDebounce(() => {
   getTableData();
@@ -328,6 +328,11 @@ const searchTableData = useDebounce(() => {
 
 //数据获取监控
 watch([tableCurrentPage, tableListRows], (newValue, oldValue) => {
+  getTableData();
+});
+
+//页面加载完成后获取数据
+onMounted(() => {
   getTableData();
 });
 </script>

@@ -13,7 +13,7 @@ interface UserIndex {
 }
 const getUserIndex = (params: UserIndex) => {
     //参数处理
-    if(params.search_keys != undefined && params.search_keys.length > 0) {
+    if (params.search_keys != undefined && params.search_keys.length > 0) {
         params.search_keys = JSON.stringify(params.search_keys) as any;
     }
     params.search_value ? params.search_value : delete params.search_value;
@@ -33,6 +33,7 @@ interface PatchUser {
     username: string;
     password: string;
     status: string;
+    roles_id: string;
 }
 const patchUser = (params: PatchUser) => {
     return instance.patch(APP_PATH + "/patch", params);

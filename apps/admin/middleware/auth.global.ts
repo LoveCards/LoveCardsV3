@@ -1,4 +1,4 @@
-import { getUser } from "@/api/app/user";
+import { getUserInfo } from "@/api/app/user";
 
 const rootGo = (redirect: string) => {
     redirect = encodeURIComponent(redirect);//编码
@@ -6,7 +6,7 @@ const rootGo = (redirect: string) => {
 }
 
 export default defineNuxtRouteMiddleware((to, from) => {
-    getUser().then((response) => {
+    getUserInfo().then((response) => {
         console.log(response);   // 获取用户信息
         const data = response.data;
         const rolesId = JSON.parse(data.roles_id);

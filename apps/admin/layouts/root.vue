@@ -33,9 +33,12 @@
 	<!-- 抽屉栏 -->
 	<v-navigation-drawer floating v-model="drawer">
 		<v-sheet class="pa-4" color="grey-lighten-4">
-			<v-avatar class="mb-4" color="grey-darken-1" size="64"></v-avatar>
-
-			<div>john@google.com</div>
+			<v-avatar class="mb-4" color="grey-darken-1" size="64">
+				<v-img :alt="userInfo.username" :src="'http://192.168.3.142:7001/' + userInfo.avatar"></v-img>
+			</v-avatar>
+			<div>
+				{{ userInfo.username }}
+			</div>
 		</v-sheet>
 
 		<v-divider></v-divider>
@@ -79,11 +82,24 @@
 
 <script setup lang="ts">
 import ApiMonitorNotifier from '~/components/public/ApiMonitorNotifier.vue';
+import { useUserStore } from '~/stores/userStore';
+const userStore = useUserStore();
+
+//获取用户信息
+const userInfo = ref({} as any);
+const setUserInfo = async () => {
+	await userStore.init();
+	userInfo.value = userStore.userInfo;
+}
 
 //抽屉栏控制
 const drawer = ref(false)
 const toggleDrawer = () => {
-	//console.log(drawer.value);
 	drawer.value = !drawer.value
 }
+
+//页面初始化
+onMounted(() => {
+	setUserInfo();
+});
 </script>

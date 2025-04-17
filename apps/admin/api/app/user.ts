@@ -2,8 +2,8 @@ import instance from "../axios";
 
 const APP_PATH = "/user";
 
-const getUser = () => {
-    return instance.get(APP_PATH);
+const getUserInfo = () => {
+    return instance.get(APP_PATH + "/info");
 };
 
-export { getUser };
+export { getUserInfo };
