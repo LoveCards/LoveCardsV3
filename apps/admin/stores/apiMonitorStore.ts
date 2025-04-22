@@ -1,4 +1,3 @@
-//AI
 import { defineStore } from 'pinia';
 import type { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 

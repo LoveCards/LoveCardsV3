@@ -17,7 +17,7 @@
 						<v-card-text>
 							<div class="text-grey">趋势</div>
 						</v-card-text>
-
+						<TrendCharts :chartData="chartData"></TrendCharts>
 					</v-card>
 				</v-col>
 
@@ -62,7 +62,7 @@
 					<v-card>
 
 						<v-card-text>
-							<v-row>
+							<!-- <v-row>
 								<v-col cols="3" class="text-center">
 									<v-avatar class="h-100 w-100 hidden-md-and-down"
 										image="http://192.168.3.142:7001/view/admin/assets/img/lcl.png"></v-avatar>
@@ -74,7 +74,10 @@
 									<h6 class="text-h6 font-weight-black">LoveCards</h6>
 									<div class="text-subtitle-1">2.3.2</div>
 								</v-col>
-							</v-row>
+							</v-row> -->
+							<v-list-item title="LoveCards" subtitle="2.3.2"
+								prepend-avatar="http://192.168.3.142:7001/view/admin/assets/img/lcl.png">
+							</v-list-item>
 						</v-card-text>
 
 						<v-divider></v-divider>
@@ -122,3 +125,17 @@
 		</v-container>
 	</NuxtLayout>
 </template>
+
+<script setup lang="ts">
+import { getDashboard } from '@/api/app/dashboard'
+import TrendCharts from '~/components/index/TrendCharts.vue';
+
+const chartData = ref({} as any);
+
+getDashboard().then((response) => {
+	chartData.value = response.data.chart;
+}).catch((error) => {
+	console.error(error)
+})
+
+</script>

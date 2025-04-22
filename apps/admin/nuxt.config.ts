@@ -15,14 +15,8 @@ export default defineNuxtConfig({
     ssr: false,
     compatibilityDate: "2024-11-01",
     devtools: { enabled: true },
-    modules: [
-        // 直接使用模块名称
-        'vuetify-nuxt-module',
-        'vuetify-notifier/nuxt',
-        '@pinia/nuxt',
-        "vuetify-notifier",
-        "nuxt-lodash"
-    ],
+    modules: [// 直接使用模块名称
+        'vuetify-nuxt-module', 'vuetify-notifier/nuxt', '@pinia/nuxt', "vuetify-notifier", "nuxt-lodash"],
     notifier: {
         /* module specific options */
         position: 'bottom-right', // 可选配置项

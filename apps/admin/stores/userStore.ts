@@ -1,4 +1,3 @@
-//User
 import { defineStore } from 'pinia';
 import { getUserInfo as apiGetUserInfo } from '~/api/app/user';
 
