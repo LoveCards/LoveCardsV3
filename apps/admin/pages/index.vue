@@ -17,7 +17,7 @@
 						<v-card-text>
 							<div class="text-grey">趋势</div>
 						</v-card-text>
-						<TrendCharts :chartData="chartData"></TrendCharts>
+						<TrendCharts></TrendCharts>
 					</v-card>
 				</v-col>
 
@@ -127,15 +127,5 @@
 </template>
 
 <script setup lang="ts">
-import { getDashboard } from '@/api/app/dashboard'
 import TrendCharts from '~/components/index/TrendCharts.vue';
-
-const chartData = ref({} as any);
-
-getDashboard().then((response) => {
-	chartData.value = response.data.chart;
-}).catch((error) => {
-	console.error(error)
-})
-
 </script>

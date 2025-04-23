@@ -49,8 +49,8 @@ const getDatasets = (jsonData: any) => {
 }
 
 //获取数据
-const setChartData = async () => {
-	await dashboardStore.init();
+const setChartData = () => {
+	//await dashboardStore.init();
 	if (dashboardStore.dashboard !== null) {
 		chartData.value = {
 			labels: dashboardStore.dashboard.chart[0].data.x,

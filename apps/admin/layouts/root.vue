@@ -87,13 +87,13 @@ const userStore = useUserStore();
 
 //获取用户信息
 const userInfo = ref({} as any);
-const setUserInfo = async () => {
-	await userStore.init();
+const setUserInfo = () => {
+	//await userStore.init();
 	userInfo.value = userStore.userInfo;
 }
 
 //抽屉栏控制
-const drawer = ref(false)
+const drawer = ref(true)
 const toggleDrawer = () => {
 	drawer.value = !drawer.value
 }
