@@ -36,7 +36,7 @@ let errorState = true;      // 错误监控状态
 let getMethodState = {
     request: false,   // GET请求监控状态
     response: false,  // GET请求响应状态
-    error: false      // GET请求错误状态
+    error: true      // GET请求错误状态
 }; // GET请求监控状态
 
 /**

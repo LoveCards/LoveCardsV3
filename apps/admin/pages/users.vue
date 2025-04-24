@@ -303,22 +303,23 @@ const getTableData = () => {
     ...tableSearchFilter.value
   };
   //请求API
-  if (tableSearchFilter.value) {
-    //搜索时激活错误提醒
-    ApiMonitor.setGetState(true);
-  }
+  // if (tableSearchFilter.value) {
+  //   //搜索时激活错误提醒
+  //   ApiMonitor.setGetState(true);
+  // }
   UserApi.getUserIndex(params)
     .then((response) => {
       const data = response.data;
       tableCurrentPage.value = data.current_page;
       tablePaginationLength.value = data.last_page;
       tableItems.value = data.data;
-    }).finally(() => {
-      if (tableSearchFilter.value) {
-        //搜索后关闭错误提醒
-        ApiMonitor.setGetState(false);
-      }
-    });
+    })
+    // .finally(() => {
+    //   if (tableSearchFilter.value) {
+    //     //搜索后关闭错误提醒
+    //     ApiMonitor.setGetState(false);
+    //   }
+    // });
 };
 
 //搜索防抖

@@ -30,7 +30,7 @@
 						</v-card-text>
 
 						<v-list lines="two">
-							<v-list-item v-ripple subtitle="卡片总数" title="36">
+							<v-list-item v-ripple subtitle="卡片总数" :title="dashboard.count.cards">
 								<template v-slot:prepend>
 									<v-avatar color="blue">
 										<v-icon color="white">mdi-note</v-icon>
@@ -38,7 +38,7 @@
 								</template>
 							</v-list-item>
 
-							<v-list-item v-ripple subtitle="评论总数" title="36">
+							<v-list-item v-ripple subtitle="评论总数" :title="dashboard.count.comments">
 								<template v-slot:prepend>
 									<v-avatar color="yellow">
 										<v-icon color="white">mdi-comment</v-icon>
@@ -46,7 +46,7 @@
 								</template>
 							</v-list-item>
 
-							<v-list-item v-ripple subtitle="点赞总数" title="36">
+							<v-list-item v-ripple subtitle="点赞总数" :title="dashboard.count.good">
 								<template v-slot:prepend>
 									<v-avatar color="red">
 										<v-icon color="white">mdi-heart</v-icon>
@@ -115,7 +115,7 @@
 				<v-col cols="12" sm="8">
 					<v-card>
 						<v-list lines="three">
-							<v-list-item title="'Item ' + n" subtitle="Lorem ipsum dolor sit amet consectetur adipisicing elit"
+							<v-list-item title="更新通知" subtitle="LoveCards2.3.2[19]修复2.3.1版本多处BUG并优化细节，更新登入后自动填写评论名"
 								prepend-avatar="http://192.168.3.142:7001/view/admin/assets/img/lcl.png">
 							</v-list-item>
 						</v-list>
@@ -128,4 +128,11 @@
 
 <script setup lang="ts">
 import TrendCharts from '~/components/index/TrendCharts.vue';
+import { useDashboardStore } from '~/stores/dashboardStore';
+
+//仪表盘数据
+const dashboard = ref({} as any);
+const dashboardStore = useDashboardStore();
+dashboard.value = dashboardStore.dashboard;
+
 </script>

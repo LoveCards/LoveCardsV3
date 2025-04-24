@@ -15,8 +15,9 @@ export const useUserStore = defineStore('user', {
             try {
                 const response = await apiGetUserInfo();
                 this.userInfo = response.data;
-            } catch (err) {
-                console.error('获取用户信息失败:', err);
+                return response;
+            } catch (error) {
+                return error;
             }
         }
     },

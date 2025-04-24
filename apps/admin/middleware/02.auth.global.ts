@@ -1,4 +1,4 @@
-import { getUserInfo } from "@/api/app/user";
+import { useUserStore } from '~/stores/userStore';
 
 const rootGo = (redirect: string) => {
     redirect = encodeURIComponent(redirect);//编码
@@ -6,9 +6,10 @@ const rootGo = (redirect: string) => {
 }
 
 export default defineNuxtRouteMiddleware((to, from) => {
-    getUserInfo().then((response) => {
-        console.log(response);   // 获取用户信息
-        const data = response.data;
+    const userStore = useUserStore();
+    if (userStore.userInfo !== null) {
+        //console.log(userStore.userInfo);   // 获取用户信息
+        const data: any = userStore.userInfo;
         const rolesId = JSON.parse(data.roles_id);
 
         if (rolesId.includes(0) || rolesId.includes(1)) {
@@ -18,10 +19,9 @@ export default defineNuxtRouteMiddleware((to, from) => {
             //rootGo("/")
             return false;
         }
-
-    }).catch((error) => {
-        console.error("用户信息获取失败:", error);
+    } else {
+        console.error("用户信息获取失败:",);
         //rootGo("/")
         return false;
-    });
+    }
 });

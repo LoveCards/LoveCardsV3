@@ -1,6 +1,8 @@
 <!-- 基础布局 -->
 <template>
-
+	<!-- 全局加载进度条 -->
+	<NuxtLoadingIndicator :color="theme.current.value.colors.accent" :height=5 />
+	<!-- <v-progress-linear indeterminate color="accent" absolute bottom style="z-index: 999999;"></v-progress-linear> -->
 	<!-- 通知队列 -->
 	<VNotifierContainer />
 	<!-- Api监控 -->
@@ -83,6 +85,8 @@
 <script setup lang="ts">
 import ApiMonitorNotifier from '~/components/public/ApiMonitorNotifier.vue';
 import { useUserStore } from '~/stores/userStore';
+import { useTheme } from 'vuetify'
+const theme = useTheme();
 const userStore = useUserStore();
 
 //获取用户信息

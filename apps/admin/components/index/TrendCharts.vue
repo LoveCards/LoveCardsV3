@@ -12,8 +12,8 @@ const dashboardStore = useDashboardStore();
 ChartJS.register(Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement, Filler)
 let chartData = ref({
 	labels: [],
-	datasets: [] as any,
-});
+	datasets: [],
+} as any);
 let chartOptions = {
 	responsive: true, // 响应式
 	plugins: {
@@ -22,11 +22,6 @@ let chartOptions = {
 		},
 	},
 }
-
-//Props
-const props = defineProps({
-	chartData: Object,
-});
 
 //处理数据
 const getDatasets = (jsonData: any) => {
