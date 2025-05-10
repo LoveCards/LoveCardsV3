@@ -48,13 +48,13 @@
 		<v-list density="compact" color="accent" nav>
 			<v-list-item prepend-icon="mdi-view-dashboard" title="总览" value="overview" to="/"></v-list-item>
 
-			<v-list-item prepend-icon="mdi-account-multiple" title="用户" value="users" to="users"></v-list-item>
+			<v-list-item prepend-icon="mdi-account-multiple" title="用户" value="users" to="/users"></v-list-item>
 
 			<v-list-group value="apps">
 				<template v-slot:activator="{ props }">
 					<v-list-item v-bind="props" prepend-icon="mdi-apps" title="应用"></v-list-item>
 				</template>
-				<v-list-item title="卡片" value="cards"></v-list-item>
+				<v-list-item title="卡片" value="cards" to="/apps/cards"></v-list-item>
 				<v-list-item title="评论" value="comments"></v-list-item>
 				<v-list-item title="标签" value="tags"></v-list-item>
 			</v-list-group>
