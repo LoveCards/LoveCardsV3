@@ -169,9 +169,9 @@ const notifier = useNotifier();
 
 //封禁状态
 const AccountStates = [
-  { title: "正常", value: 0 },
-  { title: "封禁", value: 1 },
-  { title: "冻结", value: 2 },
+  { title: "#0 正常", value: 0 },
+  { title: "#1 封禁", value: 1 },
+  { title: "#2 冻结", value: 2 },
 ];
 //表格头部
 const TableHeaders = [
@@ -204,9 +204,9 @@ const TableListRowsOptions = [
 ];
 //用户组
 const UserRoles = [
-  { title: "超级管理员", value: 0 },
-  { title: "管理员", value: 1 },
-  { title: "用户", value: 2 },
+  { title: "#0 超级管理员", value: 0 },
+  { title: "#1 管理员", value: 1 },
+  { title: "#2 用户", value: 2 },
 ];
 //渲染用户标签数据预处理
 const renderUserRoles = (roles_id: any) => {

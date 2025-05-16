@@ -6,7 +6,7 @@
 				<v-row dense>
 					<v-col cols="12">
 						<v-select clearable chips label="搜索字段" item-title="title" item-value="value" :items="KEYS" multiple
-							variant="underlined" v-model="filter.search_keys" messages="默认[用户名]"></v-select>
+							variant="underlined" v-model="filter.search_keys" :messages="props.KeysMessages"></v-select>
 					</v-col>
 					<v-col cols="12" sm="8">
 						<v-select clearable label="排序字段" item-title="title" item-value="value" :items="KEYS" variant="underlined"
@@ -41,6 +41,7 @@ const props = defineProps({
 	KEYS: Array,
 	getTableData: Function,
 	setFilter: Function,
+	KeysMessages: String,
 });
 
 const getTableData = () => {

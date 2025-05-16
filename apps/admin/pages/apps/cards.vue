@@ -79,7 +79,7 @@
                       <v-btn icon="mdi-pencil" elevation="0" size="small" color="accent" variant="text"
                         @click="openEditUserDialog(item)"></v-btn>
                       <v-btn icon="mdi-delete" elevation="0" size="small" color="accent" variant="text"
-                        @click="openDeleteUserDialog(item)"></v-btn>
+                        @click="openDeleteCardsDialog(item)"></v-btn>
                     </template>
 
                     <!-- 置顶状态 -->
@@ -165,38 +165,38 @@
   <EditUserDialog v-model:thisDialogState="EditUserDialog_state" v-model:editUserData="EditUserDialog_data"
     :getTableData="getTableData" :ACCOUNT_STATUS="CardStates" :USER_ROLES="UserRoles"></EditUserDialog>
   <!-- 删除用户对话框 -->
-  <DeleteUserDialog v-model:thisDialogState="DeleteUserDialog_state" v-model:delUserData="DeleteUserDialog_data"
-    :getTableData="getTableData"></DeleteUserDialog>
+  <PublicDeleteDialog v-model:thisDialogState="DeleteCardsDialog_state" v-model:deleteData="DeleteCardsDialog_data"
+    :deleteFun="DeleteCardFun"></PublicDeleteDialog>
   <!-- 批量处理用户对话框 -->
   <BatchUserDialog v-model:thisDialogState="BatchUserDialog_state" v-model:batchUserData="tableSelected"
     :getTableData="getTableData"></BatchUserDialog>
   <!-- 搜索用户对话框 -->
-  <SearchUserDialog v-model:thisDialogState="SearchUserDialog_state" :KEYS="SearchKeys"
-    :setFilter="setTableSearchFilter" :getTableData="getTableData"></SearchUserDialog>
+  <PublicSearchDialog v-model:thisDialogState="SearchCardsDialog_state" :KEYS="SearchKeys"
+    :setFilter="setTableSearchFilter" :getTableData="getTableData" KeysMessages="默认[内容]"></PublicSearchDialog>
 </template>
 
 <script setup lang="ts">
 import CardsApi from "@/api/app/cards";
 import CommonUtils from "@/api/utils/common";
-import DeleteUserDialog from "@/components/users/DeleteUserDialog.vue";
+import PublicDeleteDialog from "@/components/public/Table/DeleteDialog.vue";
 import EditUserDialog from "@/components/users/EditUserDialog.vue";
 import BatchUserDialog from "@/components/users/BatchUserDialog.vue";
-import SearchUserDialog from "@/components/users/SearchUserDialog.vue";
-import { useTagStore } from "@/stores/TagStore";
+import PublicSearchDialog from "@/components/public/Table/SearchDialog.vue";
+import { useTagsStore } from "@/stores/tagsStore";
 const notifier = useNotifier();
 
 //状态
 const CardStates = [
-  { title: "正常", value: 0 },
-  { title: "封禁", value: 1 },
+  { title: "#0 正常", value: 0 },
+  { title: "#1 封禁", value: 1 },
 ];
 const TopStates = [
-  { title: "正常", value: 0 },
-  { title: "置顶", value: 1 },
+  { title: "#0 正常", value: 0 },
+  { title: "#1 置顶", value: 1 },
 ];
 const ModelStates = [
-  { title: "表白卡", value: 0 },
-  { title: "交流卡", value: 1 },
+  { title: "#0 表白卡", value: 0 },
+  { title: "#1 交流卡", value: 1 },
 ];
 //渲染数据预处理
 const renderTop = (data: any) => {
@@ -261,9 +261,9 @@ const TableListRowsOptions = [
   { title: "100 / 页", value: 100 },
 ];
 //标签
-const tagStore = useTagStore();
+const tagsStore = useTagsStore();
 const Tags = ref([] as any);
-Tags.value = tagStore.tags;
+Tags.value = tagsStore.tags;
 //渲染用户标签数据预处理
 const renderTags = (tags: any) => {
   if (tags != '' && tags !== undefined) {
@@ -272,7 +272,7 @@ const renderTags = (tags: any) => {
     tags.forEach((item: any) => {
       const tag = Tags.value.find((tagItem: any) => tagItem.id === item);
       if (tag) {
-        TagsValue.push(tag.name);
+        TagsValue.push('#' + tag.id + ' ' + tag.name);
       }
     });
     return TagsValue;
@@ -300,12 +300,18 @@ const openEditUserDialog = (data: {}) => {
   EditUserDialog_state.value = true;
 };
 
-//DeleteUserDialog组件
-const DeleteUserDialog_state = ref(false);
-const DeleteUserDialog_data = ref({} as any);
-const openDeleteUserDialog = (data: {}) => {
-  DeleteUserDialog_data.value = data;
-  DeleteUserDialog_state.value = true;
+//DeleteDialog组件
+const DeleteCardFun = (id: any) => {
+  CardsApi.deleteCard(id).then(() => {
+    DeleteCardsDialog_state.value = false;
+    getTableData();
+  });
+}
+const DeleteCardsDialog_state = ref(false);
+const DeleteCardsDialog_data = ref({} as any);
+const openDeleteCardsDialog = (data: {}) => {
+  DeleteCardsDialog_data.value = data;
+  DeleteCardsDialog_state.value = true;
 };
 
 // 批量操作相关
@@ -326,14 +332,14 @@ const openBatchUserDialog = () => {
   }
 };
 
-//SearchUserDialog组件
-const SearchUserDialog_state = ref(false);
+//SearchDialog组件
+const SearchCardsDialog_state = ref(false);
 //子父传参
 const setTableSearchFilter = (data: any) => {
   tableSearchFilter.value = data;
 }
 const openSearchUserDialog = () => {
-  SearchUserDialog_state.value = true;
+  SearchCardsDialog_state.value = true;
 };
 
 //获取表格数据

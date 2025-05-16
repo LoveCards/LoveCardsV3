@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
-import UserTagsApi from '~/api/app/tag';
+import UserTagsApi from '~/api/app/user/tags';
 
-export const useTagStore = defineStore('tag', {
+export const useTagsStore = defineStore('tags', {
     state: () => ({
         tags: null,
     }),

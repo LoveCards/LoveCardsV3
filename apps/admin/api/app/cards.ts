@@ -19,13 +19,8 @@ const getCardIndex = (params: PublicParams.Index) => {
     });
 };
 
-//编辑卡片
-const patchUser = (params: UsersParams.Patch) => {
-    return instance.patch(APP_PATH, params);
-};
-
 //删除卡片
-const deleteUser = (id: PublicParams.Delete) => {
+const deleteCard = (id: PublicParams.Delete) => {
     const idArray = Array.isArray(id) ? JSON.stringify(id) : id;
     return instance.delete(APP_PATH, {
         params: {
@@ -34,8 +29,16 @@ const deleteUser = (id: PublicParams.Delete) => {
     });
 };
 
+//编辑卡片
+const patchUser = (params: UsersParams.Patch) => {
+    return instance.patch(APP_PATH, params);
+};
+
+
+
 const CardsApi = {
     getCardIndex,
+    deleteCard
 };
 
 export default CardsApi;
