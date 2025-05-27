@@ -4,6 +4,14 @@ import type { Params as PublicParams } from "../types/public";
 import type { Params as UsersParams } from "../types/users";
 
 const APP_PATH = "/admin/cards";
+const APP_PATH_ID = "/admin/card";
+
+//获取卡片
+const getCard = (params: PublicParams.GetID) => {
+    return instance.get(APP_PATH_ID, {
+        params: params,
+    });
+};
 
 //获取卡片列表
 const getCardIndex = (params: PublicParams.Index) => {
@@ -38,7 +46,8 @@ const patchUser = (params: UsersParams.Patch) => {
 
 const CardsApi = {
     getCardIndex,
-    deleteCard
+    deleteCard,
+    getCard,
 };
 
 export default CardsApi;

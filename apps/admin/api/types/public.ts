@@ -9,6 +9,14 @@ export namespace Params {
         order_desc?: boolean;
     }
 
+    //GetAppID通用参数
+    export interface GetAppID {
+        card_id: number;
+    }
+    //GetID通用参数
+    export interface GetID {
+        id: number;
+    }
     //Delete通用参数
     export interface Delete {
         id: number | number[];

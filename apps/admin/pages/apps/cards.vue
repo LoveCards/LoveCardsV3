@@ -77,7 +77,7 @@
                     <!-- 操作 -->
                     <template v-slot:[`item.operate`]="{ item }">
                       <v-btn icon="mdi-pencil" elevation="0" size="small" color="accent" variant="text"
-                        @click="openEditUserDialog(item)"></v-btn>
+                        @click="openEditCardDialog(item)"></v-btn>
                       <v-btn icon="mdi-delete" elevation="0" size="small" color="accent" variant="text"
                         @click="openDeleteCardsDialog(item)"></v-btn>
                     </template>
@@ -161,9 +161,9 @@
     </v-container>
   </NuxtLayout>
 
-  <!-- 编辑用户对话框 -->
-  <EditUserDialog v-model:thisDialogState="EditUserDialog_state" v-model:editUserData="EditUserDialog_data"
-    :getTableData="getTableData" :ACCOUNT_STATUS="CardStates" :USER_ROLES="UserRoles"></EditUserDialog>
+  <!-- 编辑卡片对话框 -->
+  <EditCardDialog v-model:thisDialogState="EditCardDialog_state" v-model:editCardData="EditCardDialog_data"
+    :getTableData="getTableData"></EditCardDialog>
   <!-- 删除用户对话框 -->
   <PublicDeleteDialog v-model:thisDialogState="DeleteCardsDialog_state" v-model:deleteData="DeleteCardsDialog_data"
     :deleteFun="DeleteCardFun"></PublicDeleteDialog>
@@ -179,7 +179,7 @@
 import CardsApi from "@/api/app/cards";
 import CommonUtils from "@/api/utils/common";
 import PublicDeleteDialog from "@/components/public/Table/DeleteDialog.vue";
-import EditUserDialog from "@/components/users/EditUserDialog.vue";
+import EditCardDialog from "@/components/cards/EditCardDialog.vue";
 import BatchUserDialog from "@/components/users/BatchUserDialog.vue";
 import PublicSearchDialog from "@/components/public/Table/SearchDialog.vue";
 import { useTagsStore } from "@/stores/tagsStore";
@@ -223,6 +223,7 @@ const renderModel = (data: any) => {
     return "无";
   }
 };
+
 //表格头部
 const TableHeaders = [
   { title: "ID", value: "id" },
@@ -260,11 +261,12 @@ const TableListRowsOptions = [
   { title: "50 / 页", value: 50 },
   { title: "100 / 页", value: 100 },
 ];
+
 //标签
 const tagsStore = useTagsStore();
 const Tags = ref([] as any);
 Tags.value = tagsStore.tags;
-//渲染用户标签数据预处理
+//标签数据预处理
 const renderTags = (tags: any) => {
   if (tags != '' && tags !== undefined) {
     tags = JSON.parse(tags);
@@ -291,13 +293,12 @@ const tableSearchFilter = ref({});//搜索过滤器
 //每页项目数量
 const tableListRows = ref(TableListRowsOptions[0].value);
 
-//EditUserDialog组件
-const EditUserDialog_state = ref(false);
-const EditUserDialog_data = ref({ origin: {}, edit: {} } as any);
-const openEditUserDialog = (data: {}) => {
-  EditUserDialog_data.value.origin = CommonUtils.deepClone(data);
-  EditUserDialog_data.value.edit = CommonUtils.deepClone(data);
-  EditUserDialog_state.value = true;
+//EditCardDialog组件
+const EditCardDialog_state = ref(false);
+const EditCardDialog_data = ref({} as any);
+const openEditCardDialog = (data: any) => {
+  EditCardDialog_data.value = data;
+  EditCardDialog_state.value = true;
 };
 
 //DeleteDialog组件
