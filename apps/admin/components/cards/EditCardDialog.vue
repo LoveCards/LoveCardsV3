@@ -72,9 +72,12 @@
 
 							<v-col v-for="(item, index) in CardImgData.edit" :key="index" class="d-flex child-flex" cols="4">
 								<v-img :lazy-src="item.url" :src="item.url" aspect-ratio="1" class="bg-grey-lighten-2 rounded">
+
 									<!-- 删除按钮 -->
+									<v-progress-circular :size="25" class="float-right ma-2" color="accent" indeterminate
+										v-show="item.id == 0"></v-progress-circular>
 									<v-btn variant="plain" class="float-right ma-2" density="compact" icon="mdi-close"
-										@click="viewDeleteCardImg(index)"></v-btn>
+										@click="viewDeleteCardImg(index)" v-show="item.id != 0"></v-btn>
 									<template v-slot:placeholder>
 										<div class="d-flex align-center justify-center fill-height">
 											<v-progress-circular color="grey-lighten-4" indeterminate></v-progress-circular>
@@ -143,12 +146,18 @@ const editCardData = defineModel<any>('editCardData');
 const ViewCardFiles = ref([] as any); // 用于存储预览的图片文件
 // 处理文件选择变化
 const viewHandleFilesChange = () => {
-	console.log(ViewCardFiles.value);
-	console.log(CardImgData.value);
-	ViewCardFiles.value.forEach((file: any) => {
+	ViewCardFiles.value.forEach(async (file: any) => {
 		if (file.type.startsWith('image/')) { // 检查是否是图片文件
 			const url = URL.createObjectURL(file); // 创建图片 URL
-			CardImgData.value.edit.push({ id: 0, url: url }); // 添加到图片 URL 数组
+			const index = CardImgData.value.edit.length; // 获取当前图片数组的长度作为新图片的索引
+			await CardImgData.value.edit.push({ id: 0, url: url }); // 添加到图片 URL 数组
+			const result = await postUserImages(file); // 上传图片
+			//管理状态
+			if (result) {
+				CardImgData.value.edit[index].id = 1;
+			} else {
+				CardImgData.value.edit.splice(index, 1);
+			}
 		}
 	});
 };
@@ -183,8 +192,8 @@ const CardData = ref({
 	origin: {} as any
 });
 const CardImgData = ref({
-	edit: {} as any,
-	origin: {} as any
+	edit: [] as any,
+	origin: [] as any
 });
 const getCard = () => {
 	console.log(editCardData.value);
@@ -221,30 +230,19 @@ const getCardImages = () => {
 		CardImgData.value.origin = CommonUtils.deepClone(response.data);
 	});
 };
-// 处理文件上传
-const handleFileUpload = (e: Event) => {
-	const input = e.target as HTMLInputElement;
-	if (!input.files?.length) return;
-
-	const file = input.files[0];
-
+const postUserImages = async (file: any) => {
 	const data = {
 		file: file,
-		aid: 0,
-		pid: 0,
-		uid: CardData.value.edit.id,
+		aid: 1,
+		pid: CardData.value.edit.id,
+		uid: CardData.value.edit.uid,
 	};
-
-	UploadApi.postUserImages(data)
-		.then((response: any) => {
-			// 更新头像显示（假设接口返回新的头像路径）
-			CardData.value.edit.avatar = response.data;
-		})
-		.finally(() => {
-			// 清空文件选择
-			input.value = "";
-		});
-};
+	return UploadApi.postUserImages(data).then((respones) => {
+		return true;
+	}).catch((error) => {
+		return false;
+	});
+}
 
 
 //数据初始化

@@ -76,9 +76,9 @@
 
                     <!-- 操作 -->
                     <template v-slot:[`item.operate`]="{ item }">
-                      <v-btn icon="mdi-pencil" elevation="0" size="small" color="accent" variant="text"
+                      <v-btn icon="mdi-pencil" elevation="0" size="small" variant="text"
                         @click="openEditCardDialog(item)"></v-btn>
-                      <v-btn icon="mdi-delete" elevation="0" size="small" color="accent" variant="text"
+                      <v-btn icon="mdi-delete" elevation="0" size="small" variant="text"
                         @click="openDeleteCardsDialog(item)"></v-btn>
                     </template>
 
