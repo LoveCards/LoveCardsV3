@@ -265,7 +265,7 @@ const Tags = ref([] as any);
 Tags.value = tagsStore.tags;
 //标签数据预处理
 const renderTags = (tags: any) => {
-  if (tags != '' && tags !== undefined) {
+  if (tags !== undefined && tags !== null) {
     tags = JSON.parse(tags);
     let TagsValue: string[] = [];
     tags.forEach((item: any) => {
