@@ -56,8 +56,8 @@
                     </template>
 
                     <!-- 标签 -->
-                    <template v-slot:[`item.tag`]="{ item }">
-                      <v-chip size="x-small" v-for="(value, index) in renderTags(item.tag)" :key="index">
+                    <template v-slot:[`item.tags`]="{ item }">
+                      <v-chip size="x-small" v-for="(value, index) in renderTags(item.tags)" :key="index">
                         {{ value }}
                       </v-chip>
                     </template>
@@ -69,9 +69,9 @@
                     </template>
 
                     <!-- 封面 -->
-                    <template v-slot:[`item.img`]="{ item }">
+                    <template v-slot:[`item.cover`]="{ item }">
                       <v-img :width="100" aspect-ratio="16/9" cover :alt="item.username"
-                        :src="'http://192.168.3.142:7001/' + item.img"></v-img>
+                        :src="'http://192.168.3.142:7001/' + item.cover"></v-img>
                     </template>
 
                     <!-- 操作 -->
@@ -83,9 +83,9 @@
                     </template>
 
                     <!-- 置顶状态 -->
-                    <template v-slot:[`item.top`]="{ item }">
+                    <template v-slot:[`item.is_top`]="{ item }">
                       <v-chip size="small">
-                        {{ renderTop(item.top) }}
+                        {{ renderTop(item.is_top) }}
                       </v-chip>
                     </template>
 
@@ -144,7 +144,7 @@
                     <v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
-                      }}</v-list-item-title>
+                        }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -161,16 +161,16 @@
     </v-container>
   </NuxtLayout>
 
-  <!-- 编辑卡片对话框 -->
+  <!-- 编辑对话框 -->
   <EditCardDialog v-model:thisDialogState="EditCardDialog_state" v-model:editCardData="EditCardDialog_data"
     :getTableData="getTableData"></EditCardDialog>
-  <!-- 删除用户对话框 -->
+  <!-- 删除对话框 -->
   <PublicDeleteDialog v-model:thisDialogState="DeleteCardsDialog_state" v-model:deleteData="DeleteCardsDialog_data"
     :deleteFun="DeleteCardFun"></PublicDeleteDialog>
   <!-- 批量处理用户对话框 -->
-  <BatchUserDialog v-model:thisDialogState="BatchUserDialog_state" v-model:batchUserData="tableSelected"
-    :getTableData="getTableData"></BatchUserDialog>
-  <!-- 搜索用户对话框 -->
+  <!-- <BatchUserDialog v-model:thisDialogState="BatchUserDialog_state" v-model:batchUserData="tableSelected"
+    :getTableData="getTableData"></BatchUserDialog> -->
+  <!-- 搜索对话框 -->
   <PublicSearchDialog v-model:thisDialogState="SearchCardsDialog_state" :KEYS="SearchKeys"
     :setFilter="setTableSearchFilter" :getTableData="getTableData" KeysMessages="默认[内容]"></PublicSearchDialog>
 </template>
@@ -227,21 +227,17 @@ const renderModel = (data: any) => {
 //表格头部
 const TableHeaders = [
   { title: "ID", value: "id" },
-  { title: "用户ID", value: "uid" },
-  { title: "模型", value: "model" },
+  { title: "用户ID", value: "user_id" },
+  { title: "封面", value: "cover" },
   { title: "内容", value: "content" },
-  { title: "封面", value: "img" },
-  { title: "主字段1", value: "woName" },
-  { title: "副字段1", value: "woContact" },
-  { title: "主字段2", value: "taName" },
-  { title: "副字段2", value: "taContact" },
-  { title: "点赞数", value: "good" },
+  { title: "自定义字段", value: "data" },
+  { title: "点赞数", value: "goods" },
   { title: "评论数", value: "comments" },
-  { title: "浏览量", value: "look" },
-  { title: "标签", value: "tag" },
-  { title: "发布时间", value: "time" },
-  { title: "IP", value: "ip" },
-  { title: "置顶", value: "top" },
+  { title: "浏览量", value: "views" },
+  { title: "标签", value: "tags" },
+  { title: "发布时间", value: "created_at" },
+  { title: "IP", value: "post_ip" },
+  { title: "置顶", value: "is_top" },
   { title: "状态", value: "status" },
   { title: "操作", value: "operate" },
 ];
@@ -250,8 +246,9 @@ const SearchKeys = [...TableHeaders];
 SearchKeys.pop();
 //批量操作选项
 const TableBatchOptions = [
+  {}
   // { title: '封禁/解封', value: 'delete' },
-  { title: "删除", value: "disable" },
+  // { title: "删除", value: "disable" },
   // { title: '启用', value: 'enable' },
 ];
 //每一页项目数量

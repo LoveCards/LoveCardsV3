@@ -7,7 +7,7 @@ const postUserImages = (data: Params.UserImages) => {
     const formData = new FormData();
 
     formData.append('file', data.file);
-    formData.append('uid', data.uid.toString());
+    formData.append('user_id', data.user_id.toString());
     formData.append('aid', data.aid.toString());
     formData.append('pid', data.pid.toString());
 

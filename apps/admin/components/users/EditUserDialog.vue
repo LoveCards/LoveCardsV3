@@ -136,7 +136,7 @@ const handleFileUpload = (e: Event) => {
 		file: file,
 		aid: 0,
 		pid: 0,
-		uid: editUserData.value.edit.id,
+		user_id: editUserData.value.edit.id,
 	};
 
 	UploadApi.postUserImages(data)

@@ -1,7 +1,7 @@
 import instance from "../axios";
 //import CommonUtils from "../utils/common";
 import type { Params as PublicParams } from "../types/public";
-import type { Params as UsersParams } from "../types/users";
+import type { Params as CardsParams } from "../types/cards";
 
 const APP_PATH = "/admin/cards";
 const APP_PATH_ID = "/admin/card";
@@ -38,16 +38,15 @@ const deleteCard = (id: PublicParams.Delete) => {
 };
 
 //编辑卡片
-const patchUser = (params: UsersParams.Patch) => {
-    return instance.patch(APP_PATH, params);
+const patchCard = (params: CardsParams.Patch) => {
+    return instance.patch(APP_PATH_ID, params);
 };
-
-
 
 const CardsApi = {
     getCardIndex,
     deleteCard,
     getCard,
+    patchCard
 };
 
 export default CardsApi;

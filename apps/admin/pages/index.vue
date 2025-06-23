@@ -46,7 +46,7 @@
 								</template>
 							</v-list-item>
 
-							<v-list-item v-ripple subtitle="点赞总数" :title="dashboard.count.good">
+							<v-list-item v-ripple subtitle="点赞总数" :title="dashboard.count.goods">
 								<template v-slot:prepend>
 									<v-avatar color="red">
 										<v-icon color="white">mdi-heart</v-icon>

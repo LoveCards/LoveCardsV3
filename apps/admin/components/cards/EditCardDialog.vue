@@ -6,65 +6,47 @@
 				<v-row dense>
 					<v-col cols="12">
 						<v-select clearable chips label="标签" item-title="name" item-value="id" subtitle="tip"
-							v-model="CardData.edit.tag" :items="ViewTags" variant="underlined" multiple>
+							v-model="CardData.edit.tags" :items="ViewTags" variant="underlined" multiple>
 						</v-select>
 					</v-col>
 
 					<v-col cols="12" sm="6">
-						<v-text-field label="用户" v-model="CardData.edit.uid" variant="underlined" color="accent"
+						<v-text-field label="用户ID" v-model="CardData.edit.user_id" variant="underlined" color="accent"
 							readonly></v-text-field>
 					</v-col>
 					<v-col cols="12" sm="6">
-						<v-text-field label="发布时间" v-model="CardData.edit.time" variant="underlined" color="accent"
+						<v-text-field label="发布时间" v-model="CardData.edit.created_at" variant="underlined" color="accent"
 							readonly></v-text-field>
 					</v-col>
 					<v-col cols="12" sm="6">
-						<v-text-field label="发布IP" v-model="CardData.edit.ip" variant="underlined" color="accent"
+						<v-text-field label="发布IP" v-model="CardData.edit.post_ip" variant="underlined" color="accent"
 							readonly></v-text-field>
 					</v-col>
 
-					<v-col cols="12" sm="2">
-						<v-select label="模型" item-title="title" item-value="value" v-model="CardData.edit.model"
-							:items="SelectUtils.Cards.model" variant="underlined" multiple></v-select>
+					<v-col cols="12" sm="3">
+						<v-select label="置顶状态" item-title="title" item-value="value" v-model="CardData.edit.is_top"
+							:items="SelectUtils.Cards.top" variant="underlined"></v-select>
 					</v-col>
-					<v-col cols="12" sm="2">
-						<v-select label="指定状态" item-title="title" item-value="value" v-model="CardData.edit.top"
-							:items="SelectUtils.Cards.top" variant="underlined" multiple></v-select>
-					</v-col>
-					<v-col cols="12" sm="2">
+					<v-col cols="12" sm="3">
 						<v-select label="封禁状态" item-title="title" item-value="value" v-model="CardData.edit.status"
-							:items="SelectUtils.Cards.status" variant="underlined" multiple></v-select>
+							:items="SelectUtils.Cards.status" variant="underlined"></v-select>
 					</v-col>
 
 					<v-col cols="12" sm="3">
-						<v-text-field label="点赞" v-model="CardData.edit.good" variant="underlined" color="accent"
+						<v-text-field label="喜欢" v-model="CardData.edit.goods" variant="underlined" color="accent"
 							readonly></v-text-field>
 					</v-col>
 					<v-col cols="12" sm="3">
-						<v-text-field label="浏览" v-model="CardData.edit.look" variant="underlined" color="accent"
+						<v-text-field label="浏览" v-model="CardData.edit.views" variant="underlined" color="accent"
 							readonly></v-text-field>
 					</v-col>
 					<v-col cols="12" sm="6"></v-col>
 
-					<v-col cols="12" sm="6">
-						<v-text-field label="主字段1" v-model="CardData.edit.woName" variant="underlined"
-							color="accent"></v-text-field>
-					</v-col>
-					<v-col cols="12" sm="6">
-						<v-text-field label="副字段1" v-model="CardData.edit.woContact" variant="underlined"
-							color="accent"></v-text-field>
-					</v-col>
-					<v-col cols="12" sm="6">
-						<v-text-field label="主字段2 *" v-model="CardData.edit.taName" variant="underlined"
-							color="accent"></v-text-field>
-					</v-col>
-					<v-col cols="12" sm="6">
-						<v-text-field label="副字段2" v-model="CardData.edit.taContact" variant="underlined"
-							color="accent"></v-text-field>
+					<v-col cols="12" sm="12">
+						<v-textarea label="自定字段" v-model="CardData.edit.data" variant="underlined" color="accent"></v-textarea>
 					</v-col>
 					<v-col cols="12">
-						<v-textarea label="内容 *" :model-value="CardData.edit.content" variant="underlined"
-							color="accent"></v-textarea>
+						<v-textarea label="内容" v-model="CardData.edit.content" variant="underlined" color="accent"></v-textarea>
 					</v-col>
 
 					<v-col cols="12">
@@ -112,6 +94,7 @@
 <script setup lang="ts">
 import UploadApi from "@/api/app/upload";
 import CommonUtils from "@/api/utils/common";
+import CardsApi from "~/api/app/cards";
 import AdminCardsApi from "~/api/app/cards";
 import UserCardsApi from "~/api/app/user/cards";
 import SelectUtils from "~/api/utils/select";
@@ -120,8 +103,6 @@ const notifier = useNotifier();
 
 //Props
 const props = defineProps({
-	USER_ROLES: Array,
-	ACCOUNT_STATUS: Array,
 	getTableData: Function
 });
 const getTableData = () => {
@@ -129,8 +110,6 @@ const getTableData = () => {
 		props.getTableData();
 	}
 };
-const ACCOUNT_STATUS = props.ACCOUNT_STATUS;
-const USER_ROLES = props.USER_ROLES;
 
 //页面参数
 const tagsStore = useTagsStore();
@@ -151,10 +130,10 @@ const viewHandleFilesChange = () => {
 			const url = URL.createObjectURL(file); // 创建图片 URL
 			const index = CardImgData.value.edit.length; // 获取当前图片数组的长度作为新图片的索引
 			await CardImgData.value.edit.push({ id: 0, url: url }); // 添加到图片 URL 数组
-			const result = await postUserImages(file); // 上传图片
+			const resultId = await postUserImages(file); // 上传图片
 			//管理状态
-			if (result) {
-				CardImgData.value.edit[index].id = 1;
+			if (resultId) {
+				CardImgData.value.edit[index].id = resultId; // 更新图片 ID
 			} else {
 				CardImgData.value.edit.splice(index, 1);
 			}
@@ -178,11 +157,16 @@ const viewDeleteCardImg = (index: number) => {
 
 //页面操作提交修改
 const viewSubmitEditCard = () => {
-	// patchUser(CardData.value).then((response) => {
-	// 	//退出对话框并刷新列表
-	// 	thisDialogState.value = false;
-	// 	getTableData();
-	// });
+	patchCard().then((response) => {
+		//退出对话框并刷新列表
+		thisDialogState.value = false;
+		getTableData();
+	}).catch((error) => {
+		//处理错误
+		if (error.notifier) {
+			notifier.toast(error.notifier);
+		}
+	});
 };
 
 //API
@@ -196,7 +180,6 @@ const CardImgData = ref({
 	origin: [] as any
 });
 const getCard = () => {
-	console.log(editCardData.value);
 	//重置
 	CardData.value = {
 		edit: {} as any,
@@ -208,7 +191,7 @@ const getCard = () => {
 	};
 	//请求
 	AdminCardsApi.getCard(params as any).then((response) => {
-		response.data.tag = response.data.tag ? JSON.parse(response.data.tag) : [];
+		response.data.tags = response.data.tags ? JSON.parse(response.data.tags) : [];//将标签转换为数组
 		CardData.value.edit = CommonUtils.deepClone(response.data);
 		CardData.value.origin = CommonUtils.deepClone(response.data);
 	});
@@ -233,17 +216,48 @@ const getCardImages = () => {
 const postUserImages = async (file: any) => {
 	const data = {
 		file: file,
-		aid: 1,
-		pid: CardData.value.edit.id,
-		uid: CardData.value.edit.uid,
+		aid: 0,
+		pid: 0,
+		user_id: CardData.value.edit.user_id,
 	};
 	return UploadApi.postUserImages(data).then((respones) => {
-		return true;
+		return respones.data.id;
 	}).catch((error) => {
 		return false;
 	});
 }
+const patchCard = () => {
+	//多次一举是因为没办法比较，主要是mysql输出的json和js的json转字符串格式不一样
+	let editCardData = CommonUtils.deepClone(CardData.value.edit);
+	let originCardData = CommonUtils.deepClone(CardData.value.origin);
+	editCardData.tags = JSON.stringify(editCardData.tags);//将标签转换为字符串
+	originCardData.tags = JSON.stringify(originCardData.tags);//将标签转换为字符串
+	//清除不需要提交的属性
+	console.log(CardData.value.edit, CardData.value.origin);
+	console.log(editCardData, originCardData);
+	let params = CommonUtils.removeCommonProperties(editCardData, originCardData);
 
+	//图集数据处理
+	let originPictures = CardImgData.value.origin.map((item: any) => item.id);
+	let editPictures = CardImgData.value.edit.map((item: any) => item.id);
+
+	if (JSON.stringify(originPictures) != JSON.stringify(editPictures)) {
+		params['pictures'] = JSON.stringify(editPictures);
+	}
+
+	if (Object.keys(params).length === 0) {
+		return Promise.reject({
+			notifier: {
+				text: "请修改后再提交",
+				type: "warning",
+			}
+		});
+	}
+	params.id = editCardData.id; //插入卡片ID
+	console.log(params);
+	//返回原生Promise
+	return CardsApi.patchCard(params);
+}
 
 //数据初始化
 watch(thisDialogState, (newValue, oldValue) => {

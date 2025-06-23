@@ -2,7 +2,6 @@ import { useUserStore } from "@/stores/userStore";
 import { useDashboardStore } from '@/stores/dashboardStore';
 import { useTagsStore } from "@/stores/tagsStore";
 
-
 export default defineNuxtRouteMiddleware(async (to, from) => {
     const userStore = useUserStore();
     const dashboardStore = useDashboardStore();
@@ -11,4 +10,8 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     await userStore.init();
     await dashboardStore.init();
     await tagsStore.init();
+
+    // if(dashboardStore.dashboard === null) {
+    //     return navigateTo('/system/error');
+    // }
 });
