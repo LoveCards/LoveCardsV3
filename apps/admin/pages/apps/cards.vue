@@ -246,10 +246,10 @@ const SearchKeys = [...TableHeaders];
 SearchKeys.pop();
 //批量操作选项
 const TableBatchOptions = [
-  {}
-  // { title: '封禁/解封', value: 'delete' },
-  // { title: "删除", value: "disable" },
-  // { title: '启用', value: 'enable' },
+  { title: '置顶/正常', value: 'top' },
+  { title: '封禁/正常', value: 'ban' },
+  { title: "隐藏/正常", value: "soft_delete" },
+  { title: "删除", value: "delete" },
 ];
 //每一页项目数量
 const TableListRowsOptions = [
