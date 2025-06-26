@@ -130,10 +130,11 @@ const viewHandleFilesChange = () => {
 			const url = URL.createObjectURL(file); // 创建图片 URL
 			const index = CardImgData.value.edit.length; // 获取当前图片数组的长度作为新图片的索引
 			await CardImgData.value.edit.push({ id: 0, url: url }); // 添加到图片 URL 数组
-			const resultId = await postUserImages(file); // 上传图片
+			const result = await postUserImages(file); // 上传图片
 			//管理状态
-			if (resultId) {
-				CardImgData.value.edit[index].id = resultId; // 更新图片 ID
+			if (result) {
+				CardImgData.value.edit[index].id = result.id; // 更新图片
+				CardImgData.value.edit[index].url = result.url;
 			} else {
 				CardImgData.value.edit.splice(index, 1);
 			}
@@ -220,8 +221,8 @@ const postUserImages = async (file: any) => {
 		pid: 0,
 		user_id: CardData.value.edit.user_id,
 	};
-	return UploadApi.postUserImages(data).then((respones) => {
-		return respones.data.id;
+	return UploadApi.postUserImages(data).then((response) => {
+		return response.data;
 	}).catch((error) => {
 		return false;
 	});
@@ -233,16 +234,17 @@ const patchCard = () => {
 	editCardData.tags = JSON.stringify(editCardData.tags);//将标签转换为字符串
 	originCardData.tags = JSON.stringify(originCardData.tags);//将标签转换为字符串
 	//清除不需要提交的属性
-	console.log(CardData.value.edit, CardData.value.origin);
-	console.log(editCardData, originCardData);
 	let params = CommonUtils.removeCommonProperties(editCardData, originCardData);
 
 	//图集数据处理
 	let originPictures = CardImgData.value.origin.map((item: any) => item.id);
 	let editPictures = CardImgData.value.edit.map((item: any) => item.id);
-
 	if (JSON.stringify(originPictures) != JSON.stringify(editPictures)) {
 		params['pictures'] = JSON.stringify(editPictures);
+		//设置封面为第一张图片
+		if (CardImgData.value.edit.length > 0) {
+			params.cover = CardImgData.value.edit[0].url;
+		}
 	}
 
 	if (Object.keys(params).length === 0) {
@@ -254,7 +256,7 @@ const patchCard = () => {
 		});
 	}
 	params.id = editCardData.id; //插入卡片ID
-	console.log(params);
+
 	//返回原生Promise
 	return CardsApi.patchCard(params);
 }

@@ -70,8 +70,7 @@
 
                     <!-- 封面 -->
                     <template v-slot:[`item.cover`]="{ item }">
-                      <v-img :width="100" aspect-ratio="16/9" cover :alt="item.username"
-                        :src="'http://192.168.3.142:7001/' + item.cover"></v-img>
+                      <v-img :width="100" aspect-ratio="16/9" cover :alt="item.username" :src="item.cover"></v-img>
                     </template>
 
                     <!-- 操作 -->
@@ -144,7 +143,7 @@
                     <v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
-                        }}</v-list-item-title>
+                      }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
