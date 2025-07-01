@@ -70,7 +70,7 @@
 
                     <!-- 封面 -->
                     <template v-slot:[`item.cover`]="{ item }">
-                      <v-img :width="100" aspect-ratio="16/9" cover :alt="item.username" :src="item.cover"></v-img>
+                      <v-img class="rounded-lg" :width="100" aspect-ratio="16/9" cover :alt="item.username" :src="item.cover"></v-img>
                     </template>
 
                     <!-- 操作 -->
@@ -88,23 +88,16 @@
                       </v-chip>
                     </template>
 
-                    <!-- 模型状态 -->
-                    <template v-slot:[`item.model`]="{ item }">
-                      <v-chip size="small">
-                        {{ renderModel(item.model) }}
-                      </v-chip>
-                    </template>
-
                     <!-- 卡片状态 -->
                     <template v-slot:[`item.status`]="{ item }">
                       <v-chip :color="item.status === 0
                         ? 'success'
-                        : item.status === -1
+                        : item.status === 2
                           ? 'error'
                           : 'warning'
                         " variant="flat" size="small">
                         {{
-                          CardStates.find(
+                          SelectUtils.Cards.status.find(
                             (state) => state.value === item.status
                           )?.title
                         }}
@@ -181,45 +174,21 @@ import PublicDeleteDialog from "@/components/public/Table/DeleteDialog.vue";
 import EditCardDialog from "@/components/cards/EditCardDialog.vue";
 import BatchUserDialog from "@/components/users/BatchUserDialog.vue";
 import PublicSearchDialog from "@/components/public/Table/SearchDialog.vue";
+import SelectUtils from "~/api/utils/select";
 import { useTagsStore } from "@/stores/tagsStore";
 const notifier = useNotifier();
 
-//状态
-const CardStates = [
-  { title: "#0 正常", value: 0 },
-  { title: "#1 封禁", value: 1 },
-];
-const TopStates = [
-  { title: "#0 正常", value: 0 },
-  { title: "#1 置顶", value: 1 },
-];
-const ModelStates = [
-  { title: "#0 表白卡", value: 0 },
-  { title: "#1 交流卡", value: 1 },
-];
 //渲染数据预处理
 const renderTop = (data: any) => {
   if (data !== '' && data !== undefined) {
     let result = "";
-    const top = TopStates.find((item: any) => item.value == data);
+    const top = SelectUtils.Cards.top.find((item: any) => item.value == data);
     if (top) {
       result = top.title;
     }
     return result;
   } else {
     return "";
-  }
-};
-const renderModel = (data: any) => {
-  if (data != '' && data !== undefined) {
-    let result = "";
-    const model = ModelStates.find((item: any) => item.value == data);
-    if (model) {
-      result = model.title;
-    }
-    return result;
-  } else {
-    return "无";
   }
 };
 

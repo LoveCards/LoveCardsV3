@@ -17,7 +17,8 @@ const Cards = {
     ],
     status: [
         { title: "#0 正常", value: 0 },
-        { title: "#1 封禁", value: 1 }
+        { title: "#1 封禁", value: 1 },
+        { title: "#2 隐藏", value: 2 }
     ]
 }
 
