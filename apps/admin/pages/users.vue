@@ -86,7 +86,7 @@
                           : 'warning'
                         " variant="flat" size="small">
                         {{
-                          AccountStates.find(
+                          SelectUtils.User.status.find(
                             (state) => state.value === item.status
                           )?.title
                         }}
@@ -144,7 +144,7 @@
 
   <!-- 编辑用户对话框 -->
   <EditUserDialog v-model:thisDialogState="EditUserDialog_state" v-model:editUserData="EditUserDialog_data"
-    :getTableData="getTableData" :ACCOUNT_STATUS="AccountStates" :USER_ROLES="UserRoles"></EditUserDialog>
+    :getTableData="getTableData" :ACCOUNT_STATUS="SelectUtils.User.status" :USER_ROLES="UserRoles"></EditUserDialog>
   <!-- 删除用户对话框 -->
   <DeleteUserDialog v-model:thisDialogState="DeleteUserDialog_state" v-model:delUserData="DeleteUserDialog_data"
     :getTableData="getTableData"></DeleteUserDialog>
@@ -164,15 +164,10 @@ import DeleteUserDialog from "~/components/users/DeleteUserDialog.vue";
 import EditUserDialog from "~/components/users/EditUserDialog.vue";
 import BatchUserDialog from "~/components/users/BatchUserDialog.vue";
 import SearchUserDialog from "~/components/users/SearchUserDialog.vue";
+import SelectUtils from "~/api/utils/select";
 
 const notifier = useNotifier();
 
-//封禁状态
-const AccountStates = [
-  { title: "#0 正常", value: 0 },
-  { title: "#1 封禁", value: 1 },
-  { title: "#2 冻结", value: 2 },
-];
 //表格头部
 const TableHeaders = [
   { title: "ID", value: "id" },

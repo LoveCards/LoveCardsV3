@@ -244,7 +244,10 @@ const patchCard = () => {
 		//设置封面为第一张图片
 		if (CardImgData.value.edit.length > 0) {
 			params.cover = CardImgData.value.edit[0].url;
+		} else {
+			params.cover = '';
 		}
+
 	}
 
 	if (Object.keys(params).length === 0) {

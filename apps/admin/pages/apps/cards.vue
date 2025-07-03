@@ -70,7 +70,8 @@
 
                     <!-- 封面 -->
                     <template v-slot:[`item.cover`]="{ item }">
-                      <v-img class="rounded-lg" :width="100" aspect-ratio="16/9" cover :alt="item.username" :src="item.cover"></v-img>
+                      <v-img class="rounded-lg" :width="100" aspect-ratio="16/9" cover :alt="item.username"
+                        :src="item.cover"></v-img>
                     </template>
 
                     <!-- 操作 -->
@@ -78,7 +79,7 @@
                       <v-btn icon="mdi-pencil" elevation="0" size="small" variant="text"
                         @click="openEditCardDialog(item)"></v-btn>
                       <v-btn icon="mdi-delete" elevation="0" size="small" variant="text"
-                        @click="openDeleteCardsDialog(item)"></v-btn>
+                        @click="openDeleteCardDialog(item)"></v-btn>
                     </template>
 
                     <!-- 置顶状态 -->
@@ -122,9 +123,9 @@
               <v-col cols="12" md="6" class="d-flex justify-start align-center">
                 <v-select density="compact" label="请选择操作" max-width="160px" hide-details variant="outlined"
                   color="accent" :items="TableBatchOptions" item-title="title" item-value="value"
-                  v-model="BatchUserBtnStatus"></v-select>
-                <v-btn color="accent" variant="flat" class="ml-2" @click="openBatchUserDialog"
-                  :disabled="tableSelected.length === 0">批量操作</v-btn>
+                  v-model="BatchOperate"></v-select>
+                <v-btn color="accent" variant="flat" class="ml-2" @click="openBatchCardDialog"
+                  :disabled="tableSelected.length === 0 || BatchOperate === ''">批量操作</v-btn>
               </v-col>
               <!-- 分页按钮 -->
               <v-col cols="12" md="6" class="d-flex justify-end align-center">
@@ -133,7 +134,8 @@
                     <v-btn elevation="0" icon="mdi-table-cog" size="small" v-bind="props" variant="text"></v-btn>
                   </template>
                   <v-list>
-                    <v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
+                    <v-list-item v-for="(item, index) in SelectUtils.Common.Table.ListRowsOptions" :key="index"
+                      :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
                       }}</v-list-item-title>
@@ -157,11 +159,11 @@
   <EditCardDialog v-model:thisDialogState="EditCardDialog_state" v-model:editCardData="EditCardDialog_data"
     :getTableData="getTableData"></EditCardDialog>
   <!-- 删除对话框 -->
-  <PublicDeleteDialog v-model:thisDialogState="DeleteCardsDialog_state" v-model:deleteData="DeleteCardsDialog_data"
+  <PublicDeleteDialog v-model:thisDialogState="DeleteCardDialog_state" v-model:deleteData="DeleteCardDialog_data"
     :deleteFun="DeleteCardFun"></PublicDeleteDialog>
   <!-- 批量处理用户对话框 -->
-  <!-- <BatchUserDialog v-model:thisDialogState="BatchUserDialog_state" v-model:batchUserData="tableSelected"
-    :getTableData="getTableData"></BatchUserDialog> -->
+  <PublicBatchDialog v-model:thisDialogState="BatchCardDialog_state" v-model:batchData="tableSelected"
+    v-model:batchOptions="BatchCardDialog_operate" :batchFun="BatchCardFun"></PublicBatchDialog>
   <!-- 搜索对话框 -->
   <PublicSearchDialog v-model:thisDialogState="SearchCardsDialog_state" :KEYS="SearchKeys"
     :setFilter="setTableSearchFilter" :getTableData="getTableData" KeysMessages="默认[内容]"></PublicSearchDialog>
@@ -172,7 +174,7 @@ import CardsApi from "@/api/app/cards";
 import CommonUtils from "@/api/utils/common";
 import PublicDeleteDialog from "@/components/public/Table/DeleteDialog.vue";
 import EditCardDialog from "@/components/cards/EditCardDialog.vue";
-import BatchUserDialog from "@/components/users/BatchUserDialog.vue";
+import PublicBatchDialog from "@/components/public/Table/BatchDialog.vue";
 import PublicSearchDialog from "@/components/public/Table/SearchDialog.vue";
 import SelectUtils from "~/api/utils/select";
 import { useTagsStore } from "@/stores/tagsStore";
@@ -214,17 +216,11 @@ const SearchKeys = [...TableHeaders];
 SearchKeys.pop();
 //批量操作选项
 const TableBatchOptions = [
-  { title: '置顶/正常', value: 'top' },
-  { title: '封禁/正常', value: 'ban' },
-  { title: "隐藏/正常", value: "soft_delete" },
+  { title: '置顶/取消', value: 'top' },
+  { title: '封禁/取消', value: 'ban' },
+  { title: "隐藏/取消", value: "hide" },
+  { title: "审核/取消", value: "approve" },
   { title: "删除", value: "delete" },
-];
-//每一页项目数量
-const TableListRowsOptions = [
-  { title: "10 / 页", value: 10 },
-  { title: "20 / 页", value: 20 },
-  { title: "50 / 页", value: 50 },
-  { title: "100 / 页", value: 100 },
 ];
 
 //标签
@@ -256,7 +252,7 @@ const tableSearchValue = ref(undefined);//搜索值
 const tableSearchFilter = ref({});//搜索过滤器
 
 //每页项目数量
-const tableListRows = ref(TableListRowsOptions[0].value);
+const tableListRows = ref(SelectUtils.Common.Table.ListRowsOptions[0].value);
 
 //EditCardDialog组件
 const EditCardDialog_state = ref(false);
@@ -269,32 +265,38 @@ const openEditCardDialog = (data: any) => {
 //DeleteDialog组件
 const DeleteCardFun = (id: any) => {
   CardsApi.deleteCard(id).then(() => {
-    DeleteCardsDialog_state.value = false;
+    DeleteCardDialog_state.value = false;
     getTableData();
   });
 }
-const DeleteCardsDialog_state = ref(false);
-const DeleteCardsDialog_data = ref({} as any);
-const openDeleteCardsDialog = (data: {}) => {
-  DeleteCardsDialog_data.value = data;
-  DeleteCardsDialog_state.value = true;
+const DeleteCardDialog_state = ref(false);
+const DeleteCardDialog_data = ref({} as any);
+const openDeleteCardDialog = (data: {}) => {
+  DeleteCardDialog_data.value = data;
+  DeleteCardDialog_state.value = true;
 };
 
 // 批量操作相关
-const BatchUserBtnStatus = ref("");
-//BatchUserDialog组件
-const BatchUserDialog_state = ref(false);
-const openBatchUserDialog = () => {
-  if (tableSelected.value.length === 0) {
-    notifier.toast({
-      text: "请选择要操作的用户",
-      type: "warning",
-    });
-    return;
+const BatchOperate = ref('');
+//BatchCardDialog组件
+const BatchCardFun = () => {
+  const data = {
+    ids: tableSelected.value,
+    method: BatchOperate.value,
   }
-
-  if (BatchUserBtnStatus.value === "disable") {
-    BatchUserDialog_state.value = true;
+  CardsApi.batchOperate(data).then(() => {
+    BatchCardDialog_state.value = false;
+    getTableData();
+  })
+}
+const BatchCardDialog_state = ref(false);
+//tableSelected
+const BatchCardDialog_operate = ref('');
+const openBatchCardDialog = () => {
+  const headerMap = new Map(TableBatchOptions.map(header => [header.value, header.title]));
+  BatchCardDialog_operate.value = headerMap.get(BatchOperate.value) || '';
+  if (tableSelected.value.length != 0) {
+    BatchCardDialog_state.value = true;
   }
 };
 

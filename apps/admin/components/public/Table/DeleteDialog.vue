@@ -16,8 +16,6 @@
 </template>
 
 <script setup lang="ts">
-//import UserApi from "@/api/app/users";
-
 //Props
 const props = defineProps({
 	deleteFun: Function,
@@ -34,6 +32,4 @@ const submitDeleteUser = () => {
 		props.deleteFun(deleteData.value.id);
 	}
 };
-
-//API
 </script>

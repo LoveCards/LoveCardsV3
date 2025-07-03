@@ -7,7 +7,7 @@ const APP_PATH = "/admin/cards";
 const APP_PATH_ID = "/admin/card";
 
 //获取卡片
-const getCard = (params: PublicParams.GetID) => {
+const getCard = (params: PublicParams.IDOperate) => {
     return instance.get(APP_PATH_ID, {
         params: params,
     });
@@ -28,13 +28,8 @@ const getCardIndex = (params: PublicParams.Index) => {
 };
 
 //删除卡片
-const deleteCard = (id: PublicParams.Delete) => {
-    const idArray = Array.isArray(id) ? JSON.stringify(id) : id;
-    return instance.delete(APP_PATH, {
-        params: {
-            id: idArray
-        }
-    });
+const deleteCard = (params: PublicParams.IDOperate) => {
+    return instance.delete(APP_PATH, { params: params });
 };
 
 //编辑卡片
@@ -42,11 +37,21 @@ const patchCard = (params: CardsParams.Patch) => {
     return instance.patch(APP_PATH_ID, params);
 };
 
+//批量操作
+const batchOperate = (params: PublicParams.BatchOperate) => {
+    const data = {
+        ids: JSON.stringify(params.ids),
+        method: params.method,
+    };
+    return instance.post(APP_PATH + '/batch-operate', data);
+};
+
 const CardsApi = {
     getCardIndex,
     deleteCard,
     getCard,
-    patchCard
+    patchCard,
+    batchOperate
 };
 
 export default CardsApi;

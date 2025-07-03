@@ -25,13 +25,8 @@ const patchUser = (params: UsersParams.Patch) => {
 };
 
 //删除用户
-const deleteUser = (id: PublicParams.Delete) => {
-    const idArray = Array.isArray(id) ? JSON.stringify(id) : id;
-    return instance.delete(APP_PATH, {
-        params: {
-            id: idArray
-        }
-    });
+const deleteUser = (params: PublicParams.IDOperate) => {
+    return instance.delete(APP_PATH, { params: params });
 };
 
 const UsersApi = {

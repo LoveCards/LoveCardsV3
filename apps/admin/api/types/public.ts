@@ -9,16 +9,17 @@ export namespace Params {
         order_desc?: boolean;
     }
 
+    //批量操作通用
+    export interface BatchOperate {
+        ids: number[];  // ID列表
+        method: string;  // 操作方法
+    }
     //GetAppID通用参数
     export interface GetAppID {
         card_id: number;
     }
-    //GetID通用参数
-    export interface GetID {
+    //ID操作通用参数
+    export interface IDOperate {
         id: number;
-    }
-    //Delete通用参数
-    export interface Delete {
-        id: number | number[];
     }
 }

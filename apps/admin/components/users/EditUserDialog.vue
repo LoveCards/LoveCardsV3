@@ -142,7 +142,7 @@ const handleFileUpload = (e: Event) => {
 	UploadApi.postUserImages(data)
 		.then((response: any) => {
 			// 更新头像显示（假设接口返回新的头像路径）
-			editUserData.value.edit.avatar = response.data;
+			editUserData.value.edit.avatar = response.data.url;
 		})
 		.finally(() => {
 			// 清空文件选择
