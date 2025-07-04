@@ -25,11 +25,11 @@
 
 					<v-col cols="12" sm="3">
 						<v-select label="置顶状态" item-title="title" item-value="value" v-model="CardData.edit.is_top"
-							:items="SelectUtils.Cards.top" variant="underlined"></v-select>
+							:items="SelectUtils.Cards.top" variant="underlined" color="accent"></v-select>
 					</v-col>
 					<v-col cols="12" sm="3">
 						<v-select label="封禁状态" item-title="title" item-value="value" v-model="CardData.edit.status"
-							:items="SelectUtils.Cards.status" variant="underlined"></v-select>
+							:items="SelectUtils.Cards.status" variant="underlined" color="accent"></v-select>
 					</v-col>
 
 					<v-col cols="12" sm="3">

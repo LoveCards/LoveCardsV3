@@ -8,9 +8,7 @@
 						<v-btn class="rounded-circle" size="auto" @click="triggerFileInput">
 							<input type="file" ref="fileInput" hidden accept="image/*" @change="handleFileUpload" />
 							<v-avatar color="grey" size="150">
-								<v-img :src="'http://192.168.3.142:7001/' +
-									editUserData.edit.avatar
-									" cover></v-img>
+								<v-img :src="editUserData.edit.avatar" cover></v-img>
 								<v-icon style="
                     position: absolute;
                     top: 50%;
@@ -26,10 +24,10 @@
 						<v-select label="帐号状态" :items="ACCOUNT_STATUS" item-title="title" item-value="value"
 							v-model="editUserData.edit.status" variant="underlined" color="accent"></v-select>
 					</v-col>
-					
+
 					<v-col cols="12" sm="9">
-						<v-select clearable chips label="权限组" item-title="title" item-value="value"
-							v-model="roles_id" :items="USER_ROLES" variant="underlined" multiple></v-select>
+						<v-select clearable chips label="权限组" item-title="title" item-value="value" v-model="roles_id"
+							:items="USER_ROLES" variant="underlined" color="accent" multiple></v-select>
 					</v-col>
 
 					<v-col cols="12" sm="6">
@@ -107,7 +105,7 @@ const roles_id = computed({
 	get: () => {
 		try {
 			const roles_id = JSON.parse(editUserData.value.edit.roles_id);
-			if(typeof roles_id == "number") {
+			if (typeof roles_id == "number") {
 				return [];
 			}
 			return roles_id;

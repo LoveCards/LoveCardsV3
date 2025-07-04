@@ -33,8 +33,8 @@
             <v-row>
               <v-col cols="12">
                 <v-card variant="outlined" color="#E0E0E0">
-                  <v-data-table :style="{ 'white-space': 'nowrap' }" :headers="TableHeaders" :items="tableItems" :items-per-page="tableListRows"
-                    item-value="id" v-model="tableSelected" show-select>
+                  <v-data-table :style="{ 'white-space': 'nowrap' }" :headers="TableHeaders" :items="tableItems"
+                    :items-per-page="tableListRows" item-value="id" v-model="tableSelected" show-select>
                     <!-- 头部选择框 -->
                     <template v-slot:header.data-table-select="{
                       allSelected,
@@ -65,7 +65,7 @@
                     <!-- 头像 -->
                     <template v-slot:[`item.avatar`]="{ item }">
                       <v-avatar>
-                        <v-img :alt="item.username" :src="'http://192.168.3.142:7001/' + item.avatar"></v-img>
+                        <v-img :alt="item.username" :src="item.avatar"></v-img>
                       </v-avatar>
                     </template>
 
@@ -125,7 +125,7 @@
                     <v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
-                      }}</v-list-item-title>
+                        }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -309,12 +309,12 @@ const getTableData = () => {
       tablePaginationLength.value = data.last_page;
       tableItems.value = data.data;
     })
-    // .finally(() => {
-    //   if (tableSearchFilter.value) {
-    //     //搜索后关闭错误提醒
-    //     ApiMonitor.setGetState(false);
-    //   }
-    // });
+  // .finally(() => {
+  //   if (tableSearchFilter.value) {
+  //     //搜索后关闭错误提醒
+  //     ApiMonitor.setGetState(false);
+  //   }
+  // });
 };
 
 //搜索防抖
