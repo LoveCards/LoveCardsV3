@@ -5,7 +5,7 @@
       <!-- 标题 -->
       <v-row class="pt-2">
         <v-col cols="6">
-          <h1 class="text-primary font-weight-bold">卡片管理</h1>
+          <h1 class="text-primary font-weight-bold">评论管理</h1>
         </v-col>
       </v-row>
 
@@ -55,29 +55,17 @@
                         @update:model-value="toggleSelect(internalItem)"></v-checkbox-btn>
                     </template>
 
-                    <!-- 标签 -->
-                    <template v-slot:[`item.tags`]="{ item }">
-                      <v-chip size="x-small" v-for="(value, index) in renderTags(item.tags)" :key="index">
-                        {{ value }}
-                      </v-chip>
-                    </template>
-
                     <!-- 内容 -->
                     <template v-slot:[`item.content`]="{ item }">
                       <v-text-field width="250" variant="underlined" :model-value="item.content"
                         readonly></v-text-field>
                     </template>
 
-                    <!-- 封面 -->
-                    <template v-slot:[`item.cover`]="{ item }">
-                      <v-img class="rounded-lg" :width="100" aspect-ratio="16/9" cover :alt="item.username"
-                        :src="item.cover"></v-img>
-                    </template>
 
                     <!-- 操作 -->
                     <template v-slot:[`item.operate`]="{ item }">
                       <v-btn icon="mdi-pencil" elevation="0" size="small" variant="text"
-                        @click="openEditCardDialog(item)"></v-btn>
+                        @click="openEditCommentDialog(item)"></v-btn>
                       <v-btn icon="mdi-delete" elevation="0" size="small" variant="text"
                         @click="openDeleteCardDialog(item)"></v-btn>
                     </template>
@@ -89,10 +77,10 @@
                       </v-chip>
                     </template>
 
-                    <!-- 卡片状态 -->
+                    <!-- 项目状态 -->
                     <template v-slot:[`item.status`]="{ item }">
                       <v-chip size="small">
-                        {{ SelectUtils.getSelect(SelectUtils.Cards.status, item.status).title }}
+                        {{ SelectUtils.getSelect(SelectUtils.Common.Status, item.status).title }}
                       </v-chip>
                     </template>
 
@@ -147,8 +135,8 @@
   </NuxtLayout>
 
   <!-- 编辑对话框 -->
-  <EditCardDialog v-model:thisDialogState="EditCardDialog_state" v-model:editCardData="EditCardDialog_data"
-    :getTableData="getTableData"></EditCardDialog>
+  <EditCommentDialog v-model:thisDialogState="EditCommentDialog_state" v-model:CommentData="EditCommentDialog_data"
+    :getTableData="getTableData"></EditCommentDialog>
   <!-- 删除对话框 -->
   <PublicDeleteDialog v-model:thisDialogState="DeleteCardDialog_state" v-model:deleteData="DeleteCardDialog_data"
     :deleteFun="DeleteCardFun"></PublicDeleteDialog>
@@ -161,14 +149,12 @@
 </template>
 
 <script setup lang="ts">
-import CardsApi from "@/api/app/cards";
-import CommonUtils from "@/api/utils/common";
+import CommentsApi from "@/api/app/comments";
+import EditCommentDialog from "@/components/comments/EditCommentDialog.vue";
 import PublicDeleteDialog from "@/components/public/Table/DeleteDialog.vue";
-import EditCardDialog from "@/components/cards/EditCardDialog.vue";
 import PublicBatchDialog from "@/components/public/Table/BatchDialog.vue";
 import PublicSearchDialog from "@/components/public/Table/SearchDialog.vue";
 import SelectUtils from "~/api/utils/select";
-import { useTagsStore } from "@/stores/tagsStore";
 const notifier = useNotifier();
 
 //渲染数据预处理
@@ -189,13 +175,10 @@ const renderTop = (data: any) => {
 const TableHeaders = [
   { title: "ID", value: "id" },
   { title: "用户ID", value: "user_id" },
-  { title: "封面", value: "cover" },
+  { title: "应用ID", value: "aid" },
   { title: "内容", value: "content" },
   { title: "自定义字段", value: "data" },
   { title: "点赞数", value: "goods" },
-  { title: "评论数", value: "comments" },
-  { title: "浏览量", value: "views" },
-  { title: "标签", value: "tags" },
   { title: "发布时间", value: "created_at" },
   { title: "IP", value: "post_ip" },
   { title: "置顶", value: "is_top" },
@@ -214,27 +197,6 @@ const TableBatchOptions = [
   { title: "删除", value: "delete" },
 ];
 
-//标签
-const tagsStore = useTagsStore();
-const Tags = ref([] as any);
-Tags.value = tagsStore.tags;
-//标签数据预处理
-const renderTags = (tags: any) => {
-  if (tags !== undefined && tags !== null) {
-    tags = JSON.parse(tags);
-    let TagsValue: string[] = [];
-    tags.forEach((item: any) => {
-      const tag = Tags.value.find((tagItem: any) => tagItem.id === item);
-      if (tag) {
-        TagsValue.push('#' + tag.id + ' ' + tag.name);
-      }
-    });
-    return TagsValue;
-  } else {
-    return [];
-  }
-};
-
 const tableItems = ref([{} as any]);//表格数据
 const tableSelected = ref([]);//批量选择数据
 const tablePaginationLength = ref(0);//页面数量
@@ -245,17 +207,17 @@ const tableSearchFilter = ref({});//搜索过滤器
 //每页项目数量
 const tableListRows = ref(SelectUtils.Common.Table.ListRowsOptions[0].value);
 
-//EditCardDialog组件
-const EditCardDialog_state = ref(false);
-const EditCardDialog_data = ref({} as any);
-const openEditCardDialog = (data: any) => {
-  EditCardDialog_data.value = data;
-  EditCardDialog_state.value = true;
+//EditCommentDialog组件
+const EditCommentDialog_state = ref(false);
+const EditCommentDialog_data = ref({} as any);
+const openEditCommentDialog = (data: any) => {
+  EditCommentDialog_data.value = data;
+  EditCommentDialog_state.value = true;
 };
 
 //DeleteDialog组件
 const DeleteCardFun = (id: any) => {
-  CardsApi.deleteCard(id).then(() => {
+  CommentsApi.deleteComment({ id: id }).then(() => {
     DeleteCardDialog_state.value = false;
     getTableData();
   });
@@ -275,7 +237,7 @@ const BatchCardFun = () => {
     ids: tableSelected.value,
     method: BatchOperate.value,
   }
-  CardsApi.batchOperate(data).then(() => {
+  CommentsApi.batchOperate(data).then(() => {
     BatchCardDialog_state.value = false;
     getTableData();
   })
@@ -311,7 +273,7 @@ const getTableData = () => {
     ...tableSearchFilter.value
   };
   //获取数据
-  CardsApi.getCardIndex(params)
+  CommentsApi.getCommentIndex(params)
     .then((response) => {
       const data = response.data;
       tableCurrentPage.value = data.current_page;
