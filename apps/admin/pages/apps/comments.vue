@@ -149,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-import CommentsApi from "@/api/app/comments";
+import CommentsApi from "@/api/app/admin/comments";
 import EditCommentDialog from "@/components/apps/comments/EditCommentDialog.vue";
 import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
 import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";

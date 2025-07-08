@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import UserApi from "@/api/app/users";
+import UserApi from "@/api/app/admin/users";
 
 //Props
 const props = defineProps({

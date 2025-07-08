@@ -161,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import CardsApi from "@/api/app/cards";
+import CardsApi from "@/api/app/admin/cards";
 import CommonUtils from "@/api/utils/common";
 import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
 import EditCardDialog from "@/components/apps/cards/EditCardDialog.vue";

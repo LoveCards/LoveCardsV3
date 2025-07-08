@@ -1,7 +1,7 @@
-import instance from "../axios";
+import instance from "../../axios";
 
-import type { Params as PublicParams } from "../types/public";
-import type { Params as CardsParams } from "../types/cards";
+import type { Params as PublicParams } from "../../types/public";
+import type { Params as CardsParams } from "../../types/cards";
 
 const APP_PATH = "/admin/tags";
 const APP_PATH_ID = "/admin/tag";

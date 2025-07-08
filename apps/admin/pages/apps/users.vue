@@ -157,7 +157,7 @@
 </template>
 
 <script setup lang="ts">
-import UsersApi from "@/api/app/users";
+import UsersApi from "@/api/app/admin/users";
 import CommonUtils from "@/api/utils/common";
 import ApiMonitor from "@/api/interceptors/monitor";
 import DeleteUserDialog from "~/components/apps/users/DeleteUserDialog.vue";

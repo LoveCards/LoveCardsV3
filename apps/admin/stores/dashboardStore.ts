@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { getDashboard as apiGetDashboard } from '~/api/app/dashboard';
+import { getDashboard as apiGetDashboard } from '~/api/app/admin/dashboard';
 
 export const useDashboardStore = defineStore('dashboard', {
     state: () => ({

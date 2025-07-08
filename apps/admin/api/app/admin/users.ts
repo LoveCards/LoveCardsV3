@@ -1,7 +1,7 @@
-import instance from "../axios";
+import instance from "../../axios";
 
-import type { Params as PublicParams } from "../types/public";
-import type { Params as UsersParams } from "../types/users";
+import type { Params as PublicParams } from "../../types/public";
+import type { Params as UsersParams } from "../../types/users";
 
 const APP_PATH = "/admin/users";
 

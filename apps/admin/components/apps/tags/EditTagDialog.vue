@@ -45,7 +45,7 @@
 
 <script setup lang="ts">
 import CommonUtils from "@/api/utils/common";
-import TagsApi from "~/api/app/tags";
+import TagsApi from "~/api/app/admin/tags";
 import SelectUtils from "~/api/utils/select";
 
 const notifier = useNotifier();

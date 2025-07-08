@@ -94,8 +94,8 @@
 <script setup lang="ts">
 import UploadApi from "@/api/app/upload";
 import CommonUtils from "@/api/utils/common";
-import CardsApi from "~/api/app/cards";
-import AdminCardsApi from "~/api/app/cards";
+import CardsApi from "~/api/app/admin/cards";
+import AdminCardsApi from "~/api/app/admin/cards";
 import UserCardsApi from "~/api/app/user/cards";
 import SelectUtils from "~/api/utils/select";
 

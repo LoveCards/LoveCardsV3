@@ -1,20 +1,20 @@
-import instance from "../axios";
+import instance from "../../axios";
 
-import type { Params as PublicParams } from "../types/public";
-import type { Params as CardsParams } from "../types/cards";
+import type { Params as PublicParams } from "../../types/public";
+import type { Params as CardsParams } from "../../types/cards";
 
-const APP_PATH = "/admin/cards";
-const APP_PATH_ID = "/admin/card";
+const APP_PATH = "/admin/comments";
+const APP_PATH_ID = "/admin/comment";
 
 //获取卡片
-const getCard = (params: PublicParams.IDOperate) => {
-    return instance.get(APP_PATH_ID, {
-        params: params,
-    });
-};
+// const getComment = (params: PublicParams.IDOperate) => {
+//     return instance.get(APP_PATH_ID, {
+//         params: params,
+//     });
+// };
 
 //获取卡片列表
-const getCardIndex = (params: PublicParams.Index) => {
+const getCommentIndex = (params: PublicParams.Index) => {
     //参数处理
     if (params.search_keys != undefined && params.search_keys.length > 0) {
         params.search_keys = JSON.stringify(params.search_keys) as any;
@@ -28,12 +28,12 @@ const getCardIndex = (params: PublicParams.Index) => {
 };
 
 //删除卡片
-const deleteCard = (params: PublicParams.IDOperate) => {
-    return instance.delete(APP_PATH, { params: params });
+const deleteComment = (params: PublicParams.IDOperate) => {
+    return instance.delete(APP_PATH_ID, { params: params });
 };
 
 //编辑卡片
-const patchCard = (params: any) => {
+const patchComment = (params: any) => {
     return instance.patch(APP_PATH_ID, params);
 };
 
@@ -46,12 +46,12 @@ const batchOperate = (params: PublicParams.BatchOperate) => {
     return instance.post(APP_PATH + '/batch-operate', data);
 };
 
-const CardsApi = {
-    getCardIndex,
-    deleteCard,
-    getCard,
-    patchCard,
+const CommentApi = {
+    getCommentIndex,
+    deleteComment,
+    // getComment,
+    patchComment,
     batchOperate
 };
 
-export default CardsApi;
+export default CommentApi;

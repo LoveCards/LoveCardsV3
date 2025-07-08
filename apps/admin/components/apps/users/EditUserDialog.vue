@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import UserApi from "@/api/app/users";
+import UserApi from "@/api/app/admin/users";
 import UploadApi from "@/api/app/upload";
 import CommonUtils from "@/api/utils/common";
 

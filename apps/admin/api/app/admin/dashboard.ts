@@ -1,4 +1,4 @@
-import instance from "../axios";
+import instance from "../../axios";
 
 const APP_PATH = "/admin/dashboard";
 

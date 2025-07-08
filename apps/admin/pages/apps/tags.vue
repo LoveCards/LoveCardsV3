@@ -139,7 +139,7 @@
 </template>
 
 <script setup lang="ts">
-import TagsApi from "@/api/app/tags";
+import TagsApi from "@/api/app/admin/tags";
 import EditTagDialog from "@/components/apps/tags/EditTagDialog.vue";
 import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
 import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";

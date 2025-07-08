@@ -61,7 +61,7 @@
 
 <script setup lang="ts">
 import CommonUtils from "@/api/utils/common";
-import CommentsApi from "~/api/app/comments";
+import CommentsApi from "~/api/app/admin/comments";
 import SelectUtils from "~/api/utils/select";
 
 const notifier = useNotifier();
