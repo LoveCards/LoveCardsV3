@@ -1,5 +1,5 @@
 import instance from "../axios";
-//import CommonUtils from "../utils/common";
+
 import type { Params as PublicParams } from "../types/public";
 import type { Params as CardsParams } from "../types/cards";
 
@@ -29,13 +29,11 @@ const getCommentIndex = (params: PublicParams.Index) => {
 
 //删除卡片
 const deleteComment = (params: PublicParams.IDOperate) => {
-    console.log(params);
-    
     return instance.delete(APP_PATH_ID, { params: params });
 };
 
 //编辑卡片
-const patchComment = (params: CardsParams.Patch) => {
+const patchComment = (params: any) => {
     return instance.patch(APP_PATH_ID, params);
 };
 
