@@ -150,10 +150,10 @@
 
 <script setup lang="ts">
 import CommentsApi from "@/api/app/comments";
-import EditCommentDialog from "@/components/comments/EditCommentDialog.vue";
-import PublicDeleteDialog from "@/components/public/Table/DeleteDialog.vue";
-import PublicBatchDialog from "@/components/public/Table/BatchDialog.vue";
-import PublicSearchDialog from "@/components/public/Table/SearchDialog.vue";
+import EditCommentDialog from "@/components/apps/comments/EditCommentDialog.vue";
+import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
+import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
+import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
 import SelectUtils from "~/api/utils/select";
 const notifier = useNotifier();
 

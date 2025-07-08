@@ -160,10 +160,10 @@
 import UsersApi from "@/api/app/users";
 import CommonUtils from "@/api/utils/common";
 import ApiMonitor from "@/api/interceptors/monitor";
-import DeleteUserDialog from "~/components/users/DeleteUserDialog.vue";
-import EditUserDialog from "~/components/users/EditUserDialog.vue";
-import BatchUserDialog from "~/components/users/BatchUserDialog.vue";
-import SearchUserDialog from "~/components/users/SearchUserDialog.vue";
+import DeleteUserDialog from "~/components/apps/users/DeleteUserDialog.vue";
+import EditUserDialog from "~/components/apps/users/EditUserDialog.vue";
+import BatchUserDialog from "~/components/apps/users/BatchUserDialog.vue";
+import SearchUserDialog from "~/components/apps/users/SearchUserDialog.vue";
 import SelectUtils from "~/api/utils/select";
 
 const notifier = useNotifier();

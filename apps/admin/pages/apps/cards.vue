@@ -163,10 +163,10 @@
 <script setup lang="ts">
 import CardsApi from "@/api/app/cards";
 import CommonUtils from "@/api/utils/common";
-import PublicDeleteDialog from "@/components/public/Table/DeleteDialog.vue";
-import EditCardDialog from "@/components/cards/EditCardDialog.vue";
-import PublicBatchDialog from "@/components/public/Table/BatchDialog.vue";
-import PublicSearchDialog from "@/components/public/Table/SearchDialog.vue";
+import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
+import EditCardDialog from "@/components/apps/cards/EditCardDialog.vue";
+import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
+import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
 import SelectUtils from "~/api/utils/select";
 import { useTagsStore } from "@/stores/tagsStore";
 const notifier = useNotifier();
