@@ -29,10 +29,20 @@ const deleteUser = (params: PublicParams.IDOperate) => {
     return instance.delete(APP_PATH, { params: params });
 };
 
+//批量操作
+const batchOperate = (params: PublicParams.BatchOperate) => {
+    const data = {
+        ids: JSON.stringify(params.ids),
+        method: params.method,
+    };
+    return instance.post(APP_PATH + '/batch-operate', data);
+};
+
 const UsersApi = {
     getUserIndex,
     patchUser,
-    deleteUser
+    deleteUser,
+    batchOperate
 };
 
 export default UsersApi;

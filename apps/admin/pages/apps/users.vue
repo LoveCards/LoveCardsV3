@@ -79,7 +79,7 @@
 
                     <!-- 账号状态 -->
                     <template v-slot:[`item.status`]="{ item }">
-                      <v-chip :color="item.status === 0
+                      <!-- <v-chip :color="item.status === 0
                         ? 'success'
                         : item.status === -1
                           ? 'error'
@@ -90,6 +90,9 @@
                             (state) => state.value === item.status
                           )?.title
                         }}
+                      </v-chip> -->
+                      <v-chip size="small">
+                        {{ SelectUtils.getSelect(SelectUtils.User.status, item.status).title }}
                       </v-chip>
                     </template>
 
@@ -111,9 +114,9 @@
               <v-col cols="12" md="6" class="d-flex justify-start align-center">
                 <v-select density="compact" label="请选择操作" max-width="160px" hide-details variant="outlined"
                   color="accent" :items="TableBatchOptions" item-title="title" item-value="value"
-                  v-model="BatchUserBtnStatus"></v-select>
+                  v-model="BatchOperate"></v-select>
                 <v-btn color="accent" variant="flat" class="ml-2" @click="openBatchUserDialog"
-                  :disabled="tableSelected.length === 0">批量操作</v-btn>
+                  :disabled="tableSelected.length === 0 || BatchOperate === ''">批量操作</v-btn>
               </v-col>
               <!-- 分页按钮 -->
               <v-col cols="12" md="6" class="d-flex justify-end align-center">
@@ -125,7 +128,7 @@
                     <v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
-                        }}</v-list-item-title>
+                      }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -145,25 +148,32 @@
   <!-- 编辑用户对话框 -->
   <EditUserDialog v-model:thisDialogState="EditUserDialog_state" v-model:editUserData="EditUserDialog_data"
     :getTableData="getTableData" :ACCOUNT_STATUS="SelectUtils.User.status" :USER_ROLES="UserRoles"></EditUserDialog>
-  <!-- 删除用户对话框 -->
-  <DeleteUserDialog v-model:thisDialogState="DeleteUserDialog_state" v-model:delUserData="DeleteUserDialog_data"
-    :getTableData="getTableData"></DeleteUserDialog>
+  <!-- 删除对话框 -->
+  <PublicDeleteDialog v-model:thisDialogState="DeleteUserDialog_state" v-model:deleteData="DeleteUserDialog_data"
+    :deleteFun="DeleteUserFun"></PublicDeleteDialog>
   <!-- 批量处理用户对话框 -->
-  <BatchUserDialog v-model:thisDialogState="BatchUserDialog_state" v-model:batchUserData="tableSelected"
-    :getTableData="getTableData"></BatchUserDialog>
-  <!-- 搜索用户对话框 -->
-  <SearchUserDialog v-model:thisDialogState="SearchUserDialog_state" :KEYS="SearchKeys"
-    :setFilter="setTableSearchFilter" :getTableData="getTableData"></SearchUserDialog>
+  <!-- <BatchUserDialog v-model:thisDialogState="BatchUserDialog_state" v-model:batchUserData="tableSelected"
+    :getTableData="getTableData"></BatchUserDialog> -->
+  <!-- 批量处理用户对话框 -->
+  <PublicBatchDialog v-model:thisDialogState="BatchUserDialog_state" v-model:batchData="tableSelected"
+    v-model:batchOptions="BatchUserDialog_operate" :batchFun="BatchUserFun"></PublicBatchDialog>
+  <!-- 搜索对话框 -->
+  <PublicSearchDialog v-model:thisDialogState="SearchUserDialog_state" :KEYS="SearchKeys"
+    :setFilter="setTableSearchFilter" :getTableData="getTableData" KeysMessages="默认[用户名]"></PublicSearchDialog>
 </template>
 
 <script setup lang="ts">
 import UsersApi from "@/api/app/admin/users";
 import CommonUtils from "@/api/utils/common";
 import ApiMonitor from "@/api/interceptors/monitor";
-import DeleteUserDialog from "~/components/apps/users/DeleteUserDialog.vue";
+import PublicDeleteDialog from "~/components/apps/public/Table/DeleteDialog.vue";
 import EditUserDialog from "~/components/apps/users/EditUserDialog.vue";
 import BatchUserDialog from "~/components/apps/users/BatchUserDialog.vue";
 import SearchUserDialog from "~/components/apps/users/SearchUserDialog.vue";
+
+import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
+import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
+
 import SelectUtils from "~/api/utils/select";
 
 const notifier = useNotifier();
@@ -186,9 +196,10 @@ const SearchKeys = [...TableHeaders];
 SearchKeys.pop();
 //批量操作选项
 const TableBatchOptions = [
-  // { title: '封禁/解封', value: 'delete' },
-  { title: "删除", value: "disable" },
-  // { title: '启用', value: 'enable' },
+  { title: '封禁/取消', value: 'ban' },
+  { title: "冻结/取消", value: "hide" },
+  { title: "审核/取消", value: "approve" },
+  // { title: "删除", value: "delete" },
 ];
 //每一页项目数量
 const TableListRowsOptions = [
@@ -253,6 +264,12 @@ const openEditUserDialog = (data: {}) => {
 };
 
 //DeleteUserDialog组件
+const DeleteUserFun = (id: any) => {
+  UsersApi.deleteUser(id).then(() => {
+    DeleteUserDialog_state.value = false;
+    getTableData();
+  });
+}
 const DeleteUserDialog_state = ref(false);
 const DeleteUserDialog_data = ref({} as any);
 const openDeleteUserDialog = (data: {}) => {
@@ -261,22 +278,28 @@ const openDeleteUserDialog = (data: {}) => {
 };
 
 // 批量操作相关
-const BatchUserBtnStatus = ref("");
-//BatchUserDialog组件
+const BatchOperate = ref('');
 const BatchUserDialog_state = ref(false);
-const openBatchUserDialog = () => {
-  if (tableSelected.value.length === 0) {
-    notifier.toast({
-      text: "请选择要操作的用户",
-      type: "warning",
-    });
-    return;
+//BatchCardDialog组件
+const BatchUserFun = () => {
+  const data = {
+    ids: tableSelected.value,
+    method: BatchOperate.value,
   }
-
-  if (BatchUserBtnStatus.value === "disable") {
+  UsersApi.batchOperate(data).then(() => {
+    BatchUserDialog_state.value = false;
+    getTableData();
+  })
+}
+const BatchUserDialog_operate = ref('');//tableSelected
+const openBatchUserDialog = () => {
+  const headerMap = new Map(TableBatchOptions.map(header => [header.value, header.title]));
+  BatchUserDialog_operate.value = headerMap.get(BatchOperate.value) || '';
+  if (tableSelected.value.length != 0) {
     BatchUserDialog_state.value = true;
   }
 };
+
 
 //SearchUserDialog组件
 const SearchUserDialog_state = ref(false);

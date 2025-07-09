@@ -3,6 +3,7 @@ const User = {
         { title: "#0 正常", value: 0 },
         { title: "#1 封禁", value: 1 },
         { title: "#2 冻结", value: 2 },
+        { title: "#3 待审核", value: 3 },
     ]
 }
 
