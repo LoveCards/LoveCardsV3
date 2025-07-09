@@ -129,7 +129,7 @@
                       :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
-                        }}</v-list-item-title>
+                      }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>

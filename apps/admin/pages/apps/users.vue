@@ -79,18 +79,6 @@
 
                     <!-- 账号状态 -->
                     <template v-slot:[`item.status`]="{ item }">
-                      <!-- <v-chip :color="item.status === 0
-                        ? 'success'
-                        : item.status === -1
-                          ? 'error'
-                          : 'warning'
-                        " variant="flat" size="small">
-                        {{
-                          SelectUtils.User.status.find(
-                            (state) => state.value === item.status
-                          )?.title
-                        }}
-                      </v-chip> -->
                       <v-chip size="small">
                         {{ SelectUtils.getSelect(SelectUtils.User.status, item.status).title }}
                       </v-chip>
@@ -128,7 +116,7 @@
                     <v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
-                      }}</v-list-item-title>
+                        }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -151,10 +139,7 @@
   <!-- 删除对话框 -->
   <PublicDeleteDialog v-model:thisDialogState="DeleteUserDialog_state" v-model:deleteData="DeleteUserDialog_data"
     :deleteFun="DeleteUserFun"></PublicDeleteDialog>
-  <!-- 批量处理用户对话框 -->
-  <!-- <BatchUserDialog v-model:thisDialogState="BatchUserDialog_state" v-model:batchUserData="tableSelected"
-    :getTableData="getTableData"></BatchUserDialog> -->
-  <!-- 批量处理用户对话框 -->
+  <!-- 批量处理对话框 -->
   <PublicBatchDialog v-model:thisDialogState="BatchUserDialog_state" v-model:batchData="tableSelected"
     v-model:batchOptions="BatchUserDialog_operate" :batchFun="BatchUserFun"></PublicBatchDialog>
   <!-- 搜索对话框 -->
@@ -165,15 +150,10 @@
 <script setup lang="ts">
 import UsersApi from "@/api/app/admin/users";
 import CommonUtils from "@/api/utils/common";
-import ApiMonitor from "@/api/interceptors/monitor";
-import PublicDeleteDialog from "~/components/apps/public/Table/DeleteDialog.vue";
 import EditUserDialog from "~/components/apps/users/EditUserDialog.vue";
-import BatchUserDialog from "~/components/apps/users/BatchUserDialog.vue";
-import SearchUserDialog from "~/components/apps/users/SearchUserDialog.vue";
-
+import PublicDeleteDialog from "~/components/apps/public/Table/DeleteDialog.vue";
 import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
 import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
-
 import SelectUtils from "~/api/utils/select";
 
 const notifier = useNotifier();
