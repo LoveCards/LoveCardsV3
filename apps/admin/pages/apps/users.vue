@@ -116,7 +116,7 @@
                     <v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
-                        }}</v-list-item-title>
+                      }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -245,7 +245,7 @@ const openEditUserDialog = (data: {}) => {
 
 //DeleteUserDialog组件
 const DeleteUserFun = (id: any) => {
-  UsersApi.deleteUser(id).then(() => {
+  UsersApi.deleteUser({ id: id }).then(() => {
     DeleteUserDialog_state.value = false;
     getTableData();
   });

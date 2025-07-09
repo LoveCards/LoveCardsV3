@@ -4,6 +4,7 @@ import type { Params as PublicParams } from "../../types/public";
 import type { Params as UsersParams } from "../../types/users";
 
 const APP_PATH = "/admin/users";
+const APP_PATH_ID = "/admin/user";
 
 //获取用户列表
 const getUserIndex = (params: PublicParams.Index) => {
@@ -21,12 +22,12 @@ const getUserIndex = (params: PublicParams.Index) => {
 
 //编辑用户
 const patchUser = (params: UsersParams.Patch) => {
-    return instance.patch(APP_PATH, params);
+    return instance.patch(APP_PATH_ID, params);
 };
 
 //删除用户
 const deleteUser = (params: PublicParams.IDOperate) => {
-    return instance.delete(APP_PATH, { params: params });
+    return instance.delete(APP_PATH_ID, { params: params });
 };
 
 //批量操作
