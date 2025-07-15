@@ -8,7 +8,6 @@
 					<h1 class="text-primary font-weight-bold">总览</h1>
 				</v-col>
 			</v-row>
-
 			<!-- 内容 -->
 			<v-row>
 				<!-- 左侧趋势卡片 -->
@@ -134,5 +133,4 @@ import { useDashboardStore } from '~/stores/dashboardStore';
 const dashboard = ref({} as any);
 const dashboardStore = useDashboardStore();
 dashboard.value = dashboardStore.dashboard;
-
 </script>

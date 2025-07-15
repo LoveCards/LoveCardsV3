@@ -70,7 +70,8 @@
 
 			<v-divider></v-divider>
 
-			<v-list-item class="bg-accent" prepend-icon="mdi-home" title="返回站点" value="mainsite" color=""></v-list-item>
+			<v-list-item @click="goHome" class="bg-accent" prepend-icon="mdi-home" title="返回站点"
+				value="mainsite"></v-list-item>
 
 		</v-list>
 	</v-navigation-drawer>
@@ -100,6 +101,11 @@ const setUserInfo = () => {
 const drawer = ref(true)
 const toggleDrawer = () => {
 	drawer.value = !drawer.value
+}
+
+//返回主站
+const goHome = () => {
+	window.location.href = '/';
 }
 
 //页面初始化
