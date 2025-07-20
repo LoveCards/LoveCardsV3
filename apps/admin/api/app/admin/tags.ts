@@ -19,11 +19,15 @@ const getTagIndex = (params: PublicParams.Index) => {
         params: params,
     });
 };
-//删除卡片
+//创建标签
+const createTag = (params: any) => {
+    return instance.post(APP_PATH_ID, params);
+};
+//删除标签
 const deleteTag = (params: PublicParams.IDOperate) => {
     return instance.delete(APP_PATH_ID, { params: params });
 };
-//编辑卡片
+//编辑标签
 const patchTag = (params: any) => {
     return instance.patch(APP_PATH_ID, params);
 };
@@ -40,7 +44,8 @@ const TagsApi = {
     getTagIndex,
     deleteTag,
     patchTag,
-    batchOperate
+    batchOperate,
+    createTag
 };
 
 export default TagsApi;

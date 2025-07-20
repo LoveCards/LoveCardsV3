@@ -17,7 +17,7 @@
             <v-row>
               <!-- 工具栏 -->
               <v-col cols="4" md="8" class="d-flex align-center">
-                <v-btn color="accent" variant="flat"> 创建标签 </v-btn>
+                <v-btn color="accent" variant="flat" @click="openCreateTagDialog()"> 创建标签 </v-btn>
               </v-col>
               <!-- 搜索栏 -->
               <v-col cols="8" md="4" class="d-flex justify-end">
@@ -124,6 +124,8 @@
     </v-container>
   </NuxtLayout>
 
+  <!-- 创建对话框 -->
+  <CreateTagDialog v-model:thisDialogState="CreateTagDialog_state" :getTableData="getTableData"></CreateTagDialog>
   <!-- 编辑对话框 -->
   <EditTagDialog v-model:thisDialogState="EditTagDialog_state" v-model:TagData="EditTagDialog_data"
     :getTableData="getTableData"></EditTagDialog>
@@ -140,6 +142,7 @@
 
 <script setup lang="ts">
 import TagsApi from "@/api/app/admin/tags";
+import CreateTagDialog from "@/components/apps/tags/CreateTagDialog.vue";
 import EditTagDialog from "@/components/apps/tags/EditTagDialog.vue";
 import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
 import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
@@ -177,6 +180,12 @@ const tableSearchFilter = ref({});//搜索过滤器
 
 //每页项目数量
 const tableListRows = ref(SelectUtils.Common.Table.ListRowsOptions[0].value);
+
+//CreateTagDialog组件
+const CreateTagDialog_state = ref(false);
+const openCreateTagDialog = () => {
+  CreateTagDialog_state.value = true;
+};
 
 //EditTagDialog组件
 const EditTagDialog_state = ref(false);

@@ -71,9 +71,9 @@
 
                     <!-- 操作 -->
                     <template v-slot:[`item.operate`]="{ item }">
-                      <v-btn icon="mdi-pencil" elevation="0" size="small" color="accent" variant="text"
+                      <v-btn icon="mdi-pencil" elevation="0" size="small" variant="text"
                         @click="openEditUserDialog(item)"></v-btn>
-                      <v-btn icon="mdi-delete" elevation="0" size="small" color="accent" variant="text"
+                      <v-btn icon="mdi-delete" elevation="0" size="small" variant="text"
                         @click="openDeleteUserDialog(item)"></v-btn>
                     </template>
 

@@ -11,12 +11,12 @@ export default defineNuxtRouteMiddleware((to, from) => {
             console.log("通过."); // 用户有权限访问
         } else {
             console.log("无权限."); // 用户无权限，重定向到首页
-            window.location.href = '/';
+            //window.location.href = '/';
             return false;
         }
     } else {
         console.error("用户信息获取失败:",);
-        window.location.href = '/';
+        //window.location.href = '/';
         return false;
     }
 });
