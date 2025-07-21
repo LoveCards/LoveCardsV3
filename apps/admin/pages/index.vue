@@ -1,7 +1,7 @@
 <!-- 主页 -->
 <template>
 	<NuxtLayout name="root">
-		<v-container max-width="80%" fluid>
+		<v-container max-width="96%" min-width="92%" fluid>
 			<!-- 标题 -->
 			<v-row class="pt-2">
 				<v-col cols="6">
