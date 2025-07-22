@@ -126,7 +126,7 @@
 </template>
 
 <script setup lang="ts">
-import TrendCharts from '~/components/index/TrendCharts.vue';
+import TrendCharts from '~/components/apps/dashboard/TrendCharts.vue';
 import { useDashboardStore } from '~/stores/dashboardStore';
 
 //仪表盘数据
