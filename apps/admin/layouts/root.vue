@@ -46,7 +46,7 @@
 		<v-divider></v-divider>
 
 		<v-list density="compact" color="accent" nav>
-			<v-list-item prepend-icon="mdi-view-dashboard" title="总览" value="overview" to="/"></v-list-item>
+			<v-list-item prepend-icon="mdi-view-dashboard" title="总览" value="overview" to="/apps/dashboard"></v-list-item>
 
 			<v-list-item prepend-icon="mdi-account-multiple" title="用户" value="users" to="/apps/users"></v-list-item>
 
