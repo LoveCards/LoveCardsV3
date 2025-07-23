@@ -162,7 +162,8 @@
 
 <script setup lang="ts">
 import CardsApi from "@/api/app/admin/cards";
-import CommonUtils from "@/api/utils/common";
+import ApiCommonUtils from "@/api/utils/common";
+import CommonUtils from "@/utils/common";
 import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
 import EditCardDialog from "@/components/apps/cards/EditCardDialog.vue";
 import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
@@ -243,7 +244,7 @@ const tableSearchValue = ref(undefined);//搜索值
 const tableSearchFilter = ref({});//搜索过滤器
 
 //每页项目数量
-const tableListRows = ref(SelectUtils.Common.Table.ListRowsOptions[0].value);
+const tableListRows = ref(SelectUtils.Common.Table.ListRowsOptions[0]?.value);
 
 //EditCardDialog组件
 const EditCardDialog_state = ref(false);
@@ -321,7 +322,7 @@ const getTableData = () => {
 };
 
 //搜索防抖
-const searchTableData = useDebounce(() => {
+const searchTableData = CommonUtils.lodash.debounce(() => {
   getTableData();
 }, 500);
 

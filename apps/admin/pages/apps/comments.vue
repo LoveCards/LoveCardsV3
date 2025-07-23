@@ -117,7 +117,7 @@
                       :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
-                        }}</v-list-item-title>
+                      }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -149,6 +149,7 @@
 </template>
 
 <script setup lang="ts">
+import CommonUtils from "@/utils/common";
 import CommentsApi from "@/api/app/admin/comments";
 import EditCommentDialog from "@/components/apps/comments/EditCommentDialog.vue";
 import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
@@ -205,7 +206,7 @@ const tableSearchValue = ref(undefined);//搜索值
 const tableSearchFilter = ref({});//搜索过滤器
 
 //每页项目数量
-const tableListRows = ref(SelectUtils.Common.Table.ListRowsOptions[0].value);
+const tableListRows = ref(SelectUtils.Common.Table.ListRowsOptions[0]?.value);
 
 //EditCommentDialog组件
 const EditCommentDialog_state = ref(false);
@@ -283,7 +284,7 @@ const getTableData = () => {
 };
 
 //搜索防抖
-const searchTableData = useDebounce(() => {
+const searchTableData = CommonUtils.lodash.debounce(() => {
   getTableData();
 }, 500);
 

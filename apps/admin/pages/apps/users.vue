@@ -116,7 +116,7 @@
                     <v-list-item v-for="(item, index) in TableListRowsOptions" :key="index" :value="index">
                       <v-list-item-title @click="tableListRows = item.value">{{
                         item.title
-                      }}</v-list-item-title>
+                        }}</v-list-item-title>
                     </v-list-item>
                   </v-list>
                 </v-menu>
@@ -149,7 +149,8 @@
 
 <script setup lang="ts">
 import UsersApi from "@/api/app/admin/users";
-import CommonUtils from "@/api/utils/common";
+import ApiCommonUtils from "@/api/utils/common";
+import CommonUtils from "@/utils/common";
 import EditUserDialog from "~/components/apps/users/EditUserDialog.vue";
 import PublicDeleteDialog from "~/components/apps/public/Table/DeleteDialog.vue";
 import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
@@ -232,14 +233,14 @@ const tableSearchValue = ref(undefined);
 const tableSearchFilter = ref({});
 
 //每页项目数量
-const tableListRows = ref(TableListRowsOptions[0].value);
+const tableListRows = ref(TableListRowsOptions[0]?.value);
 
 //EditUserDialog组件
 const EditUserDialog_state = ref(false);
 const EditUserDialog_data = ref({ origin: {}, edit: {} } as any);
 const openEditUserDialog = (data: {}) => {
-  EditUserDialog_data.value.origin = CommonUtils.deepClone(data);
-  EditUserDialog_data.value.edit = CommonUtils.deepClone(data);
+  EditUserDialog_data.value.origin = ApiCommonUtils.deepClone(data);
+  EditUserDialog_data.value.edit = ApiCommonUtils.deepClone(data);
   EditUserDialog_state.value = true;
 };
 
@@ -321,7 +322,7 @@ const getTableData = () => {
 };
 
 //搜索防抖
-const searchTableData = useDebounce(() => {
+const searchTableData = CommonUtils.lodash.debounce(() => {
   getTableData();
 }, 500);
 

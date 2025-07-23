@@ -141,6 +141,7 @@
 </template>
 
 <script setup lang="ts">
+import CommonUtils from "@/utils/common";
 import TagsApi from "@/api/app/admin/tags";
 import CreateTagDialog from "@/components/apps/tags/CreateTagDialog.vue";
 import EditTagDialog from "@/components/apps/tags/EditTagDialog.vue";
@@ -179,7 +180,7 @@ const tableSearchValue = ref(undefined);//搜索值
 const tableSearchFilter = ref({});//搜索过滤器
 
 //每页项目数量
-const tableListRows = ref(SelectUtils.Common.Table.ListRowsOptions[0].value);
+const tableListRows = ref(SelectUtils.Common.Table.ListRowsOptions[0]?.value);
 
 //CreateTagDialog组件
 const CreateTagDialog_state = ref(false);
@@ -263,7 +264,7 @@ const getTableData = () => {
 };
 
 //搜索防抖
-const searchTableData = useDebounce(() => {
+const searchTableData = CommonUtils.lodash.debounce(() => {
   getTableData();
 }, 500);
 
