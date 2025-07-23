@@ -78,7 +78,9 @@
 
 	<!-- 主内容 -->
 	<v-main>
-		<slot />
+		<v-container :max-width="containerWidth" fluid>
+			<slot />
+		</v-container>
 	</v-main>
 
 </template>
@@ -86,9 +88,15 @@
 <script setup lang="ts">
 import ApiMonitorNotifier from '~/components/public/ApiMonitorNotifier.vue';
 import { useUserStore } from '~/stores/userStore';
-import { useTheme } from 'vuetify'
+//import { useTheme,useDisplay } from 'vuetify'
 const theme = useTheme();
+const { mobile } = useDisplay();
 const userStore = useUserStore();
+
+
+// 桌面端与移动端
+const containerWidth = computed(() => (mobile.value ? undefined : '82%'));
+const drawerDefault = mobile.value ? false : true
 
 //获取用户信息
 const userInfo = ref({} as any);
@@ -98,7 +106,7 @@ const setUserInfo = () => {
 }
 
 //抽屉栏控制
-const drawer = ref(true)
+const drawer = ref(drawerDefault);
 const toggleDrawer = () => {
 	drawer.value = !drawer.value
 }

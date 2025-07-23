@@ -1,127 +1,124 @@
 <!-- 用户管理 -->
 <template>
   <NuxtLayout name="root">
-    <v-container max-width="96%" min-width="92%" fluid>
-      <!-- 标题 -->
-      <v-row class="pt-2">
-        <v-col cols="6">
-          <h1 class="text-primary font-weight-bold">标签管理</h1>
-        </v-col>
-      </v-row>
+    <!-- 标题 -->
+    <v-row class="pt-2">
+      <v-col cols="6">
+        <h1 class="text-primary font-weight-bold">标签管理</h1>
+      </v-col>
+    </v-row>
 
-      <!-- 内容 -->
-      <v-row>
-        <v-col cols="12">
-          <v-card class="pa-4">
-            <!-- 表格头部 -->
-            <v-row>
-              <!-- 工具栏 -->
-              <v-col cols="4" md="8" class="d-flex align-center">
-                <v-btn color="accent" variant="flat" @click="openCreateTagDialog()"> 创建标签 </v-btn>
-              </v-col>
-              <!-- 搜索栏 -->
-              <v-col cols="8" md="4" class="d-flex justify-end">
-                <v-btn elevation="0" icon="mdi-filter" size="small" variant="text"
-                  @click="openSearchUserDialog()"></v-btn>
-                <v-text-field color="accent" append-inner-icon="mdi-magnify" density="compact" label="搜索"
-                  variant="outlined" v-model="tableSearchValue" @input="searchTableData" hide-details
-                  single-line></v-text-field>
-              </v-col>
-            </v-row>
+    <!-- 内容 -->
+    <v-row>
+      <v-col cols="12">
+        <v-card class="pa-4">
+          <!-- 表格头部 -->
+          <v-row>
+            <!-- 工具栏 -->
+            <v-col cols="4" md="8" class="d-flex align-center">
+              <v-btn color="accent" variant="flat" @click="openCreateTagDialog()"> 创建标签 </v-btn>
+            </v-col>
+            <!-- 搜索栏 -->
+            <v-col cols="8" md="4" class="d-flex justify-end">
+              <v-btn elevation="0" icon="mdi-filter" size="small" variant="text"
+                @click="openSearchUserDialog()"></v-btn>
+              <v-text-field color="accent" append-inner-icon="mdi-magnify" density="compact" label="搜索"
+                variant="outlined" v-model="tableSearchValue" @input="searchTableData" hide-details
+                single-line></v-text-field>
+            </v-col>
+          </v-row>
 
-            <!-- 表格身体 -->
-            <v-row>
-              <v-col cols="12">
-                <v-card variant="outlined" color="#E0E0E0">
-                  <v-data-table :style="{ 'white-space': 'nowrap' }" :headers="TableHeaders" :items="tableItems"
-                    :items-per-page="tableListRows" item-value="id" v-model="tableSelected" show-select>
-                    <!-- 头部选择框 -->
-                    <template v-slot:header.data-table-select="{
-                      allSelected,
-                      selectAll,
-                      someSelected,
-                    }">
-                      <v-checkbox-btn :indeterminate="someSelected && !allSelected" :model-value="allSelected"
-                        color="accent" @update:model-value="selectAll(!allSelected)"></v-checkbox-btn>
-                    </template>
+          <!-- 表格身体 -->
+          <v-row>
+            <v-col cols="12">
+              <v-card variant="outlined" color="#E0E0E0">
+                <v-data-table :style="{ 'white-space': 'nowrap' }" :headers="TableHeaders" :items="tableItems"
+                  :items-per-page="tableListRows" item-value="id" v-model="tableSelected" show-select>
+                  <!-- 头部选择框 -->
+                  <template v-slot:header.data-table-select="{
+                    allSelected,
+                    selectAll,
+                    someSelected,
+                  }">
+                    <v-checkbox-btn :indeterminate="someSelected && !allSelected" :model-value="allSelected"
+                      color="accent" @update:model-value="selectAll(!allSelected)"></v-checkbox-btn>
+                  </template>
 
-                    <!-- 内容选择框 -->
-                    <template v-slot:item.data-table-select="{
-                      internalItem,
-                      isSelected,
-                      toggleSelect,
-                    }">
-                      <v-checkbox-btn :model-value="isSelected(internalItem)" color="accent"
-                        @update:model-value="toggleSelect(internalItem)"></v-checkbox-btn>
-                    </template>
+                  <!-- 内容选择框 -->
+                  <template v-slot:item.data-table-select="{
+                    internalItem,
+                    isSelected,
+                    toggleSelect,
+                  }">
+                    <v-checkbox-btn :model-value="isSelected(internalItem)" color="accent"
+                      @update:model-value="toggleSelect(internalItem)"></v-checkbox-btn>
+                  </template>
 
-                    <!-- 内容 -->
-                    <!-- <template v-slot:[`item.content`]="{ item }">
+                  <!-- 内容 -->
+                  <!-- <template v-slot:[`item.content`]="{ item }">
                       <v-text-field width="250" variant="underlined" :model-value="item.content"
                         readonly></v-text-field>
                     </template> -->
 
-                    <!-- 操作 -->
-                    <template v-slot:[`item.operate`]="{ item }">
-                      <v-btn icon="mdi-pencil" elevation="0" size="small" variant="text"
-                        @click="openEditTagDialog(item)"></v-btn>
-                      <v-btn icon="mdi-delete" elevation="0" size="small" variant="text"
-                        @click="openDeleteTagDialog(item)"></v-btn>
-                    </template>
-
-                    <!-- 项目状态 -->
-                    <template v-slot:[`item.status`]="{ item }">
-                      <v-chip size="small">
-                        {{ SelectUtils.getSelect(SelectUtils.Common.Status, item.status).title }}
-                      </v-chip>
-                    </template>
-
-                    <!-- 无结果时的显示内容 -->
-                    <template v-slot:no-data>
-                      没有找到相关数据
-                    </template>
-                    <template v-slot:bottom>
-                      <!-- 隐藏默认分页器 -->
-                    </template>
-                  </v-data-table>
-                </v-card>
-              </v-col>
-            </v-row>
-
-            <!-- 表格脚部 -->
-            <v-row>
-              <!-- 批量操作 -->
-              <v-col cols="12" md="6" class="d-flex justify-start align-center">
-                <v-select density="compact" label="请选择操作" max-width="160px" hide-details variant="outlined"
-                  color="accent" :items="TableBatchOptions" item-title="title" item-value="value"
-                  v-model="BatchOperate"></v-select>
-                <v-btn color="accent" variant="flat" class="ml-2" @click="openBatchTagDialog"
-                  :disabled="tableSelected.length === 0 || BatchOperate === ''">批量操作</v-btn>
-              </v-col>
-              <!-- 分页按钮 -->
-              <v-col cols="12" md="6" class="d-flex justify-end align-center">
-                <v-menu>
-                  <template v-slot:activator="{ props }">
-                    <v-btn elevation="0" icon="mdi-table-cog" size="small" v-bind="props" variant="text"></v-btn>
+                  <!-- 操作 -->
+                  <template v-slot:[`item.operate`]="{ item }">
+                    <v-btn icon="mdi-pencil" elevation="0" size="small" variant="text"
+                      @click="openEditTagDialog(item)"></v-btn>
+                    <v-btn icon="mdi-delete" elevation="0" size="small" variant="text"
+                      @click="openDeleteTagDialog(item)"></v-btn>
                   </template>
-                  <v-list>
-                    <v-list-item v-for="(item, index) in SelectUtils.Common.Table.ListRowsOptions" :key="index"
-                      :value="index">
-                      <v-list-item-title @click="tableListRows = item.value">{{ item.title }}</v-list-item-title>
-                    </v-list-item>
-                  </v-list>
-                </v-menu>
-                <v-divider vertical></v-divider>
-                <!-- <v-select density="compact" label="行/页" max-width="80px" hide-details variant="outlined" color="accent"
+
+                  <!-- 项目状态 -->
+                  <template v-slot:[`item.status`]="{ item }">
+                    <v-chip size="small">
+                      {{ SelectUtils.getSelect(SelectUtils.Common.Status, item.status).title }}
+                    </v-chip>
+                  </template>
+
+                  <!-- 无结果时的显示内容 -->
+                  <template v-slot:no-data>
+                    没有找到相关数据
+                  </template>
+                  <template v-slot:bottom>
+                    <!-- 隐藏默认分页器 -->
+                  </template>
+                </v-data-table>
+              </v-card>
+            </v-col>
+          </v-row>
+
+          <!-- 表格脚部 -->
+          <v-row>
+            <!-- 批量操作 -->
+            <v-col cols="12" md="6" class="d-flex justify-start align-center">
+              <v-select density="compact" label="请选择操作" max-width="160px" hide-details variant="outlined" color="accent"
+                :items="TableBatchOptions" item-title="title" item-value="value" v-model="BatchOperate"></v-select>
+              <v-btn color="accent" variant="flat" class="ml-2" @click="openBatchTagDialog"
+                :disabled="tableSelected.length === 0 || BatchOperate === ''">批量操作</v-btn>
+            </v-col>
+            <!-- 分页按钮 -->
+            <v-col cols="12" md="6" class="d-flex justify-end align-center">
+              <v-menu>
+                <template v-slot:activator="{ props }">
+                  <v-btn elevation="0" icon="mdi-table-cog" size="small" v-bind="props" variant="text"></v-btn>
+                </template>
+                <v-list>
+                  <v-list-item v-for="(item, index) in SelectUtils.Common.Table.ListRowsOptions" :key="index"
+                    :value="index">
+                    <v-list-item-title @click="tableListRows = item.value">{{ item.title }}</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+              <v-divider vertical></v-divider>
+              <!-- <v-select density="compact" label="行/页" max-width="80px" hide-details variant="outlined" color="accent"
 									:items="TableListRowsOptions" v-model="tableListRows"></v-select> -->
-                <v-pagination v-model="tableCurrentPage" :length="tablePaginationLength" :total-visible="5"
-                  color="accent" size="small" variant="elevated"></v-pagination>
-              </v-col>
-            </v-row>
-          </v-card>
-        </v-col>
-      </v-row>
-    </v-container>
+              <v-pagination v-model="tableCurrentPage" :length="tablePaginationLength" :total-visible="5" color="accent"
+                size="small" variant="elevated"></v-pagination>
+            </v-col>
+          </v-row>
+        </v-card>
+      </v-col>
+    </v-row>
   </NuxtLayout>
 
   <!-- 创建对话框 -->
