@@ -7,9 +7,13 @@ import instance from "../../axios";
 const getConfig = () => {
     return instance.get('/system/config');
 };
+const postConfig = (params: any) => {
+    return instance.post('/system/config', params);
+};
 
 const SystemApi = {
     getConfig,
+    postConfig
 };
 
 export default SystemApi;

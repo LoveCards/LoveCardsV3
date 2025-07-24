@@ -19,7 +19,7 @@
 					</v-tabs>
 
 					<v-card-text>
-						<v-tabs-window v-model="ViewTab" v-if="systemConfig.lovecards">
+						<v-tabs-window v-model="ViewTab" v-if="systemConfig.system">
 							<v-tabs-window-item value="tab1">
 								<v-row dense>
 									<v-col cols="12" sm="6">
@@ -61,19 +61,17 @@
 							<v-tabs-window-item value="tab2">
 								<v-row dense>
 									<v-col cols="12" sm="4">
-										<v-text-field label="验证 ID" placeholder="id"
-											v-model="systemConfig.lovecards.class.geetest.DefSetGeetestId" variant="underlined"
-											color="accent"></v-text-field>
+										<v-text-field label="验证 ID" placeholder="id" v-model="systemConfig.master.Geetest.Id"
+											variant="underlined" color="accent"></v-text-field>
 									</v-col>
 									<v-col cols="12" sm="4">
-										<v-text-field label="验证 Key" placeholder="key"
-											v-model="systemConfig.lovecards.class.geetest.DefSetGeetestKey" variant="underlined"
-											color="accent"></v-text-field>
+										<v-text-field label="验证 Key" placeholder="key" v-model="systemConfig.master.Geetest.Key"
+											variant="underlined" color="accent"></v-text-field>
 									</v-col>
 									<v-col cols="12" sm="4">
 										<v-select label="验证模块状态" item-title="title" item-value="value"
-											v-model="systemConfig.lovecards.class.geetest.DefSetValidatesStatus" subtitle="tip"
-											:items="ViewGeetestStatusItems" variant="underlined">
+											v-model="systemConfig.master.Geetest.Status" subtitle="tip" :items="ViewMasterSwitchItems"
+											variant="underlined">
 										</v-select>
 									</v-col>
 								</v-row>
@@ -81,7 +79,7 @@
 									<v-col cols="12">
 										<a class="text-accent mt-2 d-inline-block" href="https://forum.lovecards.cn/d/26"
 											style="text-decoration: none; ">不会配置？</a>
-										<v-btn class="float-right" color="accent">提交</v-btn>
+										<v-btn @click="setConfig()" class="float-right" color="accent">提交</v-btn>
 									</v-col>
 								</v-row>
 							</v-tabs-window-item>
@@ -151,7 +149,7 @@
 											color="accent"></v-text-field>
 									</v-col>
 									<v-col cols="12">
-										<v-btn class="float-right" color="accent">提交</v-btn>
+										<v-btn @click="setConfig()" class="float-right" color="accent">提交</v-btn>
 									</v-col>
 								</v-row>
 							</v-tabs-window-item>
@@ -165,12 +163,9 @@
 
 <script setup lang="ts">
 import SystemApi from '~/api/app/admin/system';
+import ApiCommonUtils from "@/api/utils/common";
 
 const ViewTab = ref('');
-const ViewGeetestStatusItems = [
-	{ title: "开启", value: 1 },
-	{ title: "关闭", value: 0 },
-]
 const ViewMasterSwitchItems = [
 	{ title: "开启", value: true },
 	{ title: "关闭", value: false },
@@ -187,11 +182,18 @@ const ViewMailSmtpSecurityItems = [
 ]
 
 const systemConfig = ref([] as any);
+const OriginSystemConfig = ref([] as any);
 const getConfig = () => {
 	SystemApi.getConfig().then((result) => {
-		systemConfig.value = result.data;
-		console.log(systemConfig.value);
+		systemConfig.value = ApiCommonUtils.deepClone(result.data);
+		OriginSystemConfig.value = ApiCommonUtils.deepClone(result.data);
 	})
+}
+
+const setConfig = () => {
+	//let params = ApiCommonUtils.removeCommonProperties(systemConfig.value, OriginSystemConfig.value);
+	console.log(systemConfig.value.master);
+	SystemApi.postConfig(systemConfig.value.master);
 }
 
 onMounted(() => {
