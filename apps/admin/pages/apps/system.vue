@@ -53,7 +53,7 @@
 								</v-row>
 								<v-row>
 									<v-col cols="12">
-										<v-btn class="float-right" color="accent">提交</v-btn>
+										<v-btn @click="setSite" class="float-right" color="accent">提交</v-btn>
 									</v-col>
 								</v-row>
 							</v-tabs-window-item>
@@ -79,7 +79,7 @@
 									<v-col cols="12">
 										<a class="text-accent mt-2 d-inline-block" href="https://forum.lovecards.cn/d/26"
 											style="text-decoration: none; ">不会配置？</a>
-										<v-btn @click="setConfig()" class="float-right" color="accent">提交</v-btn>
+										<v-btn @click="setConfig" class="float-right" color="accent">提交</v-btn>
 									</v-col>
 								</v-row>
 							</v-tabs-window-item>
@@ -119,7 +119,7 @@
 								</v-row>
 								<v-row>
 									<v-col cols="12">
-										<v-btn class="float-right" color="accent">提交</v-btn>
+										<v-btn @click="setEmail" class="float-right" color="accent">提交</v-btn>
 									</v-col>
 								</v-row>
 							</v-tabs-window-item>
@@ -149,7 +149,7 @@
 											color="accent"></v-text-field>
 									</v-col>
 									<v-col cols="12">
-										<v-btn @click="setConfig()" class="float-right" color="accent">提交</v-btn>
+										<v-btn @click="setConfig" class="float-right" color="accent">提交</v-btn>
 									</v-col>
 								</v-row>
 							</v-tabs-window-item>
@@ -192,8 +192,20 @@ const getConfig = () => {
 
 const setConfig = () => {
 	//let params = ApiCommonUtils.removeCommonProperties(systemConfig.value, OriginSystemConfig.value);
-	console.log(systemConfig.value.master);
+	//console.log(systemConfig.value.master);
 	SystemApi.postConfig(systemConfig.value.master);
+}
+
+const setEmail = () => {
+	let params = ApiCommonUtils.removeCommonProperties(systemConfig.value.mail, OriginSystemConfig.value.mail);
+	//console.log(params);
+	SystemApi.patchEmail(params);
+}
+
+const setSite = () => {
+	//let params = ApiCommonUtils.removeCommonProperties(systemConfig.value, OriginSystemConfig.value);
+	//console.log(systemConfig.value);
+	SystemApi.postSite(systemConfig.value.system);
 }
 
 onMounted(() => {

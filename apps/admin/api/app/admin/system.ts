@@ -10,10 +10,18 @@ const getConfig = () => {
 const postConfig = (params: any) => {
     return instance.post('/system/config', params);
 };
+const patchEmail = (params: any) => {
+    return instance.patch('/system/email', params);
+};
+const postSite = (params: any) => {
+    return instance.post('/system/site', params);
+};
 
 const SystemApi = {
     getConfig,
-    postConfig
+    postConfig,
+    patchEmail,
+    postSite
 };
 
 export default SystemApi;
