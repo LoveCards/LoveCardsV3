@@ -64,7 +64,7 @@
 					<v-list-item v-bind="props" prepend-icon="mdi-cog" title="设置"></v-list-item>
 				</template>
 				<v-list-item title="系统" value="system" to="/apps/system"></v-list-item>
-				<v-list-item title="外观" value="undefined"></v-list-item>
+				<v-list-item title="外观" value="undefined" to="/apps/view"></v-list-item>
 				<v-list-item title="更新" value="updata"></v-list-item>
 			</v-list-group>
 

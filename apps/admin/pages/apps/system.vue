@@ -77,8 +77,8 @@
 								</v-row>
 								<v-row>
 									<v-col cols="12">
-										<a class="text-accent mt-2 d-inline-block" href="https://forum.lovecards.cn/d/26"
-											style="text-decoration: none; ">不会配置？</a>
+										<a class="text-accent text-decoration-none mt-2 d-inline-block"
+											href="https://forum.lovecards.cn/d/26">不会配置？</a>
 										<v-btn @click="setConfig" class="float-right" color="accent">提交</v-btn>
 									</v-col>
 								</v-row>

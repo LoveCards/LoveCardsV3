@@ -3,7 +3,9 @@ import instance from "../../axios";
 // const APP_PATH = "/system/config";
 // const APP_PATH_ID = "/admin/tag";
 
-//获取列表
+const getThemes = () => {
+    return instance.get('/system/themes');
+};
 const getConfig = () => {
     return instance.get('/system/config');
 };
@@ -16,12 +18,17 @@ const patchEmail = (params: any) => {
 const postSite = (params: any) => {
     return instance.post('/system/site', params);
 };
+const postThemeConfig = (params: any) => {
+    return instance.post('/system/theme-config', params);
+};
 
 const SystemApi = {
     getConfig,
     postConfig,
     patchEmail,
-    postSite
+    postSite,
+    getThemes,
+    postThemeConfig
 };
 
 export default SystemApi;
