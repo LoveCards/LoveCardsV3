@@ -27,7 +27,8 @@
 					</v-card-text>
 					<v-card-actions class="float-right">
 						<v-btn v-if="!item.Status" @click="setTheme(item.DirectoryName)" class="bg-accent">设为主题</v-btn>
-						<v-btn v-if="item.Status && item.Config" @click="themeConfig(item.DirectoryName)" class="bg-green">配置主题</v-btn>
+						<v-btn v-if="item.Status && item.Config" @click="themeConfig(item.DirectoryName)"
+							class="bg-green">配置主题</v-btn>
 					</v-card-actions>
 				</v-card>
 			</v-col>
@@ -46,9 +47,9 @@ const getThemes = () => {
 }
 const setTheme = (DirectoryName: any) => {
 	const params = {
-		ThemeDirectory: DirectoryName
+		dir: DirectoryName
 	};
-	SystemApi.postConfig(params).then(() => {
+	SystemApi.postSetTheme(params).then(() => {
 		getThemes();
 	});
 }

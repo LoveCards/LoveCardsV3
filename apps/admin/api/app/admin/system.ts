@@ -21,6 +21,9 @@ const postSite = (params: any) => {
 const postThemeConfig = (params: any) => {
     return instance.post('/system/theme-config', params);
 };
+const postSetTheme = (params: any) => {
+    return instance.post('/system/set-theme', params);
+};
 
 const SystemApi = {
     getConfig,
@@ -28,7 +31,8 @@ const SystemApi = {
     patchEmail,
     postSite,
     getThemes,
-    postThemeConfig
+    postThemeConfig,
+    postSetTheme
 };
 
 export default SystemApi;
