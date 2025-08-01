@@ -48,7 +48,8 @@
 		<v-list density="compact" color="accent" nav>
 			<v-list-item prepend-icon="mdi-view-dashboard" title="总览" value="overview" to="/apps/dashboard"></v-list-item>
 
-			<v-list-item prepend-icon="mdi-account-multiple" title="用户" value="users" to="/apps/users"></v-list-item>
+			<v-list-item prepend-icon="mdi-account-multiple" title="用户" value="users" to="/apps/users"
+				v-if="superAdminStatus"></v-list-item>
 
 			<v-list-group value="apps">
 				<template v-slot:activator="{ props }">
@@ -59,7 +60,7 @@
 				<v-list-item title="标签" value="tags" to="/apps/tags"></v-list-item>
 			</v-list-group>
 
-			<v-list-group value="settings">
+			<v-list-group value="settings" v-if="superAdminStatus">
 				<template v-slot:activator="{ props }">
 					<v-list-item v-bind="props" title="设置">
 						<template v-slot:prepend>
@@ -111,10 +112,11 @@ const containerWidth = computed(() => (mobile.value ? undefined : '82%'));
 const drawerDefault = mobile.value ? false : true
 
 //获取用户信息
+const superAdminStatus = ref(false);
 const userInfo = ref({} as any);
-const setUserInfo = () => {
-	//await userStore.init();
+const setUserInfo = async () => {
 	userInfo.value = userStore.userInfo;
+	superAdminStatus.value = JSON.parse(userInfo.value.roles_id).includes(0) ? true : false;
 }
 
 //抽屉栏控制

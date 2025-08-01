@@ -15,7 +15,6 @@ export const useSystemStore = defineStore('system', {
             try {
                 const response = await SystemApi.getUpdata();
                 this.updata = response.data;
-                console.log(response.data);
 
             } catch (err) {
                 console.error('获取系统更新失败:', err);

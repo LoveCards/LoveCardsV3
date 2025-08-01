@@ -6,7 +6,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     const errorStore = useErrorStore();
     const userStore = useUserStore();
 
-    //跳过鉴权
+    //无需鉴权跳过
     if (!to.path.startsWith('/apps')) return;
 
     await userStore.init(); //初始化用户信息
