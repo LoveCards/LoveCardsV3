@@ -24,6 +24,10 @@ const postThemeConfig = (params: any) => {
 const postSetTheme = (params: any) => {
     return instance.post('/system/set-theme', params);
 };
+const getUpdata = () => {
+    return instance.get('/system/updata');
+};
+
 
 const SystemApi = {
     getConfig,
@@ -32,7 +36,8 @@ const SystemApi = {
     postSite,
     getThemes,
     postThemeConfig,
-    postSetTheme
+    postSetTheme,
+    getUpdata
 };
 
 export default SystemApi;

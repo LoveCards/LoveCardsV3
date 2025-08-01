@@ -61,11 +61,22 @@
 
 			<v-list-group value="settings">
 				<template v-slot:activator="{ props }">
-					<v-list-item v-bind="props" prepend-icon="mdi-cog" title="设置"></v-list-item>
+					<v-list-item v-bind="props" title="设置">
+						<template v-slot:prepend>
+							<v-badge v-if="updataStatus" bordered location="top right" color="accent" dot>
+								<v-icon>mdi-cog</v-icon>
+							</v-badge>
+							<v-icon v-if="!updataStatus">mdi-cog</v-icon>
+						</template>
+					</v-list-item>
 				</template>
 				<v-list-item title="系统" value="system" to="/apps/system"></v-list-item>
 				<v-list-item title="外观" value="undefined" to="/apps/view"></v-list-item>
-				<v-list-item title="更新" value="updata"></v-list-item>
+				<v-list-item title="更新" value="updata" to="/apps/updata">
+					<template v-if="updataStatus" v-slot:append>
+						<v-badge color="accent" content="新版本" inline></v-badge>
+					</template>
+				</v-list-item>
 			</v-list-group>
 
 			<v-divider></v-divider>
@@ -88,6 +99,7 @@
 <script setup lang="ts">
 import ApiMonitorNotifier from '~/components/public/ApiMonitorNotifier.vue';
 import { useUserStore } from '~/stores/userStore';
+import { useSystemStore } from '~/stores/api/admin/systemStore';
 //import { useTheme,useDisplay } from 'vuetify'
 const theme = useTheme();
 const { mobile } = useDisplay();
@@ -115,6 +127,18 @@ const toggleDrawer = () => {
 const goHome = () => {
 	window.location.href = '/';
 }
+
+//版本更新提示
+const systemStore = useSystemStore();
+const updataStatus = computed(() => {
+	const updata = systemStore.updata as any;
+	if (updata == null) {
+		return false;
+	}
+	const result = ('v' + updata.ver.VerS) < updata.latest.tag_name ? true : false;
+	return result;
+});
+
 
 //页面初始化
 onMounted(() => {

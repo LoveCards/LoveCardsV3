@@ -80,7 +80,6 @@ const setThemeConfig = () => {
 		select: JSON.stringify(data.value.Select),
 		text: JSON.stringify(data.value.Text)
 	};
-	console.log(data.value);
 	SystemApi.postThemeConfig(params).then(() => {
 		getThemes();
 	});

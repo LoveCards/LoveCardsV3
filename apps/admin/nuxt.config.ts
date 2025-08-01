@@ -1,7 +1,10 @@
 // nuxt.config.ts
 export default defineNuxtConfig({
     app: {
-        baseURL: '/admin'
+        baseURL: '/admin',
+        head: {
+            title: 'LoveCards Admin',
+        }
     },
     nitro: {
         devProxy: {
