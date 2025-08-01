@@ -148,6 +148,25 @@
 											v-model="systemConfig.master.Upload.UserImageExt" variant="underlined"
 											color="accent"></v-text-field>
 									</v-col>
+									<v-col cols="12" sm="6">
+										<v-number-input :reverse="false" controlVariant="split" label="卡片图集上限" :hideInput="false"
+											:inset="false" v-model="systemConfig.master.Cards.PictureLimit"></v-number-input>
+									</v-col>
+									<v-col cols="12" sm="6">
+										<v-number-input :reverse="false" controlVariant="split" label="卡片标签上限" :hideInput="false"
+											:inset="false" v-model="systemConfig.master.Cards.TagLimit"></v-number-input>
+									</v-col>
+									<v-col cols="12" sm="6">
+										<v-select label="卡片审核" item-title="title" item-value="value" subtitle="tip"
+											:items="ViewMasterSwitchItems" v-model="systemConfig.master.Cards.Approve" variant="underlined">
+										</v-select>
+									</v-col>
+									<v-col cols="12" sm="6">
+										<v-select label="评论审核" item-title="title" item-value="value" subtitle="tip"
+											:items="ViewMasterSwitchItems" v-model="systemConfig.master.Comments.Approve"
+											variant="underlined">
+										</v-select>
+									</v-col>
 									<v-col cols="12">
 										<v-btn @click="setConfig" class="float-right" color="accent">提交</v-btn>
 									</v-col>
@@ -193,19 +212,25 @@ const getConfig = () => {
 const setConfig = () => {
 	//let params = ApiCommonUtils.removeCommonProperties(systemConfig.value, OriginSystemConfig.value);
 	//console.log(systemConfig.value.master);
-	SystemApi.postConfig(systemConfig.value.master);
+	SystemApi.postConfig(systemConfig.value.master).then(() => {
+		getConfig();
+	});
 }
 
 const setEmail = () => {
 	let params = ApiCommonUtils.removeCommonProperties(systemConfig.value.mail, OriginSystemConfig.value.mail);
 	//console.log(params);
-	SystemApi.patchEmail(params);
+	SystemApi.patchEmail(params).then(() => {
+		getConfig();
+	});
 }
 
 const setSite = () => {
 	//let params = ApiCommonUtils.removeCommonProperties(systemConfig.value, OriginSystemConfig.value);
 	//console.log(systemConfig.value);
-	SystemApi.postSite(systemConfig.value.system);
+	SystemApi.postSite(systemConfig.value.system).then(() => {
+		getConfig();
+	});
 }
 
 onMounted(() => {
