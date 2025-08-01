@@ -73,8 +73,8 @@
 									<div class="text-subtitle-1">2.3.2</div>
 								</v-col>
 							</v-row> -->
-						<v-list-item title="LoveCards" subtitle="2.3.2"
-							prepend-avatar="http://192.168.3.142:7001/view/admin/assets/img/lcl.png">
+						<v-list-item :title="dashboard.ver.Name" :subtitle="dashboard.ver.VerS"
+							prepend-avatar="~/assets/images/logo.png">
 						</v-list-item>
 					</v-card-text>
 
@@ -93,13 +93,13 @@
 							</template>
 							<v-list-item-title>论坛</v-list-item-title>
 						</v-list-item>
-						<v-list-item href="https://github.com/LoveCards/LoveCardsV2" target="_blank">
+						<v-list-item :href="dashboard.ver.GithubUrl" target="_blank">
 							<template v-slot:prepend>
 								<v-icon>mdi-github</v-icon>
 							</template>
 							<v-list-item-title>Github</v-list-item-title>
 						</v-list-item>
-						<v-list-item href="https://jq.qq.com/?_wv=1027&k=qM8f2RMg" target="_blank">
+						<v-list-item :href="dashboard.ver.QGroupUrl" target="_blank">
 							<template v-slot:prepend>
 								<v-icon>mdi-qqchat</v-icon>
 							</template>
@@ -113,8 +113,12 @@
 			<v-col cols="12" sm="8">
 				<v-card>
 					<v-list lines="three">
-						<v-list-item title="更新通知" subtitle="LoveCards2.3.2[19]修复2.3.1版本多处BUG并优化细节，更新登入后自动填写评论名"
-							prepend-avatar="http://192.168.3.142:7001/view/admin/assets/img/lcl.png">
+						<v-list-item v-for="(item, index) in dashboard.notice" :title="item.title" :href="item.url" target="_blank"
+							prepend-avatar="~/assets/images/logo.png">
+							<v-list-item-subtitle>
+								{{ item.content }}
+								<br><small class="text-grey">{{ item.date }}</small>
+							</v-list-item-subtitle>
 						</v-list-item>
 					</v-list>
 				</v-card>
