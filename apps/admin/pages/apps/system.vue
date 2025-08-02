@@ -127,7 +127,7 @@
 							<v-tabs-window-item value="tab4">
 								<v-row dense>
 									<v-col cols="12" sm="6">
-										<v-select label="游客模式" item-title="title" item-value="value" subtitle="tip"
+										<v-select label="访客模式" item-title="title" item-value="value" subtitle="tip"
 											:items="ViewMasterSwitchItems" v-model="systemConfig.master.System.VisitorMode"
 											variant="underlined">
 										</v-select>
