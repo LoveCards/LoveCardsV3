@@ -1,0 +1,45 @@
+name: releases # 保持原名，也可改成 build-reusable
+
+on:
+    # 允许下游仓库调用
+    workflow_call:
+
+jobs:
+    Releases:
+        runs-on: ubuntu-latest
+
+        steps:
+            # 1. 拉取前端源码（含完整历史）
+            - name: 🏡拉取代码
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            # 2. 安装 Node 并缓存
+            - name: 🔧设置 Node 环境
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: npm
+
+            # 3. 安装依赖 & 构建
+            - name: 📦安装依赖
+              run: npm ci
+
+            - name: 🏗️Nuxt3 打包
+              run: npm run generate
+
+            # 4. 统一目录名并压缩
+            - name: 🗜️压缩为 zip
+              run: |
+                  mv ./dist ./admin
+                  zip -r admin.zip ./admin
+
+            # 5. ✅ 上传 artifact（固定名字，供下游 download-artifact）
+            - name: 📤上传 artifact
+              id: upload
+              uses: actions/upload-artifact@v4
+              with:
+                  name: admin # 下游用这个名字下载
+                  path: admin.zip
+                  retention-days: 1 # 下游立刻拿，1 天足够
