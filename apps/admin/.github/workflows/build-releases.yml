@@ -7,7 +7,7 @@ on:
     workflow_dispatch: # 也可手动触发
 
 jobs:
-    Releases:
+    Build_Release:
         runs-on: ubuntu-latest
 
         steps:
