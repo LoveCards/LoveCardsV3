@@ -13,6 +13,7 @@ jobs:
             - name: 🏡拉取代码
               uses: actions/checkout@v4
               with:
+                  repository: LoveCards/v2_frontend_admin # 强制拉上游仓库
                   fetch-depth: 0
 
             # 2. 安装 Node 并缓存

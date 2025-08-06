@@ -40,7 +40,7 @@ jobs:
             - name: 🗜️压缩为 zip
               run: |
                   mv ./dist ./admin
-                  zip -r admin-${{ GITHUB.REF_name }}.zip ./admin
+                  zip -r admin.zip ./admin
 
             # 6. 创建 GitHub Release 并上传附件
             - name: 🎅创建发布并上传压缩包
@@ -52,7 +52,7 @@ jobs:
                   draft: false
                   prerelease: true
                   files: |
-                      admin-${{ GITHUB.REF_name }}.zip
+                      admin.zip
                       LICENSE
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
