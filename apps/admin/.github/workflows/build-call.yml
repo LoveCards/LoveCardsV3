@@ -36,7 +36,7 @@ jobs:
                   mv ./dist ./admin
                   zip -r admin.zip ./admin
 
-            # 5. ✅ 上传 artifact（固定名字，供下游 download-artifact）
+            # 5. 上传 artifact（固定名字，供下游 download-artifact）
             - name: 📤上传 artifact
               id: upload
               uses: actions/upload-artifact@v4
