@@ -1,3 +1,5 @@
+name: build-call.yml
+
 on:
     # 允许下游仓库调用
     workflow_call:

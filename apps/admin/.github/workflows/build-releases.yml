@@ -1,3 +1,5 @@
+name: build-releases.yml
+
 on:
     push:
         tags:
