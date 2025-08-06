@@ -1,4 +1,4 @@
-name: build-releases.yml
+name: build-releases
 
 on:
     push:

@@ -1,4 +1,4 @@
-name: build-call.yml
+name: build-call
 
 on:
     # 允许下游仓库调用
