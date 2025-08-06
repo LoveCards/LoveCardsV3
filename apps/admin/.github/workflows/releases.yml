@@ -1,0 +1,58 @@
+name: releases
+
+on:
+    push:
+        tags:
+            - "v*.*.*" # 推送形如 v1.2.3 的 tag 时触发
+    workflow_dispatch: # 也可手动触发
+
+jobs:
+    Releases:
+        runs-on: ubuntu-latest
+
+        steps:
+            # 1. 拉取前端源码（含完整历史，方便 git log）
+            - name: 🏡拉取代码
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            # 2. 提取纯版本号（把 refs/tags/v1.2.3 → 1.2.3）
+            # - name: ✍️提取标签名称
+            #   id: extract_tag
+            #   run: echo "tag=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+            # 3. 安装 Node 并缓存 npm 依赖
+            - name: 🔧设置 Node 环境
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20 # 按需改版本
+                  cache: npm
+
+            # 4. 安装依赖 & 构建
+            - name: 📦安装依赖
+              run: npm ci
+
+            - name: 🏗️Nuxt3 打包
+              run: npm run generate
+
+            # 5. 把构建结果压缩
+            - name: 🗜️压缩为 zip
+              run: |
+                  mv ./dist ./admin
+                  zip -r admin-${{ GITHUB.REF_name }}.zip ./admin
+
+            # 6. 创建 GitHub Release 并上传附件
+            - name: 🎅创建发布并上传压缩包
+              uses: softprops/action-gh-release@v1
+              with:
+                  tag_name: ${{ GITHUB.REF_name }}
+                  name: ${{ GITHUB.REF_name }}
+                  body_path: RELEASE.txt
+                  draft: false
+                  prerelease: true
+                  files: |
+                      admin-${{ GITHUB.REF_name }}.zip
+                      LICENSE
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
