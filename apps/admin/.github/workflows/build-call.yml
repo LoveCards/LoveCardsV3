@@ -1,5 +1,3 @@
-name: releases # 保持原名，也可改成 build-reusable
-
 on:
     # 允许下游仓库调用
     workflow_call:
