@@ -6,6 +6,11 @@ export default defineNuxtConfig({
             title: 'LoveCards Admin',
         }
     },
+    runtimeConfig: {
+        public: {
+            gitSha: 'localdev'
+        }
+    },
     nitro: {
         devProxy: {
             "/api": {

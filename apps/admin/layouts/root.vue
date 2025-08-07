@@ -93,8 +93,13 @@
 		<v-container :max-width="containerWidth" fluid>
 			<slot />
 		</v-container>
+		<v-footer class="d-flex align-center justify-center ga-2 flex-wrap flex-grow-1 py-3 mt-6">
+			© 2025 <a href="https://lovecards.cn" class="text-decoration-none text-accent">LoveCards</a>.
+			GPL-3.0 license — Crafted by <a href="https://github.com/zhiguai"
+				class="text-decoration-none text-accent">吃纸怪</a>.
+			{{ $config.public.gitSha }}
+		</v-footer>
 	</v-main>
-
 </template>
 
 <script setup lang="ts">

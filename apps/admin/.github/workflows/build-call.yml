@@ -28,7 +28,10 @@ jobs:
               run: npm ci
 
             - name: 🏗️Nuxt3 打包
-              run: npm run generate
+              run:
+                  # 将sha传入打包
+                  export NUXT_PUBLIC_GIT_SHA="${GITHUB_SHA:0:7}"
+                  npm run generate
 
             # 4. 统一目录名并压缩
             - name: 🗜️压缩为 zip
