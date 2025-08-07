@@ -134,7 +134,7 @@
     v-model:batchOptions="BatchTagDialog_operate" :batchFun="BatchCardFun"></PublicBatchDialog>
   <!-- 搜索对话框 -->
   <PublicSearchDialog v-model:thisDialogState="SearchTagsDialog_state" :KEYS="SearchKeys"
-    :setFilter="setTableSearchFilter" :getTableData="getTableData" KeysMessages="默认[内容]"></PublicSearchDialog>
+    :setFilter="setTableSearchFilter" :getTableData="getTableData" KeysMessages="默认[标签名]"></PublicSearchDialog>
 </template>
 
 <script setup lang="ts">
