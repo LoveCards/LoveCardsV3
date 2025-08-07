@@ -3,6 +3,8 @@ name: build-call
 on:
     # 允许下游仓库调用
     workflow_call:
+    # 也可手动触发
+    workflow_dispatch:
 
 jobs:
     Build:
