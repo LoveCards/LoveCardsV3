@@ -33,9 +33,9 @@ jobs:
             - name: 📦安装依赖
               run: npm ci
 
+              # 打包并插入变量
             - name: 🏗️Nuxt3 打包
-              run:
-                  # 将sha传入打包
+              run: |
                   export NUXT_PUBLIC_GIT_SHA="${GITHUB_SHA:0:7}"
                   npm run generate
 
