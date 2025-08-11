@@ -8,6 +8,7 @@ on:
 
 jobs:
     Build:
+        name: 📦打包 前端
         runs-on: ubuntu-latest
 
         steps:
