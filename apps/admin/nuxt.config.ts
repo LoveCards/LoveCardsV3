@@ -24,11 +24,17 @@ export default defineNuxtConfig({
     compatibilityDate: "2024-11-01",
     devtools: { enabled: true },
     modules: [// 直接使用模块名称
-        'vuetify-nuxt-module',
-        'vuetify-notifier/nuxt',
-        '@pinia/nuxt',
-        "vuetify-notifier"
-    ],
+        'vuetify-nuxt-module', 'vuetify-notifier/nuxt', '@pinia/nuxt', "vuetify-notifier", "@nuxt/scripts"],
+    scripts: {
+        registry: {
+            matomoAnalytics: {
+                matomoUrl: 'https://matomo.fatda.cn',
+                siteId: '9',
+                trackPageView: true,
+                enableLinkTracking: true,
+            }
+        }
+    },
     notifier: {
         /* module specific options */
         position: 'bottom-right', // 可选配置项

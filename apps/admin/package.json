@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
+    "@nuxt/scripts": "^0.11.10",
     "@pinia/nuxt": "^0.11.2",
+    "@unhead/vue": "^2.0.14",
     "axios": "^1.11.0",
     "chart.js": "^4.5.0",
     "defu": "^6.1.4",
