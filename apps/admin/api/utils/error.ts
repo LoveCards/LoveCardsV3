@@ -5,6 +5,15 @@ const common = (error: AxiosError) => {
     let detail = '';
 
     //console.log(error.response);
+    //客户端级别错误
+    // if (!error.response) {
+    //     const text = `${error.code}: ${error.message}`;
+    //     return text;
+    // }
+    if (error.code = 'ECONNABORTED') {
+        const text = `请求超时`;
+        return text;
+    }
 
     //ThinkPHP框架级错误处理
     if (error.response?.data.code) {

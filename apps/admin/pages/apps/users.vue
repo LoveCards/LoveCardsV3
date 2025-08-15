@@ -191,6 +191,7 @@ const UserRoles = [
   { title: "#0 超级管理员", value: 0 },
   { title: "#1 管理员", value: 1 },
   { title: "#2 用户", value: 2 },
+  { title: "#3 游客", value: 3 },
 ];
 //渲染用户标签数据预处理
 const renderUserRoles = (roles_id: any) => {

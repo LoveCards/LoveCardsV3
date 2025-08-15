@@ -2,7 +2,7 @@ import type { AxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
 import { useApiMonitorStore } from '~/stores/apiMonitorStore';
 
 /**
- * API监控系统
+ * API请求记录
  * 用于监控和记录API请求、响应和错误信息
  * 
  * 使用方法：
@@ -103,7 +103,7 @@ const error = (error: AxiosError) => {
     //console.log('错误拦截器监控', error);
     if (!errorState) { return; }
     if (!getMethodState.error) {
-        if (error.config.method === 'get') {
+        if (error.config && error.config.method === 'get') {
             return;
         }
     }
