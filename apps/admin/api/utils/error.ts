@@ -11,7 +11,7 @@ const common = (error: unknown) => {
     //     return text;
     // }
     if (error instanceof AxiosError) {
-        if (error.code = 'ECONNABORTED') {
+        if (error.code == 'ECONNABORTED') {
             const text = `请求超时`;
             return text;
         }

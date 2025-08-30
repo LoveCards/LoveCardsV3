@@ -126,7 +126,7 @@
                     :value="index">
                     <v-list-item-title @click="tableListRows = item.value">{{
                       item.title
-                    }}</v-list-item-title>
+                      }}</v-list-item-title>
                   </v-list-item>
                 </v-list>
               </v-menu>
@@ -252,7 +252,7 @@ const openEditCardDialog = (data: any) => {
 
 //DeleteDialog组件
 const DeleteCardFun = (id: any) => {
-  CardsApi.deleteCard(id).then(() => {
+  CardsApi.deleteCard({ id: id }).then(() => {
     DeleteCardDialog_state.value = false;
     getTableData();
   });
