@@ -39,7 +39,9 @@ instance.interceptors.response.use(
         return response;
     },
     function (error) {
-        ApiMonitor.error(error);
+        if (error.status != 404) {
+            ApiMonitor.error(error);
+        }
         // 超出 2xx 范围的状态码都会触发该函数。
         // 对响应错误做点什么
         return Promise.reject(error);

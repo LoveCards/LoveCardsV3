@@ -33,7 +33,7 @@
 					</v-col>
 
 					<v-col cols="12" sm="3">
-						<v-text-field label="喜欢" v-model="CardData.edit.goods" variant="underlined" color="accent"
+						<v-text-field label="喜欢" v-model="CardData.edit.good" variant="underlined" color="accent"
 							readonly></v-text-field>
 					</v-col>
 					<v-col cols="12" sm="3">
