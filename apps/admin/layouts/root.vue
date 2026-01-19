@@ -121,7 +121,7 @@ const superAdminStatus = ref(false);
 const userInfo = ref({} as any);
 const setUserInfo = async () => {
 	userInfo.value = userStore.userInfo;
-	superAdminStatus.value = JSON.parse(userInfo.value.roles_id).includes(0) ? true : false;
+	superAdminStatus.value = JSON.parse(userInfo.value.roles_id).includes(1) ? true : false;
 }
 
 //抽屉栏控制
