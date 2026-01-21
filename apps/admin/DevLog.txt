@@ -1,3 +1,85 @@
+
+🐞 fix: 修复中间件命名错误
+修复中间件文件名拼写错误，提升代码可读性。
+主要变更：
+- 重命名 middleware/02.intiStore.global.ts → 02.initStore.global.ts
+  * 修正拼写错误（intiStore → initStore）
+  * Nuxt会自动识别中间件文件，无需手动更新引用
+改进效果：
+- ✅ 修复拼写错误，提升代码可读性
+- ✅ 符合命名规范
+
+✨ feat: 统一Store错误处理，提升代码质量和用户体验
+统一所有Store的错误处理方式，添加加载状态管理，提升用户体验和代码可维护性。
+主要变更：
+1. 统一Store错误处理模式
+   - 所有Store添加统一的错误处理流程
+   - 使用 ErrorUtils.parse() 解析错误
+   - 使用 showErrorNotification() 显示用户友好的错误提示
+   - 添加 loading 和 error 状态管理
+   - 在 finally 中重置 loading 状态
+   - 在控制台记录错误（便于调试）
+2. 更新 stores/userStore.ts
+   - 添加 loading 和 error 状态
+   - 错误时显示通知并抛出错误
+   - 防止重复加载（检查 loading 状态）
+3. 更新 stores/dashboardStore.ts
+   - 添加 loading 和 error 状态
+   - 错误时显示友好的错误通知
+   - 修复注释中的错别字（"仪仪表盘" → "仪表盘"）
+4. 更新 stores/tagsStore.ts
+   - 添加 loading 和 error 状态
+   - 错误时显示通知并抛出错误
+   - 防止重复加载
+5. 更新 stores/api/admin/systemStore.ts
+   - 添加 loading 和 error 状态
+   - 定义 UpdataInfo 接口类型，提供类型安全
+   - 系统更新信息获取失败时静默处理（不影响使用）
+   - 只在控制台记录错误，不显示通知
+6. 修复 pages/apps/updata.vue
+   - 修复空值访问错误（Cannot read properties of null）
+   - 使用 computed 替代 ref，自动响应Store变化
+   - 添加完整的加载、错误、无数据状态处理
+   - 使用 UpdataInfo 类型，修复所有TypeScript类型错误
+   - 添加空值检查和可选链操作符
+   - 添加刷新功能
+改进效果：
+- ✅ 统一性：所有Store使用相同的错误处理模式
+- ✅ 用户体验：错误时自动显示友好的错误提示
+- ✅ 可维护性：代码结构一致，易于理解和维护
+- ✅ 类型安全：完整的TypeScript类型定义
+- ✅ 调试友好：控制台记录详细错误信息
+- ✅ 防止重复请求：通过 loading 状态管理
+- ✅ 修复运行时错误：解决空值访问问题
+
+✨ feat: 修复中间件命名错误并统一Store错误处理
+本次更新包含两个改进：
+1. 修复中间件命名错误
+2. 统一Store错误处理，提升代码质量和用户体验
+主要变更：
+1. 修复中间件命名错误
+   - 重命名 middleware/02.intiStore.global.ts → 02.initStore.global.ts
+2. 统一Store错误处理
+   - 所有Store添加统一的错误处理流程
+   - 添加 loading 和 error 状态管理
+   - 使用 ErrorUtils 和 showErrorNotification 统一处理错误
+   - 更新 stores/userStore.ts
+   - 更新 stores/dashboardStore.ts
+   - 更新 stores/tagsStore.ts
+   - 更新 stores/api/admin/systemStore.ts
+     * 定义 UpdataInfo 接口类型
+3. 修复 pages/apps/updata.vue
+   - 修复空值访问错误
+   - 使用 computed 自动响应Store变化
+   - 添加完整的状态处理
+   - 修复所有TypeScript类型错误
+改进效果：
+- ✅ 修复拼写错误，提升代码可读性
+- ✅ 统一错误处理，提升代码质量
+- ✅ 改善用户体验，自动显示错误提示
+- ✅ 提升类型安全性
+- ✅ 修复运行时错误
+
 ✨ feat: 优化API监控Store，防止内存泄漏
 解决API监控Store可能的内存泄漏问题，添加自动清理机制。
 主要变更：
