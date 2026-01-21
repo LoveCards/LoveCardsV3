@@ -1,7 +1,5 @@
 ✨ feat: 完善错误处理机制，实现统一错误通知系统
-
 本次更新实现了完善的错误处理机制，提升了用户体验和代码可维护性。
-
 主要变更：
 - 改进错误工具类 (api/utils/error.ts)
   * 新增 ErrorDetail 接口，定义错误详情结构
@@ -12,21 +10,17 @@
     - LC 级错误处理
     - 未知错误类型处理
   * 保留 common() 方法以保持向后兼容
-
 - 新增通知工具 (api/utils/notifier.ts)
   * showErrorNotification() - 错误通知
   * showSuccessNotification() - 成功通知
   * showInfoNotification() - 信息通知
   * showWarningNotification() - 警告通知
-
 - 新增通知 Store (stores/notificationStore.ts)
   * 实现通知队列管理
   * 支持添加、移除、清空通知操作
-
 - 新增通知组件 (components/public/NotificationNotifier.vue)
   * 监听通知 Store 变化
   * 自动显示通知并管理生命周期
-
 - 更新 Axios 拦截器 (api/axios.ts)
   * 集成统一错误处理逻辑
   * 根据错误类型自动显示相应通知：
@@ -36,6 +30,7 @@
     - 网络错误: 连接失败提示
     - 其他错误: 使用解析后的错误消息
   * 保持 API 监控功能不变
+	* 超时时间1s改为3s
 
 🎈 perf: 适配权限模块
 dev-ai b95c04f

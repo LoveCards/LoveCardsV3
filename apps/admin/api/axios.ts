@@ -1,3 +1,9 @@
+/*
+ * @Description: 
+ * @Author: github.com/zhiguai
+ * @Date: 2025-03-23 11:58:24
+ * @Email: 2903074366@qq.com
+ */
 import axios from "axios";
 import type { AxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
 import Cookies from "./utils/cookie";
@@ -8,7 +14,7 @@ import { showErrorNotification } from "./utils/notifier";
 //实例化 基础配置
 const instance = axios.create({
     baseURL: "/api",
-    timeout: 1000,
+    timeout: 3000,
     headers: {},
 });
 
