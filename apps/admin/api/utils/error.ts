@@ -88,12 +88,30 @@ const parseError = (error: unknown): ErrorDetail => {
 };
 
 /**
+ * 格式化错误消息，包含详细信息
+ * @param errorDetail 错误详情对象
+ * @returns 格式化后的错误消息字符串
+ */
+const formatErrorMessage = (errorDetail: ErrorDetail): string => {
+    let message = errorDetail.message;
+    
+    // 如果有详细信息，追加到消息中
+    if (errorDetail.details && Object.keys(errorDetail.details).length > 0) {
+        const detailMessages = Object.values(errorDetail.details).join(' ');
+        message = `${message}：${detailMessages}`;
+    }
+    
+    return message;
+};
+
+/**
  * 通用错误处理 - 返回错误消息字符串
  * @param error 错误对象
- * @returns 错误消息字符串
+ * @returns 错误消息字符串（包含详细信息）
  */
 const common = (error: unknown): string => {
-    return parseError(error).message;
+    const errorDetail = parseError(error);
+    return formatErrorMessage(errorDetail);
 };
 
 const ErrorUtils = {

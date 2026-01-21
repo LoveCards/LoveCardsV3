@@ -1,12 +1,6 @@
-/*
- * @Description: 
- * @Author: github.com/zhiguai
- * @Date: 2025-03-23 11:58:24
- * @Email: 2903074366@qq.com
- */
 import axios from "axios";
 import type { AxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
-import Cookies from "./utils/cookie";
+import Cookies, { COOKIE_NAMES } from "./utils/cookie";
 import ApiMonitor from "./interceptors/monitor";
 import ErrorUtils from "./utils/error";
 import { showErrorNotification } from "./utils/notifier";
@@ -26,7 +20,7 @@ instance.interceptors.request.use(
         // 读取Token并添加到请求头
         config.headers[
             "authorization"
-        ] = `Bearer ` + Cookies.getCookie("UTOKEN");
+        ] = `Bearer ` + Cookies.getCookie(COOKIE_NAMES.USER_TOKEN);
 
         //console.log(config.headers);
         return config;
@@ -55,6 +49,14 @@ instance.interceptors.response.use(
         // 统一错误处理
         const errorDetail = ErrorUtils.parse(error);
         
+        // 格式化错误消息（包含详细信息）
+        let errorMessage = errorDetail.message;
+        if (errorDetail.details && Object.keys(errorDetail.details).length > 0) {
+            // 如果有详细信息，将详细信息追加到消息中
+            const detailMessages = Object.values(errorDetail.details).join('；');
+            errorMessage = `${errorMessage}：${detailMessages}`;
+        }
+        
         // 根据错误类型进行不同处理
         if (error.response?.status === 401) {
             // Token过期或未授权
@@ -69,8 +71,8 @@ instance.interceptors.response.use(
             // 网络错误
             showErrorNotification('网络连接失败，请检查网络设置');
         } else {
-            // 其他错误，使用解析后的错误消息
-            showErrorNotification(errorDetail.message);
+            // 其他错误，使用格式化后的错误消息（包含详细信息）
+            showErrorNotification(errorMessage);
         }
 
         // 超出 2xx 范围的状态码都会触发该函数。

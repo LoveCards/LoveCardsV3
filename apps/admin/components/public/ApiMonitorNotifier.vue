@@ -5,8 +5,24 @@ import { useApiMonitorStore } from '~/stores/apiMonitorStore';
 import ErrorUtils from '~/api/utils/error';
 
 const notifier = useNotifier();
-
 const apiMonitorStore = useApiMonitorStore();
+
+// 定期清理过期记录（每10分钟清理一次）
+let cleanupInterval: NodeJS.Timeout | null = null;
+
+const startCleanupInterval = () => {
+    // 清理过期记录（超过1小时的记录）
+    cleanupInterval = setInterval(() => {
+        apiMonitorStore.clearExpired();
+    }, 600000); // 10分钟
+};
+
+const stopCleanupInterval = () => {
+    if (cleanupInterval) {
+        clearInterval(cleanupInterval);
+        cleanupInterval = null;
+    }
+};
 
 // 监听 store 中的 requests 变化
 watch(
@@ -95,4 +111,16 @@ watch(
   },
   { deep: true, immediate: false }
 );
+
+// 组件挂载时启动定期清理
+onMounted(() => {
+    startCleanupInterval();
+    // 立即清理一次过期记录
+    apiMonitorStore.clearExpired();
+});
+
+// 组件卸载时停止定期清理
+onUnmounted(() => {
+    stopCleanupInterval();
+});
 </script>
