@@ -7,6 +7,8 @@
 	<VNotifierContainer />
 	<!-- Api监控 -->
 	<ApiMonitorNotifier />
+	<!-- 统一错误通知 -->
+	<NotificationNotifier />
 
 	<!-- 系统栏 -->
 	<!-- <v-system-bar>
@@ -104,6 +106,7 @@
 
 <script setup lang="ts">
 import ApiMonitorNotifier from '~/components/public/ApiMonitorNotifier.vue';
+import NotificationNotifier from '~/components/public/NotificationNotifier.vue';
 import { useUserStore } from '~/stores/userStore';
 import { useSystemStore } from '~/stores/api/admin/systemStore';
 //import { useTheme,useDisplay } from 'vuetify'
