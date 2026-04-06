@@ -1,24 +1,37 @@
 import { useUserStore } from '~/stores/userStore';
 import { useErrorStore } from '~/stores/client/errorStore';
 import CommonUtils from '~/utils/common';
+import Cookies, { COOKIE_NAMES } from '~/api/utils/cookie';
 
 export default defineNuxtRouteMiddleware(async (to, from) => {
+    if (to.path.startsWith('/dev')) return;
+    if (to.path.startsWith('/client')) return;
+
+    const hasToken = Cookies.getCookie(COOKIE_NAMES.USER_TOKEN);
+    if (!hasToken) {
+        return navigateTo('/dev/login');
+    }
+
+    if (!to.path.startsWith('/apps')) return;
+
     const errorStore = useErrorStore();
     const userStore = useUserStore();
 
-    //无需鉴权跳过
-    if (!to.path.startsWith('/apps')) return;
+    try {
+        await userStore.init();
+    } catch (e) {
+        console.error("用户信息获取失败:", e);
+        return navigateTo('/dev/login');
+    }
 
-    await userStore.init(); //初始化用户信息
     if (userStore.userInfo !== null) {
-        //console.log(userStore.userInfo);   // 获取用户信息
         const data: any = userStore.userInfo;
         const rolesId = JSON.parse(data.roles_id);
 
         if (rolesId.includes(0) || rolesId.includes(1)) {
-            console.log("通过."); // 用户有权限访问
+            console.log("通过.");
         } else {
-            console.log("无权限."); // 用户无权限，重定向到首页
+            console.log("无权限.");
             const viewData = {
                 message: "权限不足",
                 jumpBtn: {
@@ -31,15 +44,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
 
         }
     } else {
-        console.error("用户信息获取失败:",);
-        const viewData = {
-            message: "登入信息不存在",
-            jumpBtn: {
-                text: "返回首页",
-                clickFun: CommonUtils.jumpRoot
-            }
-        }
-        errorStore.setViewData(viewData);
-        return navigateTo('/client/error');
+        console.error("用户信息为空:");
+        return navigateTo('/dev/login');
     }
 });
