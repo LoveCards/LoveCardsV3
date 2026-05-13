@@ -27,7 +27,8 @@
 
 					<v-col cols="12" sm="9">
 						<v-select clearable chips label="权限组" item-title="title" item-value="value" v-model="roles_id"
-							:items="USER_ROLES" variant="underlined" color="accent" multiple></v-select>
+							:items="userRolesOptions" variant="underlined" color="accent" multiple
+							:loading="rolesLoading"></v-select>
 					</v-col>
 
 					<v-col cols="12" sm="6">
@@ -73,13 +74,13 @@
 <script setup lang="ts">
 import UserApi from "@/api/app/admin/users";
 import UploadApi from "@/api/app/upload";
+import RolesApi from "@/api/app/admin/roles";
 import CommonUtils from "@/api/utils/common";
 
 const notifier = useNotifier();
 
 //Props
 const props = defineProps({
-	USER_ROLES: Array,
 	ACCOUNT_STATUS: Array,
 	getTableData: Function,
 });
@@ -89,7 +90,22 @@ const getTableData = () => {
 	}
 };
 const ACCOUNT_STATUS = props.ACCOUNT_STATUS;
-const USER_ROLES = props.USER_ROLES;
+
+// 动态加载角色列表
+const userRolesOptions = ref<any[]>([]);
+const rolesLoading = ref(false);
+const loadRoles = () => {
+	rolesLoading.value = true;
+	RolesApi.getRoleIndex({ list_rows: 100 }).then((response) => {
+		const data = response.data;
+		userRolesOptions.value = (data.data || []).map((role: any) => ({
+			title: `#${role.id} ${role.name}`,
+			value: role.id,
+		}));
+	}).catch(() => {}).finally(() => {
+		rolesLoading.value = false;
+	});
+};
 
 //Model
 //对话框状态
@@ -100,6 +116,11 @@ interface EditUserData {
 	origin: any;
 }
 const editUserData = defineModel<EditUserData>('editUserData', { default: { edit: {}, origin: {} } });
+
+// 对话框打开时加载角色列表
+watch(thisDialogState, (val) => {
+	if (val) loadRoles();
+});
 //JSON解析计算属性
 const roles_id = computed({
 	get: () => {
@@ -129,17 +150,15 @@ const handleFileUpload = (e: Event) => {
 	if (!input.files?.length) return;
 
 	const file = input.files[0];
+	if (!file) return;
 
 	const data = {
 		file: file,
-		aid: 0,
-		pid: 0,
-		user_id: editUserData.value.edit.id,
+		scene: 'avatar',
 	};
 
-	UploadApi.postUserImages(data)
+	UploadApi.postUpload(data)
 		.then((response: any) => {
-			// 更新头像显示（假设接口返回新的头像路径）
 			editUserData.value.edit.avatar = response.data.url;
 		})
 		.finally(() => {

@@ -1,21 +1,21 @@
 import instance from "../axios";
-import type { Params } from "../types/upload";
 
 const APP_PATH = "/upload";
 
-const postUserImages = (data: Params.UserImages) => {
+const postUpload = (data: { file: File; scene?: string; ref_type?: string; ref_id?: number; is_public?: number }) => {
     const formData = new FormData();
 
     formData.append('file', data.file);
-    formData.append('user_id', data.user_id.toString());
-    formData.append('aid', data.aid.toString());
-    formData.append('pid', data.pid.toString());
+    if (data.scene) formData.append('scene', data.scene);
+    if (data.ref_type) formData.append('ref_type', data.ref_type);
+    if (data.ref_id !== undefined) formData.append('ref_id', data.ref_id.toString());
+    if (data.is_public !== undefined) formData.append('is_public', data.is_public.toString());
 
-    return instance.post(APP_PATH + "/user-images", formData);
+    return instance.post(APP_PATH + "/upload", formData);
 };
 
 const UploadApi = {
-    postUserImages
+    postUpload
 };
 
 export default UploadApi;

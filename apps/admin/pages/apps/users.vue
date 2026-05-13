@@ -132,7 +132,7 @@
 
   <!-- 编辑用户对话框 -->
   <EditUserDialog v-model:thisDialogState="EditUserDialog_state" v-model:editUserData="EditUserDialog_data"
-    :getTableData="getTableData" :ACCOUNT_STATUS="SelectUtils.User.status" :USER_ROLES="UserRoles"></EditUserDialog>
+    :getTableData="getTableData" :ACCOUNT_STATUS="SelectUtils.User.status"></EditUserDialog>
   <!-- 删除对话框 -->
   <PublicDeleteDialog v-model:thisDialogState="DeleteUserDialog_state" v-model:deleteData="DeleteUserDialog_data"
     :deleteFun="DeleteUserFun"></PublicDeleteDialog>

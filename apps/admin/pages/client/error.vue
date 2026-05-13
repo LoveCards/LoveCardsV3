@@ -21,7 +21,7 @@ const jump = () => {
 			return viewData.jumpBtn.clickFun();
 		}
 		if (viewData.jumpBtn.url) {
-			return navigateTo('viewData.jumpBtn.url');
+			return navigateTo(viewData.jumpBtn.url as string);
 		}
 	}
 }

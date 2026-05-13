@@ -217,11 +217,9 @@ const getCardImages = () => {
 const postUserImages = async (file: any) => {
 	const data = {
 		file: file,
-		aid: 0,
-		pid: 0,
-		user_id: CardData.value.edit.user_id,
+		scene: 'card',
 	};
-	return UploadApi.postUserImages(data).then((response) => {
+	return UploadApi.postUpload(data).then((response) => {
 		return response.data;
 	}).catch((error) => {
 		return false;

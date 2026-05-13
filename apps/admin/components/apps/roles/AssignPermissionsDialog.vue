@@ -1,0 +1,137 @@
+<template>
+	<v-dialog v-model="thisDialogState" max-width="900" scrollable>
+		<v-card prepend-icon="mdi-shield-key" title="分配权限">
+			<v-card-text>
+				<v-row dense v-if="loading">
+					<v-col cols="12" class="d-flex justify-center pa-4">
+						<v-progress-circular indeterminate color="accent"></v-progress-circular>
+					</v-col>
+				</v-row>
+				<template v-else>
+					<v-row dense class="mb-2">
+						<v-col cols="12" class="d-flex justify-end">
+							<v-btn size="x-small" variant="tonal" color="accent" @click="toggleSelectAll">
+								{{ isAllSelected ? '取消全选' : '全选' }}
+							</v-btn>
+						</v-col>
+					</v-row>
+					<v-divider class="mb-2"></v-divider>
+					<v-row dense>
+						<v-col cols="12" v-for="(group, path) in groupedPermissions" :key="path">
+							<div class="text-subtitle-2 mb-1 font-weight-bold" style="color: #3F51B5;">{{ path }}</div>
+							<div class="d-flex flex-wrap ga-2 mb-2">
+								<v-checkbox v-for="perm in group" :key="perm.id" v-model="selectedIds"
+									:value="perm.id" density="compact" hide-details color="accent">
+									<template v-slot:label>
+										<span class="text-caption">{{ perm.name }}</span>
+										<v-chip size="x-small" class="ml-1" :color="methodColor(perm.method)">
+											{{ perm.method }}
+										</v-chip>
+									</template>
+								</v-checkbox>
+							</div>
+							<v-divider class="mb-1"></v-divider>
+						</v-col>
+					</v-row>
+				</template>
+			</v-card-text>
+			<v-divider></v-divider>
+			<v-card-actions>
+				<v-spacer></v-spacer>
+				<v-btn color="accent" text="取消" variant="text" @click="thisDialogState = false"></v-btn>
+				<v-btn color="accent" text="保存" variant="flat" :loading="saving" @click="submit()"></v-btn>
+			</v-card-actions>
+		</v-card>
+	</v-dialog>
+</template>
+
+<script setup lang="ts">
+import RolesApi from "~/api/app/admin/roles";
+import PermissionsApi from "~/api/app/admin/permissions";
+
+const notifier = useNotifier();
+
+const props = defineProps({
+	getTableData: Function
+});
+const getTableData = () => {
+	if (props.getTableData) props.getTableData();
+};
+
+const thisDialogState = defineModel<boolean>('thisDialogState');
+const RoleId = defineModel<number>('RoleId');
+
+const loading = ref(false);
+const saving = ref(false);
+const allPermissions = ref<any[]>([]);
+const selectedIds = ref<number[]>([]);
+
+const groupedPermissions = computed(() => {
+	const groups: Record<string, any[]> = {};
+	allPermissions.value.forEach((p) => {
+		if (!groups[p.path]) {
+			groups[p.path] = [];
+		}
+		groups[p.path]!.push(p);
+	});
+	return groups;
+});
+
+const methodColor = (method: string) => {
+	const map: Record<string, string> = {
+		GET: 'green', POST: 'blue', PATCH: 'orange', PUT: 'amber',
+		DELETE: 'red', '*': 'grey',
+	};
+	return map[method] || 'grey';
+};
+
+const isAllSelected = computed(() => {
+	return allPermissions.value.length > 0 && selectedIds.value.length === allPermissions.value.length;
+});
+
+const toggleSelectAll = () => {
+	if (isAllSelected.value) {
+		selectedIds.value = [];
+	} else {
+		selectedIds.value = allPermissions.value.map((p) => p.id);
+	}
+};
+
+const submit = () => {
+	if (!RoleId.value) return;
+	saving.value = true;
+	RolesApi.assignPermissions({
+		id: RoleId.value,
+		permission_ids: JSON.stringify(selectedIds.value),
+	}).then(() => {
+		thisDialogState.value = false;
+		notifier.toast({ type: 'success', text: '权限分配成功' });
+		getTableData();
+	}).catch(() => {}).finally(() => {
+		saving.value = false;
+	});
+};
+
+watch(thisDialogState, async (val) => {
+	if (val && RoleId.value) {
+		loading.value = true;
+		selectedIds.value = [];
+		allPermissions.value = [];
+		try {
+			const [rolePerms, allPerms] = await Promise.all([
+				RolesApi.getRolePermissions({ id: RoleId.value }),
+				PermissionsApi.getAllPermissions(),
+			]);
+			const rawAll = allPerms.data || [];
+			allPermissions.value = Array.isArray(rawAll) ? rawAll : Object.values(rawAll);
+			const rawRole = rolePerms.data || [];
+			const rolePermList = Array.isArray(rawRole) ? rawRole : Object.values(rawRole);
+			selectedIds.value = rolePermList.map((p: any) => p.id);
+		} catch (e) {
+			notifier.toast({ type: 'error', text: '加载权限数据失败' });
+		} finally {
+			loading.value = false;
+		}
+	}
+});
+</script>

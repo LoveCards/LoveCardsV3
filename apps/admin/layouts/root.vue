@@ -50,9 +50,6 @@
 		<v-list density="compact" color="accent" nav>
 			<v-list-item prepend-icon="mdi-view-dashboard" title="总览" value="overview" to="/apps/dashboard"></v-list-item>
 
-			<v-list-item prepend-icon="mdi-account-multiple" title="用户" value="users" to="/apps/users"
-				v-if="superAdminStatus"></v-list-item>
-
 			<v-list-group value="apps">
 				<template v-slot:activator="{ props }">
 					<v-list-item v-bind="props" prepend-icon="mdi-apps" title="应用"></v-list-item>
@@ -60,6 +57,23 @@
 				<v-list-item title="卡片" value="cards" to="/apps/cards"></v-list-item>
 				<v-list-item title="评论" value="comments" to="/apps/comments"></v-list-item>
 				<v-list-item title="标签" value="tags" to="/apps/tags"></v-list-item>
+			</v-list-group>
+
+			<v-list-group value="rbac" v-if="superAdminStatus">
+				<template v-slot:activator="{ props }">
+					<v-list-item v-bind="props" prepend-icon="mdi-shield-lock-outline" title="RBAC"></v-list-item>
+				</template>
+				<v-list-item title="用户管理" value="users" to="/apps/users"></v-list-item>
+				<v-list-item title="角色管理" value="roles" to="/apps/roles"></v-list-item>
+				<v-list-item title="权限管理" value="permissions" to="/apps/permissions"></v-list-item>
+			</v-list-group>
+
+			<v-list-group value="storage" v-if="superAdminStatus">
+				<template v-slot:activator="{ props }">
+					<v-list-item v-bind="props" prepend-icon="mdi-cloud-outline" title="存储"></v-list-item>
+				</template>
+				<v-list-item title="文件管理" value="files" to="/apps/storage/files"></v-list-item>
+				<v-list-item title="存储配置" value="config" to="/apps/storage/config"></v-list-item>
 			</v-list-group>
 
 			<v-list-group value="settings" v-if="superAdminStatus">
@@ -140,13 +154,21 @@ const goHome = () => {
 
 //版本更新提示
 const systemStore = useSystemStore();
+const compareVersions = (a: string, b: string) => {
+	const pa = a.replace(/^v/, '').split('.').map(Number);
+	const pb = b.replace(/^v/, '').split('.').map(Number);
+	for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+		const na = pa[i] || 0, nb = pb[i] || 0;
+		if (na !== nb) return na - nb;
+	}
+	return 0;
+};
 const updataStatus = computed(() => {
 	const updata = systemStore.updata as any;
 	if (updata == null) {
 		return false;
 	}
-	const result = ('v' + updata.ver.VerS) < updata.latest.tag_name ? true : false;
-	return result;
+	return compareVersions(updata.ver.VerS, updata.latest.tag_name) < 0;
 });
 
 

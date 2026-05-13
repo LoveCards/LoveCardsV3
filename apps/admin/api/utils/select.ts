@@ -24,6 +24,18 @@ const Cards = {
     ],
 }
 
+const Files = {
+    status: [
+        { title: "正常", value: 0, color: "green" },
+        { title: "封禁", value: 1, color: "red" },
+    ],
+    uploadStatus: [
+        { title: "上传中", value: 0, color: "orange" },
+        { title: "已完成", value: 1, color: "green" },
+        { title: "失败", value: 2, color: "red" },
+    ],
+}
+
 const Common = {
     Table: {
         ListRowsOptions: [
@@ -53,6 +65,7 @@ const getSelect = (select: any, value: any = 0) => {
 const SelectUtils = {
     User,
     Cards,
+    Files,
     Common,
     getSelect
 }
