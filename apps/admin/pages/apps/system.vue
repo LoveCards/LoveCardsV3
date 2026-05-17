@@ -200,35 +200,118 @@ const ViewMailSmtpSecurityItems = [
 	{ title: "tls", value: "tls" },
 ]
 
-const systemConfig = ref([] as any);
-const OriginSystemConfig = ref([] as any);
+// 后端 snake_case → 前端 camelCase/PascalCase 转换
+const toFrontendFormat = (raw: any) => {
+	return {
+		system: {
+			siteUrl: raw.core?.url ?? '',
+			siteName: raw.core?.name ?? '',
+			siteTitle: raw.core?.title ?? '',
+			siteKeywords: raw.core?.keywords ?? '',
+			siteDes: raw.core?.description ?? '',
+			siteICPId: raw.core?.icp_id ?? '',
+			siteCopyright: raw.core?.copyright ?? '',
+		},
+		master: {
+			Geetest: {
+				Id: raw.geetest?.id ?? '',
+				Key: raw.geetest?.key ?? '',
+				Status: raw.geetest?.status ?? false,
+			},
+			System: {
+				VisitorMode: raw.core?.visitor_mode ?? false,
+			},
+			UserAuth: {
+				Captcha: raw.user?.captcha ?? false,
+			},
+			Upload: {
+				UserImageSize: raw.upload?.user_image_size ?? 2,
+				UserImageExt: raw.upload?.user_image_ext ?? '',
+			},
+			Cards: {
+				PictureLimit: raw.cards?.picture_limit ?? 15,
+				TagLimit: raw.cards?.tag_limit ?? 3,
+				Approve: raw.cards?.approve ?? false,
+			},
+			Comments: {
+				Approve: raw.comments?.approve ?? false,
+			},
+		},
+		mail: raw.mail ?? {},
+	};
+};
+
+// 前端 master → 后端格式 反向转换
+const toBackendConfig = (master: any) => {
+	return {
+		geetest: {
+			id: master.Geetest?.Id ?? '',
+			key: master.Geetest?.Key ?? '',
+			status: master.Geetest?.Status ?? false,
+		},
+		core: {
+			visitor_mode: master.System?.VisitorMode ?? false,
+		},
+		user: {
+			captcha: master.UserAuth?.Captcha ?? false,
+		},
+		upload: {
+			user_image_size: master.Upload?.UserImageSize ?? 2,
+			user_image_ext: master.Upload?.UserImageExt ?? '',
+		},
+		cards: {
+			picture_limit: master.Cards?.PictureLimit ?? 15,
+			tag_limit: master.Cards?.TagLimit ?? 3,
+			approve: master.Cards?.Approve ?? false,
+		},
+		comments: {
+			approve: master.Comments?.Approve ?? false,
+		},
+	};
+};
+
+// 前端 system → 后端 core 格式
+const toBackendSite = (system: any) => {
+	return {
+		core: {
+			url: system.siteUrl ?? '',
+			name: system.siteName ?? '',
+			title: system.siteTitle ?? '',
+			keywords: system.siteKeywords ?? '',
+			description: system.siteDes ?? '',
+			icp_id: system.siteICPId ?? '',
+			copyright: system.siteCopyright ?? '',
+		},
+	};
+};
+
+const systemConfig = ref({} as any);
+const OriginSystemConfig = ref({} as any);
 const getConfig = () => {
 	SystemApi.getConfig().then((result) => {
-		systemConfig.value = ApiCommonUtils.deepClone(result.data);
-		OriginSystemConfig.value = ApiCommonUtils.deepClone(result.data);
+		const converted = toFrontendFormat(result.data);
+		systemConfig.value = ApiCommonUtils.deepClone(converted);
+		OriginSystemConfig.value = ApiCommonUtils.deepClone(converted);
 	})
 }
 
 const setConfig = () => {
-	//let params = ApiCommonUtils.removeCommonProperties(systemConfig.value, OriginSystemConfig.value);
-	//console.log(systemConfig.value.master);
-	SystemApi.postConfig(systemConfig.value.master).then(() => {
+	const backendParams = toBackendConfig(systemConfig.value.master);
+	SystemApi.postConfig(backendParams).then(() => {
 		getConfig();
 	});
 }
 
 const setEmail = () => {
 	let params = ApiCommonUtils.removeCommonProperties(systemConfig.value.mail, OriginSystemConfig.value.mail);
-	//console.log(params);
-	SystemApi.patchEmail(params).then(() => {
+	SystemApi.postConfig({ mail: params }).then(() => {
 		getConfig();
 	});
 }
 
 const setSite = () => {
-	//let params = ApiCommonUtils.removeCommonProperties(systemConfig.value, OriginSystemConfig.value);
-	//console.log(systemConfig.value);
-	SystemApi.postSite(systemConfig.value.system).then(() => {
+	const backendParams = toBackendSite(systemConfig.value.system);
+	SystemApi.postConfig(backendParams).then(() => {
 		getConfig();
 	});
 }

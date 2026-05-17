@@ -8,7 +8,7 @@ import { showErrorNotification } from "./utils/notifier";
 //实例化 基础配置
 const instance = axios.create({
     baseURL: "/api",
-    timeout: 3000,
+    timeout: 10000,
     headers: {},
 });
 

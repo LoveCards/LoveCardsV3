@@ -32,11 +32,21 @@ const cleanup = () => {
     return instance.post(APP_PATH + "/cleanup");
 };
 
+const testChannel = (channel: string) => {
+    return instance.post(APP_PATH + "/test-channel", { channel });
+};
+
+const getChannelStats = () => {
+    return instance.get(APP_PATH + "/channel-stats");
+};
+
 const StorageApi = {
     getFileIndex,
     getFile,
     batchOperate,
     cleanup,
+    testChannel,
+    getChannelStats,
 };
 
 export default StorageApi;
