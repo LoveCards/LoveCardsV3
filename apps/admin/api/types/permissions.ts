@@ -10,7 +10,7 @@ export namespace Params {
     export interface CreatePermission {
         name: string;
         slug: string;
-        path: string;
+        route_name: string;
         method: string;
         description?: string;
     }
@@ -19,7 +19,7 @@ export namespace Params {
         id: number;
         name?: string;
         slug?: string;
-        path?: string;
+        route_name?: string;
         method?: string;
         description?: string;
     }
@@ -33,7 +33,7 @@ export interface PermissionItem {
     id: number;
     name: string;
     slug: string;
-    path: string;
+    route_name: string;
     method: string;
     description: string | null;
     created_at: string;

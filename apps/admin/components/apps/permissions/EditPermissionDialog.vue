@@ -10,7 +10,7 @@
 						<v-text-field label="Slug" v-model="EditData.edit.slug" variant="underlined" color="accent"></v-text-field>
 					</v-col>
 					<v-col cols="12" sm="8">
-						<v-text-field label="Path" v-model="EditData.edit.path" variant="underlined" color="accent"></v-text-field>
+						<v-text-field label="路由标识" v-model="EditData.edit.route_name" variant="underlined" color="accent"></v-text-field>
 					</v-col>
 					<v-col cols="12" sm="4">
 						<v-select label="Method" v-model="EditData.edit.method" :items="methodOptions"

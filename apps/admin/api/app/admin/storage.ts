@@ -2,7 +2,7 @@ import instance from "../../axios";
 
 import type { Params } from "../../types/storage";
 
-const APP_PATH = "/upload";
+const APP_PATH = "/storage";
 
 const getFileIndex = (params: Params.FileIndex) => {
     if (params.search_keys != undefined && params.search_keys.length > 0) {
@@ -17,27 +17,31 @@ const getFileIndex = (params: Params.FileIndex) => {
     return instance.get(APP_PATH + "/files", { params });
 };
 
-const getFile = (params: { id: number }) => {
-    return instance.get(APP_PATH + "/get-file", { params });
+const getFile = (id: number) => {
+    return instance.get(`${APP_PATH}/files/${id}`);
 };
 
 const batchOperate = (params: { ids: number[]; method: string }) => {
-    return instance.post(APP_PATH + "/batch-operate", {
+    return instance.post(`${APP_PATH}/files/batch`, {
         ids: JSON.stringify(params.ids),
         method: params.method,
     });
 };
 
 const cleanup = () => {
-    return instance.post(APP_PATH + "/cleanup");
+    return instance.delete(`${APP_PATH}/files/expired`);
 };
 
 const testChannel = (channel: string) => {
-    return instance.post(APP_PATH + "/test-channel", { channel });
+    return instance.post(`${APP_PATH}/channels/${channel}/test`);
 };
 
 const getChannelStats = () => {
-    return instance.get(APP_PATH + "/channel-stats");
+    return instance.get(`${APP_PATH}/channels/stats`);
+};
+
+const getStorageChannels = () => {
+    return instance.get(`${APP_PATH}/channels`);
 };
 
 const StorageApi = {
@@ -47,6 +51,7 @@ const StorageApi = {
     cleanup,
     testChannel,
     getChannelStats,
+    getStorageChannels,
 };
 
 export default StorageApi;

@@ -46,9 +46,9 @@
                     <code class="text-caption bg-grey-lighten-4 pa-1 rounded">{{ item.slug }}</code>
                   </template>
 
-                  <!-- Path -->
-                  <template v-slot:[`item.path`]="{ item }">
-                    <code class="text-caption">{{ item.path }}</code>
+                  <!-- Route Name -->
+                  <template v-slot:[`item.route_name`]="{ item }">
+                    <code class="text-caption">{{ item.route_name }}</code>
                   </template>
 
                   <!-- Method -->
@@ -128,7 +128,7 @@ const TableHeaders = [
   { title: "ID", value: "id" },
   { title: "名称", value: "name" },
   { title: "Slug", value: "slug" },
-  { title: "Path", value: "path" },
+  { title: "路由标识", value: "route_name" },
   { title: "Method", value: "method" },
   { title: "描述", value: "description" },
   { title: "操作", value: "operate", sortable: false },
@@ -138,7 +138,7 @@ const SearchKeys = [
   { title: "ID", value: "id" },
   { title: "名称", value: "name" },
   { title: "Slug", value: "slug" },
-  { title: "Path", value: "path" },
+  { title: "路由标识", value: "route_name" },
   { title: "Method", value: "method" },
 ];
 

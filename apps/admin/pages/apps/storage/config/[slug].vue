@@ -3,7 +3,7 @@
 	<NuxtLayout name="root">
 		<v-row class="pt-2">
 			<v-col cols="12">
-				<h1 class="text-primary font-weight-bold">{{ channelName(slug) }} 配置</h1>
+				<h1 class="text-primary font-weight-bold">{{ channelName }} 配置</h1>
 			</v-col>
 		</v-row>
 
@@ -47,10 +47,14 @@
 							{{ testResult.message }}
 						</v-chip>
 						<v-spacer></v-spacer>
-						<v-btn color="accent" variant="flat" @click="save" :disabled="loading || loadError !== null"
+						<v-btn color="accent" variant="flat" @click="save" :loading="saveLoading"
+							:disabled="loading || loadError !== null"
 							prepend-icon="mdi-content-save">
 							保存
 						</v-btn>
+						<v-chip v-if="saveResult" size="small" :color="saveResult.success ? 'success' : 'error'" class="ml-2">
+							{{ saveResult.message }}
+						</v-chip>
 					</v-card-actions>
 				</v-card>
 			</v-col>
@@ -61,18 +65,38 @@
 <script setup lang="ts">
 import SystemApi from '~/api/app/admin/system';
 import StorageApi from '~/api/app/admin/storage';
-import { channelName, channelFieldDefs } from '~/utils/storage';
+
+interface ChannelField {
+	key: string;
+	label: string;
+	type: string;
+}
 
 const route = useRoute();
 const slug = route.params.slug as string;
 
 const config = ref<Record<string, any>>({});
-const fields = computed(() => channelFieldDefs[slug] || []);
+const fields = ref<ChannelField[]>([]);
+const channelName = ref(slug);
 const showPassword = ref(false);
 const loading = ref(true);
 const loadError = ref<string | null>(null);
 const testLoading = ref(false);
 const testResult = ref<{ success: boolean; message: string } | null>(null);
+const saveLoading = ref(false);
+const saveResult = ref<{ success: boolean; message: string } | null>(null);
+
+const loadChannelMeta = () => {
+	return StorageApi.getStorageChannels()
+		.then((result) => {
+			const channels = result.data ?? [];
+			const channel = channels.find((c: any) => c.slug === slug);
+			if (channel) {
+				channelName.value = channel.name;
+				fields.value = channel.fields ?? [];
+			}
+		});
+};
 
 const loadConfig = () => {
 	loading.value = true;
@@ -95,11 +119,22 @@ const loadConfig = () => {
 };
 
 const save = () => {
+	saveLoading.value = true;
+	saveResult.value = null;
 	const configToSave = { ...config.value };
 	delete configToSave.type;
 	delete configToSave.file_count;
 	delete configToSave.total_size;
-	SystemApi.postConfig({ ['storage_' + slug]: configToSave });
+	SystemApi.postConfig({ ['storage_' + slug]: configToSave })
+		.then(() => {
+			saveResult.value = { success: true, message: '保存成功' };
+		})
+		.catch(() => {
+			saveResult.value = { success: false, message: '保存失败' };
+		})
+		.finally(() => {
+			saveLoading.value = false;
+		});
 };
 
 const testConnection = () => {
@@ -118,6 +153,8 @@ const testConnection = () => {
 };
 
 onMounted(() => {
-	loadConfig();
+	loadChannelMeta().finally(() => {
+		loadConfig();
+	});
 });
 </script>

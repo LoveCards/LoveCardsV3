@@ -17,8 +17,8 @@
 					</v-row>
 					<v-divider class="mb-2"></v-divider>
 					<v-row dense>
-						<v-col cols="12" v-for="(group, path) in groupedPermissions" :key="path">
-							<div class="text-subtitle-2 mb-1 font-weight-bold" style="color: #3F51B5;">{{ path }}</div>
+						<v-col cols="12" v-for="(group, resource) in groupedPermissions" :key="resource">
+							<div class="text-subtitle-2 mb-1 font-weight-bold" style="color: #3F51B5;">{{ resource }}</div>
 							<div class="d-flex flex-wrap ga-2 mb-2">
 								<v-checkbox v-for="perm in group" :key="perm.id" v-model="selectedIds"
 									:value="perm.id" density="compact" hide-details color="accent">
@@ -69,10 +69,11 @@ const selectedIds = ref<number[]>([]);
 const groupedPermissions = computed(() => {
 	const groups: Record<string, any[]> = {};
 	allPermissions.value.forEach((p) => {
-		if (!groups[p.path]) {
-			groups[p.path] = [];
+		const resource = p.route_name ? p.route_name.split('.').slice(0, 2).join('.') : 'other';
+		if (!groups[resource]) {
+			groups[resource] = [];
 		}
-		groups[p.path]!.push(p);
+		groups[resource]!.push(p);
 	});
 	return groups;
 });

@@ -12,8 +12,8 @@
 							hint="1-100字符，字母/数字/下划线/横线，唯一标识" persistent-hint></v-text-field>
 					</v-col>
 					<v-col cols="12" sm="8">
-						<v-text-field label="Path *" v-model="CreateData.path" variant="underlined" color="accent"
-							hint="API 路径，如 /api/admin/users" persistent-hint></v-text-field>
+						<v-text-field label="路由标识 *" v-model="CreateData.route_name" variant="underlined" color="accent"
+							hint="路由标识，如 admin.users.index" persistent-hint></v-text-field>
 					</v-col>
 					<v-col cols="12" sm="4">
 						<v-select label="Method *" v-model="CreateData.method" :items="methodOptions"
@@ -46,7 +46,7 @@ const getTableData = () => {
 };
 
 const thisDialogState = defineModel<boolean>('thisDialogState');
-const CreateData = ref({ name: '', slug: '', path: '', method: 'GET', description: '' });
+const CreateData = ref({ name: '', slug: '', route_name: '', method: 'GET', description: '' });
 
 const methodOptions = [
 	{ title: 'GET', value: 'GET' },
@@ -60,7 +60,7 @@ const methodOptions = [
 const submit = () => {
 	PermissionsApi.createPermission(CreateData.value).then(() => {
 		thisDialogState.value = false;
-		CreateData.value = { name: '', slug: '', path: '', method: 'GET', description: '' };
+		CreateData.value = { name: '', slug: '', route_name: '', method: 'GET', description: '' };
 		getTableData();
 	}).catch(() => {});
 };

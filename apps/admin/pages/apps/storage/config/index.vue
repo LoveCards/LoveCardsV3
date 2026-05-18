@@ -22,21 +22,21 @@
 						<v-tabs-window-item value="channels">
 							<v-card-text>
 								<v-row>
-									<v-col v-for="(channel, key) in channels" :key="key" cols="12" md="6" lg="4">
+									<v-col v-for="channel in channelList" :key="channel.slug" cols="12" md="6" lg="4">
 										<v-card variant="outlined" hover
-											:color="key === settings.default ? 'accent' : undefined"
-											:class="{ 'border-accent': key === settings.default }">
+											:color="channel.slug === settings.default ? 'accent' : undefined"
+											:class="{ 'border-accent': channel.slug === settings.default }">
 											<v-card-item>
 												<template v-slot:prepend>
 													<v-icon size="large"
-														:color="key === settings.default ? 'accent' : 'grey'">
-														{{ channelIcon(channel.type) }}
+														:color="channel.slug === settings.default ? 'accent' : 'grey'">
+														{{ channel.icon }}
 													</v-icon>
 												</template>
-												<v-card-title>{{ channelName(key as string) }}</v-card-title>
-												<v-card-subtitle>{{ channel.type }}</v-card-subtitle>
+												<v-card-title>{{ channel.name }}</v-card-title>
+												<v-card-subtitle>{{ channel.slug }}</v-card-subtitle>
 												<template v-slot:append>
-													<v-chip v-if="key === settings.default" size="small" color="accent"
+													<v-chip v-if="channel.slug === settings.default" size="small" color="accent"
 														variant="flat">默认</v-chip>
 												</template>
 											</v-card-item>
@@ -44,12 +44,12 @@
 											<v-card-text class="pt-0">
 												<div class="d-flex align-center text-caption text-medium-emphasis mb-2">
 													<v-icon size="small" class="mr-1">mdi-file-outline</v-icon>
-													{{ stats[key]?.file_count ?? 0 }} 文件
+													{{ stats[channel.slug]?.file_count ?? 0 }} 文件
 													<v-icon size="small" class="ml-3 mr-1">mdi-database</v-icon>
-													{{ formatSize(stats[key]?.total_size ?? 0) }}
+													{{ formatSize(stats[channel.slug]?.total_size ?? 0) }}
 												</div>
 												<div class="text-caption text-medium-emphasis">
-													限制: {{ formatSize(channel.max_file_size) }}
+													限制: {{ formatSize(channels[channel.slug]?.max_file_size ?? 0) }}
 												</div>
 											</v-card-text>
 
@@ -57,13 +57,13 @@
 
 											<v-card-actions>
 												<v-btn size="small" color="accent" variant="text"
-													@click="setDefault(key as string)"
-													:disabled="key === settings.default">
+													@click="setDefault(channel.slug)"
+													:disabled="channel.slug === settings.default">
 													设为默认
 												</v-btn>
 												<v-spacer></v-spacer>
 												<v-btn size="small" color="accent" variant="flat"
-													@click="router.push('/apps/storage/config/' + key)">
+													@click="router.push('/apps/storage/config/' + channel.slug)">
 													编辑
 													<v-icon end size="small">mdi-arrow-right</v-icon>
 												</v-btn>
@@ -146,17 +146,19 @@
 <script setup lang="ts">
 import SystemApi from '~/api/app/admin/system';
 import StorageApi from '~/api/app/admin/storage';
-import {
-	channelSlugs,
-	channelName,
-	channelIcon,
-	channelOptions,
-	formatSize
-} from '~/utils/storage';
+import { formatSize } from '~/utils/storage';
+
+interface ChannelMeta {
+	slug: string;
+	name: string;
+	icon: string;
+	fields: Array<{ key: string; label: string; type: string }>;
+}
 
 const router = useRouter();
 const tab = ref('channels');
 
+const channelList = ref<ChannelMeta[]>([]);
 const channels = ref<Record<string, any>>({});
 const settings = ref({
 	default: 'local',
@@ -166,15 +168,28 @@ const settings = ref({
 });
 const stats = ref<Record<string, { file_count: number; total_size: number }>>({});
 
+const channelOptions = computed(() =>
+	channelList.value.map(ch => ({ title: ch.name, value: ch.slug }))
+);
+
+const loadChannels = () => {
+	StorageApi.getStorageChannels()
+		.then((result) => {
+			channelList.value = result.data ?? [];
+		})
+		.catch((error) => {
+			console.error('加载渠道列表失败:', error);
+		});
+};
+
 const loadConfig = () => {
-	const groups = ['storage', ...channelSlugs.map(s => 'storage_' + s)].join(',');
-	SystemApi.getConfig(groups)
+	SystemApi.getConfig('')
 		.then((result) => {
 			const data = result.data;
-			settings.value = data.storage ?? {};
+			settings.value = { ...settings.value, ...data.storage };
 			channels.value = {};
-			channelSlugs.forEach(slug => {
-				channels.value[slug] = data['storage_' + slug] ?? {};
+			channelList.value.forEach(ch => {
+				channels.value[ch.slug] = data['storage_' + ch.slug] ?? {};
 			});
 		})
 		.catch((error) => {
@@ -209,8 +224,9 @@ const saveSettings = () => {
 		});
 };
 
-onMounted(() => {
-	loadConfig();
+onMounted(async () => {
+	await loadChannels();
+	await loadConfig();
 	loadStats();
 });
 </script>

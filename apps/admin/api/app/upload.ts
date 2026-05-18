@@ -1,6 +1,6 @@
 import instance from "../axios";
 
-const APP_PATH = "/upload";
+const APP_PATH = "/storage";
 
 const postUpload = (data: { file: File; scene?: string; ref_type?: string; ref_id?: number; is_public?: number }) => {
     const formData = new FormData();
@@ -11,7 +11,7 @@ const postUpload = (data: { file: File; scene?: string; ref_type?: string; ref_i
     if (data.ref_id !== undefined) formData.append('ref_id', data.ref_id.toString());
     if (data.is_public !== undefined) formData.append('is_public', data.is_public.toString());
 
-    return instance.post(APP_PATH + "/upload", formData);
+    return instance.post(APP_PATH + "/files", formData);
 };
 
 const UploadApi = {
