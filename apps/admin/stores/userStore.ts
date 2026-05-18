@@ -5,7 +5,8 @@ import { showErrorNotification } from '~/api/utils/notifier';
 
 export const useUserStore = defineStore('user', {
     state: () => ({
-        userInfo: null,
+        userInfo: null as any,
+        permissions: [] as string[],
         loading: false,
         error: null as string | null,
     }),
@@ -21,16 +22,22 @@ export const useUserStore = defineStore('user', {
             try {
                 const response = await apiGetUserInfo();
                 this.userInfo = response.data;
+                this.permissions = response.data?.permissions || [];
                 return response;
             } catch (error) {
                 const errorDetail = ErrorUtils.parse(error);
                 this.error = errorDetail.message;
-                // 用户信息获取失败时显示错误通知
                 showErrorNotification(errorDetail.message);
                 throw error;
             } finally {
                 this.loading = false;
             }
+        },
+        hasPermission(routeName: string): boolean {
+            return this.permissions.includes(routeName);
+        },
+        hasAdminAccess(): boolean {
+            return this.permissions.some(p => p.startsWith('admin.'));
         }
     },
 });

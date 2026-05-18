@@ -35,7 +35,7 @@ const assignPermissions = (params: Params.AssignPermissions) => {
     return instance.post(APP_PATH_ID + '/assign-permissions', params);
 };
 
-const getRolePermissions = (params: Params.GetRolePermissions) => {
+const getRolePermissionHashes = (params: Params.GetRolePermissions) => {
     return instance.get(APP_PATH_ID + '/permissions', { params });
 };
 
@@ -46,7 +46,7 @@ const RolesApi = {
     patchRole,
     deleteRole,
     assignPermissions,
-    getRolePermissions,
+    getRolePermissionHashes,
 };
 
 export default RolesApi;

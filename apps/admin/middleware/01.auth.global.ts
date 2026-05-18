@@ -25,10 +25,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     }
 
     if (userStore.userInfo !== null) {
-        const data: any = userStore.userInfo;
-        const rolesId = JSON.parse(data.roles_id);
-
-        if (rolesId.includes(0) || rolesId.includes(1)) {
+        if (userStore.hasAdminAccess()) {
             console.log("通过.");
         } else {
             console.log("无权限.");
@@ -41,7 +38,6 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
             }
             errorStore.setViewData(viewData);
             return navigateTo('/client/error');
-
         }
     } else {
         console.error("用户信息为空:");

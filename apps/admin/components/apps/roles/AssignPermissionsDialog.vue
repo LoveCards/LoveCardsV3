@@ -20,8 +20,8 @@
 						<v-col cols="12" v-for="(group, resource) in groupedPermissions" :key="resource">
 							<div class="text-subtitle-2 mb-1 font-weight-bold" style="color: #3F51B5;">{{ resource }}</div>
 							<div class="d-flex flex-wrap ga-2 mb-2">
-								<v-checkbox v-for="perm in group" :key="perm.id" v-model="selectedIds"
-									:value="perm.id" density="compact" hide-details color="accent">
+								<v-checkbox v-for="perm in group" :key="perm.hash" v-model="selectedHashes"
+									:value="perm.hash" density="compact" hide-details color="accent">
 									<template v-slot:label>
 										<span class="text-caption">{{ perm.name }}</span>
 										<v-chip size="x-small" class="ml-1" :color="methodColor(perm.method)">
@@ -64,12 +64,12 @@ const RoleId = defineModel<number>('RoleId');
 const loading = ref(false);
 const saving = ref(false);
 const allPermissions = ref<any[]>([]);
-const selectedIds = ref<number[]>([]);
+const selectedHashes = ref<string[]>([]);
 
 const groupedPermissions = computed(() => {
 	const groups: Record<string, any[]> = {};
 	allPermissions.value.forEach((p) => {
-		const resource = p.route_name ? p.route_name.split('.').slice(0, 2).join('.') : 'other';
+		const resource = p.group || 'other';
 		if (!groups[resource]) {
 			groups[resource] = [];
 		}
@@ -81,20 +81,20 @@ const groupedPermissions = computed(() => {
 const methodColor = (method: string) => {
 	const map: Record<string, string> = {
 		GET: 'green', POST: 'blue', PATCH: 'orange', PUT: 'amber',
-		DELETE: 'red', '*': 'grey',
+		DELETE: 'red',
 	};
 	return map[method] || 'grey';
 };
 
 const isAllSelected = computed(() => {
-	return allPermissions.value.length > 0 && selectedIds.value.length === allPermissions.value.length;
+	return allPermissions.value.length > 0 && selectedHashes.value.length === allPermissions.value.length;
 });
 
 const toggleSelectAll = () => {
 	if (isAllSelected.value) {
-		selectedIds.value = [];
+		selectedHashes.value = [];
 	} else {
-		selectedIds.value = allPermissions.value.map((p) => p.id);
+		selectedHashes.value = allPermissions.value.map((p) => p.hash);
 	}
 };
 
@@ -103,7 +103,7 @@ const submit = () => {
 	saving.value = true;
 	RolesApi.assignPermissions({
 		id: RoleId.value,
-		permission_ids: JSON.stringify(selectedIds.value),
+		permission_hashes: JSON.stringify(selectedHashes.value),
 	}).then(() => {
 		thisDialogState.value = false;
 		notifier.toast({ type: 'success', text: '权限分配成功' });
@@ -116,18 +116,17 @@ const submit = () => {
 watch(thisDialogState, async (val) => {
 	if (val && RoleId.value) {
 		loading.value = true;
-		selectedIds.value = [];
+		selectedHashes.value = [];
 		allPermissions.value = [];
 		try {
-			const [rolePerms, allPerms] = await Promise.all([
-				RolesApi.getRolePermissions({ id: RoleId.value }),
+			const [roleHashes, allPerms] = await Promise.all([
+				RolesApi.getRolePermissionHashes({ id: RoleId.value }),
 				PermissionsApi.getAllPermissions(),
 			]);
 			const rawAll = allPerms.data || [];
 			allPermissions.value = Array.isArray(rawAll) ? rawAll : Object.values(rawAll);
-			const rawRole = rolePerms.data || [];
-			const rolePermList = Array.isArray(rawRole) ? rawRole : Object.values(rawRole);
-			selectedIds.value = rolePermList.map((p: any) => p.id);
+			const rawHashes = roleHashes.data || [];
+			selectedHashes.value = Array.isArray(rawHashes) ? rawHashes : Object.values(rawHashes);
 		} catch (e) {
 			notifier.toast({ type: 'error', text: '加载权限数据失败' });
 		} finally {

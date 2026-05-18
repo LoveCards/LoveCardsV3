@@ -26,7 +26,7 @@ export namespace Params {
 
     export interface AssignPermissions {
         id: number;
-        permission_ids: string;
+        permission_hashes: string;
     }
 
     export interface GetRolePermissions {
