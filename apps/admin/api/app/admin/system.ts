@@ -22,7 +22,7 @@ const postSetTheme = (params: any) => {
 };
 
 const getUpdata = () => {
-    return instance.get('/system/updata');
+    return instance.get('/system/update');
 };
 
 const SystemApi = {

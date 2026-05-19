@@ -155,8 +155,9 @@ const goHome = () => {
 //版本更新提示
 const systemStore = useSystemStore();
 const compareVersions = (a: string, b: string) => {
-	const pa = a.replace(/^v/, '').split('.').map(Number);
-	const pb = b.replace(/^v/, '').split('.').map(Number);
+	if (!a || !b) return 0;
+	const pa = String(a).replace(/^v/, '').split('.').map(Number);
+	const pb = String(b).replace(/^v/, '').split('.').map(Number);
 	for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
 		const na = pa[i] || 0, nb = pb[i] || 0;
 		if (na !== nb) return na - nb;
@@ -165,7 +166,7 @@ const compareVersions = (a: string, b: string) => {
 };
 const updataStatus = computed(() => {
 	const updata = systemStore.updata as any;
-	if (updata == null) {
+	if (!updata?.ver?.VerS || !updata?.latest?.tag_name) {
 		return false;
 	}
 	return compareVersions(updata.ver.VerS, updata.latest.tag_name) < 0;
