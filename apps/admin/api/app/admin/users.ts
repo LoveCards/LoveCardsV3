@@ -3,40 +3,33 @@ import instance from "../../axios";
 import type { Params as PublicParams } from "../../types/public";
 import type { Params as UsersParams } from "../../types/users";
 
-const APP_PATH = "/admin/users";
-const APP_PATH_ID = "/admin/user";
+const APP_PATH = "/all/users";
 
-//获取用户列表
 const getUserIndex = (params: PublicParams.Index) => {
-    //参数处理
     if (params.search_keys != undefined && params.search_keys.length > 0) {
         params.search_keys = JSON.stringify(params.search_keys) as any;
     }
     params.search_value ? params.search_value : delete params.search_value;
     params.order_key ? params.order_key : delete params.order_key;
-    //params.order_desc ? params.order_desc : delete params.order_desc;
     return instance.get(APP_PATH, {
         params: params,
     });
 };
 
-//编辑用户
-const patchUser = (params: UsersParams.Patch) => {
-    return instance.patch(APP_PATH_ID, params);
+const patchUser = (id: number, params: UsersParams.Patch) => {
+    return instance.patch(`${APP_PATH}/${id}`, params);
 };
 
-//删除用户
-const deleteUser = (params: PublicParams.IDOperate) => {
-    return instance.delete(APP_PATH_ID, { params: params });
+const deleteUser = (id: number) => {
+    return instance.delete(`${APP_PATH}/${id}`);
 };
 
-//批量操作
 const batchOperate = (params: PublicParams.BatchOperate) => {
     const data = {
         ids: JSON.stringify(params.ids),
         method: params.method,
     };
-    return instance.post(APP_PATH + '/batch-operate', data);
+    return instance.post(APP_PATH + '/batch', data);
 };
 
 const UsersApi = {

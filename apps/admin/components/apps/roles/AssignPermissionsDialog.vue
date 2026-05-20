@@ -21,7 +21,8 @@
 							<div class="text-subtitle-2 mb-1 font-weight-bold" style="color: #3F51B5;">{{ resource }}</div>
 							<div class="d-flex flex-wrap ga-2 mb-2">
 								<v-checkbox v-for="perm in group" :key="perm.hash" v-model="selectedHashes"
-									:value="perm.hash" density="compact" hide-details color="accent">
+									:value="perm.hash" density="compact" hide-details color="accent"
+									:disabled="perm.public">
 									<template v-slot:label>
 										<span class="text-caption">{{ perm.name }}</span>
 										<v-chip size="x-small" class="ml-1" :color="methodColor(perm.method)">
@@ -92,7 +93,9 @@ const isAllSelected = computed(() => {
 
 const toggleSelectAll = () => {
 	if (isAllSelected.value) {
-		selectedHashes.value = [];
+		selectedHashes.value = allPermissions.value
+			.filter(p => p.public)
+			.map(p => p.hash);
 	} else {
 		selectedHashes.value = allPermissions.value.map((p) => p.hash);
 	}
@@ -101,8 +104,7 @@ const toggleSelectAll = () => {
 const submit = () => {
 	if (!RoleId.value) return;
 	saving.value = true;
-	RolesApi.assignPermissions({
-		id: RoleId.value,
+	RolesApi.assignPermissions(RoleId.value, {
 		permission_hashes: JSON.stringify(selectedHashes.value),
 	}).then(() => {
 		thisDialogState.value = false;
@@ -120,13 +122,19 @@ watch(thisDialogState, async (val) => {
 		allPermissions.value = [];
 		try {
 			const [roleHashes, allPerms] = await Promise.all([
-				RolesApi.getRolePermissionHashes({ id: RoleId.value }),
+				RolesApi.getRolePermissionHashes(RoleId.value),
 				PermissionsApi.getAllPermissions(),
 			]);
 			const rawAll = allPerms.data || [];
 			allPermissions.value = Array.isArray(rawAll) ? rawAll : Object.values(rawAll);
 			const rawHashes = roleHashes.data || [];
 			selectedHashes.value = Array.isArray(rawHashes) ? rawHashes : Object.values(rawHashes);
+			// 公开路由自动选中
+			allPermissions.value.forEach(p => {
+				if (p.public && !selectedHashes.value.includes(p.hash)) {
+					selectedHashes.value.push(p.hash);
+				}
+			});
 		} catch (e) {
 			notifier.toast({ type: 'error', text: '加载权限数据失败' });
 		} finally {

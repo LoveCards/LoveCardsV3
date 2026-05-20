@@ -15,8 +15,7 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
 
     //超级管理员加载项
     const userInfo: any = await userStore.userInfo;
-    const rolesId = JSON.parse(userInfo.roles_id);
-    if (rolesId.includes(1)) {
+    if (userStore.isRoot()) {
         await systemStore.init();
     }
 

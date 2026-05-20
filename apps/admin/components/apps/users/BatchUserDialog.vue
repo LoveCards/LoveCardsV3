@@ -34,16 +34,14 @@ const batchUserData = defineModel<any>('batchUserData');
 
 //操作
 // 提交批量删除用户
-const submitBatchDeleteUsers = () => {
-	// 提取选中用户的ID
+const submitBatchDeleteUsers = async () => {
 	const selectedIds = batchUserData.value;
 
-	UserApi.deleteUser(selectedIds).then(() => {
-		// 关闭对话框并刷新列表
-		thisDialogState.value = false;
-		// 清空选择
-		batchUserData.value = [];
-		getTableData();
-	});
+	const promises = selectedIds.map((id: number) => UserApi.deleteUser(id));
+	await Promise.all(promises);
+
+	thisDialogState.value = false;
+	batchUserData.value = [];
+	getTableData();
 };
 </script>

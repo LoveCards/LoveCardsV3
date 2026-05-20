@@ -3,8 +3,7 @@ import instance from "../../axios";
 import type { Params as PublicParams } from "../../types/public";
 import type { Params } from "../../types/roles";
 
-const APP_PATH = "/admin/roles";
-const APP_PATH_ID = "/admin/role";
+const APP_PATH = "/all/roles";
 
 const getRoleIndex = (params: PublicParams.Index) => {
     if (params.search_keys != undefined && params.search_keys.length > 0) {
@@ -15,28 +14,28 @@ const getRoleIndex = (params: PublicParams.Index) => {
     return instance.get(APP_PATH, { params });
 };
 
-const getRole = (params: Params.GetRole) => {
-    return instance.get(APP_PATH_ID, { params });
+const getRole = (id: number) => {
+    return instance.get(`${APP_PATH}/${id}`);
 };
 
 const createRole = (params: Params.CreateRole) => {
-    return instance.post(APP_PATH_ID, params);
+    return instance.post(APP_PATH, params);
 };
 
-const patchRole = (params: Params.PatchRole) => {
-    return instance.patch(APP_PATH_ID, params);
+const patchRole = (id: number, params: Params.PatchRole) => {
+    return instance.patch(`${APP_PATH}/${id}`, params);
 };
 
-const deleteRole = (params: Params.DeleteRole) => {
-    return instance.delete(APP_PATH_ID, { params });
+const deleteRole = (id: number) => {
+    return instance.delete(`${APP_PATH}/${id}`);
 };
 
-const assignPermissions = (params: Params.AssignPermissions) => {
-    return instance.post(APP_PATH_ID + '/assign-permissions', params);
+const assignPermissions = (id: number, params: Params.AssignPermissions) => {
+    return instance.post(`${APP_PATH}/${id}/permissions`, params);
 };
 
-const getRolePermissionHashes = (params: Params.GetRolePermissions) => {
-    return instance.get(APP_PATH_ID + '/permissions', { params });
+const getRolePermissionHashes = (id: number) => {
+    return instance.get(`${APP_PATH}/${id}/permissions`);
 };
 
 const RolesApi = {

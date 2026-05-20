@@ -195,7 +195,7 @@ const openEditTagDialog = (data: any) => {
 
 //DeleteDialog组件
 const DeleteTagFun = (id: any) => {
-  TagsApi.deleteTag({ id: id }).then(() => {
+  TagsApi.deleteTag(id).then(() => {
     DeleteTagDialog_state.value = false;
     getTableData();
   });

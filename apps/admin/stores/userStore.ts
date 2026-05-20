@@ -7,6 +7,7 @@ export const useUserStore = defineStore('user', {
     state: () => ({
         userInfo: null as any,
         permissions: [] as string[],
+        roles: [] as { id: number; name: string; slug: string }[],
         loading: false,
         error: null as string | null,
     }),
@@ -23,6 +24,7 @@ export const useUserStore = defineStore('user', {
                 const response = await apiGetUserInfo();
                 this.userInfo = response.data;
                 this.permissions = response.data?.permissions || [];
+                this.roles = response.data?.roles || [];
                 return response;
             } catch (error) {
                 const errorDetail = ErrorUtils.parse(error);
@@ -37,7 +39,10 @@ export const useUserStore = defineStore('user', {
             return this.permissions.includes(routeName);
         },
         hasAdminAccess(): boolean {
-            return this.permissions.some(p => p.startsWith('admin.'));
+            return this.permissions.some(p => p.includes('.allList') || p.includes('.allUpdate'));
+        },
+        isRoot(): boolean {
+            return this.roles.some(r => r.slug === 'root');
         }
     },
 });

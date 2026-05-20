@@ -252,7 +252,7 @@ const openEditCardDialog = (data: any) => {
 
 //DeleteDialog组件
 const DeleteCardFun = (id: any) => {
-  CardsApi.deleteCard({ id: id }).then(() => {
+  CardsApi.deleteCard(id).then(() => {
     DeleteCardDialog_state.value = false;
     getTableData();
   });

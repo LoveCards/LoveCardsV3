@@ -188,7 +188,7 @@ const openAssignDialog = (item: any) => {
 const DeleteDialog_state = ref(false);
 const DeleteDialog_data = ref<any>({});
 const DeleteFun = (id: number) => {
-  RolesApi.deleteRole({ id }).then(() => {
+  RolesApi.deleteRole(id).then(() => {
     DeleteDialog_state.value = false;
     getTableData();
   }).catch(() => {});
@@ -209,7 +209,7 @@ const openBatchDialog = () => {
 };
 const BatchFun = () => {
   // 角色暂无批量操作 API，使用逐条删除
-  Promise.all(tableSelected.value.map(id => RolesApi.deleteRole({ id }))).then(() => {
+  Promise.all(tableSelected.value.map(id => RolesApi.deleteRole(id))).then(() => {
     BatchDialog_state.value = false;
     tableSelected.value = [];
     getTableData();

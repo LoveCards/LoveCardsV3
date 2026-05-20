@@ -146,6 +146,7 @@
 
 <script setup lang="ts">
 import UsersApi from "@/api/app/admin/users";
+import RolesApi from "@/api/app/admin/roles";
 import ApiCommonUtils from "@/api/utils/common";
 import CommonUtils from "@/utils/common";
 import EditUserDialog from "~/components/apps/users/EditUserDialog.vue";
@@ -186,26 +187,29 @@ const TableListRowsOptions = [
   { title: "50 / 页", value: 50 },
   { title: "100 / 页", value: 100 },
 ];
-//用户组
-const UserRoles = [
-  { title: "#1 超级管理员", value: 1 },
-  { title: "#2 管理员", value: 2 },
-  { title: "#3 用户", value: 3 },
-  { title: "#4 游客", value: 4 },
-];
+//用户组（从 API 动态加载）
+const UserRoles = ref<{ title: string; value: number }[]>([]);
+const loadUserRoles = async () => {
+  const res = await RolesApi.getRoleIndex({ list_rows: 100 });
+  UserRoles.value = res.data.map((r: any) => ({
+    title: `#${r.id} ${r.name}`,
+    value: r.id
+  }));
+};
+loadUserRoles();
 //渲染用户标签数据预处理
 const renderUserRoles = (roles_id: any) => {
   if (roles_id != null) {
     roles_id = JSON.parse(roles_id);
     let roles_title: string[] = [];
     if (typeof roles_id === "number") {
-      const roles = UserRoles.find((role) => role.value === roles_id);
+      const roles = UserRoles.value.find((role) => role.value === roles_id);
       if (roles) {
         return roles.title;
       }
     } else {
       roles_id.forEach((item: any) => {
-        const roles = UserRoles.find((role) => role.value === item);
+        const roles = UserRoles.value.find((role) => role.value === item);
         if (roles) {
           roles_title.push(roles.title);
         }
@@ -244,7 +248,7 @@ const openEditUserDialog = (data: {}) => {
 
 //DeleteUserDialog组件
 const DeleteUserFun = (id: any) => {
-  UsersApi.deleteUser({ id: id }).then(() => {
+  UsersApi.deleteUser(id).then(() => {
     DeleteUserDialog_state.value = false;
     getTableData();
   });

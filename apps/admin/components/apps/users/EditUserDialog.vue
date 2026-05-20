@@ -127,7 +127,7 @@ const roles_id = computed({
 		try {
 			const roles_id = JSON.parse(editUserData.value.edit.roles_id);
 			if (typeof roles_id == "number") {
-				return [];
+				return [roles_id];
 			}
 			return roles_id;
 		} catch (error) {
@@ -197,7 +197,7 @@ const patchUser = (data: EditUserData) => {
 	params.id = data.origin.id;
 	// console.log(params);
 	//返回原生Promise
-	return UserApi.patchUser(params);
+	return UserApi.patchUser(params.id, params);
 };
 
 </script>

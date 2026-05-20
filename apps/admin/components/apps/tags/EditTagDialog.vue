@@ -100,7 +100,7 @@ const patchComment = () => {
 	params.id = editTagData.id;
 
 	//返回原生Promise
-	return TagsApi.patchTag(params);
+	return TagsApi.patchTag(params.id, params);
 }
 
 //数据初始化

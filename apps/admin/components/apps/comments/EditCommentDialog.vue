@@ -116,7 +116,7 @@ const patchComment = () => {
 	params.id = editCommentData.id;
 
 	//返回原生Promise
-	return CommentsApi.patchComment(params);
+	return CommentsApi.patchComment(params.id, params);
 }
 
 //数据初始化

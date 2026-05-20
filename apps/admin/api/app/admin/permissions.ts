@@ -1,6 +1,6 @@
 import instance from "../../axios";
 
-const APP_PATH = "/admin/permissions";
+const APP_PATH = "/all/permissions";
 
 const getAllPermissions = () => {
     return instance.get(APP_PATH + '/all');

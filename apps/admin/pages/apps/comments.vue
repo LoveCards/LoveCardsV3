@@ -214,7 +214,7 @@ const openEditCommentDialog = (data: any) => {
 
 //DeleteDialog组件
 const DeleteCardFun = (id: any) => {
-  CommentsApi.deleteComment({ id: id }).then(() => {
+  CommentsApi.deleteComment(id).then(() => {
     DeleteCardDialog_state.value = false;
     getTableData();
   });

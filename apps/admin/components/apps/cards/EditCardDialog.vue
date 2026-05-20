@@ -191,7 +191,7 @@ const getCard = () => {
 		id: editCardData.value.id,
 	};
 	//请求
-	AdminCardsApi.getCard(params as any).then((response) => {
+	AdminCardsApi.getCard(params.id).then((response) => {
 		response.data.tags = response.data.tags ? JSON.parse(response.data.tags) : [];//将标签转换为数组
 		CardData.value.edit = CommonUtils.deepClone(response.data);
 		CardData.value.origin = CommonUtils.deepClone(response.data);
@@ -259,7 +259,7 @@ const patchCard = () => {
 	params.id = editCardData.id; //插入卡片ID
 
 	//返回原生Promise
-	return CardsApi.patchCard(params);
+	return CardsApi.patchCard(params.id, params);
 }
 
 //数据初始化

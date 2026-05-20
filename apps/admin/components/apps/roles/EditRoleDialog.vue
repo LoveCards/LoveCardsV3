@@ -55,7 +55,7 @@ const submit = () => {
 	}
 	params.id = editData.id;
 
-	RolesApi.patchRole(params).then(() => {
+	RolesApi.patchRole(params.id, params).then(() => {
 		thisDialogState.value = false;
 		getTableData();
 	}).catch(() => {});

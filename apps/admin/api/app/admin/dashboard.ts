@@ -1,8 +1,7 @@
 import instance from "../../axios";
 
-const APP_PATH = "/admin/dashboard";
+const APP_PATH = "/all/dashboard";
 
-//控制台
 const getDashboard = () => {
     return instance.get(APP_PATH);
 };
