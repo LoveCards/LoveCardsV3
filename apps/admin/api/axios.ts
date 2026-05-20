@@ -59,8 +59,10 @@ instance.interceptors.response.use(
         
         // 根据错误类型进行不同处理
         if (error.response?.status === 401) {
-            // Token过期或未授权
+            // Token过期或未授权，清除无效Token并跳转登录
+            Cookies.deleteCookie(COOKIE_NAMES.USER_TOKEN, { path: '/' });
             showErrorNotification('未授权，请重新登录');
+            window.location.href = '/dev/login';
         } else if (error.response?.status === 403) {
             // 权限不足
             showErrorNotification('权限不足，无法执行此操作');
