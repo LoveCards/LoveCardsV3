@@ -8,8 +8,12 @@ import { showErrorNotification } from '~/api/utils/notifier';
  */
 export interface UpdataInfo {
     ver: {
-        VerS: string;
-        Ver: string;
+        app_name: string;
+        homepage: string;
+        version: string;
+        build: number;
+        github: string;
+        qgroup: string;
     };
     latest: {
         tag_name: string;

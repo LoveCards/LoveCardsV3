@@ -240,7 +240,7 @@ const getTableData = () => {
     page: tableCurrentPage.value,
     list_rows: tableListRows.value,
     search_value: tableSearchValue.value,
-    show_deleted: viewMode.value === 'deleted' ? 1 : 0,
+    show_deleted: viewMode.value === 'deleted' ? 2 : 0,
     ...tableSearchFilter.value,
   };
   StorageApi.getFileIndex(params).then((response) => {

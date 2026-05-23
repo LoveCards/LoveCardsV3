@@ -31,15 +31,15 @@ const cleanup = () => {
 };
 
 const testChannel = (channel: string) => {
-    return instance.post(`/all/config/test-channel`, { channel });
+    return instance.post(`/all/storage/test-channel`, { channel });
 };
 
 const getChannelStats = () => {
-    return instance.get('/all/config/channel-stats');
+    return instance.get('/all/storage/channel-stats');
 };
 
 const getStorageChannels = () => {
-    return instance.get('/all/config/storage-channels');
+    return instance.get('/all/storage/channels');
 };
 
 const StorageApi = {

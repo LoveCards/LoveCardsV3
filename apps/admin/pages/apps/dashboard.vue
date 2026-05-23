@@ -73,7 +73,7 @@
 									<div class="text-subtitle-1">2.3.2</div>
 								</v-col>
 							</v-row> -->
-						<v-list-item :title="dashboard.ver.Name" :subtitle="dashboard.ver.VerS"
+						<v-list-item :title="dashboard.ver.app_name" :subtitle="dashboard.ver.version"
 							prepend-avatar="~/assets/images/logo.png">
 						</v-list-item>
 					</v-card-text>
@@ -93,13 +93,13 @@
 							</template>
 							<v-list-item-title>论坛</v-list-item-title>
 						</v-list-item>
-						<v-list-item :href="dashboard.ver.GithubUrl" target="_blank">
+						<v-list-item :href="dashboard.ver.github" target="_blank">
 							<template v-slot:prepend>
 								<v-icon>mdi-github</v-icon>
 							</template>
 							<v-list-item-title>Github</v-list-item-title>
 						</v-list-item>
-						<v-list-item :href="dashboard.ver.QGroupUrl" target="_blank">
+						<v-list-item :href="dashboard.ver.qgroup" target="_blank">
 							<template v-slot:prepend>
 								<v-icon>mdi-qqchat</v-icon>
 							</template>

@@ -33,20 +33,20 @@
 				<v-card v-else-if="updata && updata.verlog">
 					<v-card-text>
 
-						<v-icon>mdi-zip-box</v-icon>当前版本：
-						<v-chip size="x-small" variant="elevated" label>
-							{{ updata.ver?.VerS }}[{{ updata.ver?.Ver }}]
-						</v-chip><br>
+					<v-icon>mdi-zip-box</v-icon>当前版本：
+					<v-chip size="x-small" variant="elevated" label>
+						{{ updata.ver?.version }}[{{ updata.ver?.build }}]
+					</v-chip><br>
 
-						<v-icon>mdi-new-box</v-icon>最新版本：
-						<v-chip v-if="updata.latest && ('v' + updata.ver?.VerS) >= updata.latest.tag_name" :href="updata.latest.url"
-							size="x-small" variant="elevated" label>
-							{{ updata.latest.name }}
-						</v-chip>
-						<v-chip v-else-if="updata.latest && ('v' + updata.ver?.VerS) < updata.latest.tag_name"
-							:href="updata.latest.url" size="x-small" variant="elevated" label>
-							前往更新{{ updata.latest.name }}
-						</v-chip>
+					<v-icon>mdi-new-box</v-icon>最新版本：
+					<v-chip v-if="updata.latest && compareVersions(updata.ver?.version, updata.latest.tag_name) >= 0" :href="updata.latest.url"
+						size="x-small" variant="elevated" label>
+						{{ updata.latest.name }}
+					</v-chip>
+					<v-chip v-else-if="updata.latest && compareVersions(updata.ver?.version, updata.latest.tag_name) < 0"
+						:href="updata.latest.url" size="x-small" variant="elevated" label>
+						前往更新{{ updata.latest.name }}
+					</v-chip>
 
 						<v-textarea :model-value="updata.verlog" class="mt-2" label="更新日志" row-height="25" rows="3"
 							variant="outlined" readonly auto-grow></v-textarea>
@@ -70,6 +70,18 @@
 import { useSystemStore, type UpdataInfo } from '~/stores/api/admin/systemStore';
 
 const systemStore = useSystemStore();
+
+// semver 比较
+const compareVersions = (a: string, b: string): number => {
+	if (!a || !b) return 0;
+	const pa = String(a).replace(/^v/, '').split('.').map(Number);
+	const pb = String(b).replace(/^v/, '').split('.').map(Number);
+	for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+		const na = pa[i] || 0, nb = pb[i] || 0;
+		if (na !== nb) return na - nb;
+	}
+	return 0;
+};
 
 // 使用computed从Store获取数据，自动响应变化
 const updata = computed<UpdataInfo | null>(() => systemStore.updata);

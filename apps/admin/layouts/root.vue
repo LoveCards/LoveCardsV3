@@ -166,10 +166,10 @@ const compareVersions = (a: string, b: string) => {
 };
 const updataStatus = computed(() => {
 	const updata = systemStore.updata as any;
-	if (!updata?.ver?.VerS || !updata?.latest?.tag_name) {
+	if (!updata?.ver?.version || !updata?.latest?.tag_name) {
 		return false;
 	}
-	return compareVersions(updata.ver.VerS, updata.latest.tag_name) < 0;
+	return compareVersions(updata.ver.version, updata.latest.tag_name) < 0;
 });
 
 
