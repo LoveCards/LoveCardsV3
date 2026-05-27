@@ -5,6 +5,14 @@
 			<v-col cols="6">
 				<h1 class="text-primary font-weight-bold">存储配置</h1>
 			</v-col>
+			<v-col cols="6" class="text-right">
+				<v-btn size="small" variant="tonal" color="accent"
+					prepend-icon="mdi-refresh"
+					:loading="scanning"
+					@click="scanChannels">
+					扫描渠道
+				</v-btn>
+			</v-col>
 		</v-row>
 
 		<v-row>
@@ -167,6 +175,7 @@ const settings = ref({
 	direct_upload_expire: 3600,
 });
 const stats = ref<Record<string, { file_count: number; total_size: number }>>({});
+const scanning = ref(false);
 
 const channelOptions = computed(() =>
 	channelList.value.map(ch => ({ title: ch.name, value: ch.slug }))
@@ -221,6 +230,21 @@ const saveSettings = () => {
 	SystemApi.postConfig({ storage: settings.value })
 		.catch((error) => {
 			console.error('保存设置失败:', error);
+		});
+};
+
+const scanChannels = () => {
+	scanning.value = true;
+	StorageApi.install()
+		.then(() => {
+			loadChannels();
+			loadConfig();
+		})
+		.catch((error) => {
+			console.error('扫描失败:', error);
+		})
+		.finally(() => {
+			scanning.value = false;
 		});
 };
 

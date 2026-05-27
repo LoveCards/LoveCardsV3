@@ -76,6 +76,13 @@
 				<v-list-item title="存储配置" value="config" to="/apps/storage/config"></v-list-item>
 			</v-list-group>
 
+			<v-list-group value="sender" v-if="superAdminStatus">
+				<template v-slot:activator="{ props }">
+					<v-list-item v-bind="props" prepend-icon="mdi-email-outline" title="发信"></v-list-item>
+				</template>
+				<v-list-item title="发信配置" value="sender-config" to="/apps/sender/config"></v-list-item>
+			</v-list-group>
+
 			<v-list-group value="settings" v-if="superAdminStatus">
 				<template v-slot:activator="{ props }">
 					<v-list-item v-bind="props" title="设置">

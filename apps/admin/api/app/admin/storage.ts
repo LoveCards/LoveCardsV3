@@ -42,6 +42,10 @@ const getStorageChannels = () => {
     return instance.get('/all/storage/channels');
 };
 
+const install = () => {
+    return instance.post('/all/storage/install');
+};
+
 const StorageApi = {
     getFileIndex,
     getFile,
@@ -50,6 +54,7 @@ const StorageApi = {
     testChannel,
     getChannelStats,
     getStorageChannels,
+    install,
 };
 
 export default StorageApi;
