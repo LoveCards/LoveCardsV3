@@ -13,7 +13,6 @@
 				<v-card>
 					<v-tabs v-model="ViewTab" color="primary">
 						<v-tab value="tab1">基本信息</v-tab>
-						<v-tab value="tab2">极验配置</v-tab>
 						<v-tab value="tab3">邮箱配置</v-tab>
 						<v-tab value="tab4">其他配置</v-tab>
 					</v-tabs>
@@ -55,36 +54,10 @@
 									<v-col cols="12">
 										<v-btn @click="setSite" class="float-right" color="accent">提交</v-btn>
 									</v-col>
-								</v-row>
-							</v-tabs-window-item>
+							</v-row>
+						</v-tabs-window-item>
 
-							<v-tabs-window-item value="tab2">
-								<v-row dense>
-									<v-col cols="12" sm="4">
-										<v-text-field label="验证 ID" placeholder="id" v-model="systemConfig.master.Geetest.Id"
-											variant="underlined" color="accent"></v-text-field>
-									</v-col>
-									<v-col cols="12" sm="4">
-										<v-text-field label="验证 Key" placeholder="key" v-model="systemConfig.master.Geetest.Key"
-											variant="underlined" color="accent"></v-text-field>
-									</v-col>
-									<v-col cols="12" sm="4">
-										<v-select label="验证模块状态" item-title="title" item-value="value"
-											v-model="systemConfig.master.Geetest.Status" subtitle="tip" :items="ViewMasterSwitchItems"
-											variant="underlined">
-										</v-select>
-									</v-col>
-								</v-row>
-								<v-row>
-									<v-col cols="12">
-										<a class="text-accent text-decoration-none mt-2 d-inline-block"
-											href="https://forum.lovecards.cn/d/26">不会配置？</a>
-										<v-btn @click="setConfig" class="float-right" color="accent">提交</v-btn>
-									</v-col>
-								</v-row>
-							</v-tabs-window-item>
-
-							<v-tabs-window-item value="tab3">
+						<v-tabs-window-item value="tab3">
 								<v-row dense>
 									<v-col cols="12" sm="6">
 										<v-select label="邮件驱动" item-title="title" item-value="value" subtitle="tip"
@@ -213,11 +186,6 @@ const toFrontendFormat = (raw: any) => {
 			siteCopyright: raw.core?.copyright ?? '',
 		},
 		master: {
-			Geetest: {
-				Id: raw.geetest?.id ?? '',
-				Key: raw.geetest?.key ?? '',
-				Status: raw.geetest?.status ?? false,
-			},
 			System: {
 				VisitorMode: raw.core?.visitor_mode ?? false,
 			},
@@ -244,11 +212,6 @@ const toFrontendFormat = (raw: any) => {
 // 前端 master → 后端格式 反向转换
 const toBackendConfig = (master: any) => {
 	return {
-		geetest: {
-			id: master.Geetest?.Id ?? '',
-			key: master.Geetest?.Key ?? '',
-			status: master.Geetest?.Status ?? false,
-		},
 		core: {
 			visitor_mode: master.System?.VisitorMode ?? false,
 		},

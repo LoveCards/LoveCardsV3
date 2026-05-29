@@ -83,6 +83,13 @@
 				<v-list-item title="发信配置" value="sender-config" to="/apps/sender/config"></v-list-item>
 			</v-list-group>
 
+			<v-list-group value="captcha" v-if="superAdminStatus">
+				<template v-slot:activator="{ props }">
+					<v-list-item v-bind="props" prepend-icon="mdi-shield-check-outline" title="验证"></v-list-item>
+				</template>
+				<v-list-item title="验证配置" value="captcha-config" to="/apps/captcha/config"></v-list-item>
+			</v-list-group>
+
 			<v-list-group value="settings" v-if="superAdminStatus">
 				<template v-slot:activator="{ props }">
 					<v-list-item v-bind="props" title="设置">
