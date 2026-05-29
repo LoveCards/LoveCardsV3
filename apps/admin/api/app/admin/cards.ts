@@ -1,7 +1,6 @@
 import instance from "../../axios";
 
 import type { Params as PublicParams } from "../../types/public";
-import type { Params as CardsParams } from "../../types/cards";
 
 const APP_PATH = "/all/cards";
 

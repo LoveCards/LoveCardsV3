@@ -13,7 +13,6 @@
 				<v-card>
 					<v-tabs v-model="ViewTab" color="primary">
 						<v-tab value="tab1">基本信息</v-tab>
-						<v-tab value="tab3">邮箱配置</v-tab>
 						<v-tab value="tab4">其他配置</v-tab>
 					</v-tabs>
 
@@ -57,45 +56,6 @@
 							</v-row>
 						</v-tabs-window-item>
 
-						<v-tabs-window-item value="tab3">
-								<v-row dense>
-									<v-col cols="12" sm="6">
-										<v-select label="邮件驱动" item-title="title" item-value="value" subtitle="tip"
-											:items="ViewMailSmtpDriverItems" v-model="systemConfig.mail.driver" variant="underlined">
-										</v-select>
-									</v-col>
-									<v-col cols="12" sm="6">
-										<v-select label="加密方式" item-title="title" item-value="value" subtitle="tip"
-											:items="ViewMailSmtpSecurityItems" v-model="systemConfig.mail.security" variant="underlined">
-										</v-select>
-									</v-col>
-									<v-col cols="12" sm="6">
-										<v-text-field label="SMTPHost" placeholder="mail.lovecard.cn" v-model="systemConfig.mail.host"
-											variant="underlined" color="accent"></v-text-field>
-									</v-col>
-									<v-col cols="12" sm="6">
-										<v-text-field label="SMTPPort" placeholder="25" v-model="systemConfig.mail.port"
-											variant="underlined" color="accent"></v-text-field>
-									</v-col>
-									<v-col cols="12" sm="6">
-										<v-text-field label="SMTP邮箱地址" placeholder="xxx@lovecards.cn" v-model="systemConfig.mail.addr"
-											variant="underlined" color="accent"></v-text-field>
-									</v-col>
-									<v-col cols="12" sm="6">
-										<v-text-field label="SMTP密码" placeholder="" v-model="systemConfig.mail.pass" variant="underlined"
-											color="accent"></v-text-field>
-									</v-col>
-									<v-col cols="12" sm="6">
-										<v-text-field label="发件人昵称" v-model="systemConfig.mail.name" placeholder="倾心倾意邮递员"
-											variant="underlined" color="accent"></v-text-field>
-									</v-col>
-								</v-row>
-								<v-row>
-									<v-col cols="12">
-										<v-btn @click="setEmail" class="float-right" color="accent">提交</v-btn>
-									</v-col>
-								</v-row>
-							</v-tabs-window-item>
 
 							<v-tabs-window-item value="tab4">
 								<v-row dense>
@@ -162,16 +122,6 @@ const ViewMasterSwitchItems = [
 	{ title: "开启", value: true },
 	{ title: "关闭", value: false },
 ]
-const ViewMailSmtpDriverItems = [
-	{ title: "smtp", value: "smtp" },
-	{ title: "sendmail", value: "sendmail" },
-	{ title: "mail", value: "mail" },
-]
-const ViewMailSmtpSecurityItems = [
-	{ title: "null", value: "null" },
-	{ title: "ssl", value: "ssl" },
-	{ title: "tls", value: "tls" },
-]
 
 // 后端 snake_case → 前端 camelCase/PascalCase 转换
 const toFrontendFormat = (raw: any) => {
@@ -205,7 +155,6 @@ const toFrontendFormat = (raw: any) => {
 				Approve: raw.comments?.approve ?? false,
 			},
 		},
-		mail: raw.mail ?? {},
 	};
 };
 
@@ -265,12 +214,6 @@ const setConfig = () => {
 	});
 }
 
-const setEmail = () => {
-	let params = ApiCommonUtils.removeCommonProperties(systemConfig.value.mail, OriginSystemConfig.value.mail);
-	SystemApi.postConfig({ mail: params }).then(() => {
-		getConfig();
-	});
-}
 
 const setSite = () => {
 	const backendParams = toBackendSite(systemConfig.value.system);
