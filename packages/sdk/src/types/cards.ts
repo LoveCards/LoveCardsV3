@@ -1,13 +1,13 @@
 export interface Card {
   id: number
-  aid: number
   user_id: number
   status: number
   is_top: number
   content: string
   data: Record<string, any>
-  cover: string
-  tags: string
+  cover: string | null
+  pictures: any
+  tags: any
   goods: number
   views: number
   comments: number
@@ -33,13 +33,14 @@ export interface SearchParams {
 export interface CreateCardParams {
   content: string
   data?: Record<string, any>
-  tags?: string[]
+  tags?: string
   cover?: string
+  pictures?: string[]
 }
 
 export interface UpdateCardParams {
   content?: string
   data?: Record<string, any>
-  tags?: string[]
+  tags?: string
   cover?: string
 }

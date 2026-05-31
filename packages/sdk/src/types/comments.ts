@@ -5,6 +5,10 @@ export interface Comment {
   user_id: number
   parent_id: number | null
   content: string
+  data: Record<string, any>
+  is_top: number
+  goods: number
+  post_ip: string
   status: number
   created_at: string
   updated_at: string
@@ -12,7 +16,6 @@ export interface Comment {
 }
 
 export interface CreateCommentParams {
-  pid: number
   content: string
   parent_id?: number
 }

@@ -1,10 +1,13 @@
 export interface User {
   id: number
-  nickname: string
+  number: string
+  username: string
   email: string
   phone: string
   avatar: string
-  roles_id: number
+  roles_id: number[]
+  roles?: { id: number; name: string; slug: string }[]
+  permissions?: string[]
   status: number
   created_at: string
   updated_at: string
@@ -29,20 +32,22 @@ export interface LoginResult {
 }
 
 export interface UpdateUserParams {
-  nickname?: string
+  username?: string
   avatar?: string
-  email?: string
+  password?: string
 }
 
 export interface PasswordParams {
-  old_password: string
-  new_password: string
-  new_password_confirm: string
+  password: string
 }
 
 export interface EmailParams {
   email: string
   captcha: string
+}
+
+export interface EmailCaptchaParams {
+  email: string
 }
 
 export interface CaptchaSendParams {

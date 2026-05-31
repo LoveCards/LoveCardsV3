@@ -1,639 +1,269 @@
-# LoveCards3 JSSDK 设计文档
+# @lovecards/sdk 开发文档
 
-> 版本：1.0.0 | 最后更新：2026-05-30
-
----
-
-## 一、架构概述
-
-`@lovecards/sdk` 是 LoveCards3 的 JavaScript SDK，封装 REST API 调用，提供类型安全的请求/响应处理。
-
-### 设计原则
-
-- **框架无关**：不依赖 Vue、React、jQuery 等任何前端框架
-- **纯数据层**：只负责 API 请求和响应处理，不涉及 UI 和路由
-- **TypeScript 优先**：完整的类型定义，IDE 智能提示
-- **Axios 驱动**：强大的拦截器、错误处理、token 刷新
-- **可迭代**：API 端点新增 = minor 版本，签名变更 = major 版本
-
-### 架构图
-
-```
-┌─────────────────────────────────────────┐
-│          @lovecards/sdk                  │
-│                                         │
-│  ┌──────────────────────────────────┐   │
-│  │  client.ts（Axios 实例工厂）      │   │
-│  │  ├─ baseURL: window.__LC__.apiUrl│   │
-│  │  ├─ auth 拦截器（自动附加 token） │   │
-│  │  ├─ 响应拦截器（统一错误处理）    │   │
-│  │  └─ token 刷新逻辑               │   │
-│  └──────────┬───────────────────────┘   │
-│             │                           │
-│  ┌──────────┴───────────────────────┐   │
-│  │  api/（API 端点模块）             │   │
-│  │  ├─ cards.ts                     │   │
-│  │  ├─ users.ts                     │   │
-│  │  ├─ comments.ts                  │   │
-│  │  ├─ tags.ts                      │   │
-│  │  ├─ captcha.ts                   │   │
-│  │  └─ system.ts                    │   │
-│  └──────────┬───────────────────────┘   │
-│             │                           │
-│  ┌──────────┴───────────────────────┐   │
-│  │  types/（TypeScript 类型）        │   │
-│  │  constants.ts（PUBLIC_API 常量表）│   │
-│  └──────────────────────────────────┘   │
-└─────────────────────────────────────────┘
-         │
-         │ 使用
-         │
-┌────────┴────────────────────────────────┐
-│  主题层（不在 SDK 内）                    │
-│                                         │
-│  SPA 主题：React hooks 调 SDK            │
-│  SSR 主题：CDN 版 JS 调 SDK              │
-│  自定义主题：任意框架调 SDK               │
-└─────────────────────────────────────────┘
-```
+> 版本：2.0.0 | 最后更新：2026-05-31
+>
+> 本文档面向 SDK 维护者。AI 维护指南见 `MAINTENANCE.md`，用户文档见 `README.md`，API 参考见 `API_REFERENCE.md`。
 
 ---
 
-## 二、目录结构
+## 定位
+
+@lovecards/sdk 是**后端 API 的前端类型安全封装层**。它是胶水——把后端 REST API 的 JSON 响应转化为 TypeScript 类型安全的 Promise。
 
 ```
-SDK/
+SPA 代码  →  SDK (类型安全胶水)  →  HTTP  →  后端 API
+```
+
+## 设计原则
+
+| 原则 | 说明 |
+|------|------|
+| **响应格式统一** | `ApiResponse<T> = { data: T, pagination? }` |
+| **资源按领域分文件** | 每个 API 模块一个 `src/resources/*.ts` |
+| **错误类层次** | 按 HTTP 状态码派生子类，`instanceof` 可判断 |
+| **核心最小化** | `src/core/` 只负责请求发送 + token 管理 |
+| **构建产物不提交** | `dist/` 在 `.gitignore` 中 |
+
+## 包结构
+
+```
+@lovecards/sdk/
 ├── src/
-│   ├── index.ts               # 统一入口
-│   ├── client.ts              # Axios 实例工厂
-│   ├── constants.ts           # PUBLIC_API 常量表
-│   ├── api/
-│   │   ├── index.ts           # API 模块统一导出
-│   │   ├── cards.ts           # CardsAPI
-│   │   ├── users.ts           # UsersAPI
-│   │   ├── comments.ts        # CommentsAPI
-│   │   ├── tags.ts            # TagsAPI
-│   │   ├── captcha.ts         # CaptchaAPI
-│   │   └── system.ts          # SystemAPI
-│   └── types/
-│       ├── index.ts           # 类型统一导出
-│       ├── api.ts             # 通用响应类型
-│       ├── cards.ts
-│       ├── users.ts
-│       ├── comments.ts
-│       └── tags.ts
+│   ├── index.ts                # 入口：createClient + 导出所有类型
+│   ├── core/
+│   │   ├── LoveCards.ts        # 核心构造函数（组装资源类）
+│   │   ├── LoveCardsResource.ts # 资源基类（_get/_post/_patch/_delete/_put）
+│   │   └── Deduplicator.ts     # GET 请求去重
+│   ├── resources/              # 8 个资源类，覆盖后端 16 个路由文件
+│   │   ├── Cards.ts
+│   │   ├── Session.ts
+│   │   ├── Users.ts
+│   │   ├── Comments.ts
+│   │   ├── Tags.ts
+│   │   ├── Likes.ts
+│   │   ├── Files.ts
+│   │   └── Theme.ts
+│   ├── errors/
+│   │   ├── LoveCardsError.ts    # 基类
+│   │   ├── AuthenticationError.ts # 401
+│   │   ├── PermissionError.ts   # 403
+│   │   ├── NotFoundError.ts     # 404
+│   │   ├── ValidationError.ts   # 400/422
+│   │   ├── RateLimitError.ts    # 429
+│   │   └── ServerError.ts       # 500/502/503/504
+│   ├── types/
+│   │   ├── index.ts            # 聚合导出
+│   │   ├── api.ts              # ApiResponse<T>, PaginationInfo, PaginationParams...
+│   │   ├── cards.ts            # Card, CreateCardParams...
+│   │   ├── users.ts            # User, LoginParams, LoginResult...
+│   │   ├── comments.ts         # Comment, CreateCommentParams
+│   │   ├── tags.ts             # Tag
+│   │   ├── likes.ts            # LikeItem
+│   │   ├── files.ts            # FileItem, DirectUploadResult
+│   │   └── theme.ts            # ThemeItem, ThemeConfigData
+│   ├── config/
+│   │   └── defaults.ts         # defaultTokenStore + defaultConfig
+│   ├── helpers/
+│   │   └── method-key.ts       # 去重 key 生成
+│   ├── constants.ts            # PUBLIC_API（SSR 预加载契约）
+│   ├── dedupe.ts               # Deduplicator 请求去重器
+│   └── errors.ts               # ApiError 错误类 + from() 工厂（保留兼容）
 ├── docs/
-│   └── SDK_DESIGN.md          # 本文件
-├── package.json
+│   ├── SDK_DESIGN.md            # 本文件
+│   ├── MAINTENANCE.md           # AI 维护指南
+│   ├── API_REFERENCE.md         # API 参考（91 个命名路由）
+│   └── README.md                # 用户文档
+├── dist/                        # 构建产物（不提交 git）
+├── package.json                 # v2.0.0
 ├── tsconfig.json
-├── vite.config.ts             # 库模式构建配置
-└── README.md
+└── vite.config.ts
 ```
 
----
+## 核心类设计
 
-## 三、client.ts — Axios 实例工厂
+### LoveCards（核心构造函数）
 
-### 3.1 配置接口
+```typescript
+class LoveCards {
+  cards: Cards
+  session: Session
+  users: Users
+  comments: Comments
+  tags: Tags
+  likes: Likes
+  files: Files
+  theme: Theme
 
-```ts
-export interface LCClientConfig {
-  apiUrl: string              // API 基础路径，如 "/api" 或 "https://api.example.com"
-  token?: string              // JWT token（可选，也可通过 setToken() 后续设置）
-  timeout?: number            // 请求超时（ms），默认 10000
-  onAuthError?: () => void    // 401 回调（token 过期且刷新失败）
-}
-```
-
-### 3.2 创建客户端
-
-```ts
-import { createClient } from '@lovecards/sdk'
-
-const client = createClient({
-  apiUrl: window.__LC__?.apiUrl || '/api',
-  onAuthError: () => {
-    localStorage.removeItem('token')
-    location.href = '/login'
-  }
-})
-```
-
-### 3.3 Auth 拦截器
-
-```ts
-// 请求拦截器：自动附加 Authorization header
-client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-// 响应拦截器：统一处理 401
-client.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // 尝试刷新 token
-      // 刷新失败 → 调用 onAuthError 回调
-    }
-    return Promise.reject(error)
-  }
-)
-```
-
-### 3.4 Token 管理
-
-```ts
-// 设置 token
-client.setToken('eyJhbGciOi...')
-
-// 清除 token
-client.clearToken()
-
-// 获取当前 token
-const token = client.getToken()
-```
-
----
-
-## 四、API 端点模块
-
-### 4.1 CardsAPI
-
-```ts
-export interface CardsAPI {
-  // 公开端点
-  list(params?: CardsListParams): Promise<ApiResponse<Paginated<Card>>>
-  get(id: number): Promise<ApiResponse<Card>>
-  hot(params?: PaginationParams): Promise<ApiResponse<Paginated<Card>>>
-  search(params: SearchParams): Promise<ApiResponse<Paginated<Card>>>
-
-  // 需要登录
-  create(data: CreateCardParams): Promise<ApiResponse<Card>>
-  update(id: number, data: UpdateCardParams): Promise<ApiResponse<Card>>
-  delete(id: number): Promise<ApiResponse<void>>
-  like(id: number): Promise<ApiResponse<void>>
-}
-
-export interface CardsListParams extends PaginationParams {
-  tag?: string
-  status?: number
-}
-
-export interface SearchParams extends PaginationParams {
-  keyword: string
-}
-
-export interface CreateCardParams {
-  content: string
-  data?: Record<string, any>
-  tags?: string[]
-  cover?: string
-}
-
-export interface UpdateCardParams {
-  content?: string
-  data?: Record<string, any>
-  tags?: string[]
-  cover?: string
+  constructor(config: LoveCardsConfig)
+  setToken(token: string): void
+  clearToken(): void
+  getToken(): string | null
 }
 ```
 
-### 4.2 UsersAPI
+### LoveCardsResource（资源基类）
 
-```ts
-export interface UsersAPI {
-  // 认证
-  login(data: LoginParams): Promise<ApiResponse<LoginResult>>
-  register(data: RegisterParams): Promise<ApiResponse<LoginResult>>
-  guest(): Promise<ApiResponse<LoginResult>>
-  logout(): Promise<ApiResponse<void>>
+所有资源类继承此基类，自动处理请求发送和 token 注入：
 
-  // 用户信息
-  me(): Promise<ApiResponse<User>>
-  updateMe(data: UpdateUserParams): Promise<ApiResponse<User>>
-  updatePassword(data: PasswordParams): Promise<ApiResponse<void>>
-  updateEmail(data: EmailParams): Promise<ApiResponse<void>>
-
-  // 验证码
-  captcha(params: CaptchaSendParams): Promise<ApiResponse<void>>
-}
-
-export interface LoginParams {
-  account: string
-  password: string
-  captcha?: string
-}
-
-export interface RegisterParams {
-  account: string
-  password: string
-  password_confirm: string
-  captcha?: string
-}
-
-export interface LoginResult {
-  token: string
-  user: User
-}
-
-export interface UpdateUserParams {
-  nickname?: string
-  avatar?: string
-  email?: string
-}
-
-export interface PasswordParams {
-  old_password: string
-  new_password: string
-  new_password_confirm: string
-}
-
-export interface EmailParams {
-  email: string
-  captcha: string
-}
-
-export interface CaptchaSendParams {
-  account: string
-  scene?: string
+```typescript
+class LoveCardsResource {
+  protected _get<T>(url: string, params?: any): Promise<ApiResponse<T>>
+  protected _post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>>
+  protected _patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>>
+  protected _put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>>
+  protected _delete<T>(url: string, body?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>>
 }
 ```
 
-### 4.3 CommentsAPI
+### 资源类示例
 
-```ts
-export interface CommentsAPI {
-  listByCard(cardId: number, params?: PaginationParams): Promise<ApiResponse<Paginated<Comment>>>
-  create(data: CreateCommentParams): Promise<ApiResponse<Comment>>
-  delete(id: number): Promise<ApiResponse<void>>
-}
-
-export interface CreateCommentParams {
-  pid: number              // 卡片 ID
-  content: string
-  parent_id?: number       // 父评论 ID（回复）
-}
-```
-
-### 4.4 TagsAPI
-
-```ts
-export interface TagsAPI {
-  list(params?: PaginationParams): Promise<ApiResponse<Paginated<Tag>>>
-  get(id: number): Promise<ApiResponse<Tag>>
+```typescript
+class Cards extends LoveCardsResource {
+  list(params?: CardsListParams) { return this._get<Card[]>('/cards', params) }
+  get(id: number)               { return this._get<Card>(`/cards/${id}`) }
+  hot()                         { return this._get<Card[]>('/cards/hot') }
+  search(params: SearchParams)  { return this._get<Card[]>('/cards/search', params) }
+  create(data: CreateCardParams){ return this._post<{ id: string }>('/cards', data) }
+  update(id: number, data: UpdateCardParams) { return this._patch<void>(`/cards/${id}`, data) }
+  delete(id: number)            { return this._delete<void>(`/cards/${id}`) }
+  like(id: number)              { return this._post<void>(`/cards/${id}/like`) }
+  listOwn()                     { return this._get<Card[]>('/users/me/cards') }
+  allList(params?: AdminListParams) { return this._get<Card[]>('/all/cards', params) }
+  allGet(id: number)            { return this._get<Card>(`/all/cards/${id}`) }
+  allUpdate(id: number, data: UpdateCardParams) { return this._patch<void>(`/all/cards/${id}`, data) }
+  allDelete(id: number)         { return this._delete<void>(`/all/cards/${id}`) }
+  batch(data: BatchOperateParams) { return this._post<void>('/all/cards/batch', data) }
 }
 ```
 
-### 4.5 CaptchaAPI
+## 响应类型
 
-```ts
-export interface CaptchaAPI {
-  config(): Promise<ApiResponse<CaptchaConfig>>
-  verify(data: CaptchaVerifyParams): Promise<ApiResponse<void>>
-}
+### 成功响应
 
-export interface CaptchaConfig {
-  captcha_geetest_v4?: {
-    id: string
-    status: boolean
-  }
-  code_enabled: boolean
-  captcha_enabled: boolean
-}
-
-export interface CaptchaVerifyParams {
-  type: 'code' | 'captcha'
-  // code 类型
-  key?: string
-  code?: string
-  // captcha 类型（极验）
-  lot_number?: string
-  captcha_output?: string
-  pass_token?: string
-  gen_time?: string
-}
-```
-
-### 4.6 SystemAPI
-
-```ts
-export interface SystemAPI {
-  themeConfig(): Promise<ApiResponse<ThemePublicConfig>>
-}
-
-export interface ThemePublicConfig {
-  theme: string
-  config: Record<string, any>
-}
-```
-
----
-
-## 五、通用类型
-
-### 5.1 ApiResponse
-
-```ts
-export interface ApiResponse<T> {
-  code: number
-  message: string
+```typescript
+interface ApiResponse<T> {
   data: T
+  pagination?: PaginationInfo   // 列表接口才有
+}
+
+interface PaginationInfo {
+  currentPage: number
+  totalPages: number
+  totalItems: number
+  itemsPerPage: number
 }
 ```
 
-### 5.2 Paginated
+### 错误响应
 
-```ts
-export interface Paginated<T> {
-  data: T[]
-  current_page: number
-  last_page: number
-  per_page: number
-  total: number
-}
-```
+不返回值，直接抛出错误类实例：
 
-### 5.3 PaginationParams
-
-```ts
-export interface PaginationParams {
-  page?: number
-  list_rows?: number
-}
-```
-
-### 5.4 Card
-
-```ts
-export interface Card {
-  id: number
-  aid: number
-  user_id: number
-  status: number
-  is_top: number
-  content: string
-  data: Record<string, any>
-  cover: string
-  tags: string
-  goods: number
-  views: number
-  comments: number
-  post_ip: string
-  created_at: string
-  updated_at: string
-  deleted_at: string | null
-  user?: User
-  tags_list?: Tag[]
-}
-```
-
-### 5.5 User
-
-```ts
-export interface User {
-  id: number
-  nickname: string
-  email: string
-  phone: string
-  avatar: string
-  roles_id: number
-  status: number
-  created_at: string
-  updated_at: string
-}
-```
-
-### 5.6 Comment
-
-```ts
-export interface Comment {
-  id: number
-  aid: number
-  pid: number
-  user_id: number
-  parent_id: number | null
-  content: string
-  status: number
-  created_at: string
-  updated_at: string
-  user?: User
-  children?: Comment[]
-}
-```
-
-### 5.7 Tag
-
-```ts
-export interface Tag {
-  id: number
-  name: string
-  status: number
-  created_at: string
-}
-```
-
----
-
-## 六、PUBLIC_API 常量表
-
-SSR 模式预加载数据集的定义。PHP 侧和 JS 侧各维护一份，保持同步。
-
-```ts
-// constants.ts
-
-export const PUBLIC_API = {
-  // Cards
-  'cards.hot':     { method: 'GET',  path: '/api/cards/hot' },
-  'cards.list':    { method: 'GET',  path: '/api/cards' },
-  'cards.get':     { method: 'GET',  path: '/api/cards/:id' },
-  'cards.search':  { method: 'GET',  path: '/api/cards/search' },
-
-  // Tags
-  'tags.list':     { method: 'GET',  path: '/api/tags' },
-  'tags.get':      { method: 'GET',  path: '/api/tags/:id' },
-
-  // Comments
-  'comments.list': { method: 'GET',  path: '/api/comments/card/:id' },
-
-  // Users（需要登录，不预加载）
-  'users.me':      { method: 'GET',  path: '/api/users/me' },
-
-  // System
-  'system.theme':  { method: 'GET',  path: '/api/theme/config' },
-} as const
-
-export type PublicAPIKey = keyof typeof PUBLIC_API
-```
-
----
-
-## 七、构建配置
-
-### 7.1 vite.config.ts
-
-```ts
-import { defineConfig } from 'vite'
-import dts from 'vite-plugin-dts'
-
-export default defineConfig({
-  build: {
-    lib: {
-      entry: 'src/index.ts',
-      name: 'LoveCards',
-      formats: ['es', 'cjs', 'umd'],
-      fileName: (format) => `lovecards.${format}.js`,
-    },
-    rollupOptions: {
-      external: ['axios'],
-      output: {
-        globals: {
-          axios: 'axios',
-        },
-      },
-    },
-  },
-  plugins: [dts()],
-})
-```
-
-### 7.2 构建产物
-
-```
-dist/
-├── lovecards.es.js          # ESM 格式（import）
-├── lovecards.cjs.js         # CJS 格式（require）
-├── lovecards.umd.js         # UMD 格式（<script> 标签）
-├── lovecards.d.ts           # TypeScript 类型声明
-└── style.css                # 如果有样式
-```
-
-### 7.3 使用方式
-
-```ts
-// ESM（SPA 主题）
-import { createClient } from '@lovecards/sdk'
-const client = createClient({ apiUrl: '/api' })
-const { data } = await client.cards.list()
-
-// UMD（SSR 主题，CDN 引入）
-<script src="/theme/default-ssr/assets/lovecards.umd.js"></script>
-<script>
-  const client = LoveCards.createClient({ apiUrl: '/api' })
-  client.cards.list().then(res => console.log(res))
-</script>
-```
-
----
-
-## 八、package.json
-
-```json
-{
-  "name": "@lovecards/sdk",
-  "version": "1.0.0",
-  "description": "LoveCards3 JavaScript SDK",
-  "type": "module",
-  "main": "dist/lovecards.cjs.js",
-  "module": "dist/lovecards.es.js",
-  "types": "dist/lovecards.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/lovecards.es.js",
-      "require": "./dist/lovecards.cjs.js",
-      "types": "./dist/lovecards.d.ts"
-    }
-  },
-  "files": ["dist"],
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint src/",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "axios": "^1.7.0"
-  },
-  "devDependencies": {
-    "typescript": "^5",
-    "vite": "^6",
-    "vite-plugin-dts": "^4"
-  }
-}
-```
-
----
-
-## 九、版本策略
-
-| 变更类型 | 版本影响 | 示例 |
-|---|---|---|
-| 新增 API 端点 | minor（1.1.0） | 新增 `cards.batch()` |
-| 新增类型定义 | minor 或 patch | 新增 `BatchParams` |
-| API 端点删除 | major（2.0.0） | 删除 `cards.oldMethod()` |
-| API 签名变更 | major（2.0.0） | `list()` 参数结构变化 |
-| 响应格式变更 | major（2.0.0） | `data` 字段结构变化 |
-| 内部实现优化 | patch（1.0.1） | 错误处理改进 |
-| 类型定义修正 | patch（1.0.1） | 修正类型错误 |
-
----
-
-## 十、错误处理
-
-### 10.1 统一错误格式
-
-```ts
-export interface ApiError {
-  code: number              // HTTP 状态码
-  message: string           // 错误消息
-  detail?: any              // 详细信息
-}
-```
-
-### 10.2 错误类型
-
-```ts
-// 网络错误
-// error.code = 'ERR_NETWORK'
-// error.message = 'Network Error'
-
-// 超时错误
-// error.code = 'ECONNABORTED'
-// error.message = 'timeout of 10000ms exceeded'
-
-// API 错误
-// error.response.status = 400/401/403/404/500
-// error.response.data = { code: 0, message: "...", detail: [...] }
-```
-
-### 10.3 推荐的错误处理模式
-
-```ts
+```typescript
 try {
-  const { data } = await client.cards.create({ content: 'hello' })
-  // 成功
-} catch (error) {
-  if (axios.isAxiosError(error)) {
-    const apiError = error.response?.data as ApiError
-    switch (error.response?.status) {
-      case 400:
-        // 参数错误，显示 apiError.message
-        break
-      case 401:
-        // 未登录，跳转登录页
-        break
-      case 403:
-        // 无权限
-        break
-      case 422:
-        // 验证失败，显示 apiError.detail
-        break
-      default:
-        // 其他错误
-    }
-  }
+  const { data } = await client.cards.list()
+  // data: Card[]
+} catch (e) {
+  if (e instanceof ValidationError) { ... }
+  if (e instanceof AuthenticationError) { ... }
 }
 ```
+
+## 配置接口
+
+```typescript
+interface LoveCardsConfig {
+  apiUrl: string
+  tokenStore?: TokenStore       // 可注入，默认 localStorage
+  deduplicate?: boolean         // 默认 true（GET 请求去重）
+  timeout?: number              // 默认 10000
+  onAuthError?: () => void      // 401 回调
+  onError?: (error: ApiError) => void // 错误钩子，不阻断 reject
+}
+```
+
+## 错误类层次
+
+```
+LoveCardsError (基类)
+├── AuthenticationError   # 401 - token 无效/过期
+├── PermissionError       # 403 - 权限不足
+├── NotFoundError         # 404 - 资源不存在
+├── ValidationError       # 400/422 - 参数错误
+├── RateLimitError        # 429 - 请求过于频繁
+└── ServerError           # 500/502/503/504 - 服务器错误
+```
+
+错误工厂：响应拦截器根据 HTTP 状态码自动创建对应实例。
+
+## 请求去重
+
+GET 请求自动去重。相同 URL + 参数的并发请求合并为一个 Promise：
+
+```typescript
+const [a, b] = await Promise.all([
+  client.cards.list({ page: 1 }),
+  client.cards.list({ page: 1 }),  // 复用第一个请求
+])
+```
+
+## 构建配置
+
+- **Vite 库模式**：`src/index.ts` 为入口
+- **三种格式**：ESM + CJS + UMD
+- **外部依赖**：`axios` 不打包（external）
+- **UMD 全局名**：`window.LC`
+- **类型声明**：`vite-plugin-dts` 生成 `.d.ts`
+- **postbuild**：自动复制 UMD 到 `BackEnd/public/theme/default-ssr/assets/lovecards.umd.js`
+
+## 构建流程
+
+```bash
+npm run build        # 构建（自动同步 UMD 到 SSR theme）
+npm run typecheck    # 类型检查
+```
+
+`dist/` 不提交 git，由构建脚本自动生成。
+
+## 版本策略
+
+| 变更 | 版本 |
+|------|------|
+| 新增 API 端点 | minor |
+| 新增类型定义 | minor 或 patch |
+| API 端点删除 | major |
+| 签名/响应格式变更 | major |
+| 内部优化 | patch |
+
+## PUBLIC_API 常量表
+
+SSR 预加载数据集定义。PHP 侧 `ThemeEngine::PUBLIC_API` 保持同步。
+
+```typescript
+export const PUBLIC_API = {
+  'cards.hot':      { method: 'GET', path: '/api/cards/hot' },
+  'cards.list':     { method: 'GET', path: '/api/cards' },
+  'cards.get':      { method: 'GET', path: '/api/cards/:id' },
+  'cards.search':   { method: 'GET', path: '/api/cards/search' },
+  'tags.list':      { method: 'GET', path: '/api/tags' },
+  'tags.get':       { method: 'GET', path: '/api/tags/:id' },
+  'comments.list':  { method: 'GET', path: '/api/cards/:id/comments' },
+  'users.me':       { method: 'GET', path: '/api/users/me' },
+  'system.theme':   { method: 'GET', path: '/api/theme/config' },
+  'captcha.config': { method: 'GET', path: '/api/captcha/config' },
+} as const
+```
+
+新增公开 API 端点时：
+1. 在 `SDK/src/constants.ts` 添加 key
+2. 在 `BackEnd/app/frontend/service/ThemeEngine.php` 的 `PUBLIC_API` 常量添加相同 key
+3. 确保 PHP 的 path 与 SDK 的 path 一致
+
+## 与主题引擎的关系
+
+```
+SPA 主题：React/Next.js → SDK → /api/* → PHP
+SSR 主题：PHP ThemeEngine → 内部调用 Service 层（不走 SDK）
+Widget 模式：UMD SDK（window.LC）→ /api/* → PHP
+```
+
+SDK 是前端调后端 API 的桥梁。PHP ThemeEngine 内部调用 Service 层，不经过 SDK。

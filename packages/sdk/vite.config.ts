@@ -5,7 +5,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: 'src/index.ts',
-      name: 'LoveCards',
+      name: 'LC',
       formats: ['es', 'cjs', 'umd'],
       fileName: (format) => `lovecards.${format}.js`,
     },
