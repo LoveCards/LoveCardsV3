@@ -3,14 +3,14 @@
   "version": "2.0.0",
   "description": "LoveCards3 JavaScript SDK",
   "type": "module",
-  "main": "dist/lovecards.cjs.js",
+  "main": "dist/lovecards.cjs",
   "module": "dist/lovecards.es.js",
   "types": "dist/lovecards.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/lovecards.es.js",
-      "require": "./dist/lovecards.cjs.js"
+      "require": "./dist/lovecards.cjs"
     }
   },
   "files": [

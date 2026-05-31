@@ -85,7 +85,7 @@ export class LCApiClient {
       update: (id: number, data: T.UpdateCardParams) => rpt<void>(i, `/cards/${id}`, data),
       delete: (id: number) => rd<void>(i, `/cards/${id}`),
       like: (id: number) => rp<void>(i, `/cards/${id}/like`),
-      listOwn: () => rg<T.Card[]>(i, '/users/me/cards'),
+      listOwn: (params?: T.PaginationParams) => rg<T.Card[]>(i, '/users/me/cards', params),
       allList: (params?: T.AdminListParams) => rg<T.Card[]>(i, '/all/cards', params),
       allGet: (id: number) => rg<T.Card>(i, `/all/cards/${id}`),
       allUpdate: (id: number, data: T.UpdateCardParams) => rpt<void>(i, `/all/cards/${id}`, data),
@@ -120,7 +120,7 @@ export class LCApiClient {
       get: (id: number) => rg<T.Comment>(i, `/comments/${id}`),
       update: (id: number, data: { content: string }) => rpt<void>(i, `/comments/${id}`, data),
       delete: (id: number) => rd<void>(i, `/comments/${id}`),
-      listOwn: () => rg<T.Comment[]>(i, '/users/me/comments'),
+      listOwn: (params?: T.PaginationParams) => rg<T.Comment[]>(i, '/users/me/comments', params),
       allList: (params?: T.AdminListParams) => rg<T.Comment[]>(i, '/all/comments', params),
       allGet: (id: number) => rg<T.Comment>(i, `/all/comments/${id}`),
       allUpdate: (id: number, data: { content: string }) => rpt<void>(i, `/all/comments/${id}`, data),
@@ -150,7 +150,7 @@ export class LCApiClient {
   get likes() {
     const i = this._instance
     return {
-      list: () => rg<T.LikeItem[]>(i, '/likes'),
+      list: (params?: T.PaginationParams) => rg<T.LikeItem[]>(i, '/likes', params),
       unlike: (id: number) => rd<void>(i, `/likes/${id}`),
     }
   }
