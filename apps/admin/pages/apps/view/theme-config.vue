@@ -1,4 +1,4 @@
-<!-- 用户管理 -->
+<!-- 主题配置 -->
 <template>
 	<NuxtLayout name="root">
 		<!-- 标题 -->
@@ -8,92 +8,127 @@
 			</v-col>
 		</v-row>
 
-
 		<v-row>
 			<v-col cols="12">
-				<v-card>
-					<v-col v-for="(item, index) in theme.Select" cols="12">
-						<v-select v-model="data.Select[index]" :key="index" :label="item.Name" :items="item.Element.map((el: any, idx: any) => ({
-							title: el,
-							value: idx
-						}))" variant="underlined" color="accent">
-						</v-select>
-						<div class="v-messages mt-n4" v-html="item.Introduction"></div>
-					</v-col>
+				<v-skeleton-loader v-if="loading" type="card" />
+				<v-card v-else>
+					<v-card-text>
+						<div v-for="(schema, key) in configSchema" :key="key" class="mb-4">
+							<!-- color -->
+							<v-text-field v-if="schema.type === 'color'"
+								:label="schema.label"
+								v-model="configValues[key]"
+								variant="underlined" color="accent"
+								:type="'color'"
+								hide-details="auto" />
 
-					<v-col v-for="(item, index) in theme.Text" cols="12">
-						<v-textarea v-model="data.Text[index]" :key="index" :label="item.Name" variant="underlined"
-							color="accent"></v-textarea>
-						<div class="v-messages mt-n4" v-html="item.Introduction"></div>
-					</v-col>
+							<!-- text -->
+							<v-text-field v-else-if="schema.type === 'text'"
+								:label="schema.label"
+								v-model="configValues[key]"
+								variant="underlined" color="accent"
+								hide-details="auto" />
 
-					<v-card-actions class="float-end">
-						<v-btn @click="setThemeConfig" class="bg-accent">
-							提交
+							<!-- select -->
+							<v-select v-else-if="schema.type === 'select'"
+								:label="schema.label"
+								v-model="configValues[key]"
+								:items="schema.options || []"
+								item-title="label" item-value="value"
+								variant="underlined" color="accent"
+								hide-details="auto" />
+
+							<!-- toggle -->
+							<v-switch v-else-if="schema.type === 'toggle'"
+								:label="schema.label"
+								v-model="configValues[key]"
+								color="accent"
+								hide-details="auto" />
+
+							<!-- image -->
+							<v-text-field v-else-if="schema.type === 'image'"
+								:label="schema.label"
+								v-model="configValues[key]"
+								variant="underlined" color="accent"
+								hide-details="auto"
+								placeholder="URL" />
+						</div>
+					</v-card-text>
+
+					<v-divider></v-divider>
+
+					<v-card-actions class="pa-4">
+						<v-btn color="accent" variant="tonal" @click="freezeConfig" :loading="freezeLoading">
+							固化配置
 						</v-btn>
+						<v-spacer></v-spacer>
+						<v-btn color="accent" variant="flat" @click="saveConfig" :loading="saveLoading">
+							保存
+						</v-btn>
+						<v-chip v-if="saveResult" size="small" :color="saveResult.success ? 'success' : 'error'" class="ml-2">
+							{{ saveResult.message }}
+						</v-chip>
 					</v-card-actions>
 				</v-card>
 			</v-col>
 		</v-row>
-
 	</NuxtLayout>
 </template>
 
-<style>
-.v-messages a {
-	text-decoration: none;
-	color: rgb(var(--v-theme-accent));
-}
-</style>
-
 <script setup lang="ts">
-import SystemApi from '~/api/app/admin/system';
-import ApiCommonUtils from "@/api/utils/common";
+import ThemeApi from '~/api/app/admin/theme';
 
-const data = ref([] as any);
-function splitThemeConfig(
-	src: {
-		Select: Record<string, { Default: number | string | boolean; Element: any[] }>
-		Text: Record<string, { Default: any }>
-	}
-): { Select: Record<string, any>; Text: Record<string, any> } {
-	const out = {
-		Select: {} as Record<string, any>,
-		Text: {} as Record<string, any>,
-	}
+const route = useRoute();
+const loading = ref(true);
+const saveLoading = ref(false);
+const freezeLoading = ref(false);
+const saveResult = ref<{ success: boolean; message: string } | null>(null);
 
-	// Select 处理
-	Object.entries(src.Select).forEach(([key, cfg]) => {
-		out.Select[key] = cfg.Default
-	})
+const configSchema = ref<Record<string, any>>({});
+const configValues = ref<Record<string, any>>({});
 
-	// Text 处理
-	Object.entries(src.Text).forEach(([key, cfg]) => {
-		out.Text[key] = cfg.Default
-	})
+const loadConfig = () => {
+	loading.value = true;
+	ThemeApi.getThemeConfig()
+		.then((result) => {
+			configSchema.value = result.data.config_schema || {};
+			configValues.value = result.data.config_values || {};
+		})
+		.finally(() => {
+			loading.value = false;
+		});
+};
 
-	return out
-}
+const saveConfig = () => {
+	saveLoading.value = true;
+	saveResult.value = null;
+	ThemeApi.updateThemeConfig(configValues.value)
+		.then(() => {
+			saveResult.value = { success: true, message: '保存成功' };
+		})
+		.catch(() => {
+			saveResult.value = { success: false, message: '保存失败' };
+		})
+		.finally(() => {
+			saveLoading.value = false;
+		});
+};
 
-const setThemeConfig = () => {
-	const params = {
-		select: JSON.stringify(data.value.Select),
-		text: JSON.stringify(data.value.Text)
-	};
-	SystemApi.postThemeConfig(params).then(() => {
-		getThemes();
-	});
-}
-
-const theme = ref([] as any);
-const getThemes = () => {
-	SystemApi.getThemes().then((result) => {
-		theme.value = result.data.theme_config;
-		data.value = splitThemeConfig(result.data.theme_config);
-	})
-}
+const freezeConfig = () => {
+	freezeLoading.value = true;
+	ThemeApi.freezeThemeConfig()
+		.then(() => {
+			saveResult.value = { success: true, message: '固化成功' };
+		})
+		.catch(() => {
+			saveResult.value = { success: false, message: '固化失败' };
+		})
+		.finally(() => {
+			freezeLoading.value = false;
+		});
+};
 
 onMounted(() => {
-	getThemes();
+	loadConfig();
 });
 </script>

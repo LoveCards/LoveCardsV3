@@ -1,4 +1,4 @@
-<!-- 用户管理 -->
+<!-- 主题管理 -->
 <template>
 	<NuxtLayout name="root">
 		<!-- 标题 -->
@@ -14,21 +14,20 @@
 				<v-card>
 					<v-card-item>
 						<v-card-title class="text-primary">
-							{{ item.Name }}<v-chip class="float-end mt-2" size="x-small" label>V{{ item.Version }}</v-chip>
+							{{ item.name }}<v-chip class="float-end mt-2" size="x-small" label>V{{ item.version }}</v-chip>
 						</v-card-title>
 						<v-card-subtitle>
-							作者：{{ item.Author }}
+							作者：{{ item.author || '未知' }}
 						</v-card-subtitle>
 					</v-card-item>
 
-					<v-img class="bg-grey-lighten-2" height="240" :src="item.Cover"></v-img>
 					<v-card-text>
-						{{ item.Introduce }}
+						{{ item.description }}
 					</v-card-text>
 					<v-card-actions class="float-right">
-						<v-btn v-if="!item.Status" @click="setTheme(item.DirectoryName)" class="bg-accent">设为主题</v-btn>
-						<v-btn v-if="item.Status && item.Config" @click="themeConfig(item.DirectoryName)"
-							class="bg-green">配置主题</v-btn>
+						<v-chip size="small" :color="item.mode === 'spa' ? 'blue' : 'green'" label>{{ item.mode.toUpperCase() }}</v-chip>
+						<v-btn v-if="!item.active" @click="setTheme(item.name)" class="bg-accent">设为主题</v-btn>
+						<v-btn v-if="item.active" @click="themeConfig(item.name)" class="bg-green">配置主题</v-btn>
 					</v-card-actions>
 				</v-card>
 			</v-col>
@@ -37,26 +36,23 @@
 </template>
 
 <script setup lang="ts">
-import SystemApi from '~/api/app/admin/system';
+import ThemeApi from '~/api/app/admin/theme';
 
 const themes = ref([] as any);
 const getThemes = () => {
-	SystemApi.getThemes().then((result) => {
-		themes.value = result.data.theme_list;
+	ThemeApi.getThemes().then((result) => {
+		themes.value = result.data;
 	})
 }
-const setTheme = (DirectoryName: any) => {
-	const params = {
-		dir: DirectoryName
-	};
-	SystemApi.postSetTheme(params).then(() => {
+const setTheme = (name: string) => {
+	ThemeApi.activateTheme(name).then(() => {
 		getThemes();
 	});
 }
-const themeConfig = (DirectoryName: any) => {
+const themeConfig = (name: string) => {
 	navigateTo({
 		path: '/apps/view/theme-config',
-		query: { theme: DirectoryName }
+		query: { theme: name }
 	})
 }
 
