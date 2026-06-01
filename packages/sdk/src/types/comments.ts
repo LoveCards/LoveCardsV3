@@ -10,9 +10,8 @@ export interface Comment {
   goods: number
   post_ip: string
   status: number
-  created_at: string
-  updated_at: string
-  children?: Comment[]
+  created_at: string | null
+  updated_at: string | null
 }
 
 export interface CreateCommentParams {

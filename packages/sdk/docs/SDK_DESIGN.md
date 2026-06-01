@@ -1,8 +1,8 @@
 # @lovecards/sdk 开发文档
 
-> 版本：2.0.0 | 最后更新：2026-05-31
+> 版本：1.0.0 | 最后更新：2026-06-01
 >
-> 本文档面向 SDK 维护者。AI 维护指南见 `MAINTENANCE.md`，用户文档见 `README.md`，API 参考见 `API_REFERENCE.md`。
+> 本文档面向 SDK 维护者。AI 维护指南见 `MAINTENANCE.md`，API 参考见 `API_REFERENCE.md`。
 
 ---
 
@@ -18,10 +18,13 @@ SPA 代码  →  SDK (类型安全胶水)  →  HTTP  →  后端 API
 
 | 原则 | 说明 |
 |------|------|
-| **响应格式统一** | `ApiResponse<T> = { data: T, pagination? }` |
+| **响应解包** | SDK 方法返回业务数据，不返回 HTTP 包装 |
 | **资源按领域分文件** | 每个 API 模块一个 `src/resources/*.ts` |
-| **错误类层次** | 按 HTTP 状态码派生子类，`instanceof` 可判断 |
-| **核心最小化** | `src/core/` 只负责请求发送 + token 管理 |
+| **单错误类** | `ApiError` 包含 code/message/status/details，按需判断 |
+| **TokenStore 抽象** | token 存储可注入，默认 localStorage |
+| **请求去重** | GET 请求自动去重，相同 URL+参数合并为一个 Promise |
+| **请求重试** | 可配置重试策略，网络抖动自动恢复 |
+| **AbortSignal** | 支持请求取消 |
 | **构建产物不提交** | `dist/` 在 `.gitignore` 中 |
 
 ## 包结构
@@ -30,120 +33,151 @@ SPA 代码  →  SDK (类型安全胶水)  →  HTTP  →  后端 API
 @lovecards/sdk/
 ├── src/
 │   ├── index.ts                # 入口：createClient + 导出所有类型
-│   ├── core/
-│   │   ├── LoveCards.ts        # 核心构造函数（组装资源类）
-│   │   ├── LoveCardsResource.ts # 资源基类（_get/_post/_patch/_delete/_put）
-│   │   └── Deduplicator.ts     # GET 请求去重
-│   ├── resources/              # 8 个资源类，覆盖后端 16 个路由文件
-│   │   ├── Cards.ts
-│   │   ├── Session.ts
-│   │   ├── Users.ts
-│   │   ├── Comments.ts
-│   │   ├── Tags.ts
-│   │   ├── Likes.ts
-│   │   ├── Files.ts
-│   │   └── Theme.ts
-│   ├── errors/
-│   │   ├── LoveCardsError.ts    # 基类
-│   │   ├── AuthenticationError.ts # 401
-│   │   ├── PermissionError.ts   # 403
-│   │   ├── NotFoundError.ts     # 404
-│   │   ├── ValidationError.ts   # 400/422
-│   │   ├── RateLimitError.ts    # 429
-│   │   └── ServerError.ts       # 500/502/503/504
+│   ├── client.ts               # createClient() + LCClient 接口 + LCClientImpl 类
+│   ├── resources/              # 16 个资源类，覆盖后端 16 个路由文件
+│   │   ├── base.ts             # BaseResource 基类（_get/_post/_patch/_put/_delete）
+│   │   ├── session.ts
+│   │   ├── cards.ts
+│   │   ├── users.ts
+│   │   ├── comments.ts
+│   │   ├── tags.ts
+│   │   ├── likes.ts
+│   │   ├── files.ts
+│   │   ├── theme.ts
+│   │   ├── roles.ts
+│   │   ├── permissions.ts
+│   │   ├── config.ts
+│   │   ├── dashboard.ts
+│   │   ├── storage.ts
+│   │   ├── sender.ts
+│   │   └── captcha.ts
 │   ├── types/
 │   │   ├── index.ts            # 聚合导出
-│   │   ├── api.ts              # ApiResponse<T>, PaginationInfo, PaginationParams...
-│   │   ├── cards.ts            # Card, CreateCardParams...
-│   │   ├── users.ts            # User, LoginParams, LoginResult...
+│   │   ├── api.ts              # LCClientConfig, TokenStore, ListResult, CreateResult...
+│   │   ├── cards.ts            # Card, CardsListParams, CreateCardParams...
+│   │   ├── users.ts            # User, LoginParams, LoginResult, ProfileUpdateParams...
 │   │   ├── comments.ts         # Comment, CreateCommentParams
 │   │   ├── tags.ts             # Tag
-│   │   ├── likes.ts            # LikeItem
-│   │   ├── files.ts            # FileItem, DirectUploadResult
-│   │   └── theme.ts            # ThemeItem, ThemeConfigData
+│   │   ├── likes.ts            # Like
+│   │   ├── files.ts            # File, DirectUploadResult
+│   │   ├── theme.ts            # ThemeItem, ThemeConfigData
+│   │   ├── roles.ts            # Role, CreateRoleParams, AssignCapabilitiesParams...
+│   │   ├── permissions.ts      # CapabilityItem
+│   │   ├── config.ts           # ConfigData, ConfigUpdateParams
+│   │   ├── dashboard.ts        # DashboardData, ChartDataset
+│   │   ├── storage.ts          # StorageDriver, StorageMeta, StorageChannel
+│   │   ├── sender.ts           # SenderType, SenderMeta, SenderChannel
+│   │   ├── captcha.ts          # CaptchaDriver, CaptchaMeta
+│   │   └── system.ts           # SystemUpdateInfo
 │   ├── config/
 │   │   └── defaults.ts         # defaultTokenStore + defaultConfig
 │   ├── helpers/
 │   │   └── method-key.ts       # 去重 key 生成
 │   ├── constants.ts            # PUBLIC_API（SSR 预加载契约）
 │   ├── dedupe.ts               # Deduplicator 请求去重器
-│   └── errors.ts               # ApiError 错误类 + from() 工厂（保留兼容）
+│   └── errors.ts               # ApiError 错误类 + from() 工厂
 ├── docs/
-│   ├── SDK_DESIGN.md            # 本文件
-│   ├── MAINTENANCE.md           # AI 维护指南
-│   ├── API_REFERENCE.md         # API 参考（91 个命名路由）
-│   └── README.md                # 用户文档
-├── dist/                        # 构建产物（不提交 git）
-├── package.json                 # v2.0.0
+│   ├── SDK_DESIGN.md           # 本文件
+│   ├── MAINTENANCE.md          # AI 维护指南
+│   └── API_REFERENCE.md        # API 参考
+├── dist/                       # 构建产物（不提交 git）
+├── package.json
 ├── tsconfig.json
 └── vite.config.ts
 ```
 
 ## 核心类设计
 
-### LoveCards（核心构造函数）
+### LCClient（接口）
+
+`createClient()` 返回 `LCClient` 接口，不暴露内部实现：
 
 ```typescript
-class LoveCards {
-  cards: Cards
-  session: Session
-  users: Users
-  comments: Comments
-  tags: Tags
-  likes: Likes
-  files: Files
-  theme: Theme
+interface LCClient {
+  readonly session: Session
+  readonly cards: Cards
+  readonly users: Users
+  readonly comments: Comments
+  readonly tags: Tags
+  readonly likes: Likes
+  readonly files: Files
+  readonly theme: Theme
+  readonly roles: Roles
+  readonly permissions: Permissions
+  readonly config: Config
+  readonly dashboard: Dashboard
+  readonly storage: Storage
+  readonly sender: Sender
+  readonly captcha: Captcha
 
-  constructor(config: LoveCardsConfig)
   setToken(token: string): void
   clearToken(): void
   getToken(): string | null
 }
 ```
 
-### LoveCardsResource（资源基类）
+### BaseResource（资源基类）
 
-所有资源类继承此基类，自动处理请求发送和 token 注入：
+所有资源类继承此基类，自动处理请求发送、token 注入、去重、重试：
 
 ```typescript
-class LoveCardsResource {
-  protected _get<T>(url: string, params?: any): Promise<ApiResponse<T>>
-  protected _post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>>
-  protected _patch<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>>
-  protected _put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>>
-  protected _delete<T>(url: string, body?: any, config?: AxiosRequestConfig): Promise<ApiResponse<T>>
+class BaseResource {
+  protected _get<T>(url: string, params?: any, signal?: AbortSignal): Promise<T>
+  protected _post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>
+  protected _patch<T>(url: string, data?: any): Promise<T>
+  protected _put<T>(url: string, data?: any): Promise<T>
+  protected _delete<T>(url: string, params?: any): Promise<T>
 }
 ```
 
 ### 资源类示例
 
 ```typescript
-class Cards extends LoveCardsResource {
-  list(params?: CardsListParams) { return this._get<Card[]>('/cards', params) }
-  get(id: number)               { return this._get<Card>(`/cards/${id}`) }
-  hot()                         { return this._get<Card[]>('/cards/hot') }
-  search(params: SearchParams)  { return this._get<Card[]>('/cards/search', params) }
-  create(data: CreateCardParams){ return this._post<{ id: string }>('/cards', data) }
-  update(id: number, data: UpdateCardParams) { return this._patch<void>(`/cards/${id}`, data) }
-  delete(id: number)            { return this._delete<void>(`/cards/${id}`) }
-  like(id: number)              { return this._post<void>(`/cards/${id}/like`) }
-  listOwn()                     { return this._get<Card[]>('/users/me/cards') }
-  allList(params?: AdminListParams) { return this._get<Card[]>('/all/cards', params) }
-  allGet(id: number)            { return this._get<Card>(`/all/cards/${id}`) }
-  allUpdate(id: number, data: UpdateCardParams) { return this._patch<void>(`/all/cards/${id}`, data) }
-  allDelete(id: number)         { return this._delete<void>(`/all/cards/${id}`) }
-  batch(data: BatchOperateParams) { return this._post<void>('/all/cards/batch', data) }
+class Cards extends BaseResource {
+  list(params?: CardsListParams): Promise<ListResult<Card>>
+  get(id: number): Promise<Card>
+  hot(): Promise<Card[]>
+  search(params: CardsListParams & { search_value: string }): Promise<ListResult<Card>>
+  create(data: CreateCardParams): Promise<CreateResult>
+  update(id: number, data: UpdateCardParams): Promise<void>
+  delete(id: number): Promise<void>
+  like(id: number): Promise<void>
+  listOwn(params?: PaginationParams): Promise<ListResult<Card>>
+  batch(data: BatchOperateParams): Promise<void>
 }
 ```
 
-## 响应类型
+## 响应解包
 
-### 成功响应
+所有方法返回**解包后的业务数据**，不返回 HTTP 包装：
 
 ```typescript
-interface ApiResponse<T> {
-  data: T
-  pagination?: PaginationInfo   // 列表接口才有
+// 列表 → ListResult<T>
+const { data, pagination } = await client.cards.list({ page: 1 })
+// data: Card[], pagination?: PaginationInfo
+
+// 单条 → T
+const card = await client.cards.get(1)
+// card: Card
+
+// 创建 → CreateResult
+const { id } = await client.cards.create({ content: '...' })
+// id: string | null（null = 审核模式）
+
+// 更新/删除 → void
+await client.cards.update(1, { content: '...' })
+await client.cards.delete(1)
+
+// 点赞 → { likes: number }
+const { likes } = await client.cards.like(1)
+```
+
+### ListResult
+
+```typescript
+interface ListResult<T> {
+  data: T[]
+  pagination?: PaginationInfo
 }
 
 interface PaginationInfo {
@@ -154,48 +188,87 @@ interface PaginationInfo {
 }
 ```
 
-### 错误响应
-
-不返回值，直接抛出错误类实例：
+### CreateResult
 
 ```typescript
-try {
-  const { data } = await client.cards.list()
-  // data: Card[]
-} catch (e) {
-  if (e instanceof ValidationError) { ... }
-  if (e instanceof AuthenticationError) { ... }
+interface CreateResult {
+  id: string | null  // null 表示审核模式，资源已创建但等待审核
 }
 ```
+
+## 错误处理
+
+单一 `ApiError` 类，包含所有错误信息：
+
+```typescript
+class ApiError extends Error {
+  code: number      // 业务码
+  message: string   // 可读错误信息
+  status: number    // HTTP 状态码
+  details?: any     // 验证错误详情（字段级错误）
+}
+
+// 判断是否为 API 错误
+import { isApiError } from '@lovecards/sdk'
+
+try {
+  await client.cards.create({ content: '...' })
+} catch (e) {
+  if (isApiError(e)) {
+    if (e.status === 401) { /* token 过期 */ }
+    if (e.status === 403) { /* 权限不足 */ }
+    if (e.status === 422) { /* 验证错误，e.details 有字段级错误 */ }
+    showToast(e.message)
+  }
+}
+```
+
+拦截器自动将 AxiosError 转换为 ApiError。前端 `catch {}` 空 catch 仍可用。
 
 ## 配置接口
 
 ```typescript
-interface LoveCardsConfig {
+interface LCClientConfig {
   apiUrl: string
   tokenStore?: TokenStore       // 可注入，默认 localStorage
-  deduplicate?: boolean         // 默认 true（GET 请求去重）
   timeout?: number              // 默认 10000
   onAuthError?: () => void      // 401 回调
-  onError?: (error: ApiError) => void // 错误钩子，不阻断 reject
+  debug?: boolean               // 开启请求/响应日志
+  retry?: RetryConfig           // 重试配置
+}
+
+interface RetryConfig {
+  maxRetries?: number           // 最大重试次数，默认 0
+  retryOn?: number[]            // 重试的 HTTP 状态码
+  retryDelay?: number           // 重试间隔 ms，默认 1000
 }
 ```
 
-## 错误类层次
+## Token 管理
 
+SDK 通过 `TokenStore` 接口管理 token，默认使用 `localStorage`：
+
+```typescript
+// 默认行为（SPA）
+const client = createClient({ apiUrl: '/api' })
+client.setToken('xxx')    // 写入 localStorage
+client.getToken()         // 读取 localStorage
+client.clearToken()       // 清除 localStorage
+
+// 自定义 TokenStore（SSR/Admin）
+const client = createClient({
+  apiUrl: '/api',
+  tokenStore: {
+    get: () => Cookies.get('UTOKEN'),
+    set: (t) => Cookies.set('UTOKEN', t),
+    clear: () => Cookies.remove('UTOKEN'),
+  },
+})
 ```
-LoveCardsError (基类)
-├── AuthenticationError   # 401 - token 无效/过期
-├── PermissionError       # 403 - 权限不足
-├── NotFoundError         # 404 - 资源不存在
-├── ValidationError       # 400/422 - 参数错误
-├── RateLimitError        # 429 - 请求过于频繁
-└── ServerError           # 500/502/503/504 - 服务器错误
-```
 
-错误工厂：响应拦截器根据 HTTP 状态码自动创建对应实例。
+## 请求功能
 
-## 请求去重
+### 去重
 
 GET 请求自动去重。相同 URL + 参数的并发请求合并为一个 Promise：
 
@@ -204,6 +277,37 @@ const [a, b] = await Promise.all([
   client.cards.list({ page: 1 }),
   client.cards.list({ page: 1 }),  // 复用第一个请求
 ])
+```
+
+### 重试
+
+```typescript
+const client = createClient({
+  apiUrl: '/api',
+  retry: {
+    maxRetries: 2,
+    retryOn: [408, 429, 500, 502, 503, 504],
+    retryDelay: 1000,
+  },
+})
+```
+
+### 请求取消
+
+```typescript
+const controller = new AbortController()
+client.cards.list({ page: 1 }, controller.signal)
+// 取消
+controller.abort()
+```
+
+### 调试模式
+
+```typescript
+const client = createClient({
+  apiUrl: '/api',
+  debug: true,  // console.log 所有请求/响应
+})
 ```
 
 ## 构建配置

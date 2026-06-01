@@ -1,20 +1,23 @@
-export interface SenderChannel {
-  channel: string
-  driver: string
+export interface SenderType {
+  type: string
+  channelType: string
   name: string
-  config: Record<string, any>
-  enabled: boolean
-}
-
-export interface SenderTemplate {
-  id: number
-  name: string
-  channel: string
-  subject: string
-  content: string
+  icon: string
+  supportedTypes: string[]
 }
 
 export interface SenderMeta {
   type: string
-  config_schema: Record<string, any>
+  name: string
+  icon: string
+  schema: Record<string, any>
+  group: string
+}
+
+export interface SenderChannel {
+  [key: string]: any
+}
+
+export interface SenderTemplate {
+  [key: string]: any
 }

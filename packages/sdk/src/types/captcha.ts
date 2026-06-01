@@ -1,8 +1,8 @@
 export interface CaptchaDriver {
   slug: string
+  type: string
   name: string
-  description: string
-  enabled: boolean
+  icon: string
 }
 
 export interface CaptchaMeta {
@@ -11,6 +11,5 @@ export interface CaptchaMeta {
 }
 
 export interface CaptchaConfig {
-  driver: string
-  config: Record<string, any>
+  [key: string]: any
 }

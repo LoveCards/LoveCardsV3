@@ -8,6 +8,16 @@ export interface ThemeItem {
 }
 
 export interface ThemeConfigData {
-  theme: string
-  config: Record<string, any>
+  name: string
+  mode: string
+  config_schema: Record<string, any>
+  config_values: Record<string, any>
+}
+
+export interface ThemeActivateParams {
+  name: string
+}
+
+export interface ThemeDeleteParams {
+  name: string
 }

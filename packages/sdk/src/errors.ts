@@ -5,6 +5,7 @@ export class ApiError extends Error {
     public code: number,
     message: string,
     public status: number,
+    public details?: any,
   ) {
     super(message)
     this.name = 'ApiError'
@@ -24,6 +25,9 @@ export class ApiError extends Error {
 
       const { status, data } = response
 
+      if (data?.error?.code && data?.error?.message) {
+        return new ApiError(data.error.code, data.error.message, status, data.error.details)
+      }
       if (data?.code && data?.message) return new ApiError(data.code, data.message, status)
       if (data?.error) return new ApiError(1, data.error, status)
 

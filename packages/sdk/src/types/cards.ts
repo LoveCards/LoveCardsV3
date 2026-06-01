@@ -4,16 +4,17 @@ export interface Card {
   status: number
   is_top: number
   content: string
+  /** 卡片自定义数据（如 title 等扩展字段） */
   data: Record<string, any>
   cover: string | null
-  pictures: any
-  tags: any
+  pictures: string[] | null
+  tags: string[] | null
   goods: number
   views: number
   comments: number
   post_ip: string
-  created_at: string
-  updated_at: string
+  created_at: string | null
+  updated_at: string | null
   deleted_at: string | null
 }
 
@@ -22,12 +23,10 @@ export interface CardsListParams {
   list_rows?: number
   tag?: string
   status?: number
-}
-
-export interface SearchParams {
-  page?: number
-  list_rows?: number
-  keyword: string
+  search_value?: string
+  search_keys?: string[]
+  order_key?: string
+  order_desc?: 0 | 1
 }
 
 export interface CreateCardParams {

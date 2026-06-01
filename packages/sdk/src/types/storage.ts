@@ -1,18 +1,24 @@
 export interface StorageDriver {
   type: string
   name: string
-  description: string
+  icon: string
+}
+
+export interface StorageMeta {
+  type: string
+  name: string
+  icon: string
+  schema: Record<string, any>
+  group: string
 }
 
 export interface StorageChannel {
-  channel: string
-  driver: string
-  config: Record<string, any>
-  enabled: boolean
+  slug: string
+  name: string
+  icon: string
+  fields: any[]
 }
 
 export interface ChannelStats {
-  channel: string
-  files_count: number
-  total_size: number
+  [key: string]: any
 }

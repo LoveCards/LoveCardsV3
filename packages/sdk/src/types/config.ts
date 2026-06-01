@@ -1,13 +1,16 @@
-export interface ConfigItem {
-  group: string
-  key: string
-  value: any
-  label: string
-  schema: Record<string, any>
+export interface ConfigData {
+  [group: string]: {
+    [key: string]: any
+  }
 }
 
-export interface ConfigGroup {
+export interface ConfigUpdateParams {
+  [group: string]: {
+    [key: string]: any
+  }
+}
+
+export interface ConfigRegisterParams {
   group: string
-  label: string
-  items: ConfigItem[]
+  schema: Record<string, any>
 }

@@ -1,7 +1,10 @@
-export interface LikeItem {
+export interface Like {
   id: number
+  aid: number
+  pid: number
+  ref_type: string | null
+  ref_id: number | null
   uid: number
-  sid: number
-  type: string
-  created_at: string
+  ip: string
+  created_at: string | null
 }

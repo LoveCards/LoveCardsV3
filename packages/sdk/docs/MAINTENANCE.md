@@ -8,10 +8,35 @@
 
 SDK 和 PHP 后端**不共享代码**，但共享两样东西：
 
-1. **API 路由映射** — 16 个 `app/api/route/*.php` 文件 ↔ `src/resources/*.ts` 的 8 个资源类
+1. **API 路由映射** — 16 个 `app/api/route/*.php` 文件 ↔ `src/resources/*.ts` 的 16 个资源类
 2. **PUBLIC_API 常量表** — `src/constants.ts` ↔ `ThemeEngine.php::PUBLIC_API`
 
 修改 API 时必须同时更新这两侧。
+
+---
+
+## 架构概览
+
+```
+createClient(config) → LCClient
+  ├── session: Session       # 认证
+  ├── cards: Cards           # 卡片
+  ├── users: Users           # 用户
+  ├── comments: Comments     # 评论
+  ├── tags: Tags             # 标签
+  ├── likes: Likes           # 点赞
+  ├── files: Files           # 文件
+  ├── theme: Theme           # 主题
+  ├── roles: Roles           # 角色
+  ├── permissions: Permissions # 权限
+  ├── config: Config         # 配置
+  ├── dashboard: Dashboard   # 控制台
+  ├── storage: Storage       # 存储
+  ├── sender: Sender         # 消息
+  └── captcha: Captcha       # 验证码
+```
+
+每个资源类继承 `BaseResource`，通过 `_get/_post/_patch/_put/_delete` 发送请求。
 
 ---
 
@@ -22,21 +47,21 @@ SDK 和 PHP 后端**不共享代码**，但共享两样东西：
 | 路由文件 | SDK 资源类 | 端点数 |
 |---------|-----------|:------:|
 | `session.php` | `Session` | 6 |
-| `cards.php` | `Cards` | 14 |
-| `comments.php` | `Comments` | 11 |
-| `tags.php` | `Tags` | 10 |
+| `cards.php` | `Cards` | 10 |
+| `comments.php` | `Comments` | 7 |
+| `tags.php` | `Tags` | 6 |
 | `likes.php` | `Likes` | 2 |
 | `users.php` | `Users` | 10 |
-| `roles.php` | —（管理端，SDK 未覆盖） | 8 |
-| `permissions.php` | —（管理端） | 2 |
-| `config.php` | —（管理端） | 8 |
-| `system.php` | —（管理端） | 1 |
-| `dashboard.php` | —（管理端） | 1 |
-| `storage.php` | —（管理端） | 6 |
+| `roles.php` | `Roles` | 8 |
+| `permissions.php` | `Permissions` | 2 |
+| `config.php` | `Config` | 8 |
+| `dashboard.php` | `Dashboard` | 1 |
+| `storage.php` | `Storage` | 6 |
 | `files.php` | `Files` | 8 |
-| `captcha.php` | —（管理端） | 5 |
-| `sender.php` | —（管理端） | 6 |
+| `captcha.php` | `Captcha` | 5 |
+| `sender.php` | `Sender` | 6 |
 | `theme.php` | `Theme` | 8 |
+| `system.php` | —（SDK 未覆盖） | 1 |
 
 每个路由定义格式：
 
@@ -46,13 +71,6 @@ Route::get('path', 'Controller/method')
     ->setOption('meta', ['name' => '描述', 'group' => '分组', 'public' => true]);
 ```
 
-提取字段：
-- `Route::get/post/patch/delete/put` → HTTP 方法
-- `'path'` → API 路径（不含 `/api` 前缀）
-- `name('domain.action')` → 路由名称，`domain` 对应资源类名
-- `'public' => true` → 公开端点，无需 token
-- `'group'` → 分组标签
-
 ---
 
 ## 第二步：添加方法到 SDK
@@ -60,43 +78,31 @@ Route::get('path', 'Controller/method')
 ### A. 添加类型（`src/types/{domain}.ts`）
 
 ```typescript
-// 新增类型
 export interface MyNewParams {
   field1: string
   field2?: number
 }
 ```
 
-### B. 添加方法到资源类（`src/resources/{Domain}.ts`）
+### B. 添加方法到资源类（`src/resources/{domain}.ts`）
 
 ```typescript
-class Cards extends LoveCardsResource {
-  // 已有方法...
-
-  // 新增方法
-  newMethod: (id: number, data: MyNewParams) =>
-    this._post<void>(`/cards/${id}/action`, data),
+class Cards extends BaseResource {
+  newMethod(id: number, data: MyNewParams): Promise<void> {
+    return this._post<void>(`/cards/${id}/action`, data)
+  }
 }
 ```
 
-可用的请求辅助方法（继承自 `LoveCardsResource`）：
+可用的请求方法：
 
-| 辅助方法 | HTTP | 用途 |
-|---------|------|------|
-| `this._get<T>(url, params?)` | GET | 列表/详情，带自动去重 |
+| 方法 | HTTP | 用途 |
+|------|------|------|
+| `this._get<T>(url, params?, signal?)` | GET | 列表/详情，带自动去重 |
 | `this._post<T>(url, data?, config?)` | POST | 创建/提交 |
-| `this._patch<T>(url, data?, config?)` | PATCH | 局部更新 |
-| `this._put<T>(url, data?, config?)` | PUT | 全量更新 |
-| `this._delete<T>(url, body?, config?)` | DELETE | 删除（支持带 body） |
-
-**文件上传**需要覆盖 Content-Type：
-
-```typescript
-upload: (formData: FormData) =>
-  this._post<FileItem>('/files', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
-```
+| `this._patch<T>(url, data?)` | PATCH | 局部更新 |
+| `this._put<T>(url, data?)` | PUT | 全量更新 |
+| `this._delete<T>(url, params?)` | DELETE | 删除 |
 
 ### C. 如果是公开 GET 端点，更新 PUBLIC_API
 
@@ -111,21 +117,17 @@ upload: (formData: FormData) =>
 
 ## 第三步：新增模块
 
-1. 新建 `src/resources/{Domain}.ts`
-2. 在 `src/core/LoveCards.ts` 中注册
+1. 新建 `src/resources/{domain}.ts`
+2. 在 `src/client.ts` 中导入并添加到 `LCClientImpl`
 
 ```typescript
-// src/core/LoveCards.ts
-import { Notifications } from '../resources/Notifications'
+import { Notifications } from './resources/notifications'
 
-export class LoveCards {
-  notifications: Notifications
+// LCClientImpl 构造函数中
+this.notifications = new Notifications(instance, opts)
 
-  constructor(config: LoveCardsConfig) {
-    // ...
-    this.notifications = new Notifications(this)
-  }
-}
+// LCClient 接口中
+readonly notifications: Notifications
 ```
 
 ---
@@ -135,18 +137,9 @@ export class LoveCards {
 | 路由 name | SDK 方法名 | 说明 |
 |-----------|-----------|------|
 | `cards.list` | `cards.list()` | 使用路由 name 的最后一段 |
-| `cards.allList` | `cards.allList()` | admin 方法保留 `all` 前缀 |
-| `cards.batch` | `cards.batch()` | 批操作统一用 `batch` |
 | `users.me.get` | `users.me()` | 取中间部分做方法名 |
 | `theme.publicConfig` | `theme.publicConfig()` | 完整使用 |
-
-特殊路径参数映射：
-
-| 路由路径 | SDK 参数 | 示例 |
-|---------|---------|------|
-| `:id` | `id: number` | `cards.get(id)` |
-| `:type` | `type: string` | `storage.meta(type)` |
-| `:slug` | `slug: string` | `captcha.meta(slug)` |
+| `roles.getRoleCapabilities` | `roles.getCapabilities()` | 简化 |
 
 ---
 
@@ -156,19 +149,23 @@ export class LoveCards {
 
 ```typescript
 PaginationParams     // page, list_rows
-AdminListParams      extends PaginationParams  // + search_value, search_keys, order_key, order_desc
-BatchOperateParams   // operation, ids, value?
+ListParams           extends PaginationParams  // + search_value, search_keys, order_key, order_desc
+BatchOperateParams   // method, ids, value?
+ListResult<T>        // { data: T[], pagination?: PaginationInfo }
+CreateResult         // { id: string | null }
+UploadResult         // { id, url, path, size, mime_type, original_name, channel_slug }
 ```
 
-### 响应解包规则
+### 响应解包
 
-所有方法返回 `Promise<ApiResponse<T>>`，`data` 已是一级业务数据：
+所有方法返回解包后的业务数据：
 
 ```typescript
 const { data, pagination } = await client.cards.list()
 // data: Card[]           ← 直接是数组
 // pagination: PaginationInfo  ← 可选，列表接口才有
-const { data: card } = await client.cards.get(1)
+
+const card = await client.cards.get(1)
 // card: Card             ← 直接是对象
 ```
 
@@ -184,8 +181,8 @@ const { data: card } = await client.cards.get(1)
 
 | 消费端 | 位置 | 涉及变更 |
 |--------|------|---------|
-| FrontEnd-index | `lib/hooks/` 目录 | 方法名/参数变化需同步 |
-| SSR theme (app.js) | `BackEnd/public/theme/default-ssr/assets/app.js` | 原生 JS，UMD 方式调用 |
+| FrontEnd-index | `lib/sdk/` 目录 | 类型声明 + JS 产物 |
+| SSR theme (app.js) | `BackEnd/public/theme/default-ssr/assets/app.js` | UMD 方式调用 |
 
 ---
 
@@ -199,64 +196,15 @@ npm run build        # 构建（自动执行 postbuild 同步 UMD 到 SSR theme�
 
 ---
 
-## 架构速查
+## 关键约束
 
-### 配置项
-
-```typescript
-interface LoveCardsConfig {
-  apiUrl: string
-  tokenStore?: { get(): string|null; set(t: string): void; clear(): void }
-  deduplicate?: boolean         // 默认 true（GET 请求去重）
-  timeout?: number              // 默认 10000
-  onAuthError?: () => void      // 401 回调
-  onError?: (error: ApiError) => void
-}
-```
-
-### 错误对象
-
-```typescript
-class ApiError extends Error {
-  code: number    // 业务码
-  message: string // 可读的错误信息
-  status: number  // HTTP 状态码
-}
-```
-
-调用方捕获：
-
-```typescript
-import { ApiError, isApiError } from '@lovecards/sdk'
-
-try {
-  const { data } = await client.cards.list()
-} catch (e) {
-  if (isApiError(e)) {
-    console.log(e.code, e.message, e.status)
-  }
-}
-```
-
-### Token Store 注入
-
-```typescript
-// 默认 localStorage，SSR 安全
-createClient({ tokenStore: { get, set, clear } })
-
-// Admin 对接 cookie
-createClient({
-  tokenStore: {
-    get: () => Cookies.get('UTOKEN'),
-    set: (t) => Cookies.set('UTOKEN', t, { expires: 7 }),
-    clear: () => Cookies.remove('UTOKEN'),
-  },
-})
-```
-
-### UMD 全局名
-
-```typescript
-window.LC.createClient()
-window.LoveCards.createClient()  // 向下兼容别名
-```
+| 约束 | 原因 |
+|------|------|
+| `createClient()` 入口签名不变 | 前端 `lib/api.ts` 依赖 |
+| `LCClient` 接口结构不变 | 前端调用方式 `client.cards.list()` |
+| UMD 全局名 `window.LC` | SSR theme `app.js` 依赖 |
+| `PUBLIC_API` 常量不变 | SSR 预加载契约 |
+| axios 作为外部依赖 | UMD bundle 体积 |
+| 所有类型字段与数据库 schema 对齐 | 避免运行时字段名不匹配 |
+| 不暴露 `password` 等敏感字段 | 安全考虑 |
+| `params` 用 `DELETE` query params 而非 body | 部分代理会剥离 DELETE body |

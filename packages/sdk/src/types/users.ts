@@ -1,3 +1,9 @@
+export interface RoleInfo {
+  id: number
+  name: string
+  slug: string
+}
+
 export interface User {
   id: number
   number: string
@@ -6,11 +12,9 @@ export interface User {
   phone: string
   avatar: string
   roles_id: number[]
-  roles?: { id: number; name: string; slug: string }[]
-  permissions?: string[]
+  roles?: RoleInfo[]
+  capabilities?: string[]
   status: number
-  created_at: string
-  updated_at: string
 }
 
 export interface LoginParams {
@@ -23,18 +27,24 @@ export interface RegisterParams {
   account: string
   password: string
   password_confirm: string
-  captcha?: string
+  code?: string
 }
 
 export interface LoginResult {
   token: string
-  user: User
 }
 
-export interface UpdateUserParams {
+export interface ProfileUpdateParams {
   username?: string
   avatar?: string
   password?: string
+}
+
+export interface AdminUserUpdateParams extends ProfileUpdateParams {
+  roles_id?: number[]
+  status?: number
+  email?: string
+  phone?: string
 }
 
 export interface PasswordParams {

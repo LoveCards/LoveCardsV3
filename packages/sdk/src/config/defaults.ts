@@ -1,4 +1,6 @@
-export const defaultTokenStore = {
+import type { TokenStore } from '../types/api'
+
+export const defaultTokenStore: TokenStore = {
   get: () => {
     if (typeof localStorage !== 'undefined') return localStorage.getItem('token')
     return null
@@ -14,5 +16,4 @@ export const defaultTokenStore = {
 export const defaultConfig = {
   deduplicate: true,
   timeout: 10000,
-  contentType: 'application/json',
 }

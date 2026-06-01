@@ -1,8 +1,4 @@
-export interface PermissionItem {
-  id: number
-  name: string
-  method: string
-  path: string
-  group: string
-  created_at: string
+export interface CapabilityItem {
+  capability: string
+  description: string
 }

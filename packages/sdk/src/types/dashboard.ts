@@ -1,10 +1,27 @@
 export interface DashboardData {
-  stats: {
-    cards_count: number
-    users_count: number
-    comments_count: number
-    views_count: number
+  count: {
+    cards: number
+    comments: number
+    good: number
   }
-  chart: any
-  notice: string
+  chart: ChartDataset[]
+  ver: VersionInfo
+  notice: any[]
+}
+
+export interface ChartDataset {
+  label: string
+  data: {
+    x: string[]
+    y: number[]
+  }
+}
+
+export interface VersionInfo {
+  app_name: string
+  homepage: string
+  version: string
+  build: number
+  github: string
+  qgroup: string
 }
