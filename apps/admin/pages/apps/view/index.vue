@@ -36,16 +36,17 @@
 </template>
 
 <script setup lang="ts">
-import ThemeApi from '~/api/app/admin/theme';
+import { useApi } from '~/lib/api';
+const client = useApi();
 
 const themes = ref([] as any);
 const getThemes = () => {
-	ThemeApi.getThemes().then((result) => {
-		themes.value = result.data;
+	client.theme.list().then((result) => {
+		themes.value = result;
 	})
 }
 const setTheme = (name: string) => {
-	ThemeApi.activateTheme(name).then(() => {
+	client.theme.activate({ theme: name }).then(() => {
 		getThemes();
 	});
 }

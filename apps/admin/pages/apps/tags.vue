@@ -139,14 +139,14 @@
 
 <script setup lang="ts">
 import CommonUtils from "@/utils/common";
-import TagsApi from "@/api/app/admin/tags";
+import { useApi } from '~/lib/api';
 import CreateTagDialog from "@/components/apps/tags/CreateTagDialog.vue";
 import EditTagDialog from "@/components/apps/tags/EditTagDialog.vue";
 import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
 import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
 import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
 import SelectUtils from "~/api/utils/select";
-const notifier = useNotifier();
+const client = useApi();
 
 //表格头部
 const TableHeaders = [
@@ -195,7 +195,7 @@ const openEditTagDialog = (data: any) => {
 
 //DeleteDialog组件
 const DeleteTagFun = (id: any) => {
-  TagsApi.deleteTag(id).then(() => {
+  client.tags.delete(id).then(() => {
     DeleteTagDialog_state.value = false;
     getTableData();
   });
@@ -211,11 +211,7 @@ const openDeleteTagDialog = (data: {}) => {
 const BatchOperate = ref('');
 //BatchTagDialog组件
 const BatchCardFun = () => {
-  const data = {
-    ids: tableSelected.value,
-    method: BatchOperate.value,
-  }
-  TagsApi.batchOperate(data).then(() => {
+  client.tags.batch({ method: BatchOperate.value as any, ids: tableSelected.value }).then(() => {
     BatchTagDialog_state.value = false;
     getTableData();
   })
@@ -251,12 +247,11 @@ const getTableData = () => {
     ...tableSearchFilter.value
   };
   //获取数据
-  TagsApi.getTagIndex(params)
-    .then((response) => {
-      const data = response.data;
-      tableCurrentPage.value = data.current_page;
-      tablePaginationLength.value = data.last_page;
-      tableItems.value = data.data;
+  client.tags.listAll(params)
+    .then((result) => {
+      tableCurrentPage.value = result.pagination!.currentPage;
+      tablePaginationLength.value = result.pagination!.totalPages;
+      tableItems.value = result.data;
     })
 };
 

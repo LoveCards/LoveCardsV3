@@ -152,9 +152,9 @@
 </template>
 
 <script setup lang="ts">
-import SystemApi from '~/api/app/admin/system';
-import StorageApi from '~/api/app/admin/storage';
+import { useApi } from '~/lib/api';
 import { formatSize } from '~/utils/storage';
+const client = useApi();
 
 interface ChannelMeta {
 	slug: string;
@@ -182,9 +182,9 @@ const channelOptions = computed(() =>
 );
 
 const loadChannels = () => {
-	StorageApi.getStorageChannels()
-		.then((result) => {
-			channelList.value = result.data ?? [];
+	client.storage.channels()
+		.then((channels) => {
+			channelList.value = channels ?? [];
 		})
 		.catch((error) => {
 			console.error('加载渠道列表失败:', error);
@@ -192,9 +192,8 @@ const loadChannels = () => {
 };
 
 const loadConfig = () => {
-	SystemApi.getConfig('')
-		.then((result) => {
-			const data = result.data;
+	client.config.list()
+		.then((data) => {
 			settings.value = { ...settings.value, ...data.storage };
 			channels.value = {};
 			channelList.value.forEach(ch => {
@@ -207,9 +206,9 @@ const loadConfig = () => {
 };
 
 const loadStats = () => {
-	StorageApi.getChannelStats()
+	client.storage.channelStats()
 		.then((result) => {
-			stats.value = result.data;
+			stats.value = result;
 		})
 		.catch((error) => {
 			console.error('加载统计失败:', error);
@@ -217,7 +216,7 @@ const loadStats = () => {
 };
 
 const setDefault = (slug: string) => {
-	SystemApi.postConfig({ storage: { default: slug } })
+	client.config.update({ storage: { default: slug } })
 		.then(() => {
 			settings.value.default = slug;
 		})
@@ -227,7 +226,7 @@ const setDefault = (slug: string) => {
 };
 
 const saveSettings = () => {
-	SystemApi.postConfig({ storage: settings.value })
+	client.config.update({ storage: settings.value })
 		.catch((error) => {
 			console.error('保存设置失败:', error);
 		});
@@ -235,7 +234,7 @@ const saveSettings = () => {
 
 const scanChannels = () => {
 	scanning.value = true;
-	StorageApi.install()
+	client.storage.install()
 		.then(() => {
 			loadChannels();
 			loadConfig();

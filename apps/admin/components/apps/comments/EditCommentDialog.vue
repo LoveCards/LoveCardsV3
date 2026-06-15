@@ -60,10 +60,10 @@
 </template>
 
 <script setup lang="ts">
-import CommonUtils from "@/api/utils/common";
-import CommentsApi from "~/api/app/admin/comments";
+import CommonUtils from "~/api/utils/common";
+import { useApi } from '~/lib/api';
 import SelectUtils from "~/api/utils/select";
-
+const client = useApi();
 const notifier = useNotifier();
 
 //Props
@@ -116,7 +116,7 @@ const patchComment = () => {
 	params.id = editCommentData.id;
 
 	//返回原生Promise
-	return CommentsApi.patchComment(params.id, params);
+  return client.comments.update(params.id, params);
 }
 
 //数据初始化

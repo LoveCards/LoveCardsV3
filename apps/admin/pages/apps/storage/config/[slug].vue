@@ -63,8 +63,8 @@
 </template>
 
 <script setup lang="ts">
-import SystemApi from '~/api/app/admin/system';
-import StorageApi from '~/api/app/admin/storage';
+import { useApi } from '~/lib/api';
+const client = useApi();
 
 interface ChannelField {
 	key: string;
@@ -87,9 +87,8 @@ const saveLoading = ref(false);
 const saveResult = ref<{ success: boolean; message: string } | null>(null);
 
 const loadChannelMeta = () => {
-	return StorageApi.getStorageChannels()
-		.then((result) => {
-			const channels = result.data ?? [];
+	return client.storage.channels()
+		.then((channels) => {
 			const channel = channels.find((c: any) => c.slug === slug);
 			if (channel) {
 				channelName.value = channel.name;
@@ -101,9 +100,8 @@ const loadChannelMeta = () => {
 const loadConfig = () => {
 	loading.value = true;
 	loadError.value = null;
-	SystemApi.getConfig('storage_' + slug)
-		.then((result) => {
-			const data = result.data;
+	client.config.list()
+		.then((data) => {
 			if (data && data['storage_' + slug]) {
 				config.value = { ...data['storage_' + slug] };
 			} else {
@@ -125,7 +123,7 @@ const save = () => {
 	delete configToSave.type;
 	delete configToSave.file_count;
 	delete configToSave.total_size;
-	SystemApi.postConfig({ ['storage_' + slug]: configToSave })
+	client.config.update({ ['storage_' + slug]: configToSave })
 		.then(() => {
 			saveResult.value = { success: true, message: '保存成功' };
 		})
@@ -140,9 +138,9 @@ const save = () => {
 const testConnection = () => {
 	testLoading.value = true;
 	testResult.value = null;
-	StorageApi.testChannel(slug)
+	client.storage.testChannel({ channel: slug })
 		.then((result) => {
-			testResult.value = result.data;
+			testResult.value = result;
 		})
 		.catch(() => {
 			testResult.value = { success: false, message: '测试失败' };

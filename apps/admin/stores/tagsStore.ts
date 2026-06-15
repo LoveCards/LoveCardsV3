@@ -1,11 +1,9 @@
 import { defineStore } from 'pinia';
-import UserTagsApi from '~/api/app/user/tags';
-import ErrorUtils from '~/api/utils/error';
-import { showErrorNotification } from '~/api/utils/notifier';
+import { useApi } from '~/lib/api';
 
 export const useTagsStore = defineStore('tags', {
     state: () => ({
-        tags: null,
+        tags: null as any[] | null,
         loading: false,
         error: null as string | null,
     }),
@@ -19,14 +17,11 @@ export const useTagsStore = defineStore('tags', {
             this.loading = true;
             this.error = null;
             try {
-                const response = await UserTagsApi.getIndex();
-                this.tags = response.data;
-                return response;
+                const client = useApi();
+                this.tags = await client.tags.list();
+                return this.tags;
             } catch (error) {
-                const errorDetail = ErrorUtils.parse(error);
-                this.error = errorDetail.message;
-                // 标签获取失败时显示错误通知
-                showErrorNotification(`获取标签失败：${errorDetail.message}`);
+                console.error('获取标签失败:', error);
                 throw error;
             } finally {
                 this.loading = false;

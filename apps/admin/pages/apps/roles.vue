@@ -108,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-import RolesApi from "@/api/app/admin/roles";
+import { useApi } from '~/lib/api';
 import CommonUtils from "@/utils/common";
 import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
 import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
@@ -117,6 +117,7 @@ import CreateRoleDialog from "@/components/apps/roles/CreateRoleDialog.vue";
 import EditRoleDialog from "@/components/apps/roles/EditRoleDialog.vue";
 import AssignPermissionsDialog from "@/components/apps/roles/AssignPermissionsDialog.vue";
 import SelectUtils from "~/api/utils/select";
+const client = useApi();
 
 const TableHeaders = [
   { title: "ID", value: "id" },
@@ -153,11 +154,10 @@ const getTableData = () => {
     search_value: tableSearchValue.value,
     ...tableSearchFilter.value,
   };
-  RolesApi.getRoleIndex(params).then((response) => {
-    const data = response.data;
-    tableCurrentPage.value = data.current_page;
-    tablePaginationLength.value = data.last_page;
-    tableItems.value = data.data;
+  client.roles.list(params).then((result) => {
+    tableCurrentPage.value = result.pagination!.currentPage;
+    tablePaginationLength.value = result.pagination!.totalPages;
+    tableItems.value = result.data;
   });
 };
 
@@ -188,7 +188,7 @@ const openAssignDialog = (item: any) => {
 const DeleteDialog_state = ref(false);
 const DeleteDialog_data = ref<any>({});
 const DeleteFun = (id: number) => {
-  RolesApi.deleteRole(id).then(() => {
+  client.roles.delete(id).then(() => {
     DeleteDialog_state.value = false;
     getTableData();
   }).catch(() => {});
@@ -209,7 +209,7 @@ const openBatchDialog = () => {
 };
 const BatchFun = () => {
   // 角色暂无批量操作 API，使用逐条删除
-  Promise.all(tableSelected.value.map(id => RolesApi.deleteRole(id))).then(() => {
+  Promise.all(tableSelected.value.map(id => client.roles.delete(id))).then(() => {
     BatchDialog_state.value = false;
     tableSelected.value = [];
     getTableData();

@@ -5,8 +5,6 @@
 	<!-- <v-progress-linear indeterminate color="accent" absolute bottom style="z-index: 999999;"></v-progress-linear> -->
 	<!-- 通知队列 -->
 	<VNotifierContainer />
-	<!-- Api监控 -->
-	<ApiMonitorNotifier />
 	<!-- 统一错误通知 -->
 	<NotificationNotifier />
 
@@ -133,7 +131,6 @@
 </template>
 
 <script setup lang="ts">
-import ApiMonitorNotifier from '~/components/public/ApiMonitorNotifier.vue';
 import NotificationNotifier from '~/components/public/NotificationNotifier.vue';
 import { useUserStore } from '~/stores/userStore';
 import { useSystemStore } from '~/stores/api/admin/systemStore';

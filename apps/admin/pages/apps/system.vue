@@ -114,8 +114,9 @@
 </template>
 
 <script setup lang="ts">
-import SystemApi from '~/api/app/admin/system';
-import ApiCommonUtils from "@/api/utils/common";
+import { useApi } from '~/lib/api';
+import CommonUtils from "~/api/utils/common";
+const client = useApi();
 
 const ViewTab = ref('');
 const ViewMasterSwitchItems = [
@@ -200,16 +201,16 @@ const toBackendSite = (system: any) => {
 const systemConfig = ref({} as any);
 const OriginSystemConfig = ref({} as any);
 const getConfig = () => {
-	SystemApi.getConfig().then((result) => {
-		const converted = toFrontendFormat(result.data);
-		systemConfig.value = ApiCommonUtils.deepClone(converted);
-		OriginSystemConfig.value = ApiCommonUtils.deepClone(converted);
+	client.config.list().then((result) => {
+		const converted = toFrontendFormat(result);
+		systemConfig.value = CommonUtils.deepClone(converted);
+		OriginSystemConfig.value = CommonUtils.deepClone(converted);
 	})
 }
 
 const setConfig = () => {
 	const backendParams = toBackendConfig(systemConfig.value.master);
-	SystemApi.postConfig(backendParams).then(() => {
+	client.config.update(backendParams).then(() => {
 		getConfig();
 	});
 }
@@ -217,7 +218,7 @@ const setConfig = () => {
 
 const setSite = () => {
 	const backendParams = toBackendSite(systemConfig.value.system);
-	SystemApi.postConfig(backendParams).then(() => {
+	client.config.update(backendParams).then(() => {
 		getConfig();
 	});
 }

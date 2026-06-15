@@ -28,7 +28,8 @@
 </template>
 
 <script setup lang="ts">
-import RolesApi from "~/api/app/admin/roles";
+import { useApi } from '~/lib/api';
+const client = useApi();
 
 const props = defineProps({
 	getTableData: Function
@@ -41,7 +42,7 @@ const thisDialogState = defineModel<boolean>('thisDialogState');
 const CreateData = ref({ name: '', slug: '', description: '' });
 
 const submit = () => {
-	RolesApi.createRole(CreateData.value).then(() => {
+	client.roles.create(CreateData.value).then(() => {
 		thisDialogState.value = false;
 		CreateData.value = { name: '', slug: '', description: '' };
 		getTableData();

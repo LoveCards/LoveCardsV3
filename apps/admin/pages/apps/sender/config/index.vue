@@ -80,15 +80,15 @@
 </template>
 
 <script setup lang="ts">
-import SystemApi from '~/api/app/admin/system';
-import SenderApi from '~/api/app/admin/sender';
-import type { SenderChannelMeta } from '~/api/types/sender';
+import { useApi } from '~/lib/api';
+import type { SenderChannel } from '@lovecards/sdk';
+const client = useApi();
 
 const router = useRouter();
 
 interface ChannelGroup {
 	channelType: string;
-	channels: SenderChannelMeta[];
+	channels: SenderChannel[];
 	defaultSlug: string;
 }
 
@@ -96,9 +96,8 @@ const channelGroups = ref<ChannelGroup[]>([]);
 const scanning = ref(false);
 
 const loadChannels = () => {
-	SenderApi.getChannels()
-		.then((result) => {
-			const channels: SenderChannelMeta[] = result.data ?? [];
+	client.sender.channels()
+		.then((channels) => {
 			const groups: Record<string, SenderChannelMeta[]> = {};
 			for (const ch of channels) {
 				const ct = ch.channelType || ch.slug;
@@ -117,9 +116,8 @@ const loadChannels = () => {
 };
 
 const loadDefaults = () => {
-	SystemApi.getConfig('')
-		.then((result) => {
-			const data = result.data;
+	client.config.list()
+		.then((data) => {
 			for (const group of channelGroups.value) {
 				const key = 'default_' + group.channelType;
 				group.defaultSlug = data.sender?.[key] ?? group.channels[0]?.slug ?? '';
@@ -132,7 +130,7 @@ const loadDefaults = () => {
 
 const setDefault = (channelType: string, slug: string) => {
 	const key = 'default_' + channelType;
-	SystemApi.postConfig({ sender: { [key]: slug } })
+	client.config.update({ sender: { [key]: slug } })
 		.then(() => {
 			const group = channelGroups.value.find(g => g.channelType === channelType);
 			if (group) group.defaultSlug = slug;
@@ -144,7 +142,7 @@ const setDefault = (channelType: string, slug: string) => {
 
 const scanChannels = () => {
 	scanning.value = true;
-	SenderApi.install()
+	client.sender.install()
 		.then(() => {
 			loadChannels();
 			loadDefaults();

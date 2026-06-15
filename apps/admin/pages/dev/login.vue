@@ -62,8 +62,6 @@
 </template>
 
 <script setup lang="ts">
-import Cookies, { COOKIE_NAMES } from '~/api/utils/cookie';
-
 definePageMeta({
 	layout: false
 });
@@ -82,11 +80,7 @@ const handleLogin = () => {
 	error.value = '';
 
 	try {
-		Cookies.setCookie(COOKIE_NAMES.USER_TOKEN, token.value.trim(), {
-			expires: 7,
-			path: '/',
-			sameSite: 'lax'
-		});
+		localStorage.setItem('token', token.value.trim());
 		navigateTo('/apps/dashboard');
 	} catch (e) {
 		error.value = '登录失败，请检查 token 格式';

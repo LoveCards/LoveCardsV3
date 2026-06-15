@@ -86,8 +86,9 @@
 </template>
 
 <script setup lang="ts">
-import PermissionsApi from "@/api/app/admin/permissions";
+import { useApi } from '~/lib/api';
 import SelectUtils from "~/api/utils/select";
+const client = useApi();
 
 const TableHeaders = [
   { title: "分组", value: "group" },
@@ -119,12 +120,11 @@ const getTableData = () => {
     list_rows: tableListRows.value,
     search_value: tableSearchValue.value,
   };
-  PermissionsApi.getPermissionIndex(params).then((response) => {
-    const data = response.data;
-    tableCurrentPage.value = data.current_page;
-    tablePaginationLength.value = data.last_page;
-    tableItems.value = data.data;
-    totalItems.value = data.total;
+  client.permissions.list(params).then((result) => {
+    tableCurrentPage.value = result.pagination!.currentPage;
+    tablePaginationLength.value = result.pagination!.totalPages;
+    tableItems.value = result.data;
+    totalItems.value = result.pagination!.totalItems;
   });
 };
 

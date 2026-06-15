@@ -156,14 +156,14 @@
 </template>
 
 <script setup lang="ts">
-import StorageApi from "@/api/app/admin/storage";
-import CommonUtils from "@/utils/common";
+import { useApi } from '~/lib/api';
+import CommonUtils from "~/api/utils/common";
 import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
 import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
 import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
 import EditFileDialog from "@/components/apps/storage/EditFileDialog.vue";
 import SelectUtils from "~/api/utils/select";
-import ApiCommonUtils from "@/api/utils/common";
+const client = useApi();
 
 // 视图模式
 const viewMode = ref('normal');
@@ -243,11 +243,10 @@ const getTableData = () => {
     show_deleted: viewMode.value === 'deleted' ? 2 : 0,
     ...tableSearchFilter.value,
   };
-  StorageApi.getFileIndex(params).then((response) => {
-    const data = response.data;
-    tableCurrentPage.value = data.current_page;
-    tablePaginationLength.value = data.last_page;
-    tableItems.value = data.data;
+  client.files.list(params).then((result) => {
+    tableCurrentPage.value = result.pagination!.currentPage;
+    tablePaginationLength.value = result.pagination!.totalPages;
+    tableItems.value = result.data;
   });
 };
 
@@ -270,7 +269,7 @@ watch(viewMode, () => {
 
 // 统一操作方法
 const handleBatchOp = (ids: number[], method: string) => {
-  StorageApi.batchOperate({ ids, method }).then(() => {
+  client.files.batch({ ids, method: method as any }).then(() => {
     getTableData();
   });
 };
@@ -280,8 +279,8 @@ const EditDialog_state = ref(false);
 const EditDialog_data = ref<any>({});
 const openEditDialog = (item: any) => {
   EditDialog_data.value = {
-    origin: ApiCommonUtils.deepClone(item),
-    edit: ApiCommonUtils.deepClone(item),
+    origin: CommonUtils.deepClone(item),
+    edit: CommonUtils.deepClone(item),
   };
   EditDialog_state.value = true;
 };
@@ -290,7 +289,7 @@ const openEditDialog = (item: any) => {
 const DeleteDialog_state = ref(false);
 const DeleteDialog_data = ref<any>({});
 const HardDeleteFun = (id: number) => {
-  StorageApi.batchOperate({ ids: [id], method: 'hard_delete' }).then(() => {
+  client.files.batch({ ids: [id], method: 'delete' }).then(() => {
     DeleteDialog_state.value = false;
     getTableData();
   });
@@ -302,7 +301,7 @@ const openHardDeleteDialog = (item: any) => {
 
 // 清理过期文件
 const openCleanupDialog = () => {
-  StorageApi.cleanup().then(() => {
+  client.files.cleanup().then(() => {
     getTableData();
   });
 };

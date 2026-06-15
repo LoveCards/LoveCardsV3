@@ -28,9 +28,9 @@
 </template>
 
 <script setup lang="ts">
-import CommonUtils from "@/api/utils/common";
-import RolesApi from "~/api/app/admin/roles";
-
+import CommonUtils from "~/api/utils/common";
+import { useApi } from '~/lib/api';
+const client = useApi();
 const notifier = useNotifier();
 
 const props = defineProps({
@@ -55,7 +55,7 @@ const submit = () => {
 	}
 	params.id = editData.id;
 
-	RolesApi.patchRole(params.id, params).then(() => {
+	client.roles.update(params.id, params).then(() => {
 		thisDialogState.value = false;
 		getTableData();
 	}).catch(() => {});

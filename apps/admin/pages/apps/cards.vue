@@ -157,8 +157,7 @@
 </template>
 
 <script setup lang="ts">
-import CardsApi from "@/api/app/admin/cards";
-import ApiCommonUtils from "@/api/utils/common";
+import { useApi } from '~/lib/api';
 import CommonUtils from "@/utils/common";
 import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
 import EditCardDialog from "@/components/apps/cards/EditCardDialog.vue";
@@ -166,7 +165,7 @@ import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
 import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
 import SelectUtils from "~/api/utils/select";
 import { useTagsStore } from "@/stores/tagsStore";
-const notifier = useNotifier();
+const client = useApi();
 
 //渲染数据预处理
 const renderTop = (data: any) => {
@@ -252,7 +251,7 @@ const openEditCardDialog = (data: any) => {
 
 //DeleteDialog组件
 const DeleteCardFun = (id: any) => {
-  CardsApi.deleteCard(id).then(() => {
+  client.cards.delete(id).then(() => {
     DeleteCardDialog_state.value = false;
     getTableData();
   });
@@ -268,11 +267,7 @@ const openDeleteCardDialog = (data: {}) => {
 const BatchOperate = ref('');
 //BatchCardDialog组件
 const BatchCardFun = () => {
-  const data = {
-    ids: tableSelected.value,
-    method: BatchOperate.value,
-  }
-  CardsApi.batchOperate(data).then(() => {
+  client.cards.batch({ method: BatchOperate.value as any, ids: tableSelected.value }).then(() => {
     BatchCardDialog_state.value = false;
     getTableData();
   })
@@ -300,20 +295,17 @@ const openSearchUserDialog = () => {
 
 //获取表格数据
 const getTableData = () => {
-  //合并参数
   const params = {
     page: tableCurrentPage.value,
     list_rows: tableListRows.value,
     search_value: tableSearchValue.value,
     ...tableSearchFilter.value
   };
-  //获取数据
-  CardsApi.getCardIndex(params)
-    .then((response) => {
-      const data = response.data;
-      tableCurrentPage.value = data.current_page;
-      tablePaginationLength.value = data.last_page;
-      tableItems.value = data.data;
+  client.cards.list(params)
+    .then((result) => {
+      tableCurrentPage.value = result.pagination!.currentPage;
+      tablePaginationLength.value = result.pagination!.totalPages;
+      tableItems.value = result.data;
     })
 };
 

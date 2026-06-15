@@ -23,6 +23,16 @@ export default defineNuxtConfig({
     ssr: false,
     compatibilityDate: "2024-11-01",
     devtools: { enabled: true },
+    build: {
+        transpile: ['@lovecards/sdk'],
+    },
+    vite: {
+        server: {
+            watch: {
+                ignored: ['**/SDK/dist/**'],
+            },
+        },
+    },
     modules: [// 直接使用模块名称
         'vuetify-nuxt-module', 'vuetify-notifier/nuxt', '@pinia/nuxt', "vuetify-notifier", "@nuxt/scripts"],
     scripts: {

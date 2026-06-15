@@ -34,8 +34,8 @@
 </template>
 
 <script setup lang="ts">
-import TagsApi from "~/api/app/admin/tags";
-
+import { useApi } from '~/lib/api';
+const client = useApi();
 const notifier = useNotifier();
 
 //Props
@@ -78,6 +78,6 @@ const createComment = () => {
 	// }
 	const params = CreateTagData.value;
 	//返回原生Promise
-	return TagsApi.createTag(params);
+  return client.tags.create(params);
 }
 </script>

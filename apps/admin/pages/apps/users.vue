@@ -145,17 +145,14 @@
 </template>
 
 <script setup lang="ts">
-import UsersApi from "@/api/app/admin/users";
-import RolesApi from "@/api/app/admin/roles";
-import ApiCommonUtils from "@/api/utils/common";
+import { useApi } from '~/lib/api';
 import CommonUtils from "@/utils/common";
 import EditUserDialog from "~/components/apps/users/EditUserDialog.vue";
 import PublicDeleteDialog from "~/components/apps/public/Table/DeleteDialog.vue";
 import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
 import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
 import SelectUtils from "~/api/utils/select";
-
-const notifier = useNotifier();
+const client = useApi();
 
 //表格头部
 const TableHeaders = [
@@ -190,8 +187,8 @@ const TableListRowsOptions = [
 //用户组（从 API 动态加载）
 const UserRoles = ref<{ title: string; value: number }[]>([]);
 const loadUserRoles = async () => {
-  const res = await RolesApi.getRoleIndex({ list_rows: 100 });
-  UserRoles.value = res.data.map((r: any) => ({
+  const result = await client.roles.list({ list_rows: 100 });
+  UserRoles.value = result.data.map((r: any) => ({
     title: `#${r.id} ${r.name}`,
     value: r.id
   }));
@@ -241,14 +238,14 @@ const tableListRows = ref(TableListRowsOptions[0]?.value);
 const EditUserDialog_state = ref(false);
 const EditUserDialog_data = ref({ origin: {}, edit: {} } as any);
 const openEditUserDialog = (data: {}) => {
-  EditUserDialog_data.value.origin = ApiCommonUtils.deepClone(data);
-  EditUserDialog_data.value.edit = ApiCommonUtils.deepClone(data);
+  EditUserDialog_data.value.origin = CommonUtils.deepClone(data);
+  EditUserDialog_data.value.edit = CommonUtils.deepClone(data);
   EditUserDialog_state.value = true;
 };
 
 //DeleteUserDialog组件
 const DeleteUserFun = (id: any) => {
-  UsersApi.deleteUser(id).then(() => {
+  client.users.delete(id).then(() => {
     DeleteUserDialog_state.value = false;
     getTableData();
   });
@@ -265,11 +262,7 @@ const BatchOperate = ref('');
 const BatchUserDialog_state = ref(false);
 //BatchCardDialog组件
 const BatchUserFun = () => {
-  const data = {
-    ids: tableSelected.value,
-    method: BatchOperate.value,
-  }
-  UsersApi.batchOperate(data).then(() => {
+  client.users.batch({ method: BatchOperate.value as any, ids: tableSelected.value }).then(() => {
     BatchUserDialog_state.value = false;
     getTableData();
   })
@@ -308,12 +301,11 @@ const getTableData = () => {
   //   //搜索时激活错误提醒
   //   ApiMonitor.setGetState(true);
   // }
-  UsersApi.getUserIndex(params)
-    .then((response) => {
-      const data = response.data;
-      tableCurrentPage.value = data.current_page;
-      tablePaginationLength.value = data.last_page;
-      tableItems.value = data.data;
+  client.users.list(params)
+    .then((result) => {
+      tableCurrentPage.value = result.pagination!.currentPage;
+      tablePaginationLength.value = result.pagination!.totalPages;
+      tableItems.value = result.data;
     })
   // .finally(() => {
   //   if (tableSearchFilter.value) {

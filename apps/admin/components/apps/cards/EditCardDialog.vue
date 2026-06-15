@@ -92,13 +92,11 @@
 </template>
 
 <script setup lang="ts">
-import UploadApi from "@/api/app/upload";
-import CommonUtils from "@/api/utils/common";
-import CardsApi from "~/api/app/admin/cards";
-import AdminCardsApi from "~/api/app/admin/cards";
-import UserCardsApi from "~/api/app/user/cards";
+import { useApi, isApiError } from '~/lib/api';
+import CommonUtils from "~/api/utils/common";
 import SelectUtils from "~/api/utils/select";
 
+const client = useApi();
 const notifier = useNotifier();
 
 //Props
@@ -181,49 +179,32 @@ const CardImgData = ref({
 	origin: [] as any
 });
 const getCard = () => {
-	//重置
-	CardData.value = {
-		edit: {} as any,
-		origin: {} as any
-	};
-	//构建参数
-	const params = {
-		id: editCardData.value.id,
-	};
-	//请求
-	AdminCardsApi.getCard(params.id).then((response) => {
-		response.data.tags = response.data.tags ? JSON.parse(response.data.tags) : [];//将标签转换为数组
-		CardData.value.edit = CommonUtils.deepClone(response.data);
-		CardData.value.origin = CommonUtils.deepClone(response.data);
+	CardData.value = { edit: {} as any, origin: {} as any };
+  client.cards.get(editCardData.value.id).then((card) => {
+		card.tags = card.tags ? JSON.parse(card.tags as any) : [];
+		CardData.value.edit = CommonUtils.deepClone(card);
+		CardData.value.origin = CommonUtils.deepClone(card);
 	});
 };
 const getCardImages = () => {
-	//重置
 	ViewCardFiles.value = [];
-	CardImgData.value = {
-		edit: [] as any,
-		origin: [] as any
-	};
-	//构建参数
-	const params = {
-		card_id: editCardData.value.id,
-	};
-	//请求
-	UserCardsApi.getCardImages(params as any).then((response) => {
-		CardImgData.value.edit = CommonUtils.deepClone(response.data);
-		CardImgData.value.origin = CommonUtils.deepClone(response.data);
-	});
+	CardImgData.value = { edit: [] as any, origin: [] as any };
+	// TODO: /card/images 端点已废弃，待后续设计图片管理方案
+	// 当前卡片图片通过 card.pictures 字段获取
+	const card = CardData.value.edit;
+	if (card.pictures) {
+		const pictures = typeof card.pictures === 'string' ? JSON.parse(card.pictures) : card.pictures;
+		CardImgData.value.edit = pictures.map((url: string, i: number) => ({ id: i + 1, url }));
+		CardImgData.value.origin = CommonUtils.deepClone(CardImgData.value.edit);
+	}
 };
-const postUserImages = async (file: any) => {
-	const data = {
-		file: file,
-		scene: 'card',
-	};
-	return UploadApi.postUpload(data).then((response) => {
-		return response.data;
-	}).catch((error) => {
+const postUserImages = async (file: File) => {
+	try {
+		const result = await client.files.upload(file);
+		return result;
+	} catch {
 		return false;
-	});
+	}
 }
 const patchCard = () => {
 	//多次一举是因为没办法比较，主要是mysql输出的json和js的json转字符串格式不一样
@@ -259,7 +240,7 @@ const patchCard = () => {
 	params.id = editCardData.id; //插入卡片ID
 
 	//返回原生Promise
-	return CardsApi.patchCard(params.id, params);
+  return client.cards.update(params.id, params);
 }
 
 //数据初始化

@@ -1,7 +1,5 @@
 import { defineStore } from 'pinia';
-import { getUserInfo as apiGetUserInfo } from '~/api/app/user';
-import ErrorUtils from '~/api/utils/error';
-import { showErrorNotification } from '~/api/utils/notifier';
+import { useApi, isApiError } from '~/lib/api';
 
 export const useUserStore = defineStore('user', {
     state: () => ({
@@ -21,15 +19,16 @@ export const useUserStore = defineStore('user', {
             this.loading = true;
             this.error = null;
             try {
-                const response = await apiGetUserInfo();
-                this.userInfo = response.data;
-                this.permissions = response.data?.permissions || [];
-                this.roles = response.data?.roles || [];
-                return response;
+                const client = useApi();
+                const user = await client.users.me();
+                this.userInfo = user;
+                this.permissions = user?.capabilities || [];
+                this.roles = user?.roles || [];
+                return user;
             } catch (error) {
-                const errorDetail = ErrorUtils.parse(error);
-                this.error = errorDetail.message;
-                showErrorNotification(errorDetail.message);
+                if (isApiError(error)) {
+                    this.error = error.message;
+                }
                 throw error;
             } finally {
                 this.loading = false;
@@ -39,7 +38,7 @@ export const useUserStore = defineStore('user', {
             return this.permissions.includes(routeName);
         },
         hasAdminAccess(): boolean {
-            return this.permissions.some(p => p.includes('.allList') || p.includes('.allUpdate'));
+            return this.roles.some(r => r.slug === 'root' || r.slug === 'admin');
         },
         isRoot(): boolean {
             return this.roles.some(r => r.slug === 'root');

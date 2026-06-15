@@ -47,9 +47,8 @@
 </template>
 
 <script setup lang="ts">
-import RolesApi from "~/api/app/admin/roles";
-import PermissionsApi from "~/api/app/admin/permissions";
-
+import { useApi } from '~/lib/api';
+const client = useApi();
 const notifier = useNotifier();
 
 const props = defineProps({
@@ -104,8 +103,8 @@ const toggleSelectAll = () => {
 const submit = () => {
 	if (!RoleId.value) return;
 	saving.value = true;
-	RolesApi.assignPermissions(RoleId.value, {
-		permission_hashes: JSON.stringify(selectedHashes.value),
+	client.roles.assignCapabilities(RoleId.value, {
+		permission_hashes: selectedHashes.value,
 	}).then(() => {
 		thisDialogState.value = false;
 		notifier.toast({ type: 'success', text: '权限分配成功' });
@@ -122,13 +121,11 @@ watch(thisDialogState, async (val) => {
 		allPermissions.value = [];
 		try {
 			const [roleHashes, allPerms] = await Promise.all([
-				RolesApi.getRolePermissionHashes(RoleId.value),
-				PermissionsApi.getAllPermissions(),
+				client.roles.getCapabilities(RoleId.value),
+				client.permissions.all(),
 			]);
-			const rawAll = allPerms.data || [];
-			allPermissions.value = Array.isArray(rawAll) ? rawAll : Object.values(rawAll);
-			const rawHashes = roleHashes.data || [];
-			selectedHashes.value = Array.isArray(rawHashes) ? rawHashes : Object.values(rawHashes);
+			allPermissions.value = Array.isArray(allPerms) ? allPerms : Object.values(allPerms);
+			selectedHashes.value = Array.isArray(roleHashes) ? roleHashes : Object.values(roleHashes);
 			// 公开路由自动选中
 			allPermissions.value.forEach(p => {
 				if (p.public && !selectedHashes.value.includes(p.hash)) {

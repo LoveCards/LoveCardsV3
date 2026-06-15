@@ -1,11 +1,9 @@
 import { defineStore } from 'pinia';
-import { getDashboard as apiGetDashboard } from '~/api/app/admin/dashboard';
-import ErrorUtils from '~/api/utils/error';
-import { showErrorNotification } from '~/api/utils/notifier';
+import { useApi } from '~/lib/api';
 
 export const useDashboardStore = defineStore('dashboard', {
     state: () => ({
-        dashboard: null,
+        dashboard: null as any,
         loading: false,
         error: null as string | null,
     }),
@@ -19,13 +17,9 @@ export const useDashboardStore = defineStore('dashboard', {
             this.loading = true;
             this.error = null;
             try {
-                const response = await apiGetDashboard();
-                this.dashboard = response.data;
+                const client = useApi();
+                this.dashboard = await client.dashboard.index();
             } catch (error) {
-                const errorDetail = ErrorUtils.parse(error);
-                this.error = errorDetail.message;
-                // 仪表盘数据获取失败时显示错误通知
-                showErrorNotification(`获取仪表盘失败：${errorDetail.message}`);
                 console.error('获取仪表盘失败:', error);
             } finally {
                 this.loading = false;

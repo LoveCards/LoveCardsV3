@@ -146,13 +146,13 @@
 
 <script setup lang="ts">
 import CommonUtils from "@/utils/common";
-import CommentsApi from "@/api/app/admin/comments";
+import { useApi } from '~/lib/api';
 import EditCommentDialog from "@/components/apps/comments/EditCommentDialog.vue";
 import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
 import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
 import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
 import SelectUtils from "~/api/utils/select";
-const notifier = useNotifier();
+const client = useApi();
 
 //渲染数据预处理
 const renderTop = (data: any) => {
@@ -214,7 +214,7 @@ const openEditCommentDialog = (data: any) => {
 
 //DeleteDialog组件
 const DeleteCardFun = (id: any) => {
-  CommentsApi.deleteComment(id).then(() => {
+  client.comments.delete(id).then(() => {
     DeleteCardDialog_state.value = false;
     getTableData();
   });
@@ -230,11 +230,7 @@ const openDeleteCardDialog = (data: {}) => {
 const BatchOperate = ref('');
 //BatchCardDialog组件
 const BatchCardFun = () => {
-  const data = {
-    ids: tableSelected.value,
-    method: BatchOperate.value,
-  }
-  CommentsApi.batchOperate(data).then(() => {
+  client.comments.batch({ method: BatchOperate.value as any, ids: tableSelected.value }).then(() => {
     BatchCardDialog_state.value = false;
     getTableData();
   })
@@ -270,12 +266,11 @@ const getTableData = () => {
     ...tableSearchFilter.value
   };
   //获取数据
-  CommentsApi.getCommentIndex(params)
-    .then((response) => {
-      const data = response.data;
-      tableCurrentPage.value = data.current_page;
-      tablePaginationLength.value = data.last_page;
-      tableItems.value = data.data;
+  client.comments.list(params)
+    .then((result) => {
+      tableCurrentPage.value = result.pagination!.currentPage;
+      tablePaginationLength.value = result.pagination!.totalPages;
+      tableItems.value = result.data;
     })
 };
 

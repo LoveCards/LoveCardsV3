@@ -76,7 +76,8 @@
 </template>
 
 <script setup lang="ts">
-import ThemeApi from '~/api/app/admin/theme';
+import { useApi } from '~/lib/api';
+const client = useApi();
 
 const route = useRoute();
 const loading = ref(true);
@@ -89,10 +90,10 @@ const configValues = ref<Record<string, any>>({});
 
 const loadConfig = () => {
 	loading.value = true;
-	ThemeApi.getThemeConfig()
+	client.theme.config()
 		.then((result) => {
-			configSchema.value = result.data.config_schema || {};
-			configValues.value = result.data.config_values || {};
+			configSchema.value = result.config_schema || {};
+			configValues.value = result.config_values || {};
 		})
 		.finally(() => {
 			loading.value = false;
@@ -102,7 +103,7 @@ const loadConfig = () => {
 const saveConfig = () => {
 	saveLoading.value = true;
 	saveResult.value = null;
-	ThemeApi.updateThemeConfig(configValues.value)
+	client.theme.updateConfig(configValues.value)
 		.then(() => {
 			saveResult.value = { success: true, message: '保存成功' };
 		})
@@ -116,7 +117,7 @@ const saveConfig = () => {
 
 const freezeConfig = () => {
 	freezeLoading.value = true;
-	ThemeApi.freezeThemeConfig()
+	client.theme.freeze()
 		.then(() => {
 			saveResult.value = { success: true, message: '固化成功' };
 		})

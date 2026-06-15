@@ -133,8 +133,8 @@
 </template>
 
 <script setup lang="ts">
-import CaptchaApi from '~/api/app/admin/captcha';
-import SystemApi from '~/api/app/admin/system';
+import { useApi } from '~/lib/api';
+const client = useApi();
 
 const router = useRouter();
 const tab = ref('drivers');
@@ -173,9 +173,8 @@ const channelItems = [
 ];
 
 const loadDrivers = () => {
-	CaptchaApi.getDrivers()
-		.then((result) => {
-			const drivers: DriverMeta[] = result.data ?? [];
+	client.captcha.drivers()
+		.then((drivers) => {
 			const groups: Record<string, DriverMeta[]> = {};
 			for (const d of drivers) {
 				const t = d.type || 'unknown';
@@ -191,23 +190,21 @@ const loadDrivers = () => {
 };
 
 const loadSettings = () => {
-	SystemApi.getConfig('captcha')
-		.then((result) => {
-			const data = result.data;
+	client.config.list()
+		.then((data) => {
 			settings.value.code_enabled = data.captcha?.code_enabled ?? true;
 			settings.value.captcha_enabled = data.captcha?.captcha_enabled ?? true;
 			settings.value.code_channel = data.captcha?.code_channel ?? 'smtp';
 		});
-	SystemApi.getConfig('user')
-		.then((result) => {
-			settings.value.user_captcha = result.data?.user?.captcha ?? false;
+	client.config.list()
+		.then((data) => {
+			settings.value.user_captcha = data.user?.captcha ?? false;
 		});
 };
 
 const loadDefaults = () => {
-	SystemApi.getConfig('captcha')
-		.then((result) => {
-			const data = result.data;
+	client.config.list()
+		.then((data) => {
 			for (const group of driverGroups.value) {
 				const key = 'default_' + group.type;
 				group.defaultSlug = data.captcha?.[key] ?? group.drivers[0]?.slug ?? '';
@@ -217,7 +214,7 @@ const loadDefaults = () => {
 
 const setDefault = (type: string, slug: string) => {
 	const key = 'default_' + type;
-	SystemApi.postConfig({ captcha: { [key]: slug } })
+	client.config.update({ captcha: { [key]: slug } })
 		.then(() => {
 			const group = driverGroups.value.find(g => g.type === type);
 			if (group) group.defaultSlug = slug;
@@ -229,7 +226,7 @@ const openConfig = (slug: string) => {
 };
 
 const saveSettings = () => {
-	SystemApi.postConfig({
+	client.config.update({
 		captcha: {
 			code_enabled: settings.value.code_enabled,
 			captcha_enabled: settings.value.captcha_enabled,
@@ -243,7 +240,7 @@ const saveSettings = () => {
 
 const scanDrivers = () => {
 	scanning.value = true;
-	CaptchaApi.install()
+	client.captcha.install()
 		.then(() => {
 			loadDrivers();
 			loadDefaults();

@@ -57,8 +57,9 @@
 </template>
 
 <script setup lang="ts">
-import StorageApi from "~/api/app/admin/storage";
+import { useApi } from '~/lib/api';
 import SelectUtils from "~/api/utils/select";
+const client = useApi();
 
 const props = defineProps({
 	getTableData: Function
@@ -91,12 +92,12 @@ const submit = () => {
 
 	// 审核状态变更
 	if (editStatus.value !== FileData.value.origin.status) {
-		ops.push(StorageApi.batchOperate({ ids, method: editStatus.value === 1 ? 'ban' : 'approve' }));
+		ops.push(client.files.batch({ ids, method: editStatus.value === 1 ? 'ban' : 'approve' }));
 	}
 
 	// 公开状态变更
 	if (editIsPublic.value !== FileData.value.origin.is_public) {
-		ops.push(StorageApi.batchOperate({ ids, method: 'toggle_public' }));
+		ops.push(client.files.batch({ ids, method: 'delete' }));
 	}
 
 	if (ops.length === 0) {

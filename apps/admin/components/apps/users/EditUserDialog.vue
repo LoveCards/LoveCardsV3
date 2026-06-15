@@ -72,11 +72,9 @@
 </template>
 
 <script setup lang="ts">
-import UserApi from "@/api/app/admin/users";
-import UploadApi from "@/api/app/upload";
-import RolesApi from "@/api/app/admin/roles";
-import CommonUtils from "@/api/utils/common";
-
+import { useApi } from '~/lib/api';
+import CommonUtils from "~/api/utils/common";
+const client = useApi();
 const notifier = useNotifier();
 
 //Props
@@ -96,9 +94,8 @@ const userRolesOptions = ref<any[]>([]);
 const rolesLoading = ref(false);
 const loadRoles = () => {
 	rolesLoading.value = true;
-	RolesApi.getRoleIndex({ list_rows: 100 }).then((response) => {
-		const data = response.data;
-		userRolesOptions.value = (data.data || []).map((role: any) => ({
+	client.roles.list({ list_rows: 100 }).then((result) => {
+		userRolesOptions.value = (result.data || []).map((role: any) => ({
 			title: `#${role.id} ${role.name}`,
 			value: role.id,
 		}));
@@ -157,9 +154,9 @@ const handleFileUpload = (e: Event) => {
 		scene: 'avatar',
 	};
 
-	UploadApi.postUpload(data)
-		.then((response: any) => {
-			editUserData.value.edit.avatar = response.data.url;
+	client.files.upload(file)
+		.then((result: any) => {
+			editUserData.value.edit.avatar = result.url;
 		})
 		.finally(() => {
 			// 清空文件选择
@@ -197,7 +194,7 @@ const patchUser = (data: EditUserData) => {
 	params.id = data.origin.id;
 	// console.log(params);
 	//返回原生Promise
-	return UserApi.patchUser(params.id, params);
+	return client.users.update(params.id, params);
 };
 
 </script>

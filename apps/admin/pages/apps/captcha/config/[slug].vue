@@ -66,8 +66,8 @@
 </template>
 
 <script setup lang="ts">
-import SystemApi from '~/api/app/admin/system';
-import CaptchaApi from '~/api/app/admin/captcha';
+import { useApi } from '~/lib/api';
+const client = useApi();
 
 const route = useRoute();
 const slug = route.params.slug as string;
@@ -82,9 +82,8 @@ const saveLoading = ref(false);
 const saveResult = ref<{ success: boolean; message: string } | null>(null);
 
 const loadMeta = () => {
-	CaptchaApi.getDrivers()
-		.then((result) => {
-			const drivers = result.data ?? [];
+	client.captcha.drivers()
+		.then((drivers) => {
 			const driver = drivers.find((d: any) => d.slug === slug);
 			if (driver) {
 				driverName.value = driver.name;
@@ -97,10 +96,8 @@ const loadConfig = () => {
 	loading.value = true;
 	loadError.value = null;
 
-	const group = 'captcha_' + slug;
-	SystemApi.getConfig(group)
-		.then((result) => {
-			const data = result.data;
+	client.config.list()
+		.then((data) => {
 			if (data && data[group]) {
 				config.value = { ...data[group] };
 			} else {
@@ -120,7 +117,7 @@ const save = () => {
 	saveResult.value = null;
 	const group = 'captcha_' + slug;
 	const configToSave = { ...config.value };
-	SystemApi.postConfig({ [group]: configToSave })
+	client.config.update({ [group]: configToSave })
 		.then(() => {
 			saveResult.value = { success: true, message: '保存成功' };
 		})

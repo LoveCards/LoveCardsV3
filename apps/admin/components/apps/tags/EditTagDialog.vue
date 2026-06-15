@@ -44,10 +44,10 @@
 </template>
 
 <script setup lang="ts">
-import CommonUtils from "@/api/utils/common";
-import TagsApi from "~/api/app/admin/tags";
+import CommonUtils from "~/api/utils/common";
+import { useApi } from '~/lib/api';
 import SelectUtils from "~/api/utils/select";
-
+const client = useApi();
 const notifier = useNotifier();
 
 //Props
@@ -100,7 +100,7 @@ const patchComment = () => {
 	params.id = editTagData.id;
 
 	//返回原生Promise
-	return TagsApi.patchTag(params.id, params);
+  return client.tags.update(params.id, params);
 }
 
 //数据初始化

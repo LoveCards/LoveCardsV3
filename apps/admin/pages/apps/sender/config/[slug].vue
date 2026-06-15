@@ -88,15 +88,14 @@
 </template>
 
 <script setup lang="ts">
-import SystemApi from '~/api/app/admin/system';
-import SenderApi from '~/api/app/admin/sender';
-import type { SenderField } from '~/api/types/sender';
+import { useApi } from '~/lib/api';
+const client = useApi();
 
 const route = useRoute();
 const slug = route.params.slug as string;
 
 const config = ref<Record<string, any>>({});
-const fields = ref<SenderField[]>([]);
+const fields = ref<Array<{ key: string; label: string; type: string; options?: Array<{ value: string; label: string }> }>>([]);
 const channelName = ref(slug);
 const showPassword = ref(false);
 const loading = ref(true);
@@ -109,9 +108,8 @@ const saveLoading = ref(false);
 const saveResult = ref<{ success: boolean; message: string } | null>(null);
 
 const loadChannelMeta = () => {
-	return SenderApi.getChannels()
-		.then((result) => {
-			const channels = result.data ?? [];
+	return client.sender.channels()
+		.then((channels) => {
 			const channel = channels.find((c: any) => c.slug === slug);
 			if (channel) {
 				channelName.value = channel.name;
@@ -123,9 +121,8 @@ const loadChannelMeta = () => {
 const loadConfig = () => {
 	loading.value = true;
 	loadError.value = null;
-	SystemApi.getConfig('sender_' + slug)
-		.then((result) => {
-			const data = result.data;
+	client.config.list()
+		.then((data) => {
 			if (data && data['sender_' + slug]) {
 				config.value = { ...data['sender_' + slug] };
 			} else {
@@ -145,7 +142,7 @@ const save = () => {
 	saveResult.value = null;
 	const configToSave = { ...config.value };
 	delete configToSave.type;
-	SystemApi.postConfig({ ['sender_' + slug]: configToSave })
+	client.config.update({ ['sender_' + slug]: configToSave })
 		.then(() => {
 			saveResult.value = { success: true, message: '保存成功' };
 		})
@@ -164,9 +161,9 @@ const sendTest = () => {
 	}
 	testLoading.value = true;
 	testResult.value = null;
-	SenderApi.testChannel(slug, testTo.value)
+	client.sender.testChannel({ channel: slug, to: testTo.value })
 		.then((result) => {
-			testResult.value = result.data;
+			testResult.value = result;
 		})
 		.catch(() => {
 			testResult.value = { success: false, message: '测试失败' };
