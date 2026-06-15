@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios'
-import type { LCClientConfig, TokenStore, RetryConfig } from './types/api'
-export type { LCClientConfig } from './types/api'
+import type { LCClientConfig, TokenStore, RetryConfig, HookRegistration } from './types/api'
+export type { LCClientConfig, HookRegistration } from './types/api'
 import { ApiError } from './errors'
 import { Deduplicator } from './dedupe'
 import { defaultTokenStore, defaultConfig } from './config/defaults'
@@ -40,10 +40,13 @@ export interface LCClient {
   readonly sender: Sender
   readonly captcha: Captcha
   readonly system: System
+  readonly hooks: HookRegistration
 
   setToken(token: string): void
   clearToken(): void
   getToken(): string | null
+  setRole(slug: string): void
+  getRole(): string | null
 }
 
 export function createClient(config: LCClientConfig): LCClient {
@@ -58,12 +61,18 @@ export function createClient(config: LCClientConfig): LCClient {
     headers: { 'Content-Type': 'application/json' },
   })
 
-  // 请求拦截：注入 token
+  // 当前角色（可变）
+  let currentRole: string | null = config.defaultRole ?? null
+
+  // 请求拦截：注入 token + X-Role
   instance.interceptors.request.use((cfg) => {
     const token = tokenStore.get()
     if (token) {
       cfg.headers.Authorization = `Bearer ${token}`
       cfg.headers['X-Token'] = token
+    }
+    if (currentRole) {
+      cfg.headers['X-Role'] = currentRole
     }
     return cfg
   })
@@ -83,9 +92,14 @@ export function createClient(config: LCClientConfig): LCClient {
     debug,
     retry,
     dedupe: new Deduplicator(),
+    hooks: {
+      beforeRequest: config.hooks?.beforeRequest ? [config.hooks.beforeRequest] : [],
+      afterResponse: config.hooks?.afterResponse ? [config.hooks.afterResponse] : [],
+      onError: config.hooks?.onError ? [config.hooks.onError] : [],
+    },
   }
 
-  return new LCClientImpl(instance, opts, tokenStore)
+  return new LCClientImpl(instance, opts, tokenStore, () => currentRole, (r: string) => { currentRole = r })
 }
 
 class LCClientImpl implements LCClient {
@@ -105,11 +119,22 @@ class LCClientImpl implements LCClient {
   readonly sender: Sender
   readonly captcha: Captcha
   readonly system: System
+  readonly hooks: HookRegistration
 
   private _tokenStore: TokenStore
+  private _getRole: () => string | null
+  private _setRole: (r: string) => void
 
-  constructor(instance: AxiosInstance, opts: ResourceOptions, tokenStore: TokenStore) {
+  constructor(
+    instance: AxiosInstance,
+    opts: ResourceOptions,
+    tokenStore: TokenStore,
+    getRole: () => string | null,
+    setRole: (r: string) => void,
+  ) {
     this._tokenStore = tokenStore
+    this._getRole = getRole
+    this._setRole = setRole
     this.session = new Session(instance, opts)
     this.cards = new Cards(instance, opts)
     this.users = new Users(instance, opts)
@@ -126,6 +151,32 @@ class LCClientImpl implements LCClient {
     this.sender = new Sender(instance, opts)
     this.captcha = new Captcha(instance, opts)
     this.system = new System(instance, opts)
+
+    // 运行时 hook 注册
+    const hookStore = opts.hooks
+    this.hooks = {
+      beforeRequest(fn) {
+        hookStore.beforeRequest.push(fn)
+        return () => {
+          const idx = hookStore.beforeRequest.indexOf(fn)
+          if (idx >= 0) hookStore.beforeRequest.splice(idx, 1)
+        }
+      },
+      afterResponse(fn) {
+        hookStore.afterResponse.push(fn)
+        return () => {
+          const idx = hookStore.afterResponse.indexOf(fn)
+          if (idx >= 0) hookStore.afterResponse.splice(idx, 1)
+        }
+      },
+      onError(fn) {
+        hookStore.onError.push(fn)
+        return () => {
+          const idx = hookStore.onError.indexOf(fn)
+          if (idx >= 0) hookStore.onError.splice(idx, 1)
+        }
+      },
+    }
   }
 
   setToken(token: string): void {
@@ -138,5 +189,13 @@ class LCClientImpl implements LCClient {
 
   getToken(): string | null {
     return this._tokenStore.get()
+  }
+
+  setRole(slug: string): void {
+    this._setRole(slug)
+  }
+
+  getRole(): string | null {
+    return this._getRole()
   }
 }

@@ -1,7 +1,12 @@
 import { BaseResource } from './base'
 import type { ThemeItem, ThemeConfigData, ThemeActivateParams, ThemeDeleteParams } from '../types/theme'
+import type { Tag } from '../types/tags'
 
 export class Theme extends BaseResource {
+  tags(): Promise<Tag[]> {
+    return this._get<Tag[]>('/theme/tags')
+  }
+
   list(): Promise<ThemeItem[]> {
     return this._get<ThemeItem[]>('/theme/list')
   }
@@ -21,7 +26,7 @@ export class Theme extends BaseResource {
   }
 
   updateConfig(data: Record<string, any>): Promise<void> {
-    return this._put<void>('/theme/config', data)
+    return this._patch<void>('/theme/config', data)
   }
 
   freeze(): Promise<void> {

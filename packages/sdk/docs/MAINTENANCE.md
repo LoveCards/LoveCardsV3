@@ -61,7 +61,7 @@ createClient(config) → LCClient
 | `captcha.php` | `Captcha` | 5 |
 | `sender.php` | `Sender` | 6 |
 | `theme.php` | `Theme` | 8 |
-| `system.php` | —（SDK 未覆盖） | 1 |
+| `system.php` | `System` | 1 |
 
 每个路由定义格式：
 
@@ -175,6 +175,70 @@ const card = await client.cards.get(1)
 
 ---
 
+## 生命周期钩子
+
+SDK 提供 3 个生命周期钩子。添加新的 hook 类型时需要：
+
+### 1. 定义类型（`src/types/api.ts`）
+
+```typescript
+export interface NewHookContext extends RequestContext {
+  customField: string
+}
+export interface NewHook {
+  (ctx: NewHookContext): void | Promise<void>
+}
+```
+
+### 2. 添加到 `ResourceOptions`（`src/resources/base.ts`）
+
+```typescript
+export interface ResourceOptions {
+  // 现有字段...
+  hooks: {
+    beforeRequest: BeforeRequestHook[]
+    afterResponse: AfterResponseHook[]
+    onError: OnErrorHook[]
+    // ↑ 在这里添加新的 hook 类型
+  }
+}
+```
+
+### 3. 在 `_request()` 中调用
+
+```typescript
+// 在请求前调用
+for (const fn of [...this._opts.hooks.yourNewHook]) {
+  try { await fn(ctx) } catch {}  // 只读
+  // 或
+  await fn(ctx)                    // 可中断
+}
+```
+
+### 4. 添加到 `HookRegistration` 和 `LCClientImpl`
+
+```typescript
+// client.ts — HookRegistration
+export interface HookRegistration {
+  beforeRequest: (fn: BeforeRequestHook) => () => void
+  afterResponse: (fn: AfterResponseHook) => () => void
+  onError: (fn: OnErrorHook) => () => void
+  // ↑ 添加运行时注册方法
+}
+```
+
+### 钩子设计原则
+
+| 原则 | 说明 |
+|------|------|
+| 可修改 vs 只读 | `beforeRequest` 可修改 headers；`afterResponse`/`onError` 只读 |
+| 异常处理 | `beforeRequest` 异常中断请求；`afterResponse`/`onError` 异常被吞掉 |
+| 执行顺序 | FIFO（注册顺序），遍历前复制快照 `[...arr]` |
+| 去重 | 并发相同 GET 只触发一次 hook |
+| 约束 | hook 类型不暴露 Axios 内部类型；所有错误统一为 `ApiError` |
+
+---
+
 ## 第六步：消费端同步
 
 修改 SDK 方法后，检查以下消费端是否需要同步：
@@ -208,3 +272,5 @@ npm run build        # 构建（自动执行 postbuild 同步 UMD 到 SSR theme�
 | 所有类型字段与数据库 schema 对齐 | 避免运行时字段名不匹配 |
 | 不暴露 `password` 等敏感字段 | 安全考虑 |
 | `params` 用 `DELETE` query params 而非 body | 部分代理会剥离 DELETE body |
+| Hook 类型不暴露 `AxiosRequestConfig` | 消费者不应依赖 Axios 类型 |
+| `beforeRequest` 不应修改 `params`/`data` | 已过内部序列化，修改破坏后端契约 |

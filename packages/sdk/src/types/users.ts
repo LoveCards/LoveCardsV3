@@ -32,6 +32,15 @@ export interface RegisterParams {
 
 export interface LoginResult {
   token: string
+  user?: { id: number; username: string }
+  roles?: RoleInfo[]
+}
+
+export interface CheckResult {
+  uid: number
+  username: string
+  roles: RoleInfo[]
+  activeRole: string
 }
 
 export interface ProfileUpdateParams {

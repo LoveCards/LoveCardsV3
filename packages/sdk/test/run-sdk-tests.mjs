@@ -3,9 +3,9 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import {
   setPhase, makeClient, test, assert, assertType, assertShape,
-  assertApiError, sleep, summary, generateReport,
+  assertApiError, sleep, summary, generateReport, BASE_URL,
 } from './helpers.mjs'
-import { isApiError } from '../dist/lovecards.es.js'
+import { isApiError, createClient } from '../dist/lovecards.es.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -115,7 +115,13 @@ await test('GET /cards/hot → cards.hot()', async () => {
 
 await test('GET /cards/search → cards.search()', async () => {
   const r = await pc.cards.search({ list_rows: 5 })
-  assertShape(r, ['data'], 'Should have data')
+  assert(r && Array.isArray(r.data), 'Should have data')
+  return r
+})
+
+await test('GET /cards/search with search_keys → cards.search()', async () => {
+  const r = await pc.cards.search({ search_value: 'test', search_keys: ['content'], list_rows: 5 })
+  assert(r && Array.isArray(r.data), 'Should return data array')
   return r
 })
 
@@ -810,10 +816,124 @@ await test('invalid token → 401', async () => {
 })
 
 // ═══════════════════════════════════════════════
-//  Phase 8: Cleanup
+//  Phase 8: Lifecycle Hook Tests
 // ═══════════════════════════════════════════════
 
-setPhase('Phase 8: Cleanup')
+setPhase('Phase 8: Lifecycle Hooks')
+
+await test('hook: ctor: beforeRequest+afterResponse fire on request', async () => {
+  const calls = []
+  const c = makeClient(null)
+  const login = await c.session.login({ account: 'admin@lovecards.cn', password: '123456' })
+  const hc = createClient({
+    apiUrl: BASE_URL,
+    tokenStore: { get: () => login.token, set: () => {}, clear: () => {} },
+    hooks: {
+      beforeRequest: (ctx) => { calls.push({ type: 'before', url: ctx.url }) },
+      afterResponse: (ctx) => { calls.push({ type: 'after', url: ctx.url, status: ctx.status }) },
+    },
+  })
+  await hc.cards.list({ list_rows: 1 })
+  const before = calls.filter(c => c.type === 'before').length
+  const after = calls.filter(c => c.type === 'after').length
+  assert(before >= 1, `beforeRequest should fire, got ${before}`)
+  assert(after >= 1, `afterResponse should fire, got ${after}`)
+})
+
+await test('hook: runtime: register and fire', async () => {
+  const calls = []
+  const hc = makeClient(adminToken)
+  const unsub = hc.hooks.afterResponse((ctx) => { calls.push(ctx.url) })
+  await hc.cards.hot()
+  assert(calls.length >= 1, 'afterResponse should fire after registration')
+  unsub()
+})
+
+await test('hook: unsubscribe prevents firing', async () => {
+  const calls = []
+  const hc = makeClient(adminToken)
+  const unsub = hc.hooks.afterResponse((ctx) => { calls.push(ctx.url) })
+  unsub()
+  await hc.cards.hot()
+  assert(calls.length === 0, 'afterResponse should NOT fire after unsubscribe')
+})
+
+await test('hook: beforeRequest abort interrupts request', async () => {
+  const hc = createClient({
+    apiUrl: BASE_URL,
+    hooks: {
+      beforeRequest: () => { throw new Error('hook-abort') },
+    },
+  })
+  try {
+    await hc.cards.list()
+    assert(false, 'should have thrown')
+  } catch (e) {
+    assert(isApiError(e), 'error should be ApiError')
+    assert(e.message.includes('hook-abort'), 'should carry hook message')
+  }
+})
+
+await test('hook: beforeRequest can add header', async () => {
+  const calls = []
+  const hc = createClient({
+    apiUrl: BASE_URL,
+    hooks: {
+      beforeRequest: (ctx) => { ctx.config.headers['X-SDK-Test'] = 'hook-value' },
+      afterResponse: (ctx) => { calls.push(ctx.status) },
+    },
+  })
+  const login = await hc.session.login({ account: 'admin@lovecards.cn', password: '123456' })
+  assert(calls.length >= 1, 'afterResponse should fire')
+})
+
+await test('hook: onError fires on 404', async () => {
+  const errors = []
+  const hc = createClient({
+    apiUrl: BASE_URL,
+    hooks: {
+      onError: (ctx) => { errors.push({ status: ctx.status, reason: ctx.reason }) },
+    },
+  })
+  try {
+    await hc.cards.get(999999)
+  } catch {}
+  assert(errors.length >= 1, 'onError should fire')
+  assert(errors[0].status === 404, 'status should be 404')
+  assert(errors[0].reason === 'http', 'reason should be http')
+})
+
+await test('hook: afterResponse error does not break request', async () => {
+  const hc = createClient({
+    apiUrl: BASE_URL,
+    hooks: {
+      afterResponse: () => { throw new Error('hook-crash') },
+    },
+  })
+  const r = await hc.cards.list({ list_rows: 1 })
+  assert(Array.isArray(r.data), 'request should still succeed despite hook error')
+})
+
+await test('hook: dedup fires hook once', async () => {
+  const calls = []
+  const hc = createClient({
+    apiUrl: BASE_URL,
+    hooks: {
+      afterResponse: () => { calls.push('x') },
+    },
+  })
+  const [a, b] = await Promise.all([
+    hc.cards.list({ list_rows: 1 }),
+    hc.cards.list({ list_rows: 1 }),
+  ])
+  assert(calls.length === 1, `dedup should fire hook once, got ${calls.length}`)
+})
+
+// ═══════════════════════════════════════════════
+//  Phase 9: Cleanup
+// ═══════════════════════════════════════════════
+
+setPhase('Phase 9: Cleanup')
 
 await test('cleanup: delete test card', async () => {
   if (!createdCardId) { console.log('    (no card to clean)'); return true }

@@ -35,8 +35,8 @@ export class Cards extends BaseResource {
     return this._post<{ likes: number }>(`/cards/${id}/like`)
   }
 
-  listOwn(params?: { page?: number; list_rows?: number }): Promise<ListResult<Card>> {
-    return this._get<ListResult<Card>>('/users/me/cards', params)
+  listMe(params?: { page?: number; list_rows?: number }): Promise<ListResult<Card>> {
+    return this._get<ListResult<Card>>('/cards/me', params)
   }
 
   batch(data: BatchOperateParams): Promise<void> {

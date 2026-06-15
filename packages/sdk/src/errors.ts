@@ -18,8 +18,9 @@ export class ApiError extends Error {
       const { response } = error
 
       if (!response) {
-        if (error.code === 'ECONNABORTED') return new ApiError(-1, '请求超时，请稍后重试', 0)
-        if (error.code === 'ERR_NETWORK') return new ApiError(-1, '网络连接失败，请检查网络设置', 0)
+        if (error.code === 'ECONNABORTED') return new ApiError(-2, '请求超时，请稍后重试', 0)
+        if (error.code === 'ERR_NETWORK') return new ApiError(-3, '网络连接失败，请检查网络设置', 0)
+        if (error.code === 'ERR_CANCELED') return new ApiError(-4, '请求已取消', 0)
         return new ApiError(-1, error.message || '网络错误', 0)
       }
 

@@ -1,16 +1,16 @@
 # SDK Endpoint Test Report
 
-> Generated: 2026-06-01T07:51:59.880Z
+> Generated: 2026-06-01T15:22:19.565Z
 
 ## Summary
 
 | Metric | Count |
 |--------|-------|
-| Passed | 102 |
+| Passed | 104 |
 | Failed | 0 |
-| Skipped | 3 |
-| Total | 105 |
-| Pass Rate | 97.1% |
+| Skipped | 10 |
+| Total | 114 |
+| Pass Rate | 91.2% |
 
 ## Phase 0: Bootstrap (5/5)
 
@@ -22,21 +22,22 @@
 | 4 | cards.list() → collect cardId | ✅ PASS | - |
 | 5 | tags.list() → collect tagId | ✅ PASS | - |
 
-## Phase 1: Public Endpoints (10/11)
+## Phase 1: Public Endpoints (9/12)
 
 | # | Test | Status | Detail |
 |---|------|--------|--------|
 | 1 | GET /cards → cards.list() | ✅ PASS | - |
-| 2 | GET /cards/:id → cards.get() | ✅ PASS | - |
+| 2 | GET /cards/:id → cards.get() | ⏭️ SKIP | - |
 | 3 | GET /cards/hot → cards.hot() | ✅ PASS | - |
 | 4 | GET /cards/search → cards.search() | ✅ PASS | - |
-| 5 | GET /cards/:id/comments → comments.cardList() | ✅ PASS | - |
-| 6 | GET /tags → tags.list() | ✅ PASS | - |
-| 7 | GET /tags/:id → tags.get() | ✅ PASS | - |
-| 8 | GET /captcha/config → captcha.config() | ✅ PASS | - |
-| 9 | GET /theme/config → theme.publicConfig() | ✅ PASS | - |
-| 10 | POST /session/captcha → session.captcha() | ✅ PASS | - |
-| 11 | GET /comments/:id → comments.get() | ⏭️ SKIP | - |
+| 5 | GET /cards/search with search_keys → cards.search() | ✅ PASS | - |
+| 6 | GET /cards/:id/comments → comments.cardList() | ⏭️ SKIP | - |
+| 7 | GET /tags → tags.list() | ✅ PASS | - |
+| 8 | GET /tags/:id → tags.get() | ✅ PASS | - |
+| 9 | GET /captcha/config → captcha.config() | ✅ PASS | - |
+| 10 | GET /theme/config → theme.publicConfig() | ✅ PASS | - |
+| 11 | POST /session/captcha → session.captcha() | ✅ PASS | - |
+| 12 | GET /comments/:id → comments.get() | ⏭️ SKIP | - |
 
 ## Phase 2: Auth-Only (admin) (7/7)
 
@@ -50,18 +51,18 @@
 | 6 | GET /users/me/comments → comments.listOwn() | ✅ PASS | - |
 | 7 | POST /session/logout → session.logout() | ✅ PASS | - |
 
-## Phase 3: Protected CRUD (admin) (40/42)
+## Phase 3: Protected CRUD (admin) (38/42)
 
 | # | Test | Status | Detail |
 |---|------|--------|--------|
 | 1 | POST /cards → cards.create() | ✅ PASS | - |
 | 2 | PATCH /cards/:id → cards.update() | ✅ PASS | - |
 | 3 | GET /cards/:id → verify update | ✅ PASS | - |
-| 4 | POST /cards/:id/like → cards.like() | ✅ PASS | - |
+| 4 | POST /cards/:id/like → cards.like() | ⏭️ SKIP | - |
 | 5 | POST /tags → tags.create() | ✅ PASS | - |
 | 6 | PATCH /tags/:id → tags.update() | ✅ PASS | - |
 | 7 | DELETE /tags/:id → tags.delete() | ✅ PASS | - |
-| 8 | POST /cards/:id/comments → comments.create() | ✅ PASS | - |
+| 8 | POST /cards/:id/comments → comments.create() | ⏭️ SKIP | - |
 | 9 | PATCH /comments/:id → comments.update() | ⏭️ SKIP | - |
 | 10 | DELETE /comments/:id → comments.delete() | ⏭️ SKIP | - |
 | 11 | GET /roles → roles.list() | ✅ PASS | - |
@@ -124,13 +125,13 @@
 | 6 | guest: GET /files → should succeed (guest has files.read) | ✅ PASS | - |
 | 7 | guest: GET /theme/list → should 403 | ✅ PASS | - |
 
-## Phase 6: Batch Operations (9/9)
+## Phase 6: Batch Operations (6/9)
 
 | # | Test | Status | Detail |
 |---|------|--------|--------|
-| 1 | POST /cards/batch → cards.batch(top) | ✅ PASS | - |
-| 2 | POST /cards/batch → cards.batch(unset_top) | ✅ PASS | - |
-| 3 | POST /cards/batch → cards.batch(approve) | ✅ PASS | - |
+| 1 | POST /cards/batch → cards.batch(top) | ⏭️ SKIP | - |
+| 2 | POST /cards/batch → cards.batch(unset_top) | ⏭️ SKIP | - |
+| 3 | POST /cards/batch → cards.batch(approve) | ⏭️ SKIP | - |
 | 4 | POST /comments/batch → comments.batch(approve) | ✅ PASS | - |
 | 5 | POST /tags/batch → tags.batch(approve) | ✅ PASS | - |
 | 6 | POST /users/batch → users.batch(approve) | ✅ PASS | - |
@@ -154,7 +155,20 @@
 | 10 | no token → protected endpoint → 401 | ✅ PASS | - |
 | 11 | invalid token → 401 | ✅ PASS | - |
 
-## Phase 8: Cleanup (3/3)
+## Phase 8: Lifecycle Hooks (8/8)
+
+| # | Test | Status | Detail |
+|---|------|--------|--------|
+| 1 | hook: ctor: beforeRequest+afterResponse fire on request | ✅ PASS | - |
+| 2 | hook: runtime: register and fire | ✅ PASS | - |
+| 3 | hook: unsubscribe prevents firing | ✅ PASS | - |
+| 4 | hook: beforeRequest abort interrupts request | ✅ PASS | - |
+| 5 | hook: beforeRequest can add header | ✅ PASS | - |
+| 6 | hook: onError fires on 404 | ✅ PASS | - |
+| 7 | hook: afterResponse error does not break request | ✅ PASS | - |
+| 8 | hook: dedup fires hook once | ✅ PASS | - |
+
+## Phase 9: Cleanup (3/3)
 
 | # | Test | Status | Detail |
 |---|------|--------|--------|

@@ -109,6 +109,7 @@ interface LCClient {
   readonly storage: Storage
   readonly sender: Sender
   readonly captcha: Captcha
+  readonly system: System
 
   setToken(token: string): void
   clearToken(): void
@@ -235,6 +236,11 @@ interface LCClientConfig {
   onAuthError?: () => void      // 401 回调
   debug?: boolean               // 开启请求/响应日志
   retry?: RetryConfig           // 重试配置
+  hooks?: {
+    beforeRequest?: BeforeRequestHook
+    afterResponse?: AfterResponseHook
+    onError?: OnErrorHook
+  }
 }
 
 interface RetryConfig {
@@ -309,6 +315,87 @@ const client = createClient({
   debug: true,  // console.log 所有请求/响应
 })
 ```
+
+## 生命周期钩子（Lifecycle Hooks）
+
+SDK 提供 3 个生命周期钩子，用于监控和干预请求/响应流程：
+
+| 钩子 | 触发时机 | 可修改 | 异常处理 |
+|------|---------|--------|---------|
+| `beforeRequest` | 每次 HTTP 请求前（含重试） | 可修改 headers | 抛异常 = 中断请求，包装为 ApiError |
+| `afterResponse` | 每次 HTTP 响应后（解包后） | 只读 | 异常被吞掉，不影响业务 |
+| `onError` | 每次 HTTP 请求失败时 | 只读 | 异常被吞掉，不影响业务 |
+
+### 构造时注册
+
+```typescript
+const client = createClient({
+  apiUrl: '/api',
+  hooks: {
+    beforeRequest: (ctx) => {
+      // ctx.config.headers 可修改（加 trace ID 等）
+      ctx.config.headers['X-Trace-Id'] = generateTraceId()
+    },
+    afterResponse: (ctx) => {
+      console.log(`${ctx.method} ${ctx.url} → ${ctx.status} (${ctx.elapsedMs}ms)`)
+    },
+    onError: (ctx) => {
+      console.error(`[${ctx.reason}] ${ctx.status}: ${ctx.message}`)
+    },
+  },
+})
+```
+
+### 运行时注册（动态增删）
+
+```typescript
+const unsub = client.hooks.afterResponse((ctx) => {
+  monitorStore.add(ctx)
+})
+
+// 组件卸载时清理
+onUnmounted(() => unsub())
+```
+
+### Hook Context 数据
+
+```typescript
+interface RequestContext {
+  requestId: string     // 唯一请求 ID，重试间不变
+  method: string        // 'GET'
+  url: string           // '/cards'
+  startTime: number     // Date.now()
+  retryCount: number    // 当前重试次数（0 = 首次）
+  config: {
+    headers: Record<string, string | string[] | undefined>
+  }
+}
+
+interface ResponseContext extends RequestContext {
+  status: number        // 200
+  data: any             // 解包后的业务数据
+  elapsedMs: number     // 请求耗时
+}
+
+interface ErrorContext extends RequestContext {
+  status: number        // 404
+  message: string       // 错误消息
+  code: number          // 业务码
+  elapsedMs: number
+  isRetryable: boolean  // 是否可重试
+  willRetry: boolean    // 是否会重试
+  reason: 'http' | 'timeout' | 'network' | 'cancelled'
+}
+```
+
+### 设计约束
+
+- `beforeRequest` 可以修改 `ctx.config.headers`（加自定义 header）。**不要修改 params/data**——已过内部序列化，修改会破坏后端契约
+- `afterResponse`/`onError` 是只读通知，**不要修改**传入的 data/error 对象
+- `beforeRequest` 抛异常 = 中断请求，异常会被 `ApiError.from()` 包装
+- 去重请求（相同 GET 并发）只触发一次 hook
+- 重试时 hooks 每次重试都触发，`retryCount` 递增
+- `requestId` 在同一请求的所有重试中保持不变
 
 ## 构建配置
 

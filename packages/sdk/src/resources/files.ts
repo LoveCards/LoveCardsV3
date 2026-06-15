@@ -25,12 +25,16 @@ export class Files extends BaseResource {
     return this._patch<void>(`/files/${id}/confirm`)
   }
 
+  listMe(params?: { page?: number; list_rows?: number }): Promise<ListResult<LCFile>> {
+    return this._get<ListResult<LCFile>>('/files/me', params)
+  }
+
   batch(data: BatchOperateParams): Promise<void> {
     return this._post<void>('/files/batch', data)
   }
 
   cleanup(): Promise<void> {
-    return this._delete<void>('/files/expired')
+    return this._post<void>('/files/cleanup')
   }
 
   delete(id: number): Promise<void> {

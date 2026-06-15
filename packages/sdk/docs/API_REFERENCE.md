@@ -374,3 +374,50 @@ const config = await client.theme.publicConfig()
 | 9001 | 系统异常 | 服务器内部错误 |
 | 9002 | 参数错误 | 请求参数验证失败 |
 | 9003 | 资源不存在 | — |
+
+---
+
+## 生命周期钩子
+
+SDK 提供 3 个生命周期钩子，用于监控和干预请求/响应流程。
+
+### 构造时注册
+
+```typescript
+const client = createClient({
+  apiUrl: '/api',
+  hooks: {
+    beforeRequest: (ctx) => {
+      ctx.config.headers['X-Trace-Id'] = crypto.randomUUID()
+    },
+    afterResponse: (ctx) => {
+      console.log(`${ctx.method} ${ctx.url} → ${ctx.status} (${ctx.elapsedMs}ms)`)
+    },
+    onError: (ctx) => {
+      console.error(`[${ctx.reason}] ${ctx.status}: ${ctx.message}`)
+    },
+  },
+})
+```
+
+### 运行时注册
+
+```typescript
+// 注册
+const unsub = client.hooks.afterResponse((ctx) => {
+  logToAnalytics(ctx)
+})
+
+// 取消注册
+unsub()
+```
+
+### Hook 类型参考
+
+| 钩子 | 回调参数 | 可修改请求 |
+|------|---------|-----------|
+| `beforeRequest` | `RequestContext` | `config.headers` |
+| `afterResponse` | `ResponseContext` | 只读 |
+| `onError` | `ErrorContext` | 只读 |
+
+详见 `SDK_DESIGN.md` 生命周期钩子章节。

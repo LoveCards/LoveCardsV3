@@ -3,6 +3,10 @@ import type { CreateResult, BatchOperateParams, PaginationParams, ListResult } f
 import type { Comment, CreateCommentParams } from '../types/comments'
 
 export class Comments extends BaseResource {
+  list(params?: { page?: number; list_rows?: number; search_value?: string }): Promise<ListResult<Comment>> {
+    return this._get<ListResult<Comment>>('/comments', params)
+  }
+
   cardList(cardId: number, params?: PaginationParams): Promise<ListResult<Comment>> {
     return this._get<ListResult<Comment>>(`/cards/${cardId}/comments`, params)
   }
@@ -23,8 +27,8 @@ export class Comments extends BaseResource {
     return this._delete<void>(`/comments/${id}`)
   }
 
-  listOwn(params?: PaginationParams): Promise<ListResult<Comment>> {
-    return this._get<ListResult<Comment>>('/users/me/comments', params)
+  listMe(params?: PaginationParams): Promise<ListResult<Comment>> {
+    return this._get<ListResult<Comment>>('/comments/me', params)
   }
 
   batch(data: BatchOperateParams): Promise<void> {

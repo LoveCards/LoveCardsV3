@@ -10,7 +10,8 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/lovecards.es.js",
-      "require": "./dist/lovecards.cjs"
+      "require": "./dist/lovecards.cjs",
+      "default": "./dist/lovecards.es.js"
     }
   },
   "files": [

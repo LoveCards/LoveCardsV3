@@ -1,5 +1,5 @@
 import { BaseResource } from './base'
-import type { LoginParams, RegisterParams, LoginResult, CaptchaSendParams } from '../types/users'
+import type { LoginParams, RegisterParams, LoginResult, CheckResult, CaptchaSendParams } from '../types/users'
 
 export class Session extends BaseResource {
   login(data: LoginParams): Promise<LoginResult> {
@@ -22,7 +22,7 @@ export class Session extends BaseResource {
     return this._post<void>('/session/captcha', params)
   }
 
-  check(): Promise<void> {
-    return this._get<void>('/session/check')
+  check(): Promise<CheckResult> {
+    return this._get<CheckResult>('/session/check')
   }
 }

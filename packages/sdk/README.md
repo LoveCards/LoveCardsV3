@@ -40,16 +40,17 @@ const client = createClient({
   onAuthError: () => { location.href = '/login' },
 })
 
-// 公开接口
-const { data } = await client.cards.list({ page: 1 })
-console.log(data) // Card[]
+// 公开接口 — 列表返回 ListResult<T>（含 data + pagination）
+const list = await client.cards.list({ page: 1 })
+console.log(list.data)    // Card[]
+console.log(list.pagination) // { currentPage, totalPages, totalItems, itemsPerPage }
 
-// 登录后设置 token
-const { data: loginResult } = await client.session.login({ account, password })
+// 登录 — 返回 LoginResult（已解包）
+const loginResult = await client.session.login({ account, password })
 client.setToken(loginResult.token)
 
-// 需要 token 的接口
-const { data: user } = await client.users.me()
+// 单条 — 直接返回业务对象
+const user = await client.users.me()
 console.log(user) // User
 ```
 
@@ -63,21 +64,24 @@ console.log(user) // User
 
 ## 响应格式
 
-所有方法返回 `Promise<ApiResponse<T>>`，`data` 字段已解包到一级：
+所有方法返回已解包的业务数据，不再包裹在 `ApiResponse` 中：
 
 ```typescript
-// 列表
+// 列表 — 返回 ListResult<T>
 const { data, pagination } = await client.cards.list()
-// data: Card[]                     ← 直接是业务数据
-// pagination: PaginationInfo      ← 可选，列表接口才有
+// data: Card[]                  ← 直接是业务数据数组
+// pagination: PaginationInfo    ← 列表接口才有
 
-// 单条
-const { data: card } = await client.cards.get(1)
+// 单条 — 直接返回业务对象
+const card = await client.cards.get(1)
 // card: Card
 
-// 创建
-const { data: result } = await client.cards.create({ content: '...' })
+// 创建 — 返回 CreateResult
+const result = await client.cards.create({ content: '...' })
 // result: { id: string }
+
+// void 操作 — 无返回值
+await client.cards.delete(1)
 ```
 
 ## Token 管理
@@ -111,7 +115,7 @@ const client = createClient({
 import { ApiError, isApiError } from '@lovecards/sdk'
 
 try {
-  const { data } = await client.cards.list()
+  const list = await client.cards.list()
 } catch (e) {
   if (isApiError(e)) {
     console.log(e.code, e.message, e.status)

@@ -26,7 +26,7 @@ export interface CardsListParams {
   search_value?: string
   search_keys?: string[]
   order_key?: string
-  order_desc?: 0 | 1
+  order_desc?: boolean
 }
 
 export interface CreateCardParams {
