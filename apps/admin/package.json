@@ -1,0 +1,36 @@
+{
+  "name": "nuxt-app",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "@lovecards/sdk": "file:../SDK",
+    "@mdi/font": "^7.4.47",
+    "@nuxt/scripts": "^0.11.10",
+    "@pinia/nuxt": "^0.11.2",
+    "@unhead/vue": "^2.0.14",
+    "axios": "^1.11.0",
+    "chart.js": "^4.5.0",
+    "defu": "^6.1.4",
+    "lodash": "^4.17.21",
+    "lodash-es": "^4.17.21",
+    "nuxt": "^4.0.3",
+    "pinia": "^3.0.3",
+    "vue": "latest",
+    "vue-chartjs": "^5.3.2",
+    "vue-router": "latest",
+    "vuetify-notifier": "^2.0.19",
+    "vuetify-nuxt-module": "^0.16.1"
+  },
+  "devDependencies": {
+    "@types/lodash-es": "^4.17.12",
+    "vite-plugin-vuetify": "^2.1.2",
+    "vuetify": "^3.9.4"
+  }
+}

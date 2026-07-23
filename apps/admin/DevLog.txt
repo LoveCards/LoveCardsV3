@@ -1,0 +1,223 @@
+
+🐞 fix: 修复中间件命名错误
+修复中间件文件名拼写错误，提升代码可读性。
+主要变更：
+- 重命名 middleware/02.intiStore.global.ts → 02.initStore.global.ts
+  * 修正拼写错误（intiStore → initStore）
+  * Nuxt会自动识别中间件文件，无需手动更新引用
+改进效果：
+- ✅ 修复拼写错误，提升代码可读性
+- ✅ 符合命名规范
+
+✨ feat: 统一Store错误处理，提升代码质量和用户体验
+统一所有Store的错误处理方式，添加加载状态管理，提升用户体验和代码可维护性。
+主要变更：
+1. 统一Store错误处理模式
+   - 所有Store添加统一的错误处理流程
+   - 使用 ErrorUtils.parse() 解析错误
+   - 使用 showErrorNotification() 显示用户友好的错误提示
+   - 添加 loading 和 error 状态管理
+   - 在 finally 中重置 loading 状态
+   - 在控制台记录错误（便于调试）
+2. 更新 stores/userStore.ts
+   - 添加 loading 和 error 状态
+   - 错误时显示通知并抛出错误
+   - 防止重复加载（检查 loading 状态）
+3. 更新 stores/dashboardStore.ts
+   - 添加 loading 和 error 状态
+   - 错误时显示友好的错误通知
+   - 修复注释中的错别字（"仪仪表盘" → "仪表盘"）
+4. 更新 stores/tagsStore.ts
+   - 添加 loading 和 error 状态
+   - 错误时显示通知并抛出错误
+   - 防止重复加载
+5. 更新 stores/api/admin/systemStore.ts
+   - 添加 loading 和 error 状态
+   - 定义 UpdataInfo 接口类型，提供类型安全
+   - 系统更新信息获取失败时静默处理（不影响使用）
+   - 只在控制台记录错误，不显示通知
+6. 修复 pages/apps/updata.vue
+   - 修复空值访问错误（Cannot read properties of null）
+   - 使用 computed 替代 ref，自动响应Store变化
+   - 添加完整的加载、错误、无数据状态处理
+   - 使用 UpdataInfo 类型，修复所有TypeScript类型错误
+   - 添加空值检查和可选链操作符
+   - 添加刷新功能
+改进效果：
+- ✅ 统一性：所有Store使用相同的错误处理模式
+- ✅ 用户体验：错误时自动显示友好的错误提示
+- ✅ 可维护性：代码结构一致，易于理解和维护
+- ✅ 类型安全：完整的TypeScript类型定义
+- ✅ 调试友好：控制台记录详细错误信息
+- ✅ 防止重复请求：通过 loading 状态管理
+- ✅ 修复运行时错误：解决空值访问问题
+
+✨ feat: 修复中间件命名错误并统一Store错误处理
+本次更新包含两个改进：
+1. 修复中间件命名错误
+2. 统一Store错误处理，提升代码质量和用户体验
+主要变更：
+1. 修复中间件命名错误
+   - 重命名 middleware/02.intiStore.global.ts → 02.initStore.global.ts
+2. 统一Store错误处理
+   - 所有Store添加统一的错误处理流程
+   - 添加 loading 和 error 状态管理
+   - 使用 ErrorUtils 和 showErrorNotification 统一处理错误
+   - 更新 stores/userStore.ts
+   - 更新 stores/dashboardStore.ts
+   - 更新 stores/tagsStore.ts
+   - 更新 stores/api/admin/systemStore.ts
+     * 定义 UpdataInfo 接口类型
+3. 修复 pages/apps/updata.vue
+   - 修复空值访问错误
+   - 使用 computed 自动响应Store变化
+   - 添加完整的状态处理
+   - 修复所有TypeScript类型错误
+改进效果：
+- ✅ 修复拼写错误，提升代码可读性
+- ✅ 统一错误处理，提升代码质量
+- ✅ 改善用户体验，自动显示错误提示
+- ✅ 提升类型安全性
+- ✅ 修复运行时错误
+
+✨ feat: 优化API监控Store，防止内存泄漏
+解决API监控Store可能的内存泄漏问题，添加自动清理机制。
+主要变更：
+- 优化 stores/apiMonitorStore.ts
+  * 新增 ApiMonitorRecord 接口，包含 timestamp 字段
+  * 添加 maxRecords 配置（默认100条），限制最大记录数
+  * 添加 maxAge 配置（默认1小时），设置记录最大保留时间
+  * 在 add() 方法中自动清理：超过最大记录数时只保留最新记录
+  * 新增 clearExpired() 方法：清理超过最大年龄的记录
+  * 新增 remove() 方法：移除指定记录
+  * 新增 setMaxRecords() 和 setMaxAge() 方法：动态配置
+  * 新增 Getters：count 和 isFull
+- 更新 components/public/ApiMonitorNotifier.vue
+  * 添加定期清理机制：每10分钟自动清理过期记录
+  * 组件挂载时启动清理定时器
+  * 组件卸载时清理定时器，防止内存泄漏
+  * 组件挂载时立即清理一次过期记录
+改进效果：
+- ✅ 防止内存泄漏：通过数量限制和时间限制双重保护
+- ✅ 自动管理：无需手动调用清理方法
+- ✅ 灵活配置：可动态调整最大记录数和最大年龄
+
+✨ feat: 完善Cookie工具类类型定义，提升类型安全
+完善Cookie工具类的类型定义，提供更好的类型安全和代码提示。
+主要变更：
+- 完善 api/utils/cookie.ts
+  * 定义完整的 CookieOptions 接口，支持所有Cookie选项
+  * 改进方法类型定义，明确返回类型和参数类型
+  * 新增 getCookieOrNull() 方法：返回 string | null
+  * 新增 hasCookie() 方法：检查Cookie是否存在
+  * 新增 getCookieNames() 方法：获取所有Cookie名称数组
+  * 新增 COOKIE_NAMES 常量：统一管理Cookie名称
+  * 导出 CookieName 类型
+  * 添加完整的JSDoc文档注释
+- 更新 api/axios.ts
+  * 使用 COOKIE_NAMES.USER_TOKEN 替代硬编码的 "UTOKEN"
+改进效果：
+- ✅ 完整的类型定义：所有方法都有明确的类型签名
+- ✅ 常量管理：避免硬编码字符串，提高可维护性
+- ✅ 更好的IDE支持：完整的类型提示和自动补全
+- ✅ 实用方法：新增多个便捷方法提升易用性
+
+🐞 fix: 修复Cookie工具类类型导入错误
+修复 js-cookie 类型导入错误，移除不存在的 CookieAttributes 导入。
+主要变更：
+- 修复 api/utils/cookie.ts
+  * 移除对 CookieAttributes 的导入（该类型不存在）
+  * 直接定义 CookieOptions 接口，不依赖外部类型
+  * 保持与 js-cookie API 的完全兼容性
+修复说明：
+- @types/js-cookie 的类型定义不直接导出 CookieAttributes
+- 改为直接定义接口，避免类型导入错误
+
+🐞 fix: 修复错误处理中详细错误信息不显示的问题
+修复完善错误处理机制后，详细错误信息（如detail中的字段错误）不在前台显示的问题。
+主要变更：
+- 更新 api/utils/error.ts
+  * 新增 formatErrorMessage() 方法：格式化错误消息，包含详细信息
+  * 更新 common() 方法：使用格式化后的消息（包含详细信息）
+  * 当存在 details 时，将详细信息追加到错误消息中
+- 更新 api/axios.ts
+  * 在显示错误通知前，检查是否有 details
+  * 如果有 details，将详细信息追加到错误消息中
+  * 多个详细信息用中文分号（；）分隔
+修复效果：
+- 修复前：只显示 "参数错误"
+- 修复后：显示 "参数错误：手机号格式不正确"
+- 多个错误：显示 "参数错误：手机号格式不正确；邮箱格式不正确"
+示例：
+当后端返回：
+{
+  "error": "参数错误",
+  "detail": { "phone": "手机号格式不正确" }
+}
+现在会正确显示：参数错误：手机号格式不正确
+
+
+✨ feat: 优化API监控和Cookie工具，修复错误处理显示问题
+本次更新包含多个优化和修复：
+1. 优化API监控Store防止内存泄漏
+2. 完善Cookie工具类类型定义
+3. 修复错误处理中详细错误信息不显示的问题
+主要变更：
+1. 优化API监控Store (stores/apiMonitorStore.ts)
+   - 添加最大记录数限制（默认100条）
+   - 添加最大记录年龄限制（默认1小时）
+   - 自动清理旧记录和过期记录
+   - 新增多个实用方法和配置选项
+2. 更新ApiMonitorNotifier组件
+   - 添加定期清理机制（每10分钟）
+   - 组件生命周期管理
+3. 完善Cookie工具类 (api/utils/cookie.ts)
+   - 完整的类型定义和接口
+   - 新增实用方法（hasCookie, getCookieOrNull等）
+   - 新增COOKIE_NAMES常量统一管理
+   - 修复类型导入错误
+4. 修复错误处理 (api/utils/error.ts, api/axios.ts)
+   - 修复详细错误信息不显示的问题
+   - 现在会正确显示detail中的字段错误信息
+改进效果：
+- ✅ 防止内存泄漏
+- ✅ 提升类型安全性
+- ✅ 改善用户体验（显示详细错误信息）
+- ✅ 提高代码可维护性
+
+✨ feat: 完善错误处理机制，实现统一错误通知系统
+本次更新实现了完善的错误处理机制，提升了用户体验和代码可维护性。
+主要变更：
+- 改进错误工具类 (api/utils/error.ts)
+  * 新增 ErrorDetail 接口，定义错误详情结构
+  * 实现 parseError() 方法，支持多种错误类型解析
+    - 网络错误（无响应、超时、连接失败）
+    - HTTP 状态码错误（400, 401, 403, 404, 500等）
+    - ThinkPHP 框架级错误
+    - LC 级错误处理
+    - 未知错误类型处理
+  * 保留 common() 方法以保持向后兼容
+- 新增通知工具 (api/utils/notifier.ts)
+  * showErrorNotification() - 错误通知
+  * showSuccessNotification() - 成功通知
+  * showInfoNotification() - 信息通知
+  * showWarningNotification() - 警告通知
+- 新增通知 Store (stores/notificationStore.ts)
+  * 实现通知队列管理
+  * 支持添加、移除、清空通知操作
+- 新增通知组件 (components/public/NotificationNotifier.vue)
+  * 监听通知 Store 变化
+  * 自动显示通知并管理生命周期
+- 更新 Axios 拦截器 (api/axios.ts)
+  * 集成统一错误处理逻辑
+  * 根据错误类型自动显示相应通知：
+    - 401: 未授权提示
+    - 403: 权限不足提示
+    - 超时: 请求超时提示
+    - 网络错误: 连接失败提示
+    - 其他错误: 使用解析后的错误消息
+  * 保持 API 监控功能不变
+	* 超时时间1s改为3s
+
+🎈 perf: 适配权限模块
+dev-ai b95c04f
