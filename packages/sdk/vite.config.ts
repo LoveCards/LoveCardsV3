@@ -3,6 +3,8 @@ import dts from 'vite-plugin-dts'
 
 export default defineConfig({
   build: {
+    // Linked workspaces are transformed by consumers; stable names avoid auto-import collisions.
+    minify: false,
     lib: {
       entry: 'src/index.ts',
       name: 'LC',

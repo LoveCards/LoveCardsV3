@@ -19,6 +19,7 @@
     "build:admin": "npm run build:sdk && npm run build --workspace @lovecards/admin",
     "build": "npm run build:sdk && npm run sync:sdk-theme && npm run build --workspace @lovecards/admin",
     "dev:admin": "npm run dev --workspace @lovecards/admin",
+    "check:sdk-theme": "node scripts/check-sdk-theme.mjs",
     "sync:sdk-theme": "node scripts/sync-sdk-theme.mjs",
     "test:sdk:integration": "npm run build:sdk && node packages/sdk/test/run-sdk-tests.mjs"
   }

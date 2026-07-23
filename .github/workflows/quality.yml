@@ -17,6 +17,7 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run build:admin
+      - run: npm run check:sdk-theme
 
   backend:
     runs-on: ubuntu-latest
