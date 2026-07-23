@@ -1,0 +1,34 @@
+{
+  "name": "@lovecards/sdk",
+  "version": "2.0.0",
+  "description": "LoveCards3 JavaScript SDK",
+  "type": "module",
+  "main": "dist/lovecards.cjs",
+  "module": "dist/lovecards.es.js",
+  "types": "dist/lovecards.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/lovecards.es.js",
+      "require": "./dist/lovecards.cjs",
+      "default": "./dist/lovecards.es.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "postbuild": "node -e \"require('fs').cpSync('dist/lovecards.umd.js', '../BackEnd/public/theme/default-ssr/assets/lovecards.umd.js')\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "axios": "^1.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5",
+    "vite": "^6",
+    "vite-plugin-dts": "^4"
+  }
+}
