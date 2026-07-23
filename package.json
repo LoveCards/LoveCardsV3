@@ -1,0 +1,25 @@
+{
+  "name": "lovecards",
+  "version": "0.0.0",
+  "private": true,
+  "packageManager": "npm@11.17.0",
+  "engines": {
+    "node": ">=22",
+    "npm": ">=11"
+  },
+  "workspaces": [
+    "apps/admin",
+    "packages/sdk"
+  ],
+  "scripts": {
+    "check": "npm run check:architecture && npm run typecheck:sdk",
+    "check:architecture": "node scripts/check-architecture.mjs",
+    "typecheck:sdk": "npm run typecheck --workspace @lovecards/sdk",
+    "build:sdk": "npm run build --workspace @lovecards/sdk",
+    "build:admin": "npm run build:sdk && npm run build --workspace @lovecards/admin",
+    "build": "npm run build:sdk && npm run sync:sdk-theme && npm run build --workspace @lovecards/admin",
+    "dev:admin": "npm run dev --workspace @lovecards/admin",
+    "sync:sdk-theme": "node scripts/sync-sdk-theme.mjs",
+    "test:sdk:integration": "npm run build:sdk && node packages/sdk/test/run-sdk-tests.mjs"
+  }
+}

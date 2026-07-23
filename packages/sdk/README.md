@@ -15,7 +15,7 @@ LoveCards3 JavaScript SDK — 框架无关的 REST API 封装层，覆盖后端 
 npm install @lovecards/sdk
 
 # 本地开发（monorepo）
-npm install @lovecards/sdk@file:../SDK
+npm install
 ```
 
 ### UMD（<script> 标签）
