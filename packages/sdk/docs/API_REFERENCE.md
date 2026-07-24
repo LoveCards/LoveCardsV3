@@ -208,7 +208,7 @@ await client.likes.unlike(1)
 
 ---
 
-## Files — 文件（8 端点）
+## Files — 文件（10 端点）
 
 ### 文件上传
 
@@ -223,6 +223,8 @@ const result = await client.files.upload(formData)
 |------|------|------|------|
 | `files.upload(formData)` | `POST` | `/files` | `UploadResult` |
 | `files.list(params?)` | `GET` | `/files` | `ListResult<LCFile>` |
+| `files.listOwn(params?)` | `GET` | `/users/me/files` | `ListResult<LCFile>` |
+| `files.listMe(params?)` | `GET` | `/users/me/files` | `ListResult<LCFile>`（兼容别名） |
 | `files.get(id)` | `GET` | `/files/:id` | `LCFile` |
 | `files.direct(data?)` | `POST` | `/files/direct` | `DirectUploadResult` |
 | `files.confirm(id)` | `PATCH` | `/files/:id/confirm` | `void` |

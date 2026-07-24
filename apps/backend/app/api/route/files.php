@@ -40,3 +40,9 @@ Route::post('files/batch', 'Storage.Upload/batch')
     ->name('files.batch')
     ->middleware(JwtAuthCheck::class)
     ->setOption('meta', ['name' => '文件批量操作', 'group' => '文件']);
+
+// users/me/files 路由（严格本人文件列表）
+Route::get('users/me/files', 'Storage.Upload/listOwn')
+    ->name('files.listOwn')
+    ->middleware(JwtAuthCheck::class)
+    ->setOption('meta', ['name' => '我的文件', 'group' => '文件']);

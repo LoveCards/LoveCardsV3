@@ -1054,6 +1054,23 @@ interface LCFile {
 
 ---
 
+### files.listOwn()
+
+```typescript
+client.files.listOwn(params?: { page?: number; list_rows?: number }): Promise<ListResult<LCFile>>
+```
+
+| 属性 | 值 |
+|------|------|
+| HTTP | `GET /users/me/files` |
+| 权限 | 已登录用户 |
+| 用途 | 严格返回当前用户拥有的文件，不包含其他用户的公开文件 |
+
+`files.listMe(params?)` 是兼容别名，内部代理到 `files.listOwn(params?)`。新代码应使用
+`files.listOwn()`。
+
+---
+
 ### files.get()
 
 ```typescript
