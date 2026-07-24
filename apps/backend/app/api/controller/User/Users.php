@@ -42,14 +42,15 @@ class Users extends BaseController
             $params['password'] = password_hash($params['password'], PASSWORD_DEFAULT);
         }
 
-        $caps = request()->caps ?? [];
+        $auth = request()->auth;
+        $caps = $auth->capabilities();
 
         // 有 users.update.all → 走 updateAny（无归属限制）
         if (in_array('users.update.all', $caps)) {
-            UsersService::updateAny($params['id'], $params);
+            UsersService::updateAny($params['id'], $params, $auth->roleIds());
         } else {
             // users.update → 走 updateUser（有归属检查）
-            UsersService::updateUser($params['id'], $params, request()->uid, $caps);
+            UsersService::updateUser($params['id'], $params, $auth->uid(), $caps);
         }
 
         return ApiResponse::createNoContent();
@@ -57,14 +58,15 @@ class Users extends BaseController
 
     public function delete($id)
     {
-        $caps = request()->caps ?? [];
+        $auth = request()->auth;
+        $caps = $auth->capabilities();
 
         // 有 users.delete.all → 走 deleteAny（无归属限制）
         if (in_array('users.delete.all', $caps)) {
             UsersService::deleteAny((int) $id);
         } else {
             // users.delete → 走 deleteUser（有归属检查）
-            UsersService::deleteUser((int) $id, request()->uid, $caps);
+            UsersService::deleteUser((int) $id, $auth->uid(), $caps);
         }
 
         return ApiResponse::createNoContent();

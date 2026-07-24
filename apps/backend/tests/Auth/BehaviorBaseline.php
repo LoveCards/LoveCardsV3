@@ -156,11 +156,6 @@ namespace Tests\Auth {
     final class Request
     {
         public $auth = null;
-        public $uid = null;
-        public $user = null;
-        public $rolesId = [];
-        public $caps = [];
-        public $newToken = null;
         private $authorization;
         private $rule;
 
@@ -448,9 +443,9 @@ namespace {
             return new Response();
         });
         $assertSame(200, $response->status);
-        $assertSame(0, $request->uid);
-        $assertSame([3], $request->rolesId);
-        $assertSame(['cards.read'], $request->caps);
+        $assertSame(0, $request->auth->uid());
+        $assertSame([3], $request->auth->roleIds());
+        $assertSame(['cards.read'], $request->auth->capabilities());
         $assertSame(true, $request->auth->isVisitor());
     });
 
@@ -488,9 +483,9 @@ namespace {
         $response = (new JwtAuthCheck($authenticate()))->handle($request, static function (): Response {
             return new Response();
         });
-        $assertSame(10, $request->uid);
-        $assertSame([2], $request->rolesId);
-        $assertSame(['users.read'], $request->caps);
+        $assertSame(10, $request->auth->uid());
+        $assertSame([2], $request->auth->roleIds());
+        $assertSame(['users.read'], $request->auth->capabilities());
         $assertSame('renewed-token', $response->headers['X-New-Token']);
         $assertSame(false, $request->auth->isVisitor());
     });
@@ -509,7 +504,6 @@ namespace {
         $reset();
         global $testRequest;
         $testRequest = new Request(null, new Rule(['caps' => ['users.read', 'users.read.all']], 'users.list'));
-        $testRequest->rolesId = [2];
         $testRequest->auth = AuthContext::authenticated(10, null, [2], ['users.read']);
         $response = (new PermissionCheck())->handle($testRequest, static function (): Response {
             return new Response(204);
@@ -521,7 +515,6 @@ namespace {
         $reset();
         global $testRequest;
         $testRequest = new Request(null, new Rule(['caps' => ['users.read']], 'users.list'));
-        $testRequest->rolesId = [2];
         $testRequest->auth = AuthContext::authenticated(10, null, [2], ['cards.read']);
         $response = (new PermissionCheck())->handle($testRequest, static function (): Response {
             return new Response();

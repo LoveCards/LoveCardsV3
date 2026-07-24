@@ -28,14 +28,16 @@ class Cards extends BaseController
     public function list()
     {
         $params = $this->paramIndex(Request::param());
-        $result = CardsService::list($params, request()->caps ?? []);
+        $auth = request()->auth ?? null;
+        $result = CardsService::list($params, $auth ? $auth->capabilities() : []);
         return ApiResponse::createOk($result);
     }
 
     public function search()
     {
         $params = $this->paramIndex(Request::param());
-        $result = CardsService::list($params, request()->caps ?? []);
+        $auth = request()->auth ?? null;
+        $result = CardsService::list($params, $auth ? $auth->capabilities() : []);
         return ApiResponse::createOk($result);
     }
 
@@ -47,7 +49,8 @@ class Cards extends BaseController
 
     public function get($id)
     {
-        $result = CardsService::get((int) $id, request()->caps ?? []);
+        $auth = request()->auth ?? null;
+        $result = CardsService::get((int) $id, $auth ? $auth->capabilities() : []);
         return ApiResponse::createOk($result);
     }
 
@@ -55,7 +58,7 @@ class Cards extends BaseController
     {
         $params = $this->param(CardsValidate::class, CardsValidate::$all_scene['create'], Request::param());
 
-        $params['user_id'] = request()->uid ?? 0;
+        $params['user_id'] = request()->auth->uid();
         $params['post_ip'] = request()->ip();
         $params['status'] = ConfigService::get('cards.approve') ? 3 : 0;
 
@@ -72,27 +75,29 @@ class Cards extends BaseController
         $params = $this->param(CardsValidate::class, CardsValidate::$all_scene['create'], Request::param());
         $params['id'] = (int) $id;
 
-        CardsService::updateCard($params, request()->uid ?? 0, request()->caps ?? []);
+        $auth = request()->auth;
+        CardsService::updateCard($params, $auth->uid(), $auth->capabilities());
 
         return ApiResponse::createNoContent();
     }
 
     public function delete($id)
     {
-        CardsService::deleteCards([(int) $id], request()->uid ?? 0, request()->caps ?? []);
+        $auth = request()->auth;
+        CardsService::deleteCards([(int) $id], $auth->uid(), $auth->capabilities());
         return ApiResponse::createNoContent();
     }
 
     public function like($id)
     {
-        $likes = LikesService::like('card', (int) $id, request()->uid ?? 0, request()->ip());
+        $likes = LikesService::like('card', (int) $id, request()->auth->uid(), request()->ip());
         return ApiResponse::createOk(['likes' => $likes]);
     }
 
     public function listOwn()
     {
         $params = $this->paramIndex(Request::param());
-        $result = CardsService::listOwn($params, request()->uid ?? 0);
+        $result = CardsService::listOwn($params, request()->auth->uid());
         return ApiResponse::createOk($result);
     }
 }

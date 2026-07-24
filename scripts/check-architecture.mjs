@@ -101,6 +101,15 @@ await checkPhpBoundary(
   /^app\\api\\(controller|middleware|model|infrastructure)\\/i,
 )
 
+const backendPhpFiles = await walk(path.join(root, 'apps/backend/app'), (file) => file.endsWith('.php'))
+const legacyAuthField = /(?:request\(\)|\$request)->(?:uid|user|rolesId|caps|newToken)\b/
+for (const file of backendPhpFiles) {
+  const source = await readFile(file, 'utf8')
+  if (legacyAuthField.test(source)) {
+    fail(`${relative(file)} uses a legacy Request auth field; use request()->auth`)
+  }
+}
+
 if (failures.length > 0) {
   console.error('Architecture checks failed:')
   failures.forEach((message) => console.error(`- ${message}`))

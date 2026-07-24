@@ -38,7 +38,7 @@ class Tags extends BaseController
     public function create()
     {
         $params = $this->param(TagsValidate::class, TagsValidate::$all_scene['create'], Request::param());
-        $params['user_id'] = request()->uid ?? 0;
+        $params['user_id'] = request()->auth->uid();
         TagsService::createTag($params);
         return ApiResponse::createNoContent();
     }
@@ -48,14 +48,16 @@ class Tags extends BaseController
         $params = $this->param(TagsValidate::class, TagsValidate::$all_scene['allUpdate'], Request::param());
         $params['id'] = (int) $id;
 
-        TagsService::updateTag($params, request()->uid ?? 0, request()->caps ?? []);
+        $auth = request()->auth;
+        TagsService::updateTag($params, $auth->uid(), $auth->capabilities());
 
         return ApiResponse::createNoContent();
     }
 
     public function delete($id)
     {
-        TagsService::deleteTags([(int) $id], request()->uid ?? 0, request()->caps ?? []);
+        $auth = request()->auth;
+        TagsService::deleteTags([(int) $id], $auth->uid(), $auth->capabilities());
         return ApiResponse::createNoContent();
     }
 }

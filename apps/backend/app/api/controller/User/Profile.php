@@ -15,7 +15,7 @@ class Profile extends BaseController
 {
     public function get()
     {
-        $userData = ProfileService::get(request()->uid);
+        $userData = ProfileService::get(request()->auth->uid());
         return ApiResponse::createOk($userData);
     }
 
@@ -31,11 +31,11 @@ class Profile extends BaseController
         }
 
         // 添加 id 用于验证，然后移除
-        $params['id'] = request()->uid;
+        $params['id'] = request()->auth->uid();
         $params = $this->validateAndClean($params, '编辑失败');
         unset($params['id']);
 
-        ProfileService::update(request()->uid, $params);
+        ProfileService::update(request()->auth->uid(), $params);
         return ApiResponse::createNoContent();
     }
 
@@ -44,7 +44,7 @@ class Profile extends BaseController
         $password = Request::param('password', '');
 
         try {
-            ProfileService::changePassword(request()->uid, $password);
+            ProfileService::changePassword(request()->auth->uid(), $password);
         } catch (\app\api\ApiException $e) {
             return ApiResponse::createBadRequest('编辑失败', [$e->getMessage()]);
         }
@@ -58,7 +58,7 @@ class Profile extends BaseController
         $captcha = Request::param('captcha', '');
 
         try {
-            ProfileService::changeEmail(request()->uid, $email, $captcha);
+            ProfileService::changeEmail(request()->auth->uid(), $email, $captcha);
         } catch (\app\api\ApiException $e) {
             return ApiResponse::createBadRequest('编辑失败', [$e->getMessage()]);
         }
