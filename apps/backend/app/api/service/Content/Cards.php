@@ -131,6 +131,7 @@ class Cards
             'approve' => FieldsToggle::toggle(CardsModel::class, 'status', $ids, [0, 3], [1, 2]),
             'ban' => FieldsToggle::toggle(CardsModel::class, 'status', $ids, [0, 1], [2, 3]),
             'hide' => FieldsToggle::toggle(CardsModel::class, 'status', $ids, [0, 2], [1, 3]),
+            'unhide' => CardsModel::whereIn('id', $ids)->where('status', 2)->update(['status' => 0]),
             'delete' => self::deleteCardsWithRelated($ids),
         };
     }
