@@ -43,7 +43,7 @@ Auth 是第一个架构样板，但不是“把所有用户代码放进 Auth”�
 
 | 概念 | 负责什么 | 不负责什么 | 当前实现 |
 | --- | --- | --- | --- |
-| Token codec | 签发、验证、续期、失效 | 查用户、判角色、访客策略 | `common/infra/Jwt.php` |
+| Token codec | 签发、验证、续期、失效 | 查用户、判角色、访客策略 | `common/contract/TokenService.php`、`common/infra/JwtTokenService.php` |
 | Authentication | 从凭证得到当前身份 | 业务权限判断 | `api/middleware/JwtAuthCheck.php` |
 | Identity/User | 用户读取、状态、密码规则 | JWT 算法 | `api/service/User/*`、`api/model/Users.php` |
 | Authorization | 角色与 capability 判断 | 登录、Token 编解码 | `api/service/Rbac/*`、Permission middleware |
@@ -63,7 +63,7 @@ Route/Middleware
 建议迁移顺序，每一步保持接口行为不变：
 
 1. 固定登录、注册、访客、续期、无效 Token、禁用用户和 capability 的行为测试。
-2. 从 `Jwt` 提取 `TokenService` 契约；现有 Firebase JWT + Cache 成为适配器。
+2. ~~从 `Jwt` 提取 `TokenService` 契约；现有 Firebase JWT + Cache 成为适配器。~~ 已完成。
 3. 引入只承载认证结果的 `AuthContext`，替代向 Request 动态散落字段。
 4. 提取 `UserRepository`，让认证用例不直接依赖 ThinkORM Model。
 5. 将访客策略和 RBAC 能力装配移入认证用例，Middleware 只做 HTTP 适配。
