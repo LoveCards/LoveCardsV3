@@ -14,6 +14,14 @@ use app\api\controller\BaseController;
 
 class Session extends BaseController
 {
+    private $session;
+
+    public function __construct(SessionService $session)
+    {
+        parent::__construct();
+        $this->session = $session;
+    }
+
     public function check()
     {
         return ApiResponse::createOk([]);
@@ -31,7 +39,7 @@ class Session extends BaseController
             ]);
         }
 
-        $accountMap = SessionService::resolveAccountType($account);
+        $accountMap = $this->session->resolveAccountType($account);
 
         try {
             validate(UsersValidate::class)
@@ -46,7 +54,7 @@ class Session extends BaseController
             return ApiResponse::createUnauthorized('登录失败', [$e->getError()]);
         }
 
-        $result = SessionService::login($account, $password);
+        $result = $this->session->login($account, $password);
 
         return ApiResponse::createOk(['token' => $result['token']]);
     }
@@ -65,14 +73,14 @@ class Session extends BaseController
         }
 
         if (ConfigService::get('user.captcha')) {
-            if (!SessionService::verifyCaptcha($account, $code)) {
+            if (!$this->session->verifyCaptcha($account, $code)) {
                 return ApiResponse::createUnauthorized('注册失败', ['验证码错误']);
             }
         }
 
         $username = 'USER' . strtoupper(substr(md5($account . $password . time()), 0, 5));
-        $number = SessionService::generateNumber();
-        $accountMap = SessionService::resolveAccountType($account);
+        $number = $this->session->generateNumber();
+        $accountMap = $this->session->resolveAccountType($account);
 
         try {
             validate(UsersValidate::class)
@@ -87,9 +95,9 @@ class Session extends BaseController
             return ApiResponse::createUnauthorized('注册失败', [$e->getError()]);
         }
 
-        $result = SessionService::register($number, $username, $accountMap['email'], $accountMap['phone'], $password);
+        $result = $this->session->register($number, $username, $accountMap['email'], $accountMap['phone'], $password);
 
-        SessionService::deleteCaptcha($account);
+        $this->session->deleteCaptcha($account);
 
         return ApiResponse::createOk(['token' => $result['token']]);
     }
@@ -100,7 +108,7 @@ class Session extends BaseController
             return ApiResponse::createUnauthorized('该站点未开启访客模式');
         }
 
-        $result = SessionService::guest(request()->ip());
+        $result = $this->session->guest(request()->ip());
 
         return ApiResponse::createOk(['token' => $result['token']]);
     }
@@ -114,7 +122,7 @@ class Session extends BaseController
         );
 
         try {
-            SessionService::sendCaptcha($params['account']);
+            $this->session->sendCaptcha($params['account']);
         } catch (\RuntimeException $e) {
             return ApiResponse::createBadRequest($e->getMessage());
         } catch (\app\api\ApiException $e) {

@@ -22,9 +22,38 @@ namespace {
 
         return $testRequest;
     }
+
+    require dirname(__DIR__, 2) . '/app/common/contract/TokenService.php';
 }
 
 namespace Tests\Auth {
+    final class TokenService implements \app\common\contract\TokenService
+    {
+        public static $verified = ['uid' => 10];
+        public static $failure = null;
+        public static $signed = [];
+
+        public function sign(array $data): string
+        {
+            self::$signed = $data;
+
+            return 'signed-token-' . $data['uid'];
+        }
+
+        public function verify(string $token): array
+        {
+            if (self::$failure !== null) {
+                throw self::$failure;
+            }
+
+            return self::$verified;
+        }
+
+        public function invalidate(string $token): void
+        {
+        }
+    }
+
     final class Response
     {
         public $status;
@@ -197,31 +226,6 @@ namespace app\common\service {
     }
 }
 
-namespace app\common\infra {
-    final class Jwt
-    {
-        public static $verified = ['uid' => 10];
-        public static $failure = null;
-        public static $signed = [];
-
-        public static function verify(string $token): array
-        {
-            if (self::$failure !== null) {
-                throw self::$failure;
-            }
-
-            return self::$verified;
-        }
-
-        public static function sign(array $data): string
-        {
-            self::$signed = $data;
-
-            return 'signed-token-' . $data['uid'];
-        }
-    }
-}
-
 namespace app\api\service\Rbac {
     final class RBAC
     {
@@ -296,11 +300,11 @@ namespace {
     use app\api\service\Rbac\RBAC;
     use app\api\service\User\Session;
     use app\api\service\User\Users as UsersService;
-    use app\common\infra\Jwt;
     use app\common\service\Config;
     use Tests\Auth\Request;
     use Tests\Auth\Response;
     use Tests\Auth\Rule;
+    use Tests\Auth\TokenService;
     use Tests\Auth\User;
 
     require dirname(__DIR__, 2) . '/app/api/service/User/Session.php';
@@ -338,9 +342,9 @@ namespace {
 
     $reset = static function (): void {
         Config::$visitorMode = false;
-        Jwt::$verified = ['uid' => 10];
-        Jwt::$failure = null;
-        Jwt::$signed = [];
+        TokenService::$verified = ['uid' => 10];
+        TokenService::$failure = null;
+        TokenService::$signed = [];
         RBAC::$capabilitiesByRoles = [];
         UsersService::$user = null;
         UsersModel::$found = null;
@@ -353,7 +357,7 @@ namespace {
         $reset();
         $assertThrows(
             static function (): void {
-                Session::login('missing@example.com', 'secret');
+                (new Session(new TokenService()))->login('missing@example.com', 'secret');
             },
             ApiException::CODE_USER_NOT_FOUND,
             '用户不存在'
@@ -365,7 +369,7 @@ namespace {
         UsersModel::$found = new User(10, 1, password_hash('secret', PASSWORD_DEFAULT));
         $assertThrows(
             static function (): void {
-                Session::login('disabled@example.com', 'secret');
+                (new Session(new TokenService()))->login('disabled@example.com', 'secret');
             },
             ApiException::CODE_USER_BANNED,
             '您的账户已被封禁或未激活'
@@ -377,7 +381,7 @@ namespace {
         UsersModel::$found = new User(10, 0, password_hash('correct', PASSWORD_DEFAULT));
         $assertThrows(
             static function (): void {
-                Session::login('user@example.com', 'wrong');
+                (new Session(new TokenService()))->login('user@example.com', 'wrong');
             },
             ApiException::CODE_PASSWORD_MISMATCH,
             '密码不匹配'
@@ -387,16 +391,16 @@ namespace {
     $test('login signs the authenticated user id', static function () use ($reset, $assertSame): void {
         $reset();
         UsersModel::$found = new User(10, 0, password_hash('secret', PASSWORD_DEFAULT));
-        $result = Session::login('user@example.com', 'secret');
+        $result = (new Session(new TokenService()))->login('user@example.com', 'secret');
         $assertSame('signed-token-10', $result['token']);
-        $assertSame(['uid' => 10], Jwt::$signed);
+        $assertSame(['uid' => 10], TokenService::$signed);
     });
 
     $test('registration rejects an empty password', static function () use ($reset, $assertThrows): void {
         $reset();
         $assertThrows(
             static function (): void {
-                Session::register('1000000000', 'USER1', 'user@example.com', '', '');
+                (new Session(new TokenService()))->register('1000000000', 'USER1', 'user@example.com', '', '');
             },
             ApiException::CODE_PARAM_INVALID,
             '密码不得为空'
@@ -408,7 +412,7 @@ namespace {
         UsersModel::$found = new User(10, 0, 'hash');
         $assertThrows(
             static function (): void {
-                Session::register('1000000000', 'USER1', 'user@example.com', '', 'secret');
+                (new Session(new TokenService()))->register('1000000000', 'USER1', 'user@example.com', '', 'secret');
             },
             ApiException::CODE_USER_ALREADY_EXISTS,
             '邮箱或手机号已存在'
@@ -417,7 +421,7 @@ namespace {
 
     $test('registration assigns the normal user role', static function () use ($reset, $assertSame): void {
         $reset();
-        $result = Session::register('1000000000', 'USER1', 'user@example.com', '', 'secret');
+        $result = (new Session(new TokenService()))->register('1000000000', 'USER1', 'user@example.com', '', 'secret');
         $assertSame('signed-token-20', $result['token']);
         $assertSame([2], UsersModel::$created['roles_id']);
         $assertSame(0, UsersModel::$created['status']);
@@ -426,14 +430,14 @@ namespace {
     $test('guest login reuses the hourly guest account', static function () use ($reset, $assertSame): void {
         $reset();
         UsersModel::$found = new User(12, 0, password_hash('123456', PASSWORD_DEFAULT), [3]);
-        $result = Session::guest('127.0.0.1');
+        $result = (new Session(new TokenService()))->guest('127.0.0.1');
         $assertSame('signed-token-12', $result['token']);
         $assertSame([], UsersModel::$created);
     });
 
     $test('guest login creates the guest role when absent', static function () use ($reset, $assertSame): void {
         $reset();
-        Session::guest('127.0.0.1');
+        (new Session(new TokenService()))->guest('127.0.0.1');
         $assertSame([3], UsersModel::$created['roles_id']);
         $assertSame(0, UsersModel::$created['status']);
     });
@@ -441,7 +445,7 @@ namespace {
     $test('missing token is unauthorized when visitor mode is off', static function () use ($reset, $assertSame): void {
         $reset();
         $request = new Request();
-        $response = (new JwtAuthCheck())->handle($request, static function (): Response {
+        $response = (new JwtAuthCheck(new TokenService()))->handle($request, static function (): Response {
             return new Response();
         });
         $assertSame(401, $response->status);
@@ -453,7 +457,7 @@ namespace {
         Config::$visitorMode = true;
         RBAC::$capabilitiesByRoles['3'] = ['cards.read'];
         $request = new Request();
-        $response = (new JwtAuthCheck())->handle($request, static function (): Response {
+        $response = (new JwtAuthCheck(new TokenService()))->handle($request, static function (): Response {
             return new Response();
         });
         $assertSame(200, $response->status);
@@ -464,9 +468,9 @@ namespace {
 
     $test('invalid token is unauthorized when visitor mode is off', static function () use ($reset, $assertSame): void {
         $reset();
-        Jwt::$failure = new \RuntimeException('签名不正确');
+        TokenService::$failure = new \RuntimeException('签名不正确');
         $request = new Request('Bearer invalid');
-        $response = (new JwtAuthCheck())->handle($request, static function (): Response {
+        $response = (new JwtAuthCheck(new TokenService()))->handle($request, static function (): Response {
             return new Response();
         });
         $assertSame(401, $response->status);
@@ -475,11 +479,11 @@ namespace {
 
     $test('valid token creates an authenticated context and emits renewal', static function () use ($reset, $assertSame): void {
         $reset();
-        Jwt::$verified = ['uid' => 10, '_new_token' => 'renewed-token'];
+        TokenService::$verified = ['uid' => 10, '_new_token' => 'renewed-token'];
         UsersService::$user = new User(10, 0, 'hash', '[2]');
         RBAC::$capabilitiesByRoles['2'] = ['users.read'];
         $request = new Request('Bearer valid');
-        $response = (new JwtAuthCheck())->handle($request, static function (): Response {
+        $response = (new JwtAuthCheck(new TokenService()))->handle($request, static function (): Response {
             return new Response();
         });
         $assertSame(10, $request->uid);
@@ -491,7 +495,7 @@ namespace {
     $test('missing token user is rejected', static function () use ($reset, $assertSame): void {
         $reset();
         $request = new Request('Bearer valid');
-        $response = (new JwtAuthCheck())->handle($request, static function (): Response {
+        $response = (new JwtAuthCheck(new TokenService()))->handle($request, static function (): Response {
             return new Response();
         });
         $assertSame(401, $response->status);

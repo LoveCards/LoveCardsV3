@@ -4,12 +4,19 @@ namespace app\api\service\User;
 
 use app\api\model\Users as UsersModel;
 use app\api\ApiException;
-use app\common\infra\Jwt;
+use app\common\contract\TokenService;
 use app\api\service\Captcha\Captcha;
 
 class Session
 {
-    public static function login(string $account, string $password): array
+    private $tokens;
+
+    public function __construct(TokenService $tokens)
+    {
+        $this->tokens = $tokens;
+    }
+
+    public function login(string $account, string $password): array
     {
         $result = UsersModel::where('number', $account)
             ->whereOr('username', $account)
@@ -29,12 +36,12 @@ class Session
             throw ApiException::unauthorized('密码不匹配', ApiException::CODE_PASSWORD_MISMATCH);
         }
 
-        $token = Jwt::sign(['uid' => $result->id]);
+        $token = $this->tokens->sign(['uid' => $result->id]);
 
         return ['user' => $result, 'token' => $token];
     }
 
-    public static function register(string $number, string $username, string $email, string $phone, string $password): array
+    public function register(string $number, string $username, string $email, string $phone, string $password): array
     {
         if ($password === '') {
             throw ApiException::badRequest('密码不得为空', ApiException::CODE_PARAM_INVALID);
@@ -51,7 +58,7 @@ class Session
             throw ApiException::badRequest('邮箱或手机号已存在', ApiException::CODE_USER_ALREADY_EXISTS);
         }
 
-        return self::createUser(
+        return $this->createUser(
             $number,
             $username,
             $email,
@@ -65,7 +72,7 @@ class Session
     /**
      * 创建用户（内部方法，供 register/guest 调用）
      */
-    private static function createUser(string $number, string $username, string $email, string $phone, string $password, array $rolesId, int $status): array
+    private function createUser(string $number, string $username, string $email, string $phone, string $password, array $rolesId, int $status): array
     {
         $user = UsersModel::create([
             'number'    => $number,
@@ -77,28 +84,28 @@ class Session
             'password'  => password_hash($password, PASSWORD_DEFAULT),
         ]);
 
-        $token = Jwt::sign(['uid' => $user->id]);
+        $token = $this->tokens->sign(['uid' => $user->id]);
 
         return ['user' => $user, 'token' => $token];
     }
 
-    public static function guest(string $ip): array
+    public function guest(string $ip): array
     {
         $timekey = date('YmdH');
         $account = strtoupper(substr(md5($ip . $timekey), 0, 9)) . '@g.com';
         $password = '123456';
         $username = 'GUEST' . strtoupper(substr(md5($account . $password . time()), 0, 5));
-        $number = self::generateNumber();
+        $number = $this->generateNumber();
 
-        $accountMap = self::resolveAccountType($account);
+        $accountMap = $this->resolveAccountType($account);
 
         try {
-            return self::login($account, $password);
+            return $this->login($account, $password);
         } catch (ApiException $e) {
             if ($e->getCode() !== ApiException::CODE_USER_NOT_FOUND) {
                 throw $e;
             }
-            return self::createUser(
+            return $this->createUser(
                 $number,
                 $username,
                 $accountMap['email'],
@@ -110,7 +117,7 @@ class Session
         }
     }
 
-    public static function sendCaptcha(string $email): void
+    public function sendCaptcha(string $email): void
     {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw ApiException::badRequest('目前仅支持邮箱验证', ApiException::CODE_PARAM_INVALID);
@@ -119,12 +126,12 @@ class Session
         Captcha::generate('code', ['to' => $email, 'scene' => 'Auth', 'ttl' => 300]);
     }
 
-    public static function verifyCaptcha(string $email, string $code): bool
+    public function verifyCaptcha(string $email, string $code): bool
     {
         return Captcha::verify('code', ['key' => $email, 'code' => $code, 'scene' => 'Auth']);
     }
 
-    public static function deleteCaptcha(string $email): void
+    public function deleteCaptcha(string $email): void
     {
         $driver = Captcha::driver('code');
         if (method_exists($driver, 'delete')) {
@@ -132,7 +139,7 @@ class Session
         }
     }
 
-    public static function resolveAccountType(string $account, string $default = ''): array
+    public function resolveAccountType(string $account, string $default = ''): array
     {
         if (preg_match('/^\d{11}$/', $account)) {
             return ['phone' => $account, 'email' => $default, 'number' => $default];
@@ -143,7 +150,7 @@ class Session
         return ['phone' => $default, 'email' => $default, 'number' => $account];
     }
 
-    public static function generateNumber(): string
+    public function generateNumber(): string
     {
         $characters = '0123456789';
         $number = '';

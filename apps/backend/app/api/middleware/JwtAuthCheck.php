@@ -6,10 +6,17 @@ use app\common\service\Config as ConfigService;
 use app\api\service\User\Users as UsersService;
 use app\api\service\Rbac\RBAC;
 use app\api\ApiResponse;
-use app\common\infra\Jwt;
+use app\common\contract\TokenService;
 
 class JwtAuthCheck
 {
+    private $tokens;
+
+    public function __construct(TokenService $tokens)
+    {
+        $this->tokens = $tokens;
+    }
+
     public function handle($request, \Closure $next)
     {
         $token = $request->header('authorization');
@@ -17,7 +24,7 @@ class JwtAuthCheck
         if ($token != null) {
             $token = preg_replace('/^Bearer\s+/', '', $token);
             try {
-                $data = Jwt::verify($token);
+                $data = $this->tokens->verify($token);
                 $uid = $data['uid'];
                 $user = UsersService::Get($uid);
 

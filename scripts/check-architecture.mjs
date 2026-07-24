@@ -95,6 +95,7 @@ await checkPhpBoundary(
 )
 await checkPhpBoundary('apps/backend/app/api/service', /^app\\api\\controller\\/i)
 await checkPhpBoundary('apps/backend/app/api/controller', /^app\\api\\model\\/i)
+await checkPhpBoundary('apps/backend/app/api', /^app\\common\\infra\\Jwt$/i)
 
 if (failures.length > 0) {
   console.error('Architecture checks failed:')
