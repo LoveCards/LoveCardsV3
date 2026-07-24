@@ -24,6 +24,7 @@ namespace {
     }
 
     require dirname(__DIR__, 2) . '/app/common/contract/TokenService.php';
+    require dirname(__DIR__, 2) . '/app/api/application/Auth/AuthContext.php';
 }
 
 namespace Tests\Auth {
@@ -112,6 +113,7 @@ namespace Tests\Auth {
 
     final class Request
     {
+        public $auth = null;
         public $uid = null;
         public $user = null;
         public $rolesId = [];
@@ -294,6 +296,7 @@ namespace app\api\service\Captcha {
 
 namespace {
     use app\api\ApiException;
+    use app\api\application\Auth\AuthContext;
     use app\api\middleware\JwtAuthCheck;
     use app\api\middleware\PermissionCheck;
     use app\api\model\Users as UsersModel;
@@ -464,6 +467,7 @@ namespace {
         $assertSame(0, $request->uid);
         $assertSame([3], $request->rolesId);
         $assertSame(['cards.read'], $request->caps);
+        $assertSame(true, $request->auth->isVisitor());
     });
 
     $test('invalid token is unauthorized when visitor mode is off', static function () use ($reset, $assertSame): void {
@@ -490,6 +494,7 @@ namespace {
         $assertSame([2], $request->rolesId);
         $assertSame(['users.read'], $request->caps);
         $assertSame('renewed-token', $response->headers['X-New-Token']);
+        $assertSame(false, $request->auth->isVisitor());
     });
 
     $test('missing token user is rejected', static function () use ($reset, $assertSame): void {
@@ -508,11 +513,11 @@ namespace {
         global $testRequest;
         $testRequest = new Request(null, new Rule(['caps' => ['users.read', 'users.read.all']], 'users.list'));
         $testRequest->rolesId = [2];
+        $testRequest->auth = AuthContext::authenticated(10, null, [2], ['users.read']);
         $response = (new PermissionCheck())->handle($testRequest, static function (): Response {
             return new Response(204);
         });
         $assertSame(204, $response->status);
-        $assertSame(['users.read'], $testRequest->caps);
     });
 
     $test('permission rejects a context without required capability', static function () use ($reset, $assertSame): void {
@@ -521,6 +526,7 @@ namespace {
         global $testRequest;
         $testRequest = new Request(null, new Rule(['caps' => ['users.read']], 'users.list'));
         $testRequest->rolesId = [2];
+        $testRequest->auth = AuthContext::authenticated(10, null, [2], ['cards.read']);
         $response = (new PermissionCheck())->handle($testRequest, static function (): Response {
             return new Response();
         });

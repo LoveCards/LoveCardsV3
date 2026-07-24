@@ -2,7 +2,6 @@
 
 namespace app\api\middleware;
 
-use app\api\service\Rbac\RBAC;
 use app\api\ApiResponse;
 
 class PermissionCheck
@@ -25,24 +24,9 @@ class PermissionCheck
             $requiredCaps = [$routeName];
         }
 
-        // 获取用户能力
-        $caps = RBAC::getUserCapabilities($request->rolesId ?? []);
-
-        // 检查是否满足任一能力
-        $hasAccess = false;
-        foreach ($requiredCaps as $cap) {
-            if (in_array($cap, $caps)) {
-                $hasAccess = true;
-                break;
-            }
-        }
-
-        if (!$hasAccess) {
+        if (!$request->auth->hasAnyCapability($requiredCaps)) {
             return ApiResponse::createForbidden('权限不足');
         }
-
-        // 注入能力列表到 request
-        $request->caps = $caps;
 
         return $next($request);
     }

@@ -64,7 +64,8 @@ Route/Middleware
 
 1. 固定登录、注册、访客、续期、无效 Token、禁用用户和 capability 的行为测试。
 2. ~~从 `Jwt` 提取 `TokenService` 契约；现有 Firebase JWT + Cache 成为适配器。~~ 已完成。
-3. 引入只承载认证结果的 `AuthContext`，替代向 Request 动态散落字段。
+3. ~~引入只承载认证结果的 `AuthContext`，替代向 Request 动态散落字段。~~ 已建立上下文；
+   旧字段在各垂直模块迁移到 `request()->auth` 后删除。
 4. 提取 `UserRepository`，让认证用例不直接依赖 ThinkORM Model。
 5. 将访客策略和 RBAC 能力装配移入认证用例，Middleware 只做 HTTP 适配。
 6. 登录/注册分别成为用例；Controller 只解析输入并映射响应。

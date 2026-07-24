@@ -2,6 +2,7 @@
 
 namespace app\api\middleware;
 
+use app\api\application\Auth\AuthContext;
 use app\common\service\Config as ConfigService;
 use app\api\service\User\Users as UsersService;
 use app\api\service\Rbac\RBAC;
@@ -32,16 +33,14 @@ class JwtAuthCheck
                     throw \app\api\ApiException::unauthorized('用户不存在', \app\api\ApiException::CODE_USER_NOT_FOUND);
                 }
 
-                $request->uid = (int) $uid;
-                $request->user = $user;
-                $request->rolesId = is_array($user->roles_id) ? $user->roles_id : (json_decode($user->roles_id, true) ?: []);
-
-                // 注入用户能力列表（batch 路由跳过 PermissionCheck 时也能拿到 caps）
-                $request->caps = RBAC::getUserCapabilities($request->rolesId);
-
-                if (isset($data['_new_token'])) {
-                    $request->newToken = $data['_new_token'];
-                }
+                $roleIds = is_array($user->roles_id) ? $user->roles_id : (json_decode($user->roles_id, true) ?: []);
+                $this->attachContext($request, AuthContext::authenticated(
+                    (int) $uid,
+                    $user,
+                    $roleIds,
+                    RBAC::getUserCapabilities($roleIds),
+                    $data['_new_token'] ?? null
+                ));
             } catch (\RuntimeException $e) {
                 $apiEx = \app\api\ApiException::unauthorized($e->getMessage());
                 if (!ConfigService::get('core.visitor_mode')) {
@@ -63,8 +62,8 @@ class JwtAuthCheck
 
         $response = $next($request);
 
-        if (isset($request->newToken)) {
-            $response->header('X-New-Token', $request->newToken);
+        if ($request->auth->renewedToken() !== null) {
+            $response->header('X-New-Token', $request->auth->renewedToken());
         }
 
         return $response;
@@ -72,10 +71,23 @@ class JwtAuthCheck
 
     private function setVisitor($request): void
     {
-        $request->uid = 0;
-        $request->user = null;
-        $request->rolesId = [config('system.system_roles.guest')];
-        // 访客能力
-        $request->caps = RBAC::getUserCapabilities($request->rolesId);
+        $roleIds = [config('system.system_roles.guest')];
+        $this->attachContext($request, AuthContext::visitor(
+            $roleIds,
+            RBAC::getUserCapabilities($roleIds)
+        ));
+    }
+
+    /**
+     * 旧请求字段在调用者迁移到 request()->auth 后删除。
+     */
+    private function attachContext($request, AuthContext $context): void
+    {
+        $request->auth = $context;
+        $request->uid = $context->uid();
+        $request->user = $context->user();
+        $request->rolesId = $context->roleIds();
+        $request->caps = $context->capabilities();
+        $request->newToken = $context->renewedToken();
     }
 }
