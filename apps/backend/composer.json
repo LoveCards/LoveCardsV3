@@ -55,6 +55,10 @@
         "test:auth": [
             "@php tests/Auth/BehaviorBaseline.php",
             "@php tests/Auth/JwtRenewal.php"
+        ],
+        "test": [
+            "@test:auth",
+            "@php tests/Cards/BatchOperate.php"
         ]
     }
 }
