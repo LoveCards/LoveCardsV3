@@ -28,7 +28,7 @@ class Jwt
             "data" => $data
         ];
         $token = FBJWT::encode($payload, $privateKey, $jwt_config['alg']);
-        CacheManager::set('jwt', 'token_' . $token, time(), $jwt_config['cacheTime']);
+        CacheManager::set('jwt', 'token_' . $token, time(), $jwt_config['exp'] + $jwt_config['cacheTime']);
         return $token;
     }
 
@@ -42,11 +42,11 @@ class Jwt
             $data = (array) $decoded->data;
             return $data;
         } catch (ExpiredException $e) {
-            $newToken = self::_renew($token);
-            if ($newToken === null) {
+            $renewed = self::_renew($token);
+            if ($renewed === null) {
                 throw new \RuntimeException('token已失效');
             }
-            return ['_new_token' => $newToken];
+            return $renewed;
         } catch (SignatureInvalidException $e) {
             throw new \RuntimeException('签名不正确');
         } catch (BeforeValidException $e) {
@@ -56,21 +56,27 @@ class Jwt
         }
     }
 
-    private static function _renew(string $token): ?string
+    private static function _renew(string $token): ?array
     {
         $cacheKey = 'token_' . $token;
         if (Cache::tag('jwt')->get($cacheKey) !== null) {
             Cache::tag('jwt')->delete($cacheKey);
-            $jwt_config = Config::get('jwt');
-            $privateKey = file_get_contents(app()->getRootPath() . $jwt_config['privateKey']);
-
-            $decoded = FBJWT::decode($token, new Key(file_get_contents(app()->getRootPath() . $jwt_config['publicKey']), $jwt_config['alg']), [$jwt_config['alg']]);
-            $data = (array) $decoded->data;
-
-            return self::sign($data);
+            $data = self::readVerifiedExpiredData($token);
+            $data['_new_token'] = self::sign($data);
+            return $data;
         }
 
         return null;
+    }
+
+    /**
+     * 仅在 FBJWT::decode 已验签并抛出 ExpiredException 后调用。
+     */
+    private static function readVerifiedExpiredData(string $token): array
+    {
+        $segments = explode('.', $token);
+        $payload = FBJWT::jsonDecode(FBJWT::urlsafeB64Decode($segments[1]));
+        return (array) $payload->data;
     }
 
     public static function invalidate(string $token): void
