@@ -33,7 +33,7 @@ class Comments extends BaseController
     {
         $params = $this->param(CommentsValidate::class, CommentsValidate::$all_scene['create'], Request::param());
         $params['id'] = $id;
-        $params['user_id'] = request()->uid ?? 0;
+        $params['user_id'] = request()->auth->uid();
         $params['post_ip'] = request()->ip();
         $params['status'] = ConfigService::get('comments.approve') ? 3 : 0;
 
@@ -56,21 +56,23 @@ class Comments extends BaseController
         $params = $this->param(CommentsValidate::class, CommentsValidate::$all_scene['create'], Request::param());
         $params['id'] = (int) $id;
 
-        CommentsService::updateComment($params, request()->uid ?? 0, request()->caps ?? []);
+        $auth = request()->auth;
+        CommentsService::updateComment($params, $auth->uid(), $auth->capabilities());
 
         return ApiResponse::createNoContent();
     }
 
     public function delete($id)
     {
-        CommentsService::deleteComments([(int) $id], request()->uid ?? 0, request()->caps ?? []);
+        $auth = request()->auth;
+        CommentsService::deleteComments([(int) $id], $auth->uid(), $auth->capabilities());
         return ApiResponse::createNoContent();
     }
 
     public function listOwn()
     {
         $params = $this->paramIndex(Request::param());
-        $result = CommentsService::newList($params, request()->uid ?? 0);
+        $result = CommentsService::newList($params, request()->auth->uid());
         return ApiResponse::createOk($result);
     }
 }

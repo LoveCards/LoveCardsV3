@@ -17,7 +17,7 @@ class Upload extends BaseController
 {
     private function isAdmin(): bool
     {
-        $uid = request()->uid ?? 0;
+        $uid = request()->auth->uid();
         if ($uid <= 0) return false;
         $user = UsersService::Get($uid);
         if (!$user || !$user->id) return false;
@@ -32,7 +32,7 @@ class Upload extends BaseController
             throw ApiException::badRequest('请提交文件');
         }
 
-        $userId = request()->uid ?? 0;
+        $userId = request()->auth->uid();
 
         if (!StorageManager::checkRateLimit((string) $userId)) {
             throw ApiException::tooMany('请求过于频繁');
@@ -79,7 +79,7 @@ class Upload extends BaseController
         $params['upload_status'] = Request::param('upload_status', null);
         $params['scene'] = Request::param('scene', null);
 
-        $userId = request()->uid ?? 0;
+        $userId = request()->auth->uid();
         $isAdmin = $this->isAdmin();
 
         $result = StorageManager::list($params, $userId, $isAdmin);
@@ -89,7 +89,7 @@ class Upload extends BaseController
     public function get($id = 0)
     {
         $fileId = (int) ($id ?: Request::param('id', 0));
-        $userId = request()->uid ?? 0;
+        $userId = request()->auth->uid();
         $isAdmin = $this->isAdmin();
 
         $file = StorageManager::getFile($fileId, $userId, $isAdmin);
@@ -128,7 +128,7 @@ class Upload extends BaseController
 
     public function direct()
     {
-        $userId = request()->uid ?? 0;
+        $userId = request()->auth->uid();
 
         if (!StorageManager::checkRateLimit((string) $userId)) {
             throw ApiException::tooMany('请求过于频繁');

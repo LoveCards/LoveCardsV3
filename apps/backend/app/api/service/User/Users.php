@@ -96,7 +96,7 @@ class Users
     /**
      * 更新任意用户（管理员，已有 .all 能力检查由中间件完成）
      */
-    public static function updateAny($id, $data): UsersModel|int
+    public static function updateAny($id, $data, array $currentUserRoles): UsersModel|int
     {
         if (isset($data['roles_id']) && is_array($data['roles_id'])) {
             // 校验角色存在性
@@ -109,7 +109,6 @@ class Users
             // 只有 root 才能分配 root 角色
             $rootRoleId = config('system.system_roles.root');
             if (in_array($rootRoleId, $data['roles_id'])) {
-                $currentUserRoles = request()->rolesId ?? [];
                 if (!in_array($rootRoleId, $currentUserRoles)) {
                     throw \app\api\ApiException::forbidden('只有超级管理员才能分配超级管理员角色');
                 }

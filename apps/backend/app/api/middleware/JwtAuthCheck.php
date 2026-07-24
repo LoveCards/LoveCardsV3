@@ -43,16 +43,8 @@ class JwtAuthCheck
         return $response;
     }
 
-    /**
-     * 旧请求字段在调用者迁移到 request()->auth 后删除。
-     */
     private function attachContext($request, AuthContext $context): void
     {
         $request->auth = $context;
-        $request->uid = $context->uid();
-        $request->user = $context->user();
-        $request->rolesId = $context->roleIds();
-        $request->caps = $context->capabilities();
-        $request->newToken = $context->renewedToken();
     }
 }
