@@ -34,7 +34,7 @@ export class Files extends BaseResource {
   }
 
   cleanup(): Promise<void> {
-    return this._post<void>('/files/cleanup')
+    return this._delete<void>('/files/expired')
   }
 
   delete(id: number): Promise<void> {

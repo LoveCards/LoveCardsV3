@@ -402,7 +402,7 @@
       return this._post("/files/batch", data);
     }
     cleanup() {
-      return this._post("/files/cleanup");
+      return this._delete("/files/expired");
     }
     delete(id) {
       return this._delete(`/files/${id}`);
