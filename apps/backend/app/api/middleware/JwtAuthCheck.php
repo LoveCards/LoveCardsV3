@@ -3,8 +3,8 @@
 namespace app\api\middleware;
 
 use app\api\application\Auth\AuthContext;
+use app\api\application\Auth\UserRepository;
 use app\common\service\Config as ConfigService;
-use app\api\service\User\Users as UsersService;
 use app\api\service\Rbac\RBAC;
 use app\api\ApiResponse;
 use app\common\contract\TokenService;
@@ -12,10 +12,12 @@ use app\common\contract\TokenService;
 class JwtAuthCheck
 {
     private $tokens;
+    private $users;
 
-    public function __construct(TokenService $tokens)
+    public function __construct(TokenService $tokens, UserRepository $users)
     {
         $this->tokens = $tokens;
+        $this->users = $users;
     }
 
     public function handle($request, \Closure $next)
@@ -27,13 +29,13 @@ class JwtAuthCheck
             try {
                 $data = $this->tokens->verify($token);
                 $uid = $data['uid'];
-                $user = UsersService::Get($uid);
+                $user = $this->users->findById((int) $uid);
 
-                if (!$user || !$user->id) {
+                if ($user === null) {
                     throw \app\api\ApiException::unauthorized('用户不存在', \app\api\ApiException::CODE_USER_NOT_FOUND);
                 }
 
-                $roleIds = is_array($user->roles_id) ? $user->roles_id : (json_decode($user->roles_id, true) ?: []);
+                $roleIds = $user->roleIds();
                 $this->attachContext($request, AuthContext::authenticated(
                     (int) $uid,
                     $user,

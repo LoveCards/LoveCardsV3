@@ -31,6 +31,9 @@ Transport -> Application -> Domain
 
 约束原则：外层可以依赖内层定义的抽象，内层不能知道外层实现。模块之间“不依赖”不是互不调用，而是调用稳定契约，不引用对方内部结构。
 
+Auth 的 `UserRepository` 返回只读 `AuthUser`，不会把 ThinkORM Model 带回 Application。按 ID
+加载认证上下文时不读取密码哈希；只有登录按账号查找时才加载密码哈希。
+
 ## 已知债务基线
 
 - `app/common/support/OwnershipGuard.php` 仍依赖 `app/api/ApiException`。
@@ -66,7 +69,7 @@ Route/Middleware
 2. ~~从 `Jwt` 提取 `TokenService` 契约；现有 Firebase JWT + Cache 成为适配器。~~ 已完成。
 3. ~~引入只承载认证结果的 `AuthContext`，替代向 Request 动态散落字段。~~ 已建立上下文；
    旧字段在各垂直模块迁移到 `request()->auth` 后删除。
-4. 提取 `UserRepository`，让认证用例不直接依赖 ThinkORM Model。
+4. ~~提取 `UserRepository`，让认证用例不直接依赖 ThinkORM Model。~~ 已完成。
 5. 将访客策略和 RBAC 能力装配移入认证用例，Middleware 只做 HTTP 适配。
 6. 登录/注册分别成为用例；Controller 只解析输入并映射响应。
 7. 删除旧入口和临时适配，更新自动依赖检查，以该切片作为其他模块模板。
