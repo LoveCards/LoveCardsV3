@@ -72,7 +72,8 @@ Route/Middleware
 4. ~~提取 `UserRepository`，让认证用例不直接依赖 ThinkORM Model。~~ 已完成。
 5. ~~将访客策略和 RBAC 能力装配移入认证用例，Middleware 只做 HTTP 适配。~~ 已完成。
 6. ~~登录/注册分别成为用例；Controller 只解析输入并映射响应。~~ 已完成。
-7. 删除旧入口和临时适配，更新自动依赖检查，以该切片作为其他模块模板。旧 Request
-   认证字段已删除，剩余入口清理与模板固化继续进行。
+7. ~~删除旧入口和临时适配，更新自动依赖检查，以该切片作为其他模块模板。~~ 已完成；
+   API 层执行约束见 `apps/backend/app/api/AGENTS.md`，任务交接清单见
+   `docs/engineering/MODULE-MIGRATION.md`。
 
 每一步都应是可独立回退的提交。不要同时更改 Token 语义、返回结构和目录结构。

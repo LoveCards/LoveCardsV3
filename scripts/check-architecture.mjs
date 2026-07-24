@@ -110,6 +110,25 @@ for (const file of backendPhpFiles) {
   }
 }
 
+const authApplicationFiles = await walk(
+  path.join(root, 'apps/backend/app/api/application/Auth'),
+  (file) => file.endsWith('.php'),
+)
+for (const file of authApplicationFiles) {
+  const source = await readFile(file, 'utf8')
+  if (/\brequest\s*\(/i.test(source) || /think\\facade\\Request/i.test(source)) {
+    fail(`${relative(file)} reads HTTP Request state inside the Auth application layer`)
+  }
+}
+
+const sessionService = await readFile(
+  path.join(root, 'apps/backend/app/api/service/User/Session.php'),
+  'utf8',
+)
+if (/public\s+function\s+(?:login|register)\s*\(/i.test(sessionService)) {
+  fail('Auth login/register entry points must remain Application use cases, not Session service methods')
+}
+
 if (failures.length > 0) {
   console.error('Architecture checks failed:')
   failures.forEach((message) => console.error(`- ${message}`))
