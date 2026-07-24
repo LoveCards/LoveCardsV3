@@ -36,7 +36,7 @@ export class Cards extends BaseResource {
   }
 
   listMe(params?: { page?: number; list_rows?: number }): Promise<ListResult<Card>> {
-    return this._get<ListResult<Card>>('/cards/me', params)
+    return this._get<ListResult<Card>>('/users/me/cards', params)
   }
 
   batch(data: BatchOperateParams): Promise<void> {

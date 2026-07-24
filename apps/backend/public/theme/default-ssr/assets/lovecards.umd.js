@@ -276,7 +276,7 @@
       return this._post(`/cards/${id}/like`);
     }
     listMe(params) {
-      return this._get("/cards/me", params);
+      return this._get("/users/me/cards", params);
     }
     batch(data) {
       return this._post("/cards/batch", data);
