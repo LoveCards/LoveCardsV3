@@ -48,7 +48,7 @@ Auth 是第一个架构样板，但不是“把所有用户代码放进 Auth”�
 | --- | --- | --- | --- |
 | Token codec | 签发、验证、续期、失效 | 查用户、判角色、访客策略 | `common/contract/TokenService.php`、`common/infra/JwtTokenService.php` |
 | Authentication | 从凭证得到当前身份 | 业务权限判断 | `api/middleware/JwtAuthCheck.php` |
-| Identity/User | 用户读取、状态、密码规则 | JWT 算法 | `api/service/User/*`、`api/model/Users.php` |
+| Identity/User | 用户读取、状态、密码规则 | JWT 算法 | `api/application/Auth/LoginUser.php`、`RegisterUser.php`、`UserRepository.php` |
 | Authorization | 角色与 capability 判断 | 登录、Token 编解码 | `api/service/Rbac/*`、Permission middleware |
 | Transport | Header/Cookie、HTTP 状态和响应 | 业务规则、ORM | Route、Controller、Middleware |
 
@@ -71,7 +71,7 @@ Route/Middleware
    旧字段在各垂直模块迁移到 `request()->auth` 后删除。
 4. ~~提取 `UserRepository`，让认证用例不直接依赖 ThinkORM Model。~~ 已完成。
 5. ~~将访客策略和 RBAC 能力装配移入认证用例，Middleware 只做 HTTP 适配。~~ 已完成。
-6. 登录/注册分别成为用例；Controller 只解析输入并映射响应。
+6. ~~登录/注册分别成为用例；Controller 只解析输入并映射响应。~~ 已完成。
 7. 删除旧入口和临时适配，更新自动依赖检查，以该切片作为其他模块模板。
 
 每一步都应是可独立回退的提交。不要同时更改 Token 语义、返回结构和目录结构。

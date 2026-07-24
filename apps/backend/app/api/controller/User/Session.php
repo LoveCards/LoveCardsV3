@@ -5,6 +5,8 @@ namespace app\api\controller\User;
 use think\facade\Request;
 use think\exception\ValidateException;
 
+use app\api\application\Auth\LoginUser;
+use app\api\application\Auth\RegisterUser;
 use app\api\service\User\Session as SessionService;
 use app\common\service\Config as ConfigService;
 use app\api\validate\Users as UsersValidate;
@@ -15,11 +17,19 @@ use app\api\controller\BaseController;
 class Session extends BaseController
 {
     private $session;
+    private $loginUser;
+    private $registerUser;
 
-    public function __construct(SessionService $session)
+    public function __construct(
+        SessionService $session,
+        LoginUser $loginUser,
+        RegisterUser $registerUser
+    )
     {
         parent::__construct();
         $this->session = $session;
+        $this->loginUser = $loginUser;
+        $this->registerUser = $registerUser;
     }
 
     public function check()
@@ -54,7 +64,7 @@ class Session extends BaseController
             return ApiResponse::createUnauthorized('登录失败', [$e->getError()]);
         }
 
-        $result = $this->session->login($account, $password);
+        $result = $this->loginUser->execute($account, $password);
 
         return ApiResponse::createOk(['token' => $result['token']]);
     }
@@ -95,7 +105,13 @@ class Session extends BaseController
             return ApiResponse::createUnauthorized('注册失败', [$e->getError()]);
         }
 
-        $result = $this->session->register($number, $username, $accountMap['email'], $accountMap['phone'], $password);
+        $result = $this->registerUser->execute(
+            $number,
+            $username,
+            $accountMap['email'],
+            $accountMap['phone'],
+            $password
+        );
 
         $this->session->deleteCaptcha($account);
 

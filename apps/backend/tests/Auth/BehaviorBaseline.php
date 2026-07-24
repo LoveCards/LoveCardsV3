@@ -31,6 +31,8 @@ namespace {
     require dirname(__DIR__, 2) . '/app/api/application/Auth/CapabilityProvider.php';
     require dirname(__DIR__, 2) . '/app/api/application/Auth/MissingCredentials.php';
     require dirname(__DIR__, 2) . '/app/api/application/Auth/AuthenticateRequest.php';
+    require dirname(__DIR__, 2) . '/app/api/application/Auth/LoginUser.php';
+    require dirname(__DIR__, 2) . '/app/api/application/Auth/RegisterUser.php';
 }
 
 namespace Tests\Auth {
@@ -267,6 +269,8 @@ namespace {
     use app\api\application\Auth\AuthContext;
     use app\api\application\Auth\AuthUser;
     use app\api\application\Auth\AuthenticateRequest;
+    use app\api\application\Auth\LoginUser;
+    use app\api\application\Auth\RegisterUser;
     use app\api\middleware\JwtAuthCheck;
     use app\api\middleware\PermissionCheck;
     use app\api\service\User\Session;
@@ -338,7 +342,7 @@ namespace {
         $reset();
         $assertThrows(
             static function (): void {
-                (new Session(new TokenService(), new UserRepository()))->login('missing@example.com', 'secret');
+                (new LoginUser(new TokenService(), new UserRepository()))->execute('missing@example.com', 'secret');
             },
             ApiException::CODE_USER_NOT_FOUND,
             '用户不存在'
@@ -350,7 +354,7 @@ namespace {
         UserRepository::$byAccount = new AuthUser(10, 1, password_hash('secret', PASSWORD_DEFAULT), []);
         $assertThrows(
             static function (): void {
-                (new Session(new TokenService(), new UserRepository()))->login('disabled@example.com', 'secret');
+                (new LoginUser(new TokenService(), new UserRepository()))->execute('disabled@example.com', 'secret');
             },
             ApiException::CODE_USER_BANNED,
             '您的账户已被封禁或未激活'
@@ -362,7 +366,7 @@ namespace {
         UserRepository::$byAccount = new AuthUser(10, 0, password_hash('correct', PASSWORD_DEFAULT), []);
         $assertThrows(
             static function (): void {
-                (new Session(new TokenService(), new UserRepository()))->login('user@example.com', 'wrong');
+                (new LoginUser(new TokenService(), new UserRepository()))->execute('user@example.com', 'wrong');
             },
             ApiException::CODE_PASSWORD_MISMATCH,
             '密码不匹配'
@@ -372,7 +376,7 @@ namespace {
     $test('login signs the authenticated user id', static function () use ($reset, $assertSame): void {
         $reset();
         UserRepository::$byAccount = new AuthUser(10, 0, password_hash('secret', PASSWORD_DEFAULT), []);
-        $result = (new Session(new TokenService(), new UserRepository()))->login('user@example.com', 'secret');
+        $result = (new LoginUser(new TokenService(), new UserRepository()))->execute('user@example.com', 'secret');
         $assertSame('signed-token-10', $result['token']);
         $assertSame(['uid' => 10], TokenService::$signed);
     });
@@ -381,7 +385,7 @@ namespace {
         $reset();
         $assertThrows(
             static function (): void {
-                (new Session(new TokenService(), new UserRepository()))->register('1000000000', 'USER1', 'user@example.com', '', '');
+                (new RegisterUser(new TokenService(), new UserRepository()))->execute('1000000000', 'USER1', 'user@example.com', '', '');
             },
             ApiException::CODE_PARAM_INVALID,
             '密码不得为空'
@@ -393,7 +397,7 @@ namespace {
         UserRepository::$contactExists = true;
         $assertThrows(
             static function (): void {
-                (new Session(new TokenService(), new UserRepository()))->register('1000000000', 'USER1', 'user@example.com', '', 'secret');
+                (new RegisterUser(new TokenService(), new UserRepository()))->execute('1000000000', 'USER1', 'user@example.com', '', 'secret');
             },
             ApiException::CODE_USER_ALREADY_EXISTS,
             '邮箱或手机号已存在'
@@ -402,7 +406,7 @@ namespace {
 
     $test('registration assigns the normal user role', static function () use ($reset, $assertSame): void {
         $reset();
-        $result = (new Session(new TokenService(), new UserRepository()))->register('1000000000', 'USER1', 'user@example.com', '', 'secret');
+        $result = (new RegisterUser(new TokenService(), new UserRepository()))->execute('1000000000', 'USER1', 'user@example.com', '', 'secret');
         $assertSame('signed-token-20', $result['token']);
         $assertSame([2], UserRepository::$created['roles_id']);
         $assertSame(0, UserRepository::$created['status']);
@@ -411,14 +415,16 @@ namespace {
     $test('guest login reuses the hourly guest account', static function () use ($reset, $assertSame): void {
         $reset();
         UserRepository::$byAccount = new AuthUser(12, 0, password_hash('123456', PASSWORD_DEFAULT), [3]);
-        $result = (new Session(new TokenService(), new UserRepository()))->guest('127.0.0.1');
+        $login = new LoginUser(new TokenService(), new UserRepository());
+        $result = (new Session(new TokenService(), new UserRepository(), $login))->guest('127.0.0.1');
         $assertSame('signed-token-12', $result['token']);
         $assertSame([], UserRepository::$created);
     });
 
     $test('guest login creates the guest role when absent', static function () use ($reset, $assertSame): void {
         $reset();
-        (new Session(new TokenService(), new UserRepository()))->guest('127.0.0.1');
+        $login = new LoginUser(new TokenService(), new UserRepository());
+        (new Session(new TokenService(), new UserRepository(), $login))->guest('127.0.0.1');
         $assertSame([3], UserRepository::$created['roles_id']);
         $assertSame(0, UserRepository::$created['status']);
     });

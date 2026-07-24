@@ -3,6 +3,7 @@
 namespace app\api\service\User;
 
 use app\api\ApiException;
+use app\api\application\Auth\LoginUser;
 use app\api\application\Auth\UserRepository;
 use app\common\contract\TokenService;
 use app\api\service\Captcha\Captcha;
@@ -11,57 +12,17 @@ class Session
 {
     private $tokens;
     private $users;
+    private $loginUser;
 
-    public function __construct(TokenService $tokens, UserRepository $users)
+    public function __construct(TokenService $tokens, UserRepository $users, LoginUser $loginUser)
     {
         $this->tokens = $tokens;
         $this->users = $users;
-    }
-
-    public function login(string $account, string $password): array
-    {
-        $result = $this->users->findByAccount($account);
-
-        if (!$result) {
-            throw ApiException::unauthorized('用户不存在', ApiException::CODE_USER_NOT_FOUND);
-        }
-
-        if ($result->status() != 0 && $result->status() != 2) {
-            throw ApiException::forbidden('您的账户已被封禁或未激活', ApiException::CODE_USER_BANNED);
-        }
-
-        if (!password_verify($password, $result->passwordHash())) {
-            throw ApiException::unauthorized('密码不匹配', ApiException::CODE_PASSWORD_MISMATCH);
-        }
-
-        $token = $this->tokens->sign(['uid' => $result->id()]);
-
-        return ['user' => $result, 'token' => $token];
-    }
-
-    public function register(string $number, string $username, string $email, string $phone, string $password): array
-    {
-        if ($password === '') {
-            throw ApiException::badRequest('密码不得为空', ApiException::CODE_PARAM_INVALID);
-        }
-
-        if ($this->users->contactExists($email, $phone)) {
-            throw ApiException::badRequest('邮箱或手机号已存在', ApiException::CODE_USER_ALREADY_EXISTS);
-        }
-
-        return $this->createUser(
-            $number,
-            $username,
-            $email,
-            $phone,
-            $password,
-            [config('system.system_roles.user')],
-            0
-        );
+        $this->loginUser = $loginUser;
     }
 
     /**
-     * 创建用户（内部方法，供 register/guest 调用）
+     * 创建用户（内部方法，供 guest 调用）
      */
     private function createUser(string $number, string $username, string $email, string $phone, string $password, array $rolesId, int $status): array
     {
@@ -91,7 +52,7 @@ class Session
         $accountMap = $this->resolveAccountType($account);
 
         try {
-            return $this->login($account, $password);
+            return $this->loginUser->execute($account, $password);
         } catch (ApiException $e) {
             if ($e->getCode() !== ApiException::CODE_USER_NOT_FOUND) {
                 throw $e;
