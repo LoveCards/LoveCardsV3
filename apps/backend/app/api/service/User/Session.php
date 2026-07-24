@@ -2,41 +2,39 @@
 
 namespace app\api\service\User;
 
-use app\api\model\Users as UsersModel;
 use app\api\ApiException;
+use app\api\application\Auth\UserRepository;
 use app\common\contract\TokenService;
 use app\api\service\Captcha\Captcha;
 
 class Session
 {
     private $tokens;
+    private $users;
 
-    public function __construct(TokenService $tokens)
+    public function __construct(TokenService $tokens, UserRepository $users)
     {
         $this->tokens = $tokens;
+        $this->users = $users;
     }
 
     public function login(string $account, string $password): array
     {
-        $result = UsersModel::where('number', $account)
-            ->whereOr('username', $account)
-            ->whereOr('email', $account)
-            ->whereOr('phone', $account)
-            ->find();
+        $result = $this->users->findByAccount($account);
 
         if (!$result) {
             throw ApiException::unauthorized('用户不存在', ApiException::CODE_USER_NOT_FOUND);
         }
 
-        if ($result['status'] != 0 && $result['status'] != 2) {
+        if ($result->status() != 0 && $result->status() != 2) {
             throw ApiException::forbidden('您的账户已被封禁或未激活', ApiException::CODE_USER_BANNED);
         }
 
-        if (!password_verify($password, $result['password'])) {
+        if (!password_verify($password, $result->passwordHash())) {
             throw ApiException::unauthorized('密码不匹配', ApiException::CODE_PASSWORD_MISMATCH);
         }
 
-        $token = $this->tokens->sign(['uid' => $result->id]);
+        $token = $this->tokens->sign(['uid' => $result->id()]);
 
         return ['user' => $result, 'token' => $token];
     }
@@ -47,14 +45,7 @@ class Session
             throw ApiException::badRequest('密码不得为空', ApiException::CODE_PARAM_INVALID);
         }
 
-        $exists = null;
-        if ($email !== '') {
-            $exists = UsersModel::where('email', $email)->find();
-        } elseif ($phone !== '') {
-            $exists = UsersModel::where('phone', $phone)->find();
-        }
-
-        if ($exists) {
+        if ($this->users->contactExists($email, $phone)) {
             throw ApiException::badRequest('邮箱或手机号已存在', ApiException::CODE_USER_ALREADY_EXISTS);
         }
 
@@ -74,17 +65,17 @@ class Session
      */
     private function createUser(string $number, string $username, string $email, string $phone, string $password, array $rolesId, int $status): array
     {
-        $user = UsersModel::create([
-            'number'    => $number,
-            'username'  => $username,
-            'email'     => $email,
-            'phone'     => $phone,
-            'roles_id'  => $rolesId,
-            'status'    => $status,
-            'password'  => password_hash($password, PASSWORD_DEFAULT),
-        ]);
+        $user = $this->users->create(
+            $number,
+            $username,
+            $email,
+            $phone,
+            password_hash($password, PASSWORD_DEFAULT),
+            $rolesId,
+            $status
+        );
 
-        $token = $this->tokens->sign(['uid' => $user->id]);
+        $token = $this->tokens->sign(['uid' => $user->id()]);
 
         return ['user' => $user, 'token' => $token];
     }
