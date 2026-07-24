@@ -25,6 +25,8 @@ composer test:auth
 | 无 Token 且访客模式开启 | 注入 `uid=0`、访客角色及访客能力 |
 | 无效 Token 且访客模式关闭 | HTTP 401，并保留 Token 校验错误消息 |
 | Token 对应用户不存在 | HTTP 401，消息为“用户不存在” |
+| 认证成功 | 注入包含 uid、用户、角色、能力及续期 Token 的 `AuthContext` |
+| 访客认证 | 注入 `isVisitor=true` 的 `AuthContext` |
 | capability 任一匹配 | 放行并将能力列表注入请求 |
 | capability 全部不匹配 | HTTP 403，消息为“权限不足” |
 
