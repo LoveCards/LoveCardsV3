@@ -28,17 +28,14 @@ composer test:auth
 | capability 任一匹配 | 放行并将能力列表注入请求 |
 | capability 全部不匹配 | HTTP 403，消息为“权限不足” |
 
-## 已确认但尚未修复的续期契约缺口
+## 续期契约
 
-`Jwt::verify()` 在过期 Token 续期成功时当前只返回：
+过期 Token 只有在其续期凭据仍存在时才能续期。续期成功返回原认证数据和新 Token：
 
 ```php
-['_new_token' => $newToken]
+['uid' => $uid, '_new_token' => $newToken]
 ```
 
-`JwtAuthCheck` 随后却要求同一结果包含 `uid`。因此真实的过期 Token 续期路径无法稳定建立用户上下文。
-中间件“收到 `uid` 与 `_new_token` 后写出 `X-New-Token`”的行为已被基线覆盖，但 Token codec
-与中间件之间的返回契约尚未满足。
-
-该问题必须作为独立行为修复处理：先增加能复现 codec 返回形状的回归测试，再修改续期结果；
-不得混入后续 `TokenService` 接口提取。
+续期会消费旧凭据，并由中间件在响应的 `X-New-Token` Header 中返回新 Token。续期凭据的
+缓存时间为 Token 有效期加配置的续期宽限期；宽限期结束后，过期 Token 返回“token已失效”。
+该行为由 `tests/Auth/JwtRenewal.php` 独立覆盖。

@@ -5,5 +5,5 @@ return [
     'alg' => 'RS256',
     'exp' => 3600 * 24 * 10, // token过期时间，单位秒
     'iss' => 'http://serverhub.com',
-    'cacheTime' => 3600 * 24 * 3
+    'cacheTime' => 3600 * 24 * 3 // token 过期后的续期宽限期，单位秒
 ];

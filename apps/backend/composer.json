@@ -52,6 +52,9 @@
             "@php think service:discover",
             "@php think vendor:publish"
         ],
-        "test:auth": "@php tests/Auth/BehaviorBaseline.php"
+        "test:auth": [
+            "@php tests/Auth/BehaviorBaseline.php",
+            "@php tests/Auth/JwtRenewal.php"
+        ]
     }
 }
