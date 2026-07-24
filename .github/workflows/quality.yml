@@ -32,4 +32,5 @@ jobs:
           tools: composer:v2
       - run: composer validate --no-check-publish
       - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: composer test:auth
       - run: find app config route -name '*.php' -print0 | xargs -0 -n1 php -l
