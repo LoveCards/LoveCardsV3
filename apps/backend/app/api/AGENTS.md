@@ -17,6 +17,14 @@ Route -> Controller -> Application use case / Service -> Port -> Infrastructure 
 - Service 不读取认证请求字段。调用者显式传入 `uid`、角色或 capability。
 - 新增抽象前先确认它消除了真实的框架、持久化或外部服务耦合。
 
+## API 语言约定
+
+- PHP 类、方法、变量、DTO 字段、Route name 和 capability 使用英文。
+- PHPDoc、行内注释及架构说明使用中文，具体类名、方法名和协议术语保留英文。
+- API 用户可见消息与 `ApiException` 业务错误使用中文；业务码和 HTTP 状态保持稳定。
+- 测试 case 名称使用英文，测试失败说明可以使用中文。
+- 不批量翻译历史注释；只要求新增和本次修改区域保持一致。
+
 ## AuthContext
 
 经过 `JwtAuthCheck` 的请求统一从 `request()->auth` 读取认证结果：
