@@ -51,6 +51,7 @@
         "post-autoload-dump": [
             "@php think service:discover",
             "@php think vendor:publish"
-        ]
+        ],
+        "test:auth": "@php tests/Auth/BehaviorBaseline.php"
     }
 }
