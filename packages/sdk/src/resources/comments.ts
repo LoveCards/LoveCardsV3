@@ -27,8 +27,12 @@ export class Comments extends BaseResource {
     return this._delete<void>(`/comments/${id}`)
   }
 
+  listOwn(params?: PaginationParams): Promise<ListResult<Comment>> {
+    return this._get<ListResult<Comment>>('/users/me/comments', params)
+  }
+
   listMe(params?: PaginationParams): Promise<ListResult<Comment>> {
-    return this._get<ListResult<Comment>>('/comments/me', params)
+    return this.listOwn(params)
   }
 
   batch(data: BatchOperateParams): Promise<void> {

@@ -275,8 +275,11 @@
     like(id) {
       return this._post(`/cards/${id}/like`);
     }
-    listMe(params) {
+    listOwn(params) {
       return this._get("/users/me/cards", params);
+    }
+    listMe(params) {
+      return this.listOwn(params);
     }
     batch(data) {
       return this._post("/cards/batch", data);
@@ -333,8 +336,11 @@
     delete(id) {
       return this._delete(`/comments/${id}`);
     }
+    listOwn(params) {
+      return this._get("/users/me/comments", params);
+    }
     listMe(params) {
-      return this._get("/comments/me", params);
+      return this.listOwn(params);
     }
     batch(data) {
       return this._post("/comments/batch", data);
