@@ -86,6 +86,20 @@ class Upload extends BaseController
         return ApiResponse::createOk($result);
     }
 
+    public function listOwn()
+    {
+        $params = $this->paramIndex(Request::param());
+        $params['status'] = Request::param('status', null);
+        $params['upload_status'] = Request::param('upload_status', null);
+        $params['scene'] = Request::param('scene', null);
+        $params['ref_type'] = Request::param('ref_type', null);
+        $params['ref_id'] = Request::param('ref_id', null);
+
+        $userId = request()->auth->uid();
+        $result = StorageManager::listOwn($params, $userId);
+        return ApiResponse::createOk($result);
+    }
+
     public function get($id = 0)
     {
         $fileId = (int) ($id ?: Request::param('id', 0));

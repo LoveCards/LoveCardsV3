@@ -395,8 +395,18 @@
     confirm(id) {
       return this._patch(`/files/${id}/confirm`);
     }
+    /**
+     * 获取当前用户的文件列表（严格本人）
+     * @param params 分页参数
+     */
+    listOwn(params) {
+      return this._get("/users/me/files", params);
+    }
+    /**
+     * @deprecated 请使用 listOwn() 替代
+     */
     listMe(params) {
-      return this._get("/files/me", params);
+      return this.listOwn(params);
     }
     batch(data) {
       return this._post("/files/batch", data);

@@ -97,6 +97,32 @@ class StorageManager
         return $result->toArray();
     }
 
+    public static function listOwn(array $params, int $userId): array
+    {
+        $params['search_default_key'] = 'original_name';
+        $modelList = ModelList::make(Files::class);
+        $where = $params['where'] ?? [];
+        $where[] = ['user_id', '=', $userId];  // 严格 owner，无 OR is_public
+        if (isset($params['scene'])) {
+            $where[] = ['scene', '=', $params['scene']];
+        }
+        if (isset($params['ref_type'])) {
+            $where[] = ['ref_type', '=', $params['ref_type']];
+        }
+        if (isset($params['ref_id'])) {
+            $where[] = ['ref_id', '=', $params['ref_id']];
+        }
+        if (isset($params['status'])) {
+            $where[] = ['status', '=', $params['status']];
+        }
+        if (isset($params['upload_status'])) {
+            $where[] = ['upload_status', '=', $params['upload_status']];
+        }
+        $params['where'] = $where;
+        $result = $modelList->getPaginate($params);
+        return $result->toArray();
+    }
+
     public static function getFile(int $fileId, int $userId = -1, bool $isAdmin = false): ?array
     {
         $query = Files::withTrashed()->where('id', $fileId);

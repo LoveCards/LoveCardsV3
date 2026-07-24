@@ -25,8 +25,19 @@ export class Files extends BaseResource {
     return this._patch<void>(`/files/${id}/confirm`)
   }
 
+  /**
+   * 获取当前用户的文件列表（严格本人）
+   * @param params 分页参数
+   */
+  listOwn(params?: { page?: number; list_rows?: number }): Promise<ListResult<LCFile>> {
+    return this._get<ListResult<LCFile>>('/users/me/files', params)
+  }
+
+  /**
+   * @deprecated 请使用 listOwn() 替代
+   */
   listMe(params?: { page?: number; list_rows?: number }): Promise<ListResult<LCFile>> {
-    return this._get<ListResult<LCFile>>('/files/me', params)
+    return this.listOwn(params)
   }
 
   batch(data: BatchOperateParams): Promise<void> {
