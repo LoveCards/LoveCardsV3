@@ -70,7 +70,7 @@ Route/Middleware
 3. ~~引入只承载认证结果的 `AuthContext`，替代向 Request 动态散落字段。~~ 已建立上下文；
    旧字段在各垂直模块迁移到 `request()->auth` 后删除。
 4. ~~提取 `UserRepository`，让认证用例不直接依赖 ThinkORM Model。~~ 已完成。
-5. 将访客策略和 RBAC 能力装配移入认证用例，Middleware 只做 HTTP 适配。
+5. ~~将访客策略和 RBAC 能力装配移入认证用例，Middleware 只做 HTTP 适配。~~ 已完成。
 6. 登录/注册分别成为用例；Controller 只解析输入并映射响应。
 7. 删除旧入口和临时适配，更新自动依赖检查，以该切片作为其他模块模板。
 

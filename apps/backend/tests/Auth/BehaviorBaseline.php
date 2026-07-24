@@ -27,9 +27,38 @@ namespace {
     require dirname(__DIR__, 2) . '/app/api/application/Auth/AuthUser.php';
     require dirname(__DIR__, 2) . '/app/api/application/Auth/UserRepository.php';
     require dirname(__DIR__, 2) . '/app/api/application/Auth/AuthContext.php';
+    require dirname(__DIR__, 2) . '/app/api/application/Auth/VisitorPolicy.php';
+    require dirname(__DIR__, 2) . '/app/api/application/Auth/CapabilityProvider.php';
+    require dirname(__DIR__, 2) . '/app/api/application/Auth/MissingCredentials.php';
+    require dirname(__DIR__, 2) . '/app/api/application/Auth/AuthenticateRequest.php';
 }
 
 namespace Tests\Auth {
+    final class VisitorPolicy implements \app\api\application\Auth\VisitorPolicy
+    {
+        public static $enabled = false;
+
+        public function isEnabled(): bool
+        {
+            return self::$enabled;
+        }
+
+        public function roleIds(): array
+        {
+            return [3];
+        }
+    }
+
+    final class CapabilityProvider implements \app\api\application\Auth\CapabilityProvider
+    {
+        public static $byRoles = [];
+
+        public function forRoles(array $roleIds): array
+        {
+            return self::$byRoles[implode(',', $roleIds)] ?? [];
+        }
+    }
+
     final class UserRepository implements \app\api\application\Auth\UserRepository
     {
         public static $byId = null;
@@ -227,32 +256,6 @@ namespace app\api {
     }
 }
 
-namespace app\common\service {
-    final class Config
-    {
-        public static $visitorMode = false;
-
-        public static function get(string $key)
-        {
-            return $key === 'core.visitor_mode' ? self::$visitorMode : null;
-        }
-    }
-}
-
-namespace app\api\service\Rbac {
-    final class RBAC
-    {
-        public static $capabilitiesByRoles = [];
-
-        public static function getUserCapabilities(array $rolesId): array
-        {
-            $key = implode(',', $rolesId);
-
-            return self::$capabilitiesByRoles[$key] ?? [];
-        }
-    }
-}
-
 namespace app\api\service\Captcha {
     final class Captcha
     {
@@ -263,16 +266,17 @@ namespace {
     use app\api\ApiException;
     use app\api\application\Auth\AuthContext;
     use app\api\application\Auth\AuthUser;
+    use app\api\application\Auth\AuthenticateRequest;
     use app\api\middleware\JwtAuthCheck;
     use app\api\middleware\PermissionCheck;
-    use app\api\service\Rbac\RBAC;
     use app\api\service\User\Session;
-    use app\common\service\Config;
+    use Tests\Auth\CapabilityProvider;
     use Tests\Auth\Request;
     use Tests\Auth\Response;
     use Tests\Auth\Rule;
     use Tests\Auth\TokenService;
     use Tests\Auth\UserRepository;
+    use Tests\Auth\VisitorPolicy;
 
     require dirname(__DIR__, 2) . '/app/api/service/User/Session.php';
     require dirname(__DIR__, 2) . '/app/api/middleware/JwtAuthCheck.php';
@@ -307,12 +311,21 @@ namespace {
         throw new \RuntimeException('Expected ApiException was not thrown');
     };
 
+    $authenticate = static function (): AuthenticateRequest {
+        return new AuthenticateRequest(
+            new TokenService(),
+            new UserRepository(),
+            new VisitorPolicy(),
+            new CapabilityProvider()
+        );
+    };
+
     $reset = static function (): void {
-        Config::$visitorMode = false;
+        VisitorPolicy::$enabled = false;
         TokenService::$verified = ['uid' => 10];
         TokenService::$failure = null;
         TokenService::$signed = [];
-        RBAC::$capabilitiesByRoles = [];
+        CapabilityProvider::$byRoles = [];
         UserRepository::$byId = null;
         UserRepository::$byAccount = null;
         UserRepository::$contactExists = false;
@@ -410,22 +423,22 @@ namespace {
         $assertSame(0, UserRepository::$created['status']);
     });
 
-    $test('missing token is unauthorized when visitor mode is off', static function () use ($reset, $assertSame): void {
+    $test('missing token is unauthorized when visitor mode is off', static function () use ($reset, $assertSame, $authenticate): void {
         $reset();
         $request = new Request();
-        $response = (new JwtAuthCheck(new TokenService(), new UserRepository()))->handle($request, static function (): Response {
+        $response = (new JwtAuthCheck($authenticate()))->handle($request, static function (): Response {
             return new Response();
         });
         $assertSame(401, $response->status);
         $assertSame('请先登入', $response->message);
     });
 
-    $test('missing token becomes a guest context when visitor mode is on', static function () use ($reset, $assertSame): void {
+    $test('missing token becomes a guest context when visitor mode is on', static function () use ($reset, $assertSame, $authenticate): void {
         $reset();
-        Config::$visitorMode = true;
-        RBAC::$capabilitiesByRoles['3'] = ['cards.read'];
+        VisitorPolicy::$enabled = true;
+        CapabilityProvider::$byRoles['3'] = ['cards.read'];
         $request = new Request();
-        $response = (new JwtAuthCheck(new TokenService(), new UserRepository()))->handle($request, static function (): Response {
+        $response = (new JwtAuthCheck($authenticate()))->handle($request, static function (): Response {
             return new Response();
         });
         $assertSame(200, $response->status);
@@ -435,24 +448,38 @@ namespace {
         $assertSame(true, $request->auth->isVisitor());
     });
 
-    $test('invalid token is unauthorized when visitor mode is off', static function () use ($reset, $assertSame): void {
+    $test('invalid token is unauthorized when visitor mode is off', static function () use ($reset, $assertSame, $authenticate): void {
         $reset();
         TokenService::$failure = new \RuntimeException('签名不正确');
         $request = new Request('Bearer invalid');
-        $response = (new JwtAuthCheck(new TokenService(), new UserRepository()))->handle($request, static function (): Response {
+        $response = (new JwtAuthCheck($authenticate()))->handle($request, static function (): Response {
             return new Response();
         });
         $assertSame(401, $response->status);
         $assertSame('签名不正确', $response->message);
     });
 
-    $test('valid token creates an authenticated context and emits renewal', static function () use ($reset, $assertSame): void {
+    $test('invalid token becomes a guest context when visitor mode is on', static function () use ($reset, $assertSame, $authenticate): void {
+        $reset();
+        VisitorPolicy::$enabled = true;
+        CapabilityProvider::$byRoles['3'] = ['cards.read'];
+        TokenService::$failure = new \RuntimeException('签名不正确');
+        $request = new Request('Bearer invalid');
+        $response = (new JwtAuthCheck($authenticate()))->handle($request, static function (): Response {
+            return new Response();
+        });
+        $assertSame(200, $response->status);
+        $assertSame(true, $request->auth->isVisitor());
+        $assertSame(['cards.read'], $request->auth->capabilities());
+    });
+
+    $test('valid token creates an authenticated context and emits renewal', static function () use ($reset, $assertSame, $authenticate): void {
         $reset();
         TokenService::$verified = ['uid' => 10, '_new_token' => 'renewed-token'];
         UserRepository::$byId = new AuthUser(10, 0, 'hash', [2]);
-        RBAC::$capabilitiesByRoles['2'] = ['users.read'];
+        CapabilityProvider::$byRoles['2'] = ['users.read'];
         $request = new Request('Bearer valid');
-        $response = (new JwtAuthCheck(new TokenService(), new UserRepository()))->handle($request, static function (): Response {
+        $response = (new JwtAuthCheck($authenticate()))->handle($request, static function (): Response {
             return new Response();
         });
         $assertSame(10, $request->uid);
@@ -462,10 +489,10 @@ namespace {
         $assertSame(false, $request->auth->isVisitor());
     });
 
-    $test('missing token user is rejected', static function () use ($reset, $assertSame): void {
+    $test('missing token user is rejected', static function () use ($reset, $assertSame, $authenticate): void {
         $reset();
         $request = new Request('Bearer valid');
-        $response = (new JwtAuthCheck(new TokenService(), new UserRepository()))->handle($request, static function (): Response {
+        $response = (new JwtAuthCheck($authenticate()))->handle($request, static function (): Response {
             return new Response();
         });
         $assertSame(401, $response->status);
@@ -474,7 +501,6 @@ namespace {
 
     $test('permission accepts any matching capability', static function () use ($reset, $assertSame): void {
         $reset();
-        RBAC::$capabilitiesByRoles['2'] = ['users.read'];
         global $testRequest;
         $testRequest = new Request(null, new Rule(['caps' => ['users.read', 'users.read.all']], 'users.list'));
         $testRequest->rolesId = [2];
@@ -487,7 +513,6 @@ namespace {
 
     $test('permission rejects a context without required capability', static function () use ($reset, $assertSame): void {
         $reset();
-        RBAC::$capabilitiesByRoles['2'] = ['cards.read'];
         global $testRequest;
         $testRequest = new Request(null, new Rule(['caps' => ['users.read']], 'users.list'));
         $testRequest->rolesId = [2];

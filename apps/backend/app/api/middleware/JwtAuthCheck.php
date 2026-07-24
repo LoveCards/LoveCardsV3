@@ -3,63 +3,35 @@
 namespace app\api\middleware;
 
 use app\api\application\Auth\AuthContext;
-use app\api\application\Auth\UserRepository;
-use app\common\service\Config as ConfigService;
-use app\api\service\Rbac\RBAC;
+use app\api\application\Auth\AuthenticateRequest;
+use app\api\application\Auth\MissingCredentials;
 use app\api\ApiResponse;
-use app\common\contract\TokenService;
 
 class JwtAuthCheck
 {
-    private $tokens;
-    private $users;
+    private $authenticate;
 
-    public function __construct(TokenService $tokens, UserRepository $users)
+    public function __construct(AuthenticateRequest $authenticate)
     {
-        $this->tokens = $tokens;
-        $this->users = $users;
+        $this->authenticate = $authenticate;
     }
 
     public function handle($request, \Closure $next)
     {
         $token = $request->header('authorization');
 
-        if ($token != null) {
+        if ($token !== null) {
             $token = preg_replace('/^Bearer\s+/', '', $token);
-            try {
-                $data = $this->tokens->verify($token);
-                $uid = $data['uid'];
-                $user = $this->users->findById((int) $uid);
+        }
 
-                if ($user === null) {
-                    throw \app\api\ApiException::unauthorized('用户不存在', \app\api\ApiException::CODE_USER_NOT_FOUND);
-                }
-
-                $roleIds = $user->roleIds();
-                $this->attachContext($request, AuthContext::authenticated(
-                    (int) $uid,
-                    $user,
-                    $roleIds,
-                    RBAC::getUserCapabilities($roleIds),
-                    $data['_new_token'] ?? null
-                ));
-            } catch (\RuntimeException $e) {
-                $apiEx = \app\api\ApiException::unauthorized($e->getMessage());
-                if (!ConfigService::get('core.visitor_mode')) {
-                    return $apiEx->exceptionHandle();
-                }
-                $this->setVisitor($request);
-            } catch (\app\api\ApiException $e) {
-                if (!ConfigService::get('core.visitor_mode')) {
-                    return $e->exceptionHandle();
-                }
-                $this->setVisitor($request);
-            }
-        } else {
-            if (!ConfigService::get('core.visitor_mode')) {
-                return ApiResponse::createUnauthorized('请先登入');
-            }
-            $this->setVisitor($request);
+        try {
+            $this->attachContext($request, $this->authenticate->execute($token));
+        } catch (MissingCredentials $exception) {
+            return ApiResponse::createUnauthorized($exception->getMessage());
+        } catch (\RuntimeException $exception) {
+            return \app\api\ApiException::unauthorized($exception->getMessage())->exceptionHandle();
+        } catch (\app\api\ApiException $exception) {
+            return $exception->exceptionHandle();
         }
 
         $response = $next($request);
@@ -69,15 +41,6 @@ class JwtAuthCheck
         }
 
         return $response;
-    }
-
-    private function setVisitor($request): void
-    {
-        $roleIds = [config('system.system_roles.guest')];
-        $this->attachContext($request, AuthContext::visitor(
-            $roleIds,
-            RBAC::getUserCapabilities($roleIds)
-        ));
     }
 
     /**
