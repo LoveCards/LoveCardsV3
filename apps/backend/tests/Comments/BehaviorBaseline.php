@@ -61,6 +61,11 @@ namespace app\common\support
             };
         }
     }
+
+    // OwnershipGuard 存根 — CommentsService 使用该 trait 但 listAll() 不调用其方法
+    trait OwnershipGuard
+    {
+    }
 }
 
 // ════════════════════════════════════════════════════════════
@@ -137,7 +142,7 @@ namespace
         \app\api\service\Content\Comments::listAll([], ['comments.read', 'comments.read.all']);
         $params = \app\common\support\ModelList::$capturedParams;
         $hasStatus = array_key_exists('status', $params['where'] ?? []);
-        $assertSame(false, $hasStatus, '同时拥有 read.all 不应注入 status 限制');
+        $assertFalse($hasStatus, '同时拥有 read.all 不应注入 status 限制');
     });
 
     $test('A4: 无能力时（空 caps）注入 status=0', static function () use ($reset, $assertSame): void {
