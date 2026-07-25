@@ -40,8 +40,14 @@ class Tags
         return $result->toArray();
     }
 
-    public static function listAll($params): array
+    public static function listAll(array $params, array $caps = []): array
     {
+        $params['search_default_key'] = 'name';
+
+        if (!in_array('tags.read.all', $caps)) {
+            $params['where']['status'] = 0;
+        }
+
         return self::Index($params);
     }
 

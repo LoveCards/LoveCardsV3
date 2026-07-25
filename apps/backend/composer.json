@@ -58,10 +58,12 @@
         ],
         "test:files": "@php tests/Files/BehaviorBaseline.php",
         "test:comments": "@php tests/Comments/BehaviorBaseline.php",
+        "test:tags": "@php tests/Tags/BehaviorBaseline.php",
         "test": [
             "@test:auth",
             "@test:files",
             "@test:comments",
+            "@test:tags",
             "@php tests/Cards/BatchOperate.php"
         ]
     }

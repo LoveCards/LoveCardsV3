@@ -5,6 +5,13 @@ use think\facade\Route;
 use app\api\middleware\JwtAuthCheck;
 use app\api\middleware\PermissionCheck;
 
+// ─── 标签分页列表（受保护，必须在 :id 之前注册）───
+Route::get('tags/all', 'Content.Tags/listAll')
+    ->name('tags.listAll')
+    ->middleware(JwtAuthCheck::class)
+    ->middleware(PermissionCheck::class)
+    ->setOption('meta', ['name' => '标签分页列表', 'group' => '标签', 'caps' => ['tags.read', 'tags.read.all']]);
+
 // ─── 公开路由 ───
 Route::get('tags/:id', 'Content.Tags/get')
     ->name('tags.get')
