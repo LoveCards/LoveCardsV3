@@ -4,9 +4,7 @@ import type { LCFile, UploadResult, DirectUploadResult } from '../types/files'
 
 export class Files extends BaseResource {
   upload(formData: FormData): Promise<UploadResult> {
-    return this._post<UploadResult>('/files', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    return this._post<UploadResult>('/files', formData)
   }
 
   list(params?: { page?: number; list_rows?: number }): Promise<ListResult<LCFile>> {

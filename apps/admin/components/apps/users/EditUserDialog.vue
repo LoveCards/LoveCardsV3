@@ -154,7 +154,9 @@ const handleFileUpload = (e: Event) => {
 		scene: 'avatar',
 	};
 
-	client.files.upload(file)
+	const fd = new FormData();
+	fd.append('file', file);
+	client.files.upload(fd)
 		.then((result: any) => {
 			editUserData.value.edit.avatar = result.url;
 		})
