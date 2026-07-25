@@ -26,7 +26,7 @@ export class Theme extends BaseResource {
   }
 
   updateConfig(data: Record<string, any>): Promise<void> {
-    return this._patch<void>('/theme/config', data)
+    return this._put<void>('/theme/config', data)
   }
 
   freeze(): Promise<void> {
