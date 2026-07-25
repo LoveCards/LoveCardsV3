@@ -437,7 +437,7 @@
       return this._get("/theme/config");
     }
     updateConfig(data) {
-      return this._patch("/theme/config", data);
+      return this._put("/theme/config", data);
     }
     freeze() {
       return this._post("/theme/freeze");
