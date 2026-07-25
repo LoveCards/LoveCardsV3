@@ -20,6 +20,14 @@ class Tags extends BaseController
         return \app\api\service\Content\Tags::class;
     }
 
+    public function listAll()
+    {
+        $params = $this->paramIndex(Request::param());
+        $caps = request()->auth->capabilities();
+        $result = TagsService::listAll($params, $caps);
+        return ApiResponse::createOk($result);
+    }
+
     public function list()
     {
         $params = [
