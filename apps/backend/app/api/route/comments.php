@@ -19,6 +19,10 @@ Route::group('comments', function () {
     Route::delete(':id', 'Content.Comments/delete')
         ->name('comments.delete')
         ->setOption('meta', ['name' => '删除评论', 'group' => '评论', 'caps' => ['comments.delete', 'comments.delete.all']]);
+
+    Route::get('', 'Content.Comments/list')
+        ->name('comments.list')
+        ->setOption('meta', ['name' => '评论管理列表', 'group' => '评论', 'caps' => ['comments.read', 'comments.read.all']]);
 })->middleware(JwtAuthCheck::class)->middleware(PermissionCheck::class);
 
 // ─── batch 路由（只检查 token） ───

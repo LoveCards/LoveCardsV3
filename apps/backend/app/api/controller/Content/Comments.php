@@ -29,6 +29,14 @@ class Comments extends BaseController
         return ApiResponse::createOk($result);
     }
 
+    public function list()
+    {
+        $params = $this->paramIndex(Request::param());
+        $caps = request()->auth->capabilities();
+        $result = CommentsService::listAll($params, $caps);
+        return ApiResponse::createOk($result);
+    }
+
     public function create($id)
     {
         $params = $this->param(CommentsValidate::class, CommentsValidate::$all_scene['create'], Request::param());
