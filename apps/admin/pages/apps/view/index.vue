@@ -46,7 +46,7 @@ const getThemes = () => {
 	})
 }
 const setTheme = (name: string) => {
-	client.theme.activate({ theme: name }).then(() => {
+	client.theme.activate({ name }).then(() => {
 		getThemes();
 	});
 }
