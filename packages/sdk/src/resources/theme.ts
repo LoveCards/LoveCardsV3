@@ -3,8 +3,12 @@ import type { ThemeItem, ThemeConfigData, ThemeActivateParams, ThemeDeleteParams
 import type { Tag } from '../types/tags'
 
 export class Theme extends BaseResource {
+  /**
+   * 获取公开标签列表。
+   * @deprecated 请使用 client.tags.list() 替代。
+   */
   tags(): Promise<Tag[]> {
-    return this._get<Tag[]>('/theme/tags')
+    return this._get<Tag[]>('/tags')
   }
 
   list(): Promise<ThemeItem[]> {
