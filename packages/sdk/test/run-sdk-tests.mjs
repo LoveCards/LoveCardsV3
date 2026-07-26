@@ -160,6 +160,29 @@ await test('GET /theme/config → theme.publicConfig()', async () => {
   return r
 })
 
+await test('GET /tags → theme.tags() (compat proxy)', async () => {
+  const r = await pc.theme.tags()
+  assert(Array.isArray(r), 'theme.tags() should return array')
+  if (r.length > 0) {
+    assertType(r[0].id, 'number', 'tag should have numeric id')
+  }
+  return r
+})
+
+await test('theme.tags() returns same shape as tags.list()', async () => {
+  const [themeTags, tagsResult] = await Promise.all([
+    pc.theme.tags(),
+    pc.tags.list()
+  ])
+  assert(Array.isArray(themeTags), 'theme.tags() should return array')
+  assert(Array.isArray(tagsResult), 'tags.list() should return array')
+  assert(themeTags.length === tagsResult.length, 'Both should return same data')
+  if (themeTags.length > 0) {
+    assert(themeTags[0].id === tagsResult[0].id, 'Same first tag ID expected')
+  }
+  return { themeTags, tagsResult }
+})
+
 await test('POST /session/captcha → session.captcha()', async () => {
   // This may fail with debounce, that's OK
   try {
