@@ -379,9 +379,7 @@
   }
   class Files extends BaseResource {
     upload(formData) {
-      return this._post("/files", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
+      return this._post("/files", formData);
     }
     list(params) {
       return this._get("/files", params);
