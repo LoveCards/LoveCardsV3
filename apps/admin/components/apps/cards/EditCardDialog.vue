@@ -200,7 +200,9 @@ const getCardImages = () => {
 };
 const postUserImages = async (file: File) => {
 	try {
-		const result = await client.files.upload(file);
+		const fd = new FormData();
+		fd.append('file', file);
+		const result = await client.files.upload(fd);
 		return result;
 	} catch {
 		return false;
