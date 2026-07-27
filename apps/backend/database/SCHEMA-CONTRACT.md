@@ -1,9 +1,9 @@
 # Schema 契约核验报告
 
-> 报告生成时间：2026-07-27  
-> 基线文件：`apps/backend/data.sql`（2026-01-19 导出）  
-> 仓库 HEAD：`2b2bddc`（main）  
-> 核验范围：Model、Service、Validate、Route、Installer、config  
+> 报告生成时间：2026-07-27
+> 基线文件：`apps/backend/data.sql`（2026-01-19 导出）
+> 仓库 HEAD：`2b2bddc`（main）
+> 核验范围：Model、Service、Validate、Route、Installer、config
 > 核验方式：只读代码分析
 
 ---
@@ -766,4 +766,3 @@ cd /c/Users/admin/Desktop/lovecards3/agent/worktrees/feat-db-schema-baseline/app
 - **Phase 2** 开始执行业务表 CREATE TABLE / ALTER TABLE / INSERT 等 DDL/DML 操作。
   Phase 1 已确保所有结构检查通过，Phase 2 不再发现新冲突。
 - 本批次不删除 `good`、`images`、`permissions`、`role_permissions`、`system` 等兼容表。
-
