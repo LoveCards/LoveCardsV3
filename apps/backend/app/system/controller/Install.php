@@ -9,6 +9,8 @@ use think\facade\Cache;
 use app\system\utils\Export;
 
 use app\api\service\System\VersionService;
+use app\common\service\Config as ConfigService;
+use app\api\service\Rbac\Roles;
 use app\system\utils\Common;
 use app\system\utils\Database;
 use app\system\utils\Environment;
@@ -21,9 +23,10 @@ class Install
 
     public function __construct()
     {
-        //检查安装状态
-        $result = Common::CheckInstallLock();
-        if ($result['status'] === false) {
+        // 检查安装锁：文件锁存在则说明已安装完成
+        // 此检查只能阻止完全安装后的访问，不能阻止首次安装流程
+        // （PostDbConfig、PostCreateRsa 在锁创建之前执行）
+        if (Common::CheckInstallLock()) {
             return Export::Create(null, 500, '勿重复安装');
         }
     }
@@ -71,6 +74,11 @@ class Install
     //配置数据库
     public function PostDbConfig()
     {
+        // 已安装则禁止再次执行
+        if (Common::CheckInstallLock()) {
+            return Export::Create(null, 500, '系统已安装，禁止重复配置数据库');
+        }
+
         $hostname = Request::param('hostname');
         $database = Request::param('database');
         $username = Request::param('username');
@@ -81,9 +89,10 @@ class Install
         $pass = boolval(Request::param('pass'));
 
         //连接数据库验证
-        $result = Database::Connect($hostname, $database, $username, $password, $hostport);
-        if (is_array($result) && array_key_exists('status', $result)) {
-            return Export::Create(null, 500, $result['msg']);
+        try {
+            Database::Connect($hostname, $database, $username, $password, $hostport);
+        } catch (\Exception $e) {
+            return Export::Create(null, 500, $e->getMessage());
         }
 
         //更新数据库配置
@@ -96,19 +105,25 @@ class Install
         if (!$pass) {
             //强制导入-清空数据库
             if ($force) {
-                $result = Database::Clear();
-                if ($result['status'] === false) {
-                    return Export::Create(null, 500, $result['msg']);
+                try {
+                    $result = Database::Clear();
+                    if (!$result) {
+                        return Export::Create(null, 500, '清空数据库失败');
+                    }
+                } catch (\Throwable $e) {
+                    return Export::Create(null, 500, $e->getMessage());
                 }
             }
             //导入数据库文件
-            $result = Database::ImportSQLFile('../data.sql');
-            if ($result['status']) {
+            try {
+                Database::ImportSQLFile('../data.sql');
                 return Export::Create(null, 200);
-            } else {
-                if ($result['data'] == 1050) {
+            } catch (\Throwable $e) {
+                $msg = $e->getMessage();
+                if (strpos($msg, '1050') !== false) {
                     return Export::Create(['导入失败，数据库已存在相关数据'], 201);
                 }
+                return Export::Create(null, 500, $msg);
             }
         }
 
@@ -119,14 +134,36 @@ class Install
     //生成安装锁
     public function PostInstallLock()
     {
-        //更新数据库配置
-        $result = Common::InstallLock();
-        if ($result['status'] === true) {
-            //数据库导入成功
-            return Export::Create(null, 200);
+        // 已安装则禁止再次执行
+        if (Common::CheckInstallLock()) {
+            return Export::Create(null, 500, '系统已安装，禁止重复执行安装锁');
         }
 
-        return Export::Create(null, 500, $result['msg']);
+        // 先初始化配置项（从 config/apps/*.php 注册默认配置）
+        // ConfigService::init() 内部会跳过已存在的配置键，因此可安全重复调用
+        // 必须在创建安装锁之前执行，确保初始化失败时可重试
+        try {
+            ConfigService::init();
+        } catch (\Throwable $e) {
+            return Export::Create(null, 500, '配置初始化失败：' . $e->getMessage());
+        }
+
+        // 初始化系统角色能力（非破坏性，只补充缺失项，不覆盖自定义角色）
+        try {
+            Roles::seedSystemCapabilities();
+        } catch (\Throwable $e) {
+            return Export::Create(null, 500, '系统角色能力初始化失败：' . $e->getMessage());
+        }
+
+        // 配置初始化成功后再创建安装锁（标记安装完成）
+        // InstallLock() 返回 bool，失败时抛出 RuntimeException
+        try {
+            Common::InstallLock();
+        } catch (\RuntimeException $e) {
+            return Export::Create(null, 500, $e->getMessage());
+        }
+
+        return Export::Create(null, 200);
     }
 
     //检查环境
@@ -139,6 +176,11 @@ class Install
     //创建公私钥
     public function PostCreateRsa()
     {
+        // 已安装则禁止重复执行，防止覆盖 JWT 密钥
+        if (Common::CheckInstallLock()) {
+            return Export::Create(null, 500, '系统已安装，禁止重复生成密钥');
+        }
+
         $key = [
             'public' => Request::param('public'),
             'private' => Request::param('private'),

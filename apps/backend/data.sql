@@ -1,127 +1,289 @@
--- phpMyAdmin SQL Dump
--- version 5.1.1
--- https://www.phpmyadmin.net/
---
--- 主机： localhost
--- 生成日期： 2026-01-19 19:28:37
--- 服务器版本： 5.7.44-log
--- PHP 版本： 8.0.26
+-- ============================================================
+-- LoveCardsV3 — Clean Install SQL Package
+-- Version: 1.0.0
+-- Date: 2026-07-27
+-- Description: Complete schema for a fresh installation.
+--   Includes 10 required tables + 5 legacy compatibility tables.
+--   MySQL 5.7.26 compatible, InnoDB, utf8mb4.
+--   Does NOT contain DROP TABLE, TRUNCATE, or REPLACE INTO.
+-- ============================================================
 
-SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
-START TRANSACTION;
-SET time_zone = "+00:00";
+-- ------------------------------------------------------------
+--  Required Table: users
+--  Stores user accounts and authentication data.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `users` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `number` VARCHAR(32) NOT NULL,
+  `avatar` VARCHAR(255) NOT NULL DEFAULT '',
+  `email` VARCHAR(320) NOT NULL,
+  `phone` VARCHAR(20) NOT NULL,
+  `username` VARCHAR(255) NOT NULL,
+  `password` VARCHAR(255) NOT NULL,
+  `status` INT(11) NOT NULL,
+  `roles_id` JSON DEFAULT NULL,
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  `deleted_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
 
+-- ------------------------------------------------------------
+--  Required Table: roles
+--  Role definitions with system role protection flag.
+--  System roles: root(1), admin(2), user(3), guest(4).
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `roles` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(50) NOT NULL COMMENT '角色名称',
+  `slug` VARCHAR(50) NOT NULL COMMENT '角色标识（唯一）',
+  `is_system` TINYINT(1) NOT NULL DEFAULT 0 COMMENT '系统角色标记',
+  `description` VARCHAR(255) DEFAULT NULL COMMENT '角色描述',
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  `deleted_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `slug` (`slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';
 
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!40101 SET NAMES utf8mb4 */;
+-- System role seed (is_system=1 for all 4 system roles)
+INSERT INTO `roles` (`id`, `name`, `slug`, `is_system`, `description`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, '超级管理员', 'root', 1, NULL, '2026-01-19 03:07:29', '2026-01-19 03:07:29', NULL),
+(2, '管理员', 'admin', 1, NULL, '2026-01-19 03:07:58', '2026-01-19 03:07:58', NULL),
+(3, '用户', 'user', 1, NULL, '2026-01-19 03:08:26', '2026-01-19 03:08:26', NULL),
+(4, '访客', 'guest', 1, NULL, '2026-01-19 03:08:40', '2026-01-19 03:08:40', NULL);
 
---
--- 数据库： `test1000`
---
-
--- --------------------------------------------------------
-
---
--- 表的结构 `cards`
---
-
-CREATE TABLE `cards` (
-  `id` int(11) NOT NULL,
-  `is_top` int(11) NOT NULL DEFAULT '0',
-  `status` int(11) NOT NULL DEFAULT '0',
-  `user_id` int(11) NOT NULL DEFAULT '0',
-  `data` json DEFAULT NULL,
-  `cover` varchar(2083) DEFAULT NULL,
-  `content` text,
-  `tags` json DEFAULT NULL,
-  `good` int(11) NOT NULL DEFAULT '0',
-  `views` int(11) NOT NULL DEFAULT '0',
-  `comments` int(11) NOT NULL DEFAULT '0',
-  `post_ip` varchar(39) DEFAULT NULL,
-  `created_at` timestamp NOT NULL,
-  `updated_at` timestamp NOT NULL,
-  `deleted_at` timestamp NULL DEFAULT NULL
+-- ------------------------------------------------------------
+--  Required Table: role_capabilities
+--  RBAC capability assignments (role_id, capability) unique.
+--  Seed data is initialized by Roles::reseed() after install.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `role_capabilities` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `role_id` INT(11) NOT NULL,
+  `capability` VARCHAR(100) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_role_cap` (`role_id`, `capability`),
+  KEY `idx_role_id` (`role_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- --------------------------------------------------------
+-- NOTE: role_capabilities seed data is initialized after install by the non-destructive
+-- Roles::seedSystemCapabilities() during PostInstallLock(). Never use Roles::reseed()
+-- for clean-install as it deletes all capability data.
 
---
--- 表的结构 `comments`
---
-
-CREATE TABLE `comments` (
-  `id` int(11) NOT NULL,
-  `aid` int(11) NOT NULL DEFAULT '0',
-  `pid` int(11) NOT NULL DEFAULT '0',
-  `parent_id` int(11) DEFAULT '0',
-  `is_top` int(11) NOT NULL DEFAULT '0',
-  `status` int(11) NOT NULL DEFAULT '0',
-  `user_id` int(11) NOT NULL DEFAULT '0',
-  `data` json DEFAULT NULL,
-  `content` text,
-  `goods` int(11) NOT NULL DEFAULT '0',
-  `post_ip` varchar(39) DEFAULT NULL,
-  `created_at` timestamp NOT NULL,
-  `updated_at` timestamp NOT NULL,
-  `deleted_at` timestamp NULL DEFAULT NULL
+-- ------------------------------------------------------------
+--  Required Table: configs
+--  Application configuration store (key-value per group).
+--  Seed data is initialized by Config::init() after install.
+--  `group` is a reserved word, escaped with backticks.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `configs` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `group` VARCHAR(50) NOT NULL COMMENT '分组',
+  `key` VARCHAR(100) NOT NULL COMMENT '配置键',
+  `value` TEXT COMMENT '配置值',
+  `type` VARCHAR(20) DEFAULT 'string' COMMENT '类型',
+  `description` VARCHAR(255) DEFAULT NULL COMMENT '配置说明',
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_configs_group_key` (`group`, `key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- --------------------------------------------------------
+-- NOTE: configs seed data is initialized after install by
+-- Config::init() which scans config/apps/*.php.
+-- No static seed data is provided here.
 
---
--- 表的结构 `good`
---
-
-CREATE TABLE `good` (
-  `id` int(11) NOT NULL,
-  `aid` int(11) NOT NULL COMMENT '应用ID',
-  `pid` int(11) NOT NULL COMMENT '条目ID',
-  `uid` int(11) NOT NULL,
-  `ip` varchar(32) NOT NULL COMMENT '发布IP',
-  `created_at` timestamp NOT NULL COMMENT '发布时间'
+-- ------------------------------------------------------------
+--  Required Table: files
+--  File storage metadata (uploaded files, images, attachments).
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `files` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `channel_slug` VARCHAR(64) DEFAULT NULL,
+  `user_id` INT(11) NOT NULL DEFAULT 0,
+  `is_public` TINYINT(1) NOT NULL DEFAULT 0,
+  `scene` VARCHAR(64) DEFAULT NULL,
+  `ref_type` VARCHAR(64) DEFAULT NULL,
+  `ref_id` INT(11) DEFAULT NULL,
+  `original_name` VARCHAR(255) DEFAULT NULL,
+  `file_path` VARCHAR(512) DEFAULT NULL,
+  `file_url` VARCHAR(512) DEFAULT NULL,
+  `file_size` INT(11) DEFAULT 0,
+  `file_ext` VARCHAR(32) DEFAULT NULL,
+  `mime_type` VARCHAR(128) DEFAULT NULL,
+  `driver_path` VARCHAR(512) DEFAULT NULL,
+  `hash` VARCHAR(64) NOT NULL,
+  `metadata` JSON DEFAULT NULL,
+  `status` TINYINT(1) NOT NULL DEFAULT 0,
+  `upload_status` VARCHAR(32) DEFAULT NULL,
+  `expire_at` DATETIME DEFAULT NULL,
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  `deleted_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_files_hash` (`hash`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_scene` (`scene`),
+  KEY `idx_ref` (`ref_type`, `ref_id`),
+  KEY `idx_pending_expire` (`upload_status`, `expire_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- --------------------------------------------------------
-
---
--- 表的结构 `images`
---
-
-CREATE TABLE `images` (
-  `id` int(11) NOT NULL,
-  `aid` int(11) NOT NULL COMMENT '应用ID',
-  `pid` int(11) NOT NULL COMMENT '条目ID',
-  `user_id` int(11) NOT NULL,
-  `url` varchar(256) NOT NULL,
-  `created_at` datetime NOT NULL,
-  `updated_at` datetime DEFAULT NULL,
-  `deleted_at` datetime DEFAULT NULL
+-- ------------------------------------------------------------
+--  Required Table: likes
+--  Like/favorite records (replaces legacy `good` table).
+--  Supports polymorphic ref_type/ref_id for cards, comments.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `likes` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `aid` INT(11) NOT NULL COMMENT '应用ID (legacy)',
+  `pid` INT(11) NOT NULL COMMENT '条目ID (legacy)',
+  `ref_type` VARCHAR(32) DEFAULT NULL COMMENT '内容类型: card, comment',
+  `ref_id` INT(11) DEFAULT NULL COMMENT '内容ID',
+  `uid` INT(11) NOT NULL,
+  `ip` VARCHAR(32) NOT NULL COMMENT '发布IP',
+  `created_at` TIMESTAMP NULL DEFAULT NULL COMMENT '发布时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_likes_pid_uid` (`pid`, `uid`),
+  KEY `idx_uid` (`uid`),
+  KEY `idx_ref` (`ref_type`, `ref_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- --------------------------------------------------------
+-- ------------------------------------------------------------
+--  Required Table: cards
+--  Card content with JSON pictures and goods count.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `cards` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `is_top` INT(11) NOT NULL DEFAULT 0,
+  `status` INT(11) NOT NULL DEFAULT 0,
+  `user_id` INT(11) NOT NULL DEFAULT 0,
+  `data` JSON DEFAULT NULL,
+  `cover` VARCHAR(2083) DEFAULT NULL,
+  `content` TEXT,
+  `tags` JSON DEFAULT NULL,
+  `goods` INT(11) NOT NULL DEFAULT 0,
+  `pictures` JSON DEFAULT NULL,
+  `views` INT(11) NOT NULL DEFAULT 0,
+  `comments` INT(11) NOT NULL DEFAULT 0,
+  `post_ip` VARCHAR(39) DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL,
+  `updated_at` TIMESTAMP NOT NULL,
+  `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
---
--- 表的结构 `permissions`
---
+-- ------------------------------------------------------------
+--  Required Table: comments
+--  Comments on cards with nested reply support.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `comments` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `aid` INT(11) NOT NULL DEFAULT 0,
+  `pid` INT(11) NOT NULL DEFAULT 0,
+  `parent_id` INT(11) DEFAULT 0,
+  `is_top` INT(11) NOT NULL DEFAULT 0,
+  `status` INT(11) NOT NULL DEFAULT 0,
+  `user_id` INT(11) NOT NULL DEFAULT 0,
+  `data` JSON DEFAULT NULL,
+  `content` TEXT,
+  `goods` INT(11) NOT NULL DEFAULT 0,
+  `post_ip` VARCHAR(39) DEFAULT NULL,
+  `created_at` TIMESTAMP NOT NULL,
+  `updated_at` TIMESTAMP NOT NULL,
+  `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE `permissions` (
-  `id` int(11) NOT NULL,
-  `name` varchar(100) NOT NULL COMMENT '权限名称',
-  `slug` varchar(100) NOT NULL COMMENT '权限标识（唯一）',
-  `path` varchar(255) NOT NULL COMMENT '权限路径（如：/api/admin/users）',
-  `method` varchar(10) NOT NULL DEFAULT 'GET' COMMENT 'HTTP方法：GET,POST,PUT,PATCH,DELETE,*',
-  `description` varchar(255) NOT NULL,
-  `created_at` datetime NOT NULL,
-  `updated_at` datetime NOT NULL,
-  `deleted_at` datetime DEFAULT NULL
+-- ------------------------------------------------------------
+--  Required Table: tags
+--  Tag definitions.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `tags` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `aid` INT(11) NOT NULL,
+  `user_id` INT(11) NOT NULL DEFAULT 0,
+  `name` VARCHAR(255) DEFAULT '',
+  `status` INT(11) NOT NULL DEFAULT 0,
+  `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+  `created_at` TIMESTAMP NULL DEFAULT NULL,
+  `updated_at` TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
+
+-- ------------------------------------------------------------
+--  Required Table: tags_map
+--  Tag-to-content mapping with status field.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `tags_map` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `aid` INT(11) NOT NULL,
+  `pid` INT(11) NOT NULL,
+  `tag_id` INT(11) NOT NULL,
+  `status` INT(11) NOT NULL DEFAULT 0,
+  `created_at` TIMESTAMP NOT NULL,
+  `deleted_at` TIMESTAMP NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
+
+-- ============================================================
+--  Legacy Compatibility Tables
+--  Preserved for backward compatibility and rollback support.
+--  These tables are NOT used by the current runtime code but
+--  are kept to allow safe migration from older installations.
+-- ============================================================
+
+-- ------------------------------------------------------------
+--  Legacy Table: good
+--  Superseded by `likes` table. Preserved for rollback.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `good` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `aid` INT(11) NOT NULL COMMENT '应用ID',
+  `pid` INT(11) NOT NULL COMMENT '条目ID',
+  `uid` INT(11) NOT NULL,
+  `ip` VARCHAR(32) NOT NULL COMMENT '发布IP',
+  `created_at` TIMESTAMP NOT NULL COMMENT '发布时间',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+--  Legacy Table: images
+--  Superseded by `files` table. Preserved for rollback.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `images` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `aid` INT(11) NOT NULL COMMENT '应用ID',
+  `pid` INT(11) NOT NULL COMMENT '条目ID',
+  `user_id` INT(11) NOT NULL,
+  `url` VARCHAR(256) NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME DEFAULT NULL,
+  `deleted_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+--  Legacy Table: permissions
+--  Route-based permissions (66 entries).
+--  Superseded by RBAC capability system. Preserved for audit.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `permissions` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(100) NOT NULL COMMENT '权限名称',
+  `slug` VARCHAR(100) NOT NULL COMMENT '权限标识（唯一）',
+  `path` VARCHAR(255) NOT NULL COMMENT '权限路径（如：/api/admin/users）',
+  `method` VARCHAR(10) NOT NULL DEFAULT 'GET' COMMENT 'HTTP方法：GET,POST,PUT,PATCH,DELETE,*',
+  `description` VARCHAR(255) NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  `deleted_at` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `slug` (`slug`),
+  KEY `path_method` (`path`, `method`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限表';
 
---
--- 转存表中的数据 `permissions`
---
-
+-- Legacy permissions seed data (66 entries)
 INSERT INTO `permissions` (`id`, `name`, `slug`, `path`, `method`, `description`, `created_at`, `updated_at`, `deleted_at`) VALUES
 (1, '系统更新检查', 'system-update', '/api/system/updata', 'GET', '检查系统更新', '2026-01-19 04:01:18', '2026-01-19 04:01:18', NULL),
 (2, '获取主题列表', 'system-themes', '/api/system/themes', 'GET', '获取可用主题列表', '2026-01-19 04:01:18', '2026-01-19 04:01:18', NULL),
@@ -190,49 +352,30 @@ INSERT INTO `permissions` (`id`, `name`, `slug`, `path`, `method`, `description`
 (65, '访客-获取用户信息', 'guest-user-info', '/api/user/info', 'GET', '访客获取用户信息', '2026-01-19 04:01:19', '2026-01-19 04:01:19', NULL),
 (66, '访客-获取标签列表', 'guest-tags-list', '/api/tags', 'GET', '访客获取标签列表', '2026-01-19 04:01:19', '2026-01-19 04:01:19', NULL);
 
--- --------------------------------------------------------
-
+-- ------------------------------------------------------------
+--  Legacy Table: role_permissions
+--  Role-to-permission association (legacy system).
+--  Preserved for compatibility. Current runtime uses
+--  role_capabilities table instead.
 --
--- 表的结构 `roles`
---
-
-CREATE TABLE `roles` (
-  `id` int(11) NOT NULL,
-  `name` varchar(50) NOT NULL COMMENT '角色名称',
-  `slug` varchar(50) NOT NULL COMMENT '角色标识（唯一）',
-  `description` varchar(255) DEFAULT NULL COMMENT '角色描述',
-  `created_at` datetime NOT NULL,
-  `updated_at` datetime NOT NULL,
-  `deleted_at` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色表';
-
---
--- 转存表中的数据 `roles`
---
-
-INSERT INTO `roles` (`id`, `name`, `slug`, `description`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, '超级管理员', 'root', NULL, '2026-01-19 03:07:29', '2026-01-19 03:07:29', NULL),
-(2, '管理员', 'admin', NULL, '2026-01-19 03:07:58', '2026-01-19 03:07:58', NULL),
-(3, '用户', 'user', NULL, '2026-01-19 03:08:26', '2026-01-19 03:08:26', NULL),
-(4, '访客', 'guest', NULL, '2026-01-19 03:08:40', '2026-01-19 03:08:40', NULL);
-
--- --------------------------------------------------------
-
---
--- 表的结构 `role_permissions`
---
-
-CREATE TABLE `role_permissions` (
-  `id` int(11) NOT NULL,
-  `role_id` int(11) NOT NULL COMMENT '角色ID',
-  `permission_id` int(11) NOT NULL COMMENT '权限ID',
-  `created_at` timestamp NOT NULL
+--  NOTE: fk_role_permissions_permission FK was removed in
+--  DB-SCHEMA-BASELINE-001 because clean baseline has no
+--  compatible target (permissions 67-80 referenced by seed
+--  data do not exist). The FK remains in existing upgrades
+--  for backward compatibility.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `role_permissions` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `role_id` INT(11) NOT NULL COMMENT '角色ID',
+  `permission_id` INT(11) NOT NULL COMMENT '权限ID',
+  `created_at` TIMESTAMP NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `role_permission` (`role_id`, `permission_id`),
+  KEY `role_id` (`role_id`),
+  KEY `permission_id` (`permission_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色权限关联表';
 
---
--- 转存表中的数据 `role_permissions`
---
-
+-- Legacy role_permissions seed data
 INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`) VALUES
 (1, 1, 1, '2026-01-18 20:01:19'),
 (2, 1, 2, '2026-01-18 20:01:19'),
@@ -352,22 +495,18 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `created_at`) 
 (177, 4, 66, '2026-01-18 20:01:19'),
 (178, 4, 65, '2026-01-18 20:01:19');
 
--- --------------------------------------------------------
-
---
--- 表的结构 `system`
---
-
-CREATE TABLE `system` (
-  `id` int(11) NOT NULL,
-  `name` varchar(255) DEFAULT '',
-  `value` varchar(2555) NOT NULL DEFAULT ''
+-- ------------------------------------------------------------
+--  Legacy Table: system
+--  Superseded by `configs` table. Preserved for rollback.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `system` (
+  `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) DEFAULT '',
+  `value` VARCHAR(2555) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
---
--- 转存表中的数据 `system`
---
-
+-- Legacy system seed data (15 entries)
 INSERT INTO `system` (`id`, `name`, `value`) VALUES
 (1, 'siteUrl', 'lovecards.cn'),
 (2, 'siteName', 'LoveCardsV2.4'),
@@ -381,224 +520,16 @@ INSERT INTO `system` (`id`, `name`, `value`) VALUES
 (14, 'smtpSecure', ''),
 (15, 'smtpName', '');
 
--- --------------------------------------------------------
-
---
--- 表的结构 `tags`
---
-
-CREATE TABLE `tags` (
-  `id` int(11) NOT NULL,
-  `aid` int(11) NOT NULL,
-  `user_id` int(11) NOT NULL DEFAULT '0',
-  `name` varchar(255) DEFAULT '',
-  `status` int(11) NOT NULL DEFAULT '0',
-  `deleted_at` timestamp NULL DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
-
--- --------------------------------------------------------
-
---
--- 表的结构 `tags_map`
---
-
-CREATE TABLE `tags_map` (
-  `id` int(11) NOT NULL,
-  `aid` int(11) NOT NULL,
-  `pid` int(11) NOT NULL,
-  `tag_id` int(11) NOT NULL,
-  `created_at` timestamp NOT NULL,
-  `deleted_at` timestamp NULL DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
-
--- --------------------------------------------------------
-
---
--- 表的结构 `users`
---
-
-CREATE TABLE `users` (
-  `id` int(11) NOT NULL,
-  `number` varchar(32) NOT NULL,
-  `avatar` varchar(255) NOT NULL DEFAULT '',
-  `email` varchar(320) NOT NULL,
-  `phone` varchar(20) NOT NULL,
-  `username` varchar(255) NOT NULL,
-  `password` varchar(255) NOT NULL,
-  `status` int(11) NOT NULL,
-  `roles_id` json DEFAULT NULL,
-  `created_at` datetime NOT NULL,
-  `updated_at` datetime NOT NULL,
-  `deleted_at` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
-
---
--- 转存表中的数据 `users`
---
-
+-- ============================================================
+--  Initial Root User Seed
+-- ============================================================
 INSERT INTO `users` (`id`, `number`, `avatar`, `email`, `phone`, `username`, `password`, `status`, `roles_id`, `created_at`, `updated_at`, `deleted_at`) VALUES
 (1, '1000000000', '', 'admin@lovecards.cn', '', '超级管理员', '$2y$10$uBowOFgOBNTx1NT1uYJTleEo1r8d91R9iwxRCqncPJUShfsJoMvr6', 0, '[1, 2, 3]', '2023-12-06 20:09:26', '2025-08-01 20:50:25', NULL);
 
---
--- 转储表的索引
---
-
---
--- 表的索引 `cards`
---
-ALTER TABLE `cards`
-  ADD PRIMARY KEY (`id`);
-
---
--- 表的索引 `comments`
---
-ALTER TABLE `comments`
-  ADD PRIMARY KEY (`id`);
-
---
--- 表的索引 `good`
---
-ALTER TABLE `good`
-  ADD PRIMARY KEY (`id`);
-
---
--- 表的索引 `images`
---
-ALTER TABLE `images`
-  ADD PRIMARY KEY (`id`);
-
---
--- 表的索引 `permissions`
---
-ALTER TABLE `permissions`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `slug` (`slug`),
-  ADD KEY `path_method` (`path`,`method`);
-
---
--- 表的索引 `roles`
---
-ALTER TABLE `roles`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `slug` (`slug`);
-
---
--- 表的索引 `role_permissions`
---
+-- ============================================================
+--  Foreign Key Constraints (legacy role_permissions)
+--  NOTE: fk_role_permissions_permission removed in
+--  DB-SCHEMA-BASELINE-001 — see role_permissions table comment.
+-- ============================================================
 ALTER TABLE `role_permissions`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `role_permission` (`role_id`,`permission_id`),
-  ADD KEY `role_id` (`role_id`),
-  ADD KEY `permission_id` (`permission_id`);
-
---
--- 表的索引 `system`
---
-ALTER TABLE `system`
-  ADD PRIMARY KEY (`id`);
-
---
--- 表的索引 `tags`
---
-ALTER TABLE `tags`
-  ADD PRIMARY KEY (`id`);
-
---
--- 表的索引 `tags_map`
---
-ALTER TABLE `tags_map`
-  ADD PRIMARY KEY (`id`);
-
---
--- 表的索引 `users`
---
-ALTER TABLE `users`
-  ADD PRIMARY KEY (`id`);
-
---
--- 在导出的表使用AUTO_INCREMENT
---
-
---
--- 使用表AUTO_INCREMENT `cards`
---
-ALTER TABLE `cards`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- 使用表AUTO_INCREMENT `comments`
---
-ALTER TABLE `comments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- 使用表AUTO_INCREMENT `good`
---
-ALTER TABLE `good`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- 使用表AUTO_INCREMENT `images`
---
-ALTER TABLE `images`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- 使用表AUTO_INCREMENT `permissions`
---
-ALTER TABLE `permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=67;
-
---
--- 使用表AUTO_INCREMENT `roles`
---
-ALTER TABLE `roles`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
-
---
--- 使用表AUTO_INCREMENT `role_permissions`
---
-ALTER TABLE `role_permissions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=181;
-
---
--- 使用表AUTO_INCREMENT `system`
---
-ALTER TABLE `system`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
-
---
--- 使用表AUTO_INCREMENT `tags`
---
-ALTER TABLE `tags`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- 使用表AUTO_INCREMENT `tags_map`
---
-ALTER TABLE `tags_map`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- 使用表AUTO_INCREMENT `users`
---
-ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
--- 限制导出的表
---
-
---
--- 限制表 `role_permissions`
---
-ALTER TABLE `role_permissions`
-  ADD CONSTRAINT `fk_role_permissions_permission` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_role_permissions_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE;
-COMMIT;
-
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
