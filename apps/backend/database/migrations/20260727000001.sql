@@ -1411,8 +1411,22 @@ EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 
 -- Copy data from good to goods if applicable (state B only)
-UPDATE `cards` SET `goods` = `good` WHERE @cards_good_exists > 0 AND @cards_goods_exists = 0 AND `good` != 0;
-SELECT CONCAT('State B: goods column added, copied data from good. Updated ', ROW_COUNT(), ' rows') AS status;
+-- Must use prepared statement: MySQL parses column refs at statement-prepare time,
+-- and `good` column may not exist in the target schema (state C/D/E).
+SET @stmt = IF(@cards_good_exists > 0 AND @cards_goods_exists = 0,
+    'UPDATE `cards` SET `goods` = `good` WHERE `good` != 0',
+    'SET @dummy = 0');
+PREPARE stmt FROM @stmt;
+EXECUTE stmt;
+-- Capture ROW_COUNT before DEALLOCATE resets it
+SET @good_to_goods_rows = ROW_COUNT();
+DEALLOCATE PREPARE stmt;
+
+-- Report audit count
+SET @msg = IF(@cards_good_exists > 0 AND @cards_goods_exists = 0,
+    CONCAT('State B: goods column added, copied ', @good_to_goods_rows, ' rows from good'),
+    'State not B: good-to-goods copy skipped');
+SELECT @msg AS status;
 
 -- 4c. Add roles.is_system TINYINT if missing (verify AFTER anchor exists)
 SET @roles_is_system_exists = (SELECT COUNT(*) FROM information_schema.`COLUMNS` WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'roles' AND COLUMN_NAME = 'is_system');

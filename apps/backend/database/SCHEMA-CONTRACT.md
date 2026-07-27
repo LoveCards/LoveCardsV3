@@ -756,6 +756,25 @@ cd /c/Users/admin/Desktop/lovecards3/agent/worktrees/feat-db-schema-baseline/app
 "C:\Program Files\phpstudy_pro\Extensions\php\php8.0.2nts\php.exe" tests/Database/InstallBaseline.php
 ```
 
+### Round 3 Dynamic Verification（2026-07-28）
+
+在三组隔离的 MySQL 5.7.26 数据库上执行完整迁移测试：
+
+| 组 | 基线 | 迁移后总表数 | 运行必需表 | 能力计数 | 状态 |
+|-----|------|-----------|-----------|---------|------|
+| A | feat/db-schema-baseline (clean install) | 15 | 10/10 | Root=73, Admin=56, User=13, Guest=7 | ✅ PASS |
+| B | origin/main (legacy, FK removed) | 15 | 10/10 | Root=73, Admin=56, User=13, Guest=7 | ✅ PASS |
+| C | 2026-05-21 historical (schema only) | 12 | 10/10 | Root=73, Admin=56, User=13, Guest=7 | ✅ PASS |
+
+**备注：** C 的 12 表包含全部 10 张运行必需表，另含 `role_permissions`、`system` 两张遗留兼容表。`good`、`images`、`permissions` 为本批次不创建的兼容/废弃表，不构成失败。
+
+**关键验证：**
+- A：自定义角色 id=9001 在两轮 migration 中保留，`dryrun.custom.preserve` 能力不变。第二次 migration 0 重新插入（幂等）。
+- B：3 条受控 good 数据正确迁移到 `likes`，`ref_type='card'`、`ref_id=pid`、无 `(pid,uid)` 重复。pass2 `source=3, already_equal=3, inserted=0`。
+- C：migration 创建 `role_capabilities` 并精确 seed 四角色能力。pass2 幂等。
+- Migration SHA-256：`42D3DCB28E0EDE78BFEC943B27929A421CB9AAAEF982D246ACC387A7FB4DF21D`
+- Runner 断言：49/49 全部通过，exit 0。无修改代码、无重试、无 `--force`、无 `FOREIGN_KEY_CHECKS=0`。
+
 ### 已知限制
 
 - Migration 含 `DELIMITER`，必须由 MySQL 命令行客户端执行，不支持 `Database::ImportSQLFile()`。

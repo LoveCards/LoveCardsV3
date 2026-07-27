@@ -1100,6 +1100,93 @@ if ($rolesContent !== false) {
 }
 
 // ────────────────────────────────────────────────────────────
+//  Section 14: cards.good Prepared Statement Guard Assertions
+//  Validates that the fix for dry-run Group A failure is correct:
+//    - The original unguarded UPDATE form does not exist in Phase 2
+//    - The prepared statement correctly guards legacy column access
+//    - ROW_COUNT is captured before DEALLOCATE
+//    - Audit output references the captured variable
+//  This does NOT assert protection of all legacy columns in all
+//  stored procedures — only the specific fix for Phase 2 mutation.
+// ────────────────────────────────────────────────────────────
+echo "\n--- 14. cards.good Prepared Statement Guard ---\n";
+
+if ($migrationCombined !== '') {
+    $migNoComments = stripSqlComments($migrationCombined);
+
+    // 14a. The original unprotected UPDATE form must NOT exist outside of prepared
+    //     statement definitions. Check only static SQL (after stripping comments).
+    //     The prepared UPDATE is inside 'SET @stmt = IF(...)' — it's a string literal,
+    //     not executable SQL.
+    $bareSql = preg_replace('/^--.*$/m', '', $migNoComments);  // strip single-line
+    $bareSql = preg_replace('/\/\*.*?\*\//s', '', $bareSql);    // strip block comments
+    // Remove prepared statement definitions: anything between SET @stmt = and the
+    // corresponding DEALLOCATE PREPARE stmt;
+    $noPrepBlock = preg_replace(
+        '/SET\s+@\w+\s*=\s*IF\s*\([^;]+?\)\s*;\s*PREPARE\s+\w+\s+FROM\s+@\w+\s*;\s*EXECUTE\s+\w+\s*;.*?DEALLOCATE\s+PREPARE\s+\w+\s*;/si',
+        '',
+        $bareSql
+    );
+    $hasUnprotectedUpdate = (bool)preg_match(
+        '/UPDATE\s+`cards`\s+SET\s+`goods`\s*=\s*`good`/i',
+        $noPrepBlock
+    );
+    if (!$hasUnprotectedUpdate) {
+        pass("14a: No unprotected UPDATE `cards` SET `goods` = `good` in static SQL");
+    } else {
+        fail("14a: Found unprotected UPDATE `cards` SET `goods` = `good` — must be inside PREPARE");
+    }
+
+    // 14b. The prepared SQL string (inside SET @stmt = IF(...)) contains the
+    //     cards.good→goods UPDATE with the correct guarded condition.
+    $hasPreparedUpdate = (bool)preg_match(
+        "/SET\s+\@stmt\s*=\s*IF\s*\(\@cards_good_exists\s*>\s*0\s+AND\s+\@cards_goods_exists\s*=\s*0\s*,"
+        . "\s*'UPDATE\s+`cards`\s+SET\s+`goods`\s*=\s*`good`\s+WHERE\s+`good`\s*!=\s*0'/si",
+        $migrationCombined
+    );
+    if ($hasPreparedUpdate) {
+        pass("14b: Prepared UPDATE `cards.good`→`goods` exists with correct guard condition");
+    } else {
+        fail("14b: Missing prepared UPDATE for cards.good→goods with guard condition");
+    }
+
+    // 14c. The ELSE branch executes SET @dummy = 0 when state is not B
+    $hasElseNoop = (bool)preg_match(
+        "/SET\s+\@stmt\s*=\s*IF\([^)]*,\s*'[^']*',\s*'SET\s+\@dummy\s*=\s*0'/i",
+        $migrationCombined
+    );
+    if ($hasElseNoop) {
+        pass("14c: ELSE branch uses SET @dummy = 0 (safe no-op when column absent)");
+    } else {
+        fail("14c: ELSE branch does not use safe no-op");
+    }
+
+    // 14d. Execution order: EXECUTE stmt → SET @var = ROW_COUNT() → DEALLOCATE
+    //     Search in stripped-comment migration to avoid SQL comment interference.
+    $hasRowCountCapture = (bool)preg_match(
+        '/EXECUTE\s+stmt\s*;'
+        . '\s*SET\s+\@good_to_goods_rows\s*=\s*ROW_COUNT\s*\(\s*\)\s*;'
+        . '\s*DEALLOCATE\s+PREPARE\s+stmt\s*;/si',
+        $migNoComments
+    );
+    if ($hasRowCountCapture) {
+        pass("14d: ROW_COUNT captured before DEALLOCATE (EXECUTE→SET→DEALLOCATE order)");
+    } else {
+        fail("14d: ROW_COUNT not captured before DEALLOCATE");
+    }
+
+    // 14e. Audit output references @good_to_goods_rows
+    $hasAuditRef = (bool)preg_match('/\@good_to_goods_rows/', $migrationCombined);
+    if ($hasAuditRef) {
+        pass("14e: Audit output references @good_to_goods_rows variable");
+    } else {
+        fail("14e: Audit output does not reference @good_to_goods_rows");
+    }
+} else {
+    echo "[SKIP] No migration file to check\n";
+}
+
+// ────────────────────────────────────────────────────────────
 //  Summary
 // ────────────────────────────────────────────────────────────
 echo "\n=== Summary ===\n";
