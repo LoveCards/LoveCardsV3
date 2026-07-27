@@ -45,7 +45,8 @@ class Database
         ], 'database');
 
         try {
-            return Db::connect()->table('admin')->where('id', 1)->find();
+            Db::connect()->query('SELECT 1');
+            return true;
         } catch (\Exception $e) {
             $result = self::getErrorData($e);
             if ($result['Code'] == 1045) {
