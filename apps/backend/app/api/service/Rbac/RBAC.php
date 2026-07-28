@@ -55,6 +55,8 @@ class RBAC
             'files.upload'      => '上传文件',
             'files.read'        => '查看文件',
             'files.read.all'    => '查看全部文件',
+            'files.update'      => '编辑自己的文件',
+            'files.update.all'  => '编辑任意文件',
             'files.delete'      => '删除自己的文件',
             'files.delete.all'  => '删除任意文件',
             // Likes

@@ -156,3 +156,8 @@ export interface BatchOperateParams {
   ids: number[]
   value?: string | number
 }
+
+export interface FilesBatchOperateParams {
+  method: FilesBatchMethod
+  ids: number[]
+}

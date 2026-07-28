@@ -9,22 +9,11 @@ use app\api\service\Storage\StorageManager;
 use app\api\service\Storage\DirectUploadManager;
 use app\api\service\Storage\ChannelManager;
 use app\api\service\Storage\PathGenerator;
-use app\api\service\User\Users as UsersService;
 use app\api\validate\Files as FilesValidate;
 use app\api\controller\BaseController;
 
 class Upload extends BaseController
 {
-    private function isAdmin(): bool
-    {
-        $uid = request()->auth->uid();
-        if ($uid <= 0) return false;
-        $user = UsersService::Get($uid);
-        if (!$user || !$user->id) return false;
-        $roles = is_array($user->roles_id) ? $user->roles_id : (json_decode($user->roles_id, true) ?: []);
-        return in_array(config('system.system_roles.root'), $roles) || in_array(config('system.system_roles.admin'), $roles);
-    }
-
     public function upload()
     {
         $file = request()->file('file');
@@ -80,14 +69,18 @@ class Upload extends BaseController
         $params['scene'] = Request::param('scene', null);
 
         $userId = request()->auth->uid();
-        $isAdmin = $this->isAdmin();
+        $canReadAll = request()->auth->hasAnyCapability(['files.read.all']);
 
-        $result = StorageManager::list($params, $userId, $isAdmin);
+        $result = StorageManager::list($params, $userId, $canReadAll);
         return ApiResponse::createOk($result);
     }
 
     public function listOwn()
     {
+        $userId = request()->auth->uid();
+        if ($userId <= 0) {
+            throw ApiException::unauthorized('请先登入');
+        }
         $params = $this->paramIndex(Request::param());
         $params['status'] = Request::param('status', null);
         $params['upload_status'] = Request::param('upload_status', null);
@@ -95,7 +88,6 @@ class Upload extends BaseController
         $params['ref_type'] = Request::param('ref_type', null);
         $params['ref_id'] = Request::param('ref_id', null);
 
-        $userId = request()->auth->uid();
         $result = StorageManager::listOwn($params, $userId);
         return ApiResponse::createOk($result);
     }
@@ -104,9 +96,9 @@ class Upload extends BaseController
     {
         $fileId = (int) ($id ?: Request::param('id', 0));
         $userId = request()->auth->uid();
-        $isAdmin = $this->isAdmin();
+        $canReadAll = request()->auth->hasAnyCapability(['files.read.all']);
 
-        $file = StorageManager::getFile($fileId, $userId, $isAdmin);
+        $file = StorageManager::getFile($fileId, $userId, $canReadAll);
         if (!$file) {
             throw ApiException::notFound('文件不存在');
         }
@@ -115,10 +107,6 @@ class Upload extends BaseController
 
     public function batch()
     {
-        if (!$this->isAdmin()) {
-            return ApiResponse::createForbidden('需要管理员权限');
-        }
-
         $idsParam = Request::param('ids', '[]');
         $ids = is_string($idsParam) ? json_decode($idsParam, true) : $idsParam;
         $method = Request::param('method', '');
@@ -132,12 +120,9 @@ class Upload extends BaseController
             return ApiResponse::createBadRequest('参数不完整');
         }
 
-        try {
-            StorageManager::batchOperate($method, $ids);
-            return ApiResponse::createNoContent();
-        } catch (\Throwable $e) {
-            throw ApiException::error($e->getMessage());
-        }
+        $auth = request()->auth;
+        StorageManager::batchOperate($method, $ids, $auth->uid(), $auth->capabilities());
+        return ApiResponse::createNoContent();
     }
 
     public function direct()
@@ -161,32 +146,26 @@ class Upload extends BaseController
     public function confirm($id = 0)
     {
         $recordId = (int) ($id ?: Request::param('record_id', 0));
+        $userId = request()->auth->uid();
 
-        $result = DirectUploadManager::confirmUpload($recordId);
+        $result = DirectUploadManager::confirmUpload($recordId, $userId);
         if (!$result) {
-            throw ApiException::error('确认失败');
+            throw ApiException::notFound('确认失败');
         }
         return ApiResponse::createNoContent();
     }
 
     public function cleanup()
     {
-        if (!$this->isAdmin()) {
-            return ApiResponse::createForbidden('需要管理员权限');
-        }
         $limit = (int) Request::param('limit', 100);
-
         $cleaned = DirectUploadManager::cleanupExpired($limit);
         return ApiResponse::createOk(['cleaned' => count($cleaned)]);
     }
 
     public function allDelete($id)
     {
-        if (!$this->isAdmin()) {
-            throw ApiException::forbidden('需要管理员权限');
-        }
-
-        StorageManager::hardDelete((int) $id);
+        $auth = request()->auth;
+        StorageManager::batchOperate('hard_delete', [(int) $id], $auth->uid(), $auth->capabilities());
         return ApiResponse::createNoContent();
     }
 }

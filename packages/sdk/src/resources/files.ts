@@ -1,6 +1,8 @@
 import { BaseResource } from './base'
-import type { ListResult, BatchOperateParams } from '../types/api'
+import type { ListResult, FilesBatchOperateParams } from '../types/api'
 import type { LCFile, UploadResult, DirectUploadResult } from '../types/files'
+
+export type { FilesBatchOperateParams }
 
 export class Files extends BaseResource {
   upload(formData: FormData): Promise<UploadResult> {
@@ -38,7 +40,7 @@ export class Files extends BaseResource {
     return this.listOwn(params)
   }
 
-  batch(data: BatchOperateParams): Promise<void> {
+  batch(data: FilesBatchOperateParams): Promise<void> {
     return this._post<void>('/files/batch', data)
   }
 

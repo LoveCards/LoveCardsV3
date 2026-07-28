@@ -42,13 +42,27 @@ namespace app\api\model
 
         public function where($field, $value = null, string $op = '='): self
         {
+            if ($field instanceof \Closure) {
+                $field($this);
+                return $this;
+            }
             $this->calls[] = ['where', $field, $value, $op];
             return $this;
         }
 
-        public function whereOr(string $field, $value): self
+        public function whereOr($field, $value = null): self
         {
+            if ($field instanceof \Closure) {
+                $field($this);
+                return $this;
+            }
             $this->calls[] = ['whereOr', $field, $value];
+            return $this;
+        }
+
+        public function whereNull(string $field): self
+        {
+            $this->calls[] = ['whereNull', $field];
             return $this;
         }
 
@@ -304,7 +318,7 @@ namespace
     // 组 A：现有 list() 语义基线
     // ──────────────────────────────────────────────────────
 
-    $test('A1: 非管理员 list 构建 (user_id OR is_public) 可见范围', static function () use ($reset, $assertTrue): void {
+    $test('A1: 非管理员 list 构建 (user_id OR secure_public) 可见范围', static function () use ($reset, $assertTrue, $assertFalse): void {
         $reset();
         \app\api\service\Storage\StorageManager::list([], 10, false);
 
@@ -316,12 +330,20 @@ namespace
             '非管理员可见范围应包含 where(user_id, 10)'
         );
         $assertTrue(
+            hasCall($calls, 'where', 'is_public', 1),
+            '安全公开应包含 is_public=1'
+        );
+        $assertTrue(
+            hasCall($calls, 'where', 'upload_status', 1),
+            '安全公开应包含 upload_status=1'
+        );
+        $assertFalse(
             hasCall($calls, 'whereOr', 'is_public', 1),
-            '非管理员可见范围应包含 whereOr(is_public, 1)'
+            '非管理员不应有简单的 whereOr(is_public) — 应使用安全公开条件'
         );
     });
 
-    $test('A2: 管理员 list 无 owner 限制', static function () use ($reset, $assertSame): void {
+    $test('A2: 可读全部(hasCapability files.read.all) 无 owner 限制', static function () use ($reset, $assertSame): void {
         $reset();
         \app\api\service\Storage\StorageManager::list([], 10, true);
 
@@ -331,27 +353,60 @@ namespace
         $userWhere  = array_filter($calls, fn($c) => $c[0] === 'where' && $c[1] === 'user_id');
         $orPublic   = array_filter($calls, fn($c) => $c[0] === 'whereOr' && $c[1] === 'is_public');
 
-        $assertSame(0, count($userWhere), '管理员 list 不应有 user_id 条件');
-        $assertSame(0, count($orPublic), '管理员 list 不应有 is_public OR 条件');
+        $assertSame(0, count($userWhere), '可读全部 list 不应有 user_id 条件');
+        $assertSame(0, count($orPublic), '可读全部 list 不应有 is_public OR 条件');
     });
 
-    $test('A3: 管理员可通过 show_deleted 查看软删除记录', static function () use ($reset, $assertTrue): void {
+    $test('A3: 可读全部可通过 show_deleted 查看软删除记录', static function () use ($reset, $assertTrue): void {
         $reset();
         \app\api\service\Storage\StorageManager::list(['show_deleted' => 1], 10, true);
 
         $assertTrue(
             \app\common\support\ModelList::$withTrashedCalled,
-            '管理员 show_deleted=1 应调用 withTrashed'
+            '可读全部 show_deleted=1 应调用 withTrashed'
         );
     });
 
-    $test('A4: 非管理员无法通过 show_deleted 绕过软删除过滤', static function () use ($reset, $assertFalse): void {
+    $test('A4: 无可读全部能力无法通过 show_deleted 绕过软删除过滤', static function () use ($reset, $assertFalse): void {
         $reset();
         \app\api\service\Storage\StorageManager::list(['show_deleted' => 1], 10, false);
 
         $assertFalse(
             \app\common\support\ModelList::$withTrashedCalled,
-            '非管理员 show_deleted 不应生效'
+            '无可读全部能力 show_deleted 不应生效'
+        );
+    });
+
+    // ──────────────────────────────────────────────────────
+    // 组 A2：访客 uid=0 list 范围
+    // ──────────────────────────────────────────────────────
+
+    $test('A5: 访客 uid=0 list 仅安全公开记录', static function () use ($reset, $assertTrue, $assertFalse): void {
+        $reset();
+        \app\api\service\Storage\StorageManager::list([], 0, false);
+
+        $where = \app\common\support\ModelList::$capturedWhere;
+        $calls = resolveWhere($where);
+
+        $assertTrue(
+            hasCall($calls, 'where', 'is_public', 1),
+            '访客可见范围应包含 is_public=1'
+        );
+        $assertTrue(
+            hasCall($calls, 'where', 'status', 0),
+            '访客可见范围应包含 status=0(NORMAL)'
+        );
+        $assertTrue(
+            hasCall($calls, 'where', 'upload_status', 1),
+            '访客可见范围应包含 upload_status=1(COMPLETED)'
+        );
+        $assertTrue(
+            hasCall($calls, 'whereNull', 'deleted_at'),
+            '访客可见范围应包含 deleted_at IS NULL'
+        );
+        $assertFalse(
+            hasCall($calls, 'where', 'user_id', 0),
+            '访客 list 不应有 user_id 条件'
         );
     });
 
@@ -529,9 +584,9 @@ namespace
     //             return ApiResponse::createOk($result);
     //         }
     //
-    // E3: isAdmin 对 strict owner 无影响
-    //     listOwn() 不接受 $isAdmin 参数，所有用户一视同仁。
-    //     管理员也无法通过此端点查看其他用户的文件。
+    // E3: files.read.all 对 strict owner 无影响
+    //     listOwn() 不接受 $canReadAll 参数，所有用户一视同仁。
+    //     有 files.read.all 能力的用户也无法通过此端点查看其他用户的文件。
 }
 
 // ════════════════════════════════════════════════════════════

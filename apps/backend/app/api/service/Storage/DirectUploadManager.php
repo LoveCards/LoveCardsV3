@@ -56,9 +56,9 @@ class DirectUploadManager
         ];
     }
 
-    public static function confirmUpload(int $recordId): bool
+    public static function confirmUpload(int $recordId, int $userId): bool
     {
-        $fileModel = Files::find($recordId);
+        $fileModel = Files::where('id', $recordId)->where('user_id', $userId)->find();
         if ($fileModel === null) {
             return false;
         }

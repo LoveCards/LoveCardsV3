@@ -749,13 +749,9 @@ await test('POST /users/batch → users.batch(approve)', async () => {
   return true
 })
 
-await test('POST /files/batch → files.batch(delete)', async () => {
-  try {
-    await adminClient.files.batch({ method: 'delete', ids: [999999] })
-  } catch (e) {
-    if (!isApiError(e)) throw e
-  }
-  return true
+await test('POST /files/batch → files.batch(hard_delete)', async () => {
+  // 999999 does not exist — expect 404
+  await assertApiError(() => adminClient.files.batch({ method: 'hard_delete', ids: [999999] }), 404)
 })
 
 await test('batch empty ids → should 400', async () => {

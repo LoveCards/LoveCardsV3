@@ -212,7 +212,7 @@ class Roles
                 'tags.update.all', 'tags.delete.all',
                 'users.read', 'users.read.all',
                 'users.update.all', 'users.delete.all',
-                'files.upload', 'files.read', 'files.read.all', 'files.delete', 'files.delete.all',
+                'files.upload', 'files.read', 'files.read.all', 'files.update.all', 'files.delete', 'files.delete.all',
                 'likes.create', 'likes.read', 'likes.delete',
                 'dashboard.read',
                 'config.read', 'config.update', 'config.init', 'config.reload', 'config.register', 'config.deleteKey',
