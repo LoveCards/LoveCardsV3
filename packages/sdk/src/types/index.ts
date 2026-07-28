@@ -1,4 +1,4 @@
-export type { LCClientConfig, TokenStore, RetryConfig, ListResult, CreateResult, PaginationInfo, PaginationParams, ListParams, BatchOperateParams, BatchMethod, CardsBatchMethod, CommentsBatchMethod, UsersBatchMethod, TagsBatchMethod, FilesBatchMethod, RequestContext, ResponseContext, ErrorContext, BeforeRequestHook, AfterResponseHook, OnErrorHook, HookRegistration } from './api'
+export type { LCClientConfig, TokenStore, RetryConfig, ListResult, CreateResult, PaginationInfo, PaginationParams, ListParams, BatchOperateParams, BatchMethod, CardsBatchMethod, CommentsBatchMethod, UsersBatchMethod, TagsBatchMethod, FilesBatchMethod, FilesBatchOperateParams, RequestContext, ResponseContext, ErrorContext, BeforeRequestHook, AfterResponseHook, OnErrorHook, HookRegistration } from './api'
 export type { Card, CardsListParams, CreateCardParams, UpdateCardParams } from './cards'
 export type { User, RoleInfo, LoginParams, RegisterParams, LoginResult, CheckResult, ProfileUpdateParams, AdminUserUpdateParams, PasswordParams, EmailParams, EmailCaptchaParams, CaptchaSendParams } from './users'
 export type { Comment, CreateCommentParams } from './comments'

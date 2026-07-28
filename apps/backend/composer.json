@@ -57,6 +57,7 @@
             "@php tests/Auth/JwtRenewal.php"
         ],
         "test:files": "@php tests/Files/BehaviorBaseline.php",
+        "test:files-auth": "@php tests/Files/AuthorizationBaseline.php",
         "test:comments": "@php tests/Comments/BehaviorBaseline.php",
         "test:tags": "@php tests/Tags/BehaviorBaseline.php",
         "test:schema-contract": "@php tests/Database/SchemaContract.php",
@@ -64,6 +65,7 @@
         "test": [
             "@test:auth",
             "@test:files",
+            "@test:files-auth",
             "@test:comments",
             "@test:tags",
             "@test:schema-contract",

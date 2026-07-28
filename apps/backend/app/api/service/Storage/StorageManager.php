@@ -46,14 +46,14 @@ class StorageManager
         return new ChannelUploader($slug);
     }
 
-    public static function list(array $params, int $userId = -1, bool $isAdmin = false): array
+    public static function list(array $params, int $userId = -1, bool $canReadAll = false): array
     {
         $params['search_default_key'] = 'original_name';
 
         $modelList = ModelList::make(Files::class);
 
         $showDeleted = (int) ($params['show_deleted'] ?? 0);
-        if ($isAdmin && $showDeleted > 0) {
+        if ($canReadAll && $showDeleted > 0) {
             if ($showDeleted === 1) {
                 $modelList->withTrashed();
             } elseif ($showDeleted === 2) {
@@ -63,10 +63,24 @@ class StorageManager
 
         $where = $params['where'] ?? [];
 
-        if (!$isAdmin) {
+        if (!$canReadAll) {
             if ($userId > 0) {
                 $where[] = function ($q) use ($userId) {
-                    $q->where('user_id', $userId)->whereOr('is_public', 1);
+                    $q->where('user_id', $userId)
+                      ->whereOr(function ($q2) {
+                          $q2->where('is_public', 1)
+                              ->where('status', Files::STATUS_NORMAL)
+                              ->where('upload_status', Files::UPLOAD_COMPLETED)
+                              ->whereNull('deleted_at');
+                      });
+                };
+            } else {
+                // Visitor uid<=0: only secure public records
+                $where[] = ['is_public', '=', 1];
+                $where[] = ['status', '=', Files::STATUS_NORMAL];
+                $where[] = ['upload_status', '=', Files::UPLOAD_COMPLETED];
+                $where[] = function ($q) {
+                    $q->whereNull('deleted_at');
                 };
             }
         }
@@ -99,6 +113,10 @@ class StorageManager
 
     public static function listOwn(array $params, int $userId): array
     {
+        if ($userId <= 0) {
+            throw \app\api\ApiException::unauthorized('请先登入');
+        }
+
         $params['search_default_key'] = 'original_name';
         $modelList = ModelList::make(Files::class);
         $where = $params['where'] ?? [];
@@ -123,14 +141,15 @@ class StorageManager
         return $result->toArray();
     }
 
-    public static function getFile(int $fileId, int $userId = -1, bool $isAdmin = false): ?array
+    public static function getFile(int $fileId, int $userId = -1, bool $canReadAll = false): ?array
     {
         $query = Files::withTrashed()->where('id', $fileId);
 
-        if (!$isAdmin) {
-            $query->whereNull('deleted_at');
+        if (!$canReadAll) {
             if ($userId > 0) {
                 $query->visible($userId);
+            } else {
+                $query->securePublic();
             }
         }
 
@@ -138,11 +157,54 @@ class StorageManager
         return $file ? $file->toArray() : null;
     }
 
-    public static function batchOperate(string $method, array $ids): void
+    public static function batchOperate(string $method, array $ids, int $userId = -1, array $caps = []): void
     {
-        $ids = array_map('intval', $ids);
+        $ids = array_values(array_unique(array_map('intval', $ids)));
         $ids = array_filter($ids, fn($id) => $id > 0);
         if (empty($ids)) return;
+
+        // Map batch methods to base capabilities
+        $methodMap = [
+            'approve' => 'files.update',
+            'ban' => 'files.update',
+            'toggle_public' => 'files.update',
+            'trash' => 'files.delete',
+            'restore' => 'files.delete',
+            'hard_delete' => 'files.delete',
+        ];
+
+        $baseCap = $methodMap[$method] ?? null;
+        if ($baseCap === null) {
+            throw new \app\api\ApiException('不支持的操作');
+        }
+
+        $canAll = in_array($baseCap . '.all', $caps, true);
+        $canOwn = in_array($baseCap, $caps, true);
+        if (!$canAll && !$canOwn) {
+            throw \app\api\ApiException::forbidden('权限不足');
+        }
+
+        // Step 1: Query ALL IDs (including soft-deleted) for existence + owner check
+        // Must happen BEFORE any write operation.
+        $files = Files::withTrashed()->whereIn('id', $ids)->select();
+        $foundIds = $files->column('id');
+
+        // Existence check: all requested IDs must exist
+        $missingIds = array_diff($ids, $foundIds);
+        if (!empty($missingIds)) {
+            throw \app\api\ApiException::notFound('文件不存在: ' . implode(', ', $missingIds));
+        }
+
+        // Step 2: Owner check (only required without .all capability)
+        // Soft-deleted records also enforce owner check — no bypass.
+        if (!$canAll) {
+            foreach ($files as $file) {
+                if ((int) $file->user_id !== $userId) {
+                    throw \app\api\ApiException::forbidden('无权操作其他用户的文件');
+                }
+            }
+        }
+        // All checks passed. Zero writes so far. Proceed to switch.
 
         switch ($method) {
             case 'approve':
@@ -176,7 +238,7 @@ class StorageManager
         }
     }
 
-    public static function hardDelete(int $fileId): bool
+    private static function hardDelete(int $fileId): bool
     {
         $file = Files::withTrashed()->find($fileId);
         if (!$file) return false;
@@ -208,14 +270,15 @@ class StorageManager
         return $driver->delete($file->driver_path);
     }
 
-    public static function getByHash(string $hash, int $userId = -1, bool $isAdmin = false): ?array
+    public static function getByHash(string $hash, int $userId = -1, bool $canReadAll = false): ?array
     {
         $query = Files::withTrashed()->where('hash', $hash);
 
-        if (!$isAdmin) {
-            $query->whereNull('deleted_at');
+        if (!$canReadAll) {
             if ($userId > 0) {
                 $query->visible($userId);
+            } else {
+                $query->securePublic();
             }
         }
 
@@ -223,16 +286,17 @@ class StorageManager
         return $file ? $file->toArray() : null;
     }
 
-    public static function getByHashes(array $hashes, int $userId = -1, bool $isAdmin = false): array
+    public static function getByHashes(array $hashes, int $userId = -1, bool $canReadAll = false): array
     {
         if (empty($hashes)) return [];
 
         $query = Files::withTrashed()->whereIn('hash', $hashes);
 
-        if (!$isAdmin) {
-            $query->whereNull('deleted_at');
+        if (!$canReadAll) {
             if ($userId > 0) {
                 $query->visible($userId);
+            } else {
+                $query->securePublic();
             }
         }
 

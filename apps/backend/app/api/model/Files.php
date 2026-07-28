@@ -53,12 +53,36 @@ class Files extends Model
         return $this->belongsTo(Users::class, 'user_id');
     }
 
+    /**
+     * 可见范围：
+     * - uid>0：本人记录（不含软删除） OR 安全公开记录
+     * - uid<=0（访客）：仅安全公开记录
+     *
+     * 安全公开 = is_public=1 AND status=NORMAL AND upload_status=COMPLETED AND deleted_at IS NULL
+     */
     public function scopeVisible($query, $userId)
     {
+        if ($userId <= 0) {
+            return $query->securePublic();
+        }
         return $query->where(function ($q) use ($userId) {
-            $q->where('user_id', $userId)
-              ->whereOr('is_public', 1);
+            $q->where('user_id', $userId)->whereNull('deleted_at')
+              ->whereOr(function ($q2) {
+                  $q2->securePublic();
+              });
         });
+    }
+
+    /**
+     * 安全公开记录范围：
+     * is_public=1 AND status=NORMAL AND upload_status=COMPLETED AND deleted_at IS NULL
+     */
+    public function scopeSecurePublic($query)
+    {
+        return $query->where('is_public', 1)
+            ->where('status', self::STATUS_NORMAL)
+            ->where('upload_status', self::UPLOAD_COMPLETED)
+            ->whereNull('deleted_at');
     }
 
     public function scopeByScene($query, $scene)
@@ -140,4 +164,5 @@ class Files extends Model
 
         return $cleaned;
     }
+
 }

@@ -35,11 +35,12 @@ Route::group('files', function () {
         ->setOption('meta', ['name' => '删除文件', 'group' => '文件', 'caps' => ['files.delete', 'files.delete.all']]);
 })->middleware(JwtAuthCheck::class)->middleware(PermissionCheck::class);
 
-// batch 路由（只检查 token，能力在 Service 层检查）
+// batch 路由（检查 token + 能力，Service 层做 owner 验证）
 Route::post('files/batch', 'Storage.Upload/batch')
     ->name('files.batch')
     ->middleware(JwtAuthCheck::class)
-    ->setOption('meta', ['name' => '文件批量操作', 'group' => '文件']);
+    ->middleware(PermissionCheck::class)
+    ->setOption('meta', ['name' => '文件批量操作', 'group' => '文件', 'caps' => ['files.update', 'files.update.all', 'files.delete', 'files.delete.all']]);
 
 // users/me/files 路由（严格本人文件列表）
 Route::get('users/me/files', 'Storage.Upload/listOwn')

@@ -243,17 +243,20 @@ function extractRoleCapMatrixFromRoles(string $rolesPath): array
 // ────────────────────────────────────────────────────────────
 function extractCapsFromMigration(string $migrationSql, int $roleId): array
 {
-    // Find the INSERT for this role_id
+    // Collect from ALL matching INSERTs for this role_id (supports multiple migration files)
     $roleIdQuoted = preg_quote((string)$roleId, '/');
-    // Pattern: SELECT $roleId, c.capability FROM ( ... ) c WHERE NOT EXISTS
-    if (preg_match('/SELECT\s+' . $roleIdQuoted . '\s*,\s*c\.capability\s+FROM\s*\(([^)]+)\)\s*c/si', $migrationSql, $match)) {
-        $capBlock = $match[1];
-        preg_match_all("/'([a-zA-Z0-9_.]+)'/", $capBlock, $capMatches);
-        $caps = array_unique($capMatches[1] ?? []);
-        sort($caps);
-        return $caps;
+    $allCaps = [];
+
+    if (preg_match_all('/SELECT\s+' . $roleIdQuoted . '\s*,\s*c\.capability\s+FROM\s*\(([^)]+)\)\s*c/si', $migrationSql, $matches)) {
+        foreach ($matches[1] as $capBlock) {
+            preg_match_all("/'([a-zA-Z0-9_.]+)'/", $capBlock, $capMatches);
+            $allCaps = array_merge($allCaps, $capMatches[1] ?? []);
+        }
     }
-    return [];
+
+    $caps = array_unique($allCaps);
+    sort($caps);
+    return $caps;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -1185,6 +1188,135 @@ if ($migrationCombined !== '') {
 } else {
     echo "[SKIP] No migration file to check\n";
 }
+
+// ────────────────────────────────────────────────────────────
+//  Section 15: Supplemental Migration Assertions
+//  Specific to the current migration batch (20260728000001).
+//  Validates role anchor SIGNAL, capability counts, and
+//  that user/guest/custom roles are not touched.
+// ────────────────────────────────────────────────────────────
+echo "\n--- 15. Supplemental Migration Assertions ---\n";
+
+// Check for the specific 20260728000001 migration file
+$mig28000001path = $migrationsDir . '20260728000001.sql';
+if (file_exists($mig28000001path)) {
+    $mig28000001 = file_get_contents($mig28000001path);
+    $mig28000001NoComments = stripSqlComments($mig28000001);
+
+    // 15a. SIGNAL exists BEFORE any INSERT in the file
+    $firstInsertPos = strpos($mig28000001NoComments, 'INSERT');
+    $lastSignalPos = strrpos(substr($mig28000001NoComments, 0, $firstInsertPos ?: strlen($mig28000001NoComments)), 'SIGNAL');
+    if ($firstInsertPos !== false && $lastSignalPos !== false && $lastSignalPos < $firstInsertPos) {
+        pass("15a: SIGNAL exists before first INSERT in migration 20260728000001.sql");
+    } else {
+        fail("15a: SIGNAL not found before INSERT in 20260728000001.sql");
+    }
+
+    // 15b. Role anchor verification uses valid local variables + COUNT(*) + fail-closed IF
+    $rootAnchorValid =
+        preg_match('/DECLARE\s+v_root_ok\s+INT\s+DEFAULT\s+0\s*;/i', $mig28000001)
+        && preg_match('/COUNT\(\s*\*\s*\)\s+INTO\s+v_root_ok/i', $mig28000001)
+        && preg_match('/IF\s+v_root_ok\s+<>\s+1\s+THEN/i', $mig28000001);
+    if ($rootAnchorValid) {
+        pass("15b: Root anchor uses a valid local variable, COUNT(*) and fail-closed IF");
+    } else {
+        fail("15b: Invalid root role anchor verification in 20260728000001.sql");
+    }
+    $adminAnchorValid =
+        preg_match('/DECLARE\s+v_admin_ok\s+INT\s+DEFAULT\s+0\s*;/i', $mig28000001)
+        && preg_match('/COUNT\(\s*\*\s*\)\s+INTO\s+v_admin_ok/i', $mig28000001)
+        && preg_match('/IF\s+v_admin_ok\s+<>\s+1\s+THEN/i', $mig28000001);
+    if ($adminAnchorValid) {
+        pass("15b: Admin anchor uses a valid local variable, COUNT(*) and fail-closed IF");
+    } else {
+        fail("15b: Invalid admin role anchor verification in 20260728000001.sql");
+    }
+
+    // 15c. Verify exact caps added:
+    //     Root: files.update + files.update.all
+    //     Admin: files.update.all only
+    //     No user/guest/custom role inserts
+    // Count INSERTs for each role_id
+    $rootInsertCaps = [];
+    $adminInsertCaps = [];
+    $otherInsertCaps = [];
+
+    // Extract role_id and capability from INSERT ... SELECT patterns
+    preg_match_all("/SELECT\s+(\d+)\s*,\s*c\.capability\s+FROM\s*\([^)]+\)\s*c\s+WHERE\s+NOT\s+EXISTS/si", $mig28000001, $insertMatches);
+    foreach ($insertMatches[1] as $idx => $rid) {
+        $blockStart = strpos($mig28000001, $insertMatches[0][$idx]);
+        // Find the end of this INSERT statement (semicolon after WHERE NOT EXISTS)
+        $blockEnd = strpos($mig28000001, ';', $blockStart);
+        $blockText = substr($mig28000001, $blockStart, ($blockEnd ?: $blockStart + 500) - $blockStart);
+        preg_match_all("/'([a-zA-Z0-9_.]+)'/", $blockText, $capMatches);
+        $caps = $capMatches[1] ?? [];
+
+        if ((int)$rid === 1) {
+            $rootInsertCaps = array_merge($rootInsertCaps, $caps);
+        } elseif ((int)$rid === 2) {
+            $adminInsertCaps = array_merge($adminInsertCaps, $caps);
+        } else {
+            $otherInsertCaps = array_merge($otherInsertCaps, $caps);
+        }
+    }
+
+    // Verify root gets files.update and files.update.all
+    $rootHasUpdate = in_array('files.update', $rootInsertCaps, true);
+    $rootHasUpdateAll = in_array('files.update.all', $rootInsertCaps, true);
+    if ($rootHasUpdate && $rootHasUpdateAll) {
+        pass("15c: Root role gets files.update + files.update.all (" . count($rootInsertCaps) . " caps total)");
+    } else {
+        fail("15c: Root role missing caps: files.update=" . ($rootHasUpdate ? '1' : '0') . " files.update.all=" . ($rootHasUpdateAll ? '1' : '0'));
+    }
+
+    // Verify admin gets files.update.all (only)
+    $adminHasUpdateAll = in_array('files.update.all', $adminInsertCaps, true);
+    $adminHasOther = count($adminInsertCaps) > 1;
+    if ($adminHasUpdateAll && !$adminHasOther) {
+        pass("15c: Admin role gets files.update.all only (1 cap)");
+    } else {
+        fail("15c: Admin role caps: files.update.all=" . ($adminHasUpdateAll ? '1' : '0') . " count=" . count($adminInsertCaps));
+    }
+
+    // Verify no user/guest/custom role inserts
+    if (empty($otherInsertCaps)) {
+        pass("15c: No capabilities inserted for user/guest/custom roles");
+    } else {
+        fail("15c: Found unexpected INSERT for role IDs: " . implode(', ', array_unique($otherInsertCaps)));
+    }
+
+    // 15d. Verify roles table has 4 system roles (data.sql anchor check)
+    $roleInsertPattern = '/INSERT\s+INTO\s+`roles`.*?VALUES\s*\(/si';
+    if (preg_match($roleInsertPattern, $dataSql)) {
+        $insertPattern = '/INSERT\s+INTO\s+`roles`\s*\([^)]+\)\s*VALUES\s*((?:\([^;]+\)\s*,?\s*)+)/si';
+        if (preg_match($insertPattern, $dataSql, $match)) {
+            $valuesBlock = $match[1];
+            preg_match_all('/\((\d+)\s*,/', $valuesBlock, $roleIdMatches);
+            $roleIds = array_map('intval', $roleIdMatches[1]);
+            $systemRoleCount = count(array_intersect($roleIds, [1, 2, 3, 4]));
+            if ($systemRoleCount === 4) {
+                pass("15d: data.sql contains 4 system roles (roles table seed)");
+            } else {
+                fail("15d: data.sql contains {$systemRoleCount}/4 system roles");
+            }
+        } else {
+            fail("15d: Could not parse role INSERT VALUES block");
+        }
+    } else {
+        fail("15d: INSERT INTO roles not found in data.sql");
+    }
+} else {
+    echo "[SKIP] 20260728000001.sql not found — FILES-AUTH-002 migration not applied yet\n";
+}
+
+// 15e. Stored procedure local variables must not use user-variable syntax
+if ($migrationCombined !== '') {
+    if (!(bool)preg_match('/\bDECLARE\s+\@[a-zA-Z_]/i', $migrationCombined)) {
+        pass("15e: No invalid DECLARE @user_variable syntax in migrations");
+    } else {
+        fail("15e: Invalid DECLARE @user_variable syntax found in migrations");
+    }
+} else { echo "[SKIP] 15e\n"; }
 
 // ────────────────────────────────────────────────────────────
 //  Summary

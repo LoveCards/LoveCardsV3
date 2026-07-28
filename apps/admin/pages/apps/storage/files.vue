@@ -157,6 +157,7 @@
 
 <script setup lang="ts">
 import { useApi } from '~/lib/api';
+import type { FilesBatchMethod } from '@lovecards/sdk';
 import CommonUtils from "~/api/utils/common";
 import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
 import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
@@ -268,8 +269,8 @@ watch(viewMode, () => {
 });
 
 // 统一操作方法
-const handleBatchOp = (ids: number[], method: string) => {
-  client.files.batch({ ids, method: method as any }).then(() => {
+const handleBatchOp = (ids: number[], method: FilesBatchMethod) => {
+  client.files.batch({ ids, method }).then(() => {
     getTableData();
   });
 };
@@ -289,7 +290,7 @@ const openEditDialog = (item: any) => {
 const DeleteDialog_state = ref(false);
 const DeleteDialog_data = ref<any>({});
 const HardDeleteFun = (id: number) => {
-  client.files.batch({ ids: [id], method: 'delete' }).then(() => {
+  client.files.batch({ ids: [id], method: 'hard_delete' }).then(() => {
     DeleteDialog_state.value = false;
     getTableData();
   });
@@ -307,7 +308,7 @@ const openCleanupDialog = () => {
 };
 
 // 批量操作
-const BatchOperate = ref('');
+const BatchOperate = ref<FilesBatchMethod | ''>('');
 const BatchDialog_state = ref(false);
 const BatchDialog_operate = ref('');
 const openBatchDialog = () => {
@@ -318,6 +319,7 @@ const openBatchDialog = () => {
   }
 };
 const BatchFun = () => {
+  if (BatchOperate.value === '') return;
   handleBatchOp(tableSelected.value, BatchOperate.value);
   BatchDialog_state.value = false;
   tableSelected.value = [];

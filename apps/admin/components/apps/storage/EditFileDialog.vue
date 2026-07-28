@@ -97,7 +97,7 @@ const submit = () => {
 
 	// 公开状态变更
 	if (editIsPublic.value !== FileData.value.origin.is_public) {
-		ops.push(client.files.batch({ ids, method: 'delete' }));
+		ops.push(client.files.batch({ ids, method: 'toggle_public' }));
 	}
 
 	if (ops.length === 0) {

@@ -766,6 +766,9 @@ cd /c/Users/admin/Desktop/lovecards3/agent/worktrees/feat-db-schema-baseline/app
 | B | origin/main (legacy, FK removed) | 15 | 10/10 | Root=73, Admin=56, User=13, Guest=7 | ✅ PASS |
 | C | 2026-05-21 historical (schema only) | 12 | 10/10 | Root=73, Admin=56, User=13, Guest=7 | ✅ PASS |
 
+> **注：** FILES-AUTH-002 新增 files.update / files.update.all 后，能力计数更新为：
+> Root=75, Admin=57, User=13, Guest=7。详见 `20260728000001.sql`。
+
 **备注：** C 的 12 表包含全部 10 张运行必需表，另含 `role_permissions`、`system` 两张遗留兼容表。`good`、`images`、`permissions` 为本批次不创建的兼容/废弃表，不构成失败。
 
 **关键验证：**
