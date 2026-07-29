@@ -113,11 +113,11 @@ class Upload extends BaseController
 
         $validate = new FilesValidate();
         if (!$validate->check(['method' => $method])) {
-            return ApiResponse::createBadRequest($validate->getError());
+            throw ApiException::badRequest($validate->getError());
         }
 
         if (empty($ids) || empty($method)) {
-            return ApiResponse::createBadRequest('参数不完整');
+            throw ApiException::badRequest('参数不完整');
         }
 
         $auth = request()->auth;

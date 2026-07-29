@@ -137,12 +137,14 @@ namespace Tests\Auth {
     {
         public $status;
         public $message;
+        public $code;
         public $headers = [];
 
-        public function __construct(int $status = 200, string $message = '')
+        public function __construct(int $status = 200, string $message = '', int $code = 0)
         {
             $this->status = $status;
             $this->message = $message;
+            $this->code = $code;
         }
 
         public function header(string $name, string $value): self
@@ -246,9 +248,9 @@ namespace app\api {
             return new \Tests\Auth\Response(401, $message);
         }
 
-        public static function createForbidden(string $message): \Tests\Auth\Response
+        public static function createForbidden(string $message, $detail = null, int $code = 0): \Tests\Auth\Response
         {
-            return new \Tests\Auth\Response(403, $message);
+            return new \Tests\Auth\Response(403, $message, $code);
         }
     }
 }
@@ -521,6 +523,7 @@ namespace {
         });
         $assertSame(403, $response->status);
         $assertSame('权限不足', $response->message);
+        $assertSame(ApiException::CODE_PERMISSION_DENIED, $response->code);
     });
 
     $failures = 0;

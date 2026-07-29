@@ -1227,6 +1227,15 @@ namespace
         $assertTrue($thrown instanceof \app\api\ApiException, 'visitor listOwn 必须抛出 ApiException');
         $assertExceptionHttpStatus($thrown, 401, 'visitor listOwn 应返回 401');
     });
+
+    $test('O1: batch validation failures preserve parameter business code', static function () use ($assertTrue, $assertFalse): void {
+        $controllerCode = file_get_contents(__DIR__ . '/../../app/api/controller/Storage/Upload.php');
+        preg_match('/public function batch\(\).*?public function direct\(\)/s', $controllerCode, $matches);
+        $batchCode = $matches[0] ?? '';
+        $assertTrue(strpos($batchCode, 'throw ApiException::badRequest($validate->getError());') !== false, 'invalid batch method must throw coded bad request');
+        $assertTrue(strpos($batchCode, "throw ApiException::badRequest('参数不完整');") !== false, 'incomplete batch params must throw coded bad request');
+        $assertFalse(strpos($batchCode, 'ApiResponse::createBadRequest') !== false, 'batch must not return uncoded bad request');
+    });
 }// ════════════════════════════════════════════════════════════
 // 7. 运行器
 // ════════════════════════════════════════════════════════════
