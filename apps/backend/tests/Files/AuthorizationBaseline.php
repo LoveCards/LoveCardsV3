@@ -461,7 +461,8 @@ namespace
         public string $file_path;
         public string $file_url;
         public string $driver_path;
-        public int $upload_status;
+        /** @var int|string Mirrors the varchar column returned by the ORM. */
+        public $upload_status;
         public int $status;
         public int $is_public;
         public ?string $deleted_at;
@@ -1198,6 +1199,15 @@ namespace
         global $mockFilesDb;
         $assertTrue($result, 'owner 应能确认自己的 pending upload');
         $assertSame(\app\api\model\Files::UPLOAD_COMPLETED, $mockFilesDb[7]->upload_status, '确认后应标记 completed');
+    });
+
+    $test('N1b: confirmUpload accepts database string pending status', static function () use ($resetMockDb, $assertTrue, $assertSame): void {
+        $resetMockDb();
+        global $mockFilesDb;
+        $mockFilesDb[7]->upload_status = '0';
+        $result = \app\api\service\Storage\DirectUploadManager::confirmUpload(7, 10);
+        $assertTrue($result, 'database varchar pending status must be accepted');
+        $assertSame(\app\api\model\Files::UPLOAD_COMPLETED, $mockFilesDb[7]->upload_status, 'string pending status should become completed');
     });
 
     $test('N2: confirmUpload non-owner returns false', static function () use ($resetMockDb, $assertFalse, $assertSame): void {
