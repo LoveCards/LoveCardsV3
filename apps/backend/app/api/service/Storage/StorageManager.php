@@ -147,7 +147,7 @@ class StorageManager
 
         if (!$canReadAll) {
             if ($userId > 0) {
-                $query->visible($userId);
+                $query->visibleTo($userId);
             } else {
                 $query->securePublic();
             }
@@ -276,7 +276,7 @@ class StorageManager
 
         if (!$canReadAll) {
             if ($userId > 0) {
-                $query->visible($userId);
+                $query->visibleTo($userId);
             } else {
                 $query->securePublic();
             }
@@ -294,7 +294,7 @@ class StorageManager
 
         if (!$canReadAll) {
             if ($userId > 0) {
-                $query->visible($userId);
+                $query->visibleTo($userId);
             } else {
                 $query->securePublic();
             }

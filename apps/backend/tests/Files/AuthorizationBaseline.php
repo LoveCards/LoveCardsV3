@@ -125,10 +125,10 @@ namespace app\api\model
             return $this;
         }
 
-        public function visible(?int $userId): self
+        public function visibleTo(?int $userId): self
         {
             $this->scopeUserId = $userId;
-            $this->calls[] = ['visible', $userId];
+            $this->calls[] = ['visibleTo', $userId];
             return $this;
         }
 
@@ -1180,6 +1180,15 @@ namespace
         // non-owner=99 有 canReadAll, 可读 id=1 (owner=10)
         $file = \app\api\service\Storage\StorageManager::getFile(1, 99, true);
         $assertTrue($file !== null, 'canReadAll 时 non-owner=99 可读 id=1');
+    });
+
+    $test('M9: owner visibility scope avoids framework method collision', static function () use ($assertTrue, $assertFalse, $assertSame): void {
+        $modelCode = file_get_contents(__DIR__ . '/../../app/api/model/Files.php');
+        $serviceCode = file_get_contents(__DIR__ . '/../../app/api/service/Storage/StorageManager.php');
+        $assertTrue(strpos($modelCode, 'function scopeVisibleTo(') !== false, 'Files model must declare scopeVisibleTo');
+        $assertFalse((bool)preg_match('/function\s+scopeVisible\s*\(/', $modelCode), 'Files model must not collide with BaseQuery::visible');
+        $assertSame(3, preg_match_all('/->visibleTo\s*\(/', $serviceCode), 'all owner visibility callers must use visibleTo');
+        $assertFalse((bool)preg_match('/->visible\s*\(/', $serviceCode), 'StorageManager must not call BaseQuery::visible');
     });
 
     // N: confirmUpload owner/non-owner/missing

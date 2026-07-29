@@ -60,7 +60,7 @@ class Files extends Model
      *
      * 安全公开 = is_public=1 AND status=NORMAL AND upload_status=COMPLETED AND deleted_at IS NULL
      */
-    public function scopeVisible($query, $userId)
+    public function scopeVisibleTo($query, $userId)
     {
         if ($userId <= 0) {
             return $query->securePublic();
