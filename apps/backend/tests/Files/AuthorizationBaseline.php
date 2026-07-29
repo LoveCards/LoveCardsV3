@@ -944,7 +944,7 @@ namespace
         $assertTrue(true);
     });
 
-    $test('F4: batch 不支持的方法抛出异常', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
+    $test('F4: batch 不支持的方法抛出 400', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
         $thrown = null;
         try {
@@ -953,6 +953,7 @@ namespace
             $thrown = $e;
         }
         $assertTrue($thrown !== null, '不支持的方法应抛出异常');
+        $assertSame(400, $thrown->getHttpStatus(), '不支持的方法应为 HTTP 400');
     });
 
     // ──────────────────────────────────────────────────────
