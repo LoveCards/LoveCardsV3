@@ -175,7 +175,7 @@ class StorageManager
 
         $baseCap = $methodMap[$method] ?? null;
         if ($baseCap === null) {
-            throw new \app\api\ApiException('不支持的操作');
+            throw \app\api\ApiException::badRequest('不支持的操作');
         }
 
         $canAll = in_array($baseCap . '.all', $caps, true);
@@ -234,7 +234,7 @@ class StorageManager
                 }
                 break;
             default:
-                throw new \app\api\ApiException('不支持的操作');
+                throw \app\api\ApiException::badRequest('不支持的操作');
         }
     }
 
