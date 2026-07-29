@@ -63,7 +63,7 @@ class DirectUploadManager
             return false;
         }
 
-        if ($fileModel->upload_status !== Files::UPLOAD_PENDING) {
+        if ((int) $fileModel->upload_status !== Files::UPLOAD_PENDING) {
             return false;
         }
 
