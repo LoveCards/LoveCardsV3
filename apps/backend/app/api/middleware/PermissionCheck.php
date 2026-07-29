@@ -3,6 +3,7 @@
 namespace app\api\middleware;
 
 use app\api\ApiResponse;
+use app\api\ApiException;
 
 class PermissionCheck
 {
@@ -25,7 +26,11 @@ class PermissionCheck
         }
 
         if (!$request->auth->hasAnyCapability($requiredCaps)) {
-            return ApiResponse::createForbidden('权限不足');
+            return ApiResponse::createForbidden(
+                '权限不足',
+                null,
+                ApiException::CODE_PERMISSION_DENIED
+            );
         }
 
         return $next($request);
