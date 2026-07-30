@@ -5,8 +5,11 @@ namespace app\api\controller\Storage;
 use think\facade\Request;
 use app\api\ApiResponse;
 use app\api\ApiException;
-use app\api\service\Storage\StorageManager;
-use app\api\service\Storage\DirectUploadManager;
+use app\api\application\Files\UploadFile;
+use app\api\application\Files\ListFiles;
+use app\api\application\Files\GetFile;
+use app\api\application\Files\BatchOperateFiles;
+use app\api\application\Files\DirectUpload;
 use app\api\service\Storage\ChannelManager;
 use app\api\service\Storage\PathGenerator;
 use app\api\validate\Files as FilesValidate;
@@ -14,6 +17,26 @@ use app\api\controller\BaseController;
 
 class Upload extends BaseController
 {
+    private UploadFile $uploadFile;
+    private ListFiles $listFiles;
+    private GetFile $getFile;
+    private BatchOperateFiles $batchOperate;
+    private DirectUpload $directUpload;
+
+    public function __construct(
+        UploadFile $uploadFile,
+        ListFiles $listFiles,
+        GetFile $getFile,
+        BatchOperateFiles $batchOperate,
+        DirectUpload $directUpload
+    ) {
+        $this->uploadFile = $uploadFile;
+        $this->listFiles = $listFiles;
+        $this->getFile = $getFile;
+        $this->batchOperate = $batchOperate;
+        $this->directUpload = $directUpload;
+    }
+
     public function upload()
     {
         $file = request()->file('file');
@@ -22,10 +45,6 @@ class Upload extends BaseController
         }
 
         $userId = request()->auth->uid();
-
-        if (!StorageManager::checkRateLimit((string) $userId)) {
-            throw ApiException::tooMany('请求过于频繁');
-        }
 
         $scene = Request::param('scene', 'direct');
         $refType = Request::param('ref_type', null);
@@ -41,22 +60,8 @@ class Upload extends BaseController
             throw ApiException::badRequest($validate->getError());
         }
 
-        $status = 0;
-        $uploadStatus = 1;
-
-        $path = PathGenerator::generate(ChannelManager::getDefaultChannel(), $file->getOriginalName());
-
-        $result = StorageManager::upload($file, $path, [
-            'user_id' => $userId,
-            'scene' => $scene,
-            'ref_type' => $refType,
-            'ref_id' => $refId,
-            'is_public' => $isPublic,
-            'status' => $status,
-            'upload_status' => $uploadStatus,
-        ]);
-
-        return ApiResponse::createOk($result->toArray());
+        $result = $this->uploadFile->execute($file, $userId, $scene, $refType, $refId, $isPublic);
+        return ApiResponse::createOk($result);
     }
 
     public function list()
@@ -71,7 +76,7 @@ class Upload extends BaseController
         $userId = request()->auth->uid();
         $canReadAll = request()->auth->hasAnyCapability(['files.read.all']);
 
-        $result = StorageManager::list($params, $userId, $canReadAll);
+        $result = $this->listFiles->execute($params, $userId, $canReadAll);
         return ApiResponse::createOk($result);
     }
 
@@ -88,7 +93,7 @@ class Upload extends BaseController
         $params['ref_type'] = Request::param('ref_type', null);
         $params['ref_id'] = Request::param('ref_id', null);
 
-        $result = StorageManager::listOwn($params, $userId);
+        $result = $this->listFiles->executeOwn($params, $userId);
         return ApiResponse::createOk($result);
     }
 
@@ -98,7 +103,7 @@ class Upload extends BaseController
         $userId = request()->auth->uid();
         $canReadAll = request()->auth->hasAnyCapability(['files.read.all']);
 
-        $file = StorageManager::getFile($fileId, $userId, $canReadAll);
+        $file = $this->getFile->execute($fileId, $userId, $canReadAll);
         if (!$file) {
             throw ApiException::notFound('文件不存在');
         }
@@ -121,7 +126,7 @@ class Upload extends BaseController
         }
 
         $auth = request()->auth;
-        StorageManager::batchOperate($method, $ids, $auth->uid(), $auth->capabilities());
+        $this->batchOperate->execute($method, $ids, $auth->uid(), $auth->capabilities());
         return ApiResponse::createNoContent();
     }
 
@@ -129,17 +134,14 @@ class Upload extends BaseController
     {
         $userId = request()->auth->uid();
 
-        if (!StorageManager::checkRateLimit((string) $userId)) {
-            throw ApiException::tooMany('请求过于频繁');
-        }
-
         $filename = Request::param('filename', '');
         $size = (int) Request::param('size', 0);
         $mime = Request::param('mime', '');
 
-        $path = PathGenerator::generate(ChannelManager::getDefaultChannel(), $filename);
+        $defaultChannel = ChannelManager::getDefaultChannel();
+        $path = PathGenerator::generate($defaultChannel, $filename);
 
-        $result = DirectUploadManager::createPendingRecord($filename, $mime, $size, $path, $userId);
+        $result = $this->directUpload->createPending($filename, $mime, $size, $path, $userId);
         return ApiResponse::createOk($result);
     }
 
@@ -148,7 +150,7 @@ class Upload extends BaseController
         $recordId = (int) ($id ?: Request::param('record_id', 0));
         $userId = request()->auth->uid();
 
-        $result = DirectUploadManager::confirmUpload($recordId, $userId);
+        $result = $this->directUpload->confirm($recordId, $userId);
         if (!$result) {
             throw ApiException::notFound('确认失败');
         }
@@ -158,14 +160,14 @@ class Upload extends BaseController
     public function cleanup()
     {
         $limit = (int) Request::param('limit', 100);
-        $cleaned = DirectUploadManager::cleanupExpired($limit);
+        $cleaned = $this->directUpload->cleanup($limit);
         return ApiResponse::createOk(['cleaned' => count($cleaned)]);
     }
 
     public function allDelete($id)
     {
         $auth = request()->auth;
-        StorageManager::batchOperate('hard_delete', [(int) $id], $auth->uid(), $auth->capabilities());
+        $this->batchOperate->execute('hard_delete', [(int) $id], $auth->uid(), $auth->capabilities());
         return ApiResponse::createNoContent();
     }
 }

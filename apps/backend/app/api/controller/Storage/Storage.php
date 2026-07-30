@@ -6,13 +6,20 @@ use think\facade\Request;
 
 use app\common\service\Config as ConfigService;
 use app\api\service\Storage\StorageFactory;
-use app\api\service\Storage\StorageManager;
+use app\api\application\Files\ChannelStats;
 use app\api\service\Storage\ChannelTester;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
 
 class Storage extends BaseController
 {
+    private ChannelStats $channelStats;
+
+    public function __construct(ChannelStats $channelStats)
+    {
+        $this->channelStats = $channelStats;
+    }
+
     public function meta(string $type)
     {
         $driverClass = StorageFactory::getDriverClass($type);
@@ -130,6 +137,6 @@ class Storage extends BaseController
 
     public function channelStats()
     {
-        return ApiResponse::createOk(StorageManager::channelStats());
+        return ApiResponse::createOk($this->channelStats->execute());
     }
 }
