@@ -234,6 +234,7 @@ await test('PATCH /users/me → users.updateMe()', async () => {
 
 await test('POST /users/me/password → users.updatePassword()', async () => {
   await adminClient.users.updatePassword({ password: '123456' })
+  await adminClient.users.updatePassword({ password: ADMIN_PASSWORD })
   return true
 })
 
@@ -256,6 +257,9 @@ await test('POST /session/logout → session.logout()', async () => {
   const loginResult = await lc.session.login({ account: ADMIN_ACCOUNT, password: ADMIN_PASSWORD })
   const logoutClient = makeClient(loginResult.token)
   await logoutClient.session.logout()
+  const refreshed = await lc.session.login({ account: ADMIN_ACCOUNT, password: ADMIN_PASSWORD })
+  adminToken = refreshed.token
+  adminClient = makeClient(adminToken)
   return true
 })
 

@@ -136,7 +136,7 @@ class ThemeEngine
      */
     public static function getActive(): array
     {
-        $activeTheme = ConfigService::get('frontend.active_theme', 'default');
+        $activeTheme = ConfigService::get('frontend.active_theme', 'default-ssr');
         $themePath = self::getThemePath($activeTheme);
 
         if ($themePath === null) {
@@ -520,7 +520,7 @@ class ThemeEngine
                 $params['where'] = ['pid' => (int) $cardId];
                 return \app\api\service\Content\Comments::listAll($params);
             case 'system.theme':
-                $config = self::getThemeConfig(ConfigService::get('frontend.active_theme', 'default'));
+                $config = self::getThemeConfig(ConfigService::get('frontend.active_theme', 'default-ssr'));
                 return ['config' => $config];
             default:
                 return null;
@@ -540,7 +540,7 @@ class ThemeEngine
         }
 
         $dirs = scandir($themeDir);
-        $activeTheme = ConfigService::get('frontend.active_theme', 'default');
+        $activeTheme = ConfigService::get('frontend.active_theme', 'default-ssr');
 
         foreach ($dirs as $dir) {
             if ($dir === '.' || $dir === '..') {
@@ -614,7 +614,7 @@ class ThemeEngine
      */
     public static function updateThemeConfig(array $newValues): bool
     {
-        $activeTheme = ConfigService::get('frontend.active_theme', 'default');
+        $activeTheme = ConfigService::get('frontend.active_theme', 'default-ssr');
         $themePath = self::getThemePath($activeTheme);
         $manifest = $themePath ? $themePath . '/theme.json' : null;
 
@@ -648,7 +648,7 @@ class ThemeEngine
      */
     public static function freezeConfig(): bool
     {
-        $activeTheme = ConfigService::get('frontend.active_theme', 'default');
+        $activeTheme = ConfigService::get('frontend.active_theme', 'default-ssr');
         $themePath = self::getThemePath($activeTheme);
 
         if ($themePath === null) {
@@ -867,7 +867,7 @@ class ThemeEngine
             throw new \app\api\ApiException('不能删除默认主题');
         }
 
-        $activeTheme = ConfigService::get('frontend.active_theme', 'default');
+        $activeTheme = ConfigService::get('frontend.active_theme', 'default-ssr');
         if ($name === $activeTheme) {
             throw new \app\api\ApiException('不能删除当前活跃主题');
         }

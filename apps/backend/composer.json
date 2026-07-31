@@ -21,13 +21,13 @@
     ],
     "require": {
         "php": ">=8.1 <9.0",
-        "topthink/framework": "^6.0.0",
-        "topthink/think-orm": "^2.0",
+        "topthink/framework": "^8.1",
+        "topthink/think-orm": "^3.0",
         "topthink/think-view": "^1.0",
         "topthink/think-multi-app": "^1.0",
         "yzh52521/think-mail": "^2.0",
         "topthink/think-filesystem":"^1.0",
-        "firebase/php-jwt": "^6.4",
+        "firebase/php-jwt": "^7.0",
         "qiniu/php-sdk": "^7.14",
         "aliyuncs/oss-sdk-php": "^2.7",
         "qcloud/cos-sdk-v5": "^2.6"
@@ -39,9 +39,6 @@
     "autoload": {
         "psr-4": {
             "app\\": "app"
-        },
-        "psr-0": {
-            "": "extend/"
         }
     },
     "config": {

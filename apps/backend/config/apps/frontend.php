@@ -3,7 +3,7 @@
 return [
     'active_theme' => [
         'type'        => 'string',
-        'default'     => 'default',
+        'default'     => 'default-ssr',
         'description' => '当前活跃主题',
     ],
     'theme_config' => [

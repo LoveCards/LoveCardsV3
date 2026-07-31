@@ -167,8 +167,8 @@ CREATE TABLE IF NOT EXISTS `cards` (
   `views` INT(11) NOT NULL DEFAULT 0,
   `comments` INT(11) NOT NULL DEFAULT 0,
   `post_ip` VARCHAR(39) DEFAULT NULL,
-  `created_at` TIMESTAMP NOT NULL,
-  `updated_at` TIMESTAMP NOT NULL,
+  `created_at` TIMESTAMP NULL DEFAULT NULL,
+  `updated_at` TIMESTAMP NULL DEFAULT NULL,
   `deleted_at` TIMESTAMP NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -189,8 +189,8 @@ CREATE TABLE IF NOT EXISTS `comments` (
   `content` TEXT,
   `goods` INT(11) NOT NULL DEFAULT 0,
   `post_ip` VARCHAR(39) DEFAULT NULL,
-  `created_at` TIMESTAMP NOT NULL,
-  `updated_at` TIMESTAMP NOT NULL,
+  `created_at` TIMESTAMP NULL DEFAULT NULL,
+  `updated_at` TIMESTAMP NULL DEFAULT NULL,
   `deleted_at` TIMESTAMP NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -221,7 +221,7 @@ CREATE TABLE IF NOT EXISTS `tags_map` (
   `pid` INT(11) NOT NULL,
   `tag_id` INT(11) NOT NULL,
   `status` INT(11) NOT NULL DEFAULT 0,
-  `created_at` TIMESTAMP NOT NULL,
+  `created_at` TIMESTAMP NULL DEFAULT NULL,
   `deleted_at` TIMESTAMP NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
@@ -243,7 +243,7 @@ CREATE TABLE IF NOT EXISTS `good` (
   `pid` INT(11) NOT NULL COMMENT '条目ID',
   `uid` INT(11) NOT NULL,
   `ip` VARCHAR(32) NOT NULL COMMENT '发布IP',
-  `created_at` TIMESTAMP NOT NULL COMMENT '发布时间',
+  `created_at` TIMESTAMP NULL DEFAULT NULL COMMENT '发布时间',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -368,7 +368,7 @@ CREATE TABLE IF NOT EXISTS `role_permissions` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `role_id` INT(11) NOT NULL COMMENT '角色ID',
   `permission_id` INT(11) NOT NULL COMMENT '权限ID',
-  `created_at` TIMESTAMP NOT NULL,
+  `created_at` TIMESTAMP NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `role_permission` (`role_id`, `permission_id`),
   KEY `role_id` (`role_id`),

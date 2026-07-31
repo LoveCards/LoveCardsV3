@@ -2,6 +2,8 @@
 
 $root = dirname(__DIR__, 2);
 $route = file_get_contents($root . '/app/api/route/theme.php');
+$themeBoot = file_get_contents($root . '/app/frontend/middleware/ThemeBoot.php');
+$frontendConfig = require $root . '/config/apps/frontend.php';
 $sdk = file_get_contents(dirname($root, 2) . '/packages/sdk/src/resources/theme.ts');
 $tests = [];
 
@@ -28,6 +30,17 @@ $tests['PUT theme/config remains protected'] = static function () use ($route): 
 $tests['SDK compatibility methods retain the same path'] = static function () use ($sdk): void {
     if (preg_match_all("/_get<ThemeConfigData>\\(['\"]\\/theme\\/config['\"]\\)/", $sdk) !== 2) {
         throw new RuntimeException('SDK config/publicConfig 路径发生变化');
+    }
+};
+$tests['Theme middleware bypasses the system installer'] = static function () use ($themeBoot): void {
+    if (strpos($themeBoot, "'/system'") === false) {
+        throw new RuntimeException('ThemeBoot must not intercept /system installer routes');
+    }
+};
+$tests['default active theme exists in the release'] = static function () use ($root, $frontendConfig): void {
+    $theme = $frontendConfig['active_theme']['default'] ?? '';
+    if ($theme === '' || !is_file($root . '/public/theme/' . $theme . '/theme.json')) {
+        throw new RuntimeException('Configured default theme is missing from public/theme');
     }
 };
 

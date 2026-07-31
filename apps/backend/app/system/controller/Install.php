@@ -16,20 +16,10 @@ use app\system\utils\Database;
 use app\system\utils\Environment;
 use app\system\utils\Rsa;
 
-use jwt\Jwt;
+use app\common\infra\Jwt;
 
 class Install
 {
-
-    public function __construct()
-    {
-        // 检查安装锁：文件锁存在则说明已安装完成
-        // 此检查只能阻止完全安装后的访问，不能阻止首次安装流程
-        // （PostDbConfig、PostCreateRsa 在锁创建之前执行）
-        if (Common::CheckInstallLock()) {
-            return Export::Create(null, 500, '勿重复安装');
-        }
-    }
 
     private function getHttpData($key = '', $url = '', $heade = [], $time = 3600): string
     {

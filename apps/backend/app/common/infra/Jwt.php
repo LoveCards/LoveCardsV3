@@ -38,7 +38,7 @@ class Jwt
         $publicKey = file_get_contents(app()->getRootPath() . $jwt_config['publicKey']);
 
         try {
-            $decoded = FBJWT::decode($token, new Key($publicKey, $jwt_config['alg']), [$jwt_config['alg']]);
+            $decoded = FBJWT::decode($token, new Key($publicKey, $jwt_config['alg']));
             $data = (array) $decoded->data;
             return $data;
         } catch (ExpiredException $e) {
@@ -91,7 +91,7 @@ class Jwt
 
         try {
             $token = FBJWT::encode($payload, $privateKey, $jwt_config['alg']);
-            $decoded = FBJWT::decode($token, new Key($publicKey, $jwt_config['alg']), [$jwt_config['alg']]);
+            $decoded = FBJWT::decode($token, new Key($publicKey, $jwt_config['alg']));
             if ($decoded->Test == $payload['Test']) {
                 return true;
             }

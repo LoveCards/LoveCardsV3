@@ -129,6 +129,8 @@ if ($installCode === false) {
     fail("Failed to read Install.php");
     exit(1);
 }
+$exportCode = (string) file_get_contents($baseDir . '/app/system/utils/Export.php');
+$jwtCode = (string) file_get_contents($baseDir . '/app/common/infra/Jwt.php');
 
 // Extract PostInstallLock() method body first to check lock order
 $postInstallLockBody = '';
@@ -222,12 +224,44 @@ if ($dataSql === false) {
     } else {
         pass("data.sql does not contain fk_role_permissions_permission");
     }
+
+    if (preg_match('/`\w+`\s+TIMESTAMP\s+NOT\s+NULL(?!\s+DEFAULT)/i', stripSqlComments($dataSql))) {
+        fail("data.sql contains TIMESTAMP NOT NULL without an explicit default");
+    } else {
+        pass("data.sql timestamp defaults are explicit and MySQL 5.7 strict-mode safe");
+    }
 }
 
 // ────────────────────────────────────────────────────────────
 //  8. PHP 支持契约一致性
 // ────────────────────────────────────────────────────────────
 echo "\n--- 8. PHP support contract ---\n";
+
+if (preg_match('/public\s+function\s+__construct\s*\([^)]*\).*?Export::Create/s', $installCode)) {
+    fail("Install constructor attempts to return an HTTP response");
+} else {
+    pass("Install constructor does not contain an ineffective response guard");
+}
+if (preg_match('/public\s+static\s+function\s+Create\s*\(/', $exportCode)) {
+    pass("Installer Export::Create response helper exists");
+} else {
+    fail("Installer calls missing Export::Create response helper");
+}
+if (file_exists($baseDir . '/lock.txt')) {
+    fail("Release source contains a default install lock");
+} else {
+    pass("Release source does not ship an install lock");
+}
+if (strpos($installCode, 'use app\\common\\infra\\Jwt;') !== false) {
+    pass("Installer uses the current JWT implementation");
+} else {
+    fail("Installer references a missing legacy JWT class");
+}
+if (strpos($jwtCode, '[$jwt_config[\'alg\']]') === false) {
+    pass("JWT decode calls match the JWT 7 method signature");
+} else {
+    fail("JWT decode still passes the removed JWT 6 algorithm argument");
+}
 
 $composer = json_decode((string) file_get_contents($baseDir . '/composer.json'), true);
 $systemConfig = (string) file_get_contents($baseDir . '/config/system.php');

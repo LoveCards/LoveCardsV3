@@ -1,16 +1,16 @@
 # SDK Endpoint Test Report
 
-> Generated: 2026-06-01T15:22:19.565Z
+> Generated: 2026-07-31T10:04:29.288Z
 
 ## Summary
 
 | Metric | Count |
 |--------|-------|
-| Passed | 104 |
+| Passed | 105 |
 | Failed | 0 |
-| Skipped | 10 |
-| Total | 114 |
-| Pass Rate | 91.2% |
+| Skipped | 11 |
+| Total | 116 |
+| Pass Rate | 90.5% |
 
 ## Phase 0: Bootstrap (5/5)
 
@@ -22,7 +22,7 @@
 | 4 | cards.list() → collect cardId | ✅ PASS | - |
 | 5 | tags.list() → collect tagId | ✅ PASS | - |
 
-## Phase 1: Public Endpoints (9/12)
+## Phase 1: Public Endpoints (10/14)
 
 | # | Test | Status | Detail |
 |---|------|--------|--------|
@@ -33,11 +33,13 @@
 | 5 | GET /cards/search with search_keys → cards.search() | ✅ PASS | - |
 | 6 | GET /cards/:id/comments → comments.cardList() | ⏭️ SKIP | - |
 | 7 | GET /tags → tags.list() | ✅ PASS | - |
-| 8 | GET /tags/:id → tags.get() | ✅ PASS | - |
+| 8 | GET /tags/:id → tags.get() | ⏭️ SKIP | - |
 | 9 | GET /captcha/config → captcha.config() | ✅ PASS | - |
 | 10 | GET /theme/config → theme.publicConfig() | ✅ PASS | - |
-| 11 | POST /session/captcha → session.captcha() | ✅ PASS | - |
-| 12 | GET /comments/:id → comments.get() | ⏭️ SKIP | - |
+| 11 | GET /tags → theme.tags() (compat proxy) | ✅ PASS | - |
+| 12 | theme.tags() returns same shape as tags.list() | ✅ PASS | - |
+| 13 | POST /session/captcha → session.captcha() | ✅ PASS | - |
+| 14 | GET /comments/:id → comments.get() | ⏭️ SKIP | - |
 
 ## Phase 2: Auth-Only (admin) (7/7)
 
@@ -135,7 +137,7 @@
 | 4 | POST /comments/batch → comments.batch(approve) | ✅ PASS | - |
 | 5 | POST /tags/batch → tags.batch(approve) | ✅ PASS | - |
 | 6 | POST /users/batch → users.batch(approve) | ✅ PASS | - |
-| 7 | POST /files/batch → files.batch(delete) | ✅ PASS | - |
+| 7 | POST /files/batch → files.batch(hard_delete) | ✅ PASS | - |
 | 8 | batch empty ids → should 400 | ✅ PASS | - |
 | 9 | batch invalid method → should 400 | ✅ PASS | - |
 
