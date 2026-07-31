@@ -16,7 +16,7 @@ scripts        跨 workspace 编排和架构检查
 
 - Node.js 22 或更高版本
 - npm 11 或更高版本
-- PHP 7.2.5 或更高版本及 Composer（后端）
+- PHP 8.1–8.x 及 Composer（后端）
 
 首次安装统一在仓库根目录运行：
 

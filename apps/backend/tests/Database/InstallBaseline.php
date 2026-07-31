@@ -225,6 +225,34 @@ if ($dataSql === false) {
 }
 
 // ────────────────────────────────────────────────────────────
+//  8. PHP 支持契约一致性
+// ────────────────────────────────────────────────────────────
+echo "\n--- 8. PHP support contract ---\n";
+
+$composer = json_decode((string) file_get_contents($baseDir . '/composer.json'), true);
+$systemConfig = (string) file_get_contents($baseDir . '/config/system.php');
+$installCode = (string) file_get_contents($baseDir . '/app/system/controller/Install.php');
+$versionCode = (string) file_get_contents($baseDir . '/app/api/service/System/VersionService.php');
+$environmentCode = (string) file_get_contents($baseDir . '/app/system/utils/Environment.php');
+
+if (($composer['require']['php'] ?? null) === '>=8.1 <9.0') {
+    pass('Composer requires PHP >=8.1 <9.0');
+} else {
+    fail('Composer PHP requirement is inconsistent');
+}
+foreach ([$systemConfig, $installCode, $versionCode] as $source) {
+    if (strpos($source, '8.1.0') === false || strpos($source, '9.0.0') === false) {
+        fail('Runtime PHP support bounds are inconsistent');
+        break;
+    }
+}
+if (strpos($environmentCode, 'version_compare') !== false) {
+    pass('Installer compares PHP versions with version_compare');
+} else {
+    fail('Installer does not use version_compare');
+}
+
+// ────────────────────────────────────────────────────────────
 //  Summary
 // ────────────────────────────────────────────────────────────
 echo "\n=== Summary ===\n";

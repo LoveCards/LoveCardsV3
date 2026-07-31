@@ -61,8 +61,8 @@ class Install
 
         $data = VersionService::public();
         $info = VersionService::info();
-        $data['php_min'] = $info['php_min'] ?? '7.2.5';
-        $data['php_max'] = $info['php_max'] ?? '8.0.99';
+        $data['php_min'] = $info['php_min'] ?? '8.1.0';
+        $data['php_max'] = $info['php_max'] ?? '9.0.0';
         $data['mysql_min'] = $info['mysql_min'] ?? '5.7';
         $data['mysql_max'] = $info['mysql_max'] ?? '9999';
         $data['GithubInfo'] = json_decode($latestInfo, true);

@@ -113,7 +113,7 @@ LoveCards 的成长离不开社区的力量 👏。目前该项目主要由一�
 #### 环境要求
 
 -   Web 服务器: Nginx / Apache
--   PHP: 8.0+
+-   PHP: 8.1–8.x
 -   数据库: MySQL5.7+
 -   依赖管理: Composer
 -   缓存 (可选): Redis
