@@ -37,3 +37,11 @@ jobs:
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: composer test
       - run: find app config route -name '*.php' -print0 | xargs -0 -n1 php -l
+
+  backend-gate:
+    name: backend
+    needs: backend
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.backend.result }}" = "success"
