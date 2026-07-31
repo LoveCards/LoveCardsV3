@@ -29,13 +29,23 @@ class ThemeManager extends BaseController
             throw ApiException::badRequest('请上传 ZIP 文件');
         }
 
+        if ($file->getSize() > ThemeEngine::MAX_THEME_ZIP_BYTES) {
+            throw ApiException::badRequest('ZIP 文件过大');
+        }
+
         $info = $file->move(runtime_path() . 'theme_upload');
         if (!$info) {
             throw ApiException::badRequest('文件上传失败');
         }
 
-        $result = ThemeEngine::installTheme($info->getRealPath());
-        return ApiResponse::createOk($result);
+        $zipPath = $info->getRealPath();
+        try {
+            return ApiResponse::createOk(ThemeEngine::installTheme($zipPath));
+        } finally {
+            if (is_file($zipPath)) {
+                @unlink($zipPath);
+            }
+        }
     }
 
     /**

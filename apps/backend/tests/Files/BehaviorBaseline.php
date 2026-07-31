@@ -556,6 +556,23 @@ namespace
         );
     });
 
+    $test('E1: Storage controllers preserve BaseController initialization', static function () use ($assertTrue): void {
+        $root = dirname(__DIR__, 2) . '/app/api/controller/Storage/';
+        foreach (['Storage.php', 'Upload.php'] as $file) {
+            $source = file_get_contents($root . $file);
+            $assertTrue(strpos($source, 'parent::__construct();') !== false, $file . ' 必须调用父构造函数');
+        }
+    });
+
+    $test('E2: Files Application layer has no framework or legacy Service dependency', static function () use ($assertTrue): void {
+        $directory = dirname(__DIR__, 2) . '/app/api/application/Files/';
+        foreach (glob($directory . '*.php') as $file) {
+            $source = file_get_contents($file);
+            $assertTrue(strpos($source, 'think\\') === false, basename($file) . ' 不得依赖 ThinkPHP');
+            $assertTrue(strpos($source, 'app\\api\\service\\') === false, basename($file) . ' 不得依赖旧 Storage Service');
+        }
+    });
+
     // ──────────────────────────────────────────────────────
     // 组 E：认证守卫（规格注释 — 不可执行）
     // ──────────────────────────────────────────────────────

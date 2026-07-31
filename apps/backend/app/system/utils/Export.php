@@ -8,6 +8,15 @@ use think\Response;
 class Export extends Facade
 {
 
+    public static function Create($data, int $code = 200, string $error = null, string $type = 'json'): Response
+    {
+        $payload = $error !== null
+            ? ['error' => $error, 'detail' => $data ?: []]
+            : ($data ?? []);
+
+        return self::setHeader(Response::create($payload, $type)->code($code));
+    }
+
     public static function setHeader($object, $context = null)
     {
         $data = array(

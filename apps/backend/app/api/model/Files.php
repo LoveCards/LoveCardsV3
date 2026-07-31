@@ -4,6 +4,7 @@ namespace app\api\model;
 
 use think\Model;
 use think\model\concern\SoftDelete;
+use app\api\application\Files\FileConstants;
 
 class Files extends Model
 {
@@ -19,6 +20,17 @@ class Files extends Model
 
     protected $hidden = ['deleted_at', 'driver_path'];
 
+    // 兼容别名：指向 Application 层规范化常量
+    const SCENE_CARD = FileConstants::SCENE_CARD;
+    const SCENE_COMMENT = FileConstants::SCENE_COMMENT;
+    const SCENE_AVATAR = FileConstants::SCENE_AVATAR;
+    const SCENE_DIRECT = FileConstants::SCENE_DIRECT;
+    const STATUS_NORMAL = FileConstants::STATUS_NORMAL;
+    const STATUS_BANNED = FileConstants::STATUS_BANNED;
+    const UPLOAD_PENDING = FileConstants::UPLOAD_PENDING;
+    const UPLOAD_COMPLETED = FileConstants::UPLOAD_COMPLETED;
+    const UPLOAD_FAILED = FileConstants::UPLOAD_FAILED;
+
     public function scopeByHash($query, string $hash)
     {
         return $query->where('hash', $hash);
@@ -33,20 +45,6 @@ class Files extends Model
     {
         return bin2hex(random_bytes(8));
     }
-
-    const SCENE_CARD = 'card';
-    const SCENE_COMMENT = 'comment';
-    const SCENE_AVATAR = 'avatar';
-    const SCENE_DIRECT = 'direct';
-
-    // 审核状态（status 字段）
-    const STATUS_NORMAL = 0;           // 正常
-    const STATUS_BANNED = 1;           // 封禁
-
-    // 上传状态（upload_status 字段）
-    const UPLOAD_PENDING = 0;          // 上传中
-    const UPLOAD_COMPLETED = 1;        // 上传完成
-    const UPLOAD_FAILED = 2;           // 上传失败
 
     public function user()
     {

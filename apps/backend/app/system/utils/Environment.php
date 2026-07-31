@@ -20,7 +20,11 @@ class Environment
     {
         $requirements = VersionService::requirements();
         $data = [
-            'php' => self::EStruct(phpversion(), (phpversion() >= $requirements['php']['min'] && phpversion() < $requirements['php']['max'])),
+            'php' => self::EStruct(
+                phpversion(),
+                version_compare(phpversion(), $requirements['php']['min'], '>=')
+                    && version_compare(phpversion(), $requirements['php']['max'], '<')
+            ),
             'pdo_mysql' => self::EStruct(-1, extension_loaded('pdo')),
             'openssl' => self::EStruct(-1, extension_loaded('openssl')),
         ];

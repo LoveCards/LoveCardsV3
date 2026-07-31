@@ -1,6 +1,6 @@
 import { createClient, isApiError } from '../dist/lovecards.es.js'
 
-export const BASE_URL = 'http://127.0.0.1:8001/api'
+export const BASE_URL = process.env.LOVECARDS_SDK_TEST_BASE_URL
 
 let passed = 0
 let failed = 0
