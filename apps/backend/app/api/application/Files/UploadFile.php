@@ -2,7 +2,6 @@
 
 namespace app\api\application\Files;
 
-use think\file\UploadedFile;
 use app\api\ApiException;
 
 /**
@@ -33,14 +32,14 @@ final class UploadFile
     /**
      * @return array 上传结果（兼容 StorageResult::toArray 格式）
      */
-    public function execute(UploadedFile $file, int $userId, string $scene, ?string $refType, ?int $refId, int $isPublic): array
+    public function execute(object $file, int $userId, string $scene, ?string $refType, ?int $refId, int $isPublic): array
     {
         if (!$this->limiter->checkUploadRate((string) $userId)) {
             throw ApiException::tooMany('请求过于频繁');
         }
 
         $defaultChannel = $this->channels->getDefaultChannel();
-        $path = \app\api\service\Storage\PathGenerator::generate($defaultChannel, $file->getOriginalName());
+        $path = $this->channels->generatePath($file->getOriginalName());
 
         $result = $this->driver->uploadToDefault($file, $path);
 
@@ -52,18 +51,19 @@ final class UploadFile
             'scene' => $scene,
             'ref_type' => $refType,
             'ref_id' => $refId,
-            'original_name' => $result->originalName,
-            'file_path' => $result->path,
-            'file_url' => $result->url,
-            'file_size' => $result->size,
-            'file_ext' => strtolower(pathinfo($result->originalName, PATHINFO_EXTENSION)),
-            'mime_type' => $result->mimeType,
-            'driver_path' => $result->driverPath,
+            'original_name' => $result['original_name'],
+            'file_path' => $result['path'],
+            'file_url' => $result['url'],
+            'file_size' => $result['size'],
+            'file_ext' => strtolower(pathinfo($result['original_name'], PATHINFO_EXTENSION)),
+            'mime_type' => $result['mime_type'],
+            'driver_path' => $result['driver_path'],
             'status' => FileConstants::STATUS_NORMAL,
             'upload_status' => FileConstants::UPLOAD_COMPLETED,
         ]);
 
-        $result->id = $id;
-        return $result->toArray();
+        $result['id'] = $id;
+        unset($result['driver_path']);
+        return $result;
     }
 }

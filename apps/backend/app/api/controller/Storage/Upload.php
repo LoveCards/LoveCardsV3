@@ -10,8 +10,6 @@ use app\api\application\Files\ListFiles;
 use app\api\application\Files\GetFile;
 use app\api\application\Files\BatchOperateFiles;
 use app\api\application\Files\DirectUpload;
-use app\api\service\Storage\ChannelManager;
-use app\api\service\Storage\PathGenerator;
 use app\api\validate\Files as FilesValidate;
 use app\api\controller\BaseController;
 
@@ -30,6 +28,7 @@ class Upload extends BaseController
         BatchOperateFiles $batchOperate,
         DirectUpload $directUpload
     ) {
+        parent::__construct();
         $this->uploadFile = $uploadFile;
         $this->listFiles = $listFiles;
         $this->getFile = $getFile;
@@ -138,10 +137,7 @@ class Upload extends BaseController
         $size = (int) Request::param('size', 0);
         $mime = Request::param('mime', '');
 
-        $defaultChannel = ChannelManager::getDefaultChannel();
-        $path = PathGenerator::generate($defaultChannel, $filename);
-
-        $result = $this->directUpload->createPending($filename, $mime, $size, $path, $userId);
+        $result = $this->directUpload->createPending($filename, $mime, $size, $userId);
         return ApiResponse::createOk($result);
     }
 

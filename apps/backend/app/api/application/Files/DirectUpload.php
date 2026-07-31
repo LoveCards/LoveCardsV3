@@ -33,7 +33,7 @@ final class DirectUpload
      *
      * @return array 包含 record_id、upload_url、method、headers、form_data、expire
      */
-    public function createPending(string $filename, string $mime, int $size, string $path, int $userId): array
+    public function createPending(string $filename, string $mime, int $size, int $userId): array
     {
         if (!$this->limiter->checkUploadRate((string) $userId)) {
             throw ApiException::tooMany('请求过于频繁');
@@ -41,6 +41,7 @@ final class DirectUpload
 
         $defaultChannel = $this->channels->getDefaultChannel();
         $channelSlug = $defaultChannel['slug'];
+        $path = $this->channels->generatePath($filename);
 
         if (!$this->driver->supportsDirectUpload($channelSlug)) {
             throw new ApiException('该渠道不支持直传');
@@ -71,11 +72,11 @@ final class DirectUpload
 
         return [
             'record_id' => $id,
-            'upload_url' => $credential->url,
-            'method' => $credential->method,
-            'headers' => $credential->headers,
-            'form_data' => $credential->formData,
-            'expire' => $credential->expire,
+            'upload_url' => $credential['url'],
+            'method' => $credential['method'],
+            'headers' => $credential['headers'],
+            'form_data' => $credential['form_data'],
+            'expire' => $credential['expire'],
         ];
     }
 

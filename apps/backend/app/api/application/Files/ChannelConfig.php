@@ -28,4 +28,9 @@ interface ChannelConfig
      * 获取直传过期时间（秒）
      */
     public function getDirectUploadExpire(): int;
+
+    /**
+     * 按默认渠道生成驱动路径
+     */
+    public function generatePath(string $filename): string;
 }

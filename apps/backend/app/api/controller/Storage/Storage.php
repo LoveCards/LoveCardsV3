@@ -17,6 +17,7 @@ class Storage extends BaseController
 
     public function __construct(ChannelStats $channelStats)
     {
+        parent::__construct();
         $this->channelStats = $channelStats;
     }
 

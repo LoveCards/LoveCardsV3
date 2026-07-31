@@ -4,6 +4,7 @@ namespace app\api\infrastructure\Files;
 
 use app\api\application\Files\ChannelConfig;
 use app\api\service\Storage\ChannelManager;
+use app\api\service\Storage\PathGenerator;
 
 /**
  * 基于 ChannelManager 的渠道配置实现
@@ -30,5 +31,10 @@ class ConfigChannelConfig implements ChannelConfig
     public function getDirectUploadExpire(): int
     {
         return ChannelManager::getDirectUploadExpire();
+    }
+
+    public function generatePath(string $filename): string
+    {
+        return PathGenerator::generate(ChannelManager::getDefaultChannel(), $filename);
     }
 }

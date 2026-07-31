@@ -2,10 +2,6 @@
 
 namespace app\api\application\Files;
 
-use think\file\UploadedFile;
-use app\api\service\Storage\Contract\StorageResult;
-use app\api\service\Storage\Contract\DirectUploadCredential;
-
 /**
  * 存储驱动 Port
  *
@@ -17,7 +13,7 @@ interface StorageDriver
     /**
      * 上传文件到存储后端
      */
-    public function uploadToDefault(UploadedFile $file, string $path): StorageResult;
+    public function uploadToDefault(object $file, string $path): array;
 
     /**
      * 删除存储后端文件
@@ -39,7 +35,7 @@ interface StorageDriver
         int $size,
         string $path,
         int $expire
-    ): DirectUploadCredential;
+    ): array;
 
     /**
      * 检查渠道是否支持直传

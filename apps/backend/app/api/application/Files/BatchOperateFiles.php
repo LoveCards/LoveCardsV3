@@ -111,12 +111,7 @@ final class BatchOperateFiles
         $meta = $this->files->getChannelAndDriverPath($fileId);
         if ($meta === null) return;
 
-        try {
-            $this->driver->deleteFile($meta['channel_slug'], $meta['driver_path']);
-        } catch (\Throwable $e) {
-            \think\facade\Log::error("Storage hardDelete driver failed: " . $e->getMessage());
-            throw $e;
-        }
+        $this->driver->deleteFile($meta['channel_slug'], $meta['driver_path']);
 
         $this->files->hardDelete($fileId);
     }
