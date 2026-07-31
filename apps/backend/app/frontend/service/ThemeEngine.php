@@ -9,6 +9,10 @@ use app\common\infra\CacheManager;
 
 class ThemeEngine
 {
+    public const MAX_THEME_ZIP_BYTES = 33554432;
+    private const MAX_THEME_ENTRIES = 1000;
+    private const MAX_THEME_FILE_BYTES = 16777216;
+    private const MAX_THEME_UNCOMPRESSED_BYTES = 67108864;
     // SSR 预加载数据集定义（与 SDK PUBLIC_API 保持同步）
     const PUBLIC_API = [
         'cards.hot'      => ['method' => 'GET', 'path' => '/api/cards/hot'],
@@ -683,8 +687,12 @@ class ThemeEngine
     /**
      * 安装主题（从 ZIP 解压）
      */
-    public static function installTheme(string $zipPath): array
+    public static function installTheme(string $zipPath, ?string $themeRoot = null): array
     {
+        if (!is_file($zipPath) || filesize($zipPath) > self::MAX_THEME_ZIP_BYTES) {
+            throw new \app\api\ApiException('ZIP 文件过大或不可读');
+        }
+
         $zip = new \ZipArchive();
         $result = $zip->open($zipPath);
 
@@ -693,12 +701,28 @@ class ThemeEngine
         }
 
         try {
+            if ($zip->numFiles < 1 || $zip->numFiles > self::MAX_THEME_ENTRIES) {
+                throw new \app\api\ApiException('ZIP 文件条目数量超出限制');
+            }
+
             $themeJsonContent = null;
+            $totalSize = 0;
             for ($i = 0; $i < $zip->numFiles; $i++) {
                 $entryName = $zip->getNameIndex($i);
-                if (basename($entryName) === 'theme.json' && strpos($entryName, '..') === false) {
+                self::assertSafeZipEntry($zip, $i, $entryName);
+
+                $stat = $zip->statIndex($i);
+                $size = (int) ($stat['size'] ?? 0);
+                if ($size > self::MAX_THEME_FILE_BYTES) {
+                    throw new \app\api\ApiException('ZIP 中单个文件过大: ' . $entryName);
+                }
+                $totalSize += $size;
+                if ($totalSize > self::MAX_THEME_UNCOMPRESSED_BYTES) {
+                    throw new \app\api\ApiException('ZIP 解压后总体积超出限制');
+                }
+
+                if ($entryName === 'theme.json') {
                     $themeJsonContent = $zip->getFromIndex($i);
-                    break;
                 }
             }
 
@@ -717,35 +741,54 @@ class ThemeEngine
                 throw new \app\api\ApiException('theme.json 中的 name 不合法，只允许字母数字横杠下划线');
             }
 
-            for ($i = 0; $i < $zip->numFiles; $i++) {
-                $entryName = $zip->getNameIndex($i);
-                if (strpos($entryName, '..') !== false) {
-                    throw new \app\api\ApiException('ZIP 中包含不安全的路径: ' . $entryName);
-                }
+            $themeRoot = $themeRoot ?? root_path() . 'public' . DIRECTORY_SEPARATOR . 'theme';
+            if (!is_dir($themeRoot) && !mkdir($themeRoot, 0755, true)) {
+                throw new \app\api\ApiException('创建主题根目录失败');
             }
 
-            $destPath = root_path() . 'public' . DIRECTORY_SEPARATOR . 'theme' . DIRECTORY_SEPARATOR . $themeName;
-            $createdDir = false;
+            $destPath = rtrim($themeRoot, '/\\') . DIRECTORY_SEPARATOR . $themeName;
+            $stagingPath = rtrim($themeRoot, '/\\') . DIRECTORY_SEPARATOR . '.install-' . $themeName . '-' . bin2hex(random_bytes(6));
+            $backupPath = null;
 
-            if (!is_dir($destPath)) {
-                if (!mkdir($destPath, 0755, true)) {
-                    throw new \app\api\ApiException('创建主题目录失败');
-                }
-                $createdDir = true;
+            if (is_link($destPath)) {
+                throw new \app\api\ApiException('主题目录不能是符号链接');
             }
 
-            if ($zip->extractTo($destPath) !== true) {
-                if ($createdDir) {
-                    self::removeDirectory($destPath);
-                }
-                throw new \app\api\ApiException('ZIP 解压失败');
+            if (!mkdir($stagingPath, 0755, true)) {
+                throw new \app\api\ApiException('创建主题临时目录失败');
             }
 
-            if (!file_exists($destPath . '/theme.json')) {
-                if ($createdDir) {
-                    self::removeDirectory($destPath);
+            try {
+                if ($zip->extractTo($stagingPath) !== true) {
+                    throw new \app\api\ApiException('ZIP 解压失败');
                 }
-                throw new \app\api\ApiException('解压后未找到 theme.json');
+                if (!is_file($stagingPath . DIRECTORY_SEPARATOR . 'theme.json')) {
+                    throw new \app\api\ApiException('解压后未找到 theme.json');
+                }
+            } catch (\Throwable $e) {
+                self::removeDirectory($stagingPath);
+                throw $e;
+            }
+
+            try {
+                if (is_dir($destPath)) {
+                    $backupPath = $destPath . '.backup-' . bin2hex(random_bytes(6));
+                    if (!rename($destPath, $backupPath)) {
+                        throw new \app\api\ApiException('备份已有主题失败');
+                    }
+                }
+                if (!rename($stagingPath, $destPath)) {
+                    throw new \app\api\ApiException('安装主题失败');
+                }
+                if ($backupPath !== null) {
+                    self::removeDirectory($backupPath);
+                }
+            } catch (\Throwable $e) {
+                self::removeDirectory($stagingPath);
+                if ($backupPath !== null && is_dir($backupPath) && !is_dir($destPath)) {
+                    @rename($backupPath, $destPath);
+                }
+                throw $e;
             }
 
             self::$themeCache[$destPath . '/theme.json'] = null;
@@ -759,6 +802,37 @@ class ThemeEngine
             ];
         } finally {
             $zip->close();
+        }
+    }
+
+    private static function assertSafeZipEntry(\ZipArchive $zip, int $index, string $entryName): void
+    {
+        if ($entryName === '' || strpos($entryName, "\0") !== false || strpos($entryName, '\\') !== false) {
+            throw new \app\api\ApiException('ZIP 中包含不安全的路径: ' . $entryName);
+        }
+        if ($entryName[0] === '/' || preg_match('/^[A-Za-z]:/', $entryName)) {
+            throw new \app\api\ApiException('ZIP 中包含绝对路径: ' . $entryName);
+        }
+        foreach (explode('/', rtrim($entryName, '/')) as $segment) {
+            if ($segment === '' || $segment === '.' || $segment === '..') {
+                throw new \app\api\ApiException('ZIP 中包含不安全的路径: ' . $entryName);
+            }
+            if (strpos($segment, ':') !== false || preg_match('/[. ]$/', $segment)) {
+                throw new \app\api\ApiException('ZIP 中包含 Windows 不安全路径: ' . $entryName);
+            }
+            $baseName = strtoupper((string) strtok($segment, '.'));
+            if (preg_match('/^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/', $baseName)) {
+                throw new \app\api\ApiException('ZIP 中包含保留文件名: ' . $entryName);
+            }
+        }
+
+        $opsys = 0;
+        $attributes = 0;
+        if ($zip->getExternalAttributesIndex($index, $opsys, $attributes)) {
+            $type = ($attributes >> 16) & 0xF000;
+            if ($type !== 0 && $type !== 0x8000 && $type !== 0x4000) {
+                throw new \app\api\ApiException('ZIP 中不允许特殊文件: ' . $entryName);
+            }
         }
     }
 
