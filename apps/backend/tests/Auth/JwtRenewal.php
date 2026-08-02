@@ -132,7 +132,7 @@ namespace think\facade {
     }
 }
 
-namespace app\common\infra {
+namespace app\shared\Infrastructure\Cache {
     final class CacheManager
     {
         public static $setCalls = [];
@@ -145,12 +145,12 @@ namespace app\common\infra {
 }
 
 namespace {
-    use app\common\infra\CacheManager;
-    use app\common\infra\Jwt;
+    use app\shared\Infrastructure\Cache\CacheManager;
+    use app\modules\Platform\Auth\Infrastructure\Jwt;
     use Firebase\JWT\JWT as FirebaseJwt;
     use Tests\Auth\CacheTag;
 
-    require dirname(__DIR__, 2) . '/app/common/infra/Jwt.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Infrastructure/Jwt.php';
 
     $failures = 0;
 

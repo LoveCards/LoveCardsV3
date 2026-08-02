@@ -4,7 +4,7 @@ namespace app\shared\Transport\Validation;
 
 use think\Validate;
 
-class Common extends Validate
+class BatchOperationInput extends Validate
 {
     static public $all_scene = [
         'SingleOperate' => [

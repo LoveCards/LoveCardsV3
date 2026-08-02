@@ -9,9 +9,9 @@ use think\facade\Db;
 use app\modules\Content\Infrastructure\Persistence\Model\Comments as CommentsModel;
 use app\modules\Content\Infrastructure\Persistence\Model\Cards as CardsModel;
 
-use app\shared\Support\FieldsToggle;
-use app\shared\Support\ModelList;
-use app\shared\Support\OwnershipGuard;
+use app\shared\Infrastructure\Persistence\BulkFieldToggle;
+use app\shared\Infrastructure\Persistence\ModelQuery;
+use app\shared\Authorization\OwnershipGuard;
 
 class Comments
 {
@@ -65,7 +65,7 @@ class Comments
                 'user_id' => $user_id
             ];
         }
-        $result = ModelList::make(CommentsModel::class)->getPaginate($params);
+        $result = ModelQuery::make(CommentsModel::class)->getPaginate($params);
         return $result->toArray();
     }
 
@@ -82,7 +82,7 @@ class Comments
             $params['where']['status'] = 0;
         }
 
-        $result = ModelList::make(CommentsModel::class)->getPaginate($params);
+        $result = ModelQuery::make(CommentsModel::class)->getPaginate($params);
         return $result->toArray();
     }
 
@@ -163,9 +163,9 @@ class Comments
         self::guardBatch($ids, $uid, $caps, $cap);
 
         match ($method) {
-            'approve' => FieldsToggle::toggle(CommentsModel::class, 'status', $ids, [0, 3], [1, 2]),
-            'ban' => FieldsToggle::toggle(CommentsModel::class, 'status', $ids, [0, 1], [2, 3]),
-            'hide' => FieldsToggle::toggle(CommentsModel::class, 'status', $ids, [0, 2], [1, 3]),
+            'approve' => BulkFieldToggle::toggle(CommentsModel::class, 'status', $ids, [0, 3], [1, 2]),
+            'ban' => BulkFieldToggle::toggle(CommentsModel::class, 'status', $ids, [0, 1], [2, 3]),
+            'hide' => BulkFieldToggle::toggle(CommentsModel::class, 'status', $ids, [0, 2], [1, 3]),
             'delete' => CommentsModel::destroy($ids),
         };
     }

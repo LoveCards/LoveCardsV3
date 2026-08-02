@@ -130,7 +130,7 @@ if ($installCode === false) {
     exit(1);
 }
 $exportCode = (string) file_get_contents($baseDir . '/app/modules/Operations/Installer/Transport/System/Export.php');
-$jwtCode = (string) file_get_contents($baseDir . '/app/common/infra/Jwt.php');
+$jwtCode = (string) file_get_contents($baseDir . '/app/modules/Platform/Auth/Infrastructure/Jwt.php');
 
 // Extract PostInstallLock() method body first to check lock order
 $postInstallLockBody = '';
@@ -252,10 +252,10 @@ if (file_exists($baseDir . '/lock.txt')) {
 } else {
     pass("Release source does not ship an install lock");
 }
-if (strpos($installCode, 'use app\\common\\infra\\Jwt;') !== false) {
+if (strpos($installCode, 'use app\\modules\\Platform\\Auth\\Infrastructure\\Jwt;') !== false) {
     pass("Installer uses the current JWT implementation");
 } else {
-    fail("Installer references a missing legacy JWT class");
+    fail("Installer does not reference the current JWT implementation");
 }
 if (strpos($jwtCode, '[$jwt_config[\'alg\']]') === false) {
     pass("JWT decode calls match the JWT 7 method signature");

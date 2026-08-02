@@ -12,7 +12,7 @@ use app\modules\Platform\Config\Public\Config as ConfigService;
 
 
 
-use app\shared\Transport\Validation\ValidateRuleExtend;
+use app\shared\Transport\Validation\RuleRegistry;
 
 
 
@@ -22,7 +22,7 @@ class Cards extends Validate
 
 
 
-    var $ValidateRuleExtend;
+    var $ruleRegistry;
 
 
 
@@ -32,7 +32,7 @@ class Cards extends Validate
 
         parent::__construct();
 
-        $this->ValidateRuleExtend = new ValidateRuleExtend();
+        $this->ruleRegistry = new RuleRegistry();
 
     }
 
@@ -224,7 +224,7 @@ class Cards extends Validate
 
         $decoded = is_array($value) ? $value : json_decode($value, true);
 
-        return $this->ValidateRuleExtend->checkArrayLength($decoded, $config);
+        return $this->ruleRegistry->checkArrayLength($decoded, $config);
 
     }
 
@@ -236,7 +236,7 @@ class Cards extends Validate
 
         $decoded = is_array($value) ? $value : json_decode($value, true);
 
-        return $this->ValidateRuleExtend->checkArrayLength($decoded, $config);
+        return $this->ruleRegistry->checkArrayLength($decoded, $config);
 
     }
 }

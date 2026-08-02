@@ -1,11 +1,11 @@
 <?php
 
-namespace app\common\support;
+namespace app\shared\Transport\Validation;
 
 use think\exception\ValidateException;
 
 //通用
-class ValidateExtend
+final class InputNormalizer
 {
     /**
      * 场景参数过滤器

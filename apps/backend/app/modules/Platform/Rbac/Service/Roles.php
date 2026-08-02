@@ -6,7 +6,7 @@ use think\facade\Db;
 use app\modules\Platform\Rbac\Infrastructure\Persistence\Model\Roles as RolesModel;
 use app\modules\Platform\Rbac\Infrastructure\Persistence\Model\RoleCapabilities;
 use app\api\ApiException;
-use app\shared\Support\ModelList;
+use app\shared\Infrastructure\Persistence\ModelQuery;
 use app\shared\Infrastructure\Cache\CacheManager;
 use app\modules\Platform\Rbac\Domain\SystemRolePolicy;
 
@@ -15,7 +15,7 @@ class Roles
     public static function Index(array $params): array
     {
         $params['search_default_key'] = 'name';
-        $result = ModelList::make(RolesModel::class)->getPaginate($params);
+        $result = ModelQuery::make(RolesModel::class)->getPaginate($params);
         return $result->toArray();
     }
 

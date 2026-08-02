@@ -23,7 +23,7 @@ namespace
 
     /**
      * 替代 ThinkPHP 的 app() 容器，仅用 new 实例化模型。
-     * 供 ModelList::make(string) 调用。
+     * 供 ModelQuery::make(string) 调用。
      */
     function app(string $class): object
     {
@@ -136,13 +136,13 @@ namespace app\modules\Platform\Files\Infrastructure\Persistence\Model
     }
 }
 
-namespace app\common\support
+namespace app\shared\Infrastructure\Persistence
 {
     /**
      * ModelList 替身 — 捕获 getPaginate() 传入的 where 条件。
      * 不执行实际链式调用，只记录静态状态供断言检查。
      */
-    class ModelList
+    class ModelQuery
     {
         /** @var array 最近一次 getPaginate 收到的 where */
         public static array $capturedWhere = [];
@@ -190,9 +190,7 @@ namespace app\common\support
 // ════════════════════════════════════════════════════════════
 namespace
 {
-        require __DIR__ . '/../../app/shared/Support/FieldsToggle.php';
-    require __DIR__ . '/../../app/shared/Support/ModelList.php';
-    require __DIR__ . '/../../app/shared/Support/OwnershipGuard.php';
+        require __DIR__ . '/../../app/shared/Authorization/OwnershipGuard.php';
 require __DIR__ . '/../../app/modules/Platform/Files/Contract/FileRepository.php';
     require __DIR__ . '/../../app/modules/Platform/Files/Domain/FileConstants.php';
     require __DIR__ . '/../../app/modules/Platform/Files/Infrastructure/ThinkOrmFileRepository.php';
@@ -312,9 +310,9 @@ namespace
      * 重置全部 mock 静态状态。每个测试开头必须调用。
      */
     $reset = static function (): void {
-        \app\common\support\ModelList::$capturedWhere     = [];
-        \app\common\support\ModelList::$withTrashedCalled = false;
-        \app\common\support\ModelList::$onlyTrashedCalled = false;
+        \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere     = [];
+        \app\shared\Infrastructure\Persistence\ModelQuery::$withTrashedCalled = false;
+        \app\shared\Infrastructure\Persistence\ModelQuery::$onlyTrashedCalled = false;
 
         // 清理 listOwn 调用的副作用（它通过 Mock ModelList 注册静态状态）
     };
@@ -333,7 +331,7 @@ namespace
         $reset();
         fileRepository()->paginate([], 10, false);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
         $assertTrue(
@@ -358,7 +356,7 @@ namespace
         $reset();
         fileRepository()->paginate([], 10, true);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
         $userWhere  = array_filter($calls, fn($c) => $c[0] === 'where' && $c[1] === 'user_id');
@@ -373,7 +371,7 @@ namespace
         fileRepository()->paginate(['show_deleted' => 1], 10, true);
 
         $assertTrue(
-            \app\common\support\ModelList::$withTrashedCalled,
+            \app\shared\Infrastructure\Persistence\ModelQuery::$withTrashedCalled,
             '可读全部 show_deleted=1 应调用 withTrashed'
         );
     });
@@ -383,7 +381,7 @@ namespace
         fileRepository()->paginate(['show_deleted' => 1], 10, false);
 
         $assertFalse(
-            \app\common\support\ModelList::$withTrashedCalled,
+            \app\shared\Infrastructure\Persistence\ModelQuery::$withTrashedCalled,
             '无可读全部能力 show_deleted 不应生效'
         );
     });
@@ -396,7 +394,7 @@ namespace
         $reset();
         fileRepository()->paginate([], 0, false);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
         $assertTrue(
@@ -429,7 +427,7 @@ namespace
         $reset();
         listOwn([], 10);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
         $assertTrue(
@@ -450,7 +448,7 @@ namespace
         $reset();
         listOwn([], 42);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
         $count = 0;
@@ -470,7 +468,7 @@ namespace
         $reset();
         listOwn(['scene' => 'card'], 10);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
         $assertSame(2, count($calls), '应有 2 个条件: user_id + scene');
@@ -486,7 +484,7 @@ namespace
         $reset();
         listOwn(['status' => 0], 10);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
         $assertSame(2, count($calls));
@@ -501,7 +499,7 @@ namespace
         $reset();
         listOwn(['upload_status' => 1], 10);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
         $assertSame(2, count($calls));
@@ -516,7 +514,7 @@ namespace
         $reset();
         listOwn(['scene' => 'avatar', 'status' => 0, 'upload_status' => 1], 10);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
         $assertSame(4, count($calls), '应有 4 个条件: user_id + scene + status + upload_status');
@@ -529,7 +527,7 @@ namespace
         $reset();
         listOwn(['ref_type' => 'card'], 10);
 
-        $calls = resolveWhere(\app\common\support\ModelList::$capturedWhere);
+        $calls = resolveWhere(\app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere);
         $assertTrue(hasCall($calls, 'where', 'user_id', 10));
         $assertTrue(hasCall($calls, 'where', 'ref_type', 'card'));
     });
@@ -538,7 +536,7 @@ namespace
         $reset();
         listOwn(['ref_id' => 123], 10);
 
-        $calls = resolveWhere(\app\common\support\ModelList::$capturedWhere);
+        $calls = resolveWhere(\app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere);
         $assertTrue(hasCall($calls, 'where', 'user_id', 10));
         $assertTrue(hasCall($calls, 'where', 'ref_id', 123));
     });
@@ -552,7 +550,7 @@ namespace
         listOwn([], 10);
 
         $assertFalse(
-            \app\common\support\ModelList::$withTrashedCalled,
+            \app\shared\Infrastructure\Persistence\ModelQuery::$withTrashedCalled,
             'strict owner 不应调用 withTrashed（SoftDelete 默认过滤）'
         );
     });
@@ -562,7 +560,7 @@ namespace
         listOwn(['show_deleted' => 1], 10);
 
         $assertFalse(
-            \app\common\support\ModelList::$withTrashedCalled,
+            \app\shared\Infrastructure\Persistence\ModelQuery::$withTrashedCalled,
             'strict owner 不响应 show_deleted 参数'
         );
     });

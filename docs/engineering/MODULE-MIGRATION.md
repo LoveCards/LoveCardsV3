@@ -27,7 +27,7 @@
 
 - 调用者：
 - 当前依赖：
-- 目标 Port/契约：无 / `service/<Module>/Contract/*`
+- 目标 Port/契约：无 / `modules/<Module>/Contract/*`
 - Infrastructure 适配器：
 - 需要收紧的自动规则：
 - 认证输入：无 / `AuthContext` 的哪些字段：

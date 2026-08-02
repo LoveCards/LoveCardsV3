@@ -7,9 +7,9 @@ use think\facade\Db;
 use app\modules\Content\Infrastructure\Persistence\Model\Tags as TagsModel;
 use app\modules\Content\Infrastructure\Persistence\Model\TagsMap as TagsMapModel;
 
-use app\shared\Support\FieldsToggle;
-use app\shared\Support\ModelList;
-use app\shared\Support\OwnershipGuard;
+use app\shared\Infrastructure\Persistence\BulkFieldToggle;
+use app\shared\Infrastructure\Persistence\ModelQuery;
+use app\shared\Authorization\OwnershipGuard;
 
 class Tags
 {
@@ -20,7 +20,7 @@ class Tags
     public static function noPaginateIndex($params): array
     {
         $params['search_default_key'] = 'name';
-        $result = ModelList::make(TagsModel::class)->getNoPaginate($params);
+        $result = ModelQuery::make(TagsModel::class)->getNoPaginate($params);
         return $result->toArray();
     }
 
@@ -36,7 +36,7 @@ class Tags
     public static function Index($params): array
     {
         $params['search_default_key'] = 'name';
-        $result = ModelList::make(TagsModel::class)->getPaginate($params);
+        $result = ModelQuery::make(TagsModel::class)->getPaginate($params);
         return $result->toArray();
     }
 
@@ -86,9 +86,9 @@ class Tags
         self::guardBatch($ids, $uid, $caps, $cap);
 
         match ($method) {
-            'approve' => FieldsToggle::toggle(TagsModel::class, 'status', $ids, [0, 3], [1, 2]),
-            'ban' => FieldsToggle::toggle(TagsModel::class, 'status', $ids, [0, 1], [2, 3]),
-            'hide' => FieldsToggle::toggle(TagsModel::class, 'status', $ids, [0, 2], [1, 3]),
+            'approve' => BulkFieldToggle::toggle(TagsModel::class, 'status', $ids, [0, 3], [1, 2]),
+            'ban' => BulkFieldToggle::toggle(TagsModel::class, 'status', $ids, [0, 1], [2, 3]),
+            'hide' => BulkFieldToggle::toggle(TagsModel::class, 'status', $ids, [0, 2], [1, 3]),
             'delete' => self::deleteTagsWithMap($ids),
         };
     }

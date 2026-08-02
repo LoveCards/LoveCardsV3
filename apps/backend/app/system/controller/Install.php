@@ -17,9 +17,6 @@ use app\modules\Operations\Installer\Infrastructure\Environment;
 use app\modules\Operations\Installer\Infrastructure\Rsa;
 
 use app\modules\Platform\Auth\Infrastructure\Jwt;
-// Legacy import marker retained for installers that statically inspect the JWT contract:
-// use app\common\infra\Jwt;
-// app\common\infra\Jwt is a compatibility namespace; the module implementation above is canonical.
 
 class Install
 {

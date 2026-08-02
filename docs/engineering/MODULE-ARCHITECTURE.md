@@ -38,7 +38,7 @@ Module/
 - Theme：Theme/Public（渲染）和 Theme/Public/ThemeDataProvider（SSR 数据）；
 - Operations：Version/Public。
 
-`app/common` 仅保留兼容别名或旧测试适配；`app/system` 只保留 Installer Host，不再承载实现。新增代码不得引用这些兼容命名空间。
+`app/common` 已删除；`app/system` 只保留 Installer Host，不再承载实现。新增代码不得创建新的顶层公共目录。
 
 不要求每个模块拥有所有目录。Auth、Files 使用 Application；简单 CRUD 使用 Service；Theme 使用 Runtime；驱动实现统一放在 Infrastructure/Driver。
 

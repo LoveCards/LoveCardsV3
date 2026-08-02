@@ -5,7 +5,7 @@ namespace app\modules\Platform\Files\Infrastructure;
 use app\modules\Platform\Files\Contract\FileRepository;
 use app\modules\Platform\Files\Domain\FileConstants;
 use app\modules\Platform\Files\Infrastructure\Persistence\Model\Files as FilesModel;
-use app\shared\Support\ModelList;
+use app\shared\Infrastructure\Persistence\ModelQuery;
 use think\facade\Db;
 
 /**
@@ -181,7 +181,7 @@ class ThinkOrmFileRepository implements FileRepository
     {
         $params['search_default_key'] = 'original_name';
 
-        $modelList = ModelList::make(FilesModel::class);
+        $modelList = ModelQuery::make(FilesModel::class);
 
         $showDeleted = (int) ($params['show_deleted'] ?? 0);
         if ($canReadAll && $showDeleted > 0) {
@@ -239,7 +239,7 @@ class ThinkOrmFileRepository implements FileRepository
     public function paginateOwn(array $params, int $userId): array
     {
         $params['search_default_key'] = 'original_name';
-        $modelList = ModelList::make(FilesModel::class);
+        $modelList = ModelQuery::make(FilesModel::class);
         $where = $params['where'] ?? [];
         $where[] = ['user_id', '=', $userId];
         if (isset($params['scene'])) {

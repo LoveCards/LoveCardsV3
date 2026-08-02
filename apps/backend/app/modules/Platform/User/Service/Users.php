@@ -4,9 +4,9 @@ namespace app\modules\Platform\User\Service;
 
 use app\modules\Platform\User\Infrastructure\Persistence\Model\Users as UsersModel;
 use app\modules\Platform\Rbac\Infrastructure\Persistence\Model\Roles as RolesModel;
-use app\shared\Support\FieldsToggle;
-use app\shared\Support\ModelList;
-use app\shared\Support\OwnershipGuard;
+use app\shared\Infrastructure\Persistence\BulkFieldToggle;
+use app\shared\Infrastructure\Persistence\ModelQuery;
+use app\shared\Authorization\OwnershipGuard;
 
 class Users
 {
@@ -45,9 +45,9 @@ class Users
         self::guardBatch($ids, $uid, $caps, $cap);
 
         match ($method) {
-            'approve' => FieldsToggle::toggle(UsersModel::class, 'status', $ids, [0, 3], [1, 2]),
-            'ban' => FieldsToggle::toggle(UsersModel::class, 'status', $ids, [0, 1], [2, 3]),
-            'hide' => FieldsToggle::toggle(UsersModel::class, 'status', $ids, [0, 2], [1, 3]),
+            'approve' => BulkFieldToggle::toggle(UsersModel::class, 'status', $ids, [0, 3], [1, 2]),
+            'ban' => BulkFieldToggle::toggle(UsersModel::class, 'status', $ids, [0, 1], [2, 3]),
+            'hide' => BulkFieldToggle::toggle(UsersModel::class, 'status', $ids, [0, 2], [1, 3]),
             'delete' => UsersModel::destroy($ids),
         };
     }
@@ -56,7 +56,7 @@ class Users
     {
         $params['search_default_key'] = 'username';
         $params['withoutField'] = ['password'];
-        $result = ModelList::make(UsersModel::class)->getPaginate($params);
+        $result = ModelQuery::make(UsersModel::class)->getPaginate($params);
         return $result->toArray();
     }
 

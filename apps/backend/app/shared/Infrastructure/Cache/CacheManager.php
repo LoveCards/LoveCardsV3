@@ -5,7 +5,7 @@ namespace app\shared\Infrastructure\Cache;
 use think\facade\Cache;
 
 /** Framework cache adapter without domain semantics. */
-final class CacheManager
+class CacheManager
 {
     public const TTL_SHORT = 60;
     public const TTL_MEDIUM = 300;

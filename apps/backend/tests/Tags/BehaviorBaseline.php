@@ -40,9 +40,9 @@ namespace app\modules\Content\Infrastructure\Persistence\Model
     }
 }
 
-namespace app\common\support
+namespace app\shared\Infrastructure\Persistence
 {
-    class ModelList
+    class ModelQuery
     {
         public static array $capturedParams = [];
         public static int $callCount = 0;
@@ -65,7 +65,7 @@ namespace app\common\support
         }
     }
 
-    class FieldsToggle
+    class BulkFieldToggle
     {
     }
 
@@ -80,9 +80,7 @@ namespace app\common\support
 // ════════════════════════════════════════════════════════════
 namespace
 {
-        require __DIR__ . '/../../app/shared/Support/FieldsToggle.php';
-    require __DIR__ . '/../../app/shared/Support/ModelList.php';
-    require __DIR__ . '/../../app/shared/Support/OwnershipGuard.php';
+        require __DIR__ . '/../../app/shared/Authorization/OwnershipGuard.php';
 require __DIR__ . '/../../app/modules/Content/Tags/Service/Tags.php';
 }
 
@@ -120,8 +118,8 @@ namespace
     };
 
     $reset = static function (): void {
-        \app\common\support\ModelList::$capturedParams = [];
-        \app\common\support\ModelList::$callCount = 0;
+        \app\shared\Infrastructure\Persistence\ModelQuery::$capturedParams = [];
+        \app\shared\Infrastructure\Persistence\ModelQuery::$callCount = 0;
     };
 }
 
@@ -135,14 +133,14 @@ namespace
     $test('A1: tags.read 能力注入 status=0 条件', static function () use ($reset, $assertSame): void {
         $reset();
         \app\modules\Content\Tags\Service\Tags::listAll([], ['tags.read']);
-        $params = \app\common\support\ModelList::$capturedParams;
+        $params = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedParams;
         $assertSame(0, $params['where']['status'] ?? null, 'tags.read 应在 where 中注入 status=0');
     });
 
     $test('A2: tags.read.all 能力不注入 status 限制', static function () use ($reset, $assertSame): void {
         $reset();
         \app\modules\Content\Tags\Service\Tags::listAll([], ['tags.read.all']);
-        $params = \app\common\support\ModelList::$capturedParams;
+        $params = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedParams;
         $hasStatus = array_key_exists('status', $params['where'] ?? []);
         $assertSame(false, $hasStatus, 'tags.read.all 不应在 where 中注入 status 限制');
     });
@@ -150,7 +148,7 @@ namespace
     $test('A3: 同时拥有 read 和 read.all 按 read.all 处理', static function () use ($reset, $assertFalse): void {
         $reset();
         \app\modules\Content\Tags\Service\Tags::listAll([], ['tags.read', 'tags.read.all']);
-        $params = \app\common\support\ModelList::$capturedParams;
+        $params = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedParams;
         $hasStatus = array_key_exists('status', $params['where'] ?? []);
         $assertFalse($hasStatus, '同时拥有 read.all 不应注入 status 限制');
     });
@@ -158,14 +156,14 @@ namespace
     $test('A4: 无能力时（空 caps）注入 status=0', static function () use ($reset, $assertSame): void {
         $reset();
         \app\modules\Content\Tags\Service\Tags::listAll([], []);
-        $params = \app\common\support\ModelList::$capturedParams;
+        $params = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedParams;
         $assertSame(0, $params['where']['status'] ?? null, '空 caps 应在 where 中注入 status=0');
     });
 
     $test('A5: 默认 $caps 参数（不传）注入 status=0', static function () use ($reset, $assertSame): void {
         $reset();
         \app\modules\Content\Tags\Service\Tags::listAll([]);
-        $params = \app\common\support\ModelList::$capturedParams;
+        $params = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedParams;
         $assertSame(0, $params['where']['status'] ?? null, '不传 caps 应在 where 中注入 status=0');
     });
 
@@ -174,7 +172,7 @@ namespace
     $test('B1: page 和 list_rows 参数传递到 ModelList', static function () use ($reset, $assertSame): void {
         $reset();
         \app\modules\Content\Tags\Service\Tags::listAll(['page' => 3, 'list_rows' => 20], ['tags.read.all']);
-        $params = \app\common\support\ModelList::$capturedParams;
+        $params = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedParams;
         $assertSame(3, $params['page'] ?? null, 'page 参数应直传');
         $assertSame(20, $params['list_rows'] ?? null, 'list_rows 参数应直传');
     });
@@ -182,7 +180,7 @@ namespace
     $test('B2: search_default_key 始终被注入为 name', static function () use ($reset, $assertSame): void {
         $reset();
         \app\modules\Content\Tags\Service\Tags::listAll([], ['tags.read']);
-        $params = \app\common\support\ModelList::$capturedParams;
+        $params = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedParams;
         $assertSame('name', $params['search_default_key'] ?? null, 'search_default_key 应为 name');
     });
 }

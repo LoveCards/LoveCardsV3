@@ -6,16 +6,16 @@ use think\exception\ValidateException;
 use app\api\ApiException;
 use app\api\ApiResponse;
 
-use app\shared\Transport\Validation\ValidateRuleExtend;
-use app\shared\Transport\Validation\ValidateExtend;
-use app\shared\Transport\Validation\ModelList as ModelListValidate;
+use app\shared\Transport\Validation\RuleRegistry;
+use app\shared\Transport\Validation\InputNormalizer;
+use app\shared\Transport\Validation\PaginationInput;
 
 class BaseController
 {
     function __construct()
     {
-        $ValidateRuleExtend = new ValidateRuleExtend;
-        $ValidateRuleExtend->maker();
+        $ruleRegistry = new RuleRegistry;
+        $ruleRegistry->maker();
     }
 
     /**
@@ -29,10 +29,10 @@ class BaseController
      */
     protected function param(string $ValidateClass, array $scene, array $requestParam = []): array
     {
-        $result = ValidateExtend::sceneFilter($requestParam, $scene);
+        $result = InputNormalizer::sceneFilter($requestParam, $scene);
 
         try {
-            $params = ValidateExtend::sceneMessage($result, $ValidateClass);
+            $params = InputNormalizer::sceneMessage($result, $ValidateClass);
             validate($ValidateClass)
                 ->batch(true)
                 ->check($params);
@@ -53,11 +53,11 @@ class BaseController
      */
     protected function paramIndex(array $requestParam = []): array
     {
-        $params = ValidateExtend::sceneFilter($requestParam, ModelListValidate::$all_scene['Defult']);
-        $params = ValidateExtend::paramsJsonToArray('search_keys', $params['pass']);
+        $params = InputNormalizer::sceneFilter($requestParam, PaginationInput::$all_scene['Defult']);
+        $params = InputNormalizer::paramsJsonToArray('search_keys', $params['pass']);
 
         try {
-            validate(ModelListValidate::class)
+            validate(PaginationInput::class)
                 ->batch(true)
                 ->check($params);
         } catch (ValidateException $e) {
@@ -76,11 +76,11 @@ class BaseController
      */
     public static function paramCommon(array $requestParam = []): array
     {
-        $params = ValidateExtend::sceneFilter($requestParam, ModelListValidate::$all_scene['Defult']);
-        $params = ValidateExtend::paramsJsonToArray('search_keys', $params['pass']);
+        $params = InputNormalizer::sceneFilter($requestParam, PaginationInput::$all_scene['Defult']);
+        $params = InputNormalizer::paramsJsonToArray('search_keys', $params['pass']);
 
         try {
-            validate(ModelListValidate::class)
+            validate(PaginationInput::class)
                 ->batch(true)
                 ->check($params);
         } catch (ValidateException $e) {

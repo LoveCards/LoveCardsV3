@@ -10,9 +10,9 @@ use app\modules\Content\Infrastructure\Persistence\Model\Cards as CardsModel;
 use app\modules\Content\Infrastructure\Persistence\Model\TagsMap as TagsMapModel;
 use app\modules\Content\Infrastructure\Persistence\Model\Comments as CommentsModel;
 
-use app\shared\Support\FieldsToggle;
-use app\shared\Support\ModelList;
-use app\shared\Support\OwnershipGuard;
+use app\shared\Infrastructure\Persistence\BulkFieldToggle;
+use app\shared\Infrastructure\Persistence\ModelQuery;
+use app\shared\Authorization\OwnershipGuard;
 use app\modules\Content\Cards\Domain\PublicationStatus;
 
 class Cards
@@ -65,7 +65,7 @@ class Cards
             $params['where']['status'] = PublicationStatus::visible();
         }
 
-        $result = ModelList::make(CardsModel::class)->getPaginate($params);
+        $result = ModelQuery::make(CardsModel::class)->getPaginate($params);
         return $result->toArray();
     }
 
@@ -94,14 +94,14 @@ class Cards
         $params['where'] = [
             'user_id' => $uid
         ];
-        $result = ModelList::make(CardsModel::class)->getPaginate($params);
+        $result = ModelQuery::make(CardsModel::class)->getPaginate($params);
         return $result->toArray();
     }
 
     public static function listAll(array $params): array
     {
         $params['search_default_key'] = 'content';
-        $result = ModelList::make(CardsModel::class)->getPaginate($params);
+        $result = ModelQuery::make(CardsModel::class)->getPaginate($params);
         return $result->toArray();
     }
 
@@ -128,8 +128,8 @@ class Cards
         self::guardBatch($ids, $uid, $caps, $cap);
 
         match ($method) {
-            'top', 'unset_top' => FieldsToggle::toggle(CardsModel::class, 'is_top', $ids, [0, 1]),
-            'approve', 'ban', 'hide' => FieldsToggle::toggle(
+            'top', 'unset_top' => BulkFieldToggle::toggle(CardsModel::class, 'is_top', $ids, [0, 1]),
+            'approve', 'ban', 'hide' => BulkFieldToggle::toggle(
                 CardsModel::class,
                 'status',
                 $ids,

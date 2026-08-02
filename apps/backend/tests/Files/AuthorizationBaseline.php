@@ -359,7 +359,7 @@ namespace app\modules\Platform\Storage\Infrastructure
     }
 }
 
-namespace app\common\infra
+namespace app\shared\Infrastructure\Cache
 {
     class CacheManager
     {
@@ -380,9 +380,9 @@ namespace app\common\infra
     }
 }
 
-namespace app\common\support
+namespace app\shared\Infrastructure\Persistence
 {
-    class ModelList
+    class ModelQuery
     {
         public static function make($model = null): self
         {
@@ -674,9 +674,7 @@ namespace
             ->executeOwn($params, $userId);
     }
 
-        require __DIR__ . '/../../app/shared/Support/FieldsToggle.php';
-    require __DIR__ . '/../../app/shared/Support/ModelList.php';
-    require __DIR__ . '/../../app/shared/Support/OwnershipGuard.php';
+        require __DIR__ . '/../../app/shared/Authorization/OwnershipGuard.php';
 require __DIR__ . '/../../app/modules/Platform/Files/Contract/FileRepository.php';
     require __DIR__ . '/../../app/modules/Platform/Files/Domain/FileConstants.php';
     require __DIR__ . '/../../app/modules/Platform/Files/Contract/StorageDriver.php';

@@ -1,11 +1,11 @@
 <?php
 
-namespace app\common\support;
+namespace app\shared\Transport\Validation;
 
 use think\Validate;
 
 //验证规则工具类
-class ValidateRuleExtend
+final class RuleRegistry
 {
     // 加载验证规则到全局
     public function maker()

@@ -107,11 +107,10 @@ async function checkPhpBoundary(directory, forbidden, allowlist = new Set()) {
   }
 }
 
-await checkPhpBoundary(
-  'apps/backend/app/common',
-  /^app\\(api|frontend|system)\\/i,
-  new Set(['apps/backend/app/common/support/OwnershipGuard.php:app\\api\\ApiException']),
-)
+if (await exists(path.join(root, 'apps/backend/app/common'))) {
+  fail('Legacy common directory must not exist; use shared or an owning module')
+}
+await checkPhpBoundary('apps/backend/app/shared', /^app\\common\\/i)
 await checkPhpBoundary('apps/backend/app/modules', /^app\\api\\(controller|middleware|route)\\/i)
 await checkPhpBoundary('apps/backend/app/modules', /^app\\frontend\\/i)
 await checkPhpBoundary('apps/backend/app/modules', /^app\\system\\/i)

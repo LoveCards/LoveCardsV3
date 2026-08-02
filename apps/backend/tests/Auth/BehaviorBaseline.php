@@ -23,7 +23,7 @@ namespace {
         return $testRequest;
     }
 
-    require dirname(__DIR__, 2) . '/app/common/contract/TokenService.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Contract/TokenService.php';
     require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Public/AuthUser.php';
     require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Contract/UserRepository.php';
     require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Public/AuthContext.php';
@@ -106,7 +106,7 @@ namespace Tests\Auth {
         }
     }
 
-    final class TokenService implements \app\common\contract\TokenService
+    final class TokenService implements \app\modules\Platform\Auth\Contract\TokenService
     {
         public static $verified = ['uid' => 10];
         public static $failure = null;

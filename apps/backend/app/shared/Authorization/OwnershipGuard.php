@@ -1,6 +1,6 @@
 <?php
 
-namespace app\common\support;
+namespace app\shared\Authorization;
 
 use app\api\ApiException;
 

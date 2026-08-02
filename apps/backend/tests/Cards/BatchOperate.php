@@ -111,7 +111,7 @@ namespace app\modules\Content\Infrastructure\Persistence\Model
     }
 }
 
-namespace app\common\support
+namespace app\shared\Infrastructure\Persistence
 {
     trait OwnershipGuard
     {
@@ -130,7 +130,7 @@ namespace app\common\support
         protected static function guard(int $id, int $uid, array $caps, string $baseCap): void {}
     }
 
-    class FieldsToggle
+    class BulkFieldToggle
     {
         public static $lastToggleCall;
 
@@ -145,16 +145,14 @@ namespace app\common\support
         }
     }
 
-    class ModelList {}
+    class ModelQuery {}
 }
 
 // ============================================================
 // require 生产文件（此后所有替身必须已就绪）
 // ============================================================
 namespace {
-        require __DIR__ . '/../../app/shared/Support/FieldsToggle.php';
-    require __DIR__ . '/../../app/shared/Support/ModelList.php';
-    require __DIR__ . '/../../app/shared/Support/OwnershipGuard.php';
+        require __DIR__ . '/../../app/shared/Authorization/OwnershipGuard.php';
 require __DIR__ . '/../../app/modules/Content/Cards/Domain/PublicationStatus.php';
     require __DIR__ . '/../../app/modules/Content/Cards/Service/Cards.php';
 }
@@ -191,7 +189,7 @@ namespace {
 
     $reset = static function (): void {
         \app\modules\Content\Infrastructure\Persistence\Model\Cards::reset();
-        \app\common\support\FieldsToggle::reset();
+        \app\shared\Infrastructure\Persistence\BulkFieldToggle::reset();
     };
 
     $test('unhide builds whereIn → where → update chain', static function () use ($reset, $assertSame): void {
@@ -218,7 +216,7 @@ namespace {
         $reset();
         \app\modules\Content\Cards\Service\Cards::batchOperate('hide', [10, 20], 1, ['cards.update.all']);
 
-        $call = \app\common\support\FieldsToggle::$lastToggleCall;
+        $call = \app\shared\Infrastructure\Persistence\BulkFieldToggle::$lastToggleCall;
         $assertSame(\app\modules\Content\Infrastructure\Persistence\Model\Cards::class, $call[0], 'modelClass');
         $assertSame('status', $call[1], 'field');
         $assertSame([10, 20], $call[2], 'ids');

@@ -5,7 +5,7 @@ namespace app\shared\Transport\Validation;
 use think\Validate;
 
 //通用超级分页查询验证类
-class ModelList extends Validate
+class PaginationInput extends Validate
 {
     //参数过滤场景
     static $all_scene = [

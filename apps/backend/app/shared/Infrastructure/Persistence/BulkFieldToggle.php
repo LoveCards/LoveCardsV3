@@ -1,10 +1,10 @@
 <?php
 
-namespace app\common\support;
+namespace app\shared\Infrastructure\Persistence;
 
 use think\facade\Db;
 
-class FieldsToggle
+final class BulkFieldToggle
 {
     /**
      * 通用字段翻转：CASE WHEN 切换

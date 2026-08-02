@@ -31,7 +31,7 @@ Route Meta -> Controller -> Validate -> Business -> Resource -> ApiResponse
 | Domain | 实体、值对象、业务策略 | 领域内部 | HTTP、ORM、JWT、缓存、框架 | 迁移切片中逐步建立 |
 | Contract | 业务内部 Port | 值对象、接口定义 | HTTP 请求/响应契约、框架实现 | 迁移切片中逐步建立 |
 | Infrastructure | ORM、JWT、缓存、邮件等适配 | 第三方库、Contract | 业务流程编排 | 迁移切片中逐步建立 |
-| `common` | 真正跨模块且稳定的能力 | common 内部、框架适配 | api/frontend/system | 已建立债务上限 |
+| `shared` | 无业务归属的跨模块技术能力 | Infrastructure、Transport | modules、api/frontend/system、common | 架构检查覆盖 |
 
 约束原则：外层可以依赖内层定义的抽象，内层不能知道外层实现。模块之间“不依赖”不是互不调用，而是调用稳定契约，不引用对方内部结构。
 
@@ -40,7 +40,7 @@ Route Meta -> Controller -> Validate -> Business -> Resource -> ApiResponse
 默认使用简单档：
 
 ```text
-Controller -> service/<Module>/<Service>.php -> Model/Db
+Controller -> modules/<Module>/Service/<Service>.php -> Model/Db
 ```
 
 简单档适合配置、只读统计、普通 CRUD 和没有替换实现的业务聚合。它不是迁移遗漏，而是明确选择更扁平的结构。
@@ -56,12 +56,12 @@ Controller -> service/<Module>/<Service>.php -> Model/Db
 复杂档目录放在模块内部，不创建顶层 `api/application`：
 
 ```text
-service/<Module>/
+modules/<Module>/
 ├─ Application/
 ├─ Domain/
 └─ Contract/
 
-infrastructure/<Module>/
+modules/<Module>/Infrastructure/
 ```
 
 不要为了“看起来统一”给每个模块都创建四件套；新抽象必须移除真实耦合点。
@@ -69,16 +69,15 @@ infrastructure/<Module>/
 Auth 的 `UserRepository` 返回只读 `AuthUser`，不会把 ThinkORM Model 带回 Service。按 ID
 加载认证上下文时不读取密码哈希；只有登录按账号查找时才加载密码哈希。
 
-## 已知债务基线
+## 当前架构基线
 
-- `app/common/support/OwnershipGuard.php` 仍依赖 `app/api/ApiException`。
-- 自动检查只允许这一条既有债务；新增同类依赖会失败。迁移该能力时删除白名单，实现债务只减不增。
+- `app/common` 已删除；公共技术能力统一归入 `app/shared`，业务能力归入所属模块。
 - 后端业务层采用两档结构。Auth、Files、RBAC 和 Content/Cards 已作为复杂模块样板推进；普通模块保持简单 Service。
 
 ## 已完成样板
 
-- Auth：认证用例、认证上下文、Token Port 和用户持久化 Port 已从旧 `api/application` 收口到 `api/service/Auth`。
-- Files：用例位于 `service/Files/Application`，Port 位于 `service/Files/Contract`，ORM 和存储适配位于 `infrastructure/Files`。
+- Auth：认证用例、认证上下文、Token Port 和用户持久化 Port 位于 `modules/Platform/Auth`。
+- Files：用例位于 `modules/Platform/Files/Application`，Port 位于 `modules/Platform/Files/Contract`，ORM 和存储适配位于模块 Infrastructure。
 - Storage/Sender/Captcha：驱动、Factory 和第三方技术实现位于 `infrastructure`，Service 保留管理入口与业务调用语义。
 - RBAC：capability 清单和系统角色策略位于 `service/Rbac/Domain`，Service 负责事务、ORM 写入和 API 错误映射。
 - Content/Cards：发布状态和批处理状态转换位于 `service/Content/Domain`，Cards Service 保留当前 CRUD 与事务编排。
@@ -91,10 +90,10 @@ Auth 是第一个架构样板，但不是“把所有用户代码放进 Auth”�
 
 | 概念 | 负责什么 | 不负责什么 | 当前实现 |
 | --- | --- | --- | --- |
-| Token codec | 签发、验证、续期、失效 | 查用户、判角色、访客策略 | `common/contract/TokenService.php`、`common/infra/JwtTokenService.php` |
+| Token codec | 签发、验证、续期、失效 | 查用户、判角色、访客策略 | `modules/Platform/Auth/Contract/TokenService.php`、`modules/Platform/Auth/Infrastructure/JwtTokenService.php` |
 | Authentication | 从凭证得到当前身份 | 业务权限判断 | `api/middleware/JwtAuthCheck.php` |
-| Identity/User | 用户读取、状态、密码规则 | JWT 算法 | `api/service/Auth/LoginUser.php`、`RegisterUser.php`、`UserRepository.php` |
-| Authorization | 角色与 capability 判断 | 登录、Token 编解码 | `api/service/Rbac/*`、Permission middleware |
+| Identity/User | 用户读取、状态、密码规则 | JWT 算法 | `modules/Platform/Auth`、`modules/Platform/User` |
+| Authorization | 角色与 capability 判断 | 登录、Token 编解码 | `modules/Platform/Rbac`、Permission middleware |
 | Transport | Header/Cookie、HTTP 状态和响应 | 业务规则、ORM | Route、Controller、Middleware |
 
 目标调用链：

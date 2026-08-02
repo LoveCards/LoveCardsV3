@@ -1,6 +1,6 @@
 <?php
 
-namespace app\shared\Support;
+namespace app\shared\Infrastructure\Persistence;
 
 use think\Model;
 
@@ -8,7 +8,7 @@ use think\Model;
  * 通用模型超级分页查询类
  * 提供基于模型的灵活分页查询功能，支持条件筛选、字段过滤、排序等操作
  */
-class ModelList
+class ModelQuery
 {
 
     /**
@@ -44,10 +44,6 @@ class ModelList
      */
     public static function make(mixed $model): object
     {
-        if (class_exists('app\\common\\support\\ModelList', false)) {
-            return \app\common\support\ModelList::make($model);
-        }
-
         if (is_object($model)) {
             return new self($model);
         }
