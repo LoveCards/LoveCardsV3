@@ -6,6 +6,7 @@ const routeRoot = path.join(root, 'apps/backend/app/api/route')
 const controllerRoot = path.join(root, 'apps/backend/app/api/controller')
 const reportDir = path.join(root, 'contracts')
 const sdkResourceRoot = path.join(root, 'packages/sdk/src/resources')
+const checkOnly = process.argv.includes('--check')
 
 const routeFiles = (await fs.readdir(routeRoot)).filter((name) => name.endsWith('.php')).sort()
 
@@ -89,18 +90,36 @@ async function inspectController(route) {
   }
   const responses = [...body.matchAll(/ApiResponse::(create[A-Za-z]+)/g)].map((match) => match[1])
   const resources = [...body.matchAll(/([A-Za-z]+Resource)::(make|collection|paginate)/g)].map((match) => `${match[1]}::${match[2]}`)
+  const imports = new Map([...source.matchAll(/use\s+(app\\[^;]+Transport\\Api\\(\w+))(?:\s+as\s+(\w+))?;/g)].map((match) => [match[3] || match[2], match[1]]))
+  const validators = []
+  for (const [alias, className] of imports) {
+    if (new RegExp(`(?:${alias}::class|new\\s+${alias}\\s*\\()` ).test(body)) validators.push(className)
+  }
+  if (/BatchOperationInput::class/.test(body)) validators.push('app\\shared\\Transport\\Validation\\BatchOperationInput')
+  const scene = (body.match(/\$all_scene\[['"]([^'"]+)['"]\]/) || body.match(/->scene\(['"]([^'"]+)['"]\)/) || [])[1] || null
   return {
     controllerFile: path.relative(root, file),
     missingController: false,
     validates: /\b(?:param|validate)\s*\(|->check\s*\(/.test(body),
     responses: [...new Set(responses)],
     resources: [...new Set(resources)],
+    validators: [...new Set(validators)],
+    validatorScene: scene,
     hasApiResponse: responses.length > 0,
     multipleSuccessShapes: new Set(responses.filter((value) => value === 'createOk' || value === 'createCreated' || value === 'createNoContent')).size > 1,
   }
 }
 
 function issue(severity, code, message) { return { severity, code, message } }
+
+function responseDescriptor(route) {
+  const responseFns = route.responses || []
+  const status = responseFns.includes('createNoContent') ? 204 : responseFns.includes('createCreated') ? 201 : 200
+  const resource = route.resources?.[0]?.split('::')[0] || null
+  const operation = route.resources?.[0]?.split('::')[1] || null
+  const shape = status === 204 ? 'void' : operation === 'paginate' ? 'paginated' : operation === 'collection' ? 'collection' : resource === 'ApiResource' ? 'dynamic' : 'item'
+  return { status, shape, resource, operation, sdkReturnType: route.sdk?.returnType || null }
+}
 
 function normalizeSdkPath(value) {
   return value
@@ -113,12 +132,18 @@ function normalizeSdkPath(value) {
 async function readSdkMethods() {
   const methods = []
   const files = (await fs.readdir(sdkResourceRoot)).filter((name) => name.endsWith('.ts')).sort()
+  if (files.length <= 1) {
+    try {
+      const previous = JSON.parse(await fs.readFile(path.join(reportDir, 'api-inventory.json'), 'utf8'))
+      if (Array.isArray(previous.sdkMethods) && previous.sdkMethods.length) return previous.sdkMethods
+    } catch {}
+  }
   for (const file of files) {
     const source = await fs.readFile(path.join(sdkResourceRoot, file), 'utf8')
-    const methodRe = /^\s{2}(\w+)\([^)]*\):\s*Promise<(.+?)>\s*\{\s*return\s+this\._(get|post|put|patch|delete)<(.+?)>\((['"`])([^'"`]+)\5/gm
+    const methodRe = /^\s{2}(\w+)\(([^)]*)\):\s*Promise<(.+?)>\s*\{\s*return\s+this\._(get|post|put|patch|delete)<(.+?)>\((['"`])([^'"`]+)\6/gm
     let match
     while ((match = methodRe.exec(source))) {
-      methods.push({ file: `packages/sdk/src/resources/${file}`, method: match[1], httpMethod: match[3].toUpperCase(), returnType: match[2], path: normalizeSdkPath(match[6]) })
+      methods.push({ file: `packages/sdk/src/resources/${file}`, resource: file.replace(/\.ts$/, ''), method: match[1], params: match[2].trim(), httpMethod: match[4].toUpperCase(), returnType: match[3], path: normalizeSdkPath(match[7]) })
     }
   }
   return methods
@@ -171,14 +196,17 @@ for (const route of routes) {
     route.issues.push(issue('P1', 'SDK_RESPONSE_TYPE_MISMATCH', `SDK returns void but backend emits ${route.responses.filter((value) => value === 'createOk' || value === 'createCreated').join(', ')}`))
   }
 }
+for (const route of routes) route.response = responseDescriptor(route)
 
 const summary = routes.flatMap((route) => route.issues || []).reduce((acc, current) => {
   acc[current.severity] = (acc[current.severity] || 0) + 1
   return acc
 }, {})
 
-await fs.mkdir(reportDir, { recursive: true })
-await fs.writeFile(path.join(reportDir, 'api-inventory.json'), `${JSON.stringify({ generatedAt: new Date().toISOString(), routeCount: routes.length, summary, routes }, null, 2)}\n`)
+if (!checkOnly) {
+  await fs.mkdir(reportDir, { recursive: true })
+  await fs.writeFile(path.join(reportDir, 'api-inventory.json'), `${JSON.stringify({ routeCount: routes.length, sdkMethodCount: sdkMethods.length, summary, sdkMethods, routes }, null, 2)}\n`)
+}
 
 const lines = [
   '# API Contract Audit',
@@ -198,7 +226,7 @@ for (const route of routes) {
   const auth = route.meta.public ? 'public' : route.meta.caps?.length ? `caps:${route.meta.caps.join(',')}` : route.middleware.includes('JwtAuthCheck') ? 'jwt' : 'unknown'
   lines.push(`| ${route.method} | \`${route.path}\` | \`${route.name || ''}\` | ${auth} | ${route.validates ? 'yes' : 'no'} | ${route.resources.join(', ') || route.responses.join(', ') || 'unknown'} | ${(route.issues || []).map((item) => `${item.severity}:${item.code}`).join('<br>') || '—'} |`)
 }
-await fs.writeFile(path.join(reportDir, 'API-AUDIT.md'), `${lines.join('\n')}\n`)
+if (!checkOnly) await fs.writeFile(path.join(reportDir, 'API-AUDIT.md'), `${lines.join('\n')}\n`)
 
 console.log(`API audit complete: routes=${routes.length} P0=${summary.P0 || 0} P1=${summary.P1 || 0} P2=${summary.P2 || 0}`)
 if ((summary.P0 || 0) > 0) process.exitCode = 2

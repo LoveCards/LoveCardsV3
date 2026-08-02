@@ -6,6 +6,15 @@ use app\shared\Transport\Http\Resource;
 
 final class RoleResource extends Resource
 {
+    public static function schema(string $variant = 'default'): array
+    {
+        return ['type' => 'object', 'properties' => [
+            'id' => ['type' => 'integer'], 'name' => ['type' => 'string'], 'slug' => ['type' => 'string'],
+            'description' => ['type' => 'string'], 'is_system' => ['type' => 'integer'], 'status' => ['type' => 'integer'],
+            'created_at' => ['type' => 'string'], 'updated_at' => ['type' => 'string'], 'capabilities' => ['type' => 'array'],
+        ]];
+    }
+
     public static function make($value): array
     {
         $data = self::normalize($value);

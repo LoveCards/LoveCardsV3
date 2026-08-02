@@ -4,7 +4,7 @@ $root = dirname(__DIR__, 2);
 $route = file_get_contents($root . '/app/api/route/theme.php');
 $themeBoot = file_get_contents($root . '/app/frontend/middleware/ThemeBoot.php');
 $frontendConfig = require $root . '/config/apps/frontend.php';
-$sdk = file_get_contents(dirname($root, 2) . '/packages/sdk/src/resources/theme.ts');
+$sdk = file_get_contents(dirname($root, 2) . '/packages/sdk/src/generated/resources/theme.ts');
 $tests = [];
 
 $tests['GET theme/config is registered exactly once'] = static function () use ($route): void {
@@ -28,7 +28,7 @@ $tests['PUT theme/config remains protected'] = static function () use ($route): 
     }
 };
 $tests['SDK compatibility methods retain the same path'] = static function () use ($sdk): void {
-    if (preg_match_all("/_get<ThemeConfigData>\\(['\"]\\/theme\\/config['\"]\\)/", $sdk) !== 2) {
+    if (preg_match_all("/_get<ApiTypes\\.ThemeConfigData>\\([\"']\\/theme\\/config[\"']\\)/", $sdk) !== 2) {
         throw new RuntimeException('SDK config/publicConfig 路径发生变化');
     }
 };

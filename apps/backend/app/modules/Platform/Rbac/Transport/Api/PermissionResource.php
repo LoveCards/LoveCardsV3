@@ -6,6 +6,13 @@ use app\shared\Transport\Http\Resource;
 
 final class PermissionResource extends Resource
 {
+    public static function schema(string $variant = 'default'): array
+    {
+        return ['type' => 'object', 'properties' => [
+            'capability' => ['type' => 'string'], 'description' => ['type' => 'string'],
+        ], 'required' => ['capability', 'description']];
+    }
+
     public static function make($value): array
     {
         $data = self::normalize($value);

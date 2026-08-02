@@ -1,7 +1,891 @@
 {
-  "generatedAt": "2026-08-02T18:48:58.408Z",
   "routeCount": 96,
+  "sdkMethodCount": 98,
   "summary": {},
+  "sdkMethods": [
+    {
+      "file": "packages/sdk/src/resources/captcha.ts",
+      "resource": "captcha",
+      "method": "types",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "CaptchaDriver[]",
+      "path": "/captcha/types"
+    },
+    {
+      "file": "packages/sdk/src/resources/captcha.ts",
+      "resource": "captcha",
+      "method": "drivers",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "CaptchaDriver[]",
+      "path": "/captcha/drivers"
+    },
+    {
+      "file": "packages/sdk/src/resources/captcha.ts",
+      "resource": "captcha",
+      "method": "meta",
+      "params": "slug: string",
+      "httpMethod": "GET",
+      "returnType": "CaptchaMeta",
+      "path": "/captcha/:param/meta"
+    },
+    {
+      "file": "packages/sdk/src/resources/captcha.ts",
+      "resource": "captcha",
+      "method": "install",
+      "params": "",
+      "httpMethod": "POST",
+      "returnType": "ConfigRegisterResult[]",
+      "path": "/captcha/install"
+    },
+    {
+      "file": "packages/sdk/src/resources/captcha.ts",
+      "resource": "captcha",
+      "method": "config",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "CaptchaConfig",
+      "path": "/captcha/config"
+    },
+    {
+      "file": "packages/sdk/src/resources/cards.ts",
+      "resource": "cards",
+      "method": "list",
+      "params": "params?: CardsListParams",
+      "httpMethod": "GET",
+      "returnType": "ListResult<Card>",
+      "path": "/cards"
+    },
+    {
+      "file": "packages/sdk/src/resources/cards.ts",
+      "resource": "cards",
+      "method": "get",
+      "params": "id: number",
+      "httpMethod": "GET",
+      "returnType": "Card",
+      "path": "/cards/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/cards.ts",
+      "resource": "cards",
+      "method": "hot",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "Card[]",
+      "path": "/cards/hot"
+    },
+    {
+      "file": "packages/sdk/src/resources/cards.ts",
+      "resource": "cards",
+      "method": "search",
+      "params": "params?: CardsListParams",
+      "httpMethod": "GET",
+      "returnType": "ListResult<Card>",
+      "path": "/cards/search"
+    },
+    {
+      "file": "packages/sdk/src/resources/cards.ts",
+      "resource": "cards",
+      "method": "create",
+      "params": "data: CreateCardParams",
+      "httpMethod": "POST",
+      "returnType": "CreateResult",
+      "path": "/cards"
+    },
+    {
+      "file": "packages/sdk/src/resources/cards.ts",
+      "resource": "cards",
+      "method": "update",
+      "params": "id: number, data: UpdateCardParams",
+      "httpMethod": "PATCH",
+      "returnType": "void",
+      "path": "/cards/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/cards.ts",
+      "resource": "cards",
+      "method": "delete",
+      "params": "id: number",
+      "httpMethod": "DELETE",
+      "returnType": "void",
+      "path": "/cards/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/cards.ts",
+      "resource": "cards",
+      "method": "like",
+      "params": "id: number",
+      "httpMethod": "POST",
+      "returnType": "{ likes: number }",
+      "path": "/cards/:param/like"
+    },
+    {
+      "file": "packages/sdk/src/resources/cards.ts",
+      "resource": "cards",
+      "method": "listOwn",
+      "params": "params?: { page?: number; list_rows?: number }",
+      "httpMethod": "GET",
+      "returnType": "ListResult<Card>",
+      "path": "/users/me/cards"
+    },
+    {
+      "file": "packages/sdk/src/resources/cards.ts",
+      "resource": "cards",
+      "method": "batch",
+      "params": "data: BatchOperateParams",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/cards/batch"
+    },
+    {
+      "file": "packages/sdk/src/resources/comments.ts",
+      "resource": "comments",
+      "method": "list",
+      "params": "params?: { page?: number; list_rows?: number; search_value?: string }",
+      "httpMethod": "GET",
+      "returnType": "ListResult<Comment>",
+      "path": "/comments"
+    },
+    {
+      "file": "packages/sdk/src/resources/comments.ts",
+      "resource": "comments",
+      "method": "cardList",
+      "params": "cardId: number, params?: PaginationParams",
+      "httpMethod": "GET",
+      "returnType": "ListResult<Comment>",
+      "path": "/cards/:param/comments"
+    },
+    {
+      "file": "packages/sdk/src/resources/comments.ts",
+      "resource": "comments",
+      "method": "create",
+      "params": "cardId: number, data: CreateCommentParams",
+      "httpMethod": "POST",
+      "returnType": "CreateResult",
+      "path": "/cards/:param/comments"
+    },
+    {
+      "file": "packages/sdk/src/resources/comments.ts",
+      "resource": "comments",
+      "method": "get",
+      "params": "id: number",
+      "httpMethod": "GET",
+      "returnType": "Comment",
+      "path": "/comments/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/comments.ts",
+      "resource": "comments",
+      "method": "update",
+      "params": "id: number, data: { content: string }",
+      "httpMethod": "PATCH",
+      "returnType": "void",
+      "path": "/comments/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/comments.ts",
+      "resource": "comments",
+      "method": "delete",
+      "params": "id: number",
+      "httpMethod": "DELETE",
+      "returnType": "void",
+      "path": "/comments/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/comments.ts",
+      "resource": "comments",
+      "method": "listOwn",
+      "params": "params?: PaginationParams",
+      "httpMethod": "GET",
+      "returnType": "ListResult<Comment>",
+      "path": "/users/me/comments"
+    },
+    {
+      "file": "packages/sdk/src/resources/comments.ts",
+      "resource": "comments",
+      "method": "batch",
+      "params": "data: BatchOperateParams",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/comments/batch"
+    },
+    {
+      "file": "packages/sdk/src/resources/config.ts",
+      "resource": "config",
+      "method": "list",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "ConfigData",
+      "path": "/config"
+    },
+    {
+      "file": "packages/sdk/src/resources/config.ts",
+      "resource": "config",
+      "method": "update",
+      "params": "data: ConfigUpdateParams",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/config"
+    },
+    {
+      "file": "packages/sdk/src/resources/config.ts",
+      "resource": "config",
+      "method": "groups",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "string[]",
+      "path": "/config/groups"
+    },
+    {
+      "file": "packages/sdk/src/resources/config.ts",
+      "resource": "config",
+      "method": "init",
+      "params": "",
+      "httpMethod": "POST",
+      "returnType": "ConfigData",
+      "path": "/config/init"
+    },
+    {
+      "file": "packages/sdk/src/resources/config.ts",
+      "resource": "config",
+      "method": "register",
+      "params": "data: ConfigRegisterParams",
+      "httpMethod": "POST",
+      "returnType": "ConfigRegisterResult",
+      "path": "/config/register"
+    },
+    {
+      "file": "packages/sdk/src/resources/config.ts",
+      "resource": "config",
+      "method": "reload",
+      "params": "",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/config/reload"
+    },
+    {
+      "file": "packages/sdk/src/resources/config.ts",
+      "resource": "config",
+      "method": "deleteGroup",
+      "params": "group: string",
+      "httpMethod": "DELETE",
+      "returnType": "void",
+      "path": "/config"
+    },
+    {
+      "file": "packages/sdk/src/resources/config.ts",
+      "resource": "config",
+      "method": "deleteKey",
+      "params": "group: string, key: string",
+      "httpMethod": "DELETE",
+      "returnType": "void",
+      "path": "/config/key"
+    },
+    {
+      "file": "packages/sdk/src/resources/dashboard.ts",
+      "resource": "dashboard",
+      "method": "index",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "DashboardData",
+      "path": "/dashboard"
+    },
+    {
+      "file": "packages/sdk/src/resources/files.ts",
+      "resource": "files",
+      "method": "upload",
+      "params": "formData: FormData",
+      "httpMethod": "POST",
+      "returnType": "UploadResult",
+      "path": "/files"
+    },
+    {
+      "file": "packages/sdk/src/resources/files.ts",
+      "resource": "files",
+      "method": "list",
+      "params": "params?: { page?: number; list_rows?: number }",
+      "httpMethod": "GET",
+      "returnType": "ListResult<LCFile>",
+      "path": "/files"
+    },
+    {
+      "file": "packages/sdk/src/resources/files.ts",
+      "resource": "files",
+      "method": "get",
+      "params": "id: number",
+      "httpMethod": "GET",
+      "returnType": "LCFile",
+      "path": "/files/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/files.ts",
+      "resource": "files",
+      "method": "direct",
+      "params": "data?: { filename?: string; size?: number; mime?: string }",
+      "httpMethod": "POST",
+      "returnType": "DirectUploadResult",
+      "path": "/files/direct"
+    },
+    {
+      "file": "packages/sdk/src/resources/files.ts",
+      "resource": "files",
+      "method": "confirm",
+      "params": "id: number",
+      "httpMethod": "PATCH",
+      "returnType": "void",
+      "path": "/files/:param/confirm"
+    },
+    {
+      "file": "packages/sdk/src/resources/files.ts",
+      "resource": "files",
+      "method": "listOwn",
+      "params": "params?: { page?: number; list_rows?: number }",
+      "httpMethod": "GET",
+      "returnType": "ListResult<LCFile>",
+      "path": "/users/me/files"
+    },
+    {
+      "file": "packages/sdk/src/resources/files.ts",
+      "resource": "files",
+      "method": "batch",
+      "params": "data: FilesBatchOperateParams",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/files/batch"
+    },
+    {
+      "file": "packages/sdk/src/resources/files.ts",
+      "resource": "files",
+      "method": "cleanup",
+      "params": "",
+      "httpMethod": "DELETE",
+      "returnType": "{ cleaned: number }",
+      "path": "/files/expired"
+    },
+    {
+      "file": "packages/sdk/src/resources/files.ts",
+      "resource": "files",
+      "method": "delete",
+      "params": "id: number",
+      "httpMethod": "DELETE",
+      "returnType": "void",
+      "path": "/files/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/likes.ts",
+      "resource": "likes",
+      "method": "list",
+      "params": "params?: PaginationParams",
+      "httpMethod": "GET",
+      "returnType": "Like[]",
+      "path": "/likes"
+    },
+    {
+      "file": "packages/sdk/src/resources/likes.ts",
+      "resource": "likes",
+      "method": "unlike",
+      "params": "id: number",
+      "httpMethod": "DELETE",
+      "returnType": "void",
+      "path": "/likes/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/permissions.ts",
+      "resource": "permissions",
+      "method": "list",
+      "params": "params?: { page?: number; list_rows?: number; search_value?: string }",
+      "httpMethod": "GET",
+      "returnType": "ListResult<CapabilityItem>",
+      "path": "/permissions"
+    },
+    {
+      "file": "packages/sdk/src/resources/permissions.ts",
+      "resource": "permissions",
+      "method": "all",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "CapabilityItem[]",
+      "path": "/permissions/all"
+    },
+    {
+      "file": "packages/sdk/src/resources/roles.ts",
+      "resource": "roles",
+      "method": "list",
+      "params": "params?: { page?: number; list_rows?: number }",
+      "httpMethod": "GET",
+      "returnType": "ListResult<Role>",
+      "path": "/roles"
+    },
+    {
+      "file": "packages/sdk/src/resources/roles.ts",
+      "resource": "roles",
+      "method": "get",
+      "params": "id: number",
+      "httpMethod": "GET",
+      "returnType": "Role",
+      "path": "/roles/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/roles.ts",
+      "resource": "roles",
+      "method": "create",
+      "params": "data: CreateRoleParams",
+      "httpMethod": "POST",
+      "returnType": "{ id: string }",
+      "path": "/roles"
+    },
+    {
+      "file": "packages/sdk/src/resources/roles.ts",
+      "resource": "roles",
+      "method": "update",
+      "params": "id: number, data: UpdateRoleParams",
+      "httpMethod": "PATCH",
+      "returnType": "void",
+      "path": "/roles/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/roles.ts",
+      "resource": "roles",
+      "method": "delete",
+      "params": "id: number",
+      "httpMethod": "DELETE",
+      "returnType": "void",
+      "path": "/roles/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/roles.ts",
+      "resource": "roles",
+      "method": "getCapabilities",
+      "params": "id: number",
+      "httpMethod": "GET",
+      "returnType": "string[]",
+      "path": "/roles/:param/capabilities"
+    },
+    {
+      "file": "packages/sdk/src/resources/roles.ts",
+      "resource": "roles",
+      "method": "assignCapabilities",
+      "params": "id: number, data: AssignCapabilitiesParams",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/roles/:param/capabilities"
+    },
+    {
+      "file": "packages/sdk/src/resources/roles.ts",
+      "resource": "roles",
+      "method": "reseed",
+      "params": "",
+      "httpMethod": "POST",
+      "returnType": "ReseedResult",
+      "path": "/roles/reseed"
+    },
+    {
+      "file": "packages/sdk/src/resources/sender.ts",
+      "resource": "sender",
+      "method": "types",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "SenderType[]",
+      "path": "/sender/types"
+    },
+    {
+      "file": "packages/sdk/src/resources/sender.ts",
+      "resource": "sender",
+      "method": "meta",
+      "params": "type: string",
+      "httpMethod": "GET",
+      "returnType": "SenderMeta",
+      "path": "/sender/:param/meta"
+    },
+    {
+      "file": "packages/sdk/src/resources/sender.ts",
+      "resource": "sender",
+      "method": "install",
+      "params": "",
+      "httpMethod": "POST",
+      "returnType": "ConfigRegisterResult[]",
+      "path": "/sender/install"
+    },
+    {
+      "file": "packages/sdk/src/resources/sender.ts",
+      "resource": "sender",
+      "method": "channels",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "SenderChannel[]",
+      "path": "/sender/channels"
+    },
+    {
+      "file": "packages/sdk/src/resources/sender.ts",
+      "resource": "sender",
+      "method": "templates",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "SenderTemplate[]",
+      "path": "/sender/templates"
+    },
+    {
+      "file": "packages/sdk/src/resources/sender.ts",
+      "resource": "sender",
+      "method": "testChannel",
+      "params": "data: { channel: string; to?: string }",
+      "httpMethod": "POST",
+      "returnType": "{ success: boolean; message?: string }",
+      "path": "/sender/test-channel"
+    },
+    {
+      "file": "packages/sdk/src/resources/session.ts",
+      "resource": "session",
+      "method": "login",
+      "params": "data: LoginParams",
+      "httpMethod": "POST",
+      "returnType": "LoginResult",
+      "path": "/session/login"
+    },
+    {
+      "file": "packages/sdk/src/resources/session.ts",
+      "resource": "session",
+      "method": "register",
+      "params": "data: RegisterParams",
+      "httpMethod": "POST",
+      "returnType": "LoginResult",
+      "path": "/session/register"
+    },
+    {
+      "file": "packages/sdk/src/resources/session.ts",
+      "resource": "session",
+      "method": "guest",
+      "params": "",
+      "httpMethod": "POST",
+      "returnType": "LoginResult",
+      "path": "/session/guest"
+    },
+    {
+      "file": "packages/sdk/src/resources/session.ts",
+      "resource": "session",
+      "method": "logout",
+      "params": "",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/session/logout"
+    },
+    {
+      "file": "packages/sdk/src/resources/session.ts",
+      "resource": "session",
+      "method": "captcha",
+      "params": "params: CaptchaSendParams",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/session/captcha"
+    },
+    {
+      "file": "packages/sdk/src/resources/session.ts",
+      "resource": "session",
+      "method": "check",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "CheckResult",
+      "path": "/session/check"
+    },
+    {
+      "file": "packages/sdk/src/resources/storage.ts",
+      "resource": "storage",
+      "method": "types",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "StorageDriver[]",
+      "path": "/storage/types"
+    },
+    {
+      "file": "packages/sdk/src/resources/storage.ts",
+      "resource": "storage",
+      "method": "meta",
+      "params": "type: string",
+      "httpMethod": "GET",
+      "returnType": "StorageMeta",
+      "path": "/storage/:param/meta"
+    },
+    {
+      "file": "packages/sdk/src/resources/storage.ts",
+      "resource": "storage",
+      "method": "install",
+      "params": "",
+      "httpMethod": "POST",
+      "returnType": "ConfigRegisterResult[]",
+      "path": "/storage/install"
+    },
+    {
+      "file": "packages/sdk/src/resources/storage.ts",
+      "resource": "storage",
+      "method": "channels",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "StorageChannel[]",
+      "path": "/storage/channels"
+    },
+    {
+      "file": "packages/sdk/src/resources/storage.ts",
+      "resource": "storage",
+      "method": "testChannel",
+      "params": "data: { channel: string }",
+      "httpMethod": "POST",
+      "returnType": "{ success: boolean; message?: string }",
+      "path": "/storage/test-channel"
+    },
+    {
+      "file": "packages/sdk/src/resources/storage.ts",
+      "resource": "storage",
+      "method": "channelStats",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "ChannelStats",
+      "path": "/storage/channel-stats"
+    },
+    {
+      "file": "packages/sdk/src/resources/system.ts",
+      "resource": "system",
+      "method": "update",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "SystemUpdateInfo",
+      "path": "/system/update"
+    },
+    {
+      "file": "packages/sdk/src/resources/tags.ts",
+      "resource": "tags",
+      "method": "list",
+      "params": "params?: PaginationParams",
+      "httpMethod": "GET",
+      "returnType": "Tag[]",
+      "path": "/tags"
+    },
+    {
+      "file": "packages/sdk/src/resources/tags.ts",
+      "resource": "tags",
+      "method": "listAll",
+      "params": "params?: ListParams",
+      "httpMethod": "GET",
+      "returnType": "ListResult<Tag>",
+      "path": "/tags/all"
+    },
+    {
+      "file": "packages/sdk/src/resources/tags.ts",
+      "resource": "tags",
+      "method": "get",
+      "params": "id: number",
+      "httpMethod": "GET",
+      "returnType": "Tag",
+      "path": "/tags/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/tags.ts",
+      "resource": "tags",
+      "method": "create",
+      "params": "data: { name: string }",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/tags"
+    },
+    {
+      "file": "packages/sdk/src/resources/tags.ts",
+      "resource": "tags",
+      "method": "update",
+      "params": "id: number, data: { name: string }",
+      "httpMethod": "PATCH",
+      "returnType": "void",
+      "path": "/tags/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/tags.ts",
+      "resource": "tags",
+      "method": "delete",
+      "params": "id: number",
+      "httpMethod": "DELETE",
+      "returnType": "void",
+      "path": "/tags/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/tags.ts",
+      "resource": "tags",
+      "method": "batch",
+      "params": "data: BatchOperateParams",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/tags/batch"
+    },
+    {
+      "file": "packages/sdk/src/resources/theme.ts",
+      "resource": "theme",
+      "method": "tags",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "Tag[]",
+      "path": "/tags"
+    },
+    {
+      "file": "packages/sdk/src/resources/theme.ts",
+      "resource": "theme",
+      "method": "list",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "ThemeItem[]",
+      "path": "/theme/list"
+    },
+    {
+      "file": "packages/sdk/src/resources/theme.ts",
+      "resource": "theme",
+      "method": "upload",
+      "params": "formData: FormData",
+      "httpMethod": "POST",
+      "returnType": "ThemeItem",
+      "path": "/theme/upload"
+    },
+    {
+      "file": "packages/sdk/src/resources/theme.ts",
+      "resource": "theme",
+      "method": "activate",
+      "params": "data: ThemeActivateParams",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/theme/activate"
+    },
+    {
+      "file": "packages/sdk/src/resources/theme.ts",
+      "resource": "theme",
+      "method": "config",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "ThemeConfigData",
+      "path": "/theme/config"
+    },
+    {
+      "file": "packages/sdk/src/resources/theme.ts",
+      "resource": "theme",
+      "method": "updateConfig",
+      "params": "data: Record<string, any>",
+      "httpMethod": "PUT",
+      "returnType": "void",
+      "path": "/theme/config"
+    },
+    {
+      "file": "packages/sdk/src/resources/theme.ts",
+      "resource": "theme",
+      "method": "freeze",
+      "params": "",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/theme/freeze"
+    },
+    {
+      "file": "packages/sdk/src/resources/theme.ts",
+      "resource": "theme",
+      "method": "delete",
+      "params": "data: ThemeDeleteParams",
+      "httpMethod": "DELETE",
+      "returnType": "void",
+      "path": "/theme/delete"
+    },
+    {
+      "file": "packages/sdk/src/resources/theme.ts",
+      "resource": "theme",
+      "method": "publicConfig",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "ThemeConfigData",
+      "path": "/theme/config"
+    },
+    {
+      "file": "packages/sdk/src/resources/users.ts",
+      "resource": "users",
+      "method": "me",
+      "params": "",
+      "httpMethod": "GET",
+      "returnType": "User",
+      "path": "/users/me"
+    },
+    {
+      "file": "packages/sdk/src/resources/users.ts",
+      "resource": "users",
+      "method": "updateMe",
+      "params": "data: ProfileUpdateParams",
+      "httpMethod": "PATCH",
+      "returnType": "void",
+      "path": "/users/me"
+    },
+    {
+      "file": "packages/sdk/src/resources/users.ts",
+      "resource": "users",
+      "method": "updatePassword",
+      "params": "data: PasswordParams",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/users/me/password"
+    },
+    {
+      "file": "packages/sdk/src/resources/users.ts",
+      "resource": "users",
+      "method": "updateEmail",
+      "params": "data: EmailParams",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/users/me/email"
+    },
+    {
+      "file": "packages/sdk/src/resources/users.ts",
+      "resource": "users",
+      "method": "emailCaptcha",
+      "params": "data: EmailCaptchaParams",
+      "httpMethod": "POST",
+      "returnType": "EmailCaptchaResult",
+      "path": "/users/me/email-captcha"
+    },
+    {
+      "file": "packages/sdk/src/resources/users.ts",
+      "resource": "users",
+      "method": "list",
+      "params": "params?: { page?: number; list_rows?: number; search_value?: string }",
+      "httpMethod": "GET",
+      "returnType": "ListResult<User>",
+      "path": "/users"
+    },
+    {
+      "file": "packages/sdk/src/resources/users.ts",
+      "resource": "users",
+      "method": "get",
+      "params": "id: number",
+      "httpMethod": "GET",
+      "returnType": "User",
+      "path": "/users/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/users.ts",
+      "resource": "users",
+      "method": "update",
+      "params": "id: number, data: AdminUserUpdateParams",
+      "httpMethod": "PATCH",
+      "returnType": "void",
+      "path": "/users/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/users.ts",
+      "resource": "users",
+      "method": "delete",
+      "params": "id: number",
+      "httpMethod": "DELETE",
+      "returnType": "void",
+      "path": "/users/:param"
+    },
+    {
+      "file": "packages/sdk/src/resources/users.ts",
+      "resource": "users",
+      "method": "batch",
+      "params": "data: BatchOperateParams",
+      "httpMethod": "POST",
+      "returnType": "void",
+      "path": "/users/batch"
+    }
+  ],
   "routes": [
     {
       "file": "apps/backend/app/api/route/captcha.php",
@@ -32,15 +916,26 @@
       "resources": [
         "CaptchaResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/captcha.ts",
+        "resource": "captcha",
         "method": "meta",
+        "params": "slug: string",
         "httpMethod": "GET",
         "returnType": "CaptchaMeta",
         "path": "/captcha/:param/meta"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "CaptchaResource",
+        "operation": "make",
+        "sdkReturnType": "CaptchaMeta"
       }
     },
     {
@@ -66,15 +961,26 @@
       "resources": [
         "CaptchaResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/captcha.ts",
+        "resource": "captcha",
         "method": "config",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "CaptchaConfig",
         "path": "/captcha/config"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "CaptchaResource",
+        "operation": "make",
+        "sdkReturnType": "CaptchaConfig"
       }
     },
     {
@@ -106,15 +1012,26 @@
       "resources": [
         "CaptchaResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/captcha.ts",
+        "resource": "captcha",
         "method": "drivers",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "CaptchaDriver[]",
         "path": "/captcha/drivers"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "CaptchaResource",
+        "operation": "collection",
+        "sdkReturnType": "CaptchaDriver[]"
       }
     },
     {
@@ -146,15 +1063,26 @@
       "resources": [
         "CaptchaResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/captcha.ts",
+        "resource": "captcha",
         "method": "install",
+        "params": "",
         "httpMethod": "POST",
         "returnType": "ConfigRegisterResult[]",
         "path": "/captcha/install"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "CaptchaResource",
+        "operation": "collection",
+        "sdkReturnType": "ConfigRegisterResult[]"
       }
     },
     {
@@ -186,15 +1114,26 @@
       "resources": [
         "CaptchaResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/captcha.ts",
+        "resource": "captcha",
         "method": "types",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "CaptchaDriver[]",
         "path": "/captcha/types"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "CaptchaResource",
+        "operation": "collection",
+        "sdkReturnType": "CaptchaDriver[]"
       }
     },
     {
@@ -220,15 +1159,26 @@
       "resources": [
         "CardResource::paginate"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/cards.ts",
+        "resource": "cards",
         "method": "list",
+        "params": "params?: CardsListParams",
         "httpMethod": "GET",
         "returnType": "ListResult<Card>",
         "path": "/cards"
+      },
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "CardResource",
+        "operation": "paginate",
+        "sdkReturnType": "ListResult<Card>"
       }
     },
     {
@@ -261,15 +1211,28 @@
       "resources": [
         "ApiResource::make"
       ],
+      "validators": [
+        "app\\modules\\Content\\Cards\\Transport\\Api\\Cards"
+      ],
+      "validatorScene": "create",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/cards.ts",
+        "resource": "cards",
         "method": "create",
+        "params": "data: CreateCardParams",
         "httpMethod": "POST",
         "returnType": "CreateResult",
         "path": "/cards"
+      },
+      "response": {
+        "status": 201,
+        "shape": "dynamic",
+        "resource": "ApiResource",
+        "operation": "make",
+        "sdkReturnType": "CreateResult"
       }
     },
     {
@@ -301,15 +1264,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/cards.ts",
+        "resource": "cards",
         "method": "delete",
+        "params": "id: number",
         "httpMethod": "DELETE",
         "returnType": "void",
         "path": "/cards/:param"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -335,15 +1309,26 @@
       "resources": [
         "CardResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/cards.ts",
+        "resource": "cards",
         "method": "get",
+        "params": "id: number",
         "httpMethod": "GET",
         "returnType": "Card",
         "path": "/cards/:param"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "CardResource",
+        "operation": "make",
+        "sdkReturnType": "Card"
       }
     },
     {
@@ -375,15 +1360,28 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [
+        "app\\modules\\Content\\Cards\\Transport\\Api\\Cards"
+      ],
+      "validatorScene": "create",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/cards.ts",
+        "resource": "cards",
         "method": "update",
+        "params": "id: number, data: UpdateCardParams",
         "httpMethod": "PATCH",
         "returnType": "void",
         "path": "/cards/:param"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -409,15 +1407,26 @@
       "resources": [
         "CommentResource::paginate"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/comments.ts",
+        "resource": "comments",
         "method": "cardList",
+        "params": "cardId: number, params?: PaginationParams",
         "httpMethod": "GET",
         "returnType": "ListResult<Comment>",
         "path": "/cards/:param/comments"
+      },
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "CommentResource",
+        "operation": "paginate",
+        "sdkReturnType": "ListResult<Comment>"
       }
     },
     {
@@ -450,15 +1459,28 @@
       "resources": [
         "ApiResource::make"
       ],
+      "validators": [
+        "app\\modules\\Content\\Comments\\Transport\\Api\\Comments"
+      ],
+      "validatorScene": "create",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/comments.ts",
+        "resource": "comments",
         "method": "create",
+        "params": "cardId: number, data: CreateCommentParams",
         "httpMethod": "POST",
         "returnType": "CreateResult",
         "path": "/cards/:param/comments"
+      },
+      "response": {
+        "status": 201,
+        "shape": "dynamic",
+        "resource": "ApiResource",
+        "operation": "make",
+        "sdkReturnType": "CreateResult"
       }
     },
     {
@@ -491,15 +1513,26 @@
       "resources": [
         "ApiResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/cards.ts",
+        "resource": "cards",
         "method": "like",
+        "params": "id: number",
         "httpMethod": "POST",
         "returnType": "{ likes: number }",
         "path": "/cards/:param/like"
+      },
+      "response": {
+        "status": 200,
+        "shape": "dynamic",
+        "resource": "ApiResource",
+        "operation": "make",
+        "sdkReturnType": "{ likes: number }"
       }
     },
     {
@@ -525,15 +1558,28 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [
+        "app\\shared\\Transport\\Validation\\BatchOperationInput"
+      ],
+      "validatorScene": "BatchOperate",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/cards.ts",
+        "resource": "cards",
         "method": "batch",
+        "params": "data: BatchOperateParams",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/cards/batch"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -559,15 +1605,26 @@
       "resources": [
         "CardResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/cards.ts",
+        "resource": "cards",
         "method": "hot",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "Card[]",
         "path": "/cards/hot"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "CardResource",
+        "operation": "collection",
+        "sdkReturnType": "Card[]"
       }
     },
     {
@@ -593,15 +1650,26 @@
       "resources": [
         "CardResource::paginate"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/cards.ts",
+        "resource": "cards",
         "method": "search",
+        "params": "params?: CardsListParams",
         "httpMethod": "GET",
         "returnType": "ListResult<Card>",
         "path": "/cards/search"
+      },
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "CardResource",
+        "operation": "paginate",
+        "sdkReturnType": "ListResult<Card>"
       }
     },
     {
@@ -634,15 +1702,26 @@
       "resources": [
         "CommentResource::paginate"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/comments.ts",
+        "resource": "comments",
         "method": "list",
+        "params": "params?: { page?: number; list_rows?: number; search_value?: string }",
         "httpMethod": "GET",
         "returnType": "ListResult<Comment>",
         "path": "/comments"
+      },
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "CommentResource",
+        "operation": "paginate",
+        "sdkReturnType": "ListResult<Comment>"
       }
     },
     {
@@ -673,15 +1752,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/comments.ts",
+        "resource": "comments",
         "method": "delete",
+        "params": "id: number",
         "httpMethod": "DELETE",
         "returnType": "void",
         "path": "/comments/:param"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -707,15 +1797,26 @@
       "resources": [
         "CommentResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/comments.ts",
+        "resource": "comments",
         "method": "get",
+        "params": "id: number",
         "httpMethod": "GET",
         "returnType": "Comment",
         "path": "/comments/:param"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "CommentResource",
+        "operation": "make",
+        "sdkReturnType": "Comment"
       }
     },
     {
@@ -746,15 +1847,28 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [
+        "app\\modules\\Content\\Comments\\Transport\\Api\\Comments"
+      ],
+      "validatorScene": "create",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/comments.ts",
+        "resource": "comments",
         "method": "update",
+        "params": "id: number, data: { content: string }",
         "httpMethod": "PATCH",
         "returnType": "void",
         "path": "/comments/:param"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -780,15 +1894,28 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [
+        "app\\shared\\Transport\\Validation\\BatchOperationInput"
+      ],
+      "validatorScene": "BatchOperate",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/comments.ts",
+        "resource": "comments",
         "method": "batch",
+        "params": "data: BatchOperateParams",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/comments/batch"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -819,15 +1946,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/config.ts",
+        "resource": "config",
         "method": "deleteGroup",
+        "params": "group: string",
         "httpMethod": "DELETE",
         "returnType": "void",
         "path": "/config"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -859,15 +1997,26 @@
       "resources": [
         "ConfigResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/config.ts",
+        "resource": "config",
         "method": "list",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "ConfigData",
         "path": "/config"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "ConfigResource",
+        "operation": "make",
+        "sdkReturnType": "ConfigData"
       }
     },
     {
@@ -897,15 +2046,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/config.ts",
+        "resource": "config",
         "method": "update",
+        "params": "data: ConfigUpdateParams",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/config"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -937,15 +2097,26 @@
       "resources": [
         "ConfigResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/config.ts",
+        "resource": "config",
         "method": "groups",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "string[]",
         "path": "/config/groups"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "ConfigResource",
+        "operation": "make",
+        "sdkReturnType": "string[]"
       }
     },
     {
@@ -977,15 +2148,26 @@
       "resources": [
         "ConfigResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/config.ts",
+        "resource": "config",
         "method": "init",
+        "params": "",
         "httpMethod": "POST",
         "returnType": "ConfigData",
         "path": "/config/init"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "ConfigResource",
+        "operation": "make",
+        "sdkReturnType": "ConfigData"
       }
     },
     {
@@ -1016,15 +2198,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/config.ts",
+        "resource": "config",
         "method": "deleteKey",
+        "params": "group: string, key: string",
         "httpMethod": "DELETE",
         "returnType": "void",
         "path": "/config/key"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -1057,15 +2250,26 @@
       "resources": [
         "ConfigResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/config.ts",
+        "resource": "config",
         "method": "register",
+        "params": "data: ConfigRegisterParams",
         "httpMethod": "POST",
         "returnType": "ConfigRegisterResult",
         "path": "/config/register"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "ConfigResource",
+        "operation": "make",
+        "sdkReturnType": "ConfigRegisterResult"
       }
     },
     {
@@ -1095,15 +2299,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/config.ts",
+        "resource": "config",
         "method": "reload",
+        "params": "",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/config/reload"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -1135,15 +2350,26 @@
       "resources": [
         "DashboardResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/dashboard.ts",
+        "resource": "dashboard",
         "method": "index",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "DashboardData",
         "path": "/dashboard"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "DashboardResource",
+        "operation": "make",
+        "sdkReturnType": "DashboardData"
       }
     },
     {
@@ -1176,15 +2402,26 @@
       "resources": [
         "FileResource::paginate"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/files.ts",
+        "resource": "files",
         "method": "list",
+        "params": "params?: { page?: number; list_rows?: number }",
         "httpMethod": "GET",
         "returnType": "ListResult<LCFile>",
         "path": "/files"
+      },
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "FileResource",
+        "operation": "paginate",
+        "sdkReturnType": "ListResult<LCFile>"
       }
     },
     {
@@ -1216,15 +2453,28 @@
       "resources": [
         "FileResource::make"
       ],
+      "validators": [
+        "app\\modules\\Platform\\Files\\Transport\\Api\\Files"
+      ],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/files.ts",
+        "resource": "files",
         "method": "upload",
+        "params": "formData: FormData",
         "httpMethod": "POST",
         "returnType": "UploadResult",
         "path": "/files"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "FileResource",
+        "operation": "make",
+        "sdkReturnType": "UploadResult"
       }
     },
     {
@@ -1255,15 +2505,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/files.ts",
+        "resource": "files",
         "method": "delete",
+        "params": "id: number",
         "httpMethod": "DELETE",
         "returnType": "void",
         "path": "/files/:param"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -1296,15 +2557,26 @@
       "resources": [
         "FileResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/files.ts",
+        "resource": "files",
         "method": "get",
+        "params": "id: number",
         "httpMethod": "GET",
         "returnType": "LCFile",
         "path": "/files/:param"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "FileResource",
+        "operation": "make",
+        "sdkReturnType": "LCFile"
       }
     },
     {
@@ -1334,15 +2606,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/files.ts",
+        "resource": "files",
         "method": "confirm",
+        "params": "id: number",
         "httpMethod": "PATCH",
         "returnType": "void",
         "path": "/files/:param/confirm"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -1375,15 +2658,28 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [
+        "app\\modules\\Platform\\Files\\Transport\\Api\\Files"
+      ],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/files.ts",
+        "resource": "files",
         "method": "batch",
+        "params": "data: FilesBatchOperateParams",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/files/batch"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -1415,15 +2711,26 @@
       "resources": [
         "DirectUploadResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/files.ts",
+        "resource": "files",
         "method": "direct",
+        "params": "data?: { filename?: string; size?: number; mime?: string }",
         "httpMethod": "POST",
         "returnType": "DirectUploadResult",
         "path": "/files/direct"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "DirectUploadResource",
+        "operation": "make",
+        "sdkReturnType": "DirectUploadResult"
       }
     },
     {
@@ -1455,15 +2762,26 @@
       "resources": [
         "ApiResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/files.ts",
+        "resource": "files",
         "method": "cleanup",
+        "params": "",
         "httpMethod": "DELETE",
         "returnType": "{ cleaned: number }",
         "path": "/files/expired"
+      },
+      "response": {
+        "status": 200,
+        "shape": "dynamic",
+        "resource": "ApiResource",
+        "operation": "make",
+        "sdkReturnType": "{ cleaned: number }"
       }
     },
     {
@@ -1495,15 +2813,26 @@
       "resources": [
         "LikeResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/likes.ts",
+        "resource": "likes",
         "method": "list",
+        "params": "params?: PaginationParams",
         "httpMethod": "GET",
         "returnType": "Like[]",
         "path": "/likes"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "LikeResource",
+        "operation": "collection",
+        "sdkReturnType": "Like[]"
       }
     },
     {
@@ -1533,15 +2862,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/likes.ts",
+        "resource": "likes",
         "method": "unlike",
+        "params": "id: number",
         "httpMethod": "DELETE",
         "returnType": "void",
         "path": "/likes/:param"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -1573,15 +2913,26 @@
       "resources": [
         "PermissionResource::paginate"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/permissions.ts",
+        "resource": "permissions",
         "method": "list",
+        "params": "params?: { page?: number; list_rows?: number; search_value?: string }",
         "httpMethod": "GET",
         "returnType": "ListResult<CapabilityItem>",
         "path": "/permissions"
+      },
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "PermissionResource",
+        "operation": "paginate",
+        "sdkReturnType": "ListResult<CapabilityItem>"
       }
     },
     {
@@ -1613,15 +2964,26 @@
       "resources": [
         "PermissionResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/permissions.ts",
+        "resource": "permissions",
         "method": "all",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "CapabilityItem[]",
         "path": "/permissions/all"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "PermissionResource",
+        "operation": "collection",
+        "sdkReturnType": "CapabilityItem[]"
       }
     },
     {
@@ -1653,15 +3015,26 @@
       "resources": [
         "RoleResource::paginate"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/roles.ts",
+        "resource": "roles",
         "method": "list",
+        "params": "params?: { page?: number; list_rows?: number }",
         "httpMethod": "GET",
         "returnType": "ListResult<Role>",
         "path": "/roles"
+      },
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "RoleResource",
+        "operation": "paginate",
+        "sdkReturnType": "ListResult<Role>"
       }
     },
     {
@@ -1693,15 +3066,28 @@
       "resources": [
         "ApiResource::make"
       ],
+      "validators": [
+        "app\\modules\\Platform\\Rbac\\Transport\\Api\\Roles"
+      ],
+      "validatorScene": "create",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/roles.ts",
+        "resource": "roles",
         "method": "create",
+        "params": "data: CreateRoleParams",
         "httpMethod": "POST",
         "returnType": "{ id: string }",
         "path": "/roles"
+      },
+      "response": {
+        "status": 200,
+        "shape": "dynamic",
+        "resource": "ApiResource",
+        "operation": "make",
+        "sdkReturnType": "{ id: string }"
       }
     },
     {
@@ -1731,15 +3117,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/roles.ts",
+        "resource": "roles",
         "method": "delete",
+        "params": "id: number",
         "httpMethod": "DELETE",
         "returnType": "void",
         "path": "/roles/:param"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -1771,15 +3168,26 @@
       "resources": [
         "RoleResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/roles.ts",
+        "resource": "roles",
         "method": "get",
+        "params": "id: number",
         "httpMethod": "GET",
         "returnType": "Role",
         "path": "/roles/:param"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "RoleResource",
+        "operation": "make",
+        "sdkReturnType": "Role"
       }
     },
     {
@@ -1809,15 +3217,28 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [
+        "app\\modules\\Platform\\Rbac\\Transport\\Api\\Roles"
+      ],
+      "validatorScene": "update",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/roles.ts",
+        "resource": "roles",
         "method": "update",
+        "params": "id: number, data: UpdateRoleParams",
         "httpMethod": "PATCH",
         "returnType": "void",
         "path": "/roles/:param"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -1849,15 +3270,26 @@
       "resources": [
         "ApiResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/roles.ts",
+        "resource": "roles",
         "method": "getCapabilities",
+        "params": "id: number",
         "httpMethod": "GET",
         "returnType": "string[]",
         "path": "/roles/:param/capabilities"
+      },
+      "response": {
+        "status": 200,
+        "shape": "dynamic",
+        "resource": "ApiResource",
+        "operation": "make",
+        "sdkReturnType": "string[]"
       }
     },
     {
@@ -1887,15 +3319,28 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [
+        "app\\modules\\Platform\\Rbac\\Transport\\Api\\Roles"
+      ],
+      "validatorScene": "assignCapabilities",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/roles.ts",
+        "resource": "roles",
         "method": "assignCapabilities",
+        "params": "id: number, data: AssignCapabilitiesParams",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/roles/:param/capabilities"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -1927,15 +3372,26 @@
       "resources": [
         "ApiResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/roles.ts",
+        "resource": "roles",
         "method": "reseed",
+        "params": "",
         "httpMethod": "POST",
         "returnType": "ReseedResult",
         "path": "/roles/reseed"
+      },
+      "response": {
+        "status": 200,
+        "shape": "dynamic",
+        "resource": "ApiResource",
+        "operation": "make",
+        "sdkReturnType": "ReseedResult"
       }
     },
     {
@@ -1967,15 +3423,26 @@
       "resources": [
         "SenderResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/sender.ts",
+        "resource": "sender",
         "method": "meta",
+        "params": "type: string",
         "httpMethod": "GET",
         "returnType": "SenderMeta",
         "path": "/sender/:param/meta"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "SenderResource",
+        "operation": "make",
+        "sdkReturnType": "SenderMeta"
       }
     },
     {
@@ -2007,15 +3474,26 @@
       "resources": [
         "SenderResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/sender.ts",
+        "resource": "sender",
         "method": "channels",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "SenderChannel[]",
         "path": "/sender/channels"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "SenderResource",
+        "operation": "collection",
+        "sdkReturnType": "SenderChannel[]"
       }
     },
     {
@@ -2047,15 +3525,26 @@
       "resources": [
         "SenderResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/sender.ts",
+        "resource": "sender",
         "method": "install",
+        "params": "",
         "httpMethod": "POST",
         "returnType": "ConfigRegisterResult[]",
         "path": "/sender/install"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "SenderResource",
+        "operation": "collection",
+        "sdkReturnType": "ConfigRegisterResult[]"
       }
     },
     {
@@ -2087,15 +3576,26 @@
       "resources": [
         "SenderResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/sender.ts",
+        "resource": "sender",
         "method": "templates",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "SenderTemplate[]",
         "path": "/sender/templates"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "SenderResource",
+        "operation": "collection",
+        "sdkReturnType": "SenderTemplate[]"
       }
     },
     {
@@ -2127,15 +3627,26 @@
       "resources": [
         "SenderResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/sender.ts",
+        "resource": "sender",
         "method": "testChannel",
+        "params": "data: { channel: string; to?: string }",
         "httpMethod": "POST",
         "returnType": "{ success: boolean; message?: string }",
         "path": "/sender/test-channel"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "SenderResource",
+        "operation": "make",
+        "sdkReturnType": "{ success: boolean; message?: string }"
       }
     },
     {
@@ -2167,15 +3678,26 @@
       "resources": [
         "SenderResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/sender.ts",
+        "resource": "sender",
         "method": "types",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "SenderType[]",
         "path": "/sender/types"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "SenderResource",
+        "operation": "collection",
+        "sdkReturnType": "SenderType[]"
       }
     },
     {
@@ -2202,15 +3724,28 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [
+        "app\\modules\\Platform\\User\\Transport\\Api\\Users"
+      ],
+      "validatorScene": "captcha",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/session.ts",
+        "resource": "session",
         "method": "captcha",
+        "params": "params: CaptchaSendParams",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/session/captcha"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -2238,15 +3773,26 @@
       "resources": [
         "ApiResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/session.ts",
+        "resource": "session",
         "method": "check",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "CheckResult",
         "path": "/session/check"
+      },
+      "response": {
+        "status": 200,
+        "shape": "dynamic",
+        "resource": "ApiResource",
+        "operation": "make",
+        "sdkReturnType": "CheckResult"
       }
     },
     {
@@ -2273,15 +3819,26 @@
       "resources": [
         "AuthResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/session.ts",
+        "resource": "session",
         "method": "guest",
+        "params": "",
         "httpMethod": "POST",
         "returnType": "LoginResult",
         "path": "/session/guest"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "AuthResource",
+        "operation": "make",
+        "sdkReturnType": "LoginResult"
       }
     },
     {
@@ -2309,15 +3866,28 @@
       "resources": [
         "AuthResource::make"
       ],
+      "validators": [
+        "app\\modules\\Platform\\User\\Transport\\Api\\Users"
+      ],
+      "validatorScene": "login",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/session.ts",
+        "resource": "session",
         "method": "login",
+        "params": "data: LoginParams",
         "httpMethod": "POST",
         "returnType": "LoginResult",
         "path": "/session/login"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "AuthResource",
+        "operation": "make",
+        "sdkReturnType": "LoginResult"
       }
     },
     {
@@ -2343,15 +3913,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/session.ts",
+        "resource": "session",
         "method": "logout",
+        "params": "",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/session/logout"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -2382,15 +3963,28 @@
       "resources": [
         "AuthResource::make"
       ],
+      "validators": [
+        "app\\modules\\Platform\\User\\Transport\\Api\\Users"
+      ],
+      "validatorScene": "register",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/session.ts",
+        "resource": "session",
         "method": "register",
+        "params": "data: RegisterParams",
         "httpMethod": "POST",
         "returnType": "LoginResult",
         "path": "/session/register"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "AuthResource",
+        "operation": "make",
+        "sdkReturnType": "LoginResult"
       }
     },
     {
@@ -2423,15 +4017,26 @@
       "resources": [
         "StorageResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/storage.ts",
+        "resource": "storage",
         "method": "meta",
+        "params": "type: string",
         "httpMethod": "GET",
         "returnType": "StorageMeta",
         "path": "/storage/:param/meta"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "StorageResource",
+        "operation": "make",
+        "sdkReturnType": "StorageMeta"
       }
     },
     {
@@ -2463,15 +4068,26 @@
       "resources": [
         "StorageResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/storage.ts",
+        "resource": "storage",
         "method": "channelStats",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "ChannelStats",
         "path": "/storage/channel-stats"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "StorageResource",
+        "operation": "make",
+        "sdkReturnType": "ChannelStats"
       }
     },
     {
@@ -2503,15 +4119,26 @@
       "resources": [
         "StorageResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/storage.ts",
+        "resource": "storage",
         "method": "channels",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "StorageChannel[]",
         "path": "/storage/channels"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "StorageResource",
+        "operation": "collection",
+        "sdkReturnType": "StorageChannel[]"
       }
     },
     {
@@ -2543,15 +4170,26 @@
       "resources": [
         "StorageResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/storage.ts",
+        "resource": "storage",
         "method": "install",
+        "params": "",
         "httpMethod": "POST",
         "returnType": "ConfigRegisterResult[]",
         "path": "/storage/install"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "StorageResource",
+        "operation": "collection",
+        "sdkReturnType": "ConfigRegisterResult[]"
       }
     },
     {
@@ -2584,15 +4222,26 @@
       "resources": [
         "StorageResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/storage.ts",
+        "resource": "storage",
         "method": "testChannel",
+        "params": "data: { channel: string }",
         "httpMethod": "POST",
         "returnType": "{ success: boolean; message?: string }",
         "path": "/storage/test-channel"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "StorageResource",
+        "operation": "make",
+        "sdkReturnType": "{ success: boolean; message?: string }"
       }
     },
     {
@@ -2624,15 +4273,26 @@
       "resources": [
         "StorageResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/storage.ts",
+        "resource": "storage",
         "method": "types",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "StorageDriver[]",
         "path": "/storage/types"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "StorageResource",
+        "operation": "collection",
+        "sdkReturnType": "StorageDriver[]"
       }
     },
     {
@@ -2664,15 +4324,26 @@
       "resources": [
         "SystemResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/system.ts",
+        "resource": "system",
         "method": "update",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "SystemUpdateInfo",
         "path": "/system/update"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "SystemResource",
+        "operation": "make",
+        "sdkReturnType": "SystemUpdateInfo"
       }
     },
     {
@@ -2698,15 +4369,26 @@
       "resources": [
         "TagResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/theme.ts",
+        "resource": "theme",
         "method": "tags",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "Tag[]",
         "path": "/tags"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "TagResource",
+        "operation": "collection",
+        "sdkReturnType": "Tag[]"
       }
     },
     {
@@ -2736,15 +4418,28 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [
+        "app\\modules\\Content\\Tags\\Transport\\Api\\Tags"
+      ],
+      "validatorScene": "create",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/tags.ts",
+        "resource": "tags",
         "method": "create",
+        "params": "data: { name: string }",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/tags"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -2775,15 +4470,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/tags.ts",
+        "resource": "tags",
         "method": "delete",
+        "params": "id: number",
         "httpMethod": "DELETE",
         "returnType": "void",
         "path": "/tags/:param"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -2809,15 +4515,26 @@
       "resources": [
         "TagResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/tags.ts",
+        "resource": "tags",
         "method": "get",
+        "params": "id: number",
         "httpMethod": "GET",
         "returnType": "Tag",
         "path": "/tags/:param"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "TagResource",
+        "operation": "make",
+        "sdkReturnType": "Tag"
       }
     },
     {
@@ -2848,15 +4565,28 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [
+        "app\\modules\\Content\\Tags\\Transport\\Api\\Tags"
+      ],
+      "validatorScene": "allUpdate",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/tags.ts",
+        "resource": "tags",
         "method": "update",
+        "params": "id: number, data: { name: string }",
         "httpMethod": "PATCH",
         "returnType": "void",
         "path": "/tags/:param"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -2889,15 +4619,26 @@
       "resources": [
         "TagResource::paginate"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/tags.ts",
+        "resource": "tags",
         "method": "listAll",
+        "params": "params?: ListParams",
         "httpMethod": "GET",
         "returnType": "ListResult<Tag>",
         "path": "/tags/all"
+      },
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "TagResource",
+        "operation": "paginate",
+        "sdkReturnType": "ListResult<Tag>"
       }
     },
     {
@@ -2923,15 +4664,28 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [
+        "app\\shared\\Transport\\Validation\\BatchOperationInput"
+      ],
+      "validatorScene": "BatchOperate",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/tags.ts",
+        "resource": "tags",
         "method": "batch",
+        "params": "data: BatchOperateParams",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/tags/batch"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -2961,15 +4715,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/theme.ts",
+        "resource": "theme",
         "method": "activate",
+        "params": "data: ThemeActivateParams",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/theme/activate"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -2995,15 +4760,26 @@
       "resources": [
         "ThemeResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/theme.ts",
+        "resource": "theme",
         "method": "publicConfig",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "ThemeConfigData",
         "path": "/theme/config"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "ThemeResource",
+        "operation": "make",
+        "sdkReturnType": "ThemeConfigData"
       }
     },
     {
@@ -3033,15 +4809,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/theme.ts",
+        "resource": "theme",
         "method": "updateConfig",
+        "params": "data: Record<string, any>",
         "httpMethod": "PUT",
         "returnType": "void",
         "path": "/theme/config"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -3071,15 +4858,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/theme.ts",
+        "resource": "theme",
         "method": "delete",
+        "params": "data: ThemeDeleteParams",
         "httpMethod": "DELETE",
         "returnType": "void",
         "path": "/theme/delete"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -3109,15 +4907,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/theme.ts",
+        "resource": "theme",
         "method": "freeze",
+        "params": "",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/theme/freeze"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -3149,15 +4958,26 @@
       "resources": [
         "ThemeResource::collection"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/theme.ts",
+        "resource": "theme",
         "method": "list",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "ThemeItem[]",
         "path": "/theme/list"
+      },
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "ThemeResource",
+        "operation": "collection",
+        "sdkReturnType": "ThemeItem[]"
       }
     },
     {
@@ -3189,15 +5009,28 @@
       "resources": [
         "ThemeResource::make"
       ],
+      "validators": [
+        "app\\modules\\Theme\\Transport\\Api\\Upload"
+      ],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/theme.ts",
+        "resource": "theme",
         "method": "upload",
+        "params": "formData: FormData",
         "httpMethod": "POST",
         "returnType": "ThemeItem",
         "path": "/theme/upload"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "ThemeResource",
+        "operation": "make",
+        "sdkReturnType": "ThemeItem"
       }
     },
     {
@@ -3230,15 +5063,26 @@
       "resources": [
         "UserResource::paginate"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/users.ts",
+        "resource": "users",
         "method": "list",
+        "params": "params?: { page?: number; list_rows?: number; search_value?: string }",
         "httpMethod": "GET",
         "returnType": "ListResult<User>",
         "path": "/users"
+      },
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "UserResource",
+        "operation": "paginate",
+        "sdkReturnType": "ListResult<User>"
       }
     },
     {
@@ -3269,15 +5113,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/users.ts",
+        "resource": "users",
         "method": "delete",
+        "params": "id: number",
         "httpMethod": "DELETE",
         "returnType": "void",
         "path": "/users/:param"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -3310,15 +5165,26 @@
       "resources": [
         "UserResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/users.ts",
+        "resource": "users",
         "method": "get",
+        "params": "id: number",
         "httpMethod": "GET",
         "returnType": "User",
         "path": "/users/:param"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "UserResource",
+        "operation": "make",
+        "sdkReturnType": "User"
       }
     },
     {
@@ -3349,15 +5215,28 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [
+        "app\\modules\\Platform\\User\\Transport\\Api\\Users"
+      ],
+      "validatorScene": "allUpdate",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/users.ts",
+        "resource": "users",
         "method": "update",
+        "params": "id: number, data: AdminUserUpdateParams",
         "httpMethod": "PATCH",
         "returnType": "void",
         "path": "/users/:param"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -3383,15 +5262,28 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [
+        "app\\shared\\Transport\\Validation\\BatchOperationInput"
+      ],
+      "validatorScene": "BatchOperate",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/users.ts",
+        "resource": "users",
         "method": "batch",
+        "params": "data: BatchOperateParams",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/users/batch"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -3419,15 +5311,26 @@
       "resources": [
         "ProfileResource::make"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/users.ts",
+        "resource": "users",
         "method": "me",
+        "params": "",
         "httpMethod": "GET",
         "returnType": "User",
         "path": "/users/me"
+      },
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "ProfileResource",
+        "operation": "make",
+        "sdkReturnType": "User"
       }
     },
     {
@@ -3453,15 +5356,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/users.ts",
+        "resource": "users",
         "method": "updateMe",
+        "params": "data: ProfileUpdateParams",
         "httpMethod": "PATCH",
         "returnType": "void",
         "path": "/users/me"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -3489,15 +5403,26 @@
       "resources": [
         "CardResource::paginate"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/cards.ts",
+        "resource": "cards",
         "method": "listOwn",
+        "params": "params?: { page?: number; list_rows?: number }",
         "httpMethod": "GET",
         "returnType": "ListResult<Card>",
         "path": "/users/me/cards"
+      },
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "CardResource",
+        "operation": "paginate",
+        "sdkReturnType": "ListResult<Card>"
       }
     },
     {
@@ -3525,15 +5450,26 @@
       "resources": [
         "CommentResource::paginate"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/comments.ts",
+        "resource": "comments",
         "method": "listOwn",
+        "params": "params?: PaginationParams",
         "httpMethod": "GET",
         "returnType": "ListResult<Comment>",
         "path": "/users/me/comments"
+      },
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "CommentResource",
+        "operation": "paginate",
+        "sdkReturnType": "ListResult<Comment>"
       }
     },
     {
@@ -3562,15 +5498,28 @@
       "resources": [
         "ApiResource::make"
       ],
+      "validators": [
+        "app\\modules\\Platform\\User\\Transport\\Api\\Users"
+      ],
+      "validatorScene": "edit",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/users.ts",
+        "resource": "users",
         "method": "emailCaptcha",
+        "params": "data: EmailCaptchaParams",
         "httpMethod": "POST",
         "returnType": "EmailCaptchaResult",
         "path": "/users/me/email-captcha"
+      },
+      "response": {
+        "status": 200,
+        "shape": "dynamic",
+        "resource": "ApiResource",
+        "operation": "make",
+        "sdkReturnType": "EmailCaptchaResult"
       }
     },
     {
@@ -3597,15 +5546,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/users.ts",
+        "resource": "users",
         "method": "updateEmail",
+        "params": "data: EmailParams",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/users/me/email"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     },
     {
@@ -3633,15 +5593,26 @@
       "resources": [
         "FileResource::paginate"
       ],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/files.ts",
+        "resource": "files",
         "method": "listOwn",
+        "params": "params?: { page?: number; list_rows?: number }",
         "httpMethod": "GET",
         "returnType": "ListResult<LCFile>",
         "path": "/users/me/files"
+      },
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "FileResource",
+        "operation": "paginate",
+        "sdkReturnType": "ListResult<LCFile>"
       }
     },
     {
@@ -3668,15 +5639,26 @@
         "createNoContent"
       ],
       "resources": [],
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "issues": [],
       "sdk": {
         "file": "packages/sdk/src/resources/users.ts",
+        "resource": "users",
         "method": "updatePassword",
+        "params": "data: PasswordParams",
         "httpMethod": "POST",
         "returnType": "void",
         "path": "/users/me/password"
+      },
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null,
+        "sdkReturnType": "void"
       }
     }
   ]

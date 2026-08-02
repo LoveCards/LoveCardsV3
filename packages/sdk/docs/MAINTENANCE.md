@@ -8,7 +8,7 @@
 
 SDK 和 PHP 后端**不共享代码**，但共享两样东西：
 
-1. **API 路由映射** — 16 个 `app/api/route/*.php` 文件 ↔ `src/resources/*.ts` 的 16 个资源类
+1. **API 路由映射** — 后端 `contracts/openapi.json` → `src/generated/resources/*.ts` 的生成资源类
 2. **PUBLIC_API 常量表** — `src/constants.ts` ↔ `ThemeEngine.php::PUBLIC_API`
 
 修改 API 时必须同时更新这两侧。
@@ -84,7 +84,7 @@ export interface MyNewParams {
 }
 ```
 
-### B. 添加方法到资源类（`src/resources/{domain}.ts`）
+### B. 修改接口契约后重新生成（`src/generated/resources/{domain}.ts`）
 
 ```typescript
 class Cards extends BaseResource {
@@ -117,11 +117,11 @@ class Cards extends BaseResource {
 
 ## 第三步：新增模块
 
-1. 新建 `src/resources/{domain}.ts`
+1. 在后端 Route、Validate、Resource 中维护契约，运行 `npm run generate:sdk`
 2. 在 `src/client.ts` 中导入并添加到 `LCClientImpl`
 
 ```typescript
-import { Notifications } from './resources/notifications'
+import { Notifications } from './generated/resources/notifications'
 
 // LCClientImpl 构造函数中
 this.notifications = new Notifications(instance, opts)
@@ -190,7 +190,7 @@ export interface NewHook {
 }
 ```
 
-### 2. 添加到 `ResourceOptions`（`src/resources/base.ts`）
+### 2. 添加到 `ResourceOptions`（`src/resources/base.ts`，仅 SDK 核心运行时）
 
 ```typescript
 export interface ResourceOptions {

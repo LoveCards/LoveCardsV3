@@ -6,6 +6,14 @@ use app\shared\Transport\Http\Resource;
 
 final class LikeResource extends Resource
 {
+    public static function schema(string $variant = 'default'): array
+    {
+        return ['type' => 'object', 'properties' => [
+            'id' => ['type' => 'integer'], 'aid' => ['type' => 'integer'], 'pid' => ['type' => 'integer'],
+            'uid' => ['type' => 'integer'], 'created_at' => ['type' => 'string'], 'updated_at' => ['type' => 'string'],
+        ]];
+    }
+
     public static function make($value): array
     {
         $data = self::normalize($value);

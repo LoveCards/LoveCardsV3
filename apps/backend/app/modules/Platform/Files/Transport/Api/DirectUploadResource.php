@@ -6,6 +6,14 @@ use app\shared\Transport\Http\Resource;
 
 final class DirectUploadResource extends Resource
 {
+    public static function schema(string $variant = 'default'): array
+    {
+        return ['type' => 'object', 'properties' => [
+            'record_id' => ['type' => 'integer'], 'upload_url' => ['type' => 'string'], 'method' => ['type' => 'string'],
+            'headers' => ['type' => 'object'], 'form_data' => ['type' => 'object'], 'expire' => ['type' => 'integer'],
+        ]];
+    }
+
     public static function make($value): array
     {
         $data = self::normalize($value);

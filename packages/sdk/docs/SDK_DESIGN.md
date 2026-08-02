@@ -19,7 +19,7 @@ SPA 代码  →  SDK (类型安全胶水)  →  HTTP  →  后端 API
 | 原则 | 说明 |
 |------|------|
 | **响应解包** | SDK 方法返回业务数据，不返回 HTTP 包装 |
-| **资源按领域分文件** | 每个 API 模块一个 `src/resources/*.ts` |
+| **资源按领域分文件** | 后端契约生成 `src/generated/resources/*.ts` |
 | **单错误类** | `ApiError` 包含 code/message/status/details，按需判断 |
 | **TokenStore 抽象** | token 存储可注入，默认 localStorage |
 | **请求去重** | GET 请求自动去重，相同 URL+参数合并为一个 Promise |
@@ -34,8 +34,8 @@ SPA 代码  →  SDK (类型安全胶水)  →  HTTP  →  后端 API
 ├── src/
 │   ├── index.ts                # 入口：createClient + 导出所有类型
 │   ├── client.ts               # createClient() + LCClient 接口 + LCClientImpl 类
-│   ├── resources/              # 16 个资源类，覆盖后端 16 个路由文件
-│   │   ├── base.ts             # BaseResource 基类（_get/_post/_patch/_put/_delete）
+│   ├── generated/resources/    # 由 contracts/openapi.json 生成的资源类
+│   ├── resources/base.ts       # BaseResource 基类（_get/_post/_patch/_put/_delete）
 │   │   ├── session.ts
 │   │   ├── cards.ts
 │   │   ├── users.ts

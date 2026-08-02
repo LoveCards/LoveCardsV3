@@ -12,10 +12,15 @@
     "packages/sdk"
   ],
   "scripts": {
-    "check": "npm run check:architecture && npm run typecheck:sdk",
+    "check": "npm run check:architecture && npm run check:api-contract && npm run check:generated:sdk && npm run typecheck:sdk",
     "check:architecture": "node scripts/check-architecture.mjs",
+    "audit:api": "node scripts/audit-api-contract.mjs",
+    "export:api": "npm run audit:api && node scripts/export-api-contract.mjs",
+    "check:api-contract": "node scripts/audit-api-contract.mjs --check && node scripts/export-api-contract.mjs --check",
+    "check:generated:sdk": "node scripts/generate-sdk-contract.mjs --check",
+    "generate:sdk": "npm run export:api && node scripts/generate-sdk-contract.mjs",
     "typecheck:sdk": "npm run typecheck --workspace @lovecards/sdk",
-    "build:sdk": "npm run build --workspace @lovecards/sdk",
+    "build:sdk": "npm run generate:sdk && npm run build --workspace @lovecards/sdk",
     "build:admin": "npm run build:sdk && npm run build --workspace @lovecards/admin",
     "build": "npm run build:sdk && npm run sync:sdk-theme && npm run build --workspace @lovecards/admin",
     "dev:admin": "npm run dev --workspace @lovecards/admin",

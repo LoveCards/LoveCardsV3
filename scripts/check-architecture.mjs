@@ -1,4 +1,4 @@
-import { readFile, readdir } from 'node:fs/promises'
+import { readFile, readdir, stat } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
@@ -78,6 +78,15 @@ for (const directory of ['apps/backend/.git', 'apps/admin/.git', 'packages/sdk/.
 if (await exists(path.join(root, 'apps/backend/app/api/service'))) {
   fail('Legacy API service directory must not exist; use app/modules')
 }
+
+async function fileExists(file) {
+  try {
+    const info = await stat(file)
+    return info.isFile()
+  } catch {
+    return false
+  }
+}
 if (await exists(path.join(root, 'apps/backend/app/api/infrastructure'))) {
   fail('Legacy API infrastructure directory must not exist; use app/modules')
 }
@@ -109,6 +118,18 @@ async function checkPhpBoundary(directory, forbidden, allowlist = new Set()) {
 
 if (await exists(path.join(root, 'apps/backend/app/common'))) {
   fail('Legacy common directory must not exist; use shared or an owning module')
+}
+if (!(await fileExists(path.join(root, 'contracts/openapi.json')))) {
+  fail('Generated API contract is missing: run npm run export:api')
+}
+if (!(await fileExists(path.join(root, 'packages/sdk/src/generated/api-contract.ts')))) {
+  fail('Generated SDK contract is missing: run npm run generate:sdk')
+}
+const sdkResourceDirectory = path.join(root, 'packages/sdk/src/resources')
+for (const file of await readdir(sdkResourceDirectory)) {
+  if (file.endsWith('.ts') && file !== 'base.ts') {
+    fail(`Handwritten SDK resource is forbidden; use generated/resources/${file}`)
+  }
 }
 await checkPhpBoundary('apps/backend/app/shared', /^app\\common\\/i)
 await checkPhpBoundary('apps/backend/app/modules', /^app\\api\\(controller|middleware|route)\\/i)

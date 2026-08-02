@@ -7,6 +7,16 @@ abstract class Resource
 {
     abstract public static function make($value): array;
 
+    /** Machine-readable response contract; dynamic resources override this. */
+    public static function schema(string $variant = 'default'): array
+    {
+        return [
+            'type' => 'object',
+            'additionalProperties' => true,
+            'x-runtime-schema' => true,
+        ];
+    }
+
     public static function collection(array $items): array
     {
         return array_map(static fn ($item): array => static::make($item), $items);

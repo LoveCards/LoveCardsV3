@@ -278,11 +278,11 @@
     listOwn(params) {
       return this._get("/users/me/cards", params);
     }
-    listMe(params) {
-      return this.listOwn(params);
-    }
     batch(data) {
       return this._post("/cards/batch", data);
+    }
+    listMe(params) {
+      return this.listOwn(params);
     }
   }
   class Users extends BaseResource {
@@ -339,11 +339,11 @@
     listOwn(params) {
       return this._get("/users/me/comments", params);
     }
-    listMe(params) {
-      return this.listOwn(params);
-    }
     batch(data) {
       return this._post("/comments/batch", data);
+    }
+    listMe(params) {
+      return this.listOwn(params);
     }
   }
   class Tags extends BaseResource {
@@ -379,7 +379,7 @@
   }
   class Files extends BaseResource {
     upload(formData) {
-      return this._post("/files", formData);
+      return this._post("/files", formData, { headers: { "Content-Type": "multipart/form-data" } });
     }
     list(params) {
       return this._get("/files", params);
@@ -393,18 +393,8 @@
     confirm(id) {
       return this._patch(`/files/${id}/confirm`);
     }
-    /**
-     * 获取当前用户的文件列表（严格本人）
-     * @param params 分页参数
-     */
     listOwn(params) {
       return this._get("/users/me/files", params);
-    }
-    /**
-     * @deprecated 请使用 listOwn() 替代
-     */
-    listMe(params) {
-      return this.listOwn(params);
     }
     batch(data) {
       return this._post("/files/batch", data);
@@ -415,12 +405,11 @@
     delete(id) {
       return this._delete(`/files/${id}`);
     }
+    listMe(params) {
+      return this.listOwn(params);
+    }
   }
   class Theme extends BaseResource {
-    /**
-     * 获取公开标签列表。
-     * @deprecated 请使用 client.tags.list() 替代。
-     */
     tags() {
       return this._get("/tags");
     }
@@ -428,9 +417,7 @@
       return this._get("/theme/list");
     }
     upload(formData) {
-      return this._post("/theme/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
-      });
+      return this._post("/theme/upload", formData, { headers: { "Content-Type": "multipart/form-data" } });
     }
     activate(data) {
       return this._post("/theme/activate", data);
@@ -505,10 +492,10 @@
       return this._post("/config/reload");
     }
     deleteGroup(group) {
-      return this._delete("/config", { group });
+      return this._delete("/config", group);
     }
     deleteKey(group, key) {
-      return this._delete("/config/key", { group, key });
+      return this._delete("/config/key", key);
     }
   }
   class Dashboard extends BaseResource {
@@ -698,9 +685,108 @@
     "system.theme": { method: "GET", path: "/api/theme/config" },
     "captcha.config": { method: "GET", path: "/api/captcha/config" }
   };
+  const generatedApiContract = {
+    "captcha.config": { method: "GET", path: "/captcha/config", status: 200, shape: "item", public: true, capabilities: [] },
+    "captcha.drivers": { method: "GET", path: "/captcha/drivers", status: 200, shape: "collection", public: false, capabilities: ["captcha.read"] },
+    "captcha.install": { method: "POST", path: "/captcha/install", status: 200, shape: "collection", public: false, capabilities: ["captcha.install"] },
+    "captcha.meta": { method: "GET", path: "/captcha/:slug/meta", status: 200, shape: "item", public: false, capabilities: ["captcha.read"] },
+    "captcha.types": { method: "GET", path: "/captcha/types", status: 200, shape: "collection", public: false, capabilities: ["captcha.read"] },
+    "cards.batch": { method: "POST", path: "/cards/batch", status: 204, shape: "void", public: false, capabilities: [] },
+    "cards.create": { method: "POST", path: "/cards", status: 201, shape: "dynamic", public: false, capabilities: ["cards.create"] },
+    "cards.delete": { method: "DELETE", path: "/cards/:id", status: 204, shape: "void", public: false, capabilities: ["cards.delete", "cards.delete.all"] },
+    "cards.get": { method: "GET", path: "/cards/:id", status: 200, shape: "item", public: true, capabilities: [] },
+    "cards.hot": { method: "GET", path: "/cards/hot", status: 200, shape: "collection", public: true, capabilities: [] },
+    "cards.like": { method: "POST", path: "/cards/:id/like", status: 200, shape: "dynamic", public: false, capabilities: ["likes.create"] },
+    "cards.list": { method: "GET", path: "/cards", status: 200, shape: "paginated", public: true, capabilities: [] },
+    "cards.listOwn": { method: "GET", path: "/users/me/cards", status: 200, shape: "paginated", public: false, capabilities: [] },
+    "cards.search": { method: "GET", path: "/cards/search", status: 200, shape: "paginated", public: true, capabilities: [] },
+    "cards.update": { method: "PATCH", path: "/cards/:id", status: 204, shape: "void", public: false, capabilities: ["cards.update", "cards.update.all"] },
+    "comments.batch": { method: "POST", path: "/comments/batch", status: 204, shape: "void", public: false, capabilities: [] },
+    "comments.cardList": { method: "GET", path: "/cards/:id/comments", status: 200, shape: "paginated", public: true, capabilities: [] },
+    "comments.create": { method: "POST", path: "/cards/:id/comments", status: 201, shape: "dynamic", public: false, capabilities: ["comments.create"] },
+    "comments.delete": { method: "DELETE", path: "/comments/:id", status: 204, shape: "void", public: false, capabilities: ["comments.delete", "comments.delete.all"] },
+    "comments.get": { method: "GET", path: "/comments/:id", status: 200, shape: "item", public: true, capabilities: [] },
+    "comments.list": { method: "GET", path: "/comments", status: 200, shape: "paginated", public: false, capabilities: ["comments.read", "comments.read.all"] },
+    "comments.listOwn": { method: "GET", path: "/users/me/comments", status: 200, shape: "paginated", public: false, capabilities: [] },
+    "comments.update": { method: "PATCH", path: "/comments/:id", status: 204, shape: "void", public: false, capabilities: ["comments.update", "comments.update.all"] },
+    "config.delete": { method: "DELETE", path: "/config", status: 204, shape: "void", public: false, capabilities: ["config.deleteKey"] },
+    "config.deleteKey": { method: "DELETE", path: "/config/key", status: 204, shape: "void", public: false, capabilities: ["config.deleteKey"] },
+    "config.groups": { method: "GET", path: "/config/groups", status: 200, shape: "item", public: false, capabilities: ["config.read"] },
+    "config.init": { method: "POST", path: "/config/init", status: 200, shape: "item", public: false, capabilities: ["config.init"] },
+    "config.list": { method: "GET", path: "/config", status: 200, shape: "item", public: false, capabilities: ["config.read"] },
+    "config.register": { method: "POST", path: "/config/register", status: 200, shape: "item", public: false, capabilities: ["config.register"] },
+    "config.reload": { method: "POST", path: "/config/reload", status: 204, shape: "void", public: false, capabilities: ["config.reload"] },
+    "config.update": { method: "POST", path: "/config", status: 204, shape: "void", public: false, capabilities: ["config.update"] },
+    "dashboard.index": { method: "GET", path: "/dashboard", status: 200, shape: "item", public: false, capabilities: ["dashboard.read"] },
+    "files.allDelete": { method: "DELETE", path: "/files/:id", status: 204, shape: "void", public: false, capabilities: ["files.delete", "files.delete.all"] },
+    "files.batch": { method: "POST", path: "/files/batch", status: 204, shape: "void", public: false, capabilities: ["files.update", "files.update.all", "files.delete", "files.delete.all"] },
+    "files.cleanup": { method: "DELETE", path: "/files/expired", status: 200, shape: "dynamic", public: false, capabilities: ["files.delete.all"] },
+    "files.confirm": { method: "PATCH", path: "/files/:id/confirm", status: 204, shape: "void", public: false, capabilities: ["files.upload"] },
+    "files.direct": { method: "POST", path: "/files/direct", status: 200, shape: "item", public: false, capabilities: ["files.upload"] },
+    "files.get": { method: "GET", path: "/files/:id", status: 200, shape: "item", public: false, capabilities: ["files.read", "files.read.all"] },
+    "files.list": { method: "GET", path: "/files", status: 200, shape: "paginated", public: false, capabilities: ["files.read", "files.read.all"] },
+    "files.listOwn": { method: "GET", path: "/users/me/files", status: 200, shape: "paginated", public: false, capabilities: [] },
+    "files.upload": { method: "POST", path: "/files", status: 200, shape: "item", public: false, capabilities: ["files.upload"] },
+    "likes.list": { method: "GET", path: "/likes", status: 200, shape: "collection", public: false, capabilities: ["likes.read"] },
+    "likes.unlike": { method: "DELETE", path: "/likes/:id", status: 204, shape: "void", public: false, capabilities: ["likes.delete"] },
+    "permissions.all": { method: "GET", path: "/permissions/all", status: 200, shape: "collection", public: false, capabilities: ["permissions.read"] },
+    "permissions.list": { method: "GET", path: "/permissions", status: 200, shape: "paginated", public: false, capabilities: ["permissions.read"] },
+    "roles.assignCapabilities": { method: "POST", path: "/roles/:id/capabilities", status: 204, shape: "void", public: false, capabilities: ["roles.assign"] },
+    "roles.create": { method: "POST", path: "/roles", status: 200, shape: "dynamic", public: false, capabilities: ["roles.create"] },
+    "roles.delete": { method: "DELETE", path: "/roles/:id", status: 204, shape: "void", public: false, capabilities: ["roles.delete"] },
+    "roles.get": { method: "GET", path: "/roles/:id", status: 200, shape: "item", public: false, capabilities: ["roles.read"] },
+    "roles.getRoleCapabilities": { method: "GET", path: "/roles/:id/capabilities", status: 200, shape: "dynamic", public: false, capabilities: ["roles.read"] },
+    "roles.list": { method: "GET", path: "/roles", status: 200, shape: "paginated", public: false, capabilities: ["roles.read"] },
+    "roles.reseed": { method: "POST", path: "/roles/reseed", status: 200, shape: "dynamic", public: false, capabilities: ["roles.assign"] },
+    "roles.update": { method: "PATCH", path: "/roles/:id", status: 204, shape: "void", public: false, capabilities: ["roles.update"] },
+    "sender.channels": { method: "GET", path: "/sender/channels", status: 200, shape: "collection", public: false, capabilities: ["sender.read"] },
+    "sender.install": { method: "POST", path: "/sender/install", status: 200, shape: "collection", public: false, capabilities: ["sender.install"] },
+    "sender.meta": { method: "GET", path: "/sender/:type/meta", status: 200, shape: "item", public: false, capabilities: ["sender.read"] },
+    "sender.templates": { method: "GET", path: "/sender/templates", status: 200, shape: "collection", public: false, capabilities: ["sender.read"] },
+    "sender.testChannel": { method: "POST", path: "/sender/test-channel", status: 200, shape: "item", public: false, capabilities: ["sender.test"] },
+    "sender.types": { method: "GET", path: "/sender/types", status: 200, shape: "collection", public: false, capabilities: ["sender.read"] },
+    "session.captcha": { method: "POST", path: "/session/captcha", status: 204, shape: "void", public: true, capabilities: [] },
+    "session.check": { method: "GET", path: "/session/check", status: 200, shape: "dynamic", public: false, capabilities: [] },
+    "session.guest": { method: "POST", path: "/session/guest", status: 200, shape: "item", public: true, capabilities: [] },
+    "session.login": { method: "POST", path: "/session/login", status: 200, shape: "item", public: true, capabilities: [] },
+    "session.logout": { method: "POST", path: "/session/logout", status: 204, shape: "void", public: false, capabilities: [] },
+    "session.register": { method: "POST", path: "/session/register", status: 200, shape: "item", public: true, capabilities: [] },
+    "storage.channels": { method: "GET", path: "/storage/channels", status: 200, shape: "collection", public: false, capabilities: ["storage.read"] },
+    "storage.channelStats": { method: "GET", path: "/storage/channel-stats", status: 200, shape: "item", public: false, capabilities: ["storage.read"] },
+    "storage.install": { method: "POST", path: "/storage/install", status: 200, shape: "collection", public: false, capabilities: ["storage.install"] },
+    "storage.meta": { method: "GET", path: "/storage/:type/meta", status: 200, shape: "item", public: false, capabilities: ["storage.read"] },
+    "storage.testChannel": { method: "POST", path: "/storage/test-channel", status: 200, shape: "item", public: false, capabilities: ["storage.test"] },
+    "storage.types": { method: "GET", path: "/storage/types", status: 200, shape: "collection", public: false, capabilities: ["storage.read"] },
+    "system.update": { method: "GET", path: "/system/update", status: 200, shape: "item", public: false, capabilities: ["system.update"] },
+    "tags.batch": { method: "POST", path: "/tags/batch", status: 204, shape: "void", public: false, capabilities: [] },
+    "tags.create": { method: "POST", path: "/tags", status: 204, shape: "void", public: false, capabilities: ["tags.create"] },
+    "tags.delete": { method: "DELETE", path: "/tags/:id", status: 204, shape: "void", public: false, capabilities: ["tags.delete", "tags.delete.all"] },
+    "tags.get": { method: "GET", path: "/tags/:id", status: 200, shape: "item", public: true, capabilities: [] },
+    "tags.list": { method: "GET", path: "/tags", status: 200, shape: "collection", public: true, capabilities: [] },
+    "tags.listAll": { method: "GET", path: "/tags/all", status: 200, shape: "paginated", public: false, capabilities: ["tags.read", "tags.read.all"] },
+    "tags.update": { method: "PATCH", path: "/tags/:id", status: 204, shape: "void", public: false, capabilities: ["tags.update", "tags.update.all"] },
+    "theme.activate": { method: "POST", path: "/theme/activate", status: 204, shape: "void", public: false, capabilities: ["theme.activate"] },
+    "theme.delete": { method: "DELETE", path: "/theme/delete", status: 204, shape: "void", public: false, capabilities: ["theme.delete"] },
+    "theme.freeze": { method: "POST", path: "/theme/freeze", status: 204, shape: "void", public: false, capabilities: ["theme.freeze"] },
+    "theme.list": { method: "GET", path: "/theme/list", status: 200, shape: "collection", public: false, capabilities: ["theme.read"] },
+    "theme.publicConfig": { method: "GET", path: "/theme/config", status: 200, shape: "item", public: true, capabilities: [] },
+    "theme.updateConfig": { method: "PUT", path: "/theme/config", status: 204, shape: "void", public: false, capabilities: ["theme.update"] },
+    "theme.upload": { method: "POST", path: "/theme/upload", status: 200, shape: "item", public: false, capabilities: ["theme.upload"] },
+    "users.batch": { method: "POST", path: "/users/batch", status: 204, shape: "void", public: false, capabilities: [] },
+    "users.delete": { method: "DELETE", path: "/users/:id", status: 204, shape: "void", public: false, capabilities: ["users.delete", "users.delete.all"] },
+    "users.get": { method: "GET", path: "/users/:id", status: 200, shape: "item", public: false, capabilities: ["users.read", "users.read.all"] },
+    "users.list": { method: "GET", path: "/users", status: 200, shape: "paginated", public: false, capabilities: ["users.read", "users.read.all"] },
+    "users.me.email": { method: "POST", path: "/users/me/email", status: 204, shape: "void", public: false, capabilities: [] },
+    "users.me.emailCaptcha": { method: "POST", path: "/users/me/email-captcha", status: 200, shape: "dynamic", public: false, capabilities: [] },
+    "users.me.get": { method: "GET", path: "/users/me", status: 200, shape: "item", public: false, capabilities: [] },
+    "users.me.password": { method: "POST", path: "/users/me/password", status: 204, shape: "void", public: false, capabilities: [] },
+    "users.me.update": { method: "PATCH", path: "/users/me", status: 204, shape: "void", public: false, capabilities: [] },
+    "users.update": { method: "PATCH", path: "/users/:id", status: 204, shape: "void", public: false, capabilities: ["users.update", "users.update.all"] }
+  };
   exports2.ApiError = ApiError;
   exports2.PUBLIC_API = PUBLIC_API;
   exports2.createClient = createClient;
+  exports2.generatedApiContract = generatedApiContract;
   exports2.isApiError = isApiError;
   Object.defineProperty(exports2, Symbol.toStringTag, { value: "Module" });
 }));

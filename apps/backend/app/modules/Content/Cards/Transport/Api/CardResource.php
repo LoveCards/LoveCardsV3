@@ -7,6 +7,21 @@ use app\shared\Transport\Http\Resource;
 /** Public response contract for a card. */
 final class CardResource extends Resource
 {
+    public static function schema(string $variant = 'default'): array
+    {
+        return [
+            'type' => 'object',
+            'properties' => [
+                'id' => ['type' => 'integer'], 'is_top' => ['type' => 'integer'], 'status' => ['type' => 'integer'],
+                'user_id' => ['type' => 'integer'], 'data' => ['type' => 'object', 'additionalProperties' => true],
+                'cover' => ['type' => 'string', 'nullable' => true], 'pictures' => ['type' => 'array'],
+                'content' => ['type' => 'string'], 'tags' => ['type' => 'array'],
+                'goods' => ['type' => 'integer'], 'views' => ['type' => 'integer'], 'comments' => ['type' => 'integer'],
+                'created_at' => ['type' => 'string'], 'updated_at' => ['type' => 'string'],
+            ],
+        ];
+    }
+
     public static function make($value): array
     {
         $card = is_object($value) && method_exists($value, 'toArray')

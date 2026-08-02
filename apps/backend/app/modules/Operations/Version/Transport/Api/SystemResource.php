@@ -6,6 +6,13 @@ use app\shared\Transport\Http\Resource;
 
 final class SystemResource extends Resource
 {
+    public static function schema(string $variant = 'default'): array
+    {
+        return ['type' => 'object', 'properties' => [
+            'ver' => ['type' => 'string'], 'latest' => ['type' => 'string'], 'verlog' => ['type' => 'array'],
+        ]];
+    }
+
     public static function make($value): array
     {
         $data = self::normalize($value);
