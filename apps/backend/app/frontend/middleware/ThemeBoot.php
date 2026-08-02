@@ -34,7 +34,7 @@ class ThemeBoot
 
     private function getPassPrefixes(): array
     {
-        $defaults = ['/api', '/all', '/theme'];
+        $defaults = ['/api', '/all', '/theme', '/system'];
         $custom = \app\common\service\Config::get('frontend.pass_prefixes', []);
         return array_unique(array_merge($defaults, $custom));
     }

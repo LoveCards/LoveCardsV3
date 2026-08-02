@@ -2,9 +2,9 @@
 
 namespace app\api\middleware;
 
-use app\api\application\Auth\AuthContext;
-use app\api\application\Auth\AuthenticateRequest;
-use app\api\application\Auth\MissingCredentials;
+use app\api\service\Auth\AuthContext;
+use app\api\service\Auth\AuthenticateRequest;
+use app\api\service\Auth\MissingCredentials;
 use app\api\ApiResponse;
 
 class JwtAuthCheck

@@ -175,3 +175,20 @@ npm run typecheck    # 类型检查
 | API 端点删除 | major |
 | 签名/响应格式变更 | major |
 | 内部优化 | patch |
+
+---
+
+## 集成测试安全门禁
+
+完整集成套件会修改账号、内容、配置和 RBAC，只能对一次性本地数据库运行。入口默认拒绝执行，
+必须显式提供以下变量，且 Base URL 只能使用 `localhost` 或 `127.0.0.1`：
+
+```powershell
+$env:LOVECARDS_SDK_TEST_ISOLATED='1'
+$env:LOVECARDS_SDK_TEST_BASE_URL='http://127.0.0.1:8001/api'
+$env:LOVECARDS_SDK_TEST_ADMIN_ACCOUNT='sdk-test@example.com'
+$env:LOVECARDS_SDK_TEST_ADMIN_PASSWORD='replace-with-fixture-password'
+npm run test:sdk:integration
+```
+
+禁止对生产库、共享开发库或含有需保留数据的环境运行。

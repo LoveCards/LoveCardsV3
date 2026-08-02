@@ -2,6 +2,7 @@
 
 namespace app\api\service\Sender;
 
+use app\api\infrastructure\Sender\SenderFactory;
 use app\api\service\Sender\Contract\Message;
 use app\common\service\Config as ConfigService;
 

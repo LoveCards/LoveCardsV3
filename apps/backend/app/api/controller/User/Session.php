@@ -5,11 +5,12 @@ namespace app\api\controller\User;
 use think\facade\Request;
 use think\exception\ValidateException;
 
-use app\api\application\Auth\LoginUser;
-use app\api\application\Auth\RegisterUser;
+use app\api\service\Auth\LoginUser;
+use app\api\service\Auth\RegisterUser;
 use app\api\service\User\Session as SessionService;
-use app\common\service\Config as ConfigService;
 use app\api\validate\Users as UsersValidate;
+use app\api\resource\ApiResource;
+use app\api\resource\AuthResource;
 
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
@@ -34,13 +35,13 @@ class Session extends BaseController
 
     public function check()
     {
-        return ApiResponse::createOk([]);
+        return ApiResponse::createOk(ApiResource::make([]));
     }
 
     public function login()
     {
-        $account = Request::param('account');
-        $password = Request::param('password');
+        $account = Request::param('account', '');
+        $password = Request::param('password', '');
 
         if (empty($account) || empty($password)) {
             return ApiResponse::createBadRequest('参数错误', [
@@ -66,14 +67,14 @@ class Session extends BaseController
 
         $result = $this->loginUser->execute($account, $password);
 
-        return ApiResponse::createOk(['token' => $result['token']]);
+        return ApiResponse::createOk(AuthResource::make($result));
     }
 
     public function register()
     {
-        $account = Request::param('account');
-        $password = Request::param('password');
-        $code = Request::param('code');
+        $account = Request::param('account', '');
+        $password = Request::param('password', '');
+        $code = Request::param('code', '');
 
         if (empty($account) || empty($password)) {
             return ApiResponse::createBadRequest('参数错误', [
@@ -82,7 +83,7 @@ class Session extends BaseController
             ]);
         }
 
-        if (ConfigService::get('user.captcha')) {
+        if ($this->session->captchaEnabled()) {
             if (!$this->session->verifyCaptcha($account, $code)) {
                 return ApiResponse::createUnauthorized('注册失败', ['验证码错误']);
             }
@@ -115,18 +116,18 @@ class Session extends BaseController
 
         $this->session->deleteCaptcha($account);
 
-        return ApiResponse::createOk(['token' => $result['token']]);
+        return ApiResponse::createOk(AuthResource::make($result));
     }
 
     public function guest()
     {
-        if (!ConfigService::get('core.visitor_mode')) {
+        if (!$this->session->visitorModeEnabled()) {
             return ApiResponse::createUnauthorized('该站点未开启访客模式');
         }
 
         $result = $this->session->guest(request()->ip());
 
-        return ApiResponse::createOk(['token' => $result['token']]);
+        return ApiResponse::createOk(AuthResource::make($result));
     }
 
     public function captcha()

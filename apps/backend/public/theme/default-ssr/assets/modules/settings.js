@@ -19,7 +19,7 @@
       Vue.onMounted(function () {
         if (!requireAuth()) return;
         sdk.users.me()
-          .then(function (res) { username.value = res.data.username || ''; email.value = res.data.email || ''; })
+          .then(function (res) { username.value = res.username || ''; email.value = res.email || ''; })
           .catch(function () { goLogin(); })
           .finally(function () { loading.value = false; });
       });

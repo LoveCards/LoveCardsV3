@@ -10,13 +10,15 @@ use app\api\validate\Users as UsersValidate;
 
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
+use app\api\resource\ApiResource;
+use app\api\resource\ProfileResource;
 
 class Profile extends BaseController
 {
     public function get()
     {
         $userData = ProfileService::get(request()->auth->uid());
-        return ApiResponse::createOk($userData);
+        return ApiResponse::createOk(ProfileResource::make($userData));
     }
 
     public function update()
@@ -78,7 +80,7 @@ class Profile extends BaseController
             return ApiResponse::createBadRequest($e->getMessage());
         }
 
-        return ApiResponse::createOk(['300s后失效']);
+        return ApiResponse::createOk(ApiResource::make(['300s后失效']));
     }
 
     private function validateAndClean(array $params, string $errorPrefix): array

@@ -21,7 +21,7 @@ class VersionService
     {
         $info = self::info();
         return [
-            'php'   => ['min' => $info['php_min'] ?? '7.2.5', 'max' => $info['php_max'] ?? '8.0.99'],
+            'php'   => ['min' => $info['php_min'] ?? '8.1.0', 'max' => $info['php_max'] ?? '9.0.0'],
             'mysql' => ['min' => $info['mysql_min'] ?? '5.7', 'max' => $info['mysql_max'] ?? '9999'],
         ];
     }

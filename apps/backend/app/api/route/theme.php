@@ -23,10 +23,6 @@ Route::group('theme', function () {
         ->name('theme.activate')
         ->setOption('meta', ['name' => '切换主题', 'group' => '主题', 'caps' => ['theme.activate']]);
 
-    Route::get('config', 'Theme.ThemeManager/config')
-        ->name('theme.config')
-        ->setOption('meta', ['name' => '主题配置', 'group' => '主题', 'caps' => ['theme.read']]);
-
     Route::put('config', 'Theme.ThemeManager/updateConfig')
         ->name('theme.updateConfig')
         ->setOption('meta', ['name' => '更新配置', 'group' => '主题', 'caps' => ['theme.update']]);

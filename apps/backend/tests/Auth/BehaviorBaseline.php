@@ -24,19 +24,19 @@ namespace {
     }
 
     require dirname(__DIR__, 2) . '/app/common/contract/TokenService.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/AuthUser.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/UserRepository.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/AuthContext.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/VisitorPolicy.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/CapabilityProvider.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/MissingCredentials.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/AuthenticateRequest.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/LoginUser.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/RegisterUser.php';
+    require dirname(__DIR__, 2) . '/app/api/service/Auth/AuthUser.php';
+    require dirname(__DIR__, 2) . '/app/api/service/Auth/UserRepository.php';
+    require dirname(__DIR__, 2) . '/app/api/service/Auth/AuthContext.php';
+    require dirname(__DIR__, 2) . '/app/api/service/Auth/VisitorPolicy.php';
+    require dirname(__DIR__, 2) . '/app/api/service/Auth/CapabilityProvider.php';
+    require dirname(__DIR__, 2) . '/app/api/service/Auth/MissingCredentials.php';
+    require dirname(__DIR__, 2) . '/app/api/service/Auth/AuthenticateRequest.php';
+    require dirname(__DIR__, 2) . '/app/api/service/Auth/LoginUser.php';
+    require dirname(__DIR__, 2) . '/app/api/service/Auth/RegisterUser.php';
 }
 
 namespace Tests\Auth {
-    final class VisitorPolicy implements \app\api\application\Auth\VisitorPolicy
+    final class VisitorPolicy implements \app\api\service\Auth\VisitorPolicy
     {
         public static $enabled = false;
 
@@ -51,7 +51,7 @@ namespace Tests\Auth {
         }
     }
 
-    final class CapabilityProvider implements \app\api\application\Auth\CapabilityProvider
+    final class CapabilityProvider implements \app\api\service\Auth\CapabilityProvider
     {
         public static $byRoles = [];
 
@@ -61,19 +61,19 @@ namespace Tests\Auth {
         }
     }
 
-    final class UserRepository implements \app\api\application\Auth\UserRepository
+    final class UserRepository implements \app\api\service\Auth\UserRepository
     {
         public static $byId = null;
         public static $byAccount = null;
         public static $contactExists = false;
         public static $created = [];
 
-        public function findById(int $id): ?\app\api\application\Auth\AuthUser
+        public function findById(int $id): ?\app\api\service\Auth\AuthUser
         {
             return self::$byId;
         }
 
-        public function findByAccount(string $account): ?\app\api\application\Auth\AuthUser
+        public function findByAccount(string $account): ?\app\api\service\Auth\AuthUser
         {
             return self::$byAccount;
         }
@@ -91,7 +91,7 @@ namespace Tests\Auth {
             string $passwordHash,
             array $roleIds,
             int $status
-        ): \app\api\application\Auth\AuthUser {
+        ): \app\api\service\Auth\AuthUser {
             self::$created = [
                 'number' => $number,
                 'username' => $username,
@@ -102,7 +102,7 @@ namespace Tests\Auth {
                 'status' => $status,
             ];
 
-            return new \app\api\application\Auth\AuthUser(20, $status, $passwordHash, $roleIds);
+            return new \app\api\service\Auth\AuthUser(20, $status, $passwordHash, $roleIds);
         }
     }
 
@@ -263,11 +263,11 @@ namespace app\api\service\Captcha {
 
 namespace {
     use app\api\ApiException;
-    use app\api\application\Auth\AuthContext;
-    use app\api\application\Auth\AuthUser;
-    use app\api\application\Auth\AuthenticateRequest;
-    use app\api\application\Auth\LoginUser;
-    use app\api\application\Auth\RegisterUser;
+    use app\api\service\Auth\AuthContext;
+    use app\api\service\Auth\AuthUser;
+    use app\api\service\Auth\AuthenticateRequest;
+    use app\api\service\Auth\LoginUser;
+    use app\api\service\Auth\RegisterUser;
     use app\api\middleware\JwtAuthCheck;
     use app\api\middleware\PermissionCheck;
     use app\api\service\User\Session;

@@ -9,8 +9,8 @@ return [
     'qgroup'       => 'https://jq.qq.com/?_wv=1027&k=qM8f2RMg',
 
     // ─── 环境要求 ───
-    'php_min'      => '8.0',
-    'php_max'      => '8.0.99',
+    'php_min'      => '8.1.0',
+    'php_max'      => '9.0.0',
     'mysql_min'    => '5.7',
     'mysql_max'    => '9999',
 

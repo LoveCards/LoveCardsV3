@@ -2,6 +2,7 @@
 
 namespace app\api\service\Captcha;
 
+use app\api\infrastructure\Captcha\CaptchaFactory;
 use app\api\service\Captcha\Contract\CaptchaInterface;
 
 class Captcha

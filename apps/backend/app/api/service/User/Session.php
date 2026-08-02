@@ -3,13 +3,23 @@
 namespace app\api\service\User;
 
 use app\api\ApiException;
-use app\api\application\Auth\LoginUser;
-use app\api\application\Auth\UserRepository;
+use app\api\service\Auth\LoginUser;
+use app\api\service\Auth\UserRepository;
 use app\common\contract\TokenService;
 use app\api\service\Captcha\Captcha;
+use app\common\service\Config as ConfigService;
 
 class Session
 {
+    public function captchaEnabled(): bool
+    {
+        return (bool) ConfigService::get('user.captcha');
+    }
+
+    public function visitorModeEnabled(): bool
+    {
+        return (bool) ConfigService::get('core.visitor_mode');
+    }
     private $tokens;
     private $users;
     private $loginUser;

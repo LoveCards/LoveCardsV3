@@ -2,8 +2,8 @@
 
 namespace app\api\infrastructure\Auth;
 
-use app\api\application\Auth\AuthUser;
-use app\api\application\Auth\UserRepository;
+use app\api\service\Auth\AuthUser;
+use app\api\service\Auth\UserRepository;
 use app\api\model\Users as UsersModel;
 
 class ThinkOrmUserRepository implements UserRepository

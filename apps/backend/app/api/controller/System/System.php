@@ -6,20 +6,20 @@ use think\facade\Request;
 use app\common\infra\CacheManager;
 
 use app\api\service\System\VersionService;
-use app\common\service\Config as ConfigService;
 
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
+use app\api\resource\SystemResource;
 
 class System extends BaseController
 {
     public function update()
     {
-        return ApiResponse::createOk([
+        return ApiResponse::createOk(SystemResource::make([
             'ver' => VersionService::public(),
             'latest' => $this->getLatestVer(),
             'verlog' => $this->getUpdata()
-        ]);
+        ]));
     }
 
     private function getUpdata()

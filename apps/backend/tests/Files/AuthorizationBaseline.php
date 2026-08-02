@@ -329,7 +329,7 @@ namespace app\api\model
     }
 }
 
-namespace app\api\service\Storage
+namespace app\api\infrastructure\Storage
 {
     class StorageFactory
     {
@@ -450,7 +450,7 @@ namespace think\facade
 namespace
 {
     /**
-     * 模拟记录对象，与 StorageManager 中 $file->user_id 等访问兼容
+     * 模拟记录对象，与 FilesManager 中 $file->user_id 等访问兼容
      */
     class MockFileRecord
     {
@@ -627,8 +627,67 @@ namespace
 // ════════════════════════════════════════════════════════════
 namespace
 {
-    require __DIR__ . '/../../app/api/service/Storage/StorageManager.php';
-    require __DIR__ . '/../../app/api/service/Storage/DirectUploadManager.php';
+    function filesRepository(): object
+    {
+        static $repository;
+        return $repository ??= new \app\api\infrastructure\Files\ThinkOrmFileRepository();
+    }
+
+    function batchOperate(string $method, array $ids, int $userId, array $caps): void
+    {
+        $useCase = new \app\api\service\Files\Application\BatchOperateFiles(
+            filesRepository(),
+            new \app\api\infrastructure\Files\DefaultStorageDriver()
+        );
+        $useCase->execute($method, $ids, $userId, $caps);
+    }
+
+    function getFile(int $fileId, int $userId, bool $canReadAll): ?array
+    {
+        return (new \app\api\service\Files\Application\GetFile(filesRepository()))
+            ->execute($fileId, $userId, $canReadAll);
+    }
+
+    function getByHash(string $hash, int $userId, bool $canReadAll): ?array
+    {
+        return filesRepository()->findByHash($hash, $userId, $canReadAll);
+    }
+
+    function confirmUpload(int $recordId, int $userId): bool
+    {
+        return (new \app\api\service\Files\Application\DirectUpload(
+            filesRepository(),
+            new \app\api\infrastructure\Files\DefaultStorageDriver(),
+            new \app\api\infrastructure\Files\ConfigChannelConfig(),
+            new \app\api\infrastructure\Files\CacheRateLimiter()
+        ))->confirm($recordId, $userId);
+    }
+
+    function cleanupExpired(int $limit): array
+    {
+        return filesRepository()->cleanupExpired($limit);
+    }
+
+    function listOwnFiles(array $params, int $userId): array
+    {
+        return (new \app\api\service\Files\Application\ListFiles(filesRepository()))
+            ->executeOwn($params, $userId);
+    }
+
+    require __DIR__ . '/../../app/api/service/Files/Contract/FileRepository.php';
+    require __DIR__ . '/../../app/api/service/Files/FileConstants.php';
+    require __DIR__ . '/../../app/api/service/Files/Contract/StorageDriver.php';
+    require __DIR__ . '/../../app/api/service/Files/Contract/ChannelConfig.php';
+    require __DIR__ . '/../../app/api/service/Files/Contract/RateLimiter.php';
+    require __DIR__ . '/../../app/api/service/Files/Application/BatchOperateFiles.php';
+    require __DIR__ . '/../../app/api/service/Files/Application/GetFile.php';
+    require __DIR__ . '/../../app/api/service/Files/Application/ListFiles.php';
+    require __DIR__ . '/../../app/api/service/Files/Application/DirectUpload.php';
+    require __DIR__ . '/../../app/api/infrastructure/Files/ThinkOrmFileRepository.php';
+    require __DIR__ . '/../../app/api/infrastructure/Files/DefaultStorageDriver.php';
+    require __DIR__ . '/../../app/api/infrastructure/Files/ConfigChannelConfig.php';
+    require __DIR__ . '/../../app/api/infrastructure/Files/CacheRateLimiter.php';
+    require __DIR__ . '/../../app/api/infrastructure/Storage/ChannelManager.php';
 }
 
 // ════════════════════════════════════════════════════════════
@@ -698,7 +757,7 @@ namespace
     $test('A1: batch hard_delete owner — 删除自己文件通过', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
         // user=10, caps=['files.delete'] → 只能删除自己的
-        \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [1], 10, ['files.delete']);
+        batchOperate('hard_delete', [1], 10, ['files.delete']);
         // 无异常 = 授权检查通过
         $assertTrue(true);
     });
@@ -707,7 +766,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [3], 10, ['files.delete']);
+            batchOperate('hard_delete', [3], 10, ['files.delete']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -717,7 +776,7 @@ namespace
 
     $test('A3: batch hard_delete .all — 任意用户可删除', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [3], 10, ['files.delete.all']);
+        batchOperate('hard_delete', [3], 10, ['files.delete.all']);
         // 无异常 = 授权检查通过
         $assertTrue(true);
     });
@@ -726,7 +785,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [999], 10, ['files.delete.all']);
+            batchOperate('hard_delete', [999], 10, ['files.delete.all']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -738,7 +797,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [1, 999], 10, ['files.delete.all']);
+            batchOperate('hard_delete', [1, 999], 10, ['files.delete.all']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -751,7 +810,7 @@ namespace
 
     $test('A6: batch approve 需要 files.update', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        \app\api\service\Storage\StorageManager::batchOperate('approve', [1], 10, ['files.update']);
+        batchOperate('approve', [1], 10, ['files.update']);
         // 验证通过（无异常）
         $assertTrue(true);
     });
@@ -760,7 +819,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('approve', [3], 10, ['files.update']);
+            batchOperate('approve', [3], 10, ['files.update']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -770,7 +829,7 @@ namespace
 
     $test('A8: batch approve non-owner 有 .all 时通过', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        \app\api\service\Storage\StorageManager::batchOperate('approve', [3], 10, ['files.update.all']);
+        batchOperate('approve', [3], 10, ['files.update.all']);
         $assertTrue(true);
     });
 
@@ -783,7 +842,7 @@ namespace
         $thrown = null;
         try {
             // id=2 是 user_id=10 的软删除记录, 当前用户也是 10 — 应通过
-            \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [2], 10, ['files.delete']);
+            batchOperate('hard_delete', [2], 10, ['files.delete']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -795,7 +854,7 @@ namespace
         $thrown = null;
         try {
             // id=5 是 user_id=20 的软删除记录, 当前用户=10
-            \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [5], 10, ['files.delete']);
+            batchOperate('hard_delete', [5], 10, ['files.delete']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -806,7 +865,7 @@ namespace
     $test('B3: batch restore 需要 files.delete 并检查 owner', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
         // owner=10 恢复自己的软删除记录 id=2, 需要 files.delete
-        \app\api\service\Storage\StorageManager::batchOperate('restore', [2], 10, ['files.delete']);
+        batchOperate('restore', [2], 10, ['files.delete']);
         $assertTrue(true);
     });
 
@@ -815,7 +874,7 @@ namespace
         $thrown = null;
         try {
             // restore 已从 files.update 改为 files.delete — 只有 update 不够
-            \app\api\service\Storage\StorageManager::batchOperate('restore', [2], 10, ['files.update']);
+            batchOperate('restore', [2], 10, ['files.update']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -838,7 +897,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [3], 10, ['files.delete']);
+            batchOperate('hard_delete', [3], 10, ['files.delete']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -856,7 +915,7 @@ namespace
         // id=4 是 owner=10 的过期待上传记录, upload_status=0
         $assertSame(0, $mockFilesDb[4]->upload_status, 'id=4 初始应为 PENDING');
         $assertTrue($mockFilesDb[4]->deleted_at === null, 'id=4 不应已软删除');
-        $cleaned = \app\api\service\Storage\DirectUploadManager::cleanupExpired(100);
+        $cleaned = cleanupExpired(100);
         $assertTrue(count($cleaned) >= 1, '应清理至少一条过期记录');
         // 标记为 FAILED, 记录仍在 DB 中
         $assertSame(2, $mockFilesDb[4]->upload_status, 'cleanup 后 id=4 应为 FAILED');
@@ -869,7 +928,7 @@ namespace
         $resetMockDb();
         global $mockFilesDb;
         // id=1 是已完成记录, 不应被清理
-        $cleaned = \app\api\service\Storage\DirectUploadManager::cleanupExpired(100);
+        $cleaned = cleanupExpired(100);
         $assertSame(1, $mockFilesDb[1]->upload_status, '已完成记录 upload_status 不应被修改');
         $assertTrue(in_array(4, array_column($cleaned, 'id')), 'id=4 应在清理列表中');
     });
@@ -880,7 +939,7 @@ namespace
 
     $test('E1: allDelete 单条 hard_delete owner 通过', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [1], 10, ['files.delete']);
+        batchOperate('hard_delete', [1], 10, ['files.delete']);
         // 无异常 = 授权检查通过
         $assertTrue(true);
     });
@@ -889,7 +948,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [3], 10, ['files.delete']);
+            batchOperate('hard_delete', [3], 10, ['files.delete']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -899,7 +958,7 @@ namespace
 
     $test('E3: allDelete .all 可删除任意 owner', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [3], 10, ['files.delete.all']);
+        batchOperate('hard_delete', [3], 10, ['files.delete.all']);
         // 无异常 = 授权检查通过
         $assertTrue(true);
     });
@@ -908,7 +967,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [999], 10, ['files.delete.all']);
+            batchOperate('hard_delete', [999], 10, ['files.delete.all']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -918,9 +977,9 @@ namespace
 
     $test('E5: Controller allDelete 不直接调用 hardDelete', static function () use ($assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $controllerCode = file_get_contents(__DIR__ . '/../../app/api/controller/Storage/Upload.php');
-        // 确保 allDelete 方法中没有 StorageManager::hardDelete(
-        $hasDirectHardDelete = (bool)preg_match('/allDelete.*?StorageManager::hardDelete/s', $controllerCode);
-        $assertFalse($hasDirectHardDelete, 'allDelete 不应直接调用 StorageManager::hardDelete');
+        // 确保 allDelete 方法中没有 FilesManager::hardDelete(
+        $hasDirectHardDelete = (bool)preg_match('/allDelete.*?FilesManager::hardDelete/s', $controllerCode);
+        $assertFalse($hasDirectHardDelete, 'allDelete 不应直接调用 FilesManager::hardDelete');
     });
 
     // ──────────────────────────────────────────────────────
@@ -929,19 +988,19 @@ namespace
 
     $test('F1: batch ban 需要 files.update', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        \app\api\service\Storage\StorageManager::batchOperate('ban', [1], 10, ['files.update']);
+        batchOperate('ban', [1], 10, ['files.update']);
         $assertTrue(true);
     });
 
     $test('F2: batch toggle_public 需要 files.update', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        \app\api\service\Storage\StorageManager::batchOperate('toggle_public', [1], 10, ['files.update']);
+        batchOperate('toggle_public', [1], 10, ['files.update']);
         $assertTrue(true);
     });
 
     $test('F3: batch trash 需要 files.delete', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        \app\api\service\Storage\StorageManager::batchOperate('trash', [1], 10, ['files.delete']);
+        batchOperate('trash', [1], 10, ['files.delete']);
         $assertTrue(true);
     });
 
@@ -949,7 +1008,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('invalid_method', [1], 10, ['files.update']);
+            batchOperate('invalid_method', [1], 10, ['files.update']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -965,7 +1024,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [1, 3, 999], 10, ['files.delete']);
+            batchOperate('hard_delete', [1, 3, 999], 10, ['files.delete']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -980,7 +1039,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [3, 999], 10, ['files.delete']);
+            batchOperate('hard_delete', [3, 999], 10, ['files.delete']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -992,7 +1051,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [1, 999], 10, ['files.delete.all']);
+            batchOperate('hard_delete', [1, 999], 10, ['files.delete.all']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -1039,7 +1098,7 @@ namespace
 
     $test('I1: batch trash owner 通过', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        \app\api\service\Storage\StorageManager::batchOperate('trash', [1], 10, ['files.delete']);
+        batchOperate('trash', [1], 10, ['files.delete']);
         global $mockFilesDb;
         $assertTrue($mockFilesDb[1]->deleted_at !== null, 'trash 后记录应软删除');
     });
@@ -1048,7 +1107,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('trash', [3], 10, ['files.delete']);
+            batchOperate('trash', [3], 10, ['files.delete']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -1080,7 +1139,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('approve', [1], 10, ['files.delete']);
+            batchOperate('approve', [1], 10, ['files.delete']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -1092,7 +1151,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('hard_delete', [1], 10, ['files.update']);
+            batchOperate('hard_delete', [1], 10, ['files.update']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -1104,7 +1163,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::batchOperate('approve', [1], 10, []);
+            batchOperate('approve', [1], 10, []);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -1131,71 +1190,71 @@ namespace
 
     $test('M1: owner 可读取自己的正常记录', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        $file = \app\api\service\Storage\StorageManager::getFile(1, 10, false);
+        $file = getFile(1, 10, false);
         $assertTrue($file !== null, 'owner=10 应读到 id=1');
     });
 
     $test('M2: owner 不可读取自己的软删除记录', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        $file = \app\api\service\Storage\StorageManager::getFile(2, 10, false);
+        $file = getFile(2, 10, false);
         $assertTrue($file === null, 'owner=10 不可读取自己软删除的记录 id=2');
     });
 
     $test('M3: non-owner 不可读取非公开记录', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
         // id=1 owner=10, non-owner=99 无 canReadAll
-        $file = \app\api\service\Storage\StorageManager::getFile(1, 99, false);
+        $file = getFile(1, 99, false);
         $assertTrue($file === null, 'non-owner=99 不可读取 id=1');
     });
 
     $test('M4: 不存在 ID 返回 null', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        $file = \app\api\service\Storage\StorageManager::getFile(999, 10, false);
+        $file = getFile(999, 10, false);
         $assertTrue($file === null, '不存在 ID=999 返回 null');
     });
 
     $test('M5: canReadAll 可读取软删除记录', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        $file = \app\api\service\Storage\StorageManager::getFile(2, 10, true);
+        $file = getFile(2, 10, true);
         $assertTrue($file !== null, '有 canReadAll 时可读取软删除记录 id=2');
     });
 
     $test('M6: visitor uid=0 只可见安全公开记录', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
         // id=6 是 is_public=1 的 owner=10 记录
-        $file = \app\api\service\Storage\StorageManager::getFile(6, 0, false);
+        $file = getFile(6, 0, false);
         $assertTrue($file !== null, 'visitor 应读到安全公开记录 id=6');
         // id=1 不是公开的
-        $file2 = \app\api\service\Storage\StorageManager::getFile(1, 0, false);
+        $file2 = getFile(1, 0, false);
         $assertTrue($file2 === null, 'visitor 不可读非公开记录 id=1');
     });
 
     $test('M7: getByHash 应用 scope — owner 可读自己正常记录', static function () use ($resetMockDb, $assertTrue): void {
         $resetMockDb();
-        $file = \app\api\service\Storage\StorageManager::getByHash('hash-1', 10, false);
+        $file = getByHash('hash-1', 10, false);
         $assertTrue($file !== null && $file['id'] === 1, 'owner 应通过 hash 读取自己的正常记录');
     });
 
     $test('M8: getFile canReadAll 允许 non-owner 读取', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
         // non-owner=99 有 canReadAll, 可读 id=1 (owner=10)
-        $file = \app\api\service\Storage\StorageManager::getFile(1, 99, true);
+        $file = getFile(1, 99, true);
         $assertTrue($file !== null, 'canReadAll 时 non-owner=99 可读 id=1');
     });
 
     $test('M9: owner visibility scope avoids framework method collision', static function () use ($assertTrue, $assertFalse, $assertSame): void {
         $modelCode = file_get_contents(__DIR__ . '/../../app/api/model/Files.php');
-        $serviceCode = file_get_contents(__DIR__ . '/../../app/api/service/Storage/StorageManager.php');
+        $serviceCode = file_get_contents(__DIR__ . '/../../app/api/infrastructure/Files/ThinkOrmFileRepository.php');
         $assertTrue(strpos($modelCode, 'function scopeVisibleTo(') !== false, 'Files model must declare scopeVisibleTo');
         $assertFalse((bool)preg_match('/function\s+scopeVisible\s*\(/', $modelCode), 'Files model must not collide with BaseQuery::visible');
         $assertSame(3, preg_match_all('/->visibleTo\s*\(/', $serviceCode), 'all owner visibility callers must use visibleTo');
-        $assertFalse((bool)preg_match('/->visible\s*\(/', $serviceCode), 'StorageManager must not call BaseQuery::visible');
+        $assertFalse((bool)preg_match('/->visible\s*\(/', $serviceCode), 'FileRepository must not call BaseQuery::visible');
     });
 
     // N: confirmUpload owner/non-owner/missing
     $test('N1: confirmUpload owner succeeds', static function () use ($resetMockDb, $assertTrue, $assertSame): void {
         $resetMockDb();
-        $result = \app\api\service\Storage\DirectUploadManager::confirmUpload(7, 10);
+        $result = confirmUpload(7, 10);
         global $mockFilesDb;
         $assertTrue($result, 'owner 应能确认自己的 pending upload');
         $assertSame(\app\api\model\Files::UPLOAD_COMPLETED, $mockFilesDb[7]->upload_status, '确认后应标记 completed');
@@ -1205,14 +1264,14 @@ namespace
         $resetMockDb();
         global $mockFilesDb;
         $mockFilesDb[7]->upload_status = '0';
-        $result = \app\api\service\Storage\DirectUploadManager::confirmUpload(7, 10);
+        $result = confirmUpload(7, 10);
         $assertTrue($result, 'database varchar pending status must be accepted');
         $assertSame(\app\api\model\Files::UPLOAD_COMPLETED, $mockFilesDb[7]->upload_status, 'string pending status should become completed');
     });
 
     $test('N2: confirmUpload non-owner returns false', static function () use ($resetMockDb, $assertFalse, $assertSame): void {
         $resetMockDb();
-        $result = \app\api\service\Storage\DirectUploadManager::confirmUpload(7, 20);
+        $result = confirmUpload(7, 20);
         global $mockFilesDb;
         $assertFalse($result, 'non-owner 不得确认其他用户的 upload');
         $assertSame(\app\api\model\Files::UPLOAD_PENDING, $mockFilesDb[7]->upload_status, '拒绝后状态不得变化');
@@ -1221,7 +1280,7 @@ namespace
     $test('N3: confirmUpload missing returns false', static function () use ($resetMockDb, $assertFalse): void {
         $resetMockDb();
         $assertFalse(
-            \app\api\service\Storage\DirectUploadManager::confirmUpload(999, 10),
+            confirmUpload(999, 10),
             '不存在的记录必须返回 false'
         );
     });
@@ -1230,7 +1289,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            \app\api\service\Storage\StorageManager::listOwn([], 0);
+            listOwnFiles([], 0);
         } catch (\Throwable $e) {
             $thrown = $e;
         }

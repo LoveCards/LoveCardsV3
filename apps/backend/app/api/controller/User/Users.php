@@ -8,6 +8,7 @@ use app\api\service\User\Users as UsersService;
 use app\api\validate\Users as UsersValidate;
 
 use app\api\ApiResponse;
+use app\api\resource\UserResource;
 use app\api\controller\BaseController;
 use app\api\controller\BatchOperateTrait;
 
@@ -24,13 +25,13 @@ class Users extends BaseController
     {
         $params = $this->paramIndex(Request::param());
         $result = UsersService::listAll($params);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(UserResource::paginate($result));
     }
 
     public function get($id)
     {
         $result = UsersService::Get((int) $id);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(UserResource::make($result));
     }
 
     public function update($id)

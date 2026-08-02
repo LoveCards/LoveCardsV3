@@ -12,11 +12,24 @@ docs           架构、重构与协作规范
 scripts        跨 workspace 编排和架构检查
 ```
 
+## 后端 API 协议链
+
+后端 API 的维护入口按下面的链路理解：
+
+```text
+Route Meta -> Controller -> Validate -> Business -> Resource -> ApiResponse
+```
+
+- Validate 是唯一请求字段验证层。
+- Resource 是唯一响应内部数据契约层。
+- Business 默认使用简单 Service；复杂模块才在模块内拆出 `Application`、`Domain`、`Contract`。
+- 不再使用顶层 `apps/backend/app/api/application` 目录；复杂用例放在 `apps/backend/app/api/service/<Module>/Application`。
+
 ## 环境
 
 - Node.js 22 或更高版本
 - npm 11 或更高版本
-- PHP 7.2.5 或更高版本及 Composer（后端）
+- PHP 8.1–8.x 及 Composer（后端）
 
 首次安装统一在仓库根目录运行：
 

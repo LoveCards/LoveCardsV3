@@ -16,20 +16,10 @@ use app\system\utils\Database;
 use app\system\utils\Environment;
 use app\system\utils\Rsa;
 
-use jwt\Jwt;
+use app\common\infra\Jwt;
 
 class Install
 {
-
-    public function __construct()
-    {
-        // 检查安装锁：文件锁存在则说明已安装完成
-        // 此检查只能阻止完全安装后的访问，不能阻止首次安装流程
-        // （PostDbConfig、PostCreateRsa 在锁创建之前执行）
-        if (Common::CheckInstallLock()) {
-            return Export::Create(null, 500, '勿重复安装');
-        }
-    }
 
     private function getHttpData($key = '', $url = '', $heade = [], $time = 3600): string
     {
@@ -61,8 +51,8 @@ class Install
 
         $data = VersionService::public();
         $info = VersionService::info();
-        $data['php_min'] = $info['php_min'] ?? '7.2.5';
-        $data['php_max'] = $info['php_max'] ?? '8.0.99';
+        $data['php_min'] = $info['php_min'] ?? '8.1.0';
+        $data['php_max'] = $info['php_max'] ?? '9.0.0';
         $data['mysql_min'] = $info['mysql_min'] ?? '5.7';
         $data['mysql_max'] = $info['mysql_max'] ?? '9999';
         $data['GithubInfo'] = json_decode($latestInfo, true);

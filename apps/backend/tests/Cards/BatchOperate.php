@@ -152,6 +152,7 @@ namespace app\common\support
 // require 生产文件（此后所有替身必须已就绪）
 // ============================================================
 namespace {
+    require __DIR__ . '/../../app/api/service/Content/Domain/PublicationStatus.php';
     require __DIR__ . '/../../app/api/service/Content/Cards.php';
 }
 

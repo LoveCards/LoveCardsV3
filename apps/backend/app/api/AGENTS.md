@@ -1,43 +1,50 @@
-# API 目录约束
+# API Agent 约束
 
-本文档适用于 `apps/backend/app/api/**`。
+本文件适用于 `apps/backend/app/api/**`。开始修改前同时读取仓库根 `AGENTS.md` 和
+`docs/engineering/ARCHITECTURE.md`；涉及认证时再读取 `docs/engineering/AUTH-BASELINE.md`。
 
-## 默认调用链
+## API 协议链
 
 ```text
-Route -> Controller -> Validate -> Service -> Resource -> ApiResponse
+Route Meta -> Controller -> Validate -> Business -> Resource -> ApiResponse
 ```
 
-- Controller 只解析 HTTP 输入、调用 Validate、调用 Service、映射 Resource。
-- Validate 是唯一请求字段验证层；不新增 `RequestSchema`。
-- Service 负责业务规则、用例编排和事务边界，不读取 `request()`，不依赖 Controller 或 Middleware。
-- Resource 负责响应内部结构和字段裁剪。
-- ApiResponse 只负责统一响应外壳、HTTP 状态码和错误格式。
-- 简单 CRUD 可以由 Service 直接调用 Model；只有复杂或外部能力才增加 Contract。
-- Driver、Factory、第三方 SDK、缓存、文件系统和 ORM 适配器放在 `infrastructure`。
+- Route meta 维护接口身份、公开性、权限和 SDK 可见元信息。
+- Validate 是唯一请求字段验证层；不要重新引入 `RequestSchema` 作为第二套验证。
+- Controller 只解析 HTTP 输入、调用业务入口、选择 Resource，并返回 `ApiResponse`。
+- Resource 是唯一响应内部数据契约层；响应外壳由 `ApiResponse`/`ApiException` 维护。
 
-## 目录归属
+## Business 两档结构
 
-- `service/Auth`：登录、注册、认证上下文、认证 Port。
-- `service/Files`：文件业务用例和文件 Contract。
-- `service/Storage`：存储渠道管理用例；物理驱动在 `infrastructure/Storage`。
-- `service/Sender`：发送业务；SMTP、短信驱动在 `infrastructure/Sender`。
-- `service/Captcha`：验证码业务；验证码驱动在 `infrastructure/Captcha`。
-- `service/Content`、`Rbac`、`User`、`System`、`Theme`：按实际复杂度提供业务 Service。
-- `infrastructure`：技术适配和外部系统实现，不编排完整业务流程。
+默认保持简单业务层：
 
-## Controller 规则
+```text
+Controller -> service/<Module>/<Service>.php -> Model/Db
+```
 
-禁止 Controller 直接依赖：
+当模块出现多驱动、第三方 SDK、明确状态流转、跨用例复用规则、外部副作用一致性或需要独立测试的核心规则时，再升级为复杂业务层：
 
-- `app\api\model\*`
-- Storage/Sender/Captcha Driver
-- `*Factory`
-- 第三方 SDK
-- 数据库 Facade
-- 前端主题引擎或文件系统实现
+```text
+Controller -> service/<Module>/Application/<UseCase>.php
+              -> service/<Module>/Domain/*
+              -> service/<Module>/Contract/* <- infrastructure/<Module>/*
+```
 
-动态配置、主题、验证码、Sender、Storage 接口使用“固定响应外壳 + 动态内部 schema/value”，不能用实体资源的固定白名单裁剪动态内容。
+- 简单 Service 可以依赖 Model/Db，但不能读取 `request()`，不能引用 Controller/Middleware。
+- Application 负责编排单个用例，不直接依赖 Model/Db/Infrastructure。
+- Domain 只放业务规则、状态和值对象，不依赖 ThinkPHP、ORM、缓存、SDK 或 `ApiException`。
+- Contract 是业务内部 Port，不是 HTTP 请求/响应契约；只有真实需要替换实现时才新增。
+- Infrastructure 实现 Contract 或封装第三方技术，不编排完整业务流程。
+- Service 不读取认证请求字段。调用者显式传入 `uid`、角色或 capability。
+- 新增抽象前先确认它消除了真实的框架、持久化或外部服务耦合。
+
+## API 语言约定
+
+- PHP 类、方法、变量、DTO 字段、Route name 和 capability 使用英文。
+- PHPDoc、行内注释及架构说明使用中文，具体类名、方法名和协议术语保留英文。
+- API 用户可见消息与 `ApiException` 业务错误使用中文；业务码和 HTTP 状态保持稳定。
+- 测试 case 名称使用英文，测试失败说明可以使用中文。
+- 不批量翻译历史注释；只要求新增和本次修改区域保持一致。
 
 ## AuthContext
 
@@ -50,41 +57,39 @@ $roles = $auth->roleIds();
 $capabilities = $auth->capabilities();
 ```
 
-公开路由必须允许没有上下文：
+公开路由没有认证中间件，需要能力列表时显式处理无上下文情况：
 
 ```php
 $auth = request()->auth ?? null;
 $capabilities = $auth ? $auth->capabilities() : [];
 ```
 
-禁止重新引入 `request()->uid`、`request()->user`、`request()->rolesId`、`request()->caps`、`request()->newToken` 或对应的 `$request` 动态字段。业务代码不得直接调用 JWT 具体实现。
+禁止重新引入 `request()->uid`、`user`、`rolesId`、`caps`、`newToken` 或对应的
+`$request` 动态字段。不要在业务代码中直接调用具体 JWT 实现。
 
-## Files/Storage 规则
+## Auth 用例与契约
 
-```text
-Files Service
-  -> Storage Contract
-  -> Storage Infrastructure Driver
-```
+- 登录：`service/Auth/LoginUser.php`
+- 注册：`service/Auth/RegisterUser.php`
+- 请求认证：`service/Auth/AuthenticateRequest.php`
+- 当前身份：`service/Auth/AuthContext.php`
+- 用户持久化 Port：`service/Auth/UserRepository.php`
+- Token Port：`common/contract/TokenService.php`
 
-Files 维护文件记录、归属、权限、状态、软删除和引用关系；Storage 维护上传、删除、URL、直传凭证和渠道配置。Storage Driver 不创建文件业务记录，Files Service 不直接扫描或实例化驱动。
-
-## 代码规范
-
-- PHP 类、方法、变量、DTO 字段、Route name、capability 使用英文。
-- PHPDoc 和架构说明使用中文；具体类名、方法名和协议术语保留英文。
-- 面向用户的业务错误通过 `ApiException`，HTTP 状态码和业务码保持稳定。
-- 新增或本次修改区域保持统一编码和格式，不批量翻译历史注释。
+变更上述行为前，先扩展 `tests/Auth/BehaviorBaseline.php` 或
+`tests/Auth/JwtRenewal.php` 固定预期，再修改实现。不要在结构重构中同时更改业务码、
+HTTP 状态、Token payload 或响应 Header。
 
 ## 最低验证
 
-在仓库根目录执行：
+在仓库根执行：
 
-```text
-npm run check
+```bash
+npm run check:architecture
 cd apps/backend
+composer test:auth
 composer validate --no-check-publish
-composer test
 ```
 
-对所有受影响 PHP 文件执行 `php -l`。涉及路由时，至少补充一条公开路由、一条鉴权路由和一条真实 HTTP 请求验证；无法运行的检查必须写入交接说明。
+并对所有受影响 PHP 文件执行 `php -l`。涉及路由行为时，补充一个公开路由和一个鉴权
+路由的真实 HTTP 验证；无法运行的检查必须写入交付说明。

@@ -18,6 +18,8 @@ $dataSqlPath = $baseDir . '/data.sql';
 $migrationsDir = $baseDir . '/database/migrations/';
 $rbacPath = $baseDir . '/app/api/service/Rbac/RBAC.php';
 $rolesPath = $baseDir . '/app/api/service/Rbac/Roles.php';
+$capabilityCatalogPath = $baseDir . '/app/api/service/Rbac/Domain/CapabilityCatalog.php';
+$systemRolePolicyPath = $baseDir . '/app/api/service/Rbac/Domain/SystemRolePolicy.php';
 
 $errors = [];
 $passCount = 0;
@@ -174,8 +176,17 @@ function hasNotNull(string $sql, string $tableName, string $columnName): bool
 // ────────────────────────────────────────────────────────────
 //  Helper: statically extract capabilites from RBAC.php
 // ────────────────────────────────────────────────────────────
-function extractAllCapabilitiesFromRbac(string $rbacPath): array
+function extractAllCapabilitiesFromRbac(string $rbacPath, string $capabilityCatalogPath = ''): array
 {
+    $catalogPath = $capabilityCatalogPath ?: $rbacPath;
+    if (file_exists($catalogPath)) {
+        $catalogContent = file_get_contents($catalogPath);
+        if ($catalogContent !== false && preg_match('/function all\(\): array\s*\{\s*return\s*\[(.*?)\];\s*\}/s', $catalogContent, $m)) {
+            preg_match_all("/'([a-zA-Z0-9_.]+)'\s*=>/", $m[1], $caps);
+            return $caps[1] ?? [];
+        }
+    }
+
     if (!file_exists($rbacPath)) {
         return [];
     }
@@ -196,7 +207,7 @@ function extractAllCapabilitiesFromRbac(string $rbacPath): array
 //  Helper: statically extract role capability matrix from
 //  Roles.php getSystemRoleCapabilityMatrix() method
 // ────────────────────────────────────────────────────────────
-function extractRoleCapMatrixFromRoles(string $rolesPath): array
+function extractRoleCapMatrixFromRoles(string $rolesPath, string $systemRolePolicyPath = ''): array
 {
     $result = [
         1 => [],  // root
@@ -205,16 +216,17 @@ function extractRoleCapMatrixFromRoles(string $rolesPath): array
         4 => [],  // guest
     ];
 
-    if (!file_exists($rolesPath)) {
+    $sourcePath = file_exists($systemRolePolicyPath) ? $systemRolePolicyPath : $rolesPath;
+    if (!file_exists($sourcePath)) {
         return $result;
     }
-    $content = file_get_contents($rolesPath);
+    $content = file_get_contents($sourcePath);
     if ($content === false) {
         return $result;
     }
 
     // Extract the return array from getSystemRoleCapabilityMatrix()
-    if (preg_match('/function getSystemRoleCapabilityMatrix\(\): array\s*\{[^}]*return\s*\[(.*?)\];[^}]*\}/s', $content, $mainMatch)) {
+    if (preg_match('/function (?:getSystemRoleCapabilityMatrix|capabilityMatrix)\([^)]*\): array\s*\{[^}]*return\s*\[(.*?)\];[^}]*\}/s', $content, $mainMatch)) {
         $body = $mainMatch[1];
 
         // Map role slugs to expected IDs using config anchors
@@ -522,11 +534,11 @@ if ($migrationCombined !== '') {
 
     // ── Capability bidirectional comparison ──
     // Extract all capabilities from RBAC.php (authoritative list)
-    $allCaps = extractAllCapabilitiesFromRbac($rbacPath);
+    $allCaps = extractAllCapabilitiesFromRbac($rbacPath, $capabilityCatalogPath);
     echo "[INFO] RBAC::getAllCapabilities() returns " . count($allCaps) . " capabilities\n";
 
     // Extract role capability matrix from Roles.php reseed()
-    $roleMatrix = extractRoleCapMatrixFromRoles($rolesPath);
+    $roleMatrix = extractRoleCapMatrixFromRoles($rolesPath, $systemRolePolicyPath);
     $expectedRoleCounts = [];
     foreach ($roleMatrix as $rid => $caps) {
         $expectedRoleCounts[$rid] = count($caps);

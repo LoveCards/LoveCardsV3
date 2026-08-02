@@ -24,7 +24,7 @@
         if (mode.value === 'login') {
           sdk.session.login({ account: account.value, password: password.value })
             .then(function (res) {
-              var d = res.data;
+              var d = res;
               localStorage.setItem('token', d.token);
               sdk.setToken(d.token);
               location.href = '/user';
@@ -43,7 +43,7 @@
             password_confirm: passwordConfirm.value
           })
             .then(function (res) {
-              var d = res.data;
+              var d = res;
               localStorage.setItem('token', d.token);
               sdk.setToken(d.token);
               location.href = '/user';
@@ -56,7 +56,7 @@
       function guestLogin() {
         sdk.session.guest()
           .then(function (res) {
-            var d = res.data;
+            var d = res;
             localStorage.setItem('token', d.token);
             sdk.setToken(d.token);
             location.href = '/';

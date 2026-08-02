@@ -58,7 +58,7 @@ namespace Firebase\JWT {
         public static $decodeCalls = 0;
         public static $encodedPayload = [];
 
-        public static function decode(string $token, Key $key, array $allowedAlgorithms)
+        public static function decode(string $token, Key $key, ?\stdClass &$headers = null)
         {
             self::$decodeCalls++;
             throw new ExpiredException('Expired token');

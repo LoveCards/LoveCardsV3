@@ -17,6 +17,7 @@
       var title = Vue.ref('');
       var selectedTags = Vue.ref([]);
       var allTags = Vue.ref([]);
+      var captchaConfig = Vue.ref(null);
       var loading = Vue.ref(false);
       var error = Vue.ref('');
       var isEdit = Vue.ref(!!editId);
@@ -25,13 +26,17 @@
         if (!requireAuth()) return;
 
         sdk.tags.list({ list_rows: 100 })
-          .then(function (res) { allTags.value = res.data || []; })
+          .then(function (res) { allTags.value = res || []; })
+          .catch(function () {});
+
+        sdk.captcha.config()
+          .then(function (res) { captchaConfig.value = res; })
           .catch(function () {});
 
         if (editId) {
           sdk.cards.get(editId)
             .then(function (res) {
-              var card = res.data;
+              var card = res;
               content.value = card.content || '';
               title.value = (card.data && card.data.title) || '';
               if (card.tags) {
@@ -55,6 +60,12 @@
       function submit() {
         if (!content.value.trim()) { error.value = '内容不能为空'; return; }
         if (!requireAuth()) return;
+        if (captchaConfig.value &&
+            captchaConfig.value.captcha_geetest_v4 &&
+            captchaConfig.value.captcha_geetest_v4.status) {
+          error.value = 'Geetest captcha is enabled, but this theme does not support interactive captcha yet.';
+          return;
+        }
         error.value = '';
         loading.value = true;
 
@@ -68,7 +79,7 @@
         if (isEdit.value && editId) {
           promise = sdk.cards.update(editId, params).then(function () { location.href = '/cards/' + editId; });
         } else {
-          promise = sdk.cards.create(params).then(function (res) { location.href = '/cards/' + res.data.id; });
+          promise = sdk.cards.create(params).then(function (res) { location.href = '/cards/' + res.id; });
         }
 
         promise
