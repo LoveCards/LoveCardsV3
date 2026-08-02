@@ -2,6 +2,8 @@
 
 namespace app\api\service\Content;
 
+use app\common\service\Config as ConfigService;
+
 use think\facade\Db;
 
 use app\api\model\Cards as CardsModel;
@@ -11,9 +13,14 @@ use app\api\model\Comments as CommentsModel;
 use app\common\support\FieldsToggle;
 use app\common\support\ModelList;
 use app\common\support\OwnershipGuard;
+use app\api\service\Content\Domain\PublicationStatus;
 
 class Cards
 {
+    public static function requiresApproval(): bool
+    {
+        return (bool) ConfigService::get('cards.approve');
+    }
     use OwnershipGuard;
 
     protected static string $guardModel = CardsModel::class;
@@ -23,7 +30,7 @@ class Cards
 
     public static function hotList(): array
     {
-        $top = CardsModel::where('status', 0)
+        $top = CardsModel::where('status', PublicationStatus::visible())
             ->where('is_top', 1)
             ->order('id', 'desc')
             ->limit(self::TOP_LISTS_MAX)
@@ -31,7 +38,7 @@ class Cards
             ->toArray();
 
         $hot = CardsModel::fieldRaw('*, comments * 0.3 + goods * 0.7 as hot_score')
-            ->where('status', 0)
+            ->where('status', PublicationStatus::visible())
             ->where('is_top', 0)
             ->order('hot_score', 'desc')
             ->limit(self::HOT_LISTS_MAX)
@@ -51,7 +58,7 @@ class Cards
 
         // 无 cards.read.all 能力 → 只看已发布
         if (!in_array('cards.read.all', $caps)) {
-            $params['where']['status'] = 0;
+            $params['where']['status'] = PublicationStatus::visible();
         }
 
         $result = ModelList::make(CardsModel::class)->getPaginate($params);
@@ -70,7 +77,7 @@ class Cards
         }
 
         // 无 cards.read.all 能力 → 只看已发布
-        if (!in_array('cards.read.all', $caps) && $result->status !== 0) {
+        if (!in_array('cards.read.all', $caps) && $result->status !== PublicationStatus::visible()) {
             throw \app\api\ApiException::notFound('卡片不存在');
         }
 
@@ -108,17 +115,7 @@ class Cards
             throw \app\api\ApiException::badRequest('未指定要操作的资源');
         }
 
-        $opCaps = [
-            'top'       => 'cards.pin',
-            'unset_top' => 'cards.pin',
-            'approve'   => 'cards.approve',
-            'ban'       => 'cards.approve',
-            'hide'      => 'cards.update',
-            'unhide'    => 'cards.update',
-            'delete'    => 'cards.delete',
-        ];
-
-        $cap = $opCaps[$method] ?? null;
+        $cap = PublicationStatus::batchCapability($method);
         if (!$cap) {
             throw \app\api\ApiException::badRequest('不支持的操作');
         }
@@ -128,10 +125,16 @@ class Cards
 
         match ($method) {
             'top', 'unset_top' => FieldsToggle::toggle(CardsModel::class, 'is_top', $ids, [0, 1]),
-            'approve' => FieldsToggle::toggle(CardsModel::class, 'status', $ids, [0, 3], [1, 2]),
-            'ban' => FieldsToggle::toggle(CardsModel::class, 'status', $ids, [0, 1], [2, 3]),
-            'hide' => FieldsToggle::toggle(CardsModel::class, 'status', $ids, [0, 2], [1, 3]),
-            'unhide' => CardsModel::whereIn('id', $ids)->where('status', 2)->update(['status' => 0]),
+            'approve', 'ban', 'hide' => FieldsToggle::toggle(
+                CardsModel::class,
+                'status',
+                $ids,
+                PublicationStatus::toggleRange($method)[0],
+                PublicationStatus::toggleRange($method)[1]
+            ),
+            'unhide' => CardsModel::whereIn('id', $ids)
+                ->where('status', PublicationStatus::HIDDEN)
+                ->update(['status' => PublicationStatus::NORMAL]),
             'delete' => self::deleteCardsWithRelated($ids),
         };
     }

@@ -43,11 +43,19 @@
 
 ## 后端依赖方向
 
+API 协议链：
+
+```text
+Route Meta -> Controller -> Validate -> Business -> Resource -> ApiResponse
+```
+
 当前可执行规则：
 
 - `common` 不依赖 `api`、`frontend`、`system`；现有唯一债务由检查脚本白名单锁定，只能减少。
 - `api/controller` 不直接依赖 `api/model`。
-- `api/service` 不依赖 `api/controller`。
+- `api/service` 不依赖 `api/controller` 或 `api/middleware`，也不读取 `request()`。
+- 简单 Service 可以依赖 Model/Db；复杂模块才拆为 Application、Domain、Contract 和 Infrastructure。
+- 不创建顶层 `api/application`；复杂用例放在 `api/service/<Module>/Application`。
 - Controller 负责协议适配，Application/Service 负责用例，Domain 负责业务规则，Infrastructure 负责框架与外部技术。
 - JWT 是 Token 基础设施实现，不代表完整鉴权模块。用户加载、角色能力和访客策略不得进入 JWT 编解码器。
 

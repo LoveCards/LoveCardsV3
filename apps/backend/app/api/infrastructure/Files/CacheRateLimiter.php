@@ -2,8 +2,8 @@
 
 namespace app\api\infrastructure\Files;
 
-use app\api\application\Files\RateLimiter;
-use app\api\service\Storage\ChannelManager;
+use app\api\service\Files\Contract\RateLimiter;
+use app\api\infrastructure\Storage\ChannelManager;
 use app\common\infra\CacheManager;
 
 /**

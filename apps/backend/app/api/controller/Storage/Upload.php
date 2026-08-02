@@ -5,13 +5,16 @@ namespace app\api\controller\Storage;
 use think\facade\Request;
 use app\api\ApiResponse;
 use app\api\ApiException;
-use app\api\application\Files\UploadFile;
-use app\api\application\Files\ListFiles;
-use app\api\application\Files\GetFile;
-use app\api\application\Files\BatchOperateFiles;
-use app\api\application\Files\DirectUpload;
+use app\api\service\Files\Application\UploadFile;
+use app\api\service\Files\Application\ListFiles;
+use app\api\service\Files\Application\GetFile;
+use app\api\service\Files\Application\BatchOperateFiles;
+use app\api\service\Files\Application\DirectUpload;
 use app\api\validate\Files as FilesValidate;
 use app\api\controller\BaseController;
+use app\api\resource\ApiResource;
+use app\api\resource\DirectUploadResource;
+use app\api\resource\FileResource;
 
 class Upload extends BaseController
 {
@@ -60,7 +63,7 @@ class Upload extends BaseController
         }
 
         $result = $this->uploadFile->execute($file, $userId, $scene, $refType, $refId, $isPublic);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(FileResource::make($result));
     }
 
     public function list()
@@ -76,7 +79,7 @@ class Upload extends BaseController
         $canReadAll = request()->auth->hasAnyCapability(['files.read.all']);
 
         $result = $this->listFiles->execute($params, $userId, $canReadAll);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(FileResource::paginate($result));
     }
 
     public function listOwn()
@@ -93,7 +96,7 @@ class Upload extends BaseController
         $params['ref_id'] = Request::param('ref_id', null);
 
         $result = $this->listFiles->executeOwn($params, $userId);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(FileResource::paginate($result));
     }
 
     public function get($id = 0)
@@ -106,7 +109,7 @@ class Upload extends BaseController
         if (!$file) {
             throw ApiException::notFound('文件不存在');
         }
-        return ApiResponse::createOk($file);
+        return ApiResponse::createOk(FileResource::make($file));
     }
 
     public function batch()
@@ -138,7 +141,7 @@ class Upload extends BaseController
         $mime = Request::param('mime', '');
 
         $result = $this->directUpload->createPending($filename, $mime, $size, $userId);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(DirectUploadResource::make($result));
     }
 
     public function confirm($id = 0)
@@ -157,7 +160,7 @@ class Upload extends BaseController
     {
         $limit = (int) Request::param('limit', 100);
         $cleaned = $this->directUpload->cleanup($limit);
-        return ApiResponse::createOk(['cleaned' => count($cleaned)]);
+        return ApiResponse::createOk(ApiResource::make(['cleaned' => count($cleaned)]));
     }
 
     public function allDelete($id)

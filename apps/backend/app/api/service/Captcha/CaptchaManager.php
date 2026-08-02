@@ -1,7 +1,8 @@
 <?php
 
-namespace app\api\service\Captcha;
-
+namespace app\api\service\Captcha;
+
+use app\api\infrastructure\Captcha\CaptchaFactory;
 use app\common\service\Config as ConfigService;
 
 class CaptchaManager

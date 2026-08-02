@@ -75,6 +75,10 @@ for (const directory of ['apps/backend/.git', 'apps/admin/.git', 'packages/sdk/.
   if (await exists(path.join(root, directory))) fail(`Nested Git repository is forbidden: ${directory}`)
 }
 
+if (await exists(path.join(root, 'apps/backend/app/api/application'))) {
+  fail('Legacy API application directory must not exist; use app/api/service')
+}
+
 async function checkPhpBoundary(directory, forbidden, allowlist = new Set()) {
   const base = path.join(root, directory)
   const files = await walk(base, (file) => file.endsWith('.php'))
@@ -97,9 +101,49 @@ await checkPhpBoundary('apps/backend/app/api/service', /^app\\api\\controller\\/
 await checkPhpBoundary('apps/backend/app/api/controller', /^app\\api\\model\\/i)
 await checkPhpBoundary('apps/backend/app/api', /^app\\common\\infra\\Jwt$/i)
 await checkPhpBoundary(
-  'apps/backend/app/api/application',
-  /^app\\api\\(controller|middleware|model|infrastructure)\\/i,
+  'apps/backend/app/api/service',
+  /^app\\api\\(controller|middleware)\\/i,
 )
+await checkPhpBoundary(
+  'apps/backend/app/api/service',
+  /^think\\facade\\Request$/i,
+)
+await checkPhpBoundary(
+  'apps/backend/app/api/service',
+  /^think\\Request$/i,
+)
+
+for (const layer of ['Application', 'Domain', 'Contract']) {
+  const directories = []
+  const serviceRoot = path.join(root, 'apps/backend/app/api/service')
+  for (const moduleName of await readdir(serviceRoot)) {
+    const directory = path.join(serviceRoot, moduleName, layer)
+    if (await exists(directory)) directories.push(directory)
+  }
+
+  for (const directory of directories) {
+    const files = await walk(directory, (file) => file.endsWith('.php'))
+    for (const file of files) {
+      const source = await readFile(file, 'utf8')
+      for (const match of source.matchAll(/^\s*use\s+(app\\[^;]+|think\\[^;]+);/gmi)) {
+        const dependency = match[1].replace(/\s+as\s+.+$/i, '')
+        const key = `${relative(file)}:${dependency}`
+        if (layer === 'Application' && /^app\\api\\(controller|middleware|model|infrastructure)\\/i.test(dependency)) {
+          fail(`Application must not depend on transport, ORM model, or infrastructure: ${key}`)
+        }
+        if (layer === 'Application' && /^think\\facade\\Db$/i.test(dependency)) {
+          fail(`Application must not depend on Db facade directly: ${key}`)
+        }
+        if (layer === 'Domain' && /^(app\\api\\(controller|middleware|model|infrastructure|ApiException)|think\\)/i.test(dependency)) {
+          fail(`Domain must remain framework and infrastructure free: ${key}`)
+        }
+        if (layer === 'Contract' && /^app\\api\\(controller|middleware|model|infrastructure)\\/i.test(dependency)) {
+          fail(`Contract must not depend on transport, ORM model, or infrastructure: ${key}`)
+        }
+      }
+    }
+  }
+}
 
 const backendPhpFiles = await walk(path.join(root, 'apps/backend/app'), (file) => file.endsWith('.php'))
 const legacyAuthField = /(?:request\(\)|\$request)->(?:uid|user|rolesId|caps|newToken)\b/
@@ -108,16 +152,27 @@ for (const file of backendPhpFiles) {
   if (legacyAuthField.test(source)) {
     fail(`${relative(file)} uses a legacy Request auth field; use request()->auth`)
   }
+  if (/\b(?:StorageManager|DirectUploadManager)\b/.test(source)) {
+    fail(`${relative(file)} references a removed legacy Files/Storage manager`)
+  }
 }
 
-const authApplicationFiles = await walk(
-  path.join(root, 'apps/backend/app/api/application/Auth'),
+const servicePhpFiles = await walk(path.join(root, 'apps/backend/app/api/service'), (file) => file.endsWith('.php'))
+for (const file of servicePhpFiles) {
+  const source = await readFile(file, 'utf8')
+  if (/\brequest\s*\(/i.test(source)) {
+    fail(`${relative(file)} reads HTTP Request state inside the service layer`)
+  }
+}
+
+const authServiceFiles = await walk(
+  path.join(root, 'apps/backend/app/api/service/Auth'),
   (file) => file.endsWith('.php'),
 )
-for (const file of authApplicationFiles) {
+for (const file of authServiceFiles) {
   const source = await readFile(file, 'utf8')
   if (/\brequest\s*\(/i.test(source) || /think\\facade\\Request/i.test(source)) {
-    fail(`${relative(file)} reads HTTP Request state inside the Auth application layer`)
+    fail(`${relative(file)} reads HTTP Request state inside the Auth service layer`)
   }
 }
 
@@ -126,7 +181,7 @@ const sessionService = await readFile(
   'utf8',
 )
 if (/public\s+function\s+(?:login|register)\s*\(/i.test(sessionService)) {
-  fail('Auth login/register entry points must remain Application use cases, not Session service methods')
+  fail('Auth login/register entry points must remain Auth service use cases, not Session service methods')
 }
 
 if (failures.length > 0) {

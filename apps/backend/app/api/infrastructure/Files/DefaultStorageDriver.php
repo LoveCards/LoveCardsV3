@@ -2,9 +2,9 @@
 
 namespace app\api\infrastructure\Files;
 
-use app\api\application\Files\StorageDriver;
-use app\api\service\Storage\StorageFactory;
-use app\api\service\Storage\Contract\HasDirectUpload;
+use app\api\service\Files\Contract\StorageDriver;
+use app\api\infrastructure\Storage\StorageFactory;
+use app\api\infrastructure\Storage\Contract\HasDirectUpload;
 use think\facade\Log;
 
 /**
@@ -16,7 +16,7 @@ class DefaultStorageDriver implements StorageDriver
 {
     public function uploadToDefault(object $file, string $path): array
     {
-        $defaultChannel = \app\api\service\Storage\ChannelManager::getDefaultChannel();
+        $defaultChannel = \app\api\infrastructure\Storage\ChannelManager::getDefaultChannel();
         $driver = StorageFactory::make($defaultChannel['slug']);
         $result = $driver->upload($file, $path);
         return [

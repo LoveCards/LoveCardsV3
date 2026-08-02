@@ -8,32 +8,33 @@ use app\api\service\Sender\SenderManager;
 use app\api\ApiException;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
+use app\api\resource\SenderResource;
 
 class Sender extends BaseController
 {
     public function meta(string $type)
     {
-        return ApiResponse::createOk(SenderManager::meta($type));
+        return ApiResponse::createOk(SenderResource::make(SenderManager::meta($type)));
     }
 
     public function install()
     {
-        return ApiResponse::createOk(SenderManager::install());
+        return ApiResponse::createOk(SenderResource::collection(SenderManager::install()));
     }
 
     public function types()
     {
-        return ApiResponse::createOk(SenderManager::types());
+        return ApiResponse::createOk(SenderResource::collection(SenderManager::types()));
     }
 
     public function channels()
     {
-        return ApiResponse::createOk(SenderManager::channels());
+        return ApiResponse::createOk(SenderResource::collection(SenderManager::channels()));
     }
 
     public function templates()
     {
-        return ApiResponse::createOk(SenderManager::templates());
+        return ApiResponse::createOk(SenderResource::collection(SenderManager::templates()));
     }
 
     public function testChannel()
@@ -45,6 +46,6 @@ class Sender extends BaseController
 
         $to = Request::param('to', 'test@example.com');
 
-        return ApiResponse::createOk(SenderManager::testChannel($channel, $to));
+        return ApiResponse::createOk(SenderResource::make(SenderManager::testChannel($channel, $to)));
     }
 }

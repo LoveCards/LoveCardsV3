@@ -6,6 +6,7 @@ use think\facade\Request;
 use app\api\service\Content\Likes as LikesService;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
+use app\api\resource\LikeResource;
 
 class Likes extends BaseController
 {
@@ -13,7 +14,7 @@ class Likes extends BaseController
     {
         $type = Request::param('type', null);
         $result = LikesService::getUserLikes(request()->auth->uid(), $type);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(LikeResource::collection($result));
     }
 
     public function unlike($id)

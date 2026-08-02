@@ -8,6 +8,7 @@ use app\api\service\Content\Tags as TagsService;
 use app\api\validate\Tags as TagsValidate;
 
 use app\api\ApiResponse;
+use app\api\resource\TagResource;
 use app\api\controller\BaseController;
 use app\api\controller\BatchOperateTrait;
 
@@ -25,7 +26,7 @@ class Tags extends BaseController
         $params = $this->paramIndex(Request::param());
         $caps = request()->auth->capabilities();
         $result = TagsService::listAll($params, $caps);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(TagResource::paginate($result));
     }
 
     public function list()
@@ -34,13 +35,13 @@ class Tags extends BaseController
             'where' => ['status' => 0]
         ];
         $result = TagsService::noPaginateIndex($params);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(TagResource::collection($result));
     }
 
     public function get($id)
     {
         $result = TagsService::get((int) $id);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(TagResource::make($result));
     }
 
     public function create()

@@ -4,83 +4,43 @@ namespace app\api\controller\System;
 
 use think\facade\Request;
 
-use app\common\service\Config as ConfigService;
-
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
+use app\api\resource\ConfigResource;
+use app\api\service\System\ConfigManager;
 
 class Config extends BaseController
 {
-    protected function getAllowedGroups(): array
+    private ConfigManager $config;
+
+    public function __construct(?ConfigManager $config = null)
     {
-        $groups = ConfigService::getSchemaGroups();
-        if (empty($groups)) {
-            $groups = ['core', 'upload', 'cards', 'comments', 'user', 'version', 'captcha'];
-        }
-        return $groups;
+        parent::__construct();
+        $this->config = $config ?: new ConfigManager();
     }
 
     public function index()
     {
         $group = Request::param('group', '');
-        $allowedGroups = $this->getAllowedGroups();
-
-        if (empty($group)) {
-            $result = [];
-            foreach ($allowedGroups as $g) {
-                $result[$g] = ConfigService::getGroup($g);
-            }
-            return ApiResponse::createOk($result);
-        }
-
-        $groupList = array_map('trim', explode(',', $group));
-        $result = [];
-        foreach ($groupList as $g) {
-            if (in_array($g, $allowedGroups)) {
-                $result[$g] = ConfigService::getGroup($g);
-            }
-        }
-        return ApiResponse::createOk($result);
+        $groups = empty($group) ? [] : explode(',', (string) $group);
+        return ApiResponse::createOk(ConfigResource::make($this->config->get($groups)));
     }
 
     public function groups()
     {
-        return ApiResponse::createOk(ConfigService::getSchemaGroups());
+        return ApiResponse::createOk(ConfigResource::make($this->config->schemaGroups()));
     }
 
     public function update()
     {
-        $params = Request::param();
-        $allowedGroups = $this->getAllowedGroups();
-
-        foreach ($params as $group => $config) {
-            if (!in_array($group, $allowedGroups)) {
-                continue;
-            }
-            if (!is_array($config)) {
-                continue;
-            }
-
-            $schema = ConfigService::getSchema($group);
-            $validated = [];
-            foreach ($config as $key => $value) {
-                if (isset($schema[$key])) {
-                    $validated[$key] = $value;
-                }
-            }
-
-            if (!empty($validated)) {
-                ConfigService::setGroup($group, $validated);
-            }
-        }
-
+        $this->config->update(Request::param());
         return ApiResponse::createNoContent();
     }
 
     public function init()
     {
-        $result = ConfigService::init();
-        return ApiResponse::createOk($result);
+        $result = $this->config->init();
+        return ApiResponse::createOk(ConfigResource::make($result));
     }
 
     public function register()
@@ -92,14 +52,14 @@ class Config extends BaseController
             return ApiResponse::createBadRequest('缂哄皯 group 鎴?schema');
         }
 
-        $result = ConfigService::register($group, $schema);
-        return ApiResponse::createOk($result);
+        $result = $this->config->register($group, (array) $schema);
+        return ApiResponse::createOk(ConfigResource::make($result));
     }
 
     public function reload()
     {
         $group = Request::param('group');
-        ConfigService::reload($group ?: null);
+        $this->config->reload($group ?: null);
         return ApiResponse::createNoContent();
     }
 
@@ -109,7 +69,7 @@ class Config extends BaseController
         if (empty($group)) {
             return ApiResponse::createBadRequest('缺少 group');
         }
-        ConfigService::deleteGroup($group);
+        $this->config->deleteGroup($group);
         return ApiResponse::createNoContent();
     }
 
@@ -120,7 +80,7 @@ class Config extends BaseController
         if (empty($group) || empty($key)) {
             return ApiResponse::createBadRequest('缺少 group 或 key');
         }
-        ConfigService::deleteKey($group, $key);
+        $this->config->deleteKey($group, $key);
         return ApiResponse::createNoContent();
     }
 }

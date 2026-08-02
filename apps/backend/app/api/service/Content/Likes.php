@@ -9,13 +9,11 @@ use app\api\ApiException;
 
 class Likes
 {
-    const TYPES = ['card', 'comment'];
+    const TYPES = ['card'];
 
     public static function like(string $refType, int $refId, int $uid, string $ip): int
     {
-        if (!in_array($refType, self::TYPES)) {
-            throw ApiException::badRequest('不支持的内容类型', ApiException::CODE_PARAM_INVALID);
-        }
+        self::assertSupportedType($refType);
 
         Db::startTrans();
         try {
@@ -47,6 +45,8 @@ class Likes
 
     public static function unlike(string $refType, int $refId, int $uid): void
     {
+        self::assertSupportedType($refType);
+
         Db::startTrans();
         try {
             $like = LikesModel::where('pid', $refId)
@@ -68,8 +68,11 @@ class Likes
         }
     }
 
-    public static function getUserLikes(int $uid): array
+    public static function getUserLikes(int $uid, ?string $refType = null): array
     {
+        if ($refType !== null) {
+            self::assertSupportedType($refType);
+        }
         return LikesModel::where('uid', $uid)->select()->toArray();
     }
 
@@ -86,5 +89,12 @@ class Likes
     private static function decCounter(int $refId): void
     {
         CardsModel::where('id', $refId)->where('goods', '>', 0)->dec('goods')->update();
+    }
+
+    private static function assertSupportedType(string $refType): void
+    {
+        if (!in_array($refType, self::TYPES, true)) {
+            throw ApiException::badRequest('不支持的内容类型', ApiException::CODE_PARAM_INVALID);
+        }
     }
 }

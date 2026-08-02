@@ -5,7 +5,7 @@ use think\facade\Route;
 use app\api\middleware\JwtAuthCheck;
 use app\api\middleware\PermissionCheck;
 use app\api\middleware\SessionDebounce;
-use app\api\service\Captcha\Middleware\CaptchaCheck;
+use app\api\middleware\CaptchaCheck;
 
 // ─── 公开路由 ───
 Route::post('session/login', 'User.Session/login')

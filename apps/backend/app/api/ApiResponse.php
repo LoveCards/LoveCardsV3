@@ -3,6 +3,7 @@
 namespace app\api;
 
 use think\Response;
+use app\api\resource\Resource;
 
 class ApiResponse
 {
@@ -45,6 +46,7 @@ class ApiResponse
      */
     public static function wrap($data = null, string $message = '操作成功'): array
     {
+        $data = Resource::normalize($data);
         $result = [
             'success' => true,
             'message' => $message,

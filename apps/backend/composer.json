@@ -25,7 +25,6 @@
         "topthink/think-orm": "^3.0",
         "topthink/think-view": "^1.0",
         "topthink/think-multi-app": "^1.0",
-        "yzh52521/think-mail": "^2.0",
         "topthink/think-filesystem":"^1.0",
         "firebase/php-jwt": "^7.0",
         "qiniu/php-sdk": "^7.14",

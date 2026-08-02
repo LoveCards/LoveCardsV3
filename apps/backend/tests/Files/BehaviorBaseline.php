@@ -15,6 +15,12 @@ declare(strict_types=1);
 // ════════════════════════════════════════════════════════════
 namespace
 {
+    function fileRepository(): object
+    {
+        static $repository;
+        return $repository ??= new \app\api\infrastructure\Files\ThinkOrmFileRepository();
+    }
+
     /**
      * 替代 ThinkPHP 的 app() 容器，仅用 new 实例化模型。
      * 供 ModelList::make(string) 调用。
@@ -97,7 +103,7 @@ namespace app\api\model
     }
 
     /**
-     * Files 模型替身 — 只提供 StorageManager::list() 路径所需的表面。
+     * Files 模型替身 — 只提供 FilesManager::list() 路径所需的表面。
      * 定义常量保证其他方法体解析通过（不会被 list 路径执行）。
      */
     class Files
@@ -179,17 +185,19 @@ namespace app\common\support
 
 // ════════════════════════════════════════════════════════════
 // 3. 加载生产代码
-//    StorageManager::list() 是此套件的被测入口。
+//    FilesManager::list() 是此套件的被测入口。
 //    仅测试 list/getPaginate 路径，upload/batch 等方法不会被调用。
 // ════════════════════════════════════════════════════════════
 namespace
 {
-    require __DIR__ . '/../../app/api/service/Storage/StorageManager.php';
+    require __DIR__ . '/../../app/api/service/Files/Contract/FileRepository.php';
+    require __DIR__ . '/../../app/api/service/Files/FileConstants.php';
+    require __DIR__ . '/../../app/api/infrastructure/Files/ThinkOrmFileRepository.php';
 }
 
 // ════════════════════════════════════════════════════════════
 // 4. listOwn() 生产入口代理
-//    所有 strict-owner 断言必须调用生产 StorageManager::listOwn()，
+//    所有 strict-owner 断言必须调用生产 FilesManager::listOwn()，
 //    禁止在测试中复制一份参考业务逻辑。
 // ════════════════════════════════════════════════════════════
 namespace
@@ -203,7 +211,7 @@ namespace
      */
     function listOwn(array $params, int $userId): array
     {
-        return \app\api\service\Storage\StorageManager::listOwn($params, $userId);
+        return fileRepository()->paginateOwn($params, $userId);
     }
 }
 
@@ -320,7 +328,7 @@ namespace
 
     $test('A1: 非管理员 list 构建 (user_id OR secure_public) 可见范围', static function () use ($reset, $assertTrue, $assertFalse): void {
         $reset();
-        \app\api\service\Storage\StorageManager::list([], 10, false);
+        fileRepository()->paginate([], 10, false);
 
         $where = \app\common\support\ModelList::$capturedWhere;
         $calls = resolveWhere($where);
@@ -345,7 +353,7 @@ namespace
 
     $test('A2: 可读全部(hasCapability files.read.all) 无 owner 限制', static function () use ($reset, $assertSame): void {
         $reset();
-        \app\api\service\Storage\StorageManager::list([], 10, true);
+        fileRepository()->paginate([], 10, true);
 
         $where = \app\common\support\ModelList::$capturedWhere;
         $calls = resolveWhere($where);
@@ -359,7 +367,7 @@ namespace
 
     $test('A3: 可读全部可通过 show_deleted 查看软删除记录', static function () use ($reset, $assertTrue): void {
         $reset();
-        \app\api\service\Storage\StorageManager::list(['show_deleted' => 1], 10, true);
+        fileRepository()->paginate(['show_deleted' => 1], 10, true);
 
         $assertTrue(
             \app\common\support\ModelList::$withTrashedCalled,
@@ -369,7 +377,7 @@ namespace
 
     $test('A4: 无可读全部能力无法通过 show_deleted 绕过软删除过滤', static function () use ($reset, $assertFalse): void {
         $reset();
-        \app\api\service\Storage\StorageManager::list(['show_deleted' => 1], 10, false);
+        fileRepository()->paginate(['show_deleted' => 1], 10, false);
 
         $assertFalse(
             \app\common\support\ModelList::$withTrashedCalled,
@@ -383,7 +391,7 @@ namespace
 
     $test('A5: 访客 uid=0 list 仅安全公开记录', static function () use ($reset, $assertTrue, $assertFalse): void {
         $reset();
-        \app\api\service\Storage\StorageManager::list([], 0, false);
+        fileRepository()->paginate([], 0, false);
 
         $where = \app\common\support\ModelList::$capturedWhere;
         $calls = resolveWhere($where);
@@ -564,12 +572,12 @@ namespace
         }
     });
 
-    $test('E2: Files Application layer has no framework or legacy Service dependency', static function () use ($assertTrue): void {
-        $directory = dirname(__DIR__, 2) . '/app/api/application/Files/';
+    $test('E2: Files Service has no framework or legacy Storage dependency', static function () use ($assertTrue): void {
+        $directory = dirname(__DIR__, 2) . '/app/api/service/Files/';
         foreach (glob($directory . '*.php') as $file) {
             $source = file_get_contents($file);
             $assertTrue(strpos($source, 'think\\') === false, basename($file) . ' 不得依赖 ThinkPHP');
-            $assertTrue(strpos($source, 'app\\api\\service\\') === false, basename($file) . ' 不得依赖旧 Storage Service');
+            $assertTrue(strpos($source, 'app\\api\\service\\Storage\\') === false, basename($file) . ' 不得依赖旧 Storage Service');
         }
     });
 
@@ -597,7 +605,7 @@ namespace
     //                 throw ApiException::unauthorized('请先登入');
     //             }
     //             $params = $this->paramIndex(Request::param());
-    //             $result = StorageManager::listOwn($params, $userId);
+    //             $result = FilesManager::listOwn($params, $userId);
     //             return ApiResponse::createOk($result);
     //         }
     //

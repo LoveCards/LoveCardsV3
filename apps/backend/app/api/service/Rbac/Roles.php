@@ -8,6 +8,7 @@ use app\api\model\RoleCapabilities;
 use app\api\ApiException;
 use app\common\support\ModelList;
 use app\common\infra\CacheManager;
+use app\api\service\Rbac\Domain\SystemRolePolicy;
 
 class Roles
 {
@@ -183,48 +184,7 @@ class Roles
      */
     public static function getSystemRoleCapabilityMatrix(): array
     {
-        $roles = config('system.system_roles');
-
-        return [
-            $roles['guest'] => [
-                'cards.read',
-                'comments.read',
-                'tags.read',
-                'files.read',
-                'likes.create', 'likes.read', 'likes.delete',
-            ],
-            $roles['user'] => [
-                'cards.read', 'cards.create',
-                'comments.read', 'comments.create',
-                'tags.read', 'tags.create',
-                'users.read', 'users.update',
-                'files.upload', 'files.read',
-                'likes.create', 'likes.read', 'likes.delete',
-            ],
-            $roles['admin'] => [
-                'cards.read', 'cards.read.all', 'cards.create',
-                'cards.update.all', 'cards.delete.all',
-                'cards.approve', 'cards.approve.all',
-                'cards.pin.all',
-                'comments.read', 'comments.read.all',
-                'comments.update.all', 'comments.delete.all',
-                'tags.read', 'tags.read.all', 'tags.create',
-                'tags.update.all', 'tags.delete.all',
-                'users.read', 'users.read.all',
-                'users.update.all', 'users.delete.all',
-                'files.upload', 'files.read', 'files.read.all', 'files.update.all', 'files.delete', 'files.delete.all',
-                'likes.create', 'likes.read', 'likes.delete',
-                'dashboard.read',
-                'config.read', 'config.update', 'config.init', 'config.reload', 'config.register', 'config.deleteKey',
-                'storage.read', 'storage.install', 'storage.test',
-                'sender.read', 'sender.install', 'sender.test',
-                'captcha.read', 'captcha.install',
-                'theme.read', 'theme.update', 'theme.upload', 'theme.delete', 'theme.freeze', 'theme.activate',
-                'permissions.read',
-                'roles.read', 'roles.create', 'roles.update', 'roles.delete', 'roles.assign',
-            ],
-            $roles['root'] => [],
-        ];
+        return SystemRolePolicy::capabilityMatrix(config('system.system_roles'));
     }
 
     /**
@@ -300,42 +260,22 @@ class Roles
         $roles = config('system.system_roles');
         // 预期: ['root' => 1, 'admin' => 2, 'user' => 3, 'guest' => 4]
         $expectedIds = array_values($roles);
-        $expectedSlugs = array_keys($roles);
 
         // 2. 验证四个 ID 唯一
-        if (count(array_unique($expectedIds)) !== 4) {
-            throw ApiException::error(
-                'config system_roles 包含重复 ID',
-                ApiException::CODE_SYSTEM_ERROR
-            );
+        try {
+            SystemRolePolicy::assertConfigAnchors($roles);
+        } catch (\RuntimeException $e) {
+            throw ApiException::error($e->getMessage(), ApiException::CODE_SYSTEM_ERROR);
         }
 
         // 3. 从数据库读取这些角色
         $dbRoles = RolesModel::whereIn('id', $expectedIds)
             ->field('id, slug, is_system')
             ->select();
-        if ($dbRoles->count() !== 4) {
-            throw ApiException::error(
-                '数据库未包含全部 4 个系统角色（ID: ' . implode(',', $expectedIds) . '）',
-                ApiException::CODE_SYSTEM_ERROR
-            );
-        }
-
-        // 4. 逐行验证 ID、slug、is_system
-        foreach ($dbRoles as $role) {
-            $expectedSlug = array_search($role->id, $roles); // slug from config
-            if ($expectedSlug === false || $role->slug !== $expectedSlug) {
-                throw ApiException::error(
-                    "系统角色 {$role->id} slug 为 '{$role->slug}'，期望 '{$expectedSlug}'",
-                    ApiException::CODE_SYSTEM_ERROR
-                );
-            }
-            if (!$role->is_system) {
-                throw ApiException::error(
-                    "系统角色 {$role->id} ({$role->slug}) is_system=0，期望 1",
-                    ApiException::CODE_SYSTEM_ERROR
-                );
-            }
+        try {
+            SystemRolePolicy::assertDatabaseAnchors($roles, $dbRoles, $dbRoles->count());
+        } catch (\RuntimeException $e) {
+            throw ApiException::error($e->getMessage(), ApiException::CODE_SYSTEM_ERROR);
         }
         // 全部验证通过才继续。任何验证失败则零写入。
 

@@ -9,6 +9,8 @@ use app\api\validate\Roles as RolesValidate;
 
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
+use app\api\resource\ApiResource;
+use app\api\resource\RoleResource;
 
 class Roles extends BaseController
 {
@@ -16,20 +18,20 @@ class Roles extends BaseController
     {
         $params = $this->paramIndex(Request::param());
         $result = RolesService::Index($params);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(RoleResource::paginate($result));
     }
 
     public function get($id)
     {
         $result = RolesService::Get((int) $id);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(RoleResource::make($result));
     }
 
     public function create()
     {
         $params = $this->param(RolesValidate::class, RolesValidate::$all_scene['create'], Request::param());
         $id = RolesService::createRole($params);
-        return ApiResponse::createOk(['id' => $id]);
+        return ApiResponse::createOk(ApiResource::make(['id' => $id]));
     }
 
     public function update($id)
@@ -64,12 +66,12 @@ class Roles extends BaseController
     public function getRoleCapabilities($id)
     {
         $result = RolesService::getRoleCapabilities((int) $id);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(ApiResource::make($result));
     }
 
     public function reseed()
     {
         $result = RolesService::reseed();
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(ApiResource::make($result));
     }
 }

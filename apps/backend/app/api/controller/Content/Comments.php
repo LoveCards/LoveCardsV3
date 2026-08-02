@@ -6,9 +6,9 @@ use think\facade\Request;
 
 use app\api\validate\Comments as CommentsValidate;
 use app\api\service\Content\Comments as CommentsService;
-use app\common\service\Config as ConfigService;
 
 use app\api\ApiResponse;
+use app\api\resource\CommentResource;
 use app\api\controller\BaseController;
 use app\api\controller\BatchOperateTrait;
 
@@ -26,7 +26,7 @@ class Comments extends BaseController
         $params = $this->paramIndex(Request::param());
         $params['where'] = ['aid' => 1, 'pid' => $id];
         $result = CommentsService::listAll($params);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(CommentResource::paginate($result));
     }
 
     public function list()
@@ -34,7 +34,7 @@ class Comments extends BaseController
         $params = $this->paramIndex(Request::param());
         $caps = request()->auth->capabilities();
         $result = CommentsService::listAll($params, $caps);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(CommentResource::paginate($result));
     }
 
     public function create($id)
@@ -43,20 +43,20 @@ class Comments extends BaseController
         $params['id'] = $id;
         $params['user_id'] = request()->auth->uid();
         $params['post_ip'] = request()->ip();
-        $params['status'] = ConfigService::get('comments.approve') ? 3 : 0;
+        $params['status'] = CommentsService::requiresApproval() ? 3 : 0;
 
         $result = CommentsService::createComment($params);
 
-        if (ConfigService::get('comments.approve')) {
+        if (CommentsService::requiresApproval()) {
             return ApiResponse::createCreated();
         }
-        return ApiResponse::createOk($result['data']);
+        return ApiResponse::createOk(CommentResource::collection($result['data']));
     }
 
     public function get($id)
     {
         $result = CommentsService::get((int) $id);
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(CommentResource::make($result));
     }
 
     public function update($id)
@@ -81,6 +81,6 @@ class Comments extends BaseController
     {
         $params = $this->paramIndex(Request::param());
         $result = CommentsService::newList($params, request()->auth->uid());
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(CommentResource::paginate($result));
     }
 }

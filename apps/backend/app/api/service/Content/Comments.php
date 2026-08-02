@@ -2,6 +2,8 @@
 
 namespace app\api\service\Content;
 
+use app\common\service\Config as ConfigService;
+
 use think\facade\Db;
 
 use app\api\model\Comments as CommentsModel;
@@ -13,6 +15,10 @@ use app\common\support\OwnershipGuard;
 
 class Comments
 {
+    public static function requiresApproval(): bool
+    {
+        return (bool) ConfigService::get('comments.approve');
+    }
     use OwnershipGuard;
 
     protected static string $guardModel = CommentsModel::class;

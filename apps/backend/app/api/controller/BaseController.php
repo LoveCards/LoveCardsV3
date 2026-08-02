@@ -43,6 +43,7 @@ class BaseController
         return $params;
     }
 
+
     /**
      * 获取并验证列表/分页参数
      *

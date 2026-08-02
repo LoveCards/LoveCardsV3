@@ -5,6 +5,7 @@ namespace app\api\controller\Rbac;
 use app\api\service\Rbac\RBAC;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
+use app\api\resource\PermissionResource;
 use think\facade\Request;
 
 class Permissions extends BaseController
@@ -19,7 +20,7 @@ class Permissions extends BaseController
         foreach ($allCaps as $cap => $desc) {
             $result[] = ['capability' => $cap, 'description' => $desc];
         }
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(PermissionResource::collection($result));
     }
 
     /**
@@ -51,11 +52,11 @@ class Permissions extends BaseController
         $page = min($page, $lastPage);
         $data = array_slice($items, ($page - 1) * $listRows, $listRows);
 
-        return ApiResponse::createOk([
+        return ApiResponse::createOk(PermissionResource::paginate([
             'current_page' => $page,
             'last_page'    => $lastPage,
             'data'         => $data,
             'total'        => $total,
-        ]);
+        ]));
     }
 }

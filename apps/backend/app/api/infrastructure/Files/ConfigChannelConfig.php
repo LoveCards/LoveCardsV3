@@ -2,9 +2,9 @@
 
 namespace app\api\infrastructure\Files;
 
-use app\api\application\Files\ChannelConfig;
-use app\api\service\Storage\ChannelManager;
-use app\api\service\Storage\PathGenerator;
+use app\api\service\Files\Contract\ChannelConfig;
+use app\api\infrastructure\Storage\ChannelManager;
+use app\api\infrastructure\Storage\PathGenerator;
 
 /**
  * 基于 ChannelManager 的渠道配置实现

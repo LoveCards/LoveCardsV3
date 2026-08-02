@@ -3,17 +3,38 @@
 本文件适用于 `apps/backend/app/api/**`。开始修改前同时读取仓库根 `AGENTS.md` 和
 `docs/engineering/ARCHITECTURE.md`；涉及认证时再读取 `docs/engineering/AUTH-BASELINE.md`。
 
-## 新业务默认调用链
+## API 协议链
 
 ```text
-Route -> Controller -> Application use case / Service -> Port -> Infrastructure adapter
+Route Meta -> Controller -> Validate -> Business -> Resource -> ApiResponse
 ```
 
-- Controller 只解析和校验 HTTP 输入、调用用例、映射响应，不直接访问 Model。
-- Application 用例编排业务规则，通过构造函数依赖 Port，不读取 `request()`，不引用
-  Controller、Middleware、Model 或 Infrastructure。
-- Port 放在拥有业务语义的 Application 目录；适配器放在 Infrastructure，并在
-  `app/provider.php` 绑定。
+- Route meta 维护接口身份、公开性、权限和 SDK 可见元信息。
+- Validate 是唯一请求字段验证层；不要重新引入 `RequestSchema` 作为第二套验证。
+- Controller 只解析 HTTP 输入、调用业务入口、选择 Resource，并返回 `ApiResponse`。
+- Resource 是唯一响应内部数据契约层；响应外壳由 `ApiResponse`/`ApiException` 维护。
+
+## Business 两档结构
+
+默认保持简单业务层：
+
+```text
+Controller -> service/<Module>/<Service>.php -> Model/Db
+```
+
+当模块出现多驱动、第三方 SDK、明确状态流转、跨用例复用规则、外部副作用一致性或需要独立测试的核心规则时，再升级为复杂业务层：
+
+```text
+Controller -> service/<Module>/Application/<UseCase>.php
+              -> service/<Module>/Domain/*
+              -> service/<Module>/Contract/* <- infrastructure/<Module>/*
+```
+
+- 简单 Service 可以依赖 Model/Db，但不能读取 `request()`，不能引用 Controller/Middleware。
+- Application 负责编排单个用例，不直接依赖 Model/Db/Infrastructure。
+- Domain 只放业务规则、状态和值对象，不依赖 ThinkPHP、ORM、缓存、SDK 或 `ApiException`。
+- Contract 是业务内部 Port，不是 HTTP 请求/响应契约；只有真实需要替换实现时才新增。
+- Infrastructure 实现 Contract 或封装第三方技术，不编排完整业务流程。
 - Service 不读取认证请求字段。调用者显式传入 `uid`、角色或 capability。
 - 新增抽象前先确认它消除了真实的框架、持久化或外部服务耦合。
 
@@ -48,11 +69,11 @@ $capabilities = $auth ? $auth->capabilities() : [];
 
 ## Auth 用例与契约
 
-- 登录：`application/Auth/LoginUser.php`
-- 注册：`application/Auth/RegisterUser.php`
-- 请求认证：`application/Auth/AuthenticateRequest.php`
-- 当前身份：`application/Auth/AuthContext.php`
-- 用户持久化 Port：`application/Auth/UserRepository.php`
+- 登录：`service/Auth/LoginUser.php`
+- 注册：`service/Auth/RegisterUser.php`
+- 请求认证：`service/Auth/AuthenticateRequest.php`
+- 当前身份：`service/Auth/AuthContext.php`
+- 用户持久化 Port：`service/Auth/UserRepository.php`
 - Token Port：`common/contract/TokenService.php`
 
 变更上述行为前，先扩展 `tests/Auth/BehaviorBaseline.php` 或

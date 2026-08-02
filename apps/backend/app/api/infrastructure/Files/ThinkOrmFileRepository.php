@@ -2,8 +2,8 @@
 
 namespace app\api\infrastructure\Files;
 
-use app\api\application\Files\FileRepository;
-use app\api\application\Files\FileConstants;
+use app\api\service\Files\Contract\FileRepository;
+use app\api\service\Files\FileConstants;
 use app\api\model\Files as FilesModel;
 use app\common\support\ModelList;
 use think\facade\Db;

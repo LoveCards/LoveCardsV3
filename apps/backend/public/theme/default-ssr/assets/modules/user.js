@@ -16,7 +16,7 @@
       Vue.onMounted(function () {
         if (!requireAuth()) return;
         sdk.users.me()
-          .then(function (res) { user.value = res.data; })
+          .then(function (res) { user.value = res; })
           .catch(function () { localStorage.removeItem('token'); goLogin(); })
           .finally(function () { loading.value = false; });
       });

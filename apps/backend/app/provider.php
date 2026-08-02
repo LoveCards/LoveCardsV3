@@ -1,13 +1,13 @@
 <?php
 
 use app\ExceptionHandle;
-use app\api\application\Auth\CapabilityProvider;
-use app\api\application\Auth\UserRepository;
-use app\api\application\Auth\VisitorPolicy;
-use app\api\application\Files\FileRepository;
-use app\api\application\Files\StorageDriver;
-use app\api\application\Files\ChannelConfig;
-use app\api\application\Files\RateLimiter;
+use app\api\service\Auth\CapabilityProvider;
+use app\api\service\Auth\UserRepository;
+use app\api\service\Auth\VisitorPolicy;
+use app\api\service\Files\Contract\FileRepository;
+use app\api\service\Files\Contract\StorageDriver;
+use app\api\service\Files\Contract\ChannelConfig;
+use app\api\service\Files\Contract\RateLimiter;
 use app\api\infrastructure\Auth\ConfigVisitorPolicy;
 use app\api\infrastructure\Auth\RbacCapabilityProvider;
 use app\api\infrastructure\Auth\ThinkOrmUserRepository;

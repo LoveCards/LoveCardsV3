@@ -2,7 +2,7 @@
 
 namespace app\api\infrastructure\Auth;
 
-use app\api\application\Auth\VisitorPolicy;
+use app\api\service\Auth\VisitorPolicy;
 use app\common\service\Config;
 
 class ConfigVisitorPolicy implements VisitorPolicy

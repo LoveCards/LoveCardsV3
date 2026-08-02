@@ -2,6 +2,8 @@
 
 namespace app\api\service\Storage;
 
+use app\api\infrastructure\Storage\ChannelManager;
+
 class ChannelTester
 {
     public static function test(string $channel): array
