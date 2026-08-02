@@ -1,8 +1,8 @@
 # 架构约束与目标
 
-## 总体判断
+## 当前结论
 
-当前代码已具备 Controller、Service、Model、Middleware、SDK 等分工，但部分目录名承担了多种概念，依赖方向主要靠约定，尚未形成稳定架构。目标不是一次重写，而是以垂直切片逐步把“概念、依赖方向、验证”对齐。
+后端 API 已统一采用 TP 友好的业务分层，不再并列维护 `application` 和 `service` 两套业务入口。
 
 ```text
 Admin / Theme
@@ -11,69 +11,98 @@ Admin / Theme
 @lovecards/sdk  --->  HTTP API
                          |
                          v
-Transport -> Application -> Domain
-                |             |
-                v             v
-          Infrastructure adapters
+Route -> Controller -> Validate -> Service -> Resource -> ApiResponse
+                                      |
+                                      +-> Model（简单持久化）
+                                      +-> Contract -> Infrastructure（复杂/外部能力）
 ```
 
-## 架构约束表
+核心原则：代码按业务模块内聚，层数按实际复杂度裁剪。简单 CRUD 不强制创建 Repository、Adapter 或空壳 UseCase；出现多驱动、第三方 SDK、权限边界、事务或需要隔离测试时，再增加 Contract 和 Infrastructure。
 
-| 区域 | 职责 | 允许依赖 | 禁止依赖 | 自动化状态 |
-| --- | --- | --- | --- | --- |
-| `apps/admin` | 管理界面与交互 | SDK、UI 库 | 后端文件、SDK 源码相对路径 | 已检查 workspace 依赖 |
-| `packages/sdk` | HTTP 契约、类型、客户端 | 通用第三方库 | 任一 app | 已检查包级副作用 |
-| API Controller | 请求解析、校验、响应映射 | Application/Service、DTO | Model、基础设施细节 | 已检查 Controller -> Model |
-| Application/Service | 编排用例与事务 | Domain、Port | Controller | 已检查 Service -> Controller |
-| Domain | 实体、值对象、业务策略 | 领域内部 | HTTP、ORM、JWT、缓存、框架 | 迁移切片中逐步建立 |
-| Infrastructure | ORM、JWT、缓存、邮件等适配 | 第三方库、Port | 业务流程编排 | 迁移切片中逐步建立 |
-| `common` | 真正跨模块且稳定的能力 | common 内部、框架适配 | api/frontend/system | 已建立债务上限 |
+## 目录职责
 
-约束原则：外层可以依赖内层定义的抽象，内层不能知道外层实现。模块之间“不依赖”不是互不调用，而是调用稳定契约，不引用对方内部结构。
-
-Auth 的 `UserRepository` 返回只读 `AuthUser`，不会把 ThinkORM Model 带回 Application。按 ID
-加载认证上下文时不读取密码哈希；只有登录按账号查找时才加载密码哈希。
-
-## 已知债务基线
-
-- `app/common/support/OwnershipGuard.php` 仍依赖 `app/api/ApiException`。
-- 自动检查只允许这一条既有债务；新增同类依赖会失败。迁移该能力时删除白名单，实现债务只减不增。
-- 后端领域层尚未形成统一目录。未完成第一个切片前，不批量搬目录。
-
-## Auth 垂直切片
-
-Auth 是第一个架构样板，但不是“把所有用户代码放进 Auth”。概念边界如下：
-
-| 概念 | 负责什么 | 不负责什么 | 当前实现 |
+| 区域 | 职责 | 可以依赖 | 不应依赖 |
 | --- | --- | --- | --- |
-| Token codec | 签发、验证、续期、失效 | 查用户、判角色、访客策略 | `common/contract/TokenService.php`、`common/infra/JwtTokenService.php` |
-| Authentication | 从凭证得到当前身份 | 业务权限判断 | `api/middleware/JwtAuthCheck.php` |
-| Identity/User | 用户读取、状态、密码规则 | JWT 算法 | `api/application/Auth/LoginUser.php`、`RegisterUser.php`、`UserRepository.php` |
-| Authorization | 角色与 capability 判断 | 登录、Token 编解码 | `api/service/Rbac/*`、Permission middleware |
-| Transport | Header/Cookie、HTTP 状态和响应 | 业务规则、ORM | Route、Controller、Middleware |
+| `app/api/route` | 路由、公开性、权限元数据 | Controller、Middleware | 业务实现细节 |
+| `app/api/controller` | 读取 HTTP 参数、调用 Validate/Service、映射 Resource | Validate、Service、Resource | Model、Driver、Factory、第三方 SDK |
+| `app/api/validate` | 唯一请求字段验证和归一化 | Config 等稳定配置能力 | Controller 业务编排 |
+| `app/api/service` | 业务规则、用例编排、事务边界 | Model、Service Contract、稳定 common 能力 | Controller、HTTP Request 状态 |
+| `app/api/resource` | 响应数据契约和字段裁剪 | 输入数组/实体数据 | 数据库查询和业务判断 |
+| `app/api/model` | ThinkORM 模型和查询 Scope | ThinkORM | Controller 业务流程 |
+| `app/api/infrastructure` | ORM 适配器、驱动、缓存、第三方 SDK、配置读取 | Service Contract、common、第三方库 | Controller、完整业务流程 |
+| `app/api/middleware` | HTTP 认证、权限、验证码等请求管道 | Service/Auth、ApiResponse | 业务数据库编排 |
+| `app/common` | 真正跨 API、前端、系统稳定复用的能力 | common 内部、框架适配 | `api`、`frontend`、`system` 具体实现 |
+| `packages/sdk` | HTTP 契约、类型和客户端 | 通用第三方库 | 任意应用私有文件 |
 
-目标调用链：
+依赖方向是“外层依赖内层定义的契约”，而不是互相引用内部实现。模块之间可以调用稳定的 Service 或 Contract，但不能引用对方的 Controller、Model 或 Driver 内部细节。
+
+## API 模块约定
+
+当前 API 业务统一位于 `app/api/service/<Module>`：
+
+- `Auth`：登录、注册、认证上下文和认证 Port。
+- `Files`：文件记录、可见范围、上传、直传、批量操作。
+- `Storage`：存储渠道管理；实际 Local/OSS/COS/Qiniu 驱动位于 `infrastructure/Storage`。
+- `Sender`：消息发送编排；SMTP、短信等驱动位于 `infrastructure/Sender`。
+- `Captcha`：验证码流程；图片、极验、代码驱动位于 `infrastructure/Captcha`。
+- `Content`、`Rbac`、`User`、`System`、`Theme`：按需要使用轻量 Service，不为简单 CRUD 强行拆分。
+
+## Files 与 Storage 边界
+
+`Files` 和 `Storage` 是同一套文件架构中的两个职责，不是两套文件系统：
 
 ```text
-Route/Middleware
-  -> AuthenticateRequest use case
-      -> TokenService port
-      -> UserRepository port
-      -> AuthPolicy / VisitorPolicy
-  <- AuthContext(uid, user, roles, capabilities, renewedToken)
+Files Service
+  ├─ 文件记录、归属、权限、状态、软删除、引用关系
+  └─ Storage Contract
+       └─ Storage Infrastructure
+            ├─ Local
+            ├─ OSS
+            ├─ COS
+            └─ Qiniu
 ```
 
-建议迁移顺序，每一步保持接口行为不变：
+Files 不关心物理驱动细节；Storage 驱动不反向管理文件业务记录。
 
-1. 固定登录、注册、访客、续期、无效 Token、禁用用户和 capability 的行为测试。
-2. ~~从 `Jwt` 提取 `TokenService` 契约；现有 Firebase JWT + Cache 成为适配器。~~ 已完成。
-3. ~~引入只承载认证结果的 `AuthContext`，替代向 Request 动态散落字段。~~ 已完成；
-   调用者统一通过 `request()->auth` 读取认证结果。
-4. ~~提取 `UserRepository`，让认证用例不直接依赖 ThinkORM Model。~~ 已完成。
-5. ~~将访客策略和 RBAC 能力装配移入认证用例，Middleware 只做 HTTP 适配。~~ 已完成。
-6. ~~登录/注册分别成为用例；Controller 只解析输入并映射响应。~~ 已完成。
-7. ~~删除旧入口和临时适配，更新自动依赖检查，以该切片作为其他模块模板。~~ 已完成；
-   API 层执行约束见 `apps/backend/app/api/AGENTS.md`，任务交接清单见
-   `docs/engineering/MODULE-MIGRATION.md`。
+## Validate 与 Resource
 
-每一步都应是可独立回退的提交。不要同时更改 Token 语义、返回结构和目录结构。
+- `Validate` 是唯一维护请求字段规则的层。
+- `Resource` 是唯一维护响应内部数据结构的层。
+- `ApiResponse` 只负责统一响应外壳、状态码和错误格式。
+- Config、Theme、Captcha、Sender、Storage 等动态接口使用“固定外壳 + 动态内部 schema/value”，不对动态内容做静态实体式白名单裁剪。
+- 不再新增 `RequestSchema` 层。
+
+## Auth 约定
+
+认证中间件将结果统一放入 `request()->auth`：
+
+```php
+$auth = request()->auth;
+$uid = $auth->uid();
+$roles = $auth->roleIds();
+$capabilities = $auth->capabilities();
+```
+
+业务代码不得重新读取 `request()->uid`、`request()->user`、`request()->rolesId`、`request()->caps` 或 JWT 具体实现。登录、注册和认证续期由 `service/Auth` 负责；JWT 和 ORM 用户适配位于 `infrastructure/Auth` 或 `common`。
+
+## 事务规则
+
+事务属于拥有完整业务动作的 Service 方法：
+
+- Controller 不管理事务。
+- Model 不负责跨实体业务流程。
+- 简单操作可以直接由 Service 调用 Model。
+- 上传、批量删除、角色分配等跨步骤动作由对应 Service 统一包住事务和异常语义。
+
+## 发布前检查
+
+```text
+npm run check
+cd apps/backend
+composer validate --no-check-publish
+composer test
+php -l <所有受影响 PHP 文件>
+真实 HTTP 回归公开路由、鉴权路由和错误响应
+```
+
+迁移过程中保持路由、请求字段、响应契约、权限和数据库结构不变；旧入口只有在所有调用方和测试切换完成后才能删除。
