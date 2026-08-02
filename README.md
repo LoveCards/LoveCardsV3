@@ -23,7 +23,7 @@ Route Meta -> Controller -> Validate -> Business -> Resource -> ApiResponse
 - Validate 是唯一请求字段验证层。
 - Resource 是唯一响应内部数据契约层。
 - Business 默认使用简单 Service；复杂模块才在模块内拆出 `Application`、`Domain`、`Contract`。
-- 不再使用顶层 `apps/backend/app/api/application` 目录；复杂用例放在 `apps/backend/app/api/service/<Module>/Application`。
+- 不再使用顶层 `apps/backend/app/modules/*/Application` 目录；复杂用例放在 `apps/backend/app/modules/<Module>/Application`。
 
 ## 环境
 

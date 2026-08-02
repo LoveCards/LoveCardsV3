@@ -2,10 +2,10 @@
 
 namespace app\api\controller\Captcha;
 
-use app\api\service\Captcha\CaptchaManager;
+use app\modules\Platform\Captcha\Service\CaptchaManager;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
-use app\api\resource\CaptchaResource;
+use app\modules\Platform\Captcha\Transport\Api\CaptchaResource;
 
 class Captcha extends BaseController
 {

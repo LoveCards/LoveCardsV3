@@ -4,11 +4,11 @@ namespace app\api\controller\Sender;
 
 use think\facade\Request;
 
-use app\api\service\Sender\SenderManager;
+use app\modules\Platform\Sender\Service\SenderManager;
 use app\api\ApiException;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
-use app\api\resource\SenderResource;
+use app\modules\Platform\Sender\Transport\Api\SenderResource;
 
 class Sender extends BaseController
 {

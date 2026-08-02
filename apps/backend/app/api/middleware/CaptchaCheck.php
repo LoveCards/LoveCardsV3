@@ -3,7 +3,7 @@
 namespace app\api\middleware;
 
 use think\facade\Request;
-use app\api\service\Captcha\Captcha;
+use app\modules\Platform\Captcha\Service\Captcha;
 use app\api\ApiResponse;
 
 class CaptchaCheck

@@ -5,7 +5,7 @@ namespace app\system\controller;
 use think\facade\View;
 use think\facade\Cookie;
 
-use app\system\utils\Common;
+use app\modules\Operations\Installer\Infrastructure\Common;
 
 class Index
 {

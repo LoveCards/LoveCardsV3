@@ -5,16 +5,16 @@ namespace app\api\controller\Storage;
 use think\facade\Request;
 use app\api\ApiResponse;
 use app\api\ApiException;
-use app\api\service\Files\Application\UploadFile;
-use app\api\service\Files\Application\ListFiles;
-use app\api\service\Files\Application\GetFile;
-use app\api\service\Files\Application\BatchOperateFiles;
-use app\api\service\Files\Application\DirectUpload;
-use app\api\validate\Files as FilesValidate;
+use app\modules\Platform\Files\Application\UploadFile;
+use app\modules\Platform\Files\Application\ListFiles;
+use app\modules\Platform\Files\Application\GetFile;
+use app\modules\Platform\Files\Application\BatchOperateFiles;
+use app\modules\Platform\Files\Application\DirectUpload;
+use app\modules\Platform\Files\Transport\Api\Files as FilesValidate;
 use app\api\controller\BaseController;
-use app\api\resource\ApiResource;
-use app\api\resource\DirectUploadResource;
-use app\api\resource\FileResource;
+use app\shared\Transport\Http\ApiResource;
+use app\modules\Platform\Files\Transport\Api\DirectUploadResource;
+use app\modules\Platform\Files\Transport\Api\FileResource;
 
 class Upload extends BaseController
 {

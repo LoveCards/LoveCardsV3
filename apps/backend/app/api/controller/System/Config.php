@@ -6,8 +6,8 @@ use think\facade\Request;
 
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
-use app\api\resource\ConfigResource;
-use app\api\service\System\ConfigManager;
+use app\modules\Platform\Config\Transport\Api\ConfigResource;
+use app\modules\Platform\Config\Service\ConfigManager;
 
 class Config extends BaseController
 {

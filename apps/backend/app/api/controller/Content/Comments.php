@@ -4,11 +4,11 @@ namespace app\api\controller\Content;
 
 use think\facade\Request;
 
-use app\api\validate\Comments as CommentsValidate;
-use app\api\service\Content\Comments as CommentsService;
+use app\modules\Content\Comments\Transport\Api\Comments as CommentsValidate;
+use app\modules\Content\Comments\Service\Comments as CommentsService;
 
 use app\api\ApiResponse;
-use app\api\resource\CommentResource;
+use app\modules\Content\Comments\Transport\Api\CommentResource;
 use app\api\controller\BaseController;
 use app\api\controller\BatchOperateTrait;
 
@@ -18,7 +18,7 @@ class Comments extends BaseController
 
     protected function getBatchService(): string
     {
-        return \app\api\service\Content\Comments::class;
+        return \app\modules\Content\Comments\Service::class;
     }
 
     public function cardList($id)

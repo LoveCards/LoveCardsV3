@@ -4,13 +4,13 @@ namespace app\api\controller\Rbac;
 
 use think\facade\Request;
 
-use app\api\service\Rbac\Roles as RolesService;
-use app\api\validate\Roles as RolesValidate;
+use app\modules\Platform\Rbac\Service\Roles as RolesService;
+use app\modules\Platform\Rbac\Transport\Api\Roles as RolesValidate;
 
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
-use app\api\resource\ApiResource;
-use app\api\resource\RoleResource;
+use app\shared\Transport\Http\ApiResource;
+use app\modules\Platform\Rbac\Transport\Api\RoleResource;
 
 class Roles extends BaseController
 {

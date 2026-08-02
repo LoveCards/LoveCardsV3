@@ -5,13 +5,13 @@ namespace app\api\controller\User;
 use think\facade\Request;
 use think\exception\ValidateException;
 
-use app\api\service\User\Profile as ProfileService;
-use app\api\validate\Users as UsersValidate;
+use app\modules\Platform\User\Service\Profile as ProfileService;
+use app\modules\Platform\User\Transport\Api\Users as UsersValidate;
 
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
-use app\api\resource\ApiResource;
-use app\api\resource\ProfileResource;
+use app\shared\Transport\Http\ApiResource;
+use app\modules\Platform\User\Transport\Api\ProfileResource;
 
 class Profile extends BaseController
 {

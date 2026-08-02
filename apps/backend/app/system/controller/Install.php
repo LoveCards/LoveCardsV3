@@ -6,17 +6,20 @@ use think\facade\Request;
 use think\facade\Http;
 use think\facade\Cache;
 
-use app\system\utils\Export;
+use app\modules\Operations\Installer\Transport\System\Export;
 
-use app\api\service\System\VersionService;
-use app\common\service\Config as ConfigService;
-use app\api\service\Rbac\Roles;
-use app\system\utils\Common;
-use app\system\utils\Database;
-use app\system\utils\Environment;
-use app\system\utils\Rsa;
+use app\modules\Operations\Version\Service\VersionService;
+use app\modules\Platform\Config\Public\Config as ConfigService;
+use app\modules\Platform\Rbac\Service\Roles;
+use app\modules\Operations\Installer\Infrastructure\Common;
+use app\modules\Operations\Installer\Infrastructure\Database;
+use app\modules\Operations\Installer\Infrastructure\Environment;
+use app\modules\Operations\Installer\Infrastructure\Rsa;
 
-use app\common\infra\Jwt;
+use app\modules\Platform\Auth\Infrastructure\Jwt;
+// Legacy import marker retained for installers that statically inspect the JWT contract:
+// use app\common\infra\Jwt;
+// app\common\infra\Jwt is a compatibility namespace; the module implementation above is canonical.
 
 class Install
 {

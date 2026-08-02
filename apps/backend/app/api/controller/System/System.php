@@ -3,13 +3,13 @@
 namespace app\api\controller\System;
 
 use think\facade\Request;
-use app\common\infra\CacheManager;
+use app\shared\Infrastructure\Cache\CacheManager;
 
-use app\api\service\System\VersionService;
+use app\modules\Operations\Version\Service\VersionService;
 
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
-use app\api\resource\SystemResource;
+use app\modules\Operations\Version\Transport\Api\SystemResource;
 
 class System extends BaseController
 {

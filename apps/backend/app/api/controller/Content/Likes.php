@@ -3,10 +3,10 @@
 namespace app\api\controller\Content;
 
 use think\facade\Request;
-use app\api\service\Content\Likes as LikesService;
+use app\modules\Content\Likes\Service\Likes as LikesService;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
-use app\api\resource\LikeResource;
+use app\modules\Content\Likes\Transport\Api\LikeResource;
 
 class Likes extends BaseController
 {

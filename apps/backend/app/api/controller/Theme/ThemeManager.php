@@ -6,8 +6,8 @@ use think\facade\Request;
 use app\api\ApiException;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
-use app\api\resource\ThemeResource;
-use app\api\service\Theme\ThemeManager as ThemeService;
+use app\modules\Theme\Transport\Api\ThemeResource;
+use app\modules\Theme\Service\ThemeManager as ThemeService;
 
 class ThemeManager extends BaseController
 {

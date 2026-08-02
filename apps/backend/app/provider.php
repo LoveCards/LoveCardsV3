@@ -1,22 +1,22 @@
 <?php
 
 use app\ExceptionHandle;
-use app\api\service\Auth\CapabilityProvider;
-use app\api\service\Auth\UserRepository;
-use app\api\service\Auth\VisitorPolicy;
-use app\api\service\Files\Contract\FileRepository;
-use app\api\service\Files\Contract\StorageDriver;
-use app\api\service\Files\Contract\ChannelConfig;
-use app\api\service\Files\Contract\RateLimiter;
-use app\api\infrastructure\Auth\ConfigVisitorPolicy;
-use app\api\infrastructure\Auth\RbacCapabilityProvider;
-use app\api\infrastructure\Auth\ThinkOrmUserRepository;
-use app\api\infrastructure\Files\ThinkOrmFileRepository;
-use app\api\infrastructure\Files\DefaultStorageDriver;
-use app\api\infrastructure\Files\ConfigChannelConfig;
-use app\api\infrastructure\Files\CacheRateLimiter;
-use app\common\contract\TokenService;
-use app\common\infra\JwtTokenService;
+use app\modules\Platform\Auth\Contract\CapabilityProvider;
+use app\modules\Platform\Auth\Contract\UserRepository;
+use app\modules\Platform\Auth\Public\VisitorPolicy;
+use app\modules\Platform\Files\Contract\FileRepository;
+use app\modules\Platform\Files\Contract\StorageDriver;
+use app\modules\Platform\Files\Contract\ChannelConfig;
+use app\modules\Platform\Files\Contract\RateLimiter;
+use app\modules\Platform\Auth\Infrastructure\ConfigVisitorPolicy;
+use app\modules\Platform\Auth\Infrastructure\RbacCapabilityProvider;
+use app\modules\Platform\Auth\Infrastructure\ThinkOrmUserRepository;
+use app\modules\Platform\Files\Infrastructure\ThinkOrmFileRepository;
+use app\modules\Platform\Files\Infrastructure\DefaultStorageDriver;
+use app\modules\Platform\Files\Infrastructure\ConfigChannelConfig;
+use app\modules\Platform\Files\Infrastructure\CacheRateLimiter;
+use app\modules\Platform\Auth\Contract\TokenService;
+use app\modules\Platform\Auth\Infrastructure\JwtTokenService;
 
 // 容器Provider定义文件
 return [

@@ -43,6 +43,11 @@
 
 ## 后端依赖方向
 
+当前模块迁移基线以 `docs/engineering/MODULE-ARCHITECTURE.md` 为准。业务实现位于
+`apps/backend/app/modules`；`app/api`、`app/frontend` 和 `app/system` 仅作为 Host 适配层。
+旧的 `app/api/service`、`app/api/infrastructure`、`app/api/model`、`app/api/validate` 和
+`app/api/resource` 目录不再是有效实现位置。
+
 API 协议链：
 
 ```text

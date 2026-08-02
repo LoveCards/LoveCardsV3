@@ -4,11 +4,11 @@ namespace app\api\controller\User;
 
 use think\facade\Request;
 
-use app\api\service\User\Users as UsersService;
-use app\api\validate\Users as UsersValidate;
+use app\modules\Platform\User\Service\Users as UsersService;
+use app\modules\Platform\User\Transport\Api\Users as UsersValidate;
 
 use app\api\ApiResponse;
-use app\api\resource\UserResource;
+use app\modules\Platform\User\Transport\Api\UserResource;
 use app\api\controller\BaseController;
 use app\api\controller\BatchOperateTrait;
 
@@ -18,7 +18,7 @@ class Users extends BaseController
 
     protected function getBatchService(): string
     {
-        return \app\api\service\User\Users::class;
+        return \app\modules\Platform\User\Service\Users::class;
     }
 
     public function list()

@@ -3,8 +3,8 @@
 namespace app\api { class ApiException extends \RuntimeException {} }
 
 namespace {
-    require_once dirname(__DIR__, 2) . '/app/frontend/service/ThemeEngine.php';
-    use app\frontend\service\ThemeEngine;
+    require_once dirname(__DIR__, 2) . '/app/modules/Theme/Runtime/ThemeEngine.php';
+    use app\modules\Theme\Runtime\ThemeEngine;
 
     $root = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'lovecards-theme-zip-' . bin2hex(random_bytes(6));
     mkdir($root, 0700, true);

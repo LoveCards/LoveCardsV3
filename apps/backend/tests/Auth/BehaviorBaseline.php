@@ -24,19 +24,19 @@ namespace {
     }
 
     require dirname(__DIR__, 2) . '/app/common/contract/TokenService.php';
-    require dirname(__DIR__, 2) . '/app/api/service/Auth/AuthUser.php';
-    require dirname(__DIR__, 2) . '/app/api/service/Auth/UserRepository.php';
-    require dirname(__DIR__, 2) . '/app/api/service/Auth/AuthContext.php';
-    require dirname(__DIR__, 2) . '/app/api/service/Auth/VisitorPolicy.php';
-    require dirname(__DIR__, 2) . '/app/api/service/Auth/CapabilityProvider.php';
-    require dirname(__DIR__, 2) . '/app/api/service/Auth/MissingCredentials.php';
-    require dirname(__DIR__, 2) . '/app/api/service/Auth/AuthenticateRequest.php';
-    require dirname(__DIR__, 2) . '/app/api/service/Auth/LoginUser.php';
-    require dirname(__DIR__, 2) . '/app/api/service/Auth/RegisterUser.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Public/AuthUser.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Contract/UserRepository.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Public/AuthContext.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Public/VisitorPolicy.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Contract/CapabilityProvider.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Public/MissingCredentials.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Application/AuthenticateRequest.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Application/LoginUser.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Application/RegisterUser.php';
 }
 
 namespace Tests\Auth {
-    final class VisitorPolicy implements \app\api\service\Auth\VisitorPolicy
+    final class VisitorPolicy implements \app\modules\Platform\Auth\Public\VisitorPolicy
     {
         public static $enabled = false;
 
@@ -51,7 +51,7 @@ namespace Tests\Auth {
         }
     }
 
-    final class CapabilityProvider implements \app\api\service\Auth\CapabilityProvider
+    final class CapabilityProvider implements \app\modules\Platform\Auth\Contract\CapabilityProvider
     {
         public static $byRoles = [];
 
@@ -61,19 +61,19 @@ namespace Tests\Auth {
         }
     }
 
-    final class UserRepository implements \app\api\service\Auth\UserRepository
+    final class UserRepository implements \app\modules\Platform\Auth\Contract\UserRepository
     {
         public static $byId = null;
         public static $byAccount = null;
         public static $contactExists = false;
         public static $created = [];
 
-        public function findById(int $id): ?\app\api\service\Auth\AuthUser
+        public function findById(int $id): ?\app\modules\Platform\Auth\Public\AuthUser
         {
             return self::$byId;
         }
 
-        public function findByAccount(string $account): ?\app\api\service\Auth\AuthUser
+        public function findByAccount(string $account): ?\app\modules\Platform\Auth\Public\AuthUser
         {
             return self::$byAccount;
         }
@@ -91,7 +91,7 @@ namespace Tests\Auth {
             string $passwordHash,
             array $roleIds,
             int $status
-        ): \app\api\service\Auth\AuthUser {
+        ): \app\modules\Platform\Auth\Public\AuthUser {
             self::$created = [
                 'number' => $number,
                 'username' => $username,
@@ -102,7 +102,7 @@ namespace Tests\Auth {
                 'status' => $status,
             ];
 
-            return new \app\api\service\Auth\AuthUser(20, $status, $passwordHash, $roleIds);
+            return new \app\modules\Platform\Auth\Public\AuthUser(20, $status, $passwordHash, $roleIds);
         }
     }
 
@@ -255,7 +255,7 @@ namespace app\api {
     }
 }
 
-namespace app\api\service\Captcha {
+namespace app\modules\Platform\Captcha\Service {
     final class Captcha
     {
     }
@@ -263,14 +263,14 @@ namespace app\api\service\Captcha {
 
 namespace {
     use app\api\ApiException;
-    use app\api\service\Auth\AuthContext;
-    use app\api\service\Auth\AuthUser;
-    use app\api\service\Auth\AuthenticateRequest;
-    use app\api\service\Auth\LoginUser;
-    use app\api\service\Auth\RegisterUser;
+    use app\modules\Platform\Auth\Public\AuthContext;
+    use app\modules\Platform\Auth\Public\AuthUser;
+    use app\modules\Platform\Auth\Application\AuthenticateRequest;
+    use app\modules\Platform\Auth\Application\LoginUser;
+    use app\modules\Platform\Auth\Application\RegisterUser;
     use app\api\middleware\JwtAuthCheck;
     use app\api\middleware\PermissionCheck;
-    use app\api\service\User\Session;
+    use app\modules\Platform\Auth\Application\Session;
     use Tests\Auth\CapabilityProvider;
     use Tests\Auth\Request;
     use Tests\Auth\Response;
@@ -279,7 +279,7 @@ namespace {
     use Tests\Auth\UserRepository;
     use Tests\Auth\VisitorPolicy;
 
-    require dirname(__DIR__, 2) . '/app/api/service/User/Session.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Application/Session.php';
     require dirname(__DIR__, 2) . '/app/api/middleware/JwtAuthCheck.php';
     require dirname(__DIR__, 2) . '/app/api/middleware/PermissionCheck.php';
 

@@ -5,10 +5,10 @@ namespace app\api\controller\Storage;
 use think\facade\Request;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
-use app\api\resource\StorageResource;
-use app\api\service\Files\Application\ChannelStats;
-use app\api\service\Storage\ChannelTester;
-use app\api\service\Storage\StorageAdmin;
+use app\modules\Platform\Storage\Transport\Api\StorageResource;
+use app\modules\Platform\Files\Application\ChannelStats;
+use app\modules\Platform\Storage\Service\ChannelTester;
+use app\modules\Platform\Storage\Service\StorageAdmin;
 
 class Storage extends BaseController
 {

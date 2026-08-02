@@ -91,7 +91,7 @@ namespace app\api
     }
 }
 
-namespace app\api\model
+namespace app\modules\Platform\Files\Infrastructure\Persistence\Model
 {
     /**
      * Files 模型替身 — 伪记录 + 伪查询链
@@ -329,7 +329,7 @@ namespace app\api\model
     }
 }
 
-namespace app\api\infrastructure\Storage
+namespace app\modules\Platform\Storage\Infrastructure
 {
     class StorageFactory
     {
@@ -505,13 +505,13 @@ namespace
         {
             $this->file_url = $url;
             $this->driver_path = $driverPath;
-            $this->upload_status = \app\api\model\Files::UPLOAD_COMPLETED;
+            $this->upload_status = \app\modules\Platform\Files\Infrastructure\Persistence\Model\Files::UPLOAD_COMPLETED;
             return true;
         }
 
         public function markAsFailed(): bool
         {
-            $this->upload_status = \app\api\model\Files::UPLOAD_FAILED;
+            $this->upload_status = \app\modules\Platform\Files\Infrastructure\Persistence\Model\Files::UPLOAD_FAILED;
             $this->markAsFailedCalled = true;
             return true;
         }
@@ -630,21 +630,21 @@ namespace
     function filesRepository(): object
     {
         static $repository;
-        return $repository ??= new \app\api\infrastructure\Files\ThinkOrmFileRepository();
+        return $repository ??= new \app\modules\Platform\Files\Infrastructure\ThinkOrmFileRepository();
     }
 
     function batchOperate(string $method, array $ids, int $userId, array $caps): void
     {
-        $useCase = new \app\api\service\Files\Application\BatchOperateFiles(
+        $useCase = new \app\modules\Platform\Files\Application\BatchOperateFiles(
             filesRepository(),
-            new \app\api\infrastructure\Files\DefaultStorageDriver()
+            new \app\modules\Platform\Files\Infrastructure\DefaultStorageDriver()
         );
         $useCase->execute($method, $ids, $userId, $caps);
     }
 
     function getFile(int $fileId, int $userId, bool $canReadAll): ?array
     {
-        return (new \app\api\service\Files\Application\GetFile(filesRepository()))
+        return (new \app\modules\Platform\Files\Application\GetFile(filesRepository()))
             ->execute($fileId, $userId, $canReadAll);
     }
 
@@ -655,11 +655,11 @@ namespace
 
     function confirmUpload(int $recordId, int $userId): bool
     {
-        return (new \app\api\service\Files\Application\DirectUpload(
+        return (new \app\modules\Platform\Files\Application\DirectUpload(
             filesRepository(),
-            new \app\api\infrastructure\Files\DefaultStorageDriver(),
-            new \app\api\infrastructure\Files\ConfigChannelConfig(),
-            new \app\api\infrastructure\Files\CacheRateLimiter()
+            new \app\modules\Platform\Files\Infrastructure\DefaultStorageDriver(),
+            new \app\modules\Platform\Files\Infrastructure\ConfigChannelConfig(),
+            new \app\modules\Platform\Files\Infrastructure\CacheRateLimiter()
         ))->confirm($recordId, $userId);
     }
 
@@ -670,24 +670,27 @@ namespace
 
     function listOwnFiles(array $params, int $userId): array
     {
-        return (new \app\api\service\Files\Application\ListFiles(filesRepository()))
+        return (new \app\modules\Platform\Files\Application\ListFiles(filesRepository()))
             ->executeOwn($params, $userId);
     }
 
-    require __DIR__ . '/../../app/api/service/Files/Contract/FileRepository.php';
-    require __DIR__ . '/../../app/api/service/Files/FileConstants.php';
-    require __DIR__ . '/../../app/api/service/Files/Contract/StorageDriver.php';
-    require __DIR__ . '/../../app/api/service/Files/Contract/ChannelConfig.php';
-    require __DIR__ . '/../../app/api/service/Files/Contract/RateLimiter.php';
-    require __DIR__ . '/../../app/api/service/Files/Application/BatchOperateFiles.php';
-    require __DIR__ . '/../../app/api/service/Files/Application/GetFile.php';
-    require __DIR__ . '/../../app/api/service/Files/Application/ListFiles.php';
-    require __DIR__ . '/../../app/api/service/Files/Application/DirectUpload.php';
-    require __DIR__ . '/../../app/api/infrastructure/Files/ThinkOrmFileRepository.php';
-    require __DIR__ . '/../../app/api/infrastructure/Files/DefaultStorageDriver.php';
-    require __DIR__ . '/../../app/api/infrastructure/Files/ConfigChannelConfig.php';
-    require __DIR__ . '/../../app/api/infrastructure/Files/CacheRateLimiter.php';
-    require __DIR__ . '/../../app/api/infrastructure/Storage/ChannelManager.php';
+        require __DIR__ . '/../../app/shared/Support/FieldsToggle.php';
+    require __DIR__ . '/../../app/shared/Support/ModelList.php';
+    require __DIR__ . '/../../app/shared/Support/OwnershipGuard.php';
+require __DIR__ . '/../../app/modules/Platform/Files/Contract/FileRepository.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Domain/FileConstants.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Contract/StorageDriver.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Contract/ChannelConfig.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Contract/RateLimiter.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Application/BatchOperateFiles.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Application/GetFile.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Application/ListFiles.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Application/DirectUpload.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Infrastructure/ThinkOrmFileRepository.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Infrastructure/DefaultStorageDriver.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Infrastructure/ConfigChannelConfig.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Infrastructure/CacheRateLimiter.php';
+    require __DIR__ . '/../../app/modules/Platform/Storage/Infrastructure/ChannelManager.php';
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1243,8 +1246,8 @@ namespace
     });
 
     $test('M9: owner visibility scope avoids framework method collision', static function () use ($assertTrue, $assertFalse, $assertSame): void {
-        $modelCode = file_get_contents(__DIR__ . '/../../app/api/model/Files.php');
-        $serviceCode = file_get_contents(__DIR__ . '/../../app/api/infrastructure/Files/ThinkOrmFileRepository.php');
+        $modelCode = file_get_contents(__DIR__ . '/../../app/modules/Platform/Files/Infrastructure/Persistence/Model/Files.php');
+        $serviceCode = file_get_contents(__DIR__ . '/../../app/modules/Platform/Files/Infrastructure/ThinkOrmFileRepository.php');
         $assertTrue(strpos($modelCode, 'function scopeVisibleTo(') !== false, 'Files model must declare scopeVisibleTo');
         $assertFalse((bool)preg_match('/function\s+scopeVisible\s*\(/', $modelCode), 'Files model must not collide with BaseQuery::visible');
         $assertSame(3, preg_match_all('/->visibleTo\s*\(/', $serviceCode), 'all owner visibility callers must use visibleTo');
@@ -1257,7 +1260,7 @@ namespace
         $result = confirmUpload(7, 10);
         global $mockFilesDb;
         $assertTrue($result, 'owner 应能确认自己的 pending upload');
-        $assertSame(\app\api\model\Files::UPLOAD_COMPLETED, $mockFilesDb[7]->upload_status, '确认后应标记 completed');
+        $assertSame(\app\modules\Platform\Files\Infrastructure\Persistence\Model\Files::UPLOAD_COMPLETED, $mockFilesDb[7]->upload_status, '确认后应标记 completed');
     });
 
     $test('N1b: confirmUpload accepts database string pending status', static function () use ($resetMockDb, $assertTrue, $assertSame): void {
@@ -1266,7 +1269,7 @@ namespace
         $mockFilesDb[7]->upload_status = '0';
         $result = confirmUpload(7, 10);
         $assertTrue($result, 'database varchar pending status must be accepted');
-        $assertSame(\app\api\model\Files::UPLOAD_COMPLETED, $mockFilesDb[7]->upload_status, 'string pending status should become completed');
+        $assertSame(\app\modules\Platform\Files\Infrastructure\Persistence\Model\Files::UPLOAD_COMPLETED, $mockFilesDb[7]->upload_status, 'string pending status should become completed');
     });
 
     $test('N2: confirmUpload non-owner returns false', static function () use ($resetMockDb, $assertFalse, $assertSame): void {
@@ -1274,7 +1277,7 @@ namespace
         $result = confirmUpload(7, 20);
         global $mockFilesDb;
         $assertFalse($result, 'non-owner 不得确认其他用户的 upload');
-        $assertSame(\app\api\model\Files::UPLOAD_PENDING, $mockFilesDb[7]->upload_status, '拒绝后状态不得变化');
+        $assertSame(\app\modules\Platform\Files\Infrastructure\Persistence\Model\Files::UPLOAD_PENDING, $mockFilesDb[7]->upload_status, '拒绝后状态不得变化');
     });
 
     $test('N3: confirmUpload missing returns false', static function () use ($resetMockDb, $assertFalse): void {

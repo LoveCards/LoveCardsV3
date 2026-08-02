@@ -1,12 +1,8 @@
 <?php
 
-namespace app\common\contract;
+namespace app\common\contract {
+    require_once dirname(__DIR__, 2) . '/modules/Platform/Auth/Contract/TokenService.php';
 
-interface TokenService
-{
-    public function sign(array $data): string;
-
-    public function verify(string $token): array;
-
-    public function invalidate(string $token): void;
+    /** @deprecated use app\modules\Platform\Auth\Contract\TokenService. */
+    interface TokenService extends \app\modules\Platform\Auth\Contract\TokenService {}
 }

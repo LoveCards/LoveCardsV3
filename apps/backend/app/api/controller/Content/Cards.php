@@ -4,17 +4,17 @@ namespace app\api\controller\Content;
 
 use think\facade\Request;
 
-use app\api\validate\Cards as CardsValidate;
-use app\api\validate\Comments as CommentsValidate;
+use app\modules\Content\Cards\Transport\Api\Cards as CardsValidate;
+use app\modules\Content\Comments\Transport\Api\Comments as CommentsValidate;
 
-use app\api\service\Content\Cards as CardsService;
-use app\api\service\Content\Likes as LikesService;
-use app\api\service\Content\Comments as CommentsService;
-use app\api\service\Content\Domain\PublicationStatus;
+use app\modules\Content\Cards\Service\Cards as CardsService;
+use app\modules\Content\Likes\Service\Likes as LikesService;
+use app\modules\Content\Comments\Service\Comments as CommentsService;
+use app\modules\Content\Cards\Domain\PublicationStatus;
 
 use app\api\ApiResponse;
-use app\api\resource\ApiResource;
-use app\api\resource\CardResource;
+use app\shared\Transport\Http\ApiResource;
+use app\modules\Content\Cards\Transport\Api\CardResource;
 use app\api\controller\BaseController;
 use app\api\controller\BatchOperateTrait;
 
@@ -24,7 +24,7 @@ class Cards extends BaseController
 
     protected function getBatchService(): string
     {
-        return \app\api\service\Content\Cards::class;
+        return \app\modules\Content\Cards\Service::class;
     }
 
     public function list()

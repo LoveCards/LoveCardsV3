@@ -6,9 +6,9 @@ use think\exception\ValidateException;
 use app\api\ApiException;
 use app\api\ApiResponse;
 
-use app\common\support\ValidateRuleExtend;
-use app\common\support\ValidateExtend;
-use app\common\validate\ModelList as ModelListValidate;
+use app\shared\Transport\Validation\ValidateRuleExtend;
+use app\shared\Transport\Validation\ValidateExtend;
+use app\shared\Transport\Validation\ModelList as ModelListValidate;
 
 class BaseController
 {

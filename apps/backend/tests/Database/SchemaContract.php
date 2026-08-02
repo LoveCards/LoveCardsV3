@@ -16,10 +16,10 @@ declare(strict_types=1);
 $baseDir = dirname(__DIR__, 2);  // apps/backend/
 $dataSqlPath = $baseDir . '/data.sql';
 $migrationsDir = $baseDir . '/database/migrations/';
-$rbacPath = $baseDir . '/app/api/service/Rbac/RBAC.php';
-$rolesPath = $baseDir . '/app/api/service/Rbac/Roles.php';
-$capabilityCatalogPath = $baseDir . '/app/api/service/Rbac/Domain/CapabilityCatalog.php';
-$systemRolePolicyPath = $baseDir . '/app/api/service/Rbac/Domain/SystemRolePolicy.php';
+$rbacPath = $baseDir . '/app/modules/Platform/Rbac/Service/RBAC.php';
+$rolesPath = $baseDir . '/app/modules/Platform/Rbac/Service/Roles.php';
+$capabilityCatalogPath = $baseDir . '/app/modules/Platform/Rbac/Domain/CapabilityCatalog.php';
+$systemRolePolicyPath = $baseDir . '/app/modules/Platform/Rbac/Domain/SystemRolePolicy.php';
 
 $errors = [];
 $passCount = 0;

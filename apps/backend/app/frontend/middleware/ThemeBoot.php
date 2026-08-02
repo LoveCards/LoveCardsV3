@@ -18,7 +18,7 @@ class ThemeBoot
         }
 
         // 主题引擎接管所有前台请求（含静态资源）。
-        // ThemeEngine::boot() 内部区分 isAssetRequest 和页面请求：
+        // Theme::boot() 内部区分 isAssetRequest 和页面请求：
         //   - 静态资源 → serveAsset() 从主题目录的 /out/、/dist/、根目录查找文件
         //   - 页面请求 → bootSPA() 或 bootSSR()
         // 此处不调 $next($request)，有意短路中间件链，
@@ -35,7 +35,7 @@ class ThemeBoot
     private function getPassPrefixes(): array
     {
         $defaults = ['/api', '/all', '/theme', '/system'];
-        $custom = \app\common\service\Config::get('frontend.pass_prefixes', []);
+        $custom = \app\modules\Platform\Config\Public\Config::get('frontend.pass_prefixes', []);
         return array_unique(array_merge($defaults, $custom));
     }
 }

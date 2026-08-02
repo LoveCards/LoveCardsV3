@@ -48,7 +48,7 @@ echo "=== Install Baseline Test ===\n\n";
 // ────────────────────────────────────────────────────────────
 echo "--- 1. Database::Connect() ---\n";
 
-$dbPath = $baseDir . '/app/system/utils/Database.php';
+$dbPath = $baseDir . '/app/modules/Operations/Installer/Infrastructure/Database.php';
 if (!file_exists($dbPath)) {
     fail("Database.php not found at {$dbPath}");
     exit(1);
@@ -129,7 +129,7 @@ if ($installCode === false) {
     fail("Failed to read Install.php");
     exit(1);
 }
-$exportCode = (string) file_get_contents($baseDir . '/app/system/utils/Export.php');
+$exportCode = (string) file_get_contents($baseDir . '/app/modules/Operations/Installer/Transport/System/Export.php');
 $jwtCode = (string) file_get_contents($baseDir . '/app/common/infra/Jwt.php');
 
 // Extract PostInstallLock() method body first to check lock order
@@ -266,8 +266,8 @@ if (strpos($jwtCode, '[$jwt_config[\'alg\']]') === false) {
 $composer = json_decode((string) file_get_contents($baseDir . '/composer.json'), true);
 $systemConfig = (string) file_get_contents($baseDir . '/config/system.php');
 $installCode = (string) file_get_contents($baseDir . '/app/system/controller/Install.php');
-$versionCode = (string) file_get_contents($baseDir . '/app/api/service/System/VersionService.php');
-$environmentCode = (string) file_get_contents($baseDir . '/app/system/utils/Environment.php');
+$versionCode = (string) file_get_contents($baseDir . '/app/modules/Operations/Version/Service/VersionService.php');
+$environmentCode = (string) file_get_contents($baseDir . '/app/modules/Operations/Installer/Infrastructure/Environment.php');
 
 if (($composer['require']['php'] ?? null) === '>=8.1 <9.0') {
     pass('Composer requires PHP >=8.1 <9.0');

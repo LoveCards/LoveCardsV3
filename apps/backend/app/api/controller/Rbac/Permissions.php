@@ -2,10 +2,10 @@
 
 namespace app\api\controller\Rbac;
 
-use app\api\service\Rbac\RBAC;
+use app\modules\Platform\Rbac\Service\RBAC;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
-use app\api\resource\PermissionResource;
+use app\modules\Platform\Rbac\Transport\Api\PermissionResource;
 use think\facade\Request;
 
 class Permissions extends BaseController

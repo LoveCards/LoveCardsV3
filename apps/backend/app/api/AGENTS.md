@@ -1,5 +1,9 @@
 # API Agent 约束
 
+模块迁移后，`app/api` 只保留 Route、Controller、Middleware 等 HTTP Host 适配代码。
+业务实现、Model、Driver、Validate 和 Resource 按模块位于 `app/modules`；详细规则见
+`docs/engineering/MODULE-ARCHITECTURE.md`。Controller 不得引用模块 Infrastructure 或 Model。
+
 本文件适用于 `apps/backend/app/api/**`。开始修改前同时读取仓库根 `AGENTS.md` 和
 `docs/engineering/ARCHITECTURE.md`；涉及认证时再读取 `docs/engineering/AUTH-BASELINE.md`。
 

@@ -5,12 +5,12 @@ namespace app\api\controller\User;
 use think\facade\Request;
 use think\exception\ValidateException;
 
-use app\api\service\Auth\LoginUser;
-use app\api\service\Auth\RegisterUser;
-use app\api\service\User\Session as SessionService;
-use app\api\validate\Users as UsersValidate;
-use app\api\resource\ApiResource;
-use app\api\resource\AuthResource;
+use app\modules\Platform\Auth\Application\LoginUser;
+use app\modules\Platform\Auth\Application\RegisterUser;
+use app\modules\Platform\Auth\Application\Session as SessionService;
+use app\modules\Platform\User\Transport\Api\Users as UsersValidate;
+use app\shared\Transport\Http\ApiResource;
+use app\modules\Platform\Auth\Transport\Api\AuthResource;
 
 use app\api\ApiResponse;
 use app\api\controller\BaseController;

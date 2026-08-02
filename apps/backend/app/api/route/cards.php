@@ -62,4 +62,3 @@ Route::get('users/me/cards', 'Content.Cards/listOwn')
     ->name('cards.listOwn')
     ->middleware(JwtAuthCheck::class)
     ->setOption('meta', ['name' => '我的卡片', 'group' => '卡片']);
-

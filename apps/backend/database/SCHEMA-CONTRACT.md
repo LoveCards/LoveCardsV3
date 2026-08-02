@@ -46,15 +46,15 @@ data.sql（行 30–46）定义：
 
 索引：`PRIMARY KEY (id)`
 
-**Model 期望**：`apps/backend/app/api/model/Cards.php:23-40`
+**Model 期望**：`apps/backend/app/modules/Content/Infrastructure/Persistence/Model/Cards.php:23-40`
 - `'goods' => 'INT'` —— 模型期望字段名 **`goods`**（带 s），但 data.sql 定义的是 **`good`**（无 s）
 - `'pictures' => 'JSON'` —— data.sql **缺少 `pictures`** 字段
 - 其余字段列名一致
 
 **验证证据**：
-- `apps/backend/app/api/validate/Cards.php:91,143`：验证规则使用 `'good'`（无 s），与 data.sql 一致但与模型 schema 冲突
-- `apps/backend/app/api/service/Content/Cards.php:33`：模型 schema 使用 `'goods'`（带 s）
-- `apps/backend/app/api/service/Content/Cards.php:291-300`：`decodeJsonFields()` 解码 `pictures` 字段，说明代码确实依赖该字段存在
+- `apps/backend/app/modules/*/Transport/Api/Cards.php:91,143`：验证规则使用 `'good'`（无 s），与 data.sql 一致但与模型 schema 冲突
+- `apps/backend/app/modules/Content/Cards/Service/Cards.php:33`：模型 schema 使用 `'goods'`（带 s）
+- `apps/backend/app/modules/Content/Cards/Service/Cards.php:291-300`：`decodeJsonFields()` 解码 `pictures` 字段，说明代码确实依赖该字段存在
 - `apps/backend/.dev/mysql/2026年5月21日.sql:40`：实际运行数据库使用 `goods`（带 s）和 `pictures` —— **data.sql 已经落后于实际运行库**
 
 **结论**：data.sql 的 `cards` 表缺少 `pictures` 列，并且 `good` 字段名应为 `goods`。实际运行库（2026-05-21 快照）已修正此问题，但安装种子 data.sql 未同步。
@@ -84,13 +84,13 @@ data.sql（行 54–69）定义：
 
 索引：`PRIMARY KEY (id)`
 
-**Model 期望**：`apps/backend/app/api/model/Comments.php:20-35`
+**Model 期望**：`apps/backend/app/modules/Content/Infrastructure/Persistence/Model/Comments.php:20-35`
 - 字段名完全匹配 data.sql（包括 `goods` 带 s）
 - 类型匹配（int、json、text、varchar、timestamp）
 
 **验证证据**：
-- `apps/backend/app/api/validate/Comments.php:58`：验证规则使用 `'good'`（无 s），与模型 schema 的 `goods` 冲突——但这是验证器输入字段名，不影响数据库列名
-- `apps/backend/app/api/service/Content/Comments.php`：无直接数据库列名引用，通过 Model 操作
+- `apps/backend/app/modules/*/Transport/Api/Comments.php:58`：验证规则使用 `'good'`（无 s），与模型 schema 的 `goods` 冲突——但这是验证器输入字段名，不影响数据库列名
+- `apps/backend/app/modules/Content/Comments/Service/Comments.php`：无直接数据库列名引用，通过 Model 操作
 
 **结论**：`comments` 表的契约基本一致。验证规则字段名 `good`（无 s）与模型 `goods`（带 s）的差异存在于输入层，不在 DB 层，不构成 schema 契约分歧。
 
@@ -113,10 +113,10 @@ data.sql（行 390–399）定义：
 
 索引：`PRIMARY KEY (id)`
 
-**Model 期望**：`apps/backend/app/api/model/Tags.php:23-32`
+**Model 期望**：`apps/backend/app/modules/Content/Infrastructure/Persistence/Model/Tags.php:23-32`
 - 字段、类型、顺序完全一致
 
-**验证证据**：`apps/backend/app/api/validate/Tags.php:47-51` 验证规则也匹配
+**验证证据**：`apps/backend/app/modules/*/Transport/Api/Tags.php:47-51` 验证规则也匹配
 
 **结论**：✅ 契约一致。
 
@@ -137,12 +137,12 @@ data.sql（行 407–414）定义：
 
 索引：`PRIMARY KEY (id)`
 
-**Model 期望**：`apps/backend/app/api/model/TagsMap.php:19-27`
+**Model 期望**：`apps/backend/app/modules/Content/Infrastructure/Persistence/Model/TagsMap.php:19-27`
 - data.sql 缺少 `status` 字段，TagsMap 模型 schema 定义 `'status' => 'INT'`
 - 实际运行库（2026-05-21 SQL:678）已包含 `status int(11) NOT NULL DEFAULT '0'`
 
 **验证证据**：
-- `apps/backend/app/api/model/TagsMap.php:24`：定义 `'status' => 'INT'`
+- `apps/backend/app/modules/Content/Infrastructure/Persistence/Model/TagsMap.php:24`：定义 `'status' => 'INT'`
 - `apps/backend/.dev/mysql/2026年5月21日.sql:678`：实际表包含 `status int(11) NOT NULL DEFAULT '0'`
 
 **结论**：data.sql 的 `tags_map` 缺少 `status` 列。模型和实际运行库一致，seed 文件待修复。
@@ -170,12 +170,12 @@ data.sql（行 422–435）定义：
 
 索引：`PRIMARY KEY (id)`
 
-**Model 期望**：`apps/backend/app/api/model/Users.php:20-33`
+**Model 期望**：`apps/backend/app/modules/Platform/User/Infrastructure/Persistence/Model/Users.php:20-33`
 - 字段、类型匹配
 - 注意 data.sql 中 `created_at`/`updated_at` 为 `datetime` 类型，Model schema 标注为 `timestamp`——但这是类型提示，实际 ThinkPHP 自动写入不受影响
 
 **验证证据**：
-- `apps/backend/app/api/validate/Users.php:64-78`：验证规则匹配所有字段类型
+- `apps/backend/app/modules/*/Transport/Api/Users.php:64-78`：验证规则匹配所有字段类型
 - `apps/backend/.dev/mysql/2026年5月21日.sql:689-701`：实际运行库 `created_at`/`updated_at` 使用 `timestamp NULL DEFAULT NULL`
 
 **结论**：data.sql 与模型定义基本一致。`datetime` vs `timestamp` 差异不影响行为（MySQL 自动转换兼容）。实际运行库已改为 `timestamp`。
@@ -198,15 +198,15 @@ data.sql（行 199–207）定义：
 
 索引：`PRIMARY KEY (id)`, `UNIQUE KEY slug(slug)`
 
-**Model 期望**：`apps/backend/app/api/model/Roles.php:20-29`
+**Model 期望**：`apps/backend/app/modules/Platform/Rbac/Infrastructure/Persistence/Model/Roles.php:20-29`
 - data.sql 缺少 `is_system` 列
 - Roles 模型 schema 定义了 `'is_system' => 'int'`
 
 **验证证据**：
-- `apps/backend/app/api/model/Roles.php:25`：定义 `'is_system' => 'int'`
-- `apps/backend/app/api/service/Rbac/Roles.php:53`：`$role->is_system` 直接读写
-- `apps/backend/app/api/service/Rbac/Roles.php:90`：`where('is_system', 1)` 查询系统角色
-- `apps/backend/app/api/service/Rbac/Roles.php:184`：reseed 使用 `$roles = config('system.system_roles')` 锚定 ID
+- `apps/backend/app/modules/Platform/Rbac/Infrastructure/Persistence/Model/Roles.php:25`：定义 `'is_system' => 'int'`
+- `apps/backend/app/modules/Platform/Rbac/Service/Roles.php:53`：`$role->is_system` 直接读写
+- `apps/backend/app/modules/Platform/Rbac/Service/Roles.php:90`：`where('is_system', 1)` 查询系统角色
+- `apps/backend/app/modules/Platform/Rbac/Service/Roles.php:184`：reseed 使用 `$roles = config('system.system_roles')` 锚定 ID
 - `apps/backend/config/system.php:18-23`：系统角色锚点定义，root=1, admin=2, user=3, guest=4
 - `apps/backend/.dev/mysql/2026年5月21日.sql:257-259`：实际库包含 `is_system tinyint(1) NOT NULL DEFAULT '0'`
 
@@ -225,13 +225,13 @@ data.sql（行 199–207）定义：
 **data.sql 中无此表。**
 
 **代码要求**：
-- `apps/backend/app/api/model/RoleCapabilities.php:11-15`：定义了 schema
+- `apps/backend/app/modules/Platform/Rbac/Infrastructure/Persistence/Model/RoleCapabilities.php:11-15`：定义了 schema
   ```
   id (int, PK), role_id (int), capability (string)
   ```
-- `apps/backend/app/api/service/Rbac/RBAC.php:133`：`RoleCapabilities::whereIn('role_id', $rolesId)->distinct()->column('capability')`
-- `apps/backend/app/api/service/Rbac/Roles.php:230`：`Db::table('role_capabilities')->delete(true)` reseed 时清空
-- `apps/backend/app/api/service/Rbac/Roles.php:138-145`：分配能力时写入
+- `apps/backend/app/modules/Platform/Rbac/Service/RBAC.php:133`：`RoleCapabilities::whereIn('role_id', $rolesId)->distinct()->column('capability')`
+- `apps/backend/app/modules/Platform/Rbac/Service/Roles.php:230`：`Db::table('role_capabilities')->delete(true)` reseed 时清空
+- `apps/backend/app/modules/Platform/Rbac/Service/Roles.php:138-145`：分配能力时写入
 
 **DDL 来源**：`apps/backend/database/create_role_capabilities.sql:1-7`
 ```sql
@@ -255,22 +255,22 @@ CREATE TABLE IF NOT EXISTS role_capabilities (
 **data.sql 中无此表。**
 
 **代码要求**：
-- `apps/backend/app/api/model/Files.php:12`：`protected $name = 'files';`
+- `apps/backend/app/modules/Platform/Files/Infrastructure/Persistence/Model/Files.php:12`：`protected $name = 'files';`
 - Files 模型基于 ThinkPHP 的自动 schema 推断，未定义 `$schema` 数组
-- `apps/backend/app/api/service/Storage/StorageManager.php:21-38`：insert 时使用的字段有：
+- `apps/backend/app/modules/Platform/Files/Application/UploadFile.php:21-38`：insert 时使用的字段有：
   ```
   hash, channel_slug, user_id, is_public, scene, ref_type, ref_id,
   original_name, file_path, file_url, file_size, file_ext, mime_type,
   driver_path, status, upload_status
   ```
-- `apps/backend/app/api/model/Files.php:23-24`：scopeByHash 使用 `hash` 字段
-- `apps/backend/app/api/model/Files.php:56-62`：scopeVisible 使用 `user_id` 和 `is_public`
-- `apps/backend/app/api/model/Files.php:64-67`：scopeByScene 使用 `scene`
-- `apps/backend/app/api/model/Files.php:69-76`：scopeByRef 使用 `ref_type`、`ref_id`
-- `apps/backend/app/api/model/Files.php:81`：scopeNormal 使用 `status`
-- `apps/backend/app/api/model/Files.php:100-106`：`isExpired()` 使用 `expire_at`
-- `apps/backend/app/api/service/Storage/StorageManager.php:149-155`：批量操作使用 `files` 表
-- `apps/backend/app/api/validate/Files.php:9-14`：验证规则涉及 scene, ref_type, ref_id, is_public, method
+- `apps/backend/app/modules/Platform/Files/Infrastructure/Persistence/Model/Files.php:23-24`：scopeByHash 使用 `hash` 字段
+- `apps/backend/app/modules/Platform/Files/Infrastructure/Persistence/Model/Files.php:56-62`：scopeVisible 使用 `user_id` 和 `is_public`
+- `apps/backend/app/modules/Platform/Files/Infrastructure/Persistence/Model/Files.php:64-67`：scopeByScene 使用 `scene`
+- `apps/backend/app/modules/Platform/Files/Infrastructure/Persistence/Model/Files.php:69-76`：scopeByRef 使用 `ref_type`、`ref_id`
+- `apps/backend/app/modules/Platform/Files/Infrastructure/Persistence/Model/Files.php:81`：scopeNormal 使用 `status`
+- `apps/backend/app/modules/Platform/Files/Infrastructure/Persistence/Model/Files.php:100-106`：`isExpired()` 使用 `expire_at`
+- `apps/backend/app/modules/Platform/Files/Application/UploadFile.php:149-155`：批量操作使用 `files` 表
+- `apps/backend/app/modules/*/Transport/Api/Files.php:9-14`：验证规则涉及 scene, ref_type, ref_id, is_public, method
 
 **实际运行库**（2026-05-21 SQL:172-195）定义的列：
 ```
@@ -291,14 +291,14 @@ created_at, updated_at, deleted_at, expire_at, hash (UNIQUE)
 **data.sql 使用 `good` 表替代。**
 
 **代码要求**：
-- `apps/backend/app/api/model/Likes.php:15-24`：定义了 schema
+- `apps/backend/app/modules/Content/Infrastructure/Persistence/Model/Likes.php:15-24`：定义了 schema
   ```
   id (int), aid (int), pid (int), ref_type (string), ref_id (int),
   uid (int), ip (varchar), created_at (timestamp)
   ```
-- `apps/backend/app/api/service/Content/Likes.php`：使用 LikesModel 进行 CRUD
+- `apps/backend/app/modules/Content/Likes/Service/Likes.php`：使用 LikesModel 进行 CRUD
 - `apps/backend/app/api/route/likes.php:8-16`：定义 `likes.list` 和 `likes.unlike` 路由
-- `apps/backend/app/api/service/Content/Likes.php:22-27`：去重检查 `where('pid', $refId)->where('uid', $uid)`
+- `apps/backend/app/modules/Content/Likes/Service/Likes.php:22-27`：去重检查 `where('pid', $refId)->where('uid', $uid)`
 - ~~data.sql 中 `good` 表有唯一索引？~~ data.sql `good` 只有 `PRIMARY KEY (id)`，无唯一约束
 
 **实际运行库**（2026-05-21 SQL:228-237）：
@@ -333,9 +333,9 @@ CREATE TABLE `likes` (
 **data.sql 使用 `system` 表替代。**
 
 **代码要求**：
-- `apps/backend/app/common/service/Config.php`：全部通过 `Db::table('configs')` 操作（行 57, 67, 124, 157, 195, 221, 243, 249, 257, 291, 304）
-- `apps/backend/app/api/service/Storage/ChannelManager.php:18`：`Db::table('configs')`
-- `apps/backend/app/api/service/Sender/ChannelManager.php:18`：`Db::table('configs')`
+- `apps/backend/app/modules/Platform/Config/Infrastructure/ConfigService.php`：全部通过 `Db::table('configs')` 操作（行 57, 67, 124, 157, 195, 221, 243, 249, 257, 291, 304）
+- `apps/backend/app/modules/Platform/Storage/Infrastructure/ChannelManager.php:18`：`Db::table('configs')`
+- `apps/backend/app/modules/Platform/Sender/Service/ChannelManager.php:18`：`Db::table('configs')`
 
 **Config 表的 schema**（从代码中 `->insert([...])` 参数推断）：
 ```
@@ -378,8 +378,8 @@ data.sql 中存在（行 109-119）并包含 66 行 seed 数据。
 
 **代码引用**：
 - `apps/backend/app/api/route/permissions.php:8-15`：保留 `/api/admin/permissions` 路由，通过 `RBAC` 返回路由元数据（非表查询）
-- `apps/backend/app/api/service/Rbac/RBAC.php:71`：能力列表包含 `'permissions.read'` 能力
-- `apps/backend/app/api/service/Rbac/Roles.php:222`：路由 seed 保留 `'permissions.read'`
+- `apps/backend/app/modules/Platform/Rbac/Service/RBAC.php:71`：能力列表包含 `'permissions.read'` 能力
+- `apps/backend/app/modules/Platform/Rbac/Service/Roles.php:222`：路由 seed 保留 `'permissions.read'`
 
 **证实**：代码仅在 `/api/admin/permissions` 路由层面保留兼容端点，后端模型 `RolePermissions` 已使用 `permission_hash` 而非 `permission_id`，不再查询 `permissions` 表。
 **状态**：兼容保留，数据迁移待处理。
@@ -389,7 +389,7 @@ data.sql 中存在（行 109-119）并包含 66 行 seed 数据。
 data.sql 中存在（行 225-230），使用 `role_id` + `permission_id` + 外键约束到 `permissions` 表。
 
 **代码引用**：
-- `apps/backend/app/api/model/RolePermissions.php:13-18`：模型 schema 定义 `permission_hash`（string），而非 `permission_id`（int）
+- `apps/backend/app/modules/Platform/Rbac/Infrastructure/Persistence/Model/RolePermissions.php:13-18`：模型 schema 定义 `permission_hash`（string），而非 `permission_id`（int）
 - 实际运行库（2026-05-21 SQL:281-285）：已使用 `permission_hash varchar(32)` 替代 `permission_id int`
 
 **差异**：
@@ -504,7 +504,7 @@ data.sql 行 213-217 写入 4 个角色：
 
 `apps/backend/database/create_role_capabilities.sql` 定义 DDL，但 **data.sql 中无此表**。
 
-`apps/backend/app/api/service/Rbac/Roles.php:180-257` `reseed()`：
+`apps/backend/app/modules/Platform/Rbac/Service/Roles.php:180-257` `reseed()`：
 - 使用 `config('system.system_roles')` 获取角色 ID 锚点
 - 删除所有现有记录（`Db::table('role_capabilities')->delete(true)`）
 - 重新插入能力矩阵
@@ -521,7 +521,7 @@ reseed 不依赖 `is_system` 字段，依赖 config 锚点。
 
 ### 4.4 Config::init() seed
 
-`apps/backend/app/common/service/Config.php:21-38` `init()`：
+`apps/backend/app/modules/Platform/Config/Infrastructure/ConfigService.php:21-38` `init()`：
 - 扫描 `config/apps/*.php` 文件
 - 每个文件代表一个配置组，调用 `register()`
 
@@ -578,9 +578,9 @@ Files 模型未使用 `$schema` 声明，使用 ThinkPHP 自动推断。字段�
 - `expire_at` 索引是否需要
 
 **来源**：
-- `apps/backend/app/api/model/Files.php`：无 `$schema` 定义
+- `apps/backend/app/modules/Platform/Files/Infrastructure/Persistence/Model/Files.php`：无 `$schema` 定义
 - `apps/backend/.dev/mysql/2026年5月21日.sql:172-195`：提供实际 DDL
-- `apps/backend/app/api/service/Storage/StorageManager.php:21-38`：create 参数
+- `apps/backend/app/modules/Platform/Files/Application/UploadFile.php:21-38`：create 参数
 
 ### AWAITS_ARCHITECT-2：`configs` 表的精确默认值
 
@@ -599,7 +599,7 @@ data.sql 持有 `good` 表（无 `ref_type`/`ref_id` 列），代码需要 `like
 
 ### AWAITS_ARCHITECT-4：`role_permissions` 表的去留
 
-`RolePermissions` 模型仍然存在于代码中（`apps/backend/app/api/model/RolePermissions.php`），schema 使用 `permission_hash`。
+`RolePermissions` 模型仍然存在于代码中（`apps/backend/app/modules/Platform/Rbac/Infrastructure/Persistence/Model/RolePermissions.php`），schema 使用 `permission_hash`。
 
 **需要确认**：
 - `role_permissions` 表是否保留为兼容层用于路由权限？
@@ -629,8 +629,8 @@ data.sql 持有 `permissions` 表（66 行静态 seed）。代码已迁移到 ca
 
 **搜索范围**：全仓库 `*.php` 搜索 `permissions` 表名。
 **结果**：
-- `apps/backend/app/api/service/Rbac/RBAC.php:71`：能力描述 `'permissions.read'`
-- `apps/backend/app/api/service/Rbac/Roles.php:222`：reseed 分配 `'permissions.read'`
+- `apps/backend/app/modules/Platform/Rbac/Service/RBAC.php:71`：能力描述 `'permissions.read'`
+- `apps/backend/app/modules/Platform/Rbac/Service/Roles.php:222`：reseed 分配 `'permissions.read'`
 - `apps/backend/app/api/route/permissions.php:8-15`：路由 `/api/admin/permissions`，返回动态路由元数据（不查询 `permissions` 表）
 
 **结论**：`permissions` 表名仅在 capability 字符串和路由名称中出现，不进行表查询。表数据可迁移后删除。
@@ -639,8 +639,8 @@ data.sql 持有 `permissions` 表（66 行静态 seed）。代码已迁移到 ca
 
 **搜索范围**：全仓库 `*.php` 搜索 `role_permissions` 表名。
 **结果**：
-- `apps/backend/app/api/model/RolePermissions.php`：模型定义，但未在任何 Service/Controller 中被调用
-- `apps/backend/app/api/service/Rbac/Roles.php:230`：操作 `role_capabilities` 表，不是 `role_permissions` 表
+- `apps/backend/app/modules/Platform/Rbac/Infrastructure/Persistence/Model/RolePermissions.php`：模型定义，但未在任何 Service/Controller 中被调用
+- `apps/backend/app/modules/Platform/Rbac/Service/Roles.php:230`：操作 `role_capabilities` 表，不是 `role_permissions` 表
 - 实际运行库（2026-05-21）仍然保留该表并有 seed 数据
 
 **结论**：`RolePermissions` 模型代码级别已废弃但未删除。表可能为兼容层保留，或等待后续清理。
@@ -745,7 +745,7 @@ cd /c/Users/admin/Desktop/lovecards3/agent/worktrees/feat-db-schema-baseline/app
 
 # PHP Syntax
 "C:\Program Files\phpstudy_pro\Extensions\php\php8.0.2nts\php.exe" -l app/system/controller/Install.php
-"C:\Program Files\phpstudy_pro\Extensions\php\php8.0.2nts\php.exe" -l app/api/service/Rbac/Roles.php
+"C:\Program Files\phpstudy_pro\Extensions\php\php8.0.2nts\php.exe" -l app/modules/Platform/Rbac/Service/Roles.php
 "C:\Program Files\phpstudy_pro\Extensions\php\php8.0.2nts\php.exe" -l tests/Database/SchemaContract.php
 "C:\Program Files\phpstudy_pro\Extensions\php\php8.0.2nts\php.exe" -l tests/Database/InstallBaseline.php
 

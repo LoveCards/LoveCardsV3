@@ -37,7 +37,7 @@ namespace app\api
     }
 }
 
-namespace app\api\model
+namespace app\modules\Content\Infrastructure\Persistence\Model
 {
     /**
      * 查询链代理 — 记录 whereIn / where / update / column 调用
@@ -152,8 +152,11 @@ namespace app\common\support
 // require 生产文件（此后所有替身必须已就绪）
 // ============================================================
 namespace {
-    require __DIR__ . '/../../app/api/service/Content/Domain/PublicationStatus.php';
-    require __DIR__ . '/../../app/api/service/Content/Cards.php';
+        require __DIR__ . '/../../app/shared/Support/FieldsToggle.php';
+    require __DIR__ . '/../../app/shared/Support/ModelList.php';
+    require __DIR__ . '/../../app/shared/Support/OwnershipGuard.php';
+require __DIR__ . '/../../app/modules/Content/Cards/Domain/PublicationStatus.php';
+    require __DIR__ . '/../../app/modules/Content/Cards/Service/Cards.php';
 }
 
 // ============================================================
@@ -187,15 +190,15 @@ namespace {
     };
 
     $reset = static function (): void {
-        \app\api\model\Cards::reset();
+        \app\modules\Content\Infrastructure\Persistence\Model\Cards::reset();
         \app\common\support\FieldsToggle::reset();
     };
 
     $test('unhide builds whereIn → where → update chain', static function () use ($reset, $assertSame): void {
         $reset();
-        \app\api\service\Content\Cards::batchOperate('unhide', [1, 2, 3], 1, ['cards.update.all']);
+        \app\modules\Content\Cards\Service\Cards::batchOperate('unhide', [1, 2, 3], 1, ['cards.update.all']);
 
-        $query = \app\api\model\Cards::$lastQuery;
+        $query = \app\modules\Content\Infrastructure\Persistence\Model\Cards::$lastQuery;
         $calls = $query->calls;
         $assertSame(3, count($calls), 'query chain call count');
 
@@ -213,10 +216,10 @@ namespace {
 
     $test('hide delegates to FieldsToggle with correct params', static function () use ($reset, $assertSame): void {
         $reset();
-        \app\api\service\Content\Cards::batchOperate('hide', [10, 20], 1, ['cards.update.all']);
+        \app\modules\Content\Cards\Service\Cards::batchOperate('hide', [10, 20], 1, ['cards.update.all']);
 
         $call = \app\common\support\FieldsToggle::$lastToggleCall;
-        $assertSame(\app\api\model\Cards::class, $call[0], 'modelClass');
+        $assertSame(\app\modules\Content\Infrastructure\Persistence\Model\Cards::class, $call[0], 'modelClass');
         $assertSame('status', $call[1], 'field');
         $assertSame([10, 20], $call[2], 'ids');
         $assertSame([0, 2], $call[3], 'from');
@@ -227,7 +230,7 @@ namespace {
         $reset();
         $assertThrows(
             static function (): void {
-                \app\api\service\Content\Cards::batchOperate('nonexistent', [1], 1, []);
+                \app\modules\Content\Cards\Service\Cards::batchOperate('nonexistent', [1], 1, []);
             },
             '不支持的操作'
         );

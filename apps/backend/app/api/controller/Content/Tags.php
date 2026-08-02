@@ -4,11 +4,11 @@ namespace app\api\controller\Content;
 
 use think\facade\Request;
 
-use app\api\service\Content\Tags as TagsService;
-use app\api\validate\Tags as TagsValidate;
+use app\modules\Content\Tags\Service\Tags as TagsService;
+use app\modules\Content\Tags\Transport\Api\Tags as TagsValidate;
 
 use app\api\ApiResponse;
-use app\api\resource\TagResource;
+use app\modules\Content\Tags\Transport\Api\TagResource;
 use app\api\controller\BaseController;
 use app\api\controller\BatchOperateTrait;
 
@@ -18,7 +18,7 @@ class Tags extends BaseController
 
     protected function getBatchService(): string
     {
-        return \app\api\service\Content\Tags::class;
+        return \app\modules\Content\Tags\Service::class;
     }
 
     public function listAll()

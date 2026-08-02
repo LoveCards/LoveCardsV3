@@ -1,2 +1,2 @@
-﻿<?php
+<?php
 // Frontend application common file

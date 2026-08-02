@@ -18,7 +18,7 @@ namespace
     function fileRepository(): object
     {
         static $repository;
-        return $repository ??= new \app\api\infrastructure\Files\ThinkOrmFileRepository();
+        return $repository ??= new \app\modules\Platform\Files\Infrastructure\ThinkOrmFileRepository();
     }
 
     /**
@@ -35,7 +35,7 @@ namespace
 // 2. Model & Support 替身（命名空间覆盖）
 // ════════════════════════════════════════════════════════════
 
-namespace app\api\model
+namespace app\modules\Platform\Files\Infrastructure\Persistence\Model
 {
     /**
      * 查询链记录器 — 记录所有 think-chain 方法调用。
@@ -190,9 +190,12 @@ namespace app\common\support
 // ════════════════════════════════════════════════════════════
 namespace
 {
-    require __DIR__ . '/../../app/api/service/Files/Contract/FileRepository.php';
-    require __DIR__ . '/../../app/api/service/Files/FileConstants.php';
-    require __DIR__ . '/../../app/api/infrastructure/Files/ThinkOrmFileRepository.php';
+        require __DIR__ . '/../../app/shared/Support/FieldsToggle.php';
+    require __DIR__ . '/../../app/shared/Support/ModelList.php';
+    require __DIR__ . '/../../app/shared/Support/OwnershipGuard.php';
+require __DIR__ . '/../../app/modules/Platform/Files/Contract/FileRepository.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Domain/FileConstants.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Infrastructure/ThinkOrmFileRepository.php';
 }
 
 // ════════════════════════════════════════════════════════════
@@ -234,7 +237,7 @@ namespace
      */
     function resolveWhere(array $where): array
     {
-        $query = new \app\api\model\FilesQuery;
+        $query = new \app\modules\Platform\Files\Infrastructure\Persistence\Model\FilesQuery;
         foreach ($where as $condition) {
             if ($condition instanceof \Closure) {
                 $condition($query);
@@ -573,7 +576,7 @@ namespace
     });
 
     $test('E2: Files Service has no framework or legacy Storage dependency', static function () use ($assertTrue): void {
-        $directory = dirname(__DIR__, 2) . '/app/api/service/Files/';
+        $directory = dirname(__DIR__, 2) . '/app/modules/Platform/Files/Application/';
         foreach (glob($directory . '*.php') as $file) {
             $source = file_get_contents($file);
             $assertTrue(strpos($source, 'think\\') === false, basename($file) . ' 不得依赖 ThinkPHP');
