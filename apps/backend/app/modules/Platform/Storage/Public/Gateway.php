@@ -10,7 +10,7 @@ use app\modules\Platform\Storage\Infrastructure\PathGenerator;
 final class Gateway
 {
     public static function make(string $slug): object { return StorageFactory::make($slug); }
-    public static function supportsDirectUpload(object $driver): bool { return $driver instanceof \app\modules\Platform\Storage\Infrastructure\Driver\HasDirectUpload; }
+    public static function supportsDirectUpload(object $driver): bool { return $driver instanceof \app\modules\Platform\Storage\Contract\HasDirectUpload; }
     public static function defaultChannel(): array { return ChannelManager::getDefaultChannel(); }
     public static function allChannels(): array { return ChannelManager::getAll(); }
     public static function rateLimitSettings(): array { return ChannelManager::getRateLimitSettings(); }

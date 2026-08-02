@@ -5,7 +5,7 @@ namespace app\modules\Platform\Storage\Infrastructure\Driver;
 use think\facade\Filesystem;
 use think\file\UploadedFile;
 use app\modules\Platform\Storage\Infrastructure\Driver\AbstractDriver;
-use app\modules\Platform\Storage\Infrastructure\Driver\StorageResult;
+use app\modules\Platform\Storage\Contract\StorageResult;
 
 class LocalDriver extends AbstractDriver
 {

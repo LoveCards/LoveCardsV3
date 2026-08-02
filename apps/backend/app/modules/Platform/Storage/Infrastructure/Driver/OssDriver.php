@@ -4,9 +4,9 @@ namespace app\modules\Platform\Storage\Infrastructure\Driver;
 
 use think\file\UploadedFile;
 use app\modules\Platform\Storage\Infrastructure\Driver\AbstractDriver;
-use app\modules\Platform\Storage\Infrastructure\Driver\StorageResult;
-use app\modules\Platform\Storage\Infrastructure\Driver\HasDirectUpload;
-use app\modules\Platform\Storage\Infrastructure\Driver\DirectUploadCredential;
+use app\modules\Platform\Storage\Contract\StorageResult;
+use app\modules\Platform\Storage\Contract\HasDirectUpload;
+use app\modules\Platform\Storage\Contract\DirectUploadCredential;
 use app\api\ApiException;
 
 class OssDriver extends AbstractDriver implements HasDirectUpload

@@ -3,7 +3,7 @@
 namespace app\modules\Platform\Captcha\Service;
 
 use app\modules\Platform\Captcha\Infrastructure\CaptchaFactory;
-use app\modules\Platform\Captcha\Infrastructure\Driver\CaptchaInterface;
+use app\modules\Platform\Captcha\Contract\CaptchaInterface;
 
 class Captcha
 {

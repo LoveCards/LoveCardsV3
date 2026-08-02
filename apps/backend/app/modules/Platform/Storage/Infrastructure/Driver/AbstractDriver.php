@@ -1,9 +1,10 @@
 <?php
 
-namespace app\modules\Platform\Storage\Contract;
+namespace app\modules\Platform\Storage\Infrastructure\Driver;
 
 use think\file\UploadedFile;
 use app\api\ApiException;
+use app\modules\Platform\Storage\Contract\StorageResult;
 
 abstract class AbstractDriver implements DriverInterface
 {

@@ -1,6 +1,6 @@
 # SDK Endpoint Test Report
 
-> Generated: 2026-07-31T10:04:29.288Z
+> Generated: 2026-08-02T19:50:51.081Z
 
 ## Summary
 

@@ -24,7 +24,7 @@ class Cards extends BaseController
 
     protected function getBatchService(): string
     {
-        return \app\modules\Content\Cards\Service::class;
+        return CardsService::class;
     }
 
     public function list()

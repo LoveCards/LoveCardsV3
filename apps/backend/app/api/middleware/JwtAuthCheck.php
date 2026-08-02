@@ -18,7 +18,9 @@ class JwtAuthCheck
 
     public function handle($request, \Closure $next)
     {
-        $token = $request->header('authorization');
+        // Apache/FastCGI deployments may strip Authorization before PHP sees it.
+        // The SDK also sends X-Token for this compatibility path.
+        $token = $request->header('authorization') ?: $request->header('x-token');
 
         if ($token !== null) {
             $token = preg_replace('/^Bearer\s+/', '', $token);

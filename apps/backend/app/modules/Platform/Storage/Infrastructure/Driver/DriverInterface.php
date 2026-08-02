@@ -1,8 +1,9 @@
 <?php
 
-namespace app\modules\Platform\Storage\Contract;
+namespace app\modules\Platform\Storage\Infrastructure\Driver;
 
 use think\file\UploadedFile;
+use app\modules\Platform\Storage\Contract\StorageResult;
 
 interface DriverInterface
 {

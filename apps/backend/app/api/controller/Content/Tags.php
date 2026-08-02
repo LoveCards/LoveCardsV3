@@ -18,7 +18,7 @@ class Tags extends BaseController
 
     protected function getBatchService(): string
     {
-        return \app\modules\Content\Tags\Service::class;
+        return TagsService::class;
     }
 
     public function listAll()

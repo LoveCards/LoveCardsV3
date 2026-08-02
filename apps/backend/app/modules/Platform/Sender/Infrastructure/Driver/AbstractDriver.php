@@ -1,8 +1,9 @@
 <?php
 
-namespace app\modules\Platform\Sender\Contract;
+namespace app\modules\Platform\Sender\Infrastructure\Driver;
 
 use app\api\ApiException;
+use app\modules\Platform\Sender\Contract\SenderInterface;
 
 abstract class AbstractDriver implements SenderInterface
 {

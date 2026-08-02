@@ -18,7 +18,7 @@ class Comments extends BaseController
 
     protected function getBatchService(): string
     {
-        return \app\modules\Content\Comments\Service::class;
+        return CommentsService::class;
     }
 
     public function cardList($id)

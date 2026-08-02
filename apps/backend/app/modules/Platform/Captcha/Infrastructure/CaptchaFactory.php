@@ -2,7 +2,7 @@
 
 namespace app\modules\Platform\Captcha\Infrastructure;
 
-use app\modules\Platform\Captcha\Infrastructure\Driver\CaptchaInterface;
+use app\modules\Platform\Captcha\Contract\CaptchaInterface;
 
 class CaptchaFactory
 {
@@ -23,6 +23,9 @@ class CaptchaFactory
             $className = 'app\\modules\\Platform\\Captcha\\Infrastructure\\Driver\\' . basename($file, '.php');
 
             if (!is_subclass_of($className, CaptchaInterface::class)) {
+                continue;
+            }
+            if ((new \ReflectionClass($className))->isAbstract()) {
                 continue;
             }
 

@@ -25,6 +25,9 @@ class StorageFactory
             if (!is_subclass_of($className, DriverInterface::class)) {
                 continue;
             }
+            if ((new \ReflectionClass($className))->isAbstract()) {
+                continue;
+            }
 
             $meta = $className::meta();
             $type = $meta['type'] ?? strtolower(str_replace('Driver', '', basename($file, '.php')));

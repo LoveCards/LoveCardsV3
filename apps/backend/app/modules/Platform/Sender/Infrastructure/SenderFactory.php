@@ -2,7 +2,7 @@
 
 namespace app\modules\Platform\Sender\Infrastructure;
 
-use app\modules\Platform\Sender\Infrastructure\Driver\SenderInterface;
+use app\modules\Platform\Sender\Contract\SenderInterface;
 
 class SenderFactory
 {
@@ -23,6 +23,9 @@ class SenderFactory
             $className = 'app\\modules\\Platform\\Sender\\Infrastructure\\Driver\\' . basename($file, '.php');
 
             if (!is_subclass_of($className, SenderInterface::class)) {
+                continue;
+            }
+            if ((new \ReflectionClass($className))->isAbstract()) {
                 continue;
             }
 
