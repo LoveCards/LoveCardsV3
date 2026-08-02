@@ -68,10 +68,10 @@ class Cards extends BaseController
 
         $cardId = CardsService::createCard($params);
 
-        if (CardsService::requiresApproval()) {
-            return ApiResponse::createCreated();
-        }
-        return ApiResponse::createOk(ApiResource::make(['id' => $cardId]));
+        return ApiResponse::createCreated(ApiResource::make([
+            'id' => (int) $cardId,
+            'status' => (int) $params['status'],
+        ]));
     }
 
     public function update($id)

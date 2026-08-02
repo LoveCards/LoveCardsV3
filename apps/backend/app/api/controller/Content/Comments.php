@@ -47,10 +47,10 @@ class Comments extends BaseController
 
         $result = CommentsService::createComment($params);
 
-        if (CommentsService::requiresApproval()) {
-            return ApiResponse::createCreated();
-        }
-        return ApiResponse::createOk(CommentResource::collection($result['data']));
+        return ApiResponse::createCreated(ApiResource::make([
+            'id' => (int) $result['data']->id,
+            'status' => (int) $result['data']->status,
+        ]));
     }
 
     public function get($id)

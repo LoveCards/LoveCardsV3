@@ -1,6 +1,6 @@
 import { BaseResource } from './base'
 import type { ListResult, BatchOperateParams } from '../types/api'
-import type { User, ProfileUpdateParams, AdminUserUpdateParams, PasswordParams, EmailParams, EmailCaptchaParams } from '../types/users'
+import type { User, ProfileUpdateParams, AdminUserUpdateParams, PasswordParams, EmailParams, EmailCaptchaParams, EmailCaptchaResult } from '../types/users'
 
 export class Users extends BaseResource {
   me(): Promise<User> {
@@ -19,8 +19,8 @@ export class Users extends BaseResource {
     return this._post<void>('/users/me/email', data)
   }
 
-  emailCaptcha(data: EmailCaptchaParams): Promise<void> {
-    return this._post<void>('/users/me/email-captcha', data)
+  emailCaptcha(data: EmailCaptchaParams): Promise<EmailCaptchaResult> {
+    return this._post<EmailCaptchaResult>('/users/me/email-captcha', data)
   }
 
   list(params?: { page?: number; list_rows?: number; search_value?: string }): Promise<ListResult<User>> {

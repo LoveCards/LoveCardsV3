@@ -1,5 +1,6 @@
 import { BaseResource } from './base'
 import type { SenderType, SenderMeta, SenderChannel, SenderTemplate } from '../types/sender'
+import type { ConfigRegisterResult } from '../types/config'
 
 export class Sender extends BaseResource {
   types(): Promise<SenderType[]> {
@@ -10,8 +11,8 @@ export class Sender extends BaseResource {
     return this._get<SenderMeta>(`/sender/${type}/meta`)
   }
 
-  install(): Promise<void> {
-    return this._post<void>('/sender/install')
+  install(): Promise<ConfigRegisterResult[]> {
+    return this._post<ConfigRegisterResult[]>('/sender/install')
   }
 
   channels(): Promise<SenderChannel[]> {

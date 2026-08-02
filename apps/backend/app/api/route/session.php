@@ -30,9 +30,9 @@ Route::post('session/captcha', 'User.Session/captcha')
 Route::group('session', function () {
     Route::post('logout', 'User.Session/logout')
         ->name('session.logout')
-        ->setOption('meta', ['name' => '登出', 'group' => '认证', 'public' => true]);
+        ->setOption('meta', ['name' => '登出', 'group' => '认证']);
 
     Route::get('check', 'User.Session/check')
         ->name('session.check')
-        ->setOption('meta', ['name' => 'Token校验', 'group' => '认证', 'public' => true]);
+        ->setOption('meta', ['name' => 'Token校验', 'group' => '认证']);
 })->middleware(JwtAuthCheck::class);

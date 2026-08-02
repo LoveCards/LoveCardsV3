@@ -7,6 +7,7 @@ use app\api\ApiException;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
 use app\modules\Theme\Transport\Api\ThemeResource;
+use app\modules\Theme\Transport\Api\Upload as UploadValidate;
 use app\modules\Theme\Service\ThemeManager as ThemeService;
 
 class ThemeManager extends BaseController
@@ -19,8 +20,9 @@ class ThemeManager extends BaseController
     public function upload()
     {
         $file = request()->file('file');
-        if (!$file) {
-            throw ApiException::badRequest('请上传 ZIP 文件');
+        $validate = new UploadValidate();
+        if (!$validate->check(['file' => $file])) {
+            throw ApiException::badRequest($validate->getError());
         }
         if ($file->getSize() > ThemeService::maxZipBytes()) {
             throw ApiException::badRequest('ZIP 文件过大');

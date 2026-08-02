@@ -80,7 +80,7 @@ class Profile extends BaseController
             return ApiResponse::createBadRequest($e->getMessage());
         }
 
-        return ApiResponse::createOk(ApiResource::make(['300s后失效']));
+        return ApiResponse::createOk(ApiResource::make(['expiresIn' => 300]));
     }
 
     private function validateAndClean(array $params, string $errorPrefix): array

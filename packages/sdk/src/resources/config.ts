@@ -1,5 +1,5 @@
 import { BaseResource } from './base'
-import type { ConfigData, ConfigUpdateParams, ConfigRegisterParams } from '../types/config'
+import type { ConfigData, ConfigUpdateParams, ConfigRegisterParams, ConfigRegisterResult } from '../types/config'
 
 export class Config extends BaseResource {
   list(): Promise<ConfigData> {
@@ -14,12 +14,12 @@ export class Config extends BaseResource {
     return this._get<string[]>('/config/groups')
   }
 
-  init(): Promise<void> {
-    return this._post<void>('/config/init')
+  init(): Promise<ConfigData> {
+    return this._post<ConfigData>('/config/init')
   }
 
-  register(data: ConfigRegisterParams): Promise<void> {
-    return this._post<void>('/config/register', data)
+  register(data: ConfigRegisterParams): Promise<ConfigRegisterResult> {
+    return this._post<ConfigRegisterResult>('/config/register', data)
   }
 
   reload(): Promise<void> {

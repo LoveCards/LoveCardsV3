@@ -88,7 +88,7 @@
     // ─── 请求方法 ───
     /**
      * 序列化 GET/DELETE 参数中的数组为 JSON 字符串
-     * 后端 ValidateExtend::paramsJsonToArray() 用 json_decode 接收，期望 JSON 字符串
+     * 后端 InputNormalizer::paramsJsonToArray() 用 json_decode 接收，期望 JSON 字符串
      */
     _serializeParams(params) {
       if (!params || typeof params !== "object" || Array.isArray(params)) return params;

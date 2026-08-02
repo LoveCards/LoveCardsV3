@@ -16,8 +16,8 @@ trait BatchOperateTrait
     public function batch()
     {
         $params = $this->param(
-            \app\shared\Transport\Validation\Common::class,
-            \app\shared\Transport\Validation\Common::$all_scene['BatchOperate'],
+            \app\shared\Transport\Validation\BatchOperationInput::class,
+            \app\shared\Transport\Validation\BatchOperationInput::$all_scene['BatchOperate'],
             request()->param()
         );
 

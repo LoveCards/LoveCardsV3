@@ -1,0 +1,3683 @@
+{
+  "generatedAt": "2026-08-02T18:48:58.408Z",
+  "routeCount": 96,
+  "summary": {},
+  "routes": [
+    {
+      "file": "apps/backend/app/api/route/captcha.php",
+      "method": "GET",
+      "path": "/captcha/:slug/meta",
+      "controller": "Captcha.Captcha",
+      "action": "meta",
+      "name": "captcha.meta",
+      "meta": {
+        "name": "驱动配置信息",
+        "group": "验证",
+        "caps": [
+          "captcha.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Captcha\\Captcha.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CaptchaResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/captcha.ts",
+        "method": "meta",
+        "httpMethod": "GET",
+        "returnType": "CaptchaMeta",
+        "path": "/captcha/:param/meta"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/captcha.php",
+      "method": "GET",
+      "path": "/captcha/config",
+      "controller": "Captcha.Captcha",
+      "action": "config",
+      "name": "captcha.config",
+      "meta": {
+        "name": "验证配置",
+        "group": "验证",
+        "public": true
+      },
+      "middleware": [],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Captcha\\Captcha.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CaptchaResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/captcha.ts",
+        "method": "config",
+        "httpMethod": "GET",
+        "returnType": "CaptchaConfig",
+        "path": "/captcha/config"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/captcha.php",
+      "method": "GET",
+      "path": "/captcha/drivers",
+      "controller": "Captcha.Captcha",
+      "action": "drivers",
+      "name": "captcha.drivers",
+      "meta": {
+        "name": "验证驱动详情",
+        "group": "验证",
+        "caps": [
+          "captcha.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Captcha\\Captcha.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CaptchaResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/captcha.ts",
+        "method": "drivers",
+        "httpMethod": "GET",
+        "returnType": "CaptchaDriver[]",
+        "path": "/captcha/drivers"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/captcha.php",
+      "method": "POST",
+      "path": "/captcha/install",
+      "controller": "Captcha.Captcha",
+      "action": "install",
+      "name": "captcha.install",
+      "meta": {
+        "name": "安装验证驱动",
+        "group": "验证",
+        "caps": [
+          "captcha.install"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Captcha\\Captcha.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CaptchaResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/captcha.ts",
+        "method": "install",
+        "httpMethod": "POST",
+        "returnType": "ConfigRegisterResult[]",
+        "path": "/captcha/install"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/captcha.php",
+      "method": "GET",
+      "path": "/captcha/types",
+      "controller": "Captcha.Captcha",
+      "action": "types",
+      "name": "captcha.types",
+      "meta": {
+        "name": "验证驱动列表",
+        "group": "验证",
+        "caps": [
+          "captcha.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Captcha\\Captcha.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CaptchaResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/captcha.ts",
+        "method": "types",
+        "httpMethod": "GET",
+        "returnType": "CaptchaDriver[]",
+        "path": "/captcha/types"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/cards.php",
+      "method": "GET",
+      "path": "/cards",
+      "controller": "Content.Cards",
+      "action": "list",
+      "name": "cards.list",
+      "meta": {
+        "name": "卡片列表",
+        "group": "卡片",
+        "public": true
+      },
+      "middleware": [],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Cards.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CardResource::paginate"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/cards.ts",
+        "method": "list",
+        "httpMethod": "GET",
+        "returnType": "ListResult<Card>",
+        "path": "/cards"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/cards.php",
+      "method": "POST",
+      "path": "/cards",
+      "controller": "Content.Cards",
+      "action": "create",
+      "name": "cards.create",
+      "meta": {
+        "name": "创建卡片",
+        "group": "卡片",
+        "caps": [
+          "cards.create"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "CaptchaCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Cards.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createCreated"
+      ],
+      "resources": [
+        "ApiResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/cards.ts",
+        "method": "create",
+        "httpMethod": "POST",
+        "returnType": "CreateResult",
+        "path": "/cards"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/cards.php",
+      "method": "DELETE",
+      "path": "/cards/:id",
+      "controller": "Content.Cards",
+      "action": "delete",
+      "name": "cards.delete",
+      "meta": {
+        "name": "删除卡片",
+        "group": "卡片",
+        "caps": [
+          "cards.delete",
+          "cards.delete.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "CaptchaCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Cards.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/cards.ts",
+        "method": "delete",
+        "httpMethod": "DELETE",
+        "returnType": "void",
+        "path": "/cards/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/cards.php",
+      "method": "GET",
+      "path": "/cards/:id",
+      "controller": "Content.Cards",
+      "action": "get",
+      "name": "cards.get",
+      "meta": {
+        "name": "卡片详情",
+        "group": "卡片",
+        "public": true
+      },
+      "middleware": [],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Cards.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CardResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/cards.ts",
+        "method": "get",
+        "httpMethod": "GET",
+        "returnType": "Card",
+        "path": "/cards/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/cards.php",
+      "method": "PATCH",
+      "path": "/cards/:id",
+      "controller": "Content.Cards",
+      "action": "update",
+      "name": "cards.update",
+      "meta": {
+        "name": "编辑卡片",
+        "group": "卡片",
+        "caps": [
+          "cards.update",
+          "cards.update.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "CaptchaCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Cards.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/cards.ts",
+        "method": "update",
+        "httpMethod": "PATCH",
+        "returnType": "void",
+        "path": "/cards/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/cards.php",
+      "method": "GET",
+      "path": "/cards/:id/comments",
+      "controller": "Content.Comments",
+      "action": "cardList",
+      "name": "comments.cardList",
+      "meta": {
+        "name": "卡片评论列表",
+        "group": "评论",
+        "public": true
+      },
+      "middleware": [],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Comments.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CommentResource::paginate"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/comments.ts",
+        "method": "cardList",
+        "httpMethod": "GET",
+        "returnType": "ListResult<Comment>",
+        "path": "/cards/:param/comments"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/cards.php",
+      "method": "POST",
+      "path": "/cards/:id/comments",
+      "controller": "Content.Comments",
+      "action": "create",
+      "name": "comments.create",
+      "meta": {
+        "name": "创建评论",
+        "group": "评论",
+        "caps": [
+          "comments.create"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "CaptchaCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Comments.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createCreated"
+      ],
+      "resources": [
+        "ApiResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/comments.ts",
+        "method": "create",
+        "httpMethod": "POST",
+        "returnType": "CreateResult",
+        "path": "/cards/:param/comments"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/cards.php",
+      "method": "POST",
+      "path": "/cards/:id/like",
+      "controller": "Content.Cards",
+      "action": "like",
+      "name": "cards.like",
+      "meta": {
+        "name": "点赞卡片",
+        "group": "卡片",
+        "caps": [
+          "likes.create"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "CaptchaCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Cards.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "ApiResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/cards.ts",
+        "method": "like",
+        "httpMethod": "POST",
+        "returnType": "{ likes: number }",
+        "path": "/cards/:param/like"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/cards.php",
+      "method": "POST",
+      "path": "/cards/batch",
+      "controller": "Content.Cards",
+      "action": "batch",
+      "name": "cards.batch",
+      "meta": {
+        "name": "卡片批量操作",
+        "group": "卡片",
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Cards.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/cards.ts",
+        "method": "batch",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/cards/batch"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/cards.php",
+      "method": "GET",
+      "path": "/cards/hot",
+      "controller": "Content.Cards",
+      "action": "hotList",
+      "name": "cards.hot",
+      "meta": {
+        "name": "热门卡片",
+        "group": "卡片",
+        "public": true
+      },
+      "middleware": [],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Cards.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CardResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/cards.ts",
+        "method": "hot",
+        "httpMethod": "GET",
+        "returnType": "Card[]",
+        "path": "/cards/hot"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/cards.php",
+      "method": "GET",
+      "path": "/cards/search",
+      "controller": "Content.Cards",
+      "action": "search",
+      "name": "cards.search",
+      "meta": {
+        "name": "搜索卡片",
+        "group": "卡片",
+        "public": true
+      },
+      "middleware": [],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Cards.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CardResource::paginate"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/cards.ts",
+        "method": "search",
+        "httpMethod": "GET",
+        "returnType": "ListResult<Card>",
+        "path": "/cards/search"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/comments.php",
+      "method": "GET",
+      "path": "/comments",
+      "controller": "Content.Comments",
+      "action": "list",
+      "name": "comments.list",
+      "meta": {
+        "name": "评论管理列表",
+        "group": "评论",
+        "caps": [
+          "comments.read",
+          "comments.read.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Comments.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CommentResource::paginate"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/comments.ts",
+        "method": "list",
+        "httpMethod": "GET",
+        "returnType": "ListResult<Comment>",
+        "path": "/comments"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/comments.php",
+      "method": "DELETE",
+      "path": "/comments/:id",
+      "controller": "Content.Comments",
+      "action": "delete",
+      "name": "comments.delete",
+      "meta": {
+        "name": "删除评论",
+        "group": "评论",
+        "caps": [
+          "comments.delete",
+          "comments.delete.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Comments.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/comments.ts",
+        "method": "delete",
+        "httpMethod": "DELETE",
+        "returnType": "void",
+        "path": "/comments/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/comments.php",
+      "method": "GET",
+      "path": "/comments/:id",
+      "controller": "Content.Comments",
+      "action": "get",
+      "name": "comments.get",
+      "meta": {
+        "name": "评论详情",
+        "group": "评论",
+        "public": true
+      },
+      "middleware": [],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Comments.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CommentResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/comments.ts",
+        "method": "get",
+        "httpMethod": "GET",
+        "returnType": "Comment",
+        "path": "/comments/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/comments.php",
+      "method": "PATCH",
+      "path": "/comments/:id",
+      "controller": "Content.Comments",
+      "action": "update",
+      "name": "comments.update",
+      "meta": {
+        "name": "编辑评论",
+        "group": "评论",
+        "caps": [
+          "comments.update",
+          "comments.update.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Comments.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/comments.ts",
+        "method": "update",
+        "httpMethod": "PATCH",
+        "returnType": "void",
+        "path": "/comments/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/comments.php",
+      "method": "POST",
+      "path": "/comments/batch",
+      "controller": "Content.Comments",
+      "action": "batch",
+      "name": "comments.batch",
+      "meta": {
+        "name": "评论批量操作",
+        "group": "评论",
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Comments.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/comments.ts",
+        "method": "batch",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/comments/batch"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/config.php",
+      "method": "DELETE",
+      "path": "/config",
+      "controller": "System.Config",
+      "action": "delete",
+      "name": "config.delete",
+      "meta": {
+        "name": "删除配置组",
+        "group": "配置",
+        "caps": [
+          "config.deleteKey"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\System\\Config.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createBadRequest",
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/config.ts",
+        "method": "deleteGroup",
+        "httpMethod": "DELETE",
+        "returnType": "void",
+        "path": "/config"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/config.php",
+      "method": "GET",
+      "path": "/config",
+      "controller": "System.Config",
+      "action": "index",
+      "name": "config.list",
+      "meta": {
+        "name": "获取配置",
+        "group": "配置",
+        "caps": [
+          "config.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\System\\Config.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "ConfigResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/config.ts",
+        "method": "list",
+        "httpMethod": "GET",
+        "returnType": "ConfigData",
+        "path": "/config"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/config.php",
+      "method": "POST",
+      "path": "/config",
+      "controller": "System.Config",
+      "action": "update",
+      "name": "config.update",
+      "meta": {
+        "name": "保存配置",
+        "group": "配置",
+        "caps": [
+          "config.update"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\System\\Config.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/config.ts",
+        "method": "update",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/config"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/config.php",
+      "method": "GET",
+      "path": "/config/groups",
+      "controller": "System.Config",
+      "action": "groups",
+      "name": "config.groups",
+      "meta": {
+        "name": "配置组列表",
+        "group": "配置",
+        "caps": [
+          "config.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\System\\Config.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "ConfigResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/config.ts",
+        "method": "groups",
+        "httpMethod": "GET",
+        "returnType": "string[]",
+        "path": "/config/groups"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/config.php",
+      "method": "POST",
+      "path": "/config/init",
+      "controller": "System.Config",
+      "action": "init",
+      "name": "config.init",
+      "meta": {
+        "name": "初始化配置",
+        "group": "配置",
+        "caps": [
+          "config.init"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\System\\Config.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "ConfigResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/config.ts",
+        "method": "init",
+        "httpMethod": "POST",
+        "returnType": "ConfigData",
+        "path": "/config/init"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/config.php",
+      "method": "DELETE",
+      "path": "/config/key",
+      "controller": "System.Config",
+      "action": "deleteKey",
+      "name": "config.deleteKey",
+      "meta": {
+        "name": "删除配置键",
+        "group": "配置",
+        "caps": [
+          "config.deleteKey"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\System\\Config.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createBadRequest",
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/config.ts",
+        "method": "deleteKey",
+        "httpMethod": "DELETE",
+        "returnType": "void",
+        "path": "/config/key"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/config.php",
+      "method": "POST",
+      "path": "/config/register",
+      "controller": "System.Config",
+      "action": "register",
+      "name": "config.register",
+      "meta": {
+        "name": "注册配置",
+        "group": "配置",
+        "caps": [
+          "config.register"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\System\\Config.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createBadRequest",
+        "createOk"
+      ],
+      "resources": [
+        "ConfigResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/config.ts",
+        "method": "register",
+        "httpMethod": "POST",
+        "returnType": "ConfigRegisterResult",
+        "path": "/config/register"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/config.php",
+      "method": "POST",
+      "path": "/config/reload",
+      "controller": "System.Config",
+      "action": "reload",
+      "name": "config.reload",
+      "meta": {
+        "name": "重载配置",
+        "group": "配置",
+        "caps": [
+          "config.reload"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\System\\Config.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/config.ts",
+        "method": "reload",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/config/reload"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/dashboard.php",
+      "method": "GET",
+      "path": "/dashboard",
+      "controller": "System.Dashboard",
+      "action": "index",
+      "name": "dashboard.index",
+      "meta": {
+        "name": "控制台",
+        "group": "系统",
+        "caps": [
+          "dashboard.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\System\\Dashboard.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "DashboardResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/dashboard.ts",
+        "method": "index",
+        "httpMethod": "GET",
+        "returnType": "DashboardData",
+        "path": "/dashboard"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/files.php",
+      "method": "GET",
+      "path": "/files",
+      "controller": "Storage.Upload",
+      "action": "list",
+      "name": "files.list",
+      "meta": {
+        "name": "文件列表",
+        "group": "文件",
+        "caps": [
+          "files.read",
+          "files.read.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Upload.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "FileResource::paginate"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/files.ts",
+        "method": "list",
+        "httpMethod": "GET",
+        "returnType": "ListResult<LCFile>",
+        "path": "/files"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/files.php",
+      "method": "POST",
+      "path": "/files",
+      "controller": "Storage.Upload",
+      "action": "upload",
+      "name": "files.upload",
+      "meta": {
+        "name": "上传文件",
+        "group": "文件",
+        "caps": [
+          "files.upload"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Upload.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "FileResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/files.ts",
+        "method": "upload",
+        "httpMethod": "POST",
+        "returnType": "UploadResult",
+        "path": "/files"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/files.php",
+      "method": "DELETE",
+      "path": "/files/:id",
+      "controller": "Storage.Upload",
+      "action": "allDelete",
+      "name": "files.allDelete",
+      "meta": {
+        "name": "删除文件",
+        "group": "文件",
+        "caps": [
+          "files.delete",
+          "files.delete.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Upload.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/files.ts",
+        "method": "delete",
+        "httpMethod": "DELETE",
+        "returnType": "void",
+        "path": "/files/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/files.php",
+      "method": "GET",
+      "path": "/files/:id",
+      "controller": "Storage.Upload",
+      "action": "get",
+      "name": "files.get",
+      "meta": {
+        "name": "文件详情",
+        "group": "文件",
+        "caps": [
+          "files.read",
+          "files.read.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Upload.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "FileResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/files.ts",
+        "method": "get",
+        "httpMethod": "GET",
+        "returnType": "LCFile",
+        "path": "/files/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/files.php",
+      "method": "PATCH",
+      "path": "/files/:id/confirm",
+      "controller": "Storage.Upload",
+      "action": "confirm",
+      "name": "files.confirm",
+      "meta": {
+        "name": "确认直传",
+        "group": "文件",
+        "caps": [
+          "files.upload"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Upload.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/files.ts",
+        "method": "confirm",
+        "httpMethod": "PATCH",
+        "returnType": "void",
+        "path": "/files/:param/confirm"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/files.php",
+      "method": "POST",
+      "path": "/files/batch",
+      "controller": "Storage.Upload",
+      "action": "batch",
+      "name": "files.batch",
+      "meta": {
+        "name": "文件批量操作",
+        "group": "文件",
+        "caps": [
+          "files.update",
+          "files.update.all",
+          "files.delete",
+          "files.delete.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Upload.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/files.ts",
+        "method": "batch",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/files/batch"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/files.php",
+      "method": "POST",
+      "path": "/files/direct",
+      "controller": "Storage.Upload",
+      "action": "direct",
+      "name": "files.direct",
+      "meta": {
+        "name": "直传凭证",
+        "group": "文件",
+        "caps": [
+          "files.upload"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Upload.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "DirectUploadResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/files.ts",
+        "method": "direct",
+        "httpMethod": "POST",
+        "returnType": "DirectUploadResult",
+        "path": "/files/direct"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/files.php",
+      "method": "DELETE",
+      "path": "/files/expired",
+      "controller": "Storage.Upload",
+      "action": "cleanup",
+      "name": "files.cleanup",
+      "meta": {
+        "name": "清理过期文件",
+        "group": "文件",
+        "caps": [
+          "files.delete.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Upload.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "ApiResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/files.ts",
+        "method": "cleanup",
+        "httpMethod": "DELETE",
+        "returnType": "{ cleaned: number }",
+        "path": "/files/expired"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/likes.php",
+      "method": "GET",
+      "path": "/likes",
+      "controller": "Content.Likes",
+      "action": "list",
+      "name": "likes.list",
+      "meta": {
+        "name": "我的点赞",
+        "group": "点赞",
+        "caps": [
+          "likes.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Likes.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "LikeResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/likes.ts",
+        "method": "list",
+        "httpMethod": "GET",
+        "returnType": "Like[]",
+        "path": "/likes"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/likes.php",
+      "method": "DELETE",
+      "path": "/likes/:id",
+      "controller": "Content.Likes",
+      "action": "unlike",
+      "name": "likes.unlike",
+      "meta": {
+        "name": "取消点赞",
+        "group": "点赞",
+        "caps": [
+          "likes.delete"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Likes.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/likes.ts",
+        "method": "unlike",
+        "httpMethod": "DELETE",
+        "returnType": "void",
+        "path": "/likes/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/permissions.php",
+      "method": "GET",
+      "path": "/permissions",
+      "controller": "Rbac.Permissions",
+      "action": "list",
+      "name": "permissions.list",
+      "meta": {
+        "name": "权限列表",
+        "group": "权限",
+        "caps": [
+          "permissions.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Rbac\\Permissions.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "PermissionResource::paginate"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/permissions.ts",
+        "method": "list",
+        "httpMethod": "GET",
+        "returnType": "ListResult<CapabilityItem>",
+        "path": "/permissions"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/permissions.php",
+      "method": "GET",
+      "path": "/permissions/all",
+      "controller": "Rbac.Permissions",
+      "action": "all",
+      "name": "permissions.all",
+      "meta": {
+        "name": "全部权限",
+        "group": "权限",
+        "caps": [
+          "permissions.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Rbac\\Permissions.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "PermissionResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/permissions.ts",
+        "method": "all",
+        "httpMethod": "GET",
+        "returnType": "CapabilityItem[]",
+        "path": "/permissions/all"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/roles.php",
+      "method": "GET",
+      "path": "/roles",
+      "controller": "Rbac.Roles",
+      "action": "list",
+      "name": "roles.list",
+      "meta": {
+        "name": "角色列表",
+        "group": "角色",
+        "caps": [
+          "roles.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Rbac\\Roles.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "RoleResource::paginate"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/roles.ts",
+        "method": "list",
+        "httpMethod": "GET",
+        "returnType": "ListResult<Role>",
+        "path": "/roles"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/roles.php",
+      "method": "POST",
+      "path": "/roles",
+      "controller": "Rbac.Roles",
+      "action": "create",
+      "name": "roles.create",
+      "meta": {
+        "name": "创建角色",
+        "group": "角色",
+        "caps": [
+          "roles.create"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Rbac\\Roles.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "ApiResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/roles.ts",
+        "method": "create",
+        "httpMethod": "POST",
+        "returnType": "{ id: string }",
+        "path": "/roles"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/roles.php",
+      "method": "DELETE",
+      "path": "/roles/:id",
+      "controller": "Rbac.Roles",
+      "action": "delete",
+      "name": "roles.delete",
+      "meta": {
+        "name": "删除角色",
+        "group": "角色",
+        "caps": [
+          "roles.delete"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Rbac\\Roles.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/roles.ts",
+        "method": "delete",
+        "httpMethod": "DELETE",
+        "returnType": "void",
+        "path": "/roles/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/roles.php",
+      "method": "GET",
+      "path": "/roles/:id",
+      "controller": "Rbac.Roles",
+      "action": "get",
+      "name": "roles.get",
+      "meta": {
+        "name": "角色详情",
+        "group": "角色",
+        "caps": [
+          "roles.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Rbac\\Roles.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "RoleResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/roles.ts",
+        "method": "get",
+        "httpMethod": "GET",
+        "returnType": "Role",
+        "path": "/roles/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/roles.php",
+      "method": "PATCH",
+      "path": "/roles/:id",
+      "controller": "Rbac.Roles",
+      "action": "update",
+      "name": "roles.update",
+      "meta": {
+        "name": "编辑角色",
+        "group": "角色",
+        "caps": [
+          "roles.update"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Rbac\\Roles.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/roles.ts",
+        "method": "update",
+        "httpMethod": "PATCH",
+        "returnType": "void",
+        "path": "/roles/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/roles.php",
+      "method": "GET",
+      "path": "/roles/:id/capabilities",
+      "controller": "Rbac.Roles",
+      "action": "getRoleCapabilities",
+      "name": "roles.getRoleCapabilities",
+      "meta": {
+        "name": "获取角色能力",
+        "group": "角色",
+        "caps": [
+          "roles.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Rbac\\Roles.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "ApiResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/roles.ts",
+        "method": "getCapabilities",
+        "httpMethod": "GET",
+        "returnType": "string[]",
+        "path": "/roles/:param/capabilities"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/roles.php",
+      "method": "POST",
+      "path": "/roles/:id/capabilities",
+      "controller": "Rbac.Roles",
+      "action": "assignCapabilities",
+      "name": "roles.assignCapabilities",
+      "meta": {
+        "name": "分配能力",
+        "group": "角色",
+        "caps": [
+          "roles.assign"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Rbac\\Roles.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/roles.ts",
+        "method": "assignCapabilities",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/roles/:param/capabilities"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/roles.php",
+      "method": "POST",
+      "path": "/roles/reseed",
+      "controller": "Rbac.Roles",
+      "action": "reseed",
+      "name": "roles.reseed",
+      "meta": {
+        "name": "重新 seed 能力",
+        "group": "角色",
+        "caps": [
+          "roles.assign"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Rbac\\Roles.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "ApiResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/roles.ts",
+        "method": "reseed",
+        "httpMethod": "POST",
+        "returnType": "ReseedResult",
+        "path": "/roles/reseed"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/sender.php",
+      "method": "GET",
+      "path": "/sender/:type/meta",
+      "controller": "Sender.Sender",
+      "action": "meta",
+      "name": "sender.meta",
+      "meta": {
+        "name": "驱动配置信息",
+        "group": "消息",
+        "caps": [
+          "sender.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Sender\\Sender.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "SenderResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/sender.ts",
+        "method": "meta",
+        "httpMethod": "GET",
+        "returnType": "SenderMeta",
+        "path": "/sender/:param/meta"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/sender.php",
+      "method": "GET",
+      "path": "/sender/channels",
+      "controller": "Sender.Sender",
+      "action": "channels",
+      "name": "sender.channels",
+      "meta": {
+        "name": "消息渠道列表",
+        "group": "消息",
+        "caps": [
+          "sender.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Sender\\Sender.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "SenderResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/sender.ts",
+        "method": "channels",
+        "httpMethod": "GET",
+        "returnType": "SenderChannel[]",
+        "path": "/sender/channels"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/sender.php",
+      "method": "POST",
+      "path": "/sender/install",
+      "controller": "Sender.Sender",
+      "action": "install",
+      "name": "sender.install",
+      "meta": {
+        "name": "安装消息驱动",
+        "group": "消息",
+        "caps": [
+          "sender.install"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Sender\\Sender.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "SenderResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/sender.ts",
+        "method": "install",
+        "httpMethod": "POST",
+        "returnType": "ConfigRegisterResult[]",
+        "path": "/sender/install"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/sender.php",
+      "method": "GET",
+      "path": "/sender/templates",
+      "controller": "Sender.Sender",
+      "action": "templates",
+      "name": "sender.templates",
+      "meta": {
+        "name": "消息模板列表",
+        "group": "消息",
+        "caps": [
+          "sender.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Sender\\Sender.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "SenderResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/sender.ts",
+        "method": "templates",
+        "httpMethod": "GET",
+        "returnType": "SenderTemplate[]",
+        "path": "/sender/templates"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/sender.php",
+      "method": "POST",
+      "path": "/sender/test-channel",
+      "controller": "Sender.Sender",
+      "action": "testChannel",
+      "name": "sender.testChannel",
+      "meta": {
+        "name": "测试消息渠道",
+        "group": "消息",
+        "caps": [
+          "sender.test"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Sender\\Sender.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "SenderResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/sender.ts",
+        "method": "testChannel",
+        "httpMethod": "POST",
+        "returnType": "{ success: boolean; message?: string }",
+        "path": "/sender/test-channel"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/sender.php",
+      "method": "GET",
+      "path": "/sender/types",
+      "controller": "Sender.Sender",
+      "action": "types",
+      "name": "sender.types",
+      "meta": {
+        "name": "消息驱动列表",
+        "group": "消息",
+        "caps": [
+          "sender.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Sender\\Sender.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "SenderResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/sender.ts",
+        "method": "types",
+        "httpMethod": "GET",
+        "returnType": "SenderType[]",
+        "path": "/sender/types"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/session.php",
+      "method": "POST",
+      "path": "/session/captcha",
+      "controller": "User.Session",
+      "action": "captcha",
+      "name": "session.captcha",
+      "meta": {
+        "name": "获取验证码",
+        "group": "认证",
+        "public": true
+      },
+      "middleware": [
+        "SessionDebounce"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Session.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createBadRequest",
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/session.ts",
+        "method": "captcha",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/session/captcha"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/session.php",
+      "method": "GET",
+      "path": "/session/check",
+      "controller": "User.Session",
+      "action": "check",
+      "name": "session.check",
+      "meta": {
+        "name": "Token校验",
+        "group": "认证",
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Session.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "ApiResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/session.ts",
+        "method": "check",
+        "httpMethod": "GET",
+        "returnType": "CheckResult",
+        "path": "/session/check"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/session.php",
+      "method": "POST",
+      "path": "/session/guest",
+      "controller": "User.Session",
+      "action": "guest",
+      "name": "session.guest",
+      "meta": {
+        "name": "访客登录",
+        "group": "认证",
+        "public": true
+      },
+      "middleware": [],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Session.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createUnauthorized",
+        "createOk"
+      ],
+      "resources": [
+        "AuthResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/session.ts",
+        "method": "guest",
+        "httpMethod": "POST",
+        "returnType": "LoginResult",
+        "path": "/session/guest"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/session.php",
+      "method": "POST",
+      "path": "/session/login",
+      "controller": "User.Session",
+      "action": "login",
+      "name": "session.login",
+      "meta": {
+        "name": "登录",
+        "group": "认证",
+        "public": true
+      },
+      "middleware": [],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Session.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createBadRequest",
+        "createUnauthorized",
+        "createOk"
+      ],
+      "resources": [
+        "AuthResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/session.ts",
+        "method": "login",
+        "httpMethod": "POST",
+        "returnType": "LoginResult",
+        "path": "/session/login"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/session.php",
+      "method": "POST",
+      "path": "/session/logout",
+      "controller": "User.Session",
+      "action": "logout",
+      "name": "session.logout",
+      "meta": {
+        "name": "登出",
+        "group": "认证",
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Session.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/session.ts",
+        "method": "logout",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/session/logout"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/session.php",
+      "method": "POST",
+      "path": "/session/register",
+      "controller": "User.Session",
+      "action": "register",
+      "name": "session.register",
+      "meta": {
+        "name": "注册",
+        "group": "认证",
+        "public": true
+      },
+      "middleware": [
+        "SessionDebounce",
+        "CaptchaCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Session.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createBadRequest",
+        "createUnauthorized",
+        "createOk"
+      ],
+      "resources": [
+        "AuthResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/session.ts",
+        "method": "register",
+        "httpMethod": "POST",
+        "returnType": "LoginResult",
+        "path": "/session/register"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/storage.php",
+      "method": "GET",
+      "path": "/storage/:type/meta",
+      "controller": "Storage.Storage",
+      "action": "meta",
+      "name": "storage.meta",
+      "meta": {
+        "name": "驱动配置信息",
+        "group": "存储",
+        "caps": [
+          "storage.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Storage.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createBadRequest",
+        "createOk"
+      ],
+      "resources": [
+        "StorageResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/storage.ts",
+        "method": "meta",
+        "httpMethod": "GET",
+        "returnType": "StorageMeta",
+        "path": "/storage/:param/meta"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/storage.php",
+      "method": "GET",
+      "path": "/storage/channel-stats",
+      "controller": "Storage.Storage",
+      "action": "channelStats",
+      "name": "storage.channelStats",
+      "meta": {
+        "name": "渠道文件统计",
+        "group": "存储",
+        "caps": [
+          "storage.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Storage.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "StorageResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/storage.ts",
+        "method": "channelStats",
+        "httpMethod": "GET",
+        "returnType": "ChannelStats",
+        "path": "/storage/channel-stats"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/storage.php",
+      "method": "GET",
+      "path": "/storage/channels",
+      "controller": "Storage.Storage",
+      "action": "channels",
+      "name": "storage.channels",
+      "meta": {
+        "name": "存储渠道列表",
+        "group": "存储",
+        "caps": [
+          "storage.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Storage.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "StorageResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/storage.ts",
+        "method": "channels",
+        "httpMethod": "GET",
+        "returnType": "StorageChannel[]",
+        "path": "/storage/channels"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/storage.php",
+      "method": "POST",
+      "path": "/storage/install",
+      "controller": "Storage.Storage",
+      "action": "install",
+      "name": "storage.install",
+      "meta": {
+        "name": "安装存储驱动",
+        "group": "存储",
+        "caps": [
+          "storage.install"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Storage.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "StorageResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/storage.ts",
+        "method": "install",
+        "httpMethod": "POST",
+        "returnType": "ConfigRegisterResult[]",
+        "path": "/storage/install"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/storage.php",
+      "method": "POST",
+      "path": "/storage/test-channel",
+      "controller": "Storage.Storage",
+      "action": "testChannel",
+      "name": "storage.testChannel",
+      "meta": {
+        "name": "测试存储渠道",
+        "group": "存储",
+        "caps": [
+          "storage.test"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Storage.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createBadRequest",
+        "createOk"
+      ],
+      "resources": [
+        "StorageResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/storage.ts",
+        "method": "testChannel",
+        "httpMethod": "POST",
+        "returnType": "{ success: boolean; message?: string }",
+        "path": "/storage/test-channel"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/storage.php",
+      "method": "GET",
+      "path": "/storage/types",
+      "controller": "Storage.Storage",
+      "action": "types",
+      "name": "storage.types",
+      "meta": {
+        "name": "存储驱动列表",
+        "group": "存储",
+        "caps": [
+          "storage.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Storage.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "StorageResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/storage.ts",
+        "method": "types",
+        "httpMethod": "GET",
+        "returnType": "StorageDriver[]",
+        "path": "/storage/types"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/system.php",
+      "method": "GET",
+      "path": "/system/update",
+      "controller": "System.System",
+      "action": "update",
+      "name": "system.update",
+      "meta": {
+        "name": "系统更新",
+        "group": "系统",
+        "caps": [
+          "system.update"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\System\\System.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "SystemResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/system.ts",
+        "method": "update",
+        "httpMethod": "GET",
+        "returnType": "SystemUpdateInfo",
+        "path": "/system/update"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/tags.php",
+      "method": "GET",
+      "path": "/tags",
+      "controller": "Content.Tags",
+      "action": "list",
+      "name": "tags.list",
+      "meta": {
+        "name": "标签列表",
+        "group": "标签",
+        "public": true
+      },
+      "middleware": [],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Tags.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "TagResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/theme.ts",
+        "method": "tags",
+        "httpMethod": "GET",
+        "returnType": "Tag[]",
+        "path": "/tags"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/tags.php",
+      "method": "POST",
+      "path": "/tags",
+      "controller": "Content.Tags",
+      "action": "create",
+      "name": "tags.create",
+      "meta": {
+        "name": "创建标签",
+        "group": "标签",
+        "caps": [
+          "tags.create"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Tags.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/tags.ts",
+        "method": "create",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/tags"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/tags.php",
+      "method": "DELETE",
+      "path": "/tags/:id",
+      "controller": "Content.Tags",
+      "action": "delete",
+      "name": "tags.delete",
+      "meta": {
+        "name": "删除标签",
+        "group": "标签",
+        "caps": [
+          "tags.delete",
+          "tags.delete.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Tags.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/tags.ts",
+        "method": "delete",
+        "httpMethod": "DELETE",
+        "returnType": "void",
+        "path": "/tags/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/tags.php",
+      "method": "GET",
+      "path": "/tags/:id",
+      "controller": "Content.Tags",
+      "action": "get",
+      "name": "tags.get",
+      "meta": {
+        "name": "标签详情",
+        "group": "标签",
+        "public": true
+      },
+      "middleware": [],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Tags.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "TagResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/tags.ts",
+        "method": "get",
+        "httpMethod": "GET",
+        "returnType": "Tag",
+        "path": "/tags/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/tags.php",
+      "method": "PATCH",
+      "path": "/tags/:id",
+      "controller": "Content.Tags",
+      "action": "update",
+      "name": "tags.update",
+      "meta": {
+        "name": "编辑标签",
+        "group": "标签",
+        "caps": [
+          "tags.update",
+          "tags.update.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Tags.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/tags.ts",
+        "method": "update",
+        "httpMethod": "PATCH",
+        "returnType": "void",
+        "path": "/tags/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/tags.php",
+      "method": "GET",
+      "path": "/tags/all",
+      "controller": "Content.Tags",
+      "action": "listAll",
+      "name": "tags.listAll",
+      "meta": {
+        "name": "标签分页列表",
+        "group": "标签",
+        "caps": [
+          "tags.read",
+          "tags.read.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Tags.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "TagResource::paginate"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/tags.ts",
+        "method": "listAll",
+        "httpMethod": "GET",
+        "returnType": "ListResult<Tag>",
+        "path": "/tags/all"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/tags.php",
+      "method": "POST",
+      "path": "/tags/batch",
+      "controller": "Content.Tags",
+      "action": "batch",
+      "name": "tags.batch",
+      "meta": {
+        "name": "标签批量操作",
+        "group": "标签",
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Tags.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/tags.ts",
+        "method": "batch",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/tags/batch"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/theme.php",
+      "method": "POST",
+      "path": "/theme/activate",
+      "controller": "Theme.ThemeManager",
+      "action": "activate",
+      "name": "theme.activate",
+      "meta": {
+        "name": "切换主题",
+        "group": "主题",
+        "caps": [
+          "theme.activate"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Theme\\ThemeManager.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/theme.ts",
+        "method": "activate",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/theme/activate"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/theme.php",
+      "method": "GET",
+      "path": "/theme/config",
+      "controller": "Theme.ThemeManager",
+      "action": "config",
+      "name": "theme.publicConfig",
+      "meta": {
+        "name": "公开主题配置",
+        "group": "主题",
+        "public": true
+      },
+      "middleware": [],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Theme\\ThemeManager.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "ThemeResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/theme.ts",
+        "method": "publicConfig",
+        "httpMethod": "GET",
+        "returnType": "ThemeConfigData",
+        "path": "/theme/config"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/theme.php",
+      "method": "PUT",
+      "path": "/theme/config",
+      "controller": "Theme.ThemeManager",
+      "action": "updateConfig",
+      "name": "theme.updateConfig",
+      "meta": {
+        "name": "更新配置",
+        "group": "主题",
+        "caps": [
+          "theme.update"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Theme\\ThemeManager.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/theme.ts",
+        "method": "updateConfig",
+        "httpMethod": "PUT",
+        "returnType": "void",
+        "path": "/theme/config"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/theme.php",
+      "method": "DELETE",
+      "path": "/theme/delete",
+      "controller": "Theme.ThemeManager",
+      "action": "delete",
+      "name": "theme.delete",
+      "meta": {
+        "name": "删除主题",
+        "group": "主题",
+        "caps": [
+          "theme.delete"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Theme\\ThemeManager.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/theme.ts",
+        "method": "delete",
+        "httpMethod": "DELETE",
+        "returnType": "void",
+        "path": "/theme/delete"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/theme.php",
+      "method": "POST",
+      "path": "/theme/freeze",
+      "controller": "Theme.ThemeManager",
+      "action": "freezeConfig",
+      "name": "theme.freeze",
+      "meta": {
+        "name": "固化配置",
+        "group": "主题",
+        "caps": [
+          "theme.freeze"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Theme\\ThemeManager.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/theme.ts",
+        "method": "freeze",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/theme/freeze"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/theme.php",
+      "method": "GET",
+      "path": "/theme/list",
+      "controller": "Theme.ThemeManager",
+      "action": "list",
+      "name": "theme.list",
+      "meta": {
+        "name": "主题列表",
+        "group": "主题",
+        "caps": [
+          "theme.read"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Theme\\ThemeManager.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "ThemeResource::collection"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/theme.ts",
+        "method": "list",
+        "httpMethod": "GET",
+        "returnType": "ThemeItem[]",
+        "path": "/theme/list"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/theme.php",
+      "method": "POST",
+      "path": "/theme/upload",
+      "controller": "Theme.ThemeManager",
+      "action": "upload",
+      "name": "theme.upload",
+      "meta": {
+        "name": "上传主题",
+        "group": "主题",
+        "caps": [
+          "theme.upload"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Theme\\ThemeManager.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "ThemeResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/theme.ts",
+        "method": "upload",
+        "httpMethod": "POST",
+        "returnType": "ThemeItem",
+        "path": "/theme/upload"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/users.php",
+      "method": "GET",
+      "path": "/users",
+      "controller": "User.Users",
+      "action": "list",
+      "name": "users.list",
+      "meta": {
+        "name": "用户列表",
+        "group": "用户",
+        "caps": [
+          "users.read",
+          "users.read.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Users.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "UserResource::paginate"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/users.ts",
+        "method": "list",
+        "httpMethod": "GET",
+        "returnType": "ListResult<User>",
+        "path": "/users"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/users.php",
+      "method": "DELETE",
+      "path": "/users/:id",
+      "controller": "User.Users",
+      "action": "delete",
+      "name": "users.delete",
+      "meta": {
+        "name": "删除用户",
+        "group": "用户",
+        "caps": [
+          "users.delete",
+          "users.delete.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Users.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/users.ts",
+        "method": "delete",
+        "httpMethod": "DELETE",
+        "returnType": "void",
+        "path": "/users/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/users.php",
+      "method": "GET",
+      "path": "/users/:id",
+      "controller": "User.Users",
+      "action": "get",
+      "name": "users.get",
+      "meta": {
+        "name": "用户详情",
+        "group": "用户",
+        "caps": [
+          "users.read",
+          "users.read.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Users.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "UserResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/users.ts",
+        "method": "get",
+        "httpMethod": "GET",
+        "returnType": "User",
+        "path": "/users/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/users.php",
+      "method": "PATCH",
+      "path": "/users/:id",
+      "controller": "User.Users",
+      "action": "update",
+      "name": "users.update",
+      "meta": {
+        "name": "编辑用户",
+        "group": "用户",
+        "caps": [
+          "users.update",
+          "users.update.all"
+        ],
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Users.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/users.ts",
+        "method": "update",
+        "httpMethod": "PATCH",
+        "returnType": "void",
+        "path": "/users/:param"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/users.php",
+      "method": "POST",
+      "path": "/users/batch",
+      "controller": "User.Users",
+      "action": "batch",
+      "name": "users.batch",
+      "meta": {
+        "name": "用户批量操作",
+        "group": "用户",
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Users.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/users.ts",
+        "method": "batch",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/users/batch"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/users.php",
+      "method": "GET",
+      "path": "/users/me",
+      "controller": "User.Profile",
+      "action": "get",
+      "name": "users.me.get",
+      "meta": {
+        "name": "我的信息",
+        "group": "用户",
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Profile.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "ProfileResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/users.ts",
+        "method": "me",
+        "httpMethod": "GET",
+        "returnType": "User",
+        "path": "/users/me"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/users.php",
+      "method": "PATCH",
+      "path": "/users/me",
+      "controller": "User.Profile",
+      "action": "update",
+      "name": "users.me.update",
+      "meta": {
+        "name": "编辑我的信息",
+        "group": "用户",
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Profile.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/users.ts",
+        "method": "updateMe",
+        "httpMethod": "PATCH",
+        "returnType": "void",
+        "path": "/users/me"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/cards.php",
+      "method": "GET",
+      "path": "/users/me/cards",
+      "controller": "Content.Cards",
+      "action": "listOwn",
+      "name": "cards.listOwn",
+      "meta": {
+        "name": "我的卡片",
+        "group": "卡片",
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Cards.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CardResource::paginate"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/cards.ts",
+        "method": "listOwn",
+        "httpMethod": "GET",
+        "returnType": "ListResult<Card>",
+        "path": "/users/me/cards"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/comments.php",
+      "method": "GET",
+      "path": "/users/me/comments",
+      "controller": "Content.Comments",
+      "action": "listOwn",
+      "name": "comments.listOwn",
+      "meta": {
+        "name": "我的评论",
+        "group": "评论",
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Content\\Comments.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CommentResource::paginate"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/comments.ts",
+        "method": "listOwn",
+        "httpMethod": "GET",
+        "returnType": "ListResult<Comment>",
+        "path": "/users/me/comments"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/users.php",
+      "method": "POST",
+      "path": "/users/me/email-captcha",
+      "controller": "User.Profile",
+      "action": "emailCaptcha",
+      "name": "users.me.emailCaptcha",
+      "meta": {
+        "name": "邮箱验证码",
+        "group": "用户",
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Profile.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createBadRequest",
+        "createOk"
+      ],
+      "resources": [
+        "ApiResource::make"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/users.ts",
+        "method": "emailCaptcha",
+        "httpMethod": "POST",
+        "returnType": "EmailCaptchaResult",
+        "path": "/users/me/email-captcha"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/users.php",
+      "method": "POST",
+      "path": "/users/me/email",
+      "controller": "User.Profile",
+      "action": "email",
+      "name": "users.me.email",
+      "meta": {
+        "name": "绑定邮箱",
+        "group": "用户",
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Profile.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createBadRequest",
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/users.ts",
+        "method": "updateEmail",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/users/me/email"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/files.php",
+      "method": "GET",
+      "path": "/users/me/files",
+      "controller": "Storage.Upload",
+      "action": "listOwn",
+      "name": "files.listOwn",
+      "meta": {
+        "name": "我的文件",
+        "group": "文件",
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\Storage\\Upload.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "FileResource::paginate"
+      ],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/files.ts",
+        "method": "listOwn",
+        "httpMethod": "GET",
+        "returnType": "ListResult<LCFile>",
+        "path": "/users/me/files"
+      }
+    },
+    {
+      "file": "apps/backend/app/api/route/users.php",
+      "method": "POST",
+      "path": "/users/me/password",
+      "controller": "User.Profile",
+      "action": "password",
+      "name": "users.me.password",
+      "meta": {
+        "name": "修改密码",
+        "group": "用户",
+        "public": false
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "hasContract": false,
+      "controllerFile": "apps\\backend\\app\\api\\controller\\User\\Profile.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createBadRequest",
+        "createNoContent"
+      ],
+      "resources": [],
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "issues": [],
+      "sdk": {
+        "file": "packages/sdk/src/resources/users.ts",
+        "method": "updatePassword",
+        "httpMethod": "POST",
+        "returnType": "void",
+        "path": "/users/me/password"
+      }
+    }
+  ]
+}

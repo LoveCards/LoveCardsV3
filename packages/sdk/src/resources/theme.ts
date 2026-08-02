@@ -15,8 +15,8 @@ export class Theme extends BaseResource {
     return this._get<ThemeItem[]>('/theme/list')
   }
 
-  upload(formData: FormData): Promise<void> {
-    return this._post<void>('/theme/upload', formData, {
+  upload(formData: FormData): Promise<ThemeItem> {
+    return this._post<ThemeItem>('/theme/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   }

@@ -13,3 +13,9 @@ export interface CaptchaMeta {
 export interface CaptchaConfig {
   [key: string]: any
 }
+
+export interface CaptchaInstallResult {
+  group: string
+  seeded: string[]
+  skipped: string[]
+}

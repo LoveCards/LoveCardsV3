@@ -119,7 +119,8 @@ export interface ListResult<T> {
 }
 
 export interface CreateResult {
-  id: string | null
+  id: number
+  status?: number
 }
 
 export interface PaginationInfo {

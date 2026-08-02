@@ -1,5 +1,6 @@
 import { BaseResource } from './base'
 import type { StorageDriver, StorageMeta, StorageChannel, ChannelStats } from '../types/storage'
+import type { ConfigRegisterResult } from '../types/config'
 
 export class Storage extends BaseResource {
   types(): Promise<StorageDriver[]> {
@@ -10,8 +11,8 @@ export class Storage extends BaseResource {
     return this._get<StorageMeta>(`/storage/${type}/meta`)
   }
 
-  install(): Promise<void> {
-    return this._post<void>('/storage/install')
+  install(): Promise<ConfigRegisterResult[]> {
+    return this._post<ConfigRegisterResult[]>('/storage/install')
   }
 
   channels(): Promise<StorageChannel[]> {

@@ -100,9 +100,9 @@ class ApiResponse
         return self::setHeader($result);
     }
 
-    public static function createCreated(): Response
+    public static function createCreated($data = null, string $message = '鍒涘缓鎴愬姛'): Response
     {
-        $result = Response::create(self::wrap(null, '鍒涘缓鎴愬姛'), 'json')->code(self::HTTP_CREATED);
+        $result = Response::create(self::wrap($data, $message), 'json')->code(self::HTTP_CREATED);
         return self::setHeader($result);
     }
 

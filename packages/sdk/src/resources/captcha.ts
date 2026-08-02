@@ -1,5 +1,6 @@
 import { BaseResource } from './base'
 import type { CaptchaDriver, CaptchaMeta, CaptchaConfig } from '../types/captcha'
+import type { ConfigRegisterResult } from '../types/config'
 
 export class Captcha extends BaseResource {
   types(): Promise<CaptchaDriver[]> {
@@ -14,8 +15,8 @@ export class Captcha extends BaseResource {
     return this._get<CaptchaMeta>(`/captcha/${slug}/meta`)
   }
 
-  install(): Promise<void> {
-    return this._post<void>('/captcha/install')
+  install(): Promise<ConfigRegisterResult[]> {
+    return this._post<ConfigRegisterResult[]>('/captcha/install')
   }
 
   config(): Promise<CaptchaConfig> {

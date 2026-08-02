@@ -14,3 +14,9 @@ export interface ConfigRegisterParams {
   group: string
   schema: Record<string, any>
 }
+
+export interface ConfigRegisterResult {
+  group: string
+  seeded: string[]
+  skipped: string[]
+}

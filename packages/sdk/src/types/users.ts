@@ -69,6 +69,10 @@ export interface EmailCaptchaParams {
   email: string
 }
 
+export interface EmailCaptchaResult {
+  expiresIn: number
+}
+
 export interface CaptchaSendParams {
   account: string
   scene?: string
