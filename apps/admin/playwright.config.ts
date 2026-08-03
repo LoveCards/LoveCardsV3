@@ -8,14 +8,14 @@ const chromeExecutable = process.env.PLAYWRIGHT_CHROME_PATH || 'C:\\Program File
 
 export default defineConfig({
   testDir: './e2e',
-  outputDir: 'apps/admin/test-results',
+  outputDir: './test-results',
   fullyParallel: false,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'list',
   use: {
-    baseURL: `${adminOrigin}/admin`,
+    baseURL: `${adminOrigin}/admin/`,
     channel: 'chrome',
     launchOptions: { executablePath: chromeExecutable },
     trace: 'retain-on-failure',

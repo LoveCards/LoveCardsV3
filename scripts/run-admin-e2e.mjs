@@ -41,12 +41,17 @@ function start(command, args, env) {
 }
 
 function stop(child) {
-  if (!child || child.killed) return
+  if (!child || child.killed) return Promise.resolve()
   if (process.platform === 'win32') {
-    spawn('taskkill.exe', ['/pid', String(child.pid), '/t', '/f'], { windowsHide: true, stdio: 'ignore' })
-  } else {
-    child.kill('SIGTERM')
+    return new Promise((resolve) => {
+      const killer = spawn('taskkill.exe', ['/pid', String(child.pid), '/t', '/f'], { windowsHide: true, stdio: 'ignore' })
+      killer.once('error', resolve)
+      killer.once('exit', resolve)
+    })
   }
+  if (child.exitCode !== null) return Promise.resolve()
+  child.kill('SIGTERM')
+  return new Promise((resolve) => child.once('exit', resolve))
 }
 
 async function waitFor(url, timeout = 120_000) {
@@ -63,12 +68,19 @@ async function waitFor(url, timeout = 120_000) {
 }
 
 if (await listening(backendPort) || await listening(adminPort)) {
-  throw new Error('Refusing E2E tests while ports 6001 or 3000 are already in use')
+  throw new Error(`Refusing E2E tests while ports ${backendPort} or ${adminPort} are already in use`)
 }
 
 const php = process.env.PHP_BINARY || 'C:\\software\\phpstudy_pro\\Extensions\\php\\php8.0.2nts\\php.exe'
 const dbEnv = {
   LOVECARDS_E2E_DB_NAME: database,
+  DATABASE_DRIVER: 'mysql',
+  DATABASE_TYPE: 'mysql',
+  DATABASE_HOSTNAME: process.env.LOVECARDS_E2E_DB_HOST || '127.0.0.1',
+  DATABASE_HOSTPORT: process.env.LOVECARDS_E2E_DB_PORT || '3306',
+  DATABASE_DATABASE: database,
+  DATABASE_USERNAME: process.env.LOVECARDS_E2E_DB_USER || 'root',
+  DATABASE_PASSWORD: process.env.LOVECARDS_E2E_DB_PASSWORD || '',
   PHP_DATABASE_DRIVER: 'mysql',
   PHP_DATABASE_TYPE: 'mysql',
   PHP_DATABASE_HOSTNAME: process.env.LOVECARDS_E2E_DB_HOST || '127.0.0.1',
@@ -76,6 +88,7 @@ const dbEnv = {
   PHP_DATABASE_DATABASE: database,
   PHP_DATABASE_USERNAME: process.env.LOVECARDS_E2E_DB_USER || 'root',
   PHP_DATABASE_PASSWORD: process.env.LOVECARDS_E2E_DB_PASSWORD || '',
+  APP_DEBUG: 'true',
   PHP_APP_DEBUG: 'true',
 }
 
@@ -112,8 +125,7 @@ try {
   })
   exitCode = await new Promise((resolve) => test.once('exit', (code) => resolve(code ?? 1)))
 } finally {
-  stop(admin)
-  stop(backend)
+  await Promise.all([stop(admin), stop(backend)])
   const cleanup = start(php, ['scripts/bootstrap-e2e.php', 'drop', database], {
     LOVECARDS_E2E_DB_HOST: process.env.LOVECARDS_E2E_DB_HOST || '127.0.0.1',
     LOVECARDS_E2E_DB_PORT: process.env.LOVECARDS_E2E_DB_PORT || '3306',

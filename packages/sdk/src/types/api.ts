@@ -5,6 +5,7 @@ export interface LCClientConfig {
   tokenStore?: TokenStore
   defaultRole?: string
   timeout?: number
+  /** 仅在携带认证 Token 的请求返回 401 时触发；登录失败等公开请求由调用方处理。 */
   onAuthError?: () => void
   debug?: boolean
   retry?: RetryConfig

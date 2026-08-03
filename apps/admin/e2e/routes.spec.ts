@@ -23,7 +23,7 @@ test('all fixed admin routes load without page errors', async ({ page }) => {
   page.on('pageerror', (error) => pageErrors.push(error.message))
 
   for (const route of routes) {
-    await page.goto(route, { waitUntil: 'domcontentloaded' })
+    await page.goto(`.${route}`, { waitUntil: 'domcontentloaded' })
     await expect(page).not.toHaveURL(/\/admin\/login$/)
     await expect(page.locator('body')).not.toContainText('权限不足')
   }

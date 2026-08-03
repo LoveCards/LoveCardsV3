@@ -16,7 +16,7 @@ setup('authenticate admin', async ({ page }) => {
     throw new Error('Missing LOVECARDS_E2E_ADMIN_ACCOUNT and LOVECARDS_E2E_ADMIN_PASSWORD')
   }
 
-  await page.goto('/login')
+  await page.goto('./login')
   await page.getByLabel('账号或邮箱').fill(account)
   await page.getByLabel('密码').fill(password)
   await page.getByRole('button', { name: '登录' }).click()

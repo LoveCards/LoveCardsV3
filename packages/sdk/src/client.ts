@@ -82,7 +82,14 @@ export function createClient(config: LCClientConfig): LCClient {
     (response) => response,
     (error) => {
       const apiErr = ApiError.from(error)
-      if (apiErr.status === 401 && config.onAuthError) config.onAuthError()
+      const headers = error?.config?.headers
+      const sentWithToken = Boolean(
+        headers?.Authorization
+        || headers?.authorization
+        || headers?.['X-Token']
+        || headers?.['x-token'],
+      )
+      if (apiErr.status === 401 && sentWithToken && config.onAuthError) config.onAuthError()
       return Promise.reject(apiErr)
     }
   )
