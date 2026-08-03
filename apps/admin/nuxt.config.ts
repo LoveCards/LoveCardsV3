@@ -1,28 +1,35 @@
 // nuxt.config.ts
 export default defineNuxtConfig({
     app: {
-        baseURL: '/admin',
+        baseURL: '/admin/',
         head: {
             title: 'LoveCards Admin',
         }
     },
     runtimeConfig: {
         public: {
-            gitSha: 'localdev'
+            gitSha: 'localdev',
+            apiBase: '/api',
+            matomoEnabled: false,
         }
     },
     nitro: {
         devProxy: {
             "/api": {
-                target: "http://127.0.0.1:8001/api",
+                target: process.env.NUXT_API_PROXY_TARGET || "http://127.0.0.1:6001/api",
                 changeOrigin: true,
                 prependPath: true,
             },
         },
     },
     ssr: false,
+    experimental: {
+        appManifest: false,
+    },
     compatibilityDate: "2024-11-01",
-    devtools: { enabled: true },
+    // The devtools manifest is not served correctly under the /admin baseURL
+    // in the local Nuxt server and turns the shell into a 404 error page.
+    devtools: { enabled: false },
     build: {
         transpile: ['@lovecards/sdk'],
     },
@@ -35,7 +42,7 @@ export default defineNuxtConfig({
     },
     modules: [// 直接使用模块名称
         'vuetify-nuxt-module', 'vuetify-notifier/nuxt', '@pinia/nuxt', "vuetify-notifier", "@nuxt/scripts"],
-    scripts: {
+    scripts: process.env.NUXT_PUBLIC_MATOMO_ENABLED === 'true' ? {
         registry: {
             matomoAnalytics: {
                 matomoUrl: 'https://matomo.fatda.cn',
@@ -44,7 +51,7 @@ export default defineNuxtConfig({
                 enableLinkTracking: true,
             }
         }
-    },
+    } : undefined,
     notifier: {
         /* module specific options */
         position: 'bottom-right', // 可选配置项

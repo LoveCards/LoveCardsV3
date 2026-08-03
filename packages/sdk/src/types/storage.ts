@@ -5,6 +5,7 @@ export interface StorageDriver {
 }
 
 export interface StorageMeta {
+  [key: string]: any
   type: string
   name: string
   icon: string

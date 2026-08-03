@@ -158,7 +158,7 @@
 <script setup lang="ts">
 import { useApi } from '~/lib/api';
 import type { FilesBatchMethod } from '@lovecards/sdk';
-import CommonUtils from "~/api/utils/common";
+import CommonUtils from "~/utils/common";
 import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
 import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
 import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";

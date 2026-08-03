@@ -193,18 +193,19 @@ Module/
 
 ## 9. 验证命令
 
-在仓库根目录运行：
+在仓库根目录运行唯一提交门禁：
 
 ```powershell
-npm.cmd run check:architecture
+npm.cmd run check
 ```
 
-后端测试入口：
+只需快速重跑后端行为测试时使用：
 
 ```powershell
-cd apps/backend
-composer test
+npm.cmd run test:backend
 ```
+
+该入口会自动发现 `apps/backend/tests/**/*.php`，新增测试文件不需要在 Composer 中手工注册。完整分层、契约生成和隔离集成测试要求见 `docs/engineering/BACKEND-TESTING.md`。
 
 新增模块至少应验证：
 

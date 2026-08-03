@@ -32,7 +32,7 @@ class BatchOperationInput extends Validate
     protected $rule = [
         'id'  => 'number',
         'ids'  => 'arrayJson',
-        'method'  => 'alpha',
+        'method'  => 'alphaDash',
     ];
 
     protected $message = [

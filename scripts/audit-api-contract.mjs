@@ -2,13 +2,11 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 
 const root = process.cwd()
-const routeRoot = path.join(root, 'apps/backend/app/api/route')
 const controllerRoot = path.join(root, 'apps/backend/app/api/controller')
 const reportDir = path.join(root, 'contracts')
-const sdkResourceRoot = path.join(root, 'packages/sdk/src/resources')
+const sdkResourceRoot = path.join(root, 'packages/sdk/src/generated/resources')
+const routeManifestPath = path.join(root, 'contracts', 'route-manifest.json')
 const checkOnly = process.argv.includes('--check')
-
-const routeFiles = (await fs.readdir(routeRoot)).filter((name) => name.endsWith('.php')).sort()
 
 function normalizePath(prefix, route) {
   const value = [prefix, route].filter(Boolean).join('/').replaceAll(/\/+/g, '/').replace(/^\//, '').replace(/\/$/, '')
@@ -132,12 +130,6 @@ function normalizeSdkPath(value) {
 async function readSdkMethods() {
   const methods = []
   const files = (await fs.readdir(sdkResourceRoot)).filter((name) => name.endsWith('.ts')).sort()
-  if (files.length <= 1) {
-    try {
-      const previous = JSON.parse(await fs.readFile(path.join(reportDir, 'api-inventory.json'), 'utf8'))
-      if (Array.isArray(previous.sdkMethods) && previous.sdkMethods.length) return previous.sdkMethods
-    } catch {}
-  }
   for (const file of files) {
     const source = await fs.readFile(path.join(sdkResourceRoot, file), 'utf8')
     const methodRe = /^\s{2}(\w+)\(([^)]*)\):\s*Promise<(.+?)>\s*\{\s*return\s+this\._(get|post|put|patch|delete)<(.+?)>\((['"`])([^'"`]+)\6/gm
@@ -152,14 +144,43 @@ async function readSdkMethods() {
 const sdkMethods = await readSdkMethods()
 const sdkByEndpoint = new Map(sdkMethods.map((method) => [`${method.httpMethod} ${method.path}`, method]))
 
-const routes = []
-for (const file of routeFiles) {
-  const source = await fs.readFile(path.join(routeRoot, file), 'utf8')
-  routes.push(...parseRoutes(source, `apps/backend/app/api/route/${file}`))
-}
+const routeManifest = JSON.parse(await fs.readFile(routeManifestPath, 'utf8'))
+const routes = (routeManifest.routes || []).map((route) => ({
+  ...route,
+  file: route.source || 'apps/backend/app/api/route',
+  middleware: (route.middleware || []).map((value) => String(value).split('\\').at(-1)),
+  hasContract: Boolean(route.contract),
+  contractSource: route.contract ? 'backend' : 'legacy',
+}))
 routes.sort((a, b) => `${a.path}:${a.method}:${a.name}`.localeCompare(`${b.path}:${b.method}:${b.name}`))
 
-for (const route of routes) Object.assign(route, await inspectController(route))
+for (const route of routes) {
+  if (!route.contract) {
+    Object.assign(route, await inspectController(route))
+    continue
+  }
+
+  const request = route.contract.request
+  const response = route.contract.response || {}
+  const resource = typeof response.resource === 'string'
+    ? response.resource.split('\\').at(-1)
+    : null
+  const operation = response.shape === 'paginated'
+    ? 'paginate'
+    : response.shape === 'collection' ? 'collection' : 'make'
+
+  Object.assign(route, {
+    controllerFile: `apps/backend/app/api/controller/${route.controller.replaceAll('.', '/')}.php`,
+    missingController: false,
+    validates: request !== null,
+    responses: response.status === 204 ? ['createNoContent'] : response.status === 201 ? ['createCreated'] : ['createOk'],
+    resources: resource ? [`${resource}::${operation}`] : [],
+    validators: request?.validate ? [request.validate] : [],
+    validatorScene: request?.scene || null,
+    hasApiResponse: true,
+    multipleSuccessShapes: false,
+  })
+}
 
 const seen = new Map()
 for (const route of routes) {

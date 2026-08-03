@@ -3,22 +3,22 @@ import type * as ApiTypes from '../../types'
 
 /** Generated from contracts/openapi.json. Do not edit manually. */
 export class Session extends BaseResource {
-  login(data: ApiTypes.LoginParams): Promise<ApiTypes.LoginResult> {
+  captcha(data: { account: string }): Promise<void> {
+    return this._post<void>("/session/captcha", data)
+  }
+  check(): Promise<Record<string, unknown>> {
+    return this._get<Record<string, unknown>>("/session/check")
+  }
+  guest(data?: Record<string, unknown>): Promise<ApiTypes.LoginResult> {
+    return this._post<ApiTypes.LoginResult>("/session/guest", data)
+  }
+  login(data: { account: string; password: string }): Promise<ApiTypes.LoginResult> {
     return this._post<ApiTypes.LoginResult>("/session/login", data)
   }
-  register(data: ApiTypes.RegisterParams): Promise<ApiTypes.LoginResult> {
+  logout(data?: Record<string, unknown>): Promise<void> {
+    return this._post<void>("/session/logout", data)
+  }
+  register(data: { account: string; password: string; code?: string }): Promise<ApiTypes.LoginResult> {
     return this._post<ApiTypes.LoginResult>("/session/register", data)
-  }
-  guest(): Promise<ApiTypes.LoginResult> {
-    return this._post<ApiTypes.LoginResult>("/session/guest")
-  }
-  logout(): Promise<void> {
-    return this._post<void>("/session/logout")
-  }
-  captcha(params: ApiTypes.CaptchaSendParams): Promise<void> {
-    return this._post<void>("/session/captcha", params)
-  }
-  check(): Promise<ApiTypes.CheckResult> {
-    return this._get<ApiTypes.CheckResult>("/session/check")
   }
 }

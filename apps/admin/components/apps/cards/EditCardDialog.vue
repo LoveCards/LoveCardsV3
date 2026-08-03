@@ -111,8 +111,7 @@ const getTableData = () => {
 
 //页面参数
 const tagsStore = useTagsStore();
-const ViewTags = ref([] as any);
-ViewTags.value = tagsStore.tags;
+const ViewTags = computed(() => Array.isArray(tagsStore.tags) ? tagsStore.tags : []);
 
 //Model
 //对话框状态
@@ -178,10 +177,24 @@ const CardImgData = ref({
 	edit: [] as any,
 	origin: [] as any
 });
+const normalizeArrayField = (value: any): any[] => {
+	if (Array.isArray(value)) {
+		return value;
+	}
+	if (typeof value === 'string' && value.trim() !== '') {
+		try {
+			const parsed = JSON.parse(value);
+			return Array.isArray(parsed) ? parsed : [];
+		} catch {
+			return [];
+		}
+	}
+	return [];
+};
 const getCard = () => {
 	CardData.value = { edit: {} as any, origin: {} as any };
   client.cards.get(editCardData.value.id).then((card) => {
-		card.tags = card.tags ? JSON.parse(card.tags as any) : [];
+		card.tags = normalizeArrayField(card.tags);
 		CardData.value.edit = CommonUtils.deepClone(card);
 		CardData.value.origin = CommonUtils.deepClone(card);
 	});
@@ -193,7 +206,7 @@ const getCardImages = () => {
 	// 当前卡片图片通过 card.pictures 字段获取
 	const card = CardData.value.edit;
 	if (card.pictures) {
-		const pictures = typeof card.pictures === 'string' ? JSON.parse(card.pictures) : card.pictures;
+		const pictures = normalizeArrayField(card.pictures);
 		CardImgData.value.edit = pictures.map((url: string, i: number) => ({ id: i + 1, url }));
 		CardImgData.value.origin = CommonUtils.deepClone(CardImgData.value.edit);
 	}

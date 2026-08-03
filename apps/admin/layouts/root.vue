@@ -24,6 +24,9 @@
 		</template>
 
 		<v-app-bar-title>LoveCards</v-app-bar-title>
+		<template v-slot:append>
+			<v-btn icon="mdi-logout" aria-label="退出登录" @click="logout"></v-btn>
+		</template>
 
 		<!-- <template v-slot:append>
 			<v-btn icon="mdi-heart"></v-btn>
@@ -57,38 +60,38 @@
 				<v-list-item title="标签" value="tags" to="/apps/tags"></v-list-item>
 			</v-list-group>
 
-			<v-list-group value="rbac" v-if="superAdminStatus">
+			<v-list-group value="rbac" v-if="canAccess('/apps/users') || canAccess('/apps/roles') || canAccess('/apps/permissions')">
 				<template v-slot:activator="{ props }">
 					<v-list-item v-bind="props" prepend-icon="mdi-shield-lock-outline" title="RBAC"></v-list-item>
 				</template>
-				<v-list-item title="用户管理" value="users" to="/apps/users"></v-list-item>
-				<v-list-item title="角色管理" value="roles" to="/apps/roles"></v-list-item>
-				<v-list-item title="权限管理" value="permissions" to="/apps/permissions"></v-list-item>
+				<v-list-item v-if="canAccess('/apps/users')" title="用户管理" value="users" to="/apps/users"></v-list-item>
+				<v-list-item v-if="canAccess('/apps/roles')" title="角色管理" value="roles" to="/apps/roles"></v-list-item>
+				<v-list-item v-if="canAccess('/apps/permissions')" title="权限管理" value="permissions" to="/apps/permissions"></v-list-item>
 			</v-list-group>
 
-			<v-list-group value="storage" v-if="superAdminStatus">
+			<v-list-group value="storage" v-if="canAccess('/apps/storage/files') || canAccess('/apps/storage/config')">
 				<template v-slot:activator="{ props }">
 					<v-list-item v-bind="props" prepend-icon="mdi-cloud-outline" title="存储"></v-list-item>
 				</template>
-				<v-list-item title="文件管理" value="files" to="/apps/storage/files"></v-list-item>
-				<v-list-item title="存储配置" value="config" to="/apps/storage/config"></v-list-item>
+				<v-list-item v-if="canAccess('/apps/storage/files')" title="文件管理" value="files" to="/apps/storage/files"></v-list-item>
+				<v-list-item v-if="canAccess('/apps/storage/config')" title="存储配置" value="config" to="/apps/storage/config"></v-list-item>
 			</v-list-group>
 
-			<v-list-group value="sender" v-if="superAdminStatus">
+			<v-list-group value="sender" v-if="canAccess('/apps/sender/config')">
 				<template v-slot:activator="{ props }">
 					<v-list-item v-bind="props" prepend-icon="mdi-email-outline" title="发信"></v-list-item>
 				</template>
-				<v-list-item title="发信配置" value="sender-config" to="/apps/sender/config"></v-list-item>
+				<v-list-item v-if="canAccess('/apps/sender/config')" title="发信配置" value="sender-config" to="/apps/sender/config"></v-list-item>
 			</v-list-group>
 
-			<v-list-group value="captcha" v-if="superAdminStatus">
+			<v-list-group value="captcha" v-if="canAccess('/apps/captcha/config')">
 				<template v-slot:activator="{ props }">
 					<v-list-item v-bind="props" prepend-icon="mdi-shield-check-outline" title="验证"></v-list-item>
 				</template>
-				<v-list-item title="验证配置" value="captcha-config" to="/apps/captcha/config"></v-list-item>
+				<v-list-item v-if="canAccess('/apps/captcha/config')" title="验证配置" value="captcha-config" to="/apps/captcha/config"></v-list-item>
 			</v-list-group>
 
-			<v-list-group value="settings" v-if="superAdminStatus">
+			<v-list-group value="settings" v-if="canAccess('/apps/system') || canAccess('/apps/view') || canAccess('/apps/updata')">
 				<template v-slot:activator="{ props }">
 					<v-list-item v-bind="props" title="设置">
 						<template v-slot:prepend>
@@ -99,9 +102,9 @@
 						</template>
 					</v-list-item>
 				</template>
-				<v-list-item title="系统" value="system" to="/apps/system"></v-list-item>
-				<v-list-item title="外观" value="undefined" to="/apps/view"></v-list-item>
-				<v-list-item title="更新" value="updata" to="/apps/updata">
+				<v-list-item v-if="canAccess('/apps/system')" title="系统" value="system" to="/apps/system"></v-list-item>
+				<v-list-item v-if="canAccess('/apps/view')" title="外观" value="undefined" to="/apps/view"></v-list-item>
+				<v-list-item v-if="canAccess('/apps/updata')" title="更新" value="updata" to="/apps/updata">
 					<template v-if="updataStatus" v-slot:append>
 						<v-badge color="accent" content="新版本" inline></v-badge>
 					</template>
@@ -125,7 +128,7 @@
 			© 2025 <a href="https://lovecards.cn" class="text-decoration-none text-accent">LoveCards</a>.
 			GPL-3.0 license — Crafted by <a href="https://github.com/zhiguai"
 				class="text-decoration-none text-accent">吃纸怪</a>.
-			{{ $config.public.gitSha }}
+			{{ runtimeConfig.public.gitSha }}
 		</v-footer>
 	</v-main>
 </template>
@@ -134,10 +137,13 @@
 import NotificationNotifier from '~/components/public/NotificationNotifier.vue';
 import { useUserStore } from '~/stores/userStore';
 import { useSystemStore } from '~/stores/api/admin/systemStore';
+import { useApi } from '~/lib/api';
 //import { useTheme,useDisplay } from 'vuetify'
 const theme = useTheme();
 const { mobile } = useDisplay();
 const userStore = useUserStore();
+const runtimeConfig = useRuntimeConfig();
+const client = useApi();
 
 
 // 桌面端与移动端
@@ -145,12 +151,11 @@ const containerWidth = computed(() => (mobile.value ? undefined : '82%'));
 const drawerDefault = mobile.value ? false : true
 
 //获取用户信息
-const superAdminStatus = ref(false);
 const userInfo = ref({} as any);
 const setUserInfo = async () => {
 	userInfo.value = userStore.userInfo;
-	superAdminStatus.value = userStore.isRoot();
 }
+const canAccess = (path: string) => userStore.canAccessPath(path);
 
 //抽屉栏控制
 const drawer = ref(drawerDefault);
@@ -161,6 +166,18 @@ const toggleDrawer = () => {
 //返回主站
 const goHome = () => {
 	window.location.href = '/';
+}
+
+const logout = async () => {
+	try {
+		await client.session.logout();
+	} catch {
+		// The local session must still be cleared if the server token is expired.
+	} finally {
+		client.clearToken();
+		userStore.reset();
+		await navigateTo('/login');
+	}
 }
 
 //版本更新提示

@@ -140,7 +140,7 @@ const testConnection = () => {
 	testResult.value = null;
 	client.storage.testChannel({ channel: slug })
 		.then((result) => {
-			testResult.value = result;
+			testResult.value = { success: result.success, message: result.message ?? '测试完成' };
 		})
 		.catch(() => {
 			testResult.value = { success: false, message: '测试失败' };

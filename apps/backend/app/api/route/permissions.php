@@ -7,10 +7,12 @@ use app\api\middleware\PermissionCheck;
 
 Route::group('permissions', function () {
     Route::get('', 'Rbac.Permissions/list')
-        ->name('permissions.list')
+    ->name('permissions.list')
+    ->setOption('contract', ['request' => ['validate' => 'app\\shared\\Transport\\Validation\\PaginationInput', 'scene' => 'Defult'], 'response' => ['resource' => 'app\\modules\\Platform\\Rbac\\Transport\\Api\\PermissionResource', 'shape' => 'paginated', 'status' => 200]])
         ->setOption('meta', ['name' => '权限列表', 'group' => '权限', 'caps' => ['permissions.read']]);
 
     Route::get('all', 'Rbac.Permissions/all')
-        ->name('permissions.all')
+    ->name('permissions.all')
+    ->setOption('contract', ['request' => null, 'response' => ['resource' => 'app\\modules\\Platform\\Rbac\\Transport\\Api\\PermissionResource', 'shape' => 'collection', 'status' => 200]])
         ->setOption('meta', ['name' => '全部权限', 'group' => '权限', 'caps' => ['permissions.read']]);
 })->middleware(JwtAuthCheck::class)->middleware(PermissionCheck::class);

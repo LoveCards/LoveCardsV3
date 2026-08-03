@@ -212,30 +212,38 @@ const TableBatchOptions = [
 
 //标签
 const tagsStore = useTagsStore();
-const Tags = ref([] as any);
-Tags.value = tagsStore.tags;
+const Tags = computed(() => Array.isArray(tagsStore.tags) ? tagsStore.tags : []);
+const normalizeTagIds = (tags: any): any[] => {
+  if (Array.isArray(tags)) {
+    return tags;
+  }
+  if (typeof tags === 'string' && tags.trim() !== '') {
+    try {
+      const parsed = JSON.parse(tags);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+};
 //标签数据预处理
 const renderTags = (tags: any) => {
-  if (tags !== undefined && tags !== null) {
-    tags = JSON.parse(tags);
-    let TagsValue: string[] = [];
-    tags.forEach((item: any) => {
-      const tag = Tags.value.find((tagItem: any) => tagItem.id === item);
-      if (tag) {
-        TagsValue.push('#' + tag.id + ' ' + tag.name);
-      }
-    });
-    return TagsValue;
-  } else {
-    return [];
-  }
+  const TagsValue: string[] = [];
+  normalizeTagIds(tags).forEach((item: any) => {
+    const tag = Tags.value.find((tagItem: any) => Number(tagItem.id) === Number(item));
+    if (tag) {
+      TagsValue.push('#' + tag.id + ' ' + tag.name);
+    }
+  });
+  return TagsValue;
 };
 
 const tableItems = ref([{} as any]);//表格数据
 const tableSelected = ref([]);//批量选择数据
 const tablePaginationLength = ref(0);//页面数量
 const tableCurrentPage = ref(1);//当前页面
-const tableSearchValue = ref(undefined);//搜索值
+const tableSearchValue = ref<string | undefined>(undefined);//搜索值
 const tableSearchFilter = ref({});//搜索过滤器
 
 //每页项目数量
@@ -295,12 +303,16 @@ const openSearchUserDialog = () => {
 
 //获取表格数据
 const getTableData = () => {
-  const params = {
+  const searchValue = typeof tableSearchValue.value === 'string' ? tableSearchValue.value.trim() : tableSearchValue.value;
+  const params: any = {
     page: tableCurrentPage.value,
     list_rows: tableListRows.value,
-    search_value: tableSearchValue.value,
     ...tableSearchFilter.value
   };
+  if (searchValue) {
+    params.search_value = searchValue;
+    params.search_like = 2;
+  }
   client.cards.list(params)
     .then((result) => {
       tableCurrentPage.value = result.pagination!.currentPage;

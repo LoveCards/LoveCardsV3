@@ -7,5 +7,6 @@ use app\api\middleware\PermissionCheck;
 
 Route::get('dashboard', 'System.Dashboard/index')
     ->name('dashboard.index')
+    ->setOption('contract', ['request' => null, 'response' => ['resource' => 'app\\modules\\Operations\\Dashboard\\Transport\\Api\\DashboardResource', 'shape' => 'item', 'status' => 200]])
     ->setOption('meta', ['name' => '控制台', 'group' => '系统', 'caps' => ['dashboard.read']])
     ->middleware(JwtAuthCheck::class)->middleware(PermissionCheck::class);

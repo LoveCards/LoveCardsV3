@@ -42,12 +42,13 @@ npm ci
 ## 常用命令
 
 ```bash
-npm run check                 # 架构约束 + SDK 类型检查
+npm run check                 # 后端行为 + 架构 + API 契约 + SDK/后台类型门禁
 npm run build:sdk             # 构建 SDK
 npm run build:admin           # 先构建 SDK，再构建管理端
 npm run build                 # 构建 SDK、同步主题产物、构建管理端
 npm run dev:admin             # 启动管理端开发服务
 npm run test:sdk:integration  # 需要已运行且准备好测试数据的后端
+npm run test:admin:e2e        # 使用隔离临时数据库运行后台浏览器测试
 ```
 
 后端依赖仍在 `apps/backend` 内由 Composer 管理：
@@ -65,4 +66,4 @@ php think run
 3. 先记录行为基线和验证方法，再改代码。
 4. 提交前至少运行 `npm run check`，并按影响范围执行构建或后端检查。
 
-跨模块依赖、Auth 目标切片和已知债务见 `docs/engineering/ARCHITECTURE.md`。Git 规则见 `docs/engineering/GIT-WORKFLOW.md`。
+后端测试分层、接口新增测试流程和后端到 SDK 的质量门禁见 `docs/engineering/BACKEND-TESTING.md`。跨模块依赖、Auth 目标切片和已知债务见 `docs/engineering/ARCHITECTURE.md`。Git 规则见 `docs/engineering/GIT-WORKFLOW.md`。

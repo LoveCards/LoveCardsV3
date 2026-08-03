@@ -39,7 +39,7 @@ class System extends BaseController
             ]);
 
             $result = @file_get_contents($url, false, $ctx);
-            return $result === false ? [] : $result;
+            return $result === false ? '' : $result;
         }, CacheManager::TTL_LONG * 3);
     }
 
@@ -60,7 +60,9 @@ class System extends BaseController
             ]);
 
             $result = @file_get_contents($url, false, $ctx);
-            return $result === false ? [] : json_decode($result, true);
+            if ($result === false) return [];
+            $decoded = json_decode($result, true);
+            return is_array($decoded) ? $decoded : [];
         }, CacheManager::TTL_LONG * 3);
     }
 }

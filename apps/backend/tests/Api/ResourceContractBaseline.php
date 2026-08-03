@@ -7,6 +7,9 @@ require $root . '/app/shared/Transport/Http/Resource.php';
 require $root . '/app/shared/Transport/Http/PublicResource.php';
 require $root . '/app/shared/Transport/Http/ApiResource.php';
 require $root . '/app/modules/Content/Cards/Transport/Api/CardResource.php';
+require $root . '/app/modules/Content/Cards/Transport/Api/CardCreatedResource.php';
+require $root . '/app/modules/Content/Likes/Transport/Api/LikeCountResource.php';
+require $root . '/app/modules/Content/Comments/Transport/Api/CommentCreatedResource.php';
 require $root . '/app/modules/Platform/Rbac/Transport/Api/RoleResource.php';
 require $root . '/app/modules/Platform/Rbac/Transport/Api/PermissionResource.php';
 require $root . '/app/modules/Platform/Files/Transport/Api/FileResource.php';
@@ -25,6 +28,9 @@ require $root . '/app/modules/Platform/User/Transport/Api/ProfileResource.php';
 use app\shared\Transport\Http\ApiResource;
 use app\modules\Platform\Auth\Transport\Api\AuthResource;
 use app\modules\Content\Cards\Transport\Api\CardResource;
+use app\modules\Content\Cards\Transport\Api\CardCreatedResource;
+use app\modules\Content\Comments\Transport\Api\CommentCreatedResource;
+use app\modules\Content\Likes\Transport\Api\LikeCountResource;
 use app\modules\Platform\Config\Transport\Api\ConfigResource;
 use app\modules\Platform\Files\Transport\Api\DirectUploadResource;
 use app\modules\Platform\Files\Transport\Api\FileResource;
@@ -137,6 +143,13 @@ $test('auth resource only returns token', static function () use ($assertSame): 
 $test('api resource preserves simple command result arrays', static function () use ($assertSame): void {
     $assertSame(['id' => 123], ApiResource::make(['id' => 123]));
     $assertSame(['cards.read', 'cards.create'], ApiResource::make(['cards.read', 'cards.create']));
+});
+
+$test('command resources expose stable fields only', static function () use ($assertSame, $assertFalse): void {
+    $assertSame(['id' => 7, 'status' => 1], CardCreatedResource::make(['id' => 7, 'status' => 1, 'secret' => 'x']));
+    $assertSame(['likes' => 3], LikeCountResource::make(['likes' => 3, 'ip' => '127.0.0.1']));
+    $assertSame(['id' => 8, 'status' => 0], CommentCreatedResource::make(['id' => 8, 'status' => 0, 'password' => 'x']));
+    $assertFalse((CardCreatedResource::schema()['additionalProperties'] ?? true));
 });
 
 $test('config resource preserves dynamic config groups', static function () use ($assertSame): void {

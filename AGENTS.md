@@ -71,17 +71,16 @@ Route Meta -> Controller -> Validate -> Business -> Resource -> ApiResponse
 所有改动至少执行：
 
 ```bash
-npm run check:architecture
+npm run check
 ```
 
-JavaScript/TypeScript 改动执行：
+涉及构建产物或管理端运行时的改动再执行：
 
 ```bash
-npm run check
 npm run build:admin
 ```
 
-后端改动至少执行 Composer 校验和受影响 PHP 文件语法检查；涉及 API 行为时补充对应集成验证。无法运行的检查必须在交付说明中明确列出。
+后端改动还要对受影响 PHP 文件执行语法检查；涉及真实 API 行为时，在一次性本地环境运行 SDK 集成测试，发版候选再运行管理端 E2E。完整分层和安全限制见 `docs/engineering/BACKEND-TESTING.md`。无法运行的检查必须在交付说明中明确列出。
 
 ## Git
 

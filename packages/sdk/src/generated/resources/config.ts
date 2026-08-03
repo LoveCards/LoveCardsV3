@@ -3,28 +3,28 @@ import type * as ApiTypes from '../../types'
 
 /** Generated from contracts/openapi.json. Do not edit manually. */
 export class Config extends BaseResource {
+  delete(): Promise<void> {
+    return this._delete<void>("/config")
+  }
   list(): Promise<ApiTypes.ConfigData> {
     return this._get<ApiTypes.ConfigData>("/config")
   }
-  update(data: ApiTypes.ConfigUpdateParams): Promise<void> {
+  update(data?: Record<string, unknown>): Promise<void> {
     return this._post<void>("/config", data)
   }
-  groups(): Promise<string[]> {
-    return this._get<string[]>("/config/groups")
+  groups(): Promise<ApiTypes.ConfigData> {
+    return this._get<ApiTypes.ConfigData>("/config/groups")
   }
-  init(): Promise<ApiTypes.ConfigData> {
-    return this._post<ApiTypes.ConfigData>("/config/init")
+  init(data?: Record<string, unknown>): Promise<ApiTypes.ConfigData> {
+    return this._post<ApiTypes.ConfigData>("/config/init", data)
   }
-  register(data: ApiTypes.ConfigRegisterParams): Promise<ApiTypes.ConfigRegisterResult> {
-    return this._post<ApiTypes.ConfigRegisterResult>("/config/register", data)
+  deleteKey(): Promise<void> {
+    return this._delete<void>("/config/key")
   }
-  reload(): Promise<void> {
-    return this._post<void>("/config/reload")
+  register(data?: Record<string, unknown>): Promise<ApiTypes.ConfigData> {
+    return this._post<ApiTypes.ConfigData>("/config/register", data)
   }
-  deleteGroup(group: string): Promise<void> {
-    return this._delete<void>("/config", group)
-  }
-  deleteKey(group: string, key: string): Promise<void> {
-    return this._delete<void>("/config/key", key)
+  reload(data?: Record<string, unknown>): Promise<void> {
+    return this._post<void>("/config/reload", data)
   }
 }

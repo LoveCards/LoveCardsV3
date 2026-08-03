@@ -47,6 +47,39 @@ function schemaForType(type) {
   return { type: 'object', additionalProperties: true }
 }
 
+function tsTypeForSchema(schema) {
+  if (!schema) return 'unknown'
+  if (schema.type === 'integer' || schema.type === 'number') return 'number'
+  if (schema.type === 'boolean') return 'boolean'
+  if (schema.type === 'string') return schema.format === 'binary' ? 'File' : 'string'
+  if (schema.type === 'array') return `${tsTypeForSchema(schema.items)}[]`
+  if (schema.type === 'object') {
+    const fields = Object.entries(schema.properties || {}).map(([name, value]) => `${name}${(schema.required || []).includes(name) ? '' : '?'}: ${tsTypeForSchema(value)}`)
+    return fields.length ? `{ ${fields.join('; ')} }` : 'Record<string, unknown>'
+  }
+  return 'unknown'
+}
+
+function resourceType(route) {
+  const operation = route.name || ''
+  const operationTypes = {
+    'files.upload': 'UploadResult', 'files.cleanup': '{ cleaned: number }',
+    'captcha.types': 'CaptchaDriver[]', 'captcha.drivers': 'CaptchaDriver[]', 'captcha.meta': 'CaptchaDriver', 'captcha.config': 'CaptchaConfig',
+    'sender.types': 'SenderType[]', 'sender.meta': 'SenderMeta', 'sender.channels': 'SenderChannel[]', 'sender.templates': 'SenderTemplate[]', 'sender.testChannel': '{ success: boolean; message?: string }',
+    'storage.types': 'StorageDriver[]', 'storage.meta': 'StorageMeta', 'storage.channels': 'StorageChannel[]', 'storage.channelStats': 'ChannelStats', 'storage.testChannel': '{ success: boolean; message?: string }',
+    'theme.publicConfig': 'ThemeConfigData', 'theme.updateConfig': 'void', 'roles.getRoleCapabilities': 'string[]', 'permissions.all': 'CapabilityItem[]',
+  }
+  if (operationTypes[operation]) return operationTypes[operation]
+  const short = route.response?.resource || ''
+  const base = short.replace(/Resource$/, '')
+  const map = { Card: 'Card', CardCreated: 'CreateResult', Comment: 'Comment', CommentCreated: 'CreateResult', Tag: 'Tag', User: 'User', Profile: 'User', Role: 'Role', Permission: 'CapabilityItem', Like: 'Like', LikeCount: '{ likes: number }', File: 'LCFile', DirectUpload: 'DirectUploadResult', Auth: 'LoginResult', Theme: 'ThemeItem', Config: 'ConfigData', Dashboard: 'DashboardData', System: 'SystemUpdateInfo', Sender: 'SenderMeta', Storage: 'StorageMeta', Captcha: 'CaptchaMeta' }
+  const item = map[base] || 'Record<string, unknown>'
+  if (route.response?.shape === 'collection') return `${item}[]`
+  if (route.response?.shape === 'paginated') return `ListResult<${item}>`
+  if (route.response?.shape === 'void') return 'void'
+  return item
+}
+
 function fieldSchema(rule) {
   const rules = Array.isArray(rule) ? rule : String(rule || '').split('|')
   const text = rules.join('|')
@@ -91,9 +124,10 @@ function validationSchema(route) {
 }
 
 function operationSchema(route) {
-  const sdkType = route.response?.sdkReturnType || route.sdk?.returnType || 'unknown'
+  const sdkType = resourceType(route)
   const resourceSchema = Object.values(backendMetadata.resources || {}).find((item) => item.shortName === route.response?.resource)?.schema
-  let schema = resourceSchema && resourceSchema['x-runtime-schema'] !== true ? resourceSchema : schemaForType(sdkType)
+  const explicit = new Set(['files.upload', 'files.cleanup', 'captcha.types', 'captcha.drivers', 'captcha.meta', 'captcha.config', 'sender.types', 'sender.meta', 'sender.channels', 'sender.templates', 'sender.testChannel', 'storage.types', 'storage.meta', 'storage.channels', 'storage.channelStats', 'storage.testChannel', 'theme.publicConfig', 'theme.updateConfig', 'roles.getRoleCapabilities', 'permissions.all'])
+  let schema = explicit.has(route.name) ? schemaForType(sdkType) : (resourceSchema && resourceSchema['x-runtime-schema'] !== true ? resourceSchema : schemaForType(sdkType))
   if (route.response?.shape === 'collection') schema = { type: 'array', items: schema || {} }
   if (route.response?.shape === 'paginated') {
     const itemType = sdkType.match(/^ListResult<(.+)>$/)?.[1]
@@ -105,10 +139,15 @@ function operationSchema(route) {
 
 function requestSchema(route) {
   const pathParams = [...route.path.matchAll(/:([^/]+)/g)].map((match) => match[1])
-  const params = route.sdk?.params || ''
-  const formData = /FormData/.test(params) || route.action === 'upload'
+  const formData = route.action === 'upload'
   const schema = validationSchema(route) || { type: 'object', additionalProperties: true }
-  schema['x-typescript-params'] = params || null
+  for (const name of pathParams) {
+    delete schema.properties?.[name]
+    if (Array.isArray(schema.required)) schema.required = schema.required.filter((value) => value !== name)
+  }
+  const fields = Object.entries(schema.properties || {}).map(([name, value]) => `${name}${(schema.required || []).includes(name) ? '' : '?'}: ${tsTypeForSchema(value)}`)
+  const params = formData ? 'formData: FormData' : (['GET', 'DELETE'].includes(route.method) ? `params?: { ${fields.join('; ')} }` : (fields.length ? `data: { ${fields.join('; ')} }` : 'data?: Record<string, unknown>'))
+  schema['x-typescript-params'] = params
   if (formData) schema['x-content-type'] = 'multipart/form-data'
   if (pathParams.length) schema['x-path-params'] = pathParams
   if (route.validators?.length) {
@@ -133,6 +172,7 @@ for (const route of inventory.routes) {
     'x-response-shape': route.response?.shape || 'dynamic',
     'x-validators': route.validators || [],
     'x-validator-scene': route.validatorScene || null,
+    'x-contract-source': route.contractSource || 'legacy',
     'x-validation-rules': Object.fromEntries((route.validators || []).map((validator) => [validator, backendMetadata.validators?.[validator]?.rules || null])),
     responses: {},
   }

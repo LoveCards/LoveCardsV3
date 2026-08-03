@@ -46,10 +46,10 @@ class ApiResponse
      */
     public static function wrap($data = null, string $message = '鎿嶄綔鎴愬姛'): array
     {
-        $data = Resource::normalize($data);
+        $data = self::normalizeEncoding(Resource::normalize($data));
         $result = [
             'success' => true,
-            'message' => $message,
+            'message' => self::normalizeEncoding($message),
             'timestamp' => date('c'),
         ];
 
@@ -83,11 +83,36 @@ class ApiResponse
             'success' => false,
             'error' => [
                 'code'    => $code,
-                'message' => $message,
-                'details' => $detail,
+                'message' => self::normalizeEncoding($message),
+                'details' => self::normalizeEncoding($detail),
             ],
             'timestamp' => date('c'),
         ];
+    }
+
+    /**
+     * The legacy PHP sources contain UTF-8 Chinese text that was decoded and
+     * re-encoded once during the migration. Convert response strings back to
+     * their intended UTF-8 representation at the single transport boundary.
+     */
+    private static function normalizeEncoding($value)
+    {
+        if (is_string($value)) {
+            $converted = @iconv('UTF-8', 'GBK//IGNORE', $value);
+            // A converted value is safe only when the GBK byte sequence also
+            // forms valid UTF-8. This distinguishes legacy mojibake from
+            // already-correct Chinese strings and prevents malformed JSON.
+            if ($converted !== false && $converted !== '' && @preg_match('//u', $converted) === 1) {
+                return $converted;
+            }
+            return $value;
+        }
+        if (is_array($value)) {
+            foreach ($value as $key => $item) {
+                $value[$key] = self::normalizeEncoding($item);
+            }
+        }
+        return $value;
     }
 
     // 鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹?
@@ -103,6 +128,12 @@ class ApiResponse
     public static function createCreated($data = null, string $message = '鍒涘缓鎴愬姛'): Response
     {
         $result = Response::create(self::wrap($data, $message), 'json')->code(self::HTTP_CREATED);
+        return self::setHeader($result);
+    }
+
+    public static function createAccepted($data = null, string $message = ''): Response
+    {
+        $result = Response::create(self::wrap($data, $message), 'json')->code(self::HTTP_ACCEPTED);
         return self::setHeader($result);
     }
 

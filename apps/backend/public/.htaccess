@@ -2,6 +2,17 @@
   Options +FollowSymlinks -Multiviews
   RewriteEngine On
 
+  # Apache/FastCGI may drop Authorization before PHP receives the request.
+  # Preserve it for clients that use the standard Bearer header.
+  RewriteCond %{HTTP:Authorization} ^(.+)$
+  RewriteRule ^ - [E=HTTP_AUTHORIZATION:%1]
+
+  # Admin is a static SPA. Keep its assets and API requests out of PHP routing.
+  RewriteRule ^admin/?$ admin/index.html [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^admin/.*$ admin/index.html [L]
+
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteRule ^(.*)$ index.php?s=/$1 [QSA,L]

@@ -26,6 +26,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -48,7 +49,7 @@
                     "data": {
                       "type": "object",
                       "additionalProperties": true,
-                      "x-typescript-type": "CaptchaMeta"
+                      "x-typescript-type": "CaptchaDriver"
                     }
                   },
                   "required": [
@@ -92,7 +93,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "slug: string",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "slug"
               ]
@@ -117,6 +118,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -171,7 +173,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -198,6 +200,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -262,7 +265,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -289,6 +292,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -317,7 +321,7 @@
                           "additionalProperties": true
                         }
                       },
-                      "x-typescript-type": "ConfigRegisterResult[]"
+                      "x-typescript-type": "CaptchaMeta[]"
                     }
                   },
                   "required": [
@@ -353,7 +357,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": null
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -381,6 +385,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -445,7 +450,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -465,9 +470,21 @@
         "x-middleware": [],
         "x-resource": "CardResource",
         "x-response-shape": "paginated",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\shared\\Transport\\Validation\\PaginationInput"
+        ],
+        "x-validator-scene": "Defult",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\shared\\Transport\\Validation\\PaginationInput": {
+            "page": "number",
+            "list_rows": "number|between:1,1000",
+            "search_keys": "searchKey",
+            "search_like": "number|between:0,2",
+            "order_desc": "stringBool",
+            "order_key": "alphaDash"
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -572,8 +589,35 @@
             "required": false,
             "schema": {
               "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "list_rows": {
+                  "type": "number"
+                },
+                "search_keys": {
+                  "type": "string"
+                },
+                "search_like": {
+                  "type": "number"
+                },
+                "order_desc": {
+                  "type": "boolean"
+                },
+                "order_key": {
+                  "type": "string"
+                },
+                "search_value": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": true,
-              "x-typescript-params": "params?: CardsListParams"
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; search_value?: string }",
+              "x-validators": [
+                "app\\shared\\Transport\\Validation\\PaginationInput"
+              ],
+              "x-validator-scene": "Defult"
             }
           }
         ]
@@ -595,12 +639,13 @@
           "CaptchaCheck",
           "PermissionCheck"
         ],
-        "x-resource": "ApiResource",
-        "x-response-shape": "dynamic",
+        "x-resource": "CardCreatedResource",
+        "x-response-shape": "item",
         "x-validators": [
           "app\\modules\\Content\\Cards\\Transport\\Api\\Cards"
         ],
         "x-validator-scene": "create",
+        "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Content\\Cards\\Transport\\Api\\Cards": {
             "id": "number",
@@ -638,7 +683,19 @@
                     },
                     "data": {
                       "type": "object",
-                      "additionalProperties": true,
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "status"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "status": {
+                          "type": "integer"
+                        }
+                      },
                       "x-typescript-type": "CreateResult"
                     }
                   },
@@ -695,7 +752,7 @@
                   "content"
                 ],
                 "additionalProperties": true,
-                "x-typescript-params": "data: CreateCardParams",
+                "x-typescript-params": "data: { pictures?: unknown[]; content: string; cover?: string; tags?: unknown[] }",
                 "x-validators": [
                   "app\\modules\\Content\\Cards\\Transport\\Api\\Cards"
                 ],
@@ -729,6 +786,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -766,7 +824,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "id: number",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "id"
               ]
@@ -789,6 +847,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -896,7 +955,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "id: number",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "id"
               ]
@@ -927,7 +986,8 @@
         "x-validators": [
           "app\\modules\\Content\\Cards\\Transport\\Api\\Cards"
         ],
-        "x-validator-scene": "create",
+        "x-validator-scene": "allUpdate",
+        "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Content\\Cards\\Transport\\Api\\Cards": {
             "id": "number",
@@ -989,6 +1049,24 @@
                     "type": "string",
                     "maxLength": 5000
                   },
+                  "is_top": {
+                    "type": "number"
+                  },
+                  "status": {
+                    "type": "number"
+                  },
+                  "user_id": {
+                    "type": "number"
+                  },
+                  "comments": {
+                    "type": "number"
+                  },
+                  "views": {
+                    "type": "number"
+                  },
+                  "good": {
+                    "type": "number"
+                  },
                   "cover": {
                     "type": "string",
                     "format": "uri",
@@ -998,18 +1076,16 @@
                     "type": "array"
                   }
                 },
-                "required": [
-                  "content"
-                ],
+                "required": [],
                 "additionalProperties": true,
-                "x-typescript-params": "id: number, data: UpdateCardParams",
+                "x-typescript-params": "data: { pictures?: unknown[]; content?: string; is_top?: number; status?: number; user_id?: number; comments?: number; views?: number; good?: number; cover?: string; tags?: unknown[] }",
                 "x-path-params": [
                   "id"
                 ],
                 "x-validators": [
                   "app\\modules\\Content\\Cards\\Transport\\Api\\Cards"
                 ],
-                "x-validator-scene": "create"
+                "x-validator-scene": "allUpdate"
               }
             }
           }
@@ -1030,9 +1106,21 @@
         "x-middleware": [],
         "x-resource": "CommentResource",
         "x-response-shape": "paginated",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\shared\\Transport\\Validation\\PaginationInput"
+        ],
+        "x-validator-scene": "Defult",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\shared\\Transport\\Validation\\PaginationInput": {
+            "page": "number",
+            "list_rows": "number|between:1,1000",
+            "search_keys": "searchKey",
+            "search_like": "number|between:0,2",
+            "order_desc": "stringBool",
+            "order_key": "alphaDash"
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -1099,11 +1187,38 @@
             "required": false,
             "schema": {
               "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "list_rows": {
+                  "type": "number"
+                },
+                "search_keys": {
+                  "type": "string"
+                },
+                "search_like": {
+                  "type": "number"
+                },
+                "order_desc": {
+                  "type": "boolean"
+                },
+                "order_key": {
+                  "type": "string"
+                },
+                "search_value": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": true,
-              "x-typescript-params": "cardId: number, params?: PaginationParams",
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; search_value?: string }",
               "x-path-params": [
                 "id"
-              ]
+              ],
+              "x-validators": [
+                "app\\shared\\Transport\\Validation\\PaginationInput"
+              ],
+              "x-validator-scene": "Defult"
             }
           }
         ]
@@ -1125,12 +1240,13 @@
           "CaptchaCheck",
           "PermissionCheck"
         ],
-        "x-resource": "ApiResource",
-        "x-response-shape": "dynamic",
+        "x-resource": "CommentCreatedResource",
+        "x-response-shape": "item",
         "x-validators": [
           "app\\modules\\Content\\Comments\\Transport\\Api\\Comments"
         ],
         "x-validator-scene": "create",
+        "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Content\\Comments\\Transport\\Api\\Comments": {
             "id": "number",
@@ -1166,7 +1282,19 @@
                     },
                     "data": {
                       "type": "object",
-                      "additionalProperties": true,
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "status"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "status": {
+                          "type": "integer"
+                        }
+                      },
                       "x-typescript-type": "CreateResult"
                     }
                   },
@@ -1215,9 +1343,6 @@
                   "parent_id": {
                     "type": "number"
                   },
-                  "id": {
-                    "type": "number"
-                  },
                   "content": {
                     "type": "string",
                     "maxLength": 140
@@ -1227,11 +1352,10 @@
                   }
                 },
                 "required": [
-                  "id",
                   "content"
                 ],
                 "additionalProperties": true,
-                "x-typescript-params": "cardId: number, data: CreateCommentParams",
+                "x-typescript-params": "data: { parent_id?: number; content: string; data?: unknown[] }",
                 "x-path-params": [
                   "id"
                 ],
@@ -1263,10 +1387,11 @@
           "CaptchaCheck",
           "PermissionCheck"
         ],
-        "x-resource": "ApiResource",
-        "x-response-shape": "dynamic",
+        "x-resource": "LikeCountResource",
+        "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -1288,7 +1413,15 @@
                     },
                     "data": {
                       "type": "object",
-                      "additionalProperties": true,
+                      "additionalProperties": false,
+                      "required": [
+                        "likes"
+                      ],
+                      "properties": {
+                        "likes": {
+                          "type": "integer"
+                        }
+                      },
                       "x-typescript-type": "{ likes: number }"
                     }
                   },
@@ -1334,7 +1467,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": "id: number",
+                "x-typescript-params": "data?: Record<string, unknown>",
                 "x-path-params": [
                   "id"
                 ]
@@ -1364,8 +1497,13 @@
           "app\\shared\\Transport\\Validation\\BatchOperationInput"
         ],
         "x-validator-scene": "BatchOperate",
+        "x-contract-source": "backend",
         "x-validation-rules": {
-          "app\\shared\\Transport\\Validation\\BatchOperationInput": null
+          "app\\shared\\Transport\\Validation\\BatchOperationInput": {
+            "id": "number",
+            "ids": "arrayJson",
+            "method": "alphaDash"
+          }
         },
         "responses": {
           "204": {
@@ -1394,8 +1532,20 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "properties": {
+                  "ids": {
+                    "type": "array"
+                  },
+                  "method": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "ids",
+                  "method"
+                ],
                 "additionalProperties": true,
-                "x-typescript-params": "data: BatchOperateParams",
+                "x-typescript-params": "data: { ids: unknown[]; method: string }",
                 "x-validators": [
                   "app\\shared\\Transport\\Validation\\BatchOperationInput"
                 ],
@@ -1422,6 +1572,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -1525,7 +1676,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -1545,9 +1696,21 @@
         "x-middleware": [],
         "x-resource": "CardResource",
         "x-response-shape": "paginated",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\shared\\Transport\\Validation\\PaginationInput"
+        ],
+        "x-validator-scene": "Defult",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\shared\\Transport\\Validation\\PaginationInput": {
+            "page": "number",
+            "list_rows": "number|between:1,1000",
+            "search_keys": "searchKey",
+            "search_like": "number|between:0,2",
+            "order_desc": "stringBool",
+            "order_key": "alphaDash"
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -1652,8 +1815,35 @@
             "required": false,
             "schema": {
               "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "list_rows": {
+                  "type": "number"
+                },
+                "search_keys": {
+                  "type": "string"
+                },
+                "search_like": {
+                  "type": "number"
+                },
+                "order_desc": {
+                  "type": "boolean"
+                },
+                "order_key": {
+                  "type": "string"
+                },
+                "search_value": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": true,
-              "x-typescript-params": "params?: CardsListParams"
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; search_value?: string }",
+              "x-validators": [
+                "app\\shared\\Transport\\Validation\\PaginationInput"
+              ],
+              "x-validator-scene": "Defult"
             }
           }
         ]
@@ -1679,9 +1869,21 @@
         ],
         "x-resource": "CommentResource",
         "x-response-shape": "paginated",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\shared\\Transport\\Validation\\PaginationInput"
+        ],
+        "x-validator-scene": "Defult",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\shared\\Transport\\Validation\\PaginationInput": {
+            "page": "number",
+            "list_rows": "number|between:1,1000",
+            "search_keys": "searchKey",
+            "search_like": "number|between:0,2",
+            "order_desc": "stringBool",
+            "order_key": "alphaDash"
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -1744,8 +1946,35 @@
             "required": false,
             "schema": {
               "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "list_rows": {
+                  "type": "number"
+                },
+                "search_keys": {
+                  "type": "string"
+                },
+                "search_like": {
+                  "type": "number"
+                },
+                "order_desc": {
+                  "type": "boolean"
+                },
+                "order_key": {
+                  "type": "string"
+                },
+                "search_value": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": true,
-              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_value?: string }"
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; search_value?: string }",
+              "x-validators": [
+                "app\\shared\\Transport\\Validation\\PaginationInput"
+              ],
+              "x-validator-scene": "Defult"
             }
           }
         ]
@@ -1773,6 +2002,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -1810,7 +2040,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "id: number",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "id"
               ]
@@ -1833,6 +2063,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -1895,7 +2126,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "id: number",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "id"
               ]
@@ -1925,7 +2156,8 @@
         "x-validators": [
           "app\\modules\\Content\\Comments\\Transport\\Api\\Comments"
         ],
-        "x-validator-scene": "create",
+        "x-validator-scene": "allUpdate",
+        "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Content\\Comments\\Transport\\Api\\Comments": {
             "id": "number",
@@ -1978,10 +2210,22 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "parent_id": {
+                  "aid": {
                     "type": "number"
                   },
-                  "id": {
+                  "pid": {
+                    "type": "number"
+                  },
+                  "is_top": {
+                    "type": "number"
+                  },
+                  "status": {
+                    "type": "number"
+                  },
+                  "user_id": {
+                    "type": "number"
+                  },
+                  "good": {
                     "type": "number"
                   },
                   "content": {
@@ -1992,19 +2236,15 @@
                     "type": "array"
                   }
                 },
-                "required": [
-                  "id",
-                  "content"
-                ],
                 "additionalProperties": true,
-                "x-typescript-params": "id: number, data: { content: string }",
+                "x-typescript-params": "data: { aid?: number; pid?: number; is_top?: number; status?: number; user_id?: number; good?: number; content?: string; data?: unknown[] }",
                 "x-path-params": [
                   "id"
                 ],
                 "x-validators": [
                   "app\\modules\\Content\\Comments\\Transport\\Api\\Comments"
                 ],
-                "x-validator-scene": "create"
+                "x-validator-scene": "allUpdate"
               }
             }
           }
@@ -2031,8 +2271,13 @@
           "app\\shared\\Transport\\Validation\\BatchOperationInput"
         ],
         "x-validator-scene": "BatchOperate",
+        "x-contract-source": "backend",
         "x-validation-rules": {
-          "app\\shared\\Transport\\Validation\\BatchOperationInput": null
+          "app\\shared\\Transport\\Validation\\BatchOperationInput": {
+            "id": "number",
+            "ids": "arrayJson",
+            "method": "alphaDash"
+          }
         },
         "responses": {
           "204": {
@@ -2061,8 +2306,20 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "properties": {
+                  "ids": {
+                    "type": "array"
+                  },
+                  "method": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "ids",
+                  "method"
+                ],
                 "additionalProperties": true,
-                "x-typescript-params": "data: BatchOperateParams",
+                "x-typescript-params": "data: { ids: unknown[]; method: string }",
                 "x-validators": [
                   "app\\shared\\Transport\\Validation\\BatchOperationInput"
                 ],
@@ -2094,6 +2351,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -2123,7 +2381,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "group: string"
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -2148,6 +2406,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -2206,7 +2465,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -2231,6 +2490,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -2260,7 +2520,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": "data: ConfigUpdateParams"
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -2288,6 +2548,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -2308,11 +2569,9 @@
                       "format": "date-time"
                     },
                     "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "string"
-                      },
-                      "x-typescript-type": "string[]"
+                      "type": "object",
+                      "additionalProperties": true,
+                      "x-typescript-type": "ConfigData"
                     }
                   },
                   "required": [
@@ -2348,7 +2607,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -2375,6 +2634,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -2433,7 +2693,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": null
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -2461,6 +2721,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -2490,7 +2751,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "group: string, key: string"
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -2517,6 +2778,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -2539,7 +2801,7 @@
                     "data": {
                       "type": "object",
                       "additionalProperties": true,
-                      "x-typescript-type": "ConfigRegisterResult"
+                      "x-typescript-type": "ConfigData"
                     }
                   },
                   "required": [
@@ -2575,7 +2837,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": "data: ConfigRegisterParams"
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -2603,6 +2865,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -2632,7 +2895,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": null
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -2660,6 +2923,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -2733,7 +2997,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -2759,9 +3023,21 @@
         ],
         "x-resource": "FileResource",
         "x-response-shape": "paginated",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\shared\\Transport\\Validation\\PaginationInput"
+        ],
+        "x-validator-scene": "Defult",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\shared\\Transport\\Validation\\PaginationInput": {
+            "page": "number",
+            "list_rows": "number|between:1,1000",
+            "search_keys": "searchKey",
+            "search_like": "number|between:0,2",
+            "order_desc": "stringBool",
+            "order_key": "alphaDash"
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -2895,8 +3171,35 @@
             "required": false,
             "schema": {
               "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "list_rows": {
+                  "type": "number"
+                },
+                "search_keys": {
+                  "type": "string"
+                },
+                "search_like": {
+                  "type": "number"
+                },
+                "order_desc": {
+                  "type": "boolean"
+                },
+                "order_key": {
+                  "type": "string"
+                },
+                "search_value": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": true,
-              "x-typescript-params": "params?: { page?: number; list_rows?: number }"
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; search_value?: string }",
+              "x-validators": [
+                "app\\shared\\Transport\\Validation\\PaginationInput"
+              ],
+              "x-validator-scene": "Defult"
             }
           }
         ]
@@ -2922,9 +3225,11 @@
         "x-validators": [
           "app\\modules\\Platform\\Files\\Transport\\Api\\Files"
         ],
-        "x-validator-scene": null,
+        "x-validator-scene": "upload",
+        "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Platform\\Files\\Transport\\Api\\Files": {
+            "ids": "arrayJson",
             "scene": "in:card,comment,avatar,direct",
             "ref_type": "max:32",
             "ref_id": "integer",
@@ -2952,78 +3257,8 @@
                     },
                     "data": {
                       "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "integer"
-                        },
-                        "hash": {
-                          "type": "string"
-                        },
-                        "channel_slug": {
-                          "type": "string"
-                        },
-                        "user_id": {
-                          "type": "integer"
-                        },
-                        "is_public": {
-                          "type": "integer"
-                        },
-                        "scene": {
-                          "type": "string"
-                        },
-                        "ref_type": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "ref_id": {
-                          "type": "integer",
-                          "nullable": true
-                        },
-                        "original_name": {
-                          "type": "string"
-                        },
-                        "file_path": {
-                          "type": "string"
-                        },
-                        "path": {
-                          "type": "string"
-                        },
-                        "file_url": {
-                          "type": "string"
-                        },
-                        "url": {
-                          "type": "string"
-                        },
-                        "file_size": {
-                          "type": "integer"
-                        },
-                        "size": {
-                          "type": "integer"
-                        },
-                        "file_ext": {
-                          "type": "string"
-                        },
-                        "mime_type": {
-                          "type": "string"
-                        },
-                        "status": {
-                          "type": "integer"
-                        },
-                        "upload_status": {
-                          "type": "integer"
-                        },
-                        "created_at": {
-                          "type": "string"
-                        },
-                        "updated_at": {
-                          "type": "string"
-                        },
-                        "expire_at": {
-                          "type": "string",
-                          "nullable": true
-                        }
-                      },
-                      "x-typescript-type": "LCFile"
+                      "additionalProperties": true,
+                      "x-typescript-type": "UploadResult"
                     }
                   },
                   "required": [
@@ -3082,29 +3317,21 @@
                       1
                     ]
                   },
-                  "method": {
-                    "type": "string",
-                    "enum": [
-                      "approve",
-                      "ban",
-                      "toggle_public",
-                      "trash",
-                      "restore",
-                      "hard_delete"
-                    ]
-                  },
                   "file": {
                     "type": "string",
                     "format": "binary"
                   }
                 },
+                "required": [
+                  "scene"
+                ],
                 "additionalProperties": true,
                 "x-typescript-params": "formData: FormData",
                 "x-content-type": "multipart/form-data",
                 "x-validators": [
                   "app\\modules\\Platform\\Files\\Transport\\Api\\Files"
                 ],
-                "x-validator-scene": null
+                "x-validator-scene": "upload"
               }
             }
           }
@@ -3133,6 +3360,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -3170,7 +3398,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "id: number",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "id"
               ]
@@ -3199,6 +3427,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -3335,7 +3564,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "id: number",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "id"
               ]
@@ -3365,6 +3594,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -3403,7 +3633,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": "id: number",
+                "x-typescript-params": "data?: Record<string, unknown>",
                 "x-path-params": [
                   "id"
                 ]
@@ -3438,9 +3668,11 @@
         "x-validators": [
           "app\\modules\\Platform\\Files\\Transport\\Api\\Files"
         ],
-        "x-validator-scene": null,
+        "x-validator-scene": "batch",
+        "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Platform\\Files\\Transport\\Api\\Files": {
+            "ids": "arrayJson",
             "scene": "in:card,comment,avatar,direct",
             "ref_type": "max:32",
             "ref_id": "integer",
@@ -3476,28 +3708,8 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "scene": {
-                    "type": "string",
-                    "enum": [
-                      "card",
-                      "comment",
-                      "avatar",
-                      "direct"
-                    ]
-                  },
-                  "ref_type": {
-                    "type": "string",
-                    "maxLength": 32
-                  },
-                  "ref_id": {
-                    "type": "number"
-                  },
-                  "is_public": {
-                    "type": "string",
-                    "enum": [
-                      0,
-                      1
-                    ]
+                  "ids": {
+                    "type": "array"
                   },
                   "method": {
                     "type": "string",
@@ -3511,12 +3723,16 @@
                     ]
                   }
                 },
+                "required": [
+                  "ids",
+                  "method"
+                ],
                 "additionalProperties": true,
-                "x-typescript-params": "data: FilesBatchOperateParams",
+                "x-typescript-params": "data: { ids: unknown[]; method: string }",
                 "x-validators": [
                   "app\\modules\\Platform\\Files\\Transport\\Api\\Files"
                 ],
-                "x-validator-scene": null
+                "x-validator-scene": "batch"
               }
             }
           }
@@ -3544,6 +3760,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -3621,7 +3838,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": "data?: { filename?: string; size?: number; mime?: string }"
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -3649,6 +3866,7 @@
         "x-response-shape": "dynamic",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -3707,7 +3925,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -3734,6 +3952,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -3814,7 +4033,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "params?: PaginationParams"
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -3841,6 +4060,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -3878,7 +4098,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "id: number",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "id"
               ]
@@ -3906,9 +4126,21 @@
         ],
         "x-resource": "PermissionResource",
         "x-response-shape": "paginated",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\shared\\Transport\\Validation\\PaginationInput"
+        ],
+        "x-validator-scene": "Defult",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\shared\\Transport\\Validation\\PaginationInput": {
+            "page": "number",
+            "list_rows": "number|between:1,1000",
+            "search_keys": "searchKey",
+            "search_like": "number|between:0,2",
+            "order_desc": "stringBool",
+            "order_key": "alphaDash"
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -3982,8 +4214,35 @@
             "required": false,
             "schema": {
               "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "list_rows": {
+                  "type": "number"
+                },
+                "search_keys": {
+                  "type": "string"
+                },
+                "search_like": {
+                  "type": "number"
+                },
+                "order_desc": {
+                  "type": "boolean"
+                },
+                "order_key": {
+                  "type": "string"
+                },
+                "search_value": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": true,
-              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_value?: string }"
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; search_value?: string }",
+              "x-validators": [
+                "app\\shared\\Transport\\Validation\\PaginationInput"
+              ],
+              "x-validator-scene": "Defult"
             }
           }
         ]
@@ -4010,6 +4269,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -4032,19 +4292,11 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "type": "object",
-                        "properties": {
-                          "capability": {
-                            "type": "string"
-                          },
-                          "description": {
-                            "type": "string"
-                          }
-                        },
-                        "required": [
-                          "capability",
-                          "description"
-                        ]
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": true
+                        }
                       },
                       "x-typescript-type": "CapabilityItem[]"
                     }
@@ -4082,7 +4334,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -4107,9 +4359,21 @@
         ],
         "x-resource": "RoleResource",
         "x-response-shape": "paginated",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\shared\\Transport\\Validation\\PaginationInput"
+        ],
+        "x-validator-scene": "Defult",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\shared\\Transport\\Validation\\PaginationInput": {
+            "page": "number",
+            "list_rows": "number|between:1,1000",
+            "search_keys": "searchKey",
+            "search_like": "number|between:0,2",
+            "order_desc": "stringBool",
+            "order_key": "alphaDash"
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -4201,8 +4465,35 @@
             "required": false,
             "schema": {
               "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "list_rows": {
+                  "type": "number"
+                },
+                "search_keys": {
+                  "type": "string"
+                },
+                "search_like": {
+                  "type": "number"
+                },
+                "order_desc": {
+                  "type": "boolean"
+                },
+                "order_key": {
+                  "type": "string"
+                },
+                "search_value": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": true,
-              "x-typescript-params": "params?: { page?: number; list_rows?: number }"
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; search_value?: string }",
+              "x-validators": [
+                "app\\shared\\Transport\\Validation\\PaginationInput"
+              ],
+              "x-validator-scene": "Defult"
             }
           }
         ]
@@ -4229,6 +4520,7 @@
           "app\\modules\\Platform\\Rbac\\Transport\\Api\\Roles"
         ],
         "x-validator-scene": "create",
+        "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Platform\\Rbac\\Transport\\Api\\Roles": {
             "id": "number",
@@ -4259,7 +4551,7 @@
                     "data": {
                       "type": "object",
                       "additionalProperties": true,
-                      "x-typescript-type": "{ id: string }"
+                      "x-typescript-type": "Record<string, unknown>"
                     }
                   },
                   "required": [
@@ -4311,7 +4603,7 @@
                   "slug"
                 ],
                 "additionalProperties": true,
-                "x-typescript-params": "data: CreateRoleParams",
+                "x-typescript-params": "data: { description?: string; name: string; slug: string }",
                 "x-validators": [
                   "app\\modules\\Platform\\Rbac\\Transport\\Api\\Roles"
                 ],
@@ -4343,6 +4635,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -4380,7 +4673,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "id: number",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "id"
               ]
@@ -4408,6 +4701,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -4502,7 +4796,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "id: number",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "id"
               ]
@@ -4532,6 +4826,7 @@
           "app\\modules\\Platform\\Rbac\\Transport\\Api\\Roles"
         ],
         "x-validator-scene": "update",
+        "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Platform\\Rbac\\Transport\\Api\\Roles": {
             "id": "number",
@@ -4587,16 +4882,11 @@
                   "description": {
                     "type": "string",
                     "maxLength": 255
-                  },
-                  "id": {
-                    "type": "number"
                   }
                 },
-                "required": [
-                  "id"
-                ],
+                "required": [],
                 "additionalProperties": true,
-                "x-typescript-params": "id: number, data: UpdateRoleParams",
+                "x-typescript-params": "data: { name?: string; slug?: string; description?: string }",
                 "x-path-params": [
                   "id"
                 ],
@@ -4631,6 +4921,7 @@
         "x-response-shape": "dynamic",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -4699,7 +4990,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "id: number",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "id"
               ]
@@ -4729,6 +5020,7 @@
           "app\\modules\\Platform\\Rbac\\Transport\\Api\\Roles"
         ],
         "x-validator-scene": "assignCapabilities",
+        "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Platform\\Rbac\\Transport\\Api\\Roles": {
             "id": "number",
@@ -4775,19 +5067,15 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "id": {
-                    "type": "number"
-                  },
                   "capabilities": {
                     "type": "array"
                   }
                 },
                 "required": [
-                  "id",
                   "capabilities"
                 ],
                 "additionalProperties": true,
-                "x-typescript-params": "id: number, data: AssignCapabilitiesParams",
+                "x-typescript-params": "data: { capabilities: unknown[] }",
                 "x-path-params": [
                   "id"
                 ],
@@ -4822,6 +5110,7 @@
         "x-response-shape": "dynamic",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -4844,7 +5133,7 @@
                     "data": {
                       "type": "object",
                       "additionalProperties": true,
-                      "x-typescript-type": "ReseedResult"
+                      "x-typescript-type": "Record<string, unknown>"
                     }
                   },
                   "required": [
@@ -4880,7 +5169,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": null
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -4908,6 +5197,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -4974,7 +5264,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "type: string",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "type"
               ]
@@ -5004,6 +5294,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -5068,7 +5359,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -5095,6 +5386,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -5123,7 +5415,7 @@
                           "additionalProperties": true
                         }
                       },
-                      "x-typescript-type": "ConfigRegisterResult[]"
+                      "x-typescript-type": "SenderMeta[]"
                     }
                   },
                   "required": [
@@ -5159,7 +5451,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": null
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -5187,6 +5479,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -5251,7 +5544,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -5278,6 +5571,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -5336,7 +5630,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": "data: { channel: string; to?: string }"
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -5364,6 +5658,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -5428,7 +5723,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -5451,21 +5746,15 @@
         "x-resource": null,
         "x-response-shape": "void",
         "x-validators": [
-          "app\\modules\\Platform\\User\\Transport\\Api\\Users"
+          "app\\modules\\Platform\\Auth\\Transport\\Api\\Session"
         ],
         "x-validator-scene": "captcha",
+        "x-contract-source": "backend",
         "x-validation-rules": {
-          "app\\modules\\Platform\\User\\Transport\\Api\\Users": {
-            "id": "number",
+          "app\\modules\\Platform\\Auth\\Transport\\Api\\Session": {
             "account": "max:320",
-            "number": "length:3,20|alphaDash|unique:users",
-            "username": "length:3,12|chsDash|unique:users",
             "password": "length:5,36|password",
-            "avatar": "max:255|url",
-            "email": "max:320|email|unique:users",
-            "phone": "max:20|mobile|unique:users",
-            "status": "number",
-            "roles_id": "arrayJson"
+            "code": "max:64"
           }
         },
         "responses": {
@@ -5501,9 +5790,9 @@
                   "account"
                 ],
                 "additionalProperties": true,
-                "x-typescript-params": "params: CaptchaSendParams",
+                "x-typescript-params": "data: { account: string }",
                 "x-validators": [
-                  "app\\modules\\Platform\\User\\Transport\\Api\\Users"
+                  "app\\modules\\Platform\\Auth\\Transport\\Api\\Session"
                 ],
                 "x-validator-scene": "captcha"
               }
@@ -5530,6 +5819,7 @@
         "x-response-shape": "dynamic",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -5552,7 +5842,7 @@
                     "data": {
                       "type": "object",
                       "additionalProperties": true,
-                      "x-typescript-type": "CheckResult"
+                      "x-typescript-type": "Record<string, unknown>"
                     }
                   },
                   "required": [
@@ -5588,7 +5878,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -5610,6 +5900,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -5671,7 +5962,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": null
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -5693,21 +5984,15 @@
         "x-resource": "AuthResource",
         "x-response-shape": "item",
         "x-validators": [
-          "app\\modules\\Platform\\User\\Transport\\Api\\Users"
+          "app\\modules\\Platform\\Auth\\Transport\\Api\\Session"
         ],
         "x-validator-scene": "login",
+        "x-contract-source": "backend",
         "x-validation-rules": {
-          "app\\modules\\Platform\\User\\Transport\\Api\\Users": {
-            "id": "number",
+          "app\\modules\\Platform\\Auth\\Transport\\Api\\Session": {
             "account": "max:320",
-            "number": "length:3,20|alphaDash|unique:users",
-            "username": "length:3,12|chsDash|unique:users",
             "password": "length:5,36|password",
-            "avatar": "max:255|url",
-            "email": "max:320|email|unique:users",
-            "phone": "max:20|mobile|unique:users",
-            "status": "number",
-            "roles_id": "arrayJson"
+            "code": "max:64"
           }
         },
         "responses": {
@@ -5769,10 +6054,23 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "properties": {
+                  "account": {
+                    "type": "string",
+                    "maxLength": 320
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "account",
+                  "password"
+                ],
                 "additionalProperties": true,
-                "x-typescript-params": "data: LoginParams",
+                "x-typescript-params": "data: { account: string; password: string }",
                 "x-validators": [
-                  "app\\modules\\Platform\\User\\Transport\\Api\\Users"
+                  "app\\modules\\Platform\\Auth\\Transport\\Api\\Session"
                 ],
                 "x-validator-scene": "login"
               }
@@ -5799,6 +6097,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -5828,7 +6127,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": null
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -5853,21 +6152,15 @@
         "x-resource": "AuthResource",
         "x-response-shape": "item",
         "x-validators": [
-          "app\\modules\\Platform\\User\\Transport\\Api\\Users"
+          "app\\modules\\Platform\\Auth\\Transport\\Api\\Session"
         ],
         "x-validator-scene": "register",
+        "x-contract-source": "backend",
         "x-validation-rules": {
-          "app\\modules\\Platform\\User\\Transport\\Api\\Users": {
-            "id": "number",
+          "app\\modules\\Platform\\Auth\\Transport\\Api\\Session": {
             "account": "max:320",
-            "number": "length:3,20|alphaDash|unique:users",
-            "username": "length:3,12|chsDash|unique:users",
             "password": "length:5,36|password",
-            "avatar": "max:255|url",
-            "email": "max:320|email|unique:users",
-            "phone": "max:20|mobile|unique:users",
-            "status": "number",
-            "roles_id": "arrayJson"
+            "code": "max:64"
           }
         },
         "responses": {
@@ -5929,10 +6222,27 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "properties": {
+                  "account": {
+                    "type": "string",
+                    "maxLength": 320
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "account",
+                  "password"
+                ],
                 "additionalProperties": true,
-                "x-typescript-params": "data: RegisterParams",
+                "x-typescript-params": "data: { account: string; password: string; code?: string }",
                 "x-validators": [
-                  "app\\modules\\Platform\\User\\Transport\\Api\\Users"
+                  "app\\modules\\Platform\\Auth\\Transport\\Api\\Session"
                 ],
                 "x-validator-scene": "register"
               }
@@ -5962,6 +6272,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -6028,7 +6339,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "type: string",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "type"
               ]
@@ -6058,6 +6369,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -6116,7 +6428,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -6143,6 +6455,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -6207,7 +6520,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -6234,6 +6547,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -6262,7 +6576,7 @@
                           "additionalProperties": true
                         }
                       },
-                      "x-typescript-type": "ConfigRegisterResult[]"
+                      "x-typescript-type": "StorageMeta[]"
                     }
                   },
                   "required": [
@@ -6298,7 +6612,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": null
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -6326,6 +6640,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -6384,7 +6699,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": "data: { channel: string }"
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -6412,6 +6727,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -6476,7 +6792,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -6503,6 +6819,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -6526,13 +6843,33 @@
                       "type": "object",
                       "properties": {
                         "ver": {
-                          "type": "string"
+                          "type": "object",
+                          "properties": {
+                            "app_name": {
+                              "type": "string"
+                            },
+                            "homepage": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "string"
+                            },
+                            "build": {
+                              "type": "integer"
+                            },
+                            "github": {
+                              "type": "string"
+                            },
+                            "qgroup": {
+                              "type": "string"
+                            }
+                          }
                         },
                         "latest": {
-                          "type": "string"
+                          "type": "object"
                         },
                         "verlog": {
-                          "type": "array"
+                          "type": "string"
                         }
                       },
                       "x-typescript-type": "SystemUpdateInfo"
@@ -6571,7 +6908,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -6593,6 +6930,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -6615,11 +6953,43 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "type": "array",
-                        "items": {
-                          "type": "object",
-                          "additionalProperties": true
-                        }
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "aid",
+                          "user_id",
+                          "name",
+                          "status",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "aid": {
+                            "type": "integer"
+                          },
+                          "user_id": {
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "integer"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "x-typescript-type": "Tag"
                       },
                       "x-typescript-type": "Tag[]"
                     }
@@ -6653,7 +7023,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -6680,6 +7050,7 @@
           "app\\modules\\Content\\Tags\\Transport\\Api\\Tags"
         ],
         "x-validator-scene": "create",
+        "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Content\\Tags\\Transport\\Api\\Tags": {
             "id": "number",
@@ -6728,7 +7099,7 @@
                   "name"
                 ],
                 "additionalProperties": true,
-                "x-typescript-params": "data: { name: string }",
+                "x-typescript-params": "data: { user_id?: string; name: string }",
                 "x-validators": [
                   "app\\modules\\Content\\Tags\\Transport\\Api\\Tags"
                 ],
@@ -6761,6 +7132,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -6798,7 +7170,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "id: number",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "id"
               ]
@@ -6821,6 +7193,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -6842,7 +7215,41 @@
                     },
                     "data": {
                       "type": "object",
-                      "additionalProperties": true,
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "aid",
+                        "user_id",
+                        "name",
+                        "status",
+                        "created_at",
+                        "updated_at"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "aid": {
+                          "type": "integer"
+                        },
+                        "user_id": {
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "integer"
+                        },
+                        "created_at": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "updated_at": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
                       "x-typescript-type": "Tag"
                     }
                   },
@@ -6883,7 +7290,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "id: number",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "id"
               ]
@@ -6914,6 +7321,7 @@
           "app\\modules\\Content\\Tags\\Transport\\Api\\Tags"
         ],
         "x-validator-scene": "allUpdate",
+        "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Content\\Tags\\Transport\\Api\\Tags": {
             "id": "number",
@@ -6971,16 +7379,11 @@
                   },
                   "status": {
                     "type": "number"
-                  },
-                  "id": {
-                    "type": "number"
                   }
                 },
-                "required": [
-                  "id"
-                ],
+                "required": [],
                 "additionalProperties": true,
-                "x-typescript-params": "id: number, data: { name: string }",
+                "x-typescript-params": "data: { aid?: number; user_id?: string; name?: string; status?: number }",
                 "x-path-params": [
                   "id"
                 ],
@@ -7014,9 +7417,21 @@
         ],
         "x-resource": "TagResource",
         "x-response-shape": "paginated",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\shared\\Transport\\Validation\\PaginationInput"
+        ],
+        "x-validator-scene": "Defult",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\shared\\Transport\\Validation\\PaginationInput": {
+            "page": "number",
+            "list_rows": "number|between:1,1000",
+            "search_keys": "searchKey",
+            "search_like": "number|between:0,2",
+            "order_desc": "stringBool",
+            "order_key": "alphaDash"
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -7039,7 +7454,42 @@
                       "type": "array",
                       "items": {
                         "type": "object",
-                        "additionalProperties": true
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "aid",
+                          "user_id",
+                          "name",
+                          "status",
+                          "created_at",
+                          "updated_at"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "aid": {
+                            "type": "integer"
+                          },
+                          "user_id": {
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "integer"
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        },
+                        "x-typescript-type": "Tag"
                       },
                       "x-typescript-type": "ListResult<Tag>"
                     },
@@ -7079,8 +7529,35 @@
             "required": false,
             "schema": {
               "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "list_rows": {
+                  "type": "number"
+                },
+                "search_keys": {
+                  "type": "string"
+                },
+                "search_like": {
+                  "type": "number"
+                },
+                "order_desc": {
+                  "type": "boolean"
+                },
+                "order_key": {
+                  "type": "string"
+                },
+                "search_value": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": true,
-              "x-typescript-params": "params?: ListParams"
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; search_value?: string }",
+              "x-validators": [
+                "app\\shared\\Transport\\Validation\\PaginationInput"
+              ],
+              "x-validator-scene": "Defult"
             }
           }
         ]
@@ -7106,8 +7583,13 @@
           "app\\shared\\Transport\\Validation\\BatchOperationInput"
         ],
         "x-validator-scene": "BatchOperate",
+        "x-contract-source": "backend",
         "x-validation-rules": {
-          "app\\shared\\Transport\\Validation\\BatchOperationInput": null
+          "app\\shared\\Transport\\Validation\\BatchOperationInput": {
+            "id": "number",
+            "ids": "arrayJson",
+            "method": "alphaDash"
+          }
         },
         "responses": {
           "204": {
@@ -7136,8 +7618,20 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "properties": {
+                  "ids": {
+                    "type": "array"
+                  },
+                  "method": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "ids",
+                  "method"
+                ],
                 "additionalProperties": true,
-                "x-typescript-params": "data: BatchOperateParams",
+                "x-typescript-params": "data: { ids: unknown[]; method: string }",
                 "x-validators": [
                   "app\\shared\\Transport\\Validation\\BatchOperationInput"
                 ],
@@ -7169,6 +7663,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -7198,7 +7693,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": "data: ThemeActivateParams"
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -7221,6 +7716,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -7275,7 +7771,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -7300,6 +7796,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -7329,7 +7826,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": "data: Record<string, any>"
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -7357,6 +7854,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -7386,7 +7884,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "data: ThemeDeleteParams"
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -7413,6 +7911,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -7442,7 +7941,7 @@
               "schema": {
                 "type": "object",
                 "additionalProperties": true,
-                "x-typescript-params": null
+                "x-typescript-params": "data?: Record<string, unknown>"
               }
             }
           }
@@ -7470,6 +7969,7 @@
         "x-response-shape": "collection",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -7534,7 +8034,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -7562,7 +8062,8 @@
         "x-validators": [
           "app\\modules\\Theme\\Transport\\Api\\Upload"
         ],
-        "x-validator-scene": null,
+        "x-validator-scene": "default",
+        "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Theme\\Transport\\Api\\Upload": {
             "file": "require"
@@ -7630,13 +8131,16 @@
                     "format": "binary"
                   }
                 },
+                "required": [
+                  "file"
+                ],
                 "additionalProperties": true,
                 "x-typescript-params": "formData: FormData",
                 "x-content-type": "multipart/form-data",
                 "x-validators": [
                   "app\\modules\\Theme\\Transport\\Api\\Upload"
                 ],
-                "x-validator-scene": null
+                "x-validator-scene": "default"
               }
             }
           }
@@ -7663,9 +8167,21 @@
         ],
         "x-resource": "UserResource",
         "x-response-shape": "paginated",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\shared\\Transport\\Validation\\PaginationInput"
+        ],
+        "x-validator-scene": "Defult",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\shared\\Transport\\Validation\\PaginationInput": {
+            "page": "number",
+            "list_rows": "number|between:1,1000",
+            "search_keys": "searchKey",
+            "search_like": "number|between:0,2",
+            "order_desc": "stringBool",
+            "order_key": "alphaDash"
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -7728,8 +8244,35 @@
             "required": false,
             "schema": {
               "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "list_rows": {
+                  "type": "number"
+                },
+                "search_keys": {
+                  "type": "string"
+                },
+                "search_like": {
+                  "type": "number"
+                },
+                "order_desc": {
+                  "type": "boolean"
+                },
+                "order_key": {
+                  "type": "string"
+                },
+                "search_value": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": true,
-              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_value?: string }"
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; search_value?: string }",
+              "x-validators": [
+                "app\\shared\\Transport\\Validation\\PaginationInput"
+              ],
+              "x-validator-scene": "Defult"
             }
           }
         ]
@@ -7757,6 +8300,7 @@
         "x-response-shape": "void",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "204": {
@@ -7794,7 +8338,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "id: number",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "id"
               ]
@@ -7823,6 +8367,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -7889,7 +8434,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": "id: number",
+              "x-typescript-params": "params?: {  }",
               "x-path-params": [
                 "id"
               ]
@@ -7920,6 +8465,7 @@
           "app\\modules\\Platform\\User\\Transport\\Api\\Users"
         ],
         "x-validator-scene": "allUpdate",
+        "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Platform\\User\\Transport\\Api\\Users": {
             "id": "number",
@@ -7996,7 +8542,7 @@
                   }
                 },
                 "additionalProperties": true,
-                "x-typescript-params": "id: number, data: AdminUserUpdateParams",
+                "x-typescript-params": "data: { avatar?: string; roles_id?: unknown[]; email?: string; phone?: string; username?: string; status?: number }",
                 "x-path-params": [
                   "id"
                 ],
@@ -8030,8 +8576,13 @@
           "app\\shared\\Transport\\Validation\\BatchOperationInput"
         ],
         "x-validator-scene": "BatchOperate",
+        "x-contract-source": "backend",
         "x-validation-rules": {
-          "app\\shared\\Transport\\Validation\\BatchOperationInput": null
+          "app\\shared\\Transport\\Validation\\BatchOperationInput": {
+            "id": "number",
+            "ids": "arrayJson",
+            "method": "alphaDash"
+          }
         },
         "responses": {
           "204": {
@@ -8060,8 +8611,20 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "properties": {
+                  "ids": {
+                    "type": "array"
+                  },
+                  "method": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "ids",
+                  "method"
+                ],
                 "additionalProperties": true,
-                "x-typescript-params": "data: BatchOperateParams",
+                "x-typescript-params": "data: { ids: unknown[]; method: string }",
                 "x-validators": [
                   "app\\shared\\Transport\\Validation\\BatchOperationInput"
                 ],
@@ -8090,6 +8653,7 @@
         "x-response-shape": "item",
         "x-validators": [],
         "x-validator-scene": null,
+        "x-contract-source": "backend",
         "x-validation-rules": {},
         "responses": {
           "200": {
@@ -8148,7 +8712,7 @@
             "schema": {
               "type": "object",
               "additionalProperties": true,
-              "x-typescript-params": null
+              "x-typescript-params": "params?: {  }"
             }
           }
         ]
@@ -8168,9 +8732,20 @@
         ],
         "x-resource": null,
         "x-response-shape": "void",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\modules\\Platform\\User\\Transport\\Api\\Profile"
+        ],
+        "x-validator-scene": "update",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Platform\\User\\Transport\\Api\\Profile": {
+            "avatar": "max:255|url",
+            "username": "length:3,12|chsDash",
+            "password": "length:5,36|password",
+            "email": "max:320|email",
+            "captcha": "max:64"
+          }
+        },
         "responses": {
           "204": {
             "description": "No content"
@@ -8198,8 +8773,25 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "properties": {
+                  "avatar": {
+                    "type": "string",
+                    "format": "uri",
+                    "maxLength": 255
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
                 "additionalProperties": true,
-                "x-typescript-params": "data: ProfileUpdateParams"
+                "x-typescript-params": "data: { avatar?: string; username?: string; password?: string }",
+                "x-validators": [
+                  "app\\modules\\Platform\\User\\Transport\\Api\\Profile"
+                ],
+                "x-validator-scene": "update"
               }
             }
           }
@@ -8222,9 +8814,21 @@
         ],
         "x-resource": "CardResource",
         "x-response-shape": "paginated",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\shared\\Transport\\Validation\\PaginationInput"
+        ],
+        "x-validator-scene": "Defult",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\shared\\Transport\\Validation\\PaginationInput": {
+            "page": "number",
+            "list_rows": "number|between:1,1000",
+            "search_keys": "searchKey",
+            "search_like": "number|between:0,2",
+            "order_desc": "stringBool",
+            "order_key": "alphaDash"
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -8333,8 +8937,35 @@
             "required": false,
             "schema": {
               "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "list_rows": {
+                  "type": "number"
+                },
+                "search_keys": {
+                  "type": "string"
+                },
+                "search_like": {
+                  "type": "number"
+                },
+                "order_desc": {
+                  "type": "boolean"
+                },
+                "order_key": {
+                  "type": "string"
+                },
+                "search_value": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": true,
-              "x-typescript-params": "params?: { page?: number; list_rows?: number }"
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; search_value?: string }",
+              "x-validators": [
+                "app\\shared\\Transport\\Validation\\PaginationInput"
+              ],
+              "x-validator-scene": "Defult"
             }
           }
         ]
@@ -8356,9 +8987,21 @@
         ],
         "x-resource": "CommentResource",
         "x-response-shape": "paginated",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\shared\\Transport\\Validation\\PaginationInput"
+        ],
+        "x-validator-scene": "Defult",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\shared\\Transport\\Validation\\PaginationInput": {
+            "page": "number",
+            "list_rows": "number|between:1,1000",
+            "search_keys": "searchKey",
+            "search_like": "number|between:0,2",
+            "order_desc": "stringBool",
+            "order_key": "alphaDash"
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -8421,8 +9064,35 @@
             "required": false,
             "schema": {
               "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "list_rows": {
+                  "type": "number"
+                },
+                "search_keys": {
+                  "type": "string"
+                },
+                "search_like": {
+                  "type": "number"
+                },
+                "order_desc": {
+                  "type": "boolean"
+                },
+                "order_key": {
+                  "type": "string"
+                },
+                "search_value": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": true,
-              "x-typescript-params": "params?: PaginationParams"
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; search_value?: string }",
+              "x-validators": [
+                "app\\shared\\Transport\\Validation\\PaginationInput"
+              ],
+              "x-validator-scene": "Defult"
             }
           }
         ]
@@ -8445,21 +9115,17 @@
         "x-resource": "ApiResource",
         "x-response-shape": "dynamic",
         "x-validators": [
-          "app\\modules\\Platform\\User\\Transport\\Api\\Users"
+          "app\\modules\\Platform\\User\\Transport\\Api\\Profile"
         ],
-        "x-validator-scene": "edit",
+        "x-validator-scene": "emailCaptcha",
+        "x-contract-source": "backend",
         "x-validation-rules": {
-          "app\\modules\\Platform\\User\\Transport\\Api\\Users": {
-            "id": "number",
-            "account": "max:320",
-            "number": "length:3,20|alphaDash|unique:users",
-            "username": "length:3,12|chsDash|unique:users",
-            "password": "length:5,36|password",
+          "app\\modules\\Platform\\User\\Transport\\Api\\Profile": {
             "avatar": "max:255|url",
-            "email": "max:320|email|unique:users",
-            "phone": "max:20|mobile|unique:users",
-            "status": "number",
-            "roles_id": "arrayJson"
+            "username": "length:3,12|chsDash",
+            "password": "length:5,36|password",
+            "email": "max:320|email",
+            "captcha": "max:64"
           }
         },
         "responses": {
@@ -8483,7 +9149,7 @@
                     "data": {
                       "type": "object",
                       "additionalProperties": true,
-                      "x-typescript-type": "EmailCaptchaResult"
+                      "x-typescript-type": "Record<string, unknown>"
                     }
                   },
                   "required": [
@@ -8518,12 +9184,22 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "additionalProperties": true,
-                "x-typescript-params": "data: EmailCaptchaParams",
-                "x-validators": [
-                  "app\\modules\\Platform\\User\\Transport\\Api\\Users"
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 320
+                  }
+                },
+                "required": [
+                  "email"
                 ],
-                "x-validator-scene": "edit"
+                "additionalProperties": true,
+                "x-typescript-params": "data: { email: string }",
+                "x-validators": [
+                  "app\\modules\\Platform\\User\\Transport\\Api\\Profile"
+                ],
+                "x-validator-scene": "emailCaptcha"
               }
             }
           }
@@ -8546,9 +9222,20 @@
         ],
         "x-resource": null,
         "x-response-shape": "void",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\modules\\Platform\\User\\Transport\\Api\\Profile"
+        ],
+        "x-validator-scene": "email",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Platform\\User\\Transport\\Api\\Profile": {
+            "avatar": "max:255|url",
+            "username": "length:3,12|chsDash",
+            "password": "length:5,36|password",
+            "email": "max:320|email",
+            "captcha": "max:64"
+          }
+        },
         "responses": {
           "204": {
             "description": "No content"
@@ -8576,8 +9263,26 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "maxLength": 320
+                  },
+                  "captcha": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                },
+                "required": [
+                  "email"
+                ],
                 "additionalProperties": true,
-                "x-typescript-params": "data: EmailParams"
+                "x-typescript-params": "data: { email: string; captcha?: string }",
+                "x-validators": [
+                  "app\\modules\\Platform\\User\\Transport\\Api\\Profile"
+                ],
+                "x-validator-scene": "email"
               }
             }
           }
@@ -8600,9 +9305,21 @@
         ],
         "x-resource": "FileResource",
         "x-response-shape": "paginated",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\shared\\Transport\\Validation\\PaginationInput"
+        ],
+        "x-validator-scene": "Defult",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\shared\\Transport\\Validation\\PaginationInput": {
+            "page": "number",
+            "list_rows": "number|between:1,1000",
+            "search_keys": "searchKey",
+            "search_like": "number|between:0,2",
+            "order_desc": "stringBool",
+            "order_key": "alphaDash"
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -8736,8 +9453,35 @@
             "required": false,
             "schema": {
               "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "list_rows": {
+                  "type": "number"
+                },
+                "search_keys": {
+                  "type": "string"
+                },
+                "search_like": {
+                  "type": "number"
+                },
+                "order_desc": {
+                  "type": "boolean"
+                },
+                "order_key": {
+                  "type": "string"
+                },
+                "search_value": {
+                  "type": "string"
+                }
+              },
               "additionalProperties": true,
-              "x-typescript-params": "params?: { page?: number; list_rows?: number }"
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; search_value?: string }",
+              "x-validators": [
+                "app\\shared\\Transport\\Validation\\PaginationInput"
+              ],
+              "x-validator-scene": "Defult"
             }
           }
         ]
@@ -8759,9 +9503,20 @@
         ],
         "x-resource": null,
         "x-response-shape": "void",
-        "x-validators": [],
-        "x-validator-scene": null,
-        "x-validation-rules": {},
+        "x-validators": [
+          "app\\modules\\Platform\\User\\Transport\\Api\\Profile"
+        ],
+        "x-validator-scene": "password",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Platform\\User\\Transport\\Api\\Profile": {
+            "avatar": "max:255|url",
+            "username": "length:3,12|chsDash",
+            "password": "length:5,36|password",
+            "email": "max:320|email",
+            "captcha": "max:64"
+          }
+        },
         "responses": {
           "204": {
             "description": "No content"
@@ -8789,8 +9544,20 @@
             "application/json": {
               "schema": {
                 "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "password"
+                ],
                 "additionalProperties": true,
-                "x-typescript-params": "data: PasswordParams"
+                "x-typescript-params": "data: { password: string }",
+                "x-validators": [
+                  "app\\modules\\Platform\\User\\Transport\\Api\\Profile"
+                ],
+                "x-validator-scene": "password"
               }
             }
           }

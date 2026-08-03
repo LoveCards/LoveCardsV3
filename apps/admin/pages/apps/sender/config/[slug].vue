@@ -163,7 +163,7 @@ const sendTest = () => {
 	testResult.value = null;
 	client.sender.testChannel({ channel: slug, to: testTo.value })
 		.then((result) => {
-			testResult.value = result;
+			testResult.value = { success: result.success, message: result.message ?? '测试完成' };
 		})
 		.catch(() => {
 			testResult.value = { success: false, message: '测试失败' };

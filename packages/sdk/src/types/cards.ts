@@ -25,6 +25,7 @@ export interface CardsListParams {
   status?: number
   search_value?: string
   search_keys?: string[]
+  search_like?: number
   order_key?: string
   order_desc?: boolean
 }

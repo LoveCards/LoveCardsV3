@@ -1,7 +1,7 @@
 # API Contract Audit
 
 - Routes inspected: 96
-- SDK methods inspected: 98
+- SDK methods inspected: 99
 - P0: 0
 - P1: 0
 - P2: 0
@@ -16,13 +16,13 @@
 | POST | `/captcha/install` | `captcha.install` | caps:captcha.install | no | CaptchaResource::collection | — |
 | GET | `/captcha/types` | `captcha.types` | caps:captcha.read | no | CaptchaResource::collection | — |
 | GET | `/cards` | `cards.list` | public | yes | CardResource::paginate | — |
-| POST | `/cards` | `cards.create` | caps:cards.create | yes | ApiResource::make | — |
+| POST | `/cards` | `cards.create` | caps:cards.create | yes | CardCreatedResource::make | — |
 | DELETE | `/cards/:id` | `cards.delete` | caps:cards.delete,cards.delete.all | no | createNoContent | — |
 | GET | `/cards/:id` | `cards.get` | public | no | CardResource::make | — |
 | PATCH | `/cards/:id` | `cards.update` | caps:cards.update,cards.update.all | yes | createNoContent | — |
 | GET | `/cards/:id/comments` | `comments.cardList` | public | yes | CommentResource::paginate | — |
-| POST | `/cards/:id/comments` | `comments.create` | caps:comments.create | yes | ApiResource::make | — |
-| POST | `/cards/:id/like` | `cards.like` | caps:likes.create | no | ApiResource::make | — |
+| POST | `/cards/:id/comments` | `comments.create` | caps:comments.create | yes | CommentCreatedResource::make | — |
+| POST | `/cards/:id/like` | `cards.like` | caps:likes.create | no | LikeCountResource::make | — |
 | POST | `/cards/batch` | `cards.batch` | jwt | yes | createNoContent | — |
 | GET | `/cards/hot` | `cards.hot` | public | no | CardResource::collection | — |
 | GET | `/cards/search` | `cards.search` | public | yes | CardResource::paginate | — |
@@ -31,25 +31,25 @@
 | GET | `/comments/:id` | `comments.get` | public | no | CommentResource::make | — |
 | PATCH | `/comments/:id` | `comments.update` | caps:comments.update,comments.update.all | yes | createNoContent | — |
 | POST | `/comments/batch` | `comments.batch` | jwt | yes | createNoContent | — |
-| DELETE | `/config` | `config.delete` | caps:config.deleteKey | yes | createBadRequest, createNoContent | — |
-| GET | `/config` | `config.list` | caps:config.read | yes | ConfigResource::make | — |
-| POST | `/config` | `config.update` | caps:config.update | yes | createNoContent | — |
+| DELETE | `/config` | `config.delete` | caps:config.deleteKey | no | createNoContent | — |
+| GET | `/config` | `config.list` | caps:config.read | no | ConfigResource::make | — |
+| POST | `/config` | `config.update` | caps:config.update | no | createNoContent | — |
 | GET | `/config/groups` | `config.groups` | caps:config.read | no | ConfigResource::make | — |
 | POST | `/config/init` | `config.init` | caps:config.init | no | ConfigResource::make | — |
-| DELETE | `/config/key` | `config.deleteKey` | caps:config.deleteKey | yes | createBadRequest, createNoContent | — |
-| POST | `/config/register` | `config.register` | caps:config.register | yes | ConfigResource::make | — |
-| POST | `/config/reload` | `config.reload` | caps:config.reload | yes | createNoContent | — |
+| DELETE | `/config/key` | `config.deleteKey` | caps:config.deleteKey | no | createNoContent | — |
+| POST | `/config/register` | `config.register` | caps:config.register | no | ConfigResource::make | — |
+| POST | `/config/reload` | `config.reload` | caps:config.reload | no | createNoContent | — |
 | GET | `/dashboard` | `dashboard.index` | caps:dashboard.read | no | DashboardResource::make | — |
 | GET | `/files` | `files.list` | caps:files.read,files.read.all | yes | FileResource::paginate | — |
 | POST | `/files` | `files.upload` | caps:files.upload | yes | FileResource::make | — |
 | DELETE | `/files/:id` | `files.allDelete` | caps:files.delete,files.delete.all | no | createNoContent | — |
-| GET | `/files/:id` | `files.get` | caps:files.read,files.read.all | yes | FileResource::make | — |
-| PATCH | `/files/:id/confirm` | `files.confirm` | caps:files.upload | yes | createNoContent | — |
+| GET | `/files/:id` | `files.get` | caps:files.read,files.read.all | no | FileResource::make | — |
+| PATCH | `/files/:id/confirm` | `files.confirm` | caps:files.upload | no | createNoContent | — |
 | POST | `/files/batch` | `files.batch` | caps:files.update,files.update.all,files.delete,files.delete.all | yes | createNoContent | — |
-| POST | `/files/direct` | `files.direct` | caps:files.upload | yes | DirectUploadResource::make | — |
-| DELETE | `/files/expired` | `files.cleanup` | caps:files.delete.all | yes | ApiResource::make | — |
-| GET | `/likes` | `likes.list` | caps:likes.read | yes | LikeResource::collection | — |
-| DELETE | `/likes/:id` | `likes.unlike` | caps:likes.delete | yes | createNoContent | — |
+| POST | `/files/direct` | `files.direct` | caps:files.upload | no | DirectUploadResource::make | — |
+| DELETE | `/files/expired` | `files.cleanup` | caps:files.delete.all | no | ApiResource::make | — |
+| GET | `/likes` | `likes.list` | caps:likes.read | no | LikeResource::collection | — |
+| DELETE | `/likes/:id` | `likes.unlike` | caps:likes.delete | no | createNoContent | — |
 | GET | `/permissions` | `permissions.list` | caps:permissions.read | yes | PermissionResource::paginate | — |
 | GET | `/permissions/all` | `permissions.all` | caps:permissions.read | no | PermissionResource::collection | — |
 | GET | `/roles` | `roles.list` | caps:roles.read | yes | RoleResource::paginate | — |
@@ -64,9 +64,9 @@
 | GET | `/sender/channels` | `sender.channels` | caps:sender.read | no | SenderResource::collection | — |
 | POST | `/sender/install` | `sender.install` | caps:sender.install | no | SenderResource::collection | — |
 | GET | `/sender/templates` | `sender.templates` | caps:sender.read | no | SenderResource::collection | — |
-| POST | `/sender/test-channel` | `sender.testChannel` | caps:sender.test | yes | SenderResource::make | — |
+| POST | `/sender/test-channel` | `sender.testChannel` | caps:sender.test | no | SenderResource::make | — |
 | GET | `/sender/types` | `sender.types` | caps:sender.read | no | SenderResource::collection | — |
-| POST | `/session/captcha` | `session.captcha` | public | yes | createBadRequest, createNoContent | — |
+| POST | `/session/captcha` | `session.captcha` | public | yes | createNoContent | — |
 | GET | `/session/check` | `session.check` | jwt | no | ApiResource::make | — |
 | POST | `/session/guest` | `session.guest` | public | no | AuthResource::make | — |
 | POST | `/session/login` | `session.login` | public | yes | AuthResource::make | — |
@@ -76,7 +76,7 @@
 | GET | `/storage/channel-stats` | `storage.channelStats` | caps:storage.read | no | StorageResource::make | — |
 | GET | `/storage/channels` | `storage.channels` | caps:storage.read | no | StorageResource::collection | — |
 | POST | `/storage/install` | `storage.install` | caps:storage.install | no | StorageResource::collection | — |
-| POST | `/storage/test-channel` | `storage.testChannel` | caps:storage.test | yes | StorageResource::make | — |
+| POST | `/storage/test-channel` | `storage.testChannel` | caps:storage.test | no | StorageResource::make | — |
 | GET | `/storage/types` | `storage.types` | caps:storage.read | no | StorageResource::collection | — |
 | GET | `/system/update` | `system.update` | caps:system.update | no | SystemResource::make | — |
 | GET | `/tags` | `tags.list` | public | no | TagResource::collection | — |
@@ -86,10 +86,10 @@
 | PATCH | `/tags/:id` | `tags.update` | caps:tags.update,tags.update.all | yes | createNoContent | — |
 | GET | `/tags/all` | `tags.listAll` | caps:tags.read,tags.read.all | yes | TagResource::paginate | — |
 | POST | `/tags/batch` | `tags.batch` | jwt | yes | createNoContent | — |
-| POST | `/theme/activate` | `theme.activate` | caps:theme.activate | yes | createNoContent | — |
+| POST | `/theme/activate` | `theme.activate` | caps:theme.activate | no | createNoContent | — |
 | GET | `/theme/config` | `theme.publicConfig` | public | no | ThemeResource::make | — |
-| PUT | `/theme/config` | `theme.updateConfig` | caps:theme.update | yes | createNoContent | — |
-| DELETE | `/theme/delete` | `theme.delete` | caps:theme.delete | yes | createNoContent | — |
+| PUT | `/theme/config` | `theme.updateConfig` | caps:theme.update | no | createNoContent | — |
+| DELETE | `/theme/delete` | `theme.delete` | caps:theme.delete | no | createNoContent | — |
 | POST | `/theme/freeze` | `theme.freeze` | caps:theme.freeze | no | createNoContent | — |
 | GET | `/theme/list` | `theme.list` | caps:theme.read | no | ThemeResource::collection | — |
 | POST | `/theme/upload` | `theme.upload` | caps:theme.upload | yes | ThemeResource::make | — |
@@ -103,6 +103,6 @@
 | GET | `/users/me/cards` | `cards.listOwn` | jwt | yes | CardResource::paginate | — |
 | GET | `/users/me/comments` | `comments.listOwn` | jwt | yes | CommentResource::paginate | — |
 | POST | `/users/me/email-captcha` | `users.me.emailCaptcha` | jwt | yes | ApiResource::make | — |
-| POST | `/users/me/email` | `users.me.email` | jwt | yes | createBadRequest, createNoContent | — |
+| POST | `/users/me/email` | `users.me.email` | jwt | yes | createNoContent | — |
 | GET | `/users/me/files` | `files.listOwn` | jwt | yes | FileResource::paginate | — |
-| POST | `/users/me/password` | `users.me.password` | jwt | yes | createBadRequest, createNoContent | — |
+| POST | `/users/me/password` | `users.me.password` | jwt | yes | createNoContent | — |

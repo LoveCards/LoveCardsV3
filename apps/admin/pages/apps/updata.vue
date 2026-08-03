@@ -67,7 +67,8 @@
 </template>
 
 <script setup lang="ts">
-import { useSystemStore, type UpdataInfo } from '~/stores/api/admin/systemStore';
+import { useSystemStore } from '~/stores/api/admin/systemStore';
+import type { SystemUpdateInfo } from '@lovecards/sdk';
 
 const systemStore = useSystemStore();
 
@@ -84,7 +85,7 @@ const compareVersions = (a: string, b: string): number => {
 };
 
 // 使用computed从Store获取数据，自动响应变化
-const updata = computed<UpdataInfo | null>(() => systemStore.updata);
+const updata = computed<SystemUpdateInfo | null>(() => systemStore.updata);
 
 // 刷新更新信息
 const refreshUpdata = async () => {

@@ -14,6 +14,7 @@ class PaginationInput extends Validate
                 'page',
                 'list_rows',
                 'search_keys',
+                'search_like',
                 'order_desc',
                 'order_key',
             ],
@@ -35,6 +36,7 @@ class PaginationInput extends Validate
         // 'search_value' => '',
         //搜索字段
         'search_keys' => 'searchKey',
+        'search_like' => 'number|between:0,2',
         //排序字段
         'order_desc' => 'stringBool',
         //排序字段

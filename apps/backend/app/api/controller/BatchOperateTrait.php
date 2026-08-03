@@ -3,7 +3,6 @@
 namespace app\api\controller;
 
 use app\api\ApiException;
-use app\api\ApiResponse;
 
 /**
  * 批量操作 Trait
@@ -15,11 +14,7 @@ trait BatchOperateTrait
 
     public function batch()
     {
-        $params = $this->param(
-            \app\shared\Transport\Validation\BatchOperationInput::class,
-            \app\shared\Transport\Validation\BatchOperationInput::$all_scene['BatchOperate'],
-            request()->param()
-        );
+        $params = $this->validated();
 
         $serviceClass = $this->getBatchService();
         $service = new $serviceClass();
@@ -30,6 +25,6 @@ trait BatchOperateTrait
 
         $auth = request()->auth;
         $service->batchOperate($params['method'], $params['ids'], $auth->uid(), $auth->capabilities());
-        return ApiResponse::createNoContent();
+        return $this->respond();
     }
 }

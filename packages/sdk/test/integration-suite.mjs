@@ -282,6 +282,24 @@ await test('POST /cards → cards.create()', async () => {
   return r
 })
 
+await test('cards.list search matches the created card', async () => {
+  if (!createdCardId) throw new Error('create card scenario did not produce an id')
+  const r = await adminClient.cards.list({ search_value: 'SDK test card content', search_like: 2, list_rows: 20 })
+  assert(r && Array.isArray(r.data), 'search should return a data array')
+  assert(r.data.some((item) => item.id === createdCardId), 'search should include the created card')
+  return r
+})
+
+await test('empty cards.list search is equivalent to the default list', async () => {
+  const [empty, normal] = await Promise.all([
+    adminClient.cards.list({ search_value: '', list_rows: 20 }),
+    adminClient.cards.list({ list_rows: 20 }),
+  ])
+  const ids = (value) => value.data.map((item) => item.id)
+  assert(JSON.stringify(ids(empty)) === JSON.stringify(ids(normal)), 'empty search should restore the default list')
+  return empty
+})
+
 await test('PATCH /cards/:id → cards.update()', async () => {
   if (!createdCardId) throw 'SKIP'
   await adminClient.cards.update(createdCardId, { content: 'Updated SDK test card content' })

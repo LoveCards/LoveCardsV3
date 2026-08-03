@@ -15,10 +15,9 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
 
     //超级管理员加载项
     const userInfo: any = await userStore.userInfo;
-    if (userStore.isRoot()) {
-        await systemStore.init();
-    }
-
-    await dashboardStore.init();
-    await tagsStore.init();
+    // Optional page data must not block route navigation or leave the login
+    // button spinning while a slow/failed auxiliary endpoint responds.
+    if (userStore.isRoot()) void systemStore.init();
+    void dashboardStore.init();
+    void tagsStore.init();
 });

@@ -5,11 +5,12 @@ let client: LCClient
 
 export function useApi(): LCClient {
   if (!client) {
+    const runtimeConfig = useRuntimeConfig()
     client = createClient({
-      apiUrl: '/api',
+      apiUrl: runtimeConfig.public.apiBase || '/api',
       onAuthError: () => {
         localStorage.removeItem('token')
-        window.location.href = '/admin/dev/login'
+        window.location.href = '/admin/login'
       },
       hooks: {
         onError: (ctx) => {

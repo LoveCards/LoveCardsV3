@@ -80,6 +80,7 @@ const loading = ref(true);
 const loadError = ref<string | null>(null);
 const saveLoading = ref(false);
 const saveResult = ref<{ success: boolean; message: string } | null>(null);
+const group = 'captcha_' + slug;
 
 const loadMeta = () => {
 	client.captcha.drivers()
@@ -115,7 +116,6 @@ const loadConfig = () => {
 const save = () => {
 	saveLoading.value = true;
 	saveResult.value = null;
-	const group = 'captcha_' + slug;
 	const configToSave = { ...config.value };
 	client.config.update({ [group]: configToSave })
 		.then(() => {

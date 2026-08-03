@@ -3,7 +3,7 @@ import type * as ApiTypes from '../../types'
 
 /** Generated from contracts/openapi.json. Do not edit manually. */
 export class Permissions extends BaseResource {
-  list(params?: { page?: number; list_rows?: number; search_value?: string }): Promise<ApiTypes.ListResult<ApiTypes.CapabilityItem>> {
+  list(params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; search_value?: string }): Promise<ApiTypes.ListResult<ApiTypes.CapabilityItem>> {
     return this._get<ApiTypes.ListResult<ApiTypes.CapabilityItem>>("/permissions", params)
   }
   all(): Promise<ApiTypes.CapabilityItem[]> {

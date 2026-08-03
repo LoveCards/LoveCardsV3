@@ -7,6 +7,7 @@ use app\api\middleware\PermissionCheck;
 
 Route::group('system', function () {
     Route::get('update', 'System.System/update')
-        ->name('system.update')
+    ->name('system.update')
+    ->setOption('contract', ['request' => null, 'response' => ['resource' => 'app\\modules\\Operations\\Version\\Transport\\Api\\SystemResource', 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => '系统更新', 'group' => '系统', 'caps' => ['system.update']]);
 })->middleware(JwtAuthCheck::class)->middleware(PermissionCheck::class);

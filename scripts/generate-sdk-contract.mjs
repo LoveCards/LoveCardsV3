@@ -45,16 +45,16 @@ function splitParams(value) {
   return result.map((param) => {
     const match = param.match(/^([A-Za-z_$][\w$]*\??)\s*:\s*(.+)$/)
     return match ? { name: match[1].replace('?', ''), declaration: `${match[1]}: ${qualifyType(match[2])}` } : { name: param, declaration: param }
-  })
+  }).filter((param) => !/^\w+\??:\s*\{\s*\}$/.test(param.declaration))
 }
 
 function className(resource) { return resource.charAt(0).toUpperCase() + resource.slice(1) }
 
 function generatedResourceMethod(method) {
   const params = splitParams(method.params)
-  const pathParams = [...method.path.matchAll(/:param/g)].map((_, index) => params[index]?.name || `param${index + 1}`)
+  const pathParams = [...method.path.matchAll(/:([A-Za-z_]\w*)/g)].map((match, index) => params[index]?.name || match[1] || `param${index + 1}`)
   let pathIndex = 0
-  const url = method.path.replaceAll(':param', () => `\${${pathParams[pathIndex++]}}`)
+  const url = method.path.replaceAll(/:[A-Za-z_]\w*/g, () => `\${${pathParams[pathIndex++]}}`)
   const urlLiteral = pathParams.length ? `\`${url}\`` : JSON.stringify(method.path)
   const remaining = params.slice(pathParams.length)
   const returnType = qualifyType(method.returnType)
@@ -120,19 +120,49 @@ lines.push('')
 await fs.mkdir(outputDir, { recursive: true })
 const outputs = new Map([[outputPath, `${lines.join('\n')}\n`]])
 
-const inventory = JSON.parse(await fs.readFile(path.join(root, 'contracts/api-inventory.json'), 'utf8'))
 const methodsByResource = new Map()
-for (const method of inventory.sdkMethods) {
-  if (!methodsByResource.has(method.resource)) methodsByResource.set(method.resource, [])
-  methodsByResource.get(method.resource).push(method)
+for (const [route, operations] of Object.entries(contract.paths)) {
+  for (const [httpMethod, operation] of Object.entries(operations)) {
+    if (httpMethod === 'parameters') continue
+    const parts = String(operation.operationId || '').split('.')
+    const resource = className(parts[0] || 'Api')
+    let methodName = parts[1] || operation.operationId
+    if (parts.length > 2 && parts[1] === 'me') {
+      methodName = ({ get: 'me', update: 'updateMe', password: 'updatePassword', email: 'updateEmail', emailCaptcha: 'emailCaptcha' })[parts[2]] || parts[2]
+    } else if (parts.length > 2) {
+      methodName = parts.slice(1).join('_')
+    }
+    const pathValue = route.replaceAll(/\{[^}]+\}/g, (value) => `:${value.slice(1, -1)}`)
+    const response = Object.entries(operation.responses || {}).find(([status]) => status !== 'default')?.[1]
+    const responseSchema = response?.content?.['application/json']?.schema?.properties?.data
+    let returnType = tsType(responseSchema, String(operation.responses?.['204'] ? 'void' : 'unknown'))
+    if (operation.operationId === 'theme.publicConfig') returnType = 'ThemeConfigData'
+    const bodySchema = operation.requestBody ? Object.values(operation.requestBody.content || {})[0]?.schema : operation.parameters?.find((item) => item.in === 'query')?.schema
+    const params = bodySchema?.['x-typescript-params'] || null
+    const pathParams = [...route.matchAll(/(?:\{([^}]+)\}|:([A-Za-z_]\w*))/g)].map((match) => {
+      const name = match[1] || match[2]
+      return `${name}: ${name === 'id' ? 'number' : 'string'}`
+    })
+    const signature = [...pathParams, ...(params ? splitParams(params).map((item) => item.declaration) : [])].join(', ')
+    const method = { method: methodName, params: signature, httpMethod: httpMethod.toUpperCase(), returnType, path: pathValue }
+    if (!methodsByResource.has(resource)) methodsByResource.set(resource, [])
+    methodsByResource.get(resource).push(method)
+  }
 }
 await fs.mkdir(resourceOutputDir, { recursive: true })
 for (const [resource, methods] of methodsByResource) {
   const generatedMethods = [...methods]
-  const listOwn = methods.find((method) => method.method === 'listOwn')
-  if (listOwn && !methods.some((method) => method.method === 'listMe')) {
-    generatedMethods.push({ ...listOwn, method: 'listMe', aliasOf: 'listOwn' })
+  if (resource === 'Theme') {
+    const publicConfig = methods.find((method) => method.method === 'publicConfig')
+    if (publicConfig) generatedMethods.push({ ...publicConfig, method: 'config' })
+    generatedMethods.push({ method: 'tags', params: '', httpMethod: 'GET', returnType: 'Tag[]', path: '/tags' })
   }
+  if (resource === 'Roles') {
+    const capabilities = methods.find((method) => method.method === 'getRoleCapabilities')
+    if (capabilities) generatedMethods.push({ ...capabilities, method: 'getCapabilities' })
+  }
+  const listOwn = methods.find((method) => method.method === 'listOwn')
+  if (listOwn && !methods.some((method) => method.method === 'listMe')) generatedMethods.push({ ...listOwn, method: 'listMe', aliasOf: 'listOwn' })
   const resourceLines = [
     "import { BaseResource } from '../../resources/base'",
     "import type * as ApiTypes from '../../types'",

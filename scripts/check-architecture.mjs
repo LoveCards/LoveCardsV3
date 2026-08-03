@@ -23,7 +23,7 @@ async function exists(file) {
 
 async function walk(directory, predicate, result = []) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === 'vendor') continue
+    if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === 'vendor' || entry.name === '.nuxt' || entry.name === '.output' || entry.name === '.nitro' || entry.name === '.data' || entry.name === 'dist' || entry.name === 'coverage') continue
     const file = path.join(directory, entry.name)
     if (entry.isDirectory()) await walk(file, predicate, result)
     else if (predicate(file)) result.push(file)
@@ -49,6 +49,22 @@ if (adminPackage.dependencies?.['@lovecards/sdk'] !== sdkPackage.version) {
   fail('Admin must depend on the local SDK version, not a filesystem path')
 }
 if (sdkPackage.scripts?.postbuild) fail('SDK postbuild must not write into an application')
+if (adminPackage.dependencies?.axios) fail('Admin must not depend on Axios directly; use @lovecards/sdk')
+
+const adminSourceFiles = await walk(path.join(root, 'apps/admin'), (file) => /\.(?:ts|vue|js)$/.test(file))
+for (const file of adminSourceFiles) {
+  const source = await readFile(file, 'utf8')
+  const rel = relative(file)
+  if (/from\s+['"](?:axios|ofetch)['"]/.test(source)) {
+    fail(`Admin source must not import a transport client: ${rel}`)
+  }
+  if (/(?:\$fetch|useFetch|\bfetch)\s*\(/.test(source)) {
+    fail(`Admin source must call APIs through @lovecards/sdk: ${rel}`)
+  }
+  if (/['"](?:~|@)\/?api\/(?:app|axios|interceptors)(?:\/|['"])/.test(source)) {
+    fail(`Admin source references the removed API layer: ${rel}`)
+  }
+}
 
 const packageFiles = await walk(root, (file) => path.basename(file) === 'package.json')
 for (const file of packageFiles) {

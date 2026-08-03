@@ -1,4 +1,5 @@
 export interface LCFile {
+  url?: string
   id: number
   hash: string
   channel_slug: string

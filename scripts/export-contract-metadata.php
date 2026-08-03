@@ -29,6 +29,9 @@ function classMap(string $root): array
 }
 
 $map = classMap($backend . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'modules');
+foreach (classMap($backend . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'shared') as $shortName => $candidates) {
+    $map[$shortName] = array_merge($map[$shortName] ?? [], $candidates);
+}
 $resources = [];
 $validators = [];
 

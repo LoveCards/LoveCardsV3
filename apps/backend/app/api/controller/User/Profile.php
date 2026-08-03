@@ -2,98 +2,57 @@
 
 namespace app\api\controller\User;
 
-use think\facade\Request;
-use think\exception\ValidateException;
-
-use app\modules\Platform\User\Service\Profile as ProfileService;
-use app\modules\Platform\User\Transport\Api\Users as UsersValidate;
-
-use app\api\ApiResponse;
+use app\api\ApiException;
 use app\api\controller\BaseController;
-use app\shared\Transport\Http\ApiResource;
-use app\modules\Platform\User\Transport\Api\ProfileResource;
+use app\modules\Platform\User\Service\Profile as ProfileService;
 
 class Profile extends BaseController
 {
     public function get()
     {
-        $userData = ProfileService::get(request()->auth->uid());
-        return ApiResponse::createOk(ProfileResource::make($userData));
+        return $this->respond(ProfileService::get(request()->auth->uid()));
     }
 
     public function update()
     {
-        $params = [];
-        if (Request::has('avatar')) $params['avatar'] = Request::param('avatar');
-        if (Request::has('username')) $params['username'] = Request::param('username');
-        if (Request::has('password')) $params['password'] = Request::param('password');
-
-        if (empty($params)) {
-            return ApiResponse::createNoContent();
-        }
-
-        // 添加 id 用于验证，然后移除
-        $params['id'] = request()->auth->uid();
-        $params = $this->validateAndClean($params, '编辑失败');
-        unset($params['id']);
-
+        $params = $this->validated();
+        if (!$params) return $this->respond();
         ProfileService::update(request()->auth->uid(), $params);
-        return ApiResponse::createNoContent();
+        return $this->respond();
     }
 
     public function password()
     {
-        $password = Request::param('password', '');
-
+        $params = $this->validated();
         try {
-            ProfileService::changePassword(request()->auth->uid(), $password);
-        } catch (\app\api\ApiException $e) {
-            return ApiResponse::createBadRequest('编辑失败', [$e->getMessage()]);
+            ProfileService::changePassword(request()->auth->uid(), $params['password']);
+        } catch (ApiException $e) {
+            throw ApiException::badRequest('编辑失败', [$e->getMessage()]);
         }
-
-        return ApiResponse::createNoContent();
+        return $this->respond();
     }
 
     public function email()
     {
-        $email = Request::param('email');
-        $captcha = Request::param('captcha', '');
-
+        $params = $this->validated();
         try {
-            ProfileService::changeEmail(request()->auth->uid(), $email, $captcha);
-        } catch (\app\api\ApiException $e) {
-            return ApiResponse::createBadRequest('编辑失败', [$e->getMessage()]);
+            ProfileService::changeEmail(request()->auth->uid(), $params['email'], $params['captcha'] ?? '');
+        } catch (ApiException $e) {
+            throw ApiException::badRequest('编辑失败', [$e->getMessage()]);
         }
-
-        return ApiResponse::createNoContent();
+        return $this->respond();
     }
 
     public function emailCaptcha()
     {
-        $email = Request::param('email');
-
+        $params = $this->validated();
         try {
-            ProfileService::sendEmailCaptcha($email);
+            ProfileService::sendEmailCaptcha($params['email']);
         } catch (\RuntimeException $e) {
-            return ApiResponse::createBadRequest($e->getMessage());
-        } catch (\app\api\ApiException $e) {
-            return ApiResponse::createBadRequest($e->getMessage());
+            throw ApiException::badRequest($e->getMessage());
+        } catch (ApiException $e) {
+            throw ApiException::badRequest($e->getMessage());
         }
-
-        return ApiResponse::createOk(ApiResource::make(['expiresIn' => 300]));
-    }
-
-    private function validateAndClean(array $params, string $errorPrefix): array
-    {
-        try {
-            validate(UsersValidate::class)
-                ->batch(true)
-                ->scene('edit')
-                ->check($params);
-        } catch (ValidateException $e) {
-            throw \app\api\ApiException::badRequest($errorPrefix, \app\api\ApiException::CODE_PARAM_INVALID, $e->getError());
-        }
-
-        return $params;
+        return $this->respond(['expiresIn' => 300]);
     }
 }

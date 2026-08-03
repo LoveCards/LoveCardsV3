@@ -12,20 +12,30 @@
     "packages/sdk"
   ],
   "scripts": {
-    "check": "npm run check:architecture && npm run check:api-contract && npm run check:generated:sdk && npm run typecheck:sdk",
+    "check": "npm run test:backend && npm run check:architecture && npm run check:routes:strict && npm run check:api-contract && npm run check:generated:sdk && npm run typecheck:sdk && npm run typecheck:admin",
     "check:architecture": "node scripts/check-architecture.mjs",
     "audit:api": "node scripts/audit-api-contract.mjs",
-    "export:api": "npm run audit:api && node scripts/export-api-contract.mjs",
-    "check:api-contract": "node scripts/audit-api-contract.mjs --check && node scripts/export-api-contract.mjs --check",
+    "export:routes": "node scripts/check-route-manifest.mjs",
+    "check:routes": "node scripts/check-route-manifest.mjs --check",
+    "check:routes:strict": "node scripts/check-route-manifest.mjs --check --strict",
+    "export:api": "npm run export:routes && npm run audit:api && node scripts/export-api-contract.mjs",
+    "check:api-contract": "npm run check:routes && node scripts/audit-api-contract.mjs --check && node scripts/export-api-contract.mjs --check",
     "check:generated:sdk": "node scripts/generate-sdk-contract.mjs --check",
+    "test:backend": "node scripts/run-backend-tests.mjs",
     "generate:sdk": "npm run export:api && node scripts/generate-sdk-contract.mjs",
     "typecheck:sdk": "npm run typecheck --workspace @lovecards/sdk",
+    "typecheck:admin": "npm run typecheck --workspace @lovecards/admin",
     "build:sdk": "npm run generate:sdk && npm run build --workspace @lovecards/sdk",
     "build:admin": "npm run build:sdk && npm run build --workspace @lovecards/admin",
-    "build": "npm run build:sdk && npm run sync:sdk-theme && npm run build --workspace @lovecards/admin",
-    "dev:admin": "npm run dev --workspace @lovecards/admin",
+    "build": "npm run build:sdk && npm run sync:sdk-theme && npm run generate --workspace @lovecards/admin && npm run sync:admin && npm run check:admin-bundle",
+    "generate:admin": "npm run generate --workspace @lovecards/admin && npm run sync:admin && npm run check:admin-bundle",
+    "sync:admin": "node scripts/sync-admin.mjs",
+    "check:admin-bundle": "node scripts/check-admin-bundle.mjs",
+    "dev:backend": "node scripts/dev-backend.mjs",
+    "dev:admin": "npm run dev --workspace @lovecards/admin -- --host 127.0.0.1 --port 3000",
     "check:sdk-theme": "node scripts/check-sdk-theme.mjs",
     "sync:sdk-theme": "node scripts/sync-sdk-theme.mjs",
-    "test:sdk:integration": "npm run build:sdk && node packages/sdk/test/run-sdk-tests.mjs"
+    "test:sdk:integration": "npm run build:sdk && node packages/sdk/test/run-sdk-tests.mjs",
+    "test:admin:e2e": "node scripts/run-admin-e2e.mjs"
   }
 }

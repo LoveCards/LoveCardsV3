@@ -3,6 +3,12 @@ export interface CaptchaDriver {
   type: string
   name: string
   icon: string
+  fields?: Array<{
+    key: string
+    label: string
+    type: string
+    options?: Array<{ value: string | number; label: string }>
+  }>
 }
 
 export interface CaptchaMeta {

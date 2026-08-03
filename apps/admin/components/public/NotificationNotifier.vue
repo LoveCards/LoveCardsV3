@@ -20,7 +20,6 @@ watch(
                 notifier.toast({
                     text: notification.message,
                     type: notification.type,
-                    timeout: notification.timeout,
                 });
                 
                 // 显示后从队列中移除（延迟移除，确保通知已显示）

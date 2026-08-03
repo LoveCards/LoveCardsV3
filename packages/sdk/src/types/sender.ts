@@ -7,6 +7,7 @@ export interface SenderType {
 }
 
 export interface SenderMeta {
+  [key: string]: any
   type: string
   name: string
   icon: string

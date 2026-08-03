@@ -4,51 +4,62 @@ use think\facade\Route;
 
 use app\api\middleware\JwtAuthCheck;
 use app\api\middleware\PermissionCheck;
+use app\shared\Transport\Validation\BatchOperationInput;
 
 // ─── users/me 路由（只需 token） ───
 Route::group('users/me', function () {
     Route::get('', 'User.Profile/get')
-        ->name('users.me.get')
+    ->name('users.me.get')
+    ->setOption('contract', ['request' => null, 'response' => ['resource' => 'app\\modules\\Platform\\User\\Transport\\Api\\ProfileResource', 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => '我的信息', 'group' => '用户']);
 
     Route::patch('', 'User.Profile/update')
-        ->name('users.me.update')
+    ->name('users.me.update')
+    ->setOption('contract', ['request' => ['validate' => 'app\\modules\\Platform\\User\\Transport\\Api\\Profile', 'scene' => 'update'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
         ->setOption('meta', ['name' => '编辑我的信息', 'group' => '用户']);
 
     Route::post('password', 'User.Profile/password')
-        ->name('users.me.password')
+    ->name('users.me.password')
+    ->setOption('contract', ['request' => ['validate' => 'app\\modules\\Platform\\User\\Transport\\Api\\Profile', 'scene' => 'password'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
         ->setOption('meta', ['name' => '修改密码', 'group' => '用户']);
 
     Route::post('email', 'User.Profile/email')
-        ->name('users.me.email')
+    ->name('users.me.email')
+    ->setOption('contract', ['request' => ['validate' => 'app\\modules\\Platform\\User\\Transport\\Api\\Profile', 'scene' => 'email'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
         ->setOption('meta', ['name' => '绑定邮箱', 'group' => '用户']);
 
     Route::post('email-captcha', 'User.Profile/emailCaptcha')
-        ->name('users.me.emailCaptcha')
+    ->name('users.me.emailCaptcha')
+    ->setOption('contract', ['request' => ['validate' => 'app\\modules\\Platform\\User\\Transport\\Api\\Profile', 'scene' => 'emailCaptcha'], 'response' => ['resource' => 'app\\shared\\Transport\\Http\\ApiResource', 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => '邮箱验证码', 'group' => '用户']);
 })->middleware(JwtAuthCheck::class);
 
 // ─── 用户管理路由（合并 all/ 前缀） ───
 Route::group('users', function () {
     Route::get('', 'User.Users/list')
-        ->name('users.list')
+    ->name('users.list')
+    ->setOption('contract', ['request' => ['validate' => 'app\\shared\\Transport\\Validation\\PaginationInput', 'scene' => 'Defult'], 'response' => ['resource' => 'app\\modules\\Platform\\User\\Transport\\Api\\UserResource', 'shape' => 'paginated', 'status' => 200]])
         ->setOption('meta', ['name' => '用户列表', 'group' => '用户', 'caps' => ['users.read', 'users.read.all']]);
 
     Route::get(':id', 'User.Users/get')
-        ->name('users.get')
+    ->name('users.get')
+    ->setOption('contract', ['request' => null, 'response' => ['resource' => 'app\\modules\\Platform\\User\\Transport\\Api\\UserResource', 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => '用户详情', 'group' => '用户', 'caps' => ['users.read', 'users.read.all']]);
 
     Route::patch(':id', 'User.Users/update')
-        ->name('users.update')
+    ->name('users.update')
+    ->setOption('contract', ['request' => ['validate' => 'app\\modules\\Platform\\User\\Transport\\Api\\Users', 'scene' => 'allUpdate'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
         ->setOption('meta', ['name' => '编辑用户', 'group' => '用户', 'caps' => ['users.update', 'users.update.all']]);
 
     Route::delete(':id', 'User.Users/delete')
-        ->name('users.delete')
+    ->name('users.delete')
+    ->setOption('contract', ['request' => null, 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
         ->setOption('meta', ['name' => '删除用户', 'group' => '用户', 'caps' => ['users.delete', 'users.delete.all']]);
 })->middleware(JwtAuthCheck::class)->middleware(PermissionCheck::class);
 
 // ─── batch 路由（只检查 token） ───
 Route::post('users/batch', 'User.Users/batch')
     ->name('users.batch')
+    ->setOption('contract', ['request' => ['validate' => BatchOperationInput::class, 'scene' => 'BatchOperate'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
     ->middleware(JwtAuthCheck::class)
     ->setOption('meta', ['name' => '用户批量操作', 'group' => '用户']);

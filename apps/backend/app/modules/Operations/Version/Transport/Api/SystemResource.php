@@ -9,7 +9,16 @@ final class SystemResource extends Resource
     public static function schema(string $variant = 'default'): array
     {
         return ['type' => 'object', 'properties' => [
-            'ver' => ['type' => 'string'], 'latest' => ['type' => 'string'], 'verlog' => ['type' => 'array'],
+            'ver' => ['type' => 'object', 'properties' => [
+                'app_name' => ['type' => 'string'],
+                'homepage' => ['type' => 'string'],
+                'version' => ['type' => 'string'],
+                'build' => ['type' => 'integer'],
+                'github' => ['type' => 'string'],
+                'qgroup' => ['type' => 'string'],
+            ]],
+            'latest' => ['type' => 'object'],
+            'verlog' => ['type' => 'string'],
         ]];
     }
 

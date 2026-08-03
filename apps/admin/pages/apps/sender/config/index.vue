@@ -98,7 +98,7 @@ const scanning = ref(false);
 const loadChannels = () => {
 	client.sender.channels()
 		.then((channels) => {
-			const groups: Record<string, SenderChannelMeta[]> = {};
+			const groups: Record<string, SenderChannel[]> = {};
 			for (const ch of channels) {
 				const ct = ch.channelType || ch.slug;
 				if (!groups[ct]) groups[ct] = [];

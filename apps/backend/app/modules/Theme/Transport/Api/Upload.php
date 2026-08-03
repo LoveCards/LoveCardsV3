@@ -7,6 +7,15 @@ use think\Validate;
 /** Request contract for theme ZIP uploads. */
 final class Upload extends Validate
 {
+    public static $all_scene = [
+        'default' => [
+            'normal' => ['file'],
+            'require' => ['file'],
+            'nonNull' => false,
+            'toNull' => false,
+        ],
+    ];
+
     protected $rule = [
         'file' => 'require',
     ];
