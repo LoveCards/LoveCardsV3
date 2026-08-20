@@ -17,6 +17,9 @@ final class AdminRuntimeResource extends Resource
     public static function make($value): array
     {
         $data = self::normalize($value);
-        return is_array($data) ? $data : [];
+        if (!is_array($data)) return [];
+        $data['facilities'] = array_values(is_array($data['facilities'] ?? null) ? $data['facilities'] : []);
+        $data['workers'] = array_values(is_array($data['workers'] ?? null) ? $data['workers'] : []);
+        return $data;
     }
 }

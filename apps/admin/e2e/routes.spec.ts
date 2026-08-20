@@ -28,6 +28,12 @@ const routes = [
   '/apps/storage/files/1/usage',
 ]
 
+const expectedHeadings: Record<string, string> = {
+  '/apps/system': '系统',
+  '/apps/system/upgrade': '系统升级',
+  '/apps/system/runtime': '运行环境',
+}
+
 for (const route of routes) {
 	test(`admin route loads without page errors: ${route}`, async ({ page }) => {
 		test.setTimeout(60_000)
@@ -41,6 +47,9 @@ for (const route of routes) {
 		await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
 		await expect(page).not.toHaveURL(/\/admin\/login$/)
 		await expect(page.locator('body')).not.toContainText('权限不足')
+		if (expectedHeadings[route]) {
+			await expect(page.getByRole('heading', { name: expectedHeadings[route], exact: true })).toBeVisible()
+		}
 		await page.waitForTimeout(250)
 
 		expect(pageErrors, pageErrors.join('\n')).toEqual([])

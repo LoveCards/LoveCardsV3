@@ -20,6 +20,8 @@ final class AdminOverviewResource extends Resource
     public static function make($value): array
     {
         $data = self::normalize($value);
-        return is_array($data) ? $data : [];
+        if (!is_array($data)) return [];
+        $data['runtime'] = array_values(is_array($data['runtime'] ?? null) ? $data['runtime'] : []);
+        return $data;
     }
 }
