@@ -64,7 +64,7 @@ class Files extends Model
             return $query->securePublic();
         }
         return $query->where(function ($q) use ($userId) {
-            $q->where('user_id', $userId)->whereNull('deleted_at')
+            $q->where('user_id', $userId)->whereNull('deleted_at')->whereNull('purge_status')
               ->whereOr(function ($q2) {
                   $q2->securePublic();
               });
@@ -80,6 +80,7 @@ class Files extends Model
         return $query->where('is_public', 1)
             ->where('status', self::STATUS_NORMAL)
             ->where('upload_status', self::UPLOAD_COMPLETED)
+            ->whereNull('purge_status')
             ->whereNull('deleted_at');
     }
 

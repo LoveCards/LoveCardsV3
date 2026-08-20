@@ -12,6 +12,7 @@ final class CapabilityCatalog
     public static function all(): array
     {
         return [
+            'admin.access'       => '进入管理端',
             // Cards
             'cards.read'         => '查看卡片',
             'cards.read.all'     => '查看全部卡片',
@@ -47,6 +48,7 @@ final class CapabilityCatalog
             'users.update.all'   => '编辑任意用户',
             'users.delete'       => '注销自己',
             'users.delete.all'   => '删除任意用户',
+            'users.roles.assign' => 'Assign user roles',
             // Files
             'files.upload'      => '上传文件',
             'files.read'        => '查看文件',
@@ -55,6 +57,12 @@ final class CapabilityCatalog
             'files.update.all'  => '编辑任意文件',
             'files.delete'      => '删除自己的文件',
             'files.delete.all'  => '删除任意文件',
+            'files.restore'     => 'Restore files',
+            'files.restore.all' => 'Restore any file',
+            'files.purge'       => 'Permanently delete files',
+            'files.purge.all'   => 'Permanently delete any file',
+            'files.cleanup'     => 'Clean expired files',
+            'files.usage.read'  => '查看文件引用与访问诊断',
             // Likes
             'likes.create'      => '点赞',
             'likes.read'        => '查看点赞',
@@ -90,12 +98,25 @@ final class CapabilityCatalog
             'theme.update'      => '更新主题配置',
             'theme.upload'      => '上传主题',
             'theme.delete'      => '删除主题',
-            'theme.freeze'      => '固化主题配置',
             'theme.activate'    => '切换主题',
             // Dashboard
             'dashboard.read'    => '查看控制台',
             // System
             'system.update'     => '系统更新',
+            'system.update.contract' => '批准系统更新 Contract 阶段',
+            'system.recover'    => '恢复系统 Release 指针',
+            // Operations / governance
+            'operations.read'       => '查看系统运行和迁移状态',
+            'operations.migrate'    => '推进系统迁移',
+            'operations.retry'      => '重试异步投递',
+            'audit.read'            => '查看审计日志',
+            'reports.read'          => '查看举报案件',
+            'reports.manage'        => '处理举报案件',
+            'users.security.read'   => '查看用户安全状态',
+            'users.sessions.revoke' => '撤销用户 Session',
+            'users.recovery.read'   => '查看账号恢复状态',
+            'communications.read'   => '查看通知和投递运维元数据',
+            'community.insights.read' => '查看社区隐私安全聚合',
             // Session（公开路由，通常不需要分配）
             'session.login'     => '登录',
             'session.register'  => '注册',
@@ -104,5 +125,23 @@ final class CapabilityCatalog
             'session.check'     => 'Token校验',
             'session.captcha'   => '获取验证码',
         ];
+    }
+
+    /** @return array<string,string> Canonical capabilities without legacy .all aliases. */
+    public static function canonical(): array
+    {
+        $result = [];
+        foreach (self::all() as $capability => $description) {
+            $name = str_ends_with($capability, '.all') ? substr($capability, 0, -4) : $capability;
+            if (!isset($result[$name]) || !str_ends_with($capability, '.all')) {
+                $result[$name] = $description;
+            }
+        }
+        return $result;
+    }
+
+    public static function scopesFor(string $capability): array
+    {
+        return array_key_exists($capability . '.all', self::all()) ? ['own', 'all'] : ['global'];
     }
 }

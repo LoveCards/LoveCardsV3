@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { className, generatedResourceMethod, operationResponseType, qualifyType, resourceFileName, splitParams } from './lib/sdk-codegen.mjs'
 
 const root = process.cwd()
 const contract = JSON.parse(await fs.readFile(path.join(root, 'contracts/openapi.json'), 'utf8'))
@@ -10,73 +11,11 @@ const checkOnly = process.argv.includes('--check')
 
 function quote(value) { return JSON.stringify(value) }
 
-function tsType(schema, fallback = 'unknown') {
-  if (!schema) return fallback
-  if (schema['x-typescript-type']) return schema['x-typescript-type']
-  if (schema.const === true) return 'true'
-  if (schema.type === 'string') return 'string'
-  if (schema.type === 'integer' || schema.type === 'number') return 'number'
-  if (schema.type === 'boolean') return 'boolean'
-  if (schema.type === 'array') return `${tsType(schema.items)}[]`
-  if (schema.type === 'object') return 'Record<string, unknown>'
-  return fallback
-}
-
-const qualifiedTypeNames = 'ListResult CreateResult Card Comment Tag User Role Like LCFile ThemeItem ThemeConfigData ThemeActivateParams ThemeDeleteParams ConfigData ConfigRegisterResult CaptchaDriver CaptchaMeta CaptchaConfig StorageDriver StorageMeta StorageChannel ChannelStats SenderType SenderMeta SenderChannel SenderTemplate SystemUpdateInfo DashboardData DirectUploadResult UploadResult CapabilityItem CheckResult LoginResult EmailCaptchaResult CardsListParams CreateCardParams UpdateCardParams CreateCommentParams BatchOperateParams PaginationParams ConfigRegisterParams ConfigUpdateParams FilesBatchOperateParams AssignCapabilitiesParams CreateRoleParams ReseedResult UpdateRoleParams CaptchaSendParams LoginParams RegisterParams EmailParams EmailCaptchaParams PasswordParams ProfileUpdateParams AdminUserUpdateParams ListParams'.split(' ')
-
-function qualifyType(type) {
-  return type.replace(new RegExp(`\\b(${qualifiedTypeNames.join('|')})\\b`, 'g'), 'ApiTypes.$1')
-}
-
-function splitParams(value) {
-  if (!value.trim()) return []
-  const result = []
-  let current = ''
-  let depth = 0
-  for (const char of value) {
-    if ('<{[('.includes(char)) depth++
-    if ('>}])'.includes(char)) depth--
-    if (char === ',' && depth === 0) {
-      result.push(current.trim())
-      current = ''
-    } else current += char
-  }
-  if (current.trim()) result.push(current.trim())
-  return result.map((param) => {
-    const match = param.match(/^([A-Za-z_$][\w$]*\??)\s*:\s*(.+)$/)
-    return match ? { name: match[1].replace('?', ''), declaration: `${match[1]}: ${qualifyType(match[2])}` } : { name: param, declaration: param }
-  }).filter((param) => !/^\w+\??:\s*\{\s*\}$/.test(param.declaration))
-}
-
-function className(resource) { return resource.charAt(0).toUpperCase() + resource.slice(1) }
-
-function generatedResourceMethod(method) {
-  const params = splitParams(method.params)
-  const pathParams = [...method.path.matchAll(/:([A-Za-z_]\w*)/g)].map((match, index) => params[index]?.name || match[1] || `param${index + 1}`)
-  let pathIndex = 0
-  const url = method.path.replaceAll(/:[A-Za-z_]\w*/g, () => `\${${pathParams[pathIndex++]}}`)
-  const urlLiteral = pathParams.length ? `\`${url}\`` : JSON.stringify(method.path)
-  const remaining = params.slice(pathParams.length)
-  const returnType = qualifyType(method.returnType)
-  const signature = params.map((param) => param.declaration).join(', ')
-  const queryOrBody = remaining.at(-1)?.name
-  let call
-  if (method.httpMethod === 'GET') call = `this._get<${returnType}>(${urlLiteral}${queryOrBody ? `, ${queryOrBody}` : ''})`
-  else if (method.httpMethod === 'DELETE') call = `this._delete<${returnType}>(${urlLiteral}${queryOrBody ? `, ${queryOrBody}` : ''})`
-  else if (queryOrBody && /FormData/.test(remaining.at(-1)?.declaration || '')) call = `this._${method.httpMethod.toLowerCase()}<${returnType}>(${urlLiteral}, ${queryOrBody}, { headers: { 'Content-Type': 'multipart/form-data' } })`
-  else if (queryOrBody) call = `this._${method.httpMethod.toLowerCase()}<${returnType}>(${urlLiteral}, ${queryOrBody})`
-  else call = `this._${method.httpMethod.toLowerCase()}<${returnType}>(${urlLiteral})`
-  return `  ${method.method}(${signature}): Promise<${returnType}> {\n    return ${call}\n  }`
-}
-
 const entries = []
 for (const [route, methods] of Object.entries(contract.paths)) {
   for (const [method, operation] of Object.entries(methods)) {
     if (method === 'parameters') continue
-    const success = Object.entries(operation.responses).find(([status]) => status !== 'default')?.[1]
     const status = Object.entries(operation.responses).find(([code]) => code !== 'default')?.[0] || '200'
-    const content = success?.content?.['application/json']?.schema
-    const responseSchema = content?.properties?.data
     const requestBody = operation.requestBody?.content
     const requestSchema = requestBody ? Object.values(requestBody)[0]?.schema : operation.parameters?.find((item) => item.in === 'query')?.schema
     entries.push({
@@ -85,7 +24,7 @@ for (const [route, methods] of Object.entries(contract.paths)) {
       path: route,
       status: Number(status),
       request: requestSchema?.['x-typescript-params'] || null,
-      response: tsType(responseSchema, status === '204' ? 'void' : 'unknown'),
+      response: operationResponseType(operation, status === '204' ? 'void' : 'unknown'),
       shape: operation['x-response-shape'] || 'dynamic',
       capabilities: operation['x-capabilities'] || [],
       public: Boolean(operation['x-public']),
@@ -101,7 +40,7 @@ const lines = [
   'export interface GeneratedApiContract {',
 ]
 for (const entry of entries) {
-  const requestType = entry.request ? qualifyType(entry.request.match(/(?:data|params)\??:\s*(.+)$/)?.[1] || 'Record<string, unknown>') : 'void'
+  const requestType = entry.request ? qualifyType(entry.request.match(/(?:data|params|formData)\??:\s*(.+)$/)?.[1] || 'Record<string, unknown>') : 'void'
   const responseType = qualifyType(entry.response)
   lines.push(`  ${JSON.stringify(entry.operationId)}: { method: ${JSON.stringify(entry.method)}; path: ${JSON.stringify(entry.path)}; request: ${requestType}; response: ${responseType}; status: ${entry.status}; shape: ${JSON.stringify(entry.shape)}; public: ${entry.public}; capabilities: readonly string[] }`)
 }
@@ -133,9 +72,7 @@ for (const [route, operations] of Object.entries(contract.paths)) {
       methodName = parts.slice(1).join('_')
     }
     const pathValue = route.replaceAll(/\{[^}]+\}/g, (value) => `:${value.slice(1, -1)}`)
-    const response = Object.entries(operation.responses || {}).find(([status]) => status !== 'default')?.[1]
-    const responseSchema = response?.content?.['application/json']?.schema?.properties?.data
-    let returnType = tsType(responseSchema, String(operation.responses?.['204'] ? 'void' : 'unknown'))
+    let returnType = operationResponseType(operation, operation.responses?.['204'] ? 'void' : 'unknown')
     if (operation.operationId === 'theme.publicConfig') returnType = 'ThemeConfigData'
     const bodySchema = operation.requestBody ? Object.values(operation.requestBody.content || {})[0]?.schema : operation.parameters?.find((item) => item.in === 'query')?.schema
     const params = bodySchema?.['x-typescript-params'] || null
@@ -175,7 +112,18 @@ for (const [resource, methods] of methodsByResource) {
     '}',
     '',
   ]
-  outputs.set(path.join(resourceOutputDir, `${resource}.ts`), resourceLines.join('\n'))
+  outputs.set(path.join(resourceOutputDir, resourceFileName(resource)), resourceLines.join('\n'))
+}
+
+async function normalizeResourceFileCasing(expectedNames) {
+  for (const actual of await fs.readdir(resourceOutputDir)) {
+    const expected = [...expectedNames].find((name) => name.toLowerCase() === actual.toLowerCase())
+    if (!expected || actual === expected) continue
+    const source = path.join(resourceOutputDir, actual)
+    const temporary = path.join(resourceOutputDir, `.__lc_case_${Date.now()}_${actual}`)
+    await fs.rename(source, temporary)
+    await fs.rename(temporary, path.join(resourceOutputDir, expected))
+  }
 }
 
 if (checkOnly) {
@@ -185,6 +133,9 @@ if (checkOnly) {
     try { current = await fs.readFile(file, 'utf8') } catch { current = '' }
     if (current !== expected) failures.push(path.relative(root, file))
   }
+  const expectedResources = new Set([...outputs.keys()].filter((file) => path.dirname(file) === resourceOutputDir).map((file) => path.basename(file)))
+  const extraResources = (await fs.readdir(resourceOutputDir)).filter((file) => file.endsWith('.ts') && !expectedResources.has(file))
+  failures.push(...extraResources.map((file) => path.relative(root, path.join(resourceOutputDir, file))))
   if (failures.length) {
     console.error(`Generated SDK files are stale: ${failures.join(', ')}`)
     process.exitCode = 1
@@ -193,6 +144,11 @@ if (checkOnly) {
   }
 } else {
   await fs.mkdir(resourceOutputDir, { recursive: true })
+  const expectedResources = new Set([...outputs.keys()].filter((file) => path.dirname(file) === resourceOutputDir).map((file) => path.basename(file)))
+  await normalizeResourceFileCasing(expectedResources)
   for (const [file, content] of outputs) await fs.writeFile(file, content)
+  for (const file of await fs.readdir(resourceOutputDir)) {
+    if (file.endsWith('.ts') && !expectedResources.has(file)) await fs.unlink(path.join(resourceOutputDir, file))
+  }
   console.log(`Generated SDK contract for ${entries.length} endpoints and ${methodsByResource.size} resources`)
 }

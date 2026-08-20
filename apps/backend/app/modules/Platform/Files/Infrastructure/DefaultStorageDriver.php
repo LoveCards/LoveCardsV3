@@ -3,6 +3,7 @@
 namespace app\modules\Platform\Files\Infrastructure;
 
 use app\modules\Platform\Files\Contract\StorageDriver;
+use app\modules\Platform\Files\Contract\LocalStorageReader;
 use app\modules\Platform\Storage\Public\Gateway;
 use think\facade\Log;
 
@@ -11,7 +12,7 @@ use think\facade\Log;
  *
  * 封装 StorageFactory 的静态调用，使 Application 层通过 Port 访问。
  */
-class DefaultStorageDriver implements StorageDriver
+class DefaultStorageDriver implements StorageDriver, LocalStorageReader
 {
     private static function make(string $slug): object
     {
@@ -79,7 +80,11 @@ class DefaultStorageDriver implements StorageDriver
 
     public function supportsDirectUpload(string $channelSlug): bool
     {
-        $driver = StorageFactory::make($channelSlug);
-        return $driver instanceof HasDirectUpload;
+        return Gateway::supportsDirectUpload(self::make($channelSlug));
+    }
+
+    public function resolveLocalFile(string $channelSlug, string $driverPath): array
+    {
+        return Gateway::resolveLocalFile(self::make($channelSlug), $driverPath);
     }
 }

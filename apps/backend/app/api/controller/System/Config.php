@@ -2,8 +2,6 @@
 
 namespace app\api\controller\System;
 
-use think\facade\Request;
-
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
 use app\modules\Platform\Config\Transport\Api\ConfigResource;
@@ -21,7 +19,8 @@ class Config extends BaseController
 
     public function index()
     {
-        $group = Request::param('group', '');
+        $params = $this->validated();
+        $group = $params['group'] ?? '';
         $groups = empty($group) ? [] : explode(',', (string) $group);
         return ApiResponse::createOk(ConfigResource::make($this->config->get($groups)));
     }
@@ -33,7 +32,7 @@ class Config extends BaseController
 
     public function update()
     {
-        $this->config->update(Request::param());
+        $this->config->update($this->validated());
         return ApiResponse::createNoContent();
     }
 
@@ -45,8 +44,10 @@ class Config extends BaseController
 
     public function register()
     {
-        $group = Request::param('group', '');
-        $schema = Request::param('schema', []);
+        $params = $this->validated();
+        $group = $params['group'] ?? '';
+        $schema = $params['schema'] ?? [];
+        if (is_string($schema)) $schema = json_decode($schema, true) ?: [];
 
         if (empty($group) || empty($schema)) {
             return ApiResponse::createBadRequest('缂哄皯 group 鎴?schema');
@@ -58,14 +59,16 @@ class Config extends BaseController
 
     public function reload()
     {
-        $group = Request::param('group');
+        $params = $this->validated();
+        $group = $params['group'] ?? null;
         $this->config->reload($group ?: null);
         return ApiResponse::createNoContent();
     }
 
     public function delete()
     {
-        $group = Request::param('group', '');
+        $params = $this->validated();
+        $group = $params['group'] ?? '';
         if (empty($group)) {
             return ApiResponse::createBadRequest('缺少 group');
         }
@@ -75,8 +78,9 @@ class Config extends BaseController
 
     public function deleteKey()
     {
-        $group = Request::param('group', '');
-        $key = Request::param('key', '');
+        $params = $this->validated();
+        $group = $params['group'] ?? '';
+        $key = $params['key'] ?? '';
         if (empty($group) || empty($key)) {
             return ApiResponse::createBadRequest('缺少 group 或 key');
         }

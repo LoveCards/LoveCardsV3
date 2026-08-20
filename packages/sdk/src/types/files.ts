@@ -1,3 +1,5 @@
+import type { JsonObject } from './json'
+
 export interface LCFile {
   url?: string
   id: number
@@ -14,7 +16,7 @@ export interface LCFile {
   file_size: number
   file_ext: string
   mime_type: string | null
-  metadata: Record<string, any> | null
+  metadata: JsonObject | null
   status: number
   upload_status: number
   expire_at: string | null

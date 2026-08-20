@@ -20,6 +20,7 @@ $rbacPath = $baseDir . '/app/modules/Platform/Rbac/Service/RBAC.php';
 $rolesPath = $baseDir . '/app/modules/Platform/Rbac/Service/Roles.php';
 $capabilityCatalogPath = $baseDir . '/app/modules/Platform/Rbac/Domain/CapabilityCatalog.php';
 $systemRolePolicyPath = $baseDir . '/app/modules/Platform/Rbac/Domain/SystemRolePolicy.php';
+$usersModelPath = $baseDir . '/app/modules/Platform/User/Infrastructure/Persistence/Model/Users.php';
 
 $errors = [];
 $passCount = 0;
@@ -279,6 +280,7 @@ echo "--- 1. Required Tables in data.sql ---\n";
 $requiredTables = [
     'cards', 'comments', 'tags', 'tags_map', 'users',
     'roles', 'role_capabilities', 'configs', 'files', 'likes',
+    'theme_bindings',
 ];
 $foundTables = getCreateTableNames($dataSql);
 
@@ -321,6 +323,14 @@ $columnChecks = [
     ['configs', 'updated_at', 'DATETIME'],
     ['role_capabilities', 'role_id', 'INT'],
     ['role_capabilities', 'capability', 'VARCHAR'],
+    ['theme_bindings', 'hostname', 'VARCHAR'],
+    ['theme_bindings', 'theme_id', 'VARCHAR'],
+    ['theme_bindings', 'release_key', 'VARCHAR'],
+    ['auth_sessions', 'token_expires_at', 'DATETIME'],
+    ['auth_sessions', 'renewable_until', 'DATETIME'],
+    ['auth_sessions', 'security_version', 'INT'],
+    ['auth_sessions', 'revoked_reason', 'VARCHAR'],
+    ['auth_sessions', 'rotated_to_session_id', 'BIGINT'],
 ];
 
 foreach ($columnChecks as [$table, $col, $type]) {
@@ -342,6 +352,7 @@ $ukChecks = [
     ['configs', 'uk_configs_group_key'],
     ['likes', 'uk_likes_pid_uid'],
     ['role_capabilities', 'uk_role_cap'],
+    ['theme_bindings', 'uk_theme_bindings_hostname'],
 ];
 
 foreach ($ukChecks as [$table, $key]) {
@@ -505,12 +516,14 @@ if ($migrationCombined !== '') {
         fail("Capability seeding may not be idempotent — missing WHERE NOT EXISTS");
     }
 
-    // 7f. Check migration doesn't contain DROP TABLE or other destructive operations
+    // 7f. Check migration doesn't contain destructive operations. DROP INDEX is
+    // allowed for rebuilding a legacy index after a column rename; it does not
+    // delete user data and is covered by the compatibility migration checks.
     // Strip comments first to avoid matching DROP in SQL comments
     $destructiveDrops = $migrationNoComments;
     // Exempt DROP PROCEDURE (allowed)
     $destructiveDrops = preg_replace('/DROP\s+PROCEDURE\s+IF\s+EXISTS/i', '', $destructiveDrops);
-    if (preg_match('/\bDROP\s+(TABLE|VIEW|DATABASE|INDEX|KEY)\b/i', $destructiveDrops)) {
+    if (preg_match('/\bDROP\s+(TABLE|VIEW|DATABASE|KEY)\b/i', $destructiveDrops)) {
         fail("Migration contains destructive DROP (other than DROP PROCEDURE)");
     } else {
         pass("No destructive DROP statements in migration (only DROP PROCEDURE)");
@@ -524,7 +537,71 @@ if ($migrationCombined !== '') {
 // ────────────────────────────────────────────────────────────
 echo "\n--- 8. Cross-file Consistency ---\n";
 
+$usersModelSource = file_exists($usersModelPath) ? (string) file_get_contents($usersModelPath) : '';
+foreach (['security_version' => 'int', 'credentials_changed_at' => 'timestamp'] as $column => $type) {
+    if (preg_match("/'" . preg_quote($column, '/') . "'\\s*=>\\s*'" . preg_quote($type, '/') . "'/", $usersModelSource)) {
+        pass("Users model schema contains `{$column}` as {$type}");
+    } else {
+        fail("Users model schema must contain `{$column}` as {$type}");
+    }
+}
+
 if ($migrationCombined !== '') {
+    $sessionCompat = $migrationSqls['20260818000002.sql'] ?? '';
+    if (str_contains($sessionCompat, 'CHANGE COLUMN `expires_at` `token_expires_at`')
+        && str_contains($sessionCompat, 'ADD COLUMN `renewable_until`')
+        && str_contains($sessionCompat, 'ADD COLUMN `security_version`')
+        && str_contains($sessionCompat, 'idx_auth_sessions_expiry')) {
+        pass('Auth session compatibility migration upgrades legacy expires_at schemas');
+    } else {
+        fail('Auth session compatibility migration is missing legacy column upgrade guards');
+    }
+
+    $runtimeCompat = $migrationSqls['20260818000003.sql'] ?? '';
+    $runtimeColumnChecks = [
+        ['runtime_workers', 'worker_id'],
+        ['runtime_workers', 'handler_catalog_hash'],
+        ['library_items', 'id'],
+        ['library_items', 'uk_library_resource'],
+        ['view_history', 'id'],
+        ['view_history', 'view_count'],
+        ['view_history', 'viewed_at'],
+        ['view_history', 'created_at'],
+    ];
+    foreach ($runtimeColumnChecks as [$table, $columnOrKey]) {
+        $present = str_contains($runtimeCompat, "`{$columnOrKey}`")
+            || ($columnOrKey === 'uk_library_resource' && str_contains($runtimeCompat, 'uk_library_resource'));
+        if ($present) {
+            pass("Runtime compatibility migration contains `{$table}.{$columnOrKey}`");
+        } else {
+            fail("Runtime compatibility migration is missing `{$table}.{$columnOrKey}`");
+        }
+    }
+
+    $resourceCompat = $migrationSqls['20260818000004.sql'] ?? '';
+    foreach (['library_items', 'view_history', 'notifications', 'reports'] as $table) {
+        if (str_contains($resourceCompat, "ALTER TABLE `{$table}`")
+            && str_contains($resourceCompat, 'VARCHAR(128)')) {
+            pass("ResourceRef migration widens {$table} resource identifiers");
+        } else {
+            fail("ResourceRef migration is missing {$table} identifier widening");
+        }
+    }
+
+    $codeContractChecks = [
+        [$baseDir . '/app/modules/Platform/Social/Infrastructure/ThinkOrmSocialGraphRepository.php', 'followee_id', 'social repository uses user_follows.followee_id'],
+        [$baseDir . '/app/modules/Platform/Notifications/Infrastructure/ThinkOrmNotificationRepository.php', "'type'", 'notification repository uses notifications.type'],
+        [$baseDir . '/app/modules/Platform/Notifications/Infrastructure/ThinkOrmNotificationRepository.php', "'payload'", 'notification repository uses notifications.payload'],
+        [$baseDir . '/app/modules/Platform/Safety/Infrastructure/ThinkOrmSafetyRepository.php', 'subject_id', 'safety repository uses user_safety_relations.subject_id'],
+        [$baseDir . '/app/modules/Platform/Safety/Infrastructure/ThinkOrmSafetyRepository.php', 'target_type', 'safety repository uses reports.target_type'],
+        [$baseDir . '/app/shared/Observability/ThinkDbAuditLogger.php', "'payload'", 'audit logger uses audit_logs.payload'],
+    ];
+    foreach ($codeContractChecks as [$path, $needle, $message]) {
+        $source = file_exists($path) ? (string) file_get_contents($path) : '';
+        if (str_contains($source, $needle)) pass($message);
+        else fail("Missing code/schema contract: {$message}");
+    }
+
     // Check data.sql role_permissions has no FK to permissions (use strip-commented SQL)
     if (hasForeignKeyToPermissions(stripSqlComments($dataSql))) {
         fail("data.sql role_permissions still has FK to permissions table");
@@ -539,6 +616,21 @@ if ($migrationCombined !== '') {
 
     // Extract role capability matrix from Roles.php reseed()
     $roleMatrix = extractRoleCapMatrixFromRoles($rolesPath, $systemRolePolicyPath);
+    $normalizedAuthorization = str_contains($migrationCombined, 'CREATE TABLE IF NOT EXISTS `role_grants`');
+    if ($normalizedAuthorization) {
+        foreach (['user_roles', 'capabilities', 'role_grants', 'auth_sessions'] as $table) {
+            if (str_contains($migrationCombined, "CREATE TABLE IF NOT EXISTS `{$table}`")) {
+                pass("Normalized authorization migration creates `{$table}`");
+            } else {
+                fail("Normalized authorization migration is missing `{$table}`");
+            }
+        }
+        if (str_contains($migrationCombined, "'users.roles.assign'") && str_contains($migrationCombined, "'files.purge'")) {
+            pass('Normalized authorization migration includes current high-risk capabilities');
+        } else {
+            fail('Normalized authorization migration is missing current high-risk capabilities');
+        }
+    } else {
     $expectedRoleCounts = [];
     foreach ($roleMatrix as $rid => $caps) {
         $expectedRoleCounts[$rid] = count($caps);
@@ -598,6 +690,7 @@ if ($migrationCombined !== '') {
         }
     } else {
         echo "[INFO] Skipping exact capability set comparison due to count mismatches\n";
+    }
     }
 
     // Check migration creates all required migration tables
@@ -1347,4 +1440,12 @@ if ($failCount > 0) {
 } else {
     echo "\nAll schema contract checks PASSED.\n";
     exit(0);
+}
+
+foreach (['token_expires_at', 'renewable_until', 'security_version'] as $column) {
+    if (hasNotNull($dataSql, 'auth_sessions', $column)) {
+        pass("`auth_sessions.{$column}` is NOT NULL");
+    } else {
+        fail("`auth_sessions.{$column}` must be NOT NULL");
+    }
 }

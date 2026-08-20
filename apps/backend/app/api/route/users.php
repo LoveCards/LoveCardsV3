@@ -1,65 +1,58 @@
 <?php
 
 use think\facade\Route;
-
 use app\api\middleware\JwtAuthCheck;
 use app\api\middleware\PermissionCheck;
+use app\modules\Platform\User\Transport\Api\Profile;
+use app\modules\Platform\User\Transport\Api\ProfileResource;
+use app\modules\Platform\User\Transport\Api\Users as UsersValidate;
+use app\modules\Platform\User\Transport\Api\UserResource;
+use app\shared\Authorization\Scope;
+use app\shared\Transport\Http\ApiResource;
+use app\shared\Transport\Validation\PaginationInput;
 use app\shared\Transport\Validation\BatchOperationInput;
 
-// ─── users/me 路由（只需 token） ───
-Route::group('users/me', function () {
-    Route::get('', 'User.Profile/get')
-    ->name('users.me.get')
-    ->setOption('contract', ['request' => null, 'response' => ['resource' => 'app\\modules\\Platform\\User\\Transport\\Api\\ProfileResource', 'shape' => 'item', 'status' => 200]])
-        ->setOption('meta', ['name' => '我的信息', 'group' => '用户']);
+$required = static fn (array $allOf = [], array $anyOf = []): array => [
+    'auth' => 'required', 'allOf' => $allOf, 'anyOf' => $anyOf,
+];
+$grant = static fn (string $capability, string $scope): array => compact('capability', 'scope');
 
-    Route::patch('', 'User.Profile/update')
-    ->name('users.me.update')
-    ->setOption('contract', ['request' => ['validate' => 'app\\modules\\Platform\\User\\Transport\\Api\\Profile', 'scene' => 'update'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
-        ->setOption('meta', ['name' => '编辑我的信息', 'group' => '用户']);
-
-    Route::post('password', 'User.Profile/password')
-    ->name('users.me.password')
-    ->setOption('contract', ['request' => ['validate' => 'app\\modules\\Platform\\User\\Transport\\Api\\Profile', 'scene' => 'password'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
-        ->setOption('meta', ['name' => '修改密码', 'group' => '用户']);
-
-    Route::post('email', 'User.Profile/email')
-    ->name('users.me.email')
-    ->setOption('contract', ['request' => ['validate' => 'app\\modules\\Platform\\User\\Transport\\Api\\Profile', 'scene' => 'email'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
-        ->setOption('meta', ['name' => '绑定邮箱', 'group' => '用户']);
-
-    Route::post('email-captcha', 'User.Profile/emailCaptcha')
-    ->name('users.me.emailCaptcha')
-    ->setOption('contract', ['request' => ['validate' => 'app\\modules\\Platform\\User\\Transport\\Api\\Profile', 'scene' => 'emailCaptcha'], 'response' => ['resource' => 'app\\shared\\Transport\\Http\\ApiResource', 'shape' => 'item', 'status' => 200]])
-        ->setOption('meta', ['name' => '邮箱验证码', 'group' => '用户']);
-})->middleware(JwtAuthCheck::class);
-
-// ─── 用户管理路由（合并 all/ 前缀） ───
-Route::group('users', function () {
-    Route::get('', 'User.Users/list')
-    ->name('users.list')
-    ->setOption('contract', ['request' => ['validate' => 'app\\shared\\Transport\\Validation\\PaginationInput', 'scene' => 'Defult'], 'response' => ['resource' => 'app\\modules\\Platform\\User\\Transport\\Api\\UserResource', 'shape' => 'paginated', 'status' => 200]])
-        ->setOption('meta', ['name' => '用户列表', 'group' => '用户', 'caps' => ['users.read', 'users.read.all']]);
-
-    Route::get(':id', 'User.Users/get')
-    ->name('users.get')
-    ->setOption('contract', ['request' => null, 'response' => ['resource' => 'app\\modules\\Platform\\User\\Transport\\Api\\UserResource', 'shape' => 'item', 'status' => 200]])
-        ->setOption('meta', ['name' => '用户详情', 'group' => '用户', 'caps' => ['users.read', 'users.read.all']]);
-
-    Route::patch(':id', 'User.Users/update')
-    ->name('users.update')
-    ->setOption('contract', ['request' => ['validate' => 'app\\modules\\Platform\\User\\Transport\\Api\\Users', 'scene' => 'allUpdate'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
-        ->setOption('meta', ['name' => '编辑用户', 'group' => '用户', 'caps' => ['users.update', 'users.update.all']]);
-
-    Route::delete(':id', 'User.Users/delete')
-    ->name('users.delete')
-    ->setOption('contract', ['request' => null, 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
-        ->setOption('meta', ['name' => '删除用户', 'group' => '用户', 'caps' => ['users.delete', 'users.delete.all']]);
+Route::group('me', function () use ($required, $grant) {
+    Route::get('', 'User.Profile/get')->name('users.me.get')
+        ->setOption('contract', ['request' => null, 'response' => ['resource' => ProfileResource::class, 'shape' => 'item', 'status' => 200]])
+        ->setOption('meta', ['name' => '我的信息', 'group' => '用户', 'access' => $required([$grant('users.read', Scope::OWN)])]);
+    Route::patch('', 'User.Profile/update')->name('users.me.update')
+        ->setOption('contract', ['request' => ['validate' => Profile::class, 'scene' => 'update'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
+        ->setOption('meta', ['name' => '编辑我的信息', 'group' => '用户', 'access' => $required([$grant('users.update', Scope::OWN)])]);
+    Route::post('password', 'User.Profile/password')->name('users.me.password')
+        ->setOption('contract', ['request' => ['validate' => Profile::class, 'scene' => 'password'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
+        ->setOption('meta', ['name' => '修改密码', 'group' => '用户', 'access' => $required([$grant('users.update', Scope::OWN)])]);
+    Route::post('email', 'User.Profile/email')->name('users.me.email')
+        ->setOption('contract', ['request' => ['validate' => Profile::class, 'scene' => 'email'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
+        ->setOption('meta', ['name' => '绑定邮箱', 'group' => '用户', 'access' => $required([$grant('users.update', Scope::OWN)])]);
+    Route::post('email-captcha', 'User.Profile/emailCaptcha')->name('users.me.emailCaptcha')
+        ->setOption('contract', ['request' => ['validate' => Profile::class, 'scene' => 'emailCaptcha'], 'response' => ['resource' => ApiResource::class, 'shape' => 'item', 'status' => 200]])
+        ->setOption('meta', ['name' => '邮箱验证码', 'group' => '用户', 'access' => $required([$grant('users.update', Scope::OWN)])]);
 })->middleware(JwtAuthCheck::class)->middleware(PermissionCheck::class);
 
-// ─── batch 路由（只检查 token） ───
-Route::post('users/batch', 'User.Users/batch')
-    ->name('users.batch')
-    ->setOption('contract', ['request' => ['validate' => BatchOperationInput::class, 'scene' => 'BatchOperate'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
-    ->middleware(JwtAuthCheck::class)
-    ->setOption('meta', ['name' => '用户批量操作', 'group' => '用户']);
+Route::group('admin/users', function () use ($required, $grant) {
+    $admin = $grant('admin.access', Scope::GLOBAL);
+    Route::get('', 'User.Users/list')->name('users.listManaged')
+        ->setOption('contract', ['request' => ['validate' => PaginationInput::class, 'scene' => 'Defult'], 'response' => ['resource' => UserResource::class, 'shape' => 'paginated', 'status' => 200]])
+        ->setOption('meta', ['name' => '管理用户列表', 'group' => '用户', 'access' => $required([$admin, $grant('users.read', Scope::ALL)])]);
+    Route::get(':id', 'User.Users/get')->name('users.getManaged')
+        ->setOption('contract', ['request' => null, 'response' => ['resource' => UserResource::class, 'shape' => 'item', 'status' => 200]])
+        ->setOption('meta', ['name' => '管理用户详情', 'group' => '用户', 'access' => $required([$admin, $grant('users.read', Scope::ALL)])]);
+    Route::patch(':id', 'User.Users/update')->name('users.updateManaged')
+        ->setOption('contract', ['request' => ['validate' => UsersValidate::class, 'scene' => 'adminUpdate'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
+        ->setOption('meta', ['name' => '管理用户编辑', 'group' => '用户', 'access' => $required([$admin, $grant('users.update', Scope::ALL)])]);
+    Route::patch(':id/roles', 'User.Users/assignRoles')->name('users.assignRoles')
+        ->setOption('contract', ['request' => ['validate' => UsersValidate::class, 'scene' => 'assignRoles'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
+        ->setOption('meta', ['name' => '分配用户角色', 'group' => '用户', 'access' => $required([$admin, $grant('users.roles.assign', Scope::GLOBAL)])]);
+    Route::delete(':id', 'User.Users/delete')->name('users.deleteManaged')
+        ->setOption('contract', ['request' => null, 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
+        ->setOption('meta', ['name' => '管理用户删除', 'group' => '用户', 'access' => $required([$admin, $grant('users.delete', Scope::ALL)])]);
+    Route::post('batch', 'User.Users/batch')->name('users.batchManaged')
+        ->setOption('contract', ['request' => ['validate' => BatchOperationInput::class, 'scene' => 'BatchOperate'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
+        ->setOption('meta', ['name' => '管理用户批量操作', 'group' => '用户', 'access' => $required([$admin])]);
+})->middleware(JwtAuthCheck::class)->middleware(PermissionCheck::class);

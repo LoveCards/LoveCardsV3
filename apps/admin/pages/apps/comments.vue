@@ -1,6 +1,5 @@
 <!-- 用户管理 -->
 <template>
-  <NuxtLayout name="root">
     <!-- 标题 -->
     <v-row class="pt-2">
       <v-col cols="6">
@@ -128,7 +127,6 @@
         </v-card>
       </v-col>
     </v-row>
-  </NuxtLayout>
 
   <!-- 编辑对话框 -->
   <EditCommentDialog v-model:thisDialogState="EditCommentDialog_state" v-model:CommentData="EditCommentDialog_data"
@@ -147,18 +145,20 @@
 <script setup lang="ts">
 import CommonUtils from "@/utils/common";
 import { useApi } from '~/lib/api';
-import EditCommentDialog from "@/components/apps/comments/EditCommentDialog.vue";
-import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
-import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
-import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
-import SelectUtils from "~/api/utils/select";
+import EditCommentDialog from "@/components/comments/EditCommentDialog.vue";
+import PublicDeleteDialog from "@/components/shared/Table/DeleteDialog.vue";
+import PublicBatchDialog from "@/components/shared/Table/BatchDialog.vue";
+import PublicSearchDialog from "@/components/shared/Table/SearchDialog.vue";
+import SelectUtils from "~/utils/select";
+import type { Comment, CommentsBatchMethod } from '@lovecards/sdk';
 const client = useApi();
+const route = useRoute();
 
 //渲染数据预处理
-const renderTop = (data: any) => {
+const renderTop = (data: unknown) => {
   if (data !== '' && data !== undefined) {
     let result = "";
-    const top = SelectUtils.Cards.top.find((item: any) => item.value == data);
+    const top = SelectUtils.Cards.top.find((item) => item.value === Number(data));
     if (top) {
       result = top.title;
     }
@@ -194,11 +194,11 @@ const TableBatchOptions = [
   { title: "删除", value: "delete" },
 ];
 
-const tableItems = ref([{} as any]);//表格数据
-const tableSelected = ref([]);//批量选择数据
+const tableItems = ref<Comment[]>([]);//表格数据
+const tableSelected = ref<number[]>([]);//批量选择数据
 const tablePaginationLength = ref(0);//页面数量
 const tableCurrentPage = ref(1);//当前页面
-const tableSearchValue = ref(undefined);//搜索值
+const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);//搜索值
 const tableSearchFilter = ref({});//搜索过滤器
 
 //每页项目数量
@@ -206,31 +206,32 @@ const tableListRows = ref(SelectUtils.Common.Table.ListRowsOptions[0]?.value);
 
 //EditCommentDialog组件
 const EditCommentDialog_state = ref(false);
-const EditCommentDialog_data = ref({} as any);
-const openEditCommentDialog = (data: any) => {
+const EditCommentDialog_data = ref<Comment | null>(null);
+const openEditCommentDialog = (data: Comment) => {
   EditCommentDialog_data.value = data;
   EditCommentDialog_state.value = true;
 };
 
 //DeleteDialog组件
-const DeleteCardFun = (id: any) => {
-  client.comments.delete(id).then(() => {
+const DeleteCardFun = (id: number) => {
+  client.comments.deleteManaged(id).then(() => {
     DeleteCardDialog_state.value = false;
     getTableData();
   });
 }
 const DeleteCardDialog_state = ref(false);
-const DeleteCardDialog_data = ref({} as any);
-const openDeleteCardDialog = (data: {}) => {
+const DeleteCardDialog_data = ref<{ id: number }>({ id: 0 });
+const openDeleteCardDialog = (data: { id: number }) => {
   DeleteCardDialog_data.value = data;
   DeleteCardDialog_state.value = true;
 };
 
 // 批量操作相关
-const BatchOperate = ref('');
+const BatchOperate = ref<CommentsBatchMethod | ''>('');
 //BatchCardDialog组件
 const BatchCardFun = () => {
-  client.comments.batch({ method: BatchOperate.value as any, ids: tableSelected.value }).then(() => {
+  if (!BatchOperate.value) return;
+  client.comments.batchManaged({ method: BatchOperate.value, ids: tableSelected.value }).then(() => {
     BatchCardDialog_state.value = false;
     getTableData();
   })
@@ -249,7 +250,7 @@ const openBatchCardDialog = () => {
 //SearchDialog组件
 const SearchCardsDialog_state = ref(false);
 //子父传参
-const setTableSearchFilter = (data: any) => {
+const setTableSearchFilter = (data: Record<string, unknown>) => {
   tableSearchFilter.value = data;
 }
 const openSearchUserDialog = () => {
@@ -266,7 +267,7 @@ const getTableData = () => {
     ...tableSearchFilter.value
   };
   //获取数据
-  client.comments.list(params)
+  client.comments.listManaged(params as Parameters<typeof client.comments.listManaged>[0])
     .then((result) => {
       tableCurrentPage.value = result.pagination!.currentPage;
       tablePaginationLength.value = result.pagination!.totalPages;

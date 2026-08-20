@@ -22,6 +22,15 @@ import { Storage } from './generated/resources/storage'
 import { Sender } from './generated/resources/sender'
 import { Captcha } from './generated/resources/captcha'
 import { System } from './generated/resources/system'
+import { Drafts } from './generated/resources/drafts'
+import { Library } from './generated/resources/library'
+import { Messages } from './generated/resources/messages'
+import { Notifications } from './generated/resources/notifications'
+import { Safety } from './generated/resources/safety'
+import { Social } from './generated/resources/social'
+import { Operations } from './generated/resources/operations'
+import { Reports } from './generated/resources/reports'
+import { Community } from './generated/resources/community'
 
 export interface LCClient {
   readonly session: Session
@@ -40,6 +49,15 @@ export interface LCClient {
   readonly sender: Sender
   readonly captcha: Captcha
   readonly system: System
+  readonly drafts: Drafts
+  readonly library: Library
+  readonly messages: Messages
+  readonly notifications: Notifications
+  readonly safety: Safety
+  readonly social: Social
+  readonly operations: Operations
+  readonly reports: Reports
+  readonly community: Community
   readonly hooks: HookRegistration
 
   setToken(token: string): void
@@ -56,7 +74,7 @@ export function createClient(config: LCClientConfig): LCClient {
   const retry: RetryConfig = config.retry ?? {}
 
   const instance = axios.create({
-    baseURL: config.apiUrl,
+    baseURL: config.apiUrl.trim(),
     timeout,
     headers: { 'Content-Type': 'application/json' },
   })
@@ -126,6 +144,15 @@ class LCClientImpl implements LCClient {
   readonly sender: Sender
   readonly captcha: Captcha
   readonly system: System
+  readonly drafts: Drafts
+  readonly library: Library
+  readonly messages: Messages
+  readonly notifications: Notifications
+  readonly safety: Safety
+  readonly social: Social
+  readonly operations: Operations
+  readonly reports: Reports
+  readonly community: Community
   readonly hooks: HookRegistration
 
   private _tokenStore: TokenStore
@@ -158,6 +185,15 @@ class LCClientImpl implements LCClient {
     this.sender = new Sender(instance, opts)
     this.captcha = new Captcha(instance, opts)
     this.system = new System(instance, opts)
+    this.drafts = new Drafts(instance, opts)
+    this.library = new Library(instance, opts)
+    this.messages = new Messages(instance, opts)
+    this.notifications = new Notifications(instance, opts)
+    this.safety = new Safety(instance, opts)
+    this.social = new Social(instance, opts)
+    this.operations = new Operations(instance, opts)
+    this.reports = new Reports(instance, opts)
+    this.community = new Community(instance, opts)
 
     // 运行时 hook 注册
     const hookStore = opts.hooks

@@ -1,3 +1,5 @@
+import type { FieldDefinition, JsonObject, JsonValue } from './json'
+
 export interface SenderType {
   type: string
   channelType: string
@@ -7,18 +9,23 @@ export interface SenderType {
 }
 
 export interface SenderMeta {
-  [key: string]: any
+  [key: string]: JsonValue | undefined
   type: string
   name: string
   icon: string
-  schema: Record<string, any>
+  schema: JsonObject
   group: string
 }
 
 export interface SenderChannel {
-  [key: string]: any
+  slug: string
+  name: string
+  icon: string
+  fields: FieldDefinition[]
+  channelType?: string
+  supportedTypes?: string[]
 }
 
 export interface SenderTemplate {
-  [key: string]: any
+  [key: string]: JsonValue | undefined
 }

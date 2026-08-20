@@ -1,21 +1,490 @@
 {
   "source": "thinkphp-runtime-route-registry",
-  "routeCount": 96,
+  "routeCount": 171,
   "routes": [
     {
-      "path": "/cards/:id",
+      "path": "/admin/cards/:id",
+      "method": "DELETE",
+      "name": "cards.deleteManaged",
+      "controller": "Content.Cards",
+      "action": "delete",
+      "meta": {
+        "name": "管理卡片删除",
+        "group": "卡片",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "cards.delete",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/comments/:id",
+      "method": "DELETE",
+      "name": "comments.deleteManaged",
+      "controller": "Content.Comments",
+      "action": "delete",
+      "meta": {
+        "name": "管理评论删除",
+        "group": "评论",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "comments.delete",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/config",
+      "method": "DELETE",
+      "name": "config.delete",
+      "controller": "System.Config",
+      "action": "delete",
+      "meta": {
+        "name": "删除配置组",
+        "group": "配置",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "config.deleteKey",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Config\\Transport\\Api\\Config",
+          "scene": "delete"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/config/key",
+      "method": "DELETE",
+      "name": "config.deleteKey",
+      "controller": "System.Config",
+      "action": "deleteKey",
+      "meta": {
+        "name": "删除配置键",
+        "group": "配置",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "config.deleteKey",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Config\\Transport\\Api\\Config",
+          "scene": "deleteKey"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/files/:id",
+      "method": "DELETE",
+      "name": "files.deleteManaged",
+      "controller": "Storage.Upload",
+      "action": "delete",
+      "meta": {
+        "name": "管理文件删除",
+        "group": "文件",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "files.delete",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/files/:id/purge",
+      "method": "DELETE",
+      "name": "files.purge",
+      "controller": "Storage.Upload",
+      "action": "purge",
+      "meta": {
+        "name": "永久删除文件",
+        "group": "文件",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "files.purge",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/files/expired",
+      "method": "DELETE",
+      "name": "files.cleanup",
+      "controller": "Storage.Upload",
+      "action": "cleanup",
+      "meta": {
+        "name": "清理过期文件",
+        "group": "文件",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "files.cleanup",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Files\\Transport\\Api\\Files",
+          "scene": "cleanup"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/roles/:id",
+      "method": "DELETE",
+      "name": "roles.delete",
+      "controller": "Rbac.Roles",
+      "action": "delete",
+      "meta": {
+        "name": "删除角色",
+        "group": "角色",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "roles.delete",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/tags/:id",
+      "method": "DELETE",
+      "name": "tags.deleteManaged",
+      "controller": "Content.Tags",
+      "action": "delete",
+      "meta": {
+        "name": "管理标签删除",
+        "group": "标签",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "tags.delete",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/theme/delete",
+      "method": "DELETE",
+      "name": "theme.delete",
+      "controller": "Theme.ThemeManager",
+      "action": "delete",
+      "meta": {
+        "name": "Delete theme",
+        "group": "Theme",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "theme.delete",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Theme\\Transport\\Api\\Admin",
+          "scene": "delete"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/users/:id",
+      "method": "DELETE",
+      "name": "users.deleteManaged",
+      "controller": "User.Users",
+      "action": "delete",
+      "meta": {
+        "name": "管理用户删除",
+        "group": "用户",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "users.delete",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/cards/:id/like",
+      "method": "DELETE",
+      "name": "cards.unlike",
+      "controller": "Content.Cards",
+      "action": "unlike",
+      "meta": {
+        "name": "取消点赞卡片",
+        "group": "卡片",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "likes.delete",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/cards/:id",
       "method": "DELETE",
       "name": "cards.delete",
       "controller": "Content.Cards",
       "action": "delete",
       "meta": {
-        "name": "删除卡片",
+        "name": "删除我的卡片",
         "group": "卡片",
-        "caps": [
-          "cards.delete",
-          "cards.delete.all"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [],
+          "anyOf": [
+            {
+              "capability": "cards.delete",
+              "scope": "own"
+            },
+            {
+              "capability": "cards.delete",
+              "scope": "all"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -30,22 +499,31 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/comments/:id",
+      "path": "/me/comments/:id",
       "method": "DELETE",
       "name": "comments.delete",
       "controller": "Content.Comments",
       "action": "delete",
       "meta": {
-        "name": "删除评论",
+        "name": "删除我的评论",
         "group": "评论",
-        "caps": [
-          "comments.delete",
-          "comments.delete.all"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [],
+          "anyOf": [
+            {
+              "capability": "comments.delete",
+              "scope": "own"
+            },
+            {
+              "capability": "comments.delete",
+              "scope": "all"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -59,78 +537,57 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/config",
+      "path": "/me/drafts/:id",
       "method": "DELETE",
-      "name": "config.delete",
-      "controller": "System.Config",
+      "name": "drafts.delete",
+      "controller": "Platform.Community",
+      "action": "deleteDraft",
+      "meta": {
+        "name": "drafts.delete",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/files/:id",
+      "method": "DELETE",
+      "name": "files.delete",
+      "controller": "Storage.Upload",
       "action": "delete",
       "meta": {
-        "name": "删除配置组",
-        "group": "配置",
-        "caps": [
-          "config.deleteKey"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/config/key",
-      "method": "DELETE",
-      "name": "config.deleteKey",
-      "controller": "System.Config",
-      "action": "deleteKey",
-      "meta": {
-        "name": "删除配置键",
-        "group": "配置",
-        "caps": [
-          "config.deleteKey"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/files/:id",
-      "method": "DELETE",
-      "name": "files.allDelete",
-      "controller": "Storage.Upload",
-      "action": "allDelete",
-      "meta": {
-        "name": "删除文件",
+        "name": "删除我的文件",
         "group": "文件",
-        "caps": [
-          "files.delete",
-          "files.delete.all"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [],
+          "anyOf": [
+            {
+              "capability": "files.delete",
+              "scope": "own"
+            },
+            {
+              "capability": "files.delete",
+              "scope": "all"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -144,38 +601,65 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/files/expired",
+      "path": "/me/history",
       "method": "DELETE",
-      "name": "files.cleanup",
-      "controller": "Storage.Upload",
-      "action": "cleanup",
+      "name": "library.history.clear",
+      "controller": "Platform.Community",
+      "action": "clearHistory",
       "meta": {
-        "name": "清理过期文件",
-        "group": "文件",
-        "caps": [
-          "files.delete.all"
-        ],
-        "public": false
+        "name": "library.history.clear",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
       },
       "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\JwtAuthCheck"
       ],
       "contract": {
         "request": null,
         "response": {
-          "resource": "app\\shared\\Transport\\Http\\ApiResource",
-          "shape": "item",
-          "status": 200
+          "resource": null,
+          "shape": "void",
+          "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/likes/:id",
+      "path": "/me/library",
+      "method": "DELETE",
+      "name": "library.remove",
+      "controller": "Platform.Community",
+      "action": "remove",
+      "meta": {
+        "name": "library.remove",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Library\\Transport\\Api\\Library",
+          "scene": "resource"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/likes/:id",
       "method": "DELETE",
       "name": "likes.unlike",
       "controller": "Content.Likes",
@@ -183,67 +667,56 @@
       "meta": {
         "name": "取消点赞",
         "group": "点赞",
-        "caps": [
-          "likes.delete"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "likes.delete",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
         "app\\api\\middleware\\PermissionCheck"
       ],
       "contract": {
-        "request": null,
+        "request": {
+          "validate": "app\\modules\\Content\\Likes\\Transport\\Api\\Likes",
+          "scene": "type"
+        },
         "response": {
           "resource": null,
           "shape": "void",
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/roles/:id",
-      "method": "DELETE",
-      "name": "roles.delete",
-      "controller": "Rbac.Roles",
-      "action": "delete",
-      "meta": {
-        "name": "删除角色",
-        "group": "角色",
-        "caps": [
-          "roles.delete"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/tags/:id",
+      "path": "/me/tags/:id",
       "method": "DELETE",
       "name": "tags.delete",
       "controller": "Content.Tags",
       "action": "delete",
       "meta": {
-        "name": "删除标签",
+        "name": "删除我的标签",
         "group": "标签",
-        "caps": [
-          "tags.delete",
-          "tags.delete.all"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [],
+          "anyOf": [
+            {
+              "capability": "tags.delete",
+              "scope": "own"
+            },
+            {
+              "capability": "tags.delete",
+              "scope": "all"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -257,25 +730,23 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/theme/delete",
+      "path": "/users/:id/block",
       "method": "DELETE",
-      "name": "theme.delete",
-      "controller": "Theme.ThemeManager",
-      "action": "delete",
+      "name": "safety.unblock",
+      "controller": "Platform.Community",
+      "action": "unblock",
       "meta": {
-        "name": "删除主题",
-        "group": "主题",
-        "caps": [
-          "theme.delete"
-        ],
-        "public": false
+        "name": "safety.unblock",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
       },
       "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\JwtAuthCheck"
       ],
       "contract": {
         "request": null,
@@ -285,26 +756,23 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/users/:id",
+      "path": "/users/:id/follow",
       "method": "DELETE",
-      "name": "users.delete",
-      "controller": "User.Users",
-      "action": "delete",
+      "name": "social.unfollow",
+      "controller": "Platform.Community",
+      "action": "unfollow",
       "meta": {
-        "name": "删除用户",
-        "group": "用户",
-        "caps": [
-          "users.delete",
-          "users.delete.all"
-        ],
-        "public": false
+        "name": "social.unfollow",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
       },
       "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\JwtAuthCheck"
       ],
       "contract": {
         "request": null,
@@ -314,10 +782,50 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/captcha/:slug/meta",
+      "path": "/admin/audit-logs",
+      "method": "GET",
+      "name": "operations.auditLogs",
+      "controller": "Platform.Administration",
+      "action": "auditLogs",
+      "meta": {
+        "name": "审计日志",
+        "group": "审计",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "audit.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "pagination"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminAuditLogResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/captcha/:slug/meta",
       "method": "GET",
       "name": "captcha.meta",
       "controller": "Captcha.Captcha",
@@ -325,10 +833,19 @@
       "meta": {
         "name": "驱动配置信息",
         "group": "验证",
-        "caps": [
-          "captcha.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "captcha.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -342,33 +859,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/captcha/config",
-      "method": "GET",
-      "name": "captcha.config",
-      "controller": "Captcha.Captcha",
-      "action": "config",
-      "meta": {
-        "name": "验证配置",
-        "group": "验证",
-        "caps": [],
-        "public": true
-      },
-      "middleware": [],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": "app\\modules\\Platform\\Captcha\\Transport\\Api\\CaptchaResource",
-          "shape": "item",
-          "status": 200
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/captcha/drivers",
+      "path": "/admin/captcha/drivers",
       "method": "GET",
       "name": "captcha.drivers",
       "controller": "Captcha.Captcha",
@@ -376,10 +870,19 @@
       "meta": {
         "name": "验证驱动详情",
         "group": "验证",
-        "caps": [
-          "captcha.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "captcha.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -393,10 +896,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/captcha/types",
+      "path": "/admin/captcha/types",
       "method": "GET",
       "name": "captcha.types",
       "controller": "Captcha.Captcha",
@@ -404,10 +907,19 @@
       "meta": {
         "name": "验证驱动列表",
         "group": "验证",
-        "caps": [
-          "captcha.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "captcha.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -421,21 +933,36 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/cards",
+      "path": "/admin/cards",
       "method": "GET",
-      "name": "cards.list",
+      "name": "cards.listManaged",
       "controller": "Content.Cards",
-      "action": "list",
+      "action": "listAll",
       "meta": {
-        "name": "卡片列表",
+        "name": "管理卡片列表",
         "group": "卡片",
-        "caps": [],
-        "public": true
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "cards.read",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
       },
-      "middleware": [],
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
       "contract": {
         "request": {
           "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
@@ -447,21 +974,36 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/cards/:id",
+      "path": "/admin/cards/:id",
       "method": "GET",
-      "name": "cards.get",
+      "name": "cards.getManaged",
       "controller": "Content.Cards",
-      "action": "get",
+      "action": "getManaged",
       "meta": {
-        "name": "卡片详情",
+        "name": "管理卡片详情",
         "group": "卡片",
-        "caps": [],
-        "public": true
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "cards.read",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
       },
-      "middleware": [],
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
       "contract": {
         "request": null,
         "response": {
@@ -470,97 +1012,31 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/cards/:id/comments",
+      "path": "/admin/comments",
       "method": "GET",
-      "name": "comments.cardList",
-      "controller": "Content.Comments",
-      "action": "cardList",
-      "meta": {
-        "name": "卡片评论列表",
-        "group": "评论",
-        "caps": [],
-        "public": true
-      },
-      "middleware": [],
-      "contract": {
-        "request": {
-          "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
-          "scene": "Defult"
-        },
-        "response": {
-          "resource": "app\\modules\\Content\\Comments\\Transport\\Api\\CommentResource",
-          "shape": "paginated",
-          "status": 200
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/cards/hot",
-      "method": "GET",
-      "name": "cards.hot",
-      "controller": "Content.Cards",
-      "action": "hotList",
-      "meta": {
-        "name": "热门卡片",
-        "group": "卡片",
-        "caps": [],
-        "public": true
-      },
-      "middleware": [],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardResource",
-          "shape": "collection",
-          "status": 200
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/cards/search",
-      "method": "GET",
-      "name": "cards.search",
-      "controller": "Content.Cards",
-      "action": "search",
-      "meta": {
-        "name": "搜索卡片",
-        "group": "卡片",
-        "caps": [],
-        "public": true
-      },
-      "middleware": [],
-      "contract": {
-        "request": {
-          "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
-          "scene": "Defult"
-        },
-        "response": {
-          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardResource",
-          "shape": "paginated",
-          "status": 200
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/comments",
-      "method": "GET",
-      "name": "comments.list",
+      "name": "comments.listManaged",
       "controller": "Content.Comments",
       "action": "list",
       "meta": {
-        "name": "评论管理列表",
+        "name": "管理评论列表",
         "group": "评论",
-        "caps": [
-          "comments.read",
-          "comments.read.all"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "comments.read",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -577,21 +1053,36 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/comments/:id",
+      "path": "/admin/comments/:id",
       "method": "GET",
-      "name": "comments.get",
+      "name": "comments.getManaged",
       "controller": "Content.Comments",
-      "action": "get",
+      "action": "getManaged",
       "meta": {
-        "name": "评论详情",
+        "name": "管理评论详情",
         "group": "评论",
-        "caps": [],
-        "public": true
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "comments.read",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
       },
-      "middleware": [],
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
       "contract": {
         "request": null,
         "response": {
@@ -600,10 +1091,47 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/config",
+      "path": "/admin/community/insights",
+      "method": "GET",
+      "name": "community.insights",
+      "controller": "Platform.Administration",
+      "action": "communityInsights",
+      "meta": {
+        "name": "社区聚合",
+        "group": "内容",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "community.insights.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminCommunityInsightsResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/config",
       "method": "GET",
       "name": "config.list",
       "controller": "System.Config",
@@ -611,27 +1139,39 @@
       "meta": {
         "name": "获取配置",
         "group": "配置",
-        "caps": [
-          "config.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "config.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
         "app\\api\\middleware\\PermissionCheck"
       ],
       "contract": {
-        "request": null,
+        "request": {
+          "validate": "app\\modules\\Platform\\Config\\Transport\\Api\\Config",
+          "scene": "list"
+        },
         "response": {
           "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\ConfigResource",
           "shape": "item",
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/config/groups",
+      "path": "/admin/config/groups",
       "method": "GET",
       "name": "config.groups",
       "controller": "System.Config",
@@ -639,10 +1179,19 @@
       "meta": {
         "name": "配置组列表",
         "group": "配置",
-        "caps": [
-          "config.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "config.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -656,10 +1205,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/dashboard",
+      "path": "/admin/dashboard",
       "method": "GET",
       "name": "dashboard.index",
       "controller": "System.Dashboard",
@@ -667,10 +1216,19 @@
       "meta": {
         "name": "控制台",
         "group": "系统",
-        "caps": [
-          "dashboard.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "dashboard.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -684,22 +1242,31 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/files",
+      "path": "/admin/files",
       "method": "GET",
-      "name": "files.list",
+      "name": "files.listManaged",
       "controller": "Storage.Upload",
       "action": "list",
       "meta": {
-        "name": "文件列表",
+        "name": "管理文件列表",
         "group": "文件",
-        "caps": [
-          "files.read",
-          "files.read.all"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "files.read",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -707,8 +1274,8 @@
       ],
       "contract": {
         "request": {
-          "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
-          "scene": "Defult"
+          "validate": "app\\modules\\Platform\\Files\\Transport\\Api\\Files",
+          "scene": "list"
         },
         "response": {
           "resource": "app\\modules\\Platform\\Files\\Transport\\Api\\FileResource",
@@ -716,22 +1283,31 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/files/:id",
+      "path": "/admin/files/:id",
       "method": "GET",
-      "name": "files.get",
+      "name": "files.getManaged",
       "controller": "Storage.Upload",
       "action": "get",
       "meta": {
-        "name": "文件详情",
+        "name": "管理文件详情",
         "group": "文件",
-        "caps": [
-          "files.read",
-          "files.read.all"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "files.read",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -745,21 +1321,30 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/likes",
+      "path": "/admin/files/:id/usage",
       "method": "GET",
-      "name": "likes.list",
-      "controller": "Content.Likes",
-      "action": "list",
+      "name": "files.usage",
+      "controller": "Platform.Administration",
+      "action": "fileUsage",
       "meta": {
-        "name": "我的点赞",
-        "group": "点赞",
-        "caps": [
-          "likes.read"
-        ],
-        "public": false
+        "name": "文件使用关系",
+        "group": "文件",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "files.usage.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -768,15 +1353,280 @@
       "contract": {
         "request": null,
         "response": {
-          "resource": "app\\modules\\Content\\Likes\\Transport\\Api\\LikeResource",
+          "resource": "app\\modules\\Platform\\Files\\Transport\\Api\\AdminFileUsageResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/deliveries",
+      "method": "GET",
+      "name": "operations.deliveries",
+      "controller": "Platform.Administration",
+      "action": "deliveries",
+      "meta": {
+        "name": "事件投递",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "pagination"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminDeliveryResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/migrations",
+      "method": "GET",
+      "name": "operations.migrations",
+      "controller": "Platform.Administration",
+      "action": "migrations",
+      "meta": {
+        "name": "迁移计划",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminMigrationResource",
           "shape": "collection",
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/permissions",
+      "path": "/admin/operations/notifications",
+      "method": "GET",
+      "name": "operations.notificationStats",
+      "controller": "Platform.Administration",
+      "action": "notificationStats",
+      "meta": {
+        "name": "通知统计",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminNotificationStatsResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/overview",
+      "method": "GET",
+      "name": "operations.overview",
+      "controller": "Platform.Administration",
+      "action": "overview",
+      "meta": {
+        "name": "运维总览",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminOverviewResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/runtime",
+      "method": "GET",
+      "name": "operations.runtime",
+      "controller": "Platform.Administration",
+      "action": "runtime",
+      "meta": {
+        "name": "运行环境",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminRuntimeResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/upgrades",
+      "method": "GET",
+      "name": "operations.upgrades",
+      "controller": "Platform.Administration",
+      "action": "upgrades",
+      "meta": {
+        "name": "系统升级计划",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "upgradeList"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminUpgradePlanResource",
+          "shape": "collection",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/upgrades/:planId",
+      "method": "GET",
+      "name": "operations.upgrade",
+      "controller": "Platform.Administration",
+      "action": "upgrade",
+      "meta": {
+        "name": "系统升级计划详情",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminUpgradePlanResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/permissions",
       "method": "GET",
       "name": "permissions.list",
       "controller": "Rbac.Permissions",
@@ -784,10 +1634,19 @@
       "meta": {
         "name": "权限列表",
         "group": "权限",
-        "caps": [
-          "permissions.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "permissions.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -804,10 +1663,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/permissions/all",
+      "path": "/admin/permissions/all",
       "method": "GET",
       "name": "permissions.all",
       "controller": "Rbac.Permissions",
@@ -815,10 +1674,19 @@
       "meta": {
         "name": "全部权限",
         "group": "权限",
-        "caps": [
-          "permissions.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "permissions.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -832,10 +1700,127 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/roles",
+      "path": "/admin/recovery",
+      "method": "GET",
+      "name": "users.recovery",
+      "controller": "Platform.Administration",
+      "action": "recovery",
+      "meta": {
+        "name": "账号恢复记录",
+        "group": "安全",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "users.recovery.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "pagination"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Auth\\Transport\\Api\\AdminRecoveryChallengeResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/reports",
+      "method": "GET",
+      "name": "reports.listManaged",
+      "controller": "Platform.Administration",
+      "action": "reports",
+      "meta": {
+        "name": "举报列表",
+        "group": "治理",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "reports.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "pagination"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Safety\\Transport\\Api\\AdminReportResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/reports/:id",
+      "method": "GET",
+      "name": "reports.getManaged",
+      "controller": "Platform.Administration",
+      "action": "report",
+      "meta": {
+        "name": "举报详情",
+        "group": "治理",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "reports.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Safety\\Transport\\Api\\AdminReportResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/roles",
       "method": "GET",
       "name": "roles.list",
       "controller": "Rbac.Roles",
@@ -843,10 +1828,19 @@
       "meta": {
         "name": "角色列表",
         "group": "角色",
-        "caps": [
-          "roles.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "roles.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -863,10 +1857,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/roles/:id",
+      "path": "/admin/roles/:id",
       "method": "GET",
       "name": "roles.get",
       "controller": "Rbac.Roles",
@@ -874,10 +1868,19 @@
       "meta": {
         "name": "角色详情",
         "group": "角色",
-        "caps": [
-          "roles.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "roles.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -891,21 +1894,30 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/roles/:id/capabilities",
+      "path": "/admin/roles/:id/grants",
       "method": "GET",
-      "name": "roles.getRoleCapabilities",
+      "name": "roles.getGrants",
       "controller": "Rbac.Roles",
-      "action": "getRoleCapabilities",
+      "action": "getRoleGrants",
       "meta": {
         "name": "获取角色能力",
         "group": "角色",
-        "caps": [
-          "roles.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "roles.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -914,15 +1926,15 @@
       "contract": {
         "request": null,
         "response": {
-          "resource": "app\\shared\\Transport\\Http\\ApiResource",
-          "shape": "item",
+          "resource": "app\\modules\\Platform\\Rbac\\Transport\\Api\\GrantResource",
+          "shape": "collection",
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/sender/:type/meta",
+      "path": "/admin/sender/:type/meta",
       "method": "GET",
       "name": "sender.meta",
       "controller": "Sender.Sender",
@@ -930,10 +1942,19 @@
       "meta": {
         "name": "驱动配置信息",
         "group": "消息",
-        "caps": [
-          "sender.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "sender.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -947,10 +1968,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/sender/channels",
+      "path": "/admin/sender/channels",
       "method": "GET",
       "name": "sender.channels",
       "controller": "Sender.Sender",
@@ -958,10 +1979,19 @@
       "meta": {
         "name": "消息渠道列表",
         "group": "消息",
-        "caps": [
-          "sender.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "sender.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -975,10 +2005,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/sender/templates",
+      "path": "/admin/sender/templates",
       "method": "GET",
       "name": "sender.templates",
       "controller": "Sender.Sender",
@@ -986,10 +2016,19 @@
       "meta": {
         "name": "消息模板列表",
         "group": "消息",
-        "caps": [
-          "sender.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "sender.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1003,10 +2042,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/sender/types",
+      "path": "/admin/sender/types",
       "method": "GET",
       "name": "sender.types",
       "controller": "Sender.Sender",
@@ -1014,10 +2053,19 @@
       "meta": {
         "name": "消息驱动列表",
         "group": "消息",
-        "caps": [
-          "sender.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "sender.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1031,35 +2079,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/session/check",
-      "method": "GET",
-      "name": "session.check",
-      "controller": "User.Session",
-      "action": "check",
-      "meta": {
-        "name": "Token校验",
-        "group": "认证",
-        "caps": [],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck"
-      ],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": "app\\shared\\Transport\\Http\\ApiResource",
-          "shape": "item",
-          "status": 200
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/storage/:type/meta",
+      "path": "/admin/storage/:type/meta",
       "method": "GET",
       "name": "storage.meta",
       "controller": "Storage.Storage",
@@ -1067,10 +2090,19 @@
       "meta": {
         "name": "驱动配置信息",
         "group": "存储",
-        "caps": [
-          "storage.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "storage.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1084,10 +2116,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/storage/channel-stats",
+      "path": "/admin/storage/channel-stats",
       "method": "GET",
       "name": "storage.channelStats",
       "controller": "Storage.Storage",
@@ -1095,10 +2127,19 @@
       "meta": {
         "name": "渠道文件统计",
         "group": "存储",
-        "caps": [
-          "storage.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "storage.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1112,10 +2153,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/storage/channels",
+      "path": "/admin/storage/channels",
       "method": "GET",
       "name": "storage.channels",
       "controller": "Storage.Storage",
@@ -1123,10 +2164,19 @@
       "meta": {
         "name": "存储渠道列表",
         "group": "存储",
-        "caps": [
-          "storage.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "storage.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1140,10 +2190,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/storage/types",
+      "path": "/admin/storage/types",
       "method": "GET",
       "name": "storage.types",
       "controller": "Storage.Storage",
@@ -1151,10 +2201,19 @@
       "meta": {
         "name": "存储驱动列表",
         "group": "存储",
-        "caps": [
-          "storage.read"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "storage.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1168,10 +2227,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/system/update",
+      "path": "/admin/system/update",
       "method": "GET",
       "name": "system.update",
       "controller": "System.System",
@@ -1179,10 +2238,19 @@
       "meta": {
         "name": "系统更新",
         "group": "系统",
-        "caps": [
-          "system.update"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "system.update",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1196,68 +2264,31 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/tags",
+      "path": "/admin/tags",
       "method": "GET",
-      "name": "tags.list",
-      "controller": "Content.Tags",
-      "action": "list",
-      "meta": {
-        "name": "标签列表",
-        "group": "标签",
-        "caps": [],
-        "public": true
-      },
-      "middleware": [],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": "app\\modules\\Content\\Tags\\Transport\\Api\\TagResource",
-          "shape": "collection",
-          "status": 200
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/tags/:id",
-      "method": "GET",
-      "name": "tags.get",
-      "controller": "Content.Tags",
-      "action": "get",
-      "meta": {
-        "name": "标签详情",
-        "group": "标签",
-        "caps": [],
-        "public": true
-      },
-      "middleware": [],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": "app\\modules\\Content\\Tags\\Transport\\Api\\TagResource",
-          "shape": "item",
-          "status": 200
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/tags/all",
-      "method": "GET",
-      "name": "tags.listAll",
+      "name": "tags.listManaged",
       "controller": "Content.Tags",
       "action": "listAll",
       "meta": {
-        "name": "标签分页列表",
+        "name": "管理标签列表",
         "group": "标签",
-        "caps": [
-          "tags.read",
-          "tags.read.all"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "tags.read",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1274,44 +2305,68 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/theme/config",
+      "path": "/admin/tags/:id",
       "method": "GET",
-      "name": "theme.publicConfig",
-      "controller": "Theme.ThemeManager",
-      "action": "config",
+      "name": "tags.getManaged",
+      "controller": "Content.Tags",
+      "action": "get",
       "meta": {
-        "name": "公开主题配置",
-        "group": "主题",
-        "caps": [],
-        "public": true
+        "name": "管理标签详情",
+        "group": "标签",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "tags.read",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
       },
-      "middleware": [],
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
       "contract": {
         "request": null,
         "response": {
-          "resource": "app\\modules\\Theme\\Transport\\Api\\ThemeResource",
+          "resource": "app\\modules\\Content\\Tags\\Transport\\Api\\TagResource",
           "shape": "item",
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/theme/list",
+      "path": "/admin/theme/list",
       "method": "GET",
       "name": "theme.list",
       "controller": "Theme.ThemeManager",
       "action": "list",
       "meta": {
-        "name": "主题列表",
-        "group": "主题",
-        "caps": [
-          "theme.read"
-        ],
-        "public": false
+        "name": "List themes",
+        "group": "Theme",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "theme.read",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1325,22 +2380,31 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/users",
+      "path": "/admin/users",
       "method": "GET",
-      "name": "users.list",
+      "name": "users.listManaged",
       "controller": "User.Users",
       "action": "list",
       "meta": {
-        "name": "用户列表",
+        "name": "管理用户列表",
         "group": "用户",
-        "caps": [
-          "users.read",
-          "users.read.all"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "users.read",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1357,22 +2421,31 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/users/:id",
+      "path": "/admin/users/:id",
       "method": "GET",
-      "name": "users.get",
+      "name": "users.getManaged",
       "controller": "User.Users",
       "action": "get",
       "meta": {
-        "name": "用户详情",
+        "name": "管理用户详情",
         "group": "用户",
-        "caps": [
-          "users.read",
-          "users.read.all"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "users.read",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1386,10 +2459,285 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/users/me",
+      "path": "/admin/users/:id/security",
+      "method": "GET",
+      "name": "users.security",
+      "controller": "Platform.Administration",
+      "action": "userSecurity",
+      "meta": {
+        "name": "用户安全概览",
+        "group": "安全",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "users.security.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Auth\\Transport\\Api\\AdminSecurityResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/users/:id/sessions",
+      "method": "GET",
+      "name": "users.sessions",
+      "controller": "Platform.Administration",
+      "action": "sessions",
+      "meta": {
+        "name": "用户 Session",
+        "group": "安全",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "users.security.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Auth\\Transport\\Api\\AdminSessionResource",
+          "shape": "collection",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/captcha/challenge",
+      "method": "GET",
+      "name": "captcha.challenge",
+      "controller": "Captcha.Captcha",
+      "action": "challenge",
+      "meta": {
+        "name": "人机验证挑战",
+        "group": "验证",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Captcha\\Transport\\Api\\CaptchaChallengeResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/captcha/config",
+      "method": "GET",
+      "name": "captcha.config",
+      "controller": "Captcha.Captcha",
+      "action": "config",
+      "meta": {
+        "name": "验证配置",
+        "group": "验证",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Captcha\\Transport\\Api\\CaptchaResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/cards",
+      "method": "GET",
+      "name": "cards.list",
+      "controller": "Content.Cards",
+      "action": "list",
+      "meta": {
+        "name": "卡片列表",
+        "group": "卡片",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": {
+          "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
+          "scene": "Defult"
+        },
+        "response": {
+          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/cards/:id",
+      "method": "GET",
+      "name": "cards.get",
+      "controller": "Content.Cards",
+      "action": "get",
+      "meta": {
+        "name": "卡片详情",
+        "group": "卡片",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/cards/:id/comments",
+      "method": "GET",
+      "name": "comments.cardList",
+      "controller": "Content.Comments",
+      "action": "cardList",
+      "meta": {
+        "name": "卡片评论列表",
+        "group": "评论",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": {
+          "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
+          "scene": "Defult"
+        },
+        "response": {
+          "resource": "app\\modules\\Content\\Comments\\Transport\\Api\\CommentResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/cards/hot",
+      "method": "GET",
+      "name": "cards.hot",
+      "controller": "Content.Cards",
+      "action": "hotList",
+      "meta": {
+        "name": "热门卡片",
+        "group": "卡片",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardResource",
+          "shape": "collection",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/cards/search",
+      "method": "GET",
+      "name": "cards.search",
+      "controller": "Content.Cards",
+      "action": "search",
+      "meta": {
+        "name": "搜索卡片",
+        "group": "卡片",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": {
+          "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
+          "scene": "Defult"
+        },
+        "response": {
+          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/comments/:id",
+      "method": "GET",
+      "name": "comments.get",
+      "controller": "Content.Comments",
+      "action": "get",
+      "meta": {
+        "name": "评论详情",
+        "group": "评论",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Content\\Comments\\Transport\\Api\\CommentResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me",
       "method": "GET",
       "name": "users.me.get",
       "controller": "User.Profile",
@@ -1397,11 +2745,20 @@
       "meta": {
         "name": "我的信息",
         "group": "用户",
-        "caps": [],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "users.read",
+              "scope": "own"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck"
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
       ],
       "contract": {
         "request": null,
@@ -1411,10 +2768,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/users/me/cards",
+      "path": "/me/cards",
       "method": "GET",
       "name": "cards.listOwn",
       "controller": "Content.Cards",
@@ -1422,11 +2779,21 @@
       "meta": {
         "name": "我的卡片",
         "group": "卡片",
-        "caps": [],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "cards.read",
+              "scope": "own"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck"
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\CaptchaCheck",
+        "app\\api\\middleware\\PermissionCheck"
       ],
       "contract": {
         "request": {
@@ -1439,10 +2806,45 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/users/me/comments",
+      "path": "/me/cards/:id",
+      "method": "GET",
+      "name": "cards.getOwn",
+      "controller": "Content.Cards",
+      "action": "getOwn",
+      "meta": {
+        "name": "我的卡片详情",
+        "group": "卡片",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "cards.read",
+              "scope": "own"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\CaptchaCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/comments",
       "method": "GET",
       "name": "comments.listOwn",
       "controller": "Content.Comments",
@@ -1450,11 +2852,20 @@
       "meta": {
         "name": "我的评论",
         "group": "评论",
-        "caps": [],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "comments.read",
+              "scope": "own"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck"
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
       ],
       "contract": {
         "request": {
@@ -1467,10 +2878,120 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/users/me/files",
+      "path": "/me/conversations",
+      "method": "GET",
+      "name": "messages.conversations",
+      "controller": "Platform.Community",
+      "action": "conversations",
+      "meta": {
+        "name": "messages.conversations",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "shape": "collection",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/conversations/:id/messages",
+      "method": "GET",
+      "name": "messages.list",
+      "controller": "Platform.Community",
+      "action": "messages",
+      "meta": {
+        "name": "messages.list",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "cursor"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\CursorPageResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/drafts",
+      "method": "GET",
+      "name": "drafts.list",
+      "controller": "Platform.Community",
+      "action": "drafts",
+      "meta": {
+        "name": "drafts.list",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "cursor"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "shape": "collection",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/drafts/:id",
+      "method": "GET",
+      "name": "drafts.get",
+      "controller": "Platform.Community",
+      "action": "draft",
+      "meta": {
+        "name": "drafts.get",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/files",
       "method": "GET",
       "name": "files.listOwn",
       "controller": "Storage.Upload",
@@ -1478,16 +2999,25 @@
       "meta": {
         "name": "我的文件",
         "group": "文件",
-        "caps": [],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "files.read",
+              "scope": "own"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck"
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
       ],
       "contract": {
         "request": {
-          "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
-          "scene": "Defult"
+          "validate": "app\\modules\\Platform\\Files\\Transport\\Api\\Files",
+          "scene": "listOwn"
         },
         "response": {
           "resource": "app\\modules\\Platform\\Files\\Transport\\Api\\FileResource",
@@ -1495,86 +3025,31 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/cards/:id",
-      "method": "PATCH",
-      "name": "cards.update",
-      "controller": "Content.Cards",
-      "action": "update",
-      "meta": {
-        "name": "编辑卡片",
-        "group": "卡片",
-        "caps": [
-          "cards.update",
-          "cards.update.all"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": {
-          "validate": "app\\modules\\Content\\Cards\\Transport\\Api\\Cards",
-          "scene": "allUpdate"
-        },
-        "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/comments/:id",
-      "method": "PATCH",
-      "name": "comments.update",
-      "controller": "Content.Comments",
-      "action": "update",
-      "meta": {
-        "name": "编辑评论",
-        "group": "评论",
-        "caps": [
-          "comments.update",
-          "comments.update.all"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": {
-          "validate": "app\\modules\\Content\\Comments\\Transport\\Api\\Comments",
-          "scene": "allUpdate"
-        },
-        "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/files/:id/confirm",
-      "method": "PATCH",
-      "name": "files.confirm",
+      "path": "/me/files/:id",
+      "method": "GET",
+      "name": "files.get",
       "controller": "Storage.Upload",
-      "action": "confirm",
+      "action": "get",
       "meta": {
-        "name": "确认直传",
+        "name": "我的文件详情",
         "group": "文件",
-        "caps": [
-          "files.upload"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [],
+          "anyOf": [
+            {
+              "capability": "files.read",
+              "scope": "own"
+            },
+            {
+              "capability": "files.read",
+              "scope": "all"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1583,15 +3058,570 @@
       "contract": {
         "request": null,
         "response": {
+          "resource": "app\\modules\\Platform\\Files\\Transport\\Api\\FileResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/history",
+      "method": "GET",
+      "name": "library.history",
+      "controller": "Platform.Community",
+      "action": "history",
+      "meta": {
+        "name": "library.history",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "cursor"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\CursorPageResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/library",
+      "method": "GET",
+      "name": "library.list",
+      "controller": "Platform.Community",
+      "action": "library",
+      "meta": {
+        "name": "library.list",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "cursor"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\CursorPageResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/likes",
+      "method": "GET",
+      "name": "likes.list",
+      "controller": "Content.Likes",
+      "action": "list",
+      "meta": {
+        "name": "我的点赞",
+        "group": "点赞",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "likes.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Likes\\Transport\\Api\\Likes",
+          "scene": "type"
+        },
+        "response": {
+          "resource": "app\\modules\\Content\\Likes\\Transport\\Api\\LikeResource",
+          "shape": "collection",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/notifications",
+      "method": "GET",
+      "name": "notifications.list",
+      "controller": "Platform.Community",
+      "action": "notifications",
+      "meta": {
+        "name": "notifications.list",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "notifications"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\CursorPageResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/notifications/stream",
+      "method": "GET",
+      "name": "notifications.stream",
+      "controller": "Platform.Realtime",
+      "action": "stream",
+      "meta": {
+        "name": "通知实时流",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "stream"
+        },
+        "response": {
+          "resource": null,
+          "shape": "raw",
+          "status": 200,
+          "type": "string",
+          "contentType": "text/event-stream"
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/notifications/unread",
+      "method": "GET",
+      "name": "notifications.unread",
+      "controller": "Platform.Community",
+      "action": "unread",
+      "meta": {
+        "name": "notifications.unread",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/privacy",
+      "method": "GET",
+      "name": "safety.preferences",
+      "controller": "Platform.Community",
+      "action": "preferences",
+      "meta": {
+        "name": "safety.preferences",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/tags",
+      "method": "GET",
+      "name": "tags.listOwn",
+      "controller": "Content.Tags",
+      "action": "listOwn",
+      "meta": {
+        "name": "我的标签",
+        "group": "标签",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "tags.read",
+              "scope": "own"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
+          "scene": "Defult"
+        },
+        "response": {
+          "resource": "app\\modules\\Content\\Tags\\Transport\\Api\\TagResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/session/check",
+      "method": "GET",
+      "name": "session.check",
+      "controller": "User.Session",
+      "action": "check",
+      "meta": {
+        "name": "Token校验",
+        "group": "认证",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Auth\\Transport\\Api\\SessionResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/session/policy",
+      "method": "GET",
+      "name": "session.policy",
+      "controller": "User.Session",
+      "action": "policy",
+      "meta": {
+        "name": "认证策略",
+        "group": "认证",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Auth\\Transport\\Api\\AuthPolicyResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/tags",
+      "method": "GET",
+      "name": "tags.list",
+      "controller": "Content.Tags",
+      "action": "list",
+      "meta": {
+        "name": "标签列表",
+        "group": "标签",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Content\\Tags\\Transport\\Api\\TagResource",
+          "shape": "collection",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/tags/:id",
+      "method": "GET",
+      "name": "tags.get",
+      "controller": "Content.Tags",
+      "action": "get",
+      "meta": {
+        "name": "标签详情",
+        "group": "标签",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Content\\Tags\\Transport\\Api\\TagResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/theme/config",
+      "method": "GET",
+      "name": "theme.publicConfig",
+      "controller": "Theme.ThemeManager",
+      "action": "config",
+      "meta": {
+        "name": "Public theme config",
+        "group": "Theme",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Theme\\Transport\\Api\\ThemeConfigResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/users/:id/followers",
+      "method": "GET",
+      "name": "social.followers",
+      "controller": "Platform.Community",
+      "action": "followers",
+      "meta": {
+        "name": "social.followers",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "cursor"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\CursorPageResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/users/:id/following",
+      "method": "GET",
+      "name": "social.following",
+      "controller": "Platform.Community",
+      "action": "following",
+      "meta": {
+        "name": "social.following",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "cursor"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\CursorPageResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/users/:id/relation",
+      "method": "GET",
+      "name": "social.relation",
+      "controller": "Platform.Community",
+      "action": "relation",
+      "meta": {
+        "name": "social.relation",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/users/by-handle/:handle",
+      "method": "GET",
+      "name": "social.profile",
+      "controller": "Platform.Community",
+      "action": "profile",
+      "meta": {
+        "name": "公开用户主页",
+        "group": "社区",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/cards/:id",
+      "method": "PATCH",
+      "name": "cards.updateManaged",
+      "controller": "Content.Cards",
+      "action": "update",
+      "meta": {
+        "name": "管理卡片编辑",
+        "group": "卡片",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "cards.update",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Cards\\Transport\\Api\\Cards",
+          "scene": "adminUpdate"
+        },
+        "response": {
           "resource": null,
           "shape": "void",
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/roles/:id",
+      "path": "/admin/comments/:id",
+      "method": "PATCH",
+      "name": "comments.updateManaged",
+      "controller": "Content.Comments",
+      "action": "update",
+      "meta": {
+        "name": "管理评论编辑",
+        "group": "评论",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "comments.update",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Comments\\Transport\\Api\\Comments",
+          "scene": "adminUpdate"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/roles/:id",
       "method": "PATCH",
       "name": "roles.update",
       "controller": "Rbac.Roles",
@@ -1599,10 +3629,19 @@
       "meta": {
         "name": "编辑角色",
         "group": "角色",
-        "caps": [
-          "roles.update"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "roles.update",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1619,22 +3658,31 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/tags/:id",
+      "path": "/admin/tags/:id",
       "method": "PATCH",
-      "name": "tags.update",
+      "name": "tags.updateManaged",
       "controller": "Content.Tags",
       "action": "update",
       "meta": {
-        "name": "编辑标签",
+        "name": "管理标签编辑",
         "group": "标签",
-        "caps": [
-          "tags.update",
-          "tags.update.all"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "tags.update",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1643,7 +3691,7 @@
       "contract": {
         "request": {
           "validate": "app\\modules\\Content\\Tags\\Transport\\Api\\Tags",
-          "scene": "allUpdate"
+          "scene": "adminUpdate"
         },
         "response": {
           "resource": null,
@@ -1651,22 +3699,31 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/users/:id",
+      "path": "/admin/users/:id",
       "method": "PATCH",
-      "name": "users.update",
+      "name": "users.updateManaged",
       "controller": "User.Users",
       "action": "update",
       "meta": {
-        "name": "编辑用户",
+        "name": "管理用户编辑",
         "group": "用户",
-        "caps": [
-          "users.update",
-          "users.update.all"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "users.update",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1675,7 +3732,7 @@
       "contract": {
         "request": {
           "validate": "app\\modules\\Platform\\User\\Transport\\Api\\Users",
-          "scene": "allUpdate"
+          "scene": "adminUpdate"
         },
         "response": {
           "resource": null,
@@ -1683,10 +3740,51 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/users/me",
+      "path": "/admin/users/:id/roles",
+      "method": "PATCH",
+      "name": "users.assignRoles",
+      "controller": "User.Users",
+      "action": "assignRoles",
+      "meta": {
+        "name": "分配用户角色",
+        "group": "用户",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "users.roles.assign",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\User\\Transport\\Api\\Users",
+          "scene": "assignRoles"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me",
       "method": "PATCH",
       "name": "users.me.update",
       "controller": "User.Profile",
@@ -1694,11 +3792,20 @@
       "meta": {
         "name": "编辑我的信息",
         "group": "用户",
-        "caps": [],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "users.update",
+              "scope": "own"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck"
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
       ],
       "contract": {
         "request": {
@@ -1711,10 +3818,197 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/captcha/install",
+      "path": "/me/cards/:id",
+      "method": "PATCH",
+      "name": "cards.update",
+      "controller": "Content.Cards",
+      "action": "update",
+      "meta": {
+        "name": "编辑我的卡片",
+        "group": "卡片",
+        "access": {
+          "auth": "required",
+          "allOf": [],
+          "anyOf": [
+            {
+              "capability": "cards.update",
+              "scope": "own"
+            },
+            {
+              "capability": "cards.update",
+              "scope": "all"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\CaptchaCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Cards\\Transport\\Api\\Cards",
+          "scene": "selfUpdate"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/comments/:id",
+      "method": "PATCH",
+      "name": "comments.update",
+      "controller": "Content.Comments",
+      "action": "update",
+      "meta": {
+        "name": "编辑我的评论",
+        "group": "评论",
+        "access": {
+          "auth": "required",
+          "allOf": [],
+          "anyOf": [
+            {
+              "capability": "comments.update",
+              "scope": "own"
+            },
+            {
+              "capability": "comments.update",
+              "scope": "all"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Comments\\Transport\\Api\\Comments",
+          "scene": "selfUpdate"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/drafts/:id",
+      "method": "PATCH",
+      "name": "drafts.update",
+      "controller": "Platform.Community",
+      "action": "saveDraft",
+      "meta": {
+        "name": "drafts.update",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "draft"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/files/:id/confirm",
+      "method": "PATCH",
+      "name": "files.confirm",
+      "controller": "Storage.Upload",
+      "action": "confirm",
+      "meta": {
+        "name": "确认直传",
+        "group": "文件",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "files.upload",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/tags/:id",
+      "method": "PATCH",
+      "name": "tags.update",
+      "controller": "Content.Tags",
+      "action": "update",
+      "meta": {
+        "name": "编辑我的标签",
+        "group": "标签",
+        "access": {
+          "auth": "required",
+          "allOf": [],
+          "anyOf": [
+            {
+              "capability": "tags.update",
+              "scope": "own"
+            },
+            {
+              "capability": "tags.update",
+              "scope": "all"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Tags\\Transport\\Api\\Tags",
+          "scene": "selfUpdate"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/captcha/install",
       "method": "POST",
       "name": "captcha.install",
       "controller": "Captcha.Captcha",
@@ -1722,10 +4016,19 @@
       "meta": {
         "name": "安装验证驱动",
         "group": "验证",
-        "caps": [
-          "captcha.install"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "captcha.install",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -1739,115 +4042,31 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/cards",
+      "path": "/admin/cards/batch",
       "method": "POST",
-      "name": "cards.create",
-      "controller": "Content.Cards",
-      "action": "create",
-      "meta": {
-        "name": "创建卡片",
-        "group": "卡片",
-        "caps": [
-          "cards.create"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": {
-          "validate": "app\\modules\\Content\\Cards\\Transport\\Api\\Cards",
-          "scene": "create"
-        },
-        "response": {
-          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardCreatedResource",
-          "shape": "item",
-          "status": 201
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/cards/:id/comments",
-      "method": "POST",
-      "name": "comments.create",
-      "controller": "Content.Comments",
-      "action": "create",
-      "meta": {
-        "name": "创建评论",
-        "group": "评论",
-        "caps": [
-          "comments.create"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": {
-          "validate": "app\\modules\\Content\\Comments\\Transport\\Api\\Comments",
-          "scene": "create"
-        },
-        "response": {
-          "resource": "app\\modules\\Content\\Comments\\Transport\\Api\\CommentCreatedResource",
-          "shape": "item",
-          "status": 201
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/cards/:id/like",
-      "method": "POST",
-      "name": "cards.like",
-      "controller": "Content.Cards",
-      "action": "like",
-      "meta": {
-        "name": "点赞卡片",
-        "group": "卡片",
-        "caps": [
-          "likes.create"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": "app\\modules\\Content\\Likes\\Transport\\Api\\LikeCountResource",
-          "shape": "item",
-          "status": 200
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/cards/batch",
-      "method": "POST",
-      "name": "cards.batch",
+      "name": "cards.batchManaged",
       "controller": "Content.Cards",
       "action": "batch",
       "meta": {
-        "name": "卡片批量操作",
+        "name": "管理卡片批量操作",
         "group": "卡片",
-        "caps": [],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck"
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
       ],
       "contract": {
         "request": {
@@ -1860,22 +4079,31 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/comments/batch",
+      "path": "/admin/comments/batch",
       "method": "POST",
-      "name": "comments.batch",
+      "name": "comments.batchManaged",
       "controller": "Content.Comments",
       "action": "batch",
       "meta": {
-        "name": "评论批量操作",
+        "name": "管理评论批量操作",
         "group": "评论",
-        "caps": [],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck"
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
       ],
       "contract": {
         "request": {
@@ -1888,10 +4116,10 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/config",
+      "path": "/admin/config",
       "method": "POST",
       "name": "config.update",
       "controller": "System.Config",
@@ -1899,122 +4127,19 @@
       "meta": {
         "name": "保存配置",
         "group": "配置",
-        "caps": [
-          "config.update"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "config.update",
+              "scope": "global"
+            }
+          ]
         }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/config/init",
-      "method": "POST",
-      "name": "config.init",
-      "controller": "System.Config",
-      "action": "init",
-      "meta": {
-        "name": "初始化配置",
-        "group": "配置",
-        "caps": [
-          "config.init"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\ConfigResource",
-          "shape": "item",
-          "status": 200
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/config/register",
-      "method": "POST",
-      "name": "config.register",
-      "controller": "System.Config",
-      "action": "register",
-      "meta": {
-        "name": "注册配置",
-        "group": "配置",
-        "caps": [
-          "config.register"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\ConfigResource",
-          "shape": "item",
-          "status": 200
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/config/reload",
-      "method": "POST",
-      "name": "config.reload",
-      "controller": "System.Config",
-      "action": "reload",
-      "meta": {
-        "name": "重载配置",
-        "group": "配置",
-        "caps": [
-          "config.reload"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/files",
-      "method": "POST",
-      "name": "files.upload",
-      "controller": "Storage.Upload",
-      "action": "upload",
-      "meta": {
-        "name": "上传文件",
-        "group": "文件",
-        "caps": [
-          "files.upload"
-        ],
-        "public": false
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -2022,33 +4147,153 @@
       ],
       "contract": {
         "request": {
-          "validate": "app\\modules\\Platform\\Files\\Transport\\Api\\Files",
-          "scene": "upload"
+          "validate": "app\\modules\\Platform\\Config\\Transport\\Api\\Config",
+          "scene": "update"
         },
         "response": {
-          "resource": "app\\modules\\Platform\\Files\\Transport\\Api\\FileResource",
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/config/init",
+      "method": "POST",
+      "name": "config.init",
+      "controller": "System.Config",
+      "action": "init",
+      "meta": {
+        "name": "初始化配置",
+        "group": "配置",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "config.init",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\ConfigResource",
           "shape": "item",
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/files/batch",
+      "path": "/admin/config/register",
       "method": "POST",
-      "name": "files.batch",
+      "name": "config.register",
+      "controller": "System.Config",
+      "action": "register",
+      "meta": {
+        "name": "注册配置",
+        "group": "配置",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "config.register",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Config\\Transport\\Api\\Config",
+          "scene": "register"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\ConfigResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/config/reload",
+      "method": "POST",
+      "name": "config.reload",
+      "controller": "System.Config",
+      "action": "reload",
+      "meta": {
+        "name": "重载配置",
+        "group": "配置",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "config.reload",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Config\\Transport\\Api\\Config",
+          "scene": "reload"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/files/batch",
+      "method": "POST",
+      "name": "files.batchManaged",
       "controller": "Storage.Upload",
       "action": "batch",
       "meta": {
-        "name": "文件批量操作",
+        "name": "管理文件批量操作",
         "group": "文件",
-        "caps": [
-          "files.update",
-          "files.update.all",
-          "files.delete",
-          "files.delete.all"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -2065,38 +4310,294 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/files/direct",
+      "path": "/admin/operations/deliveries/:id/retry",
       "method": "POST",
-      "name": "files.direct",
-      "controller": "Storage.Upload",
-      "action": "direct",
+      "name": "operations.retryDelivery",
+      "controller": "Platform.Administration",
+      "action": "retryDelivery",
       "meta": {
-        "name": "直传凭证",
-        "group": "文件",
-        "caps": [
-          "files.upload"
-        ],
-        "public": false
+        "name": "重试事件投递",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.retry",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
         "app\\api\\middleware\\PermissionCheck"
       ],
       "contract": {
-        "request": null,
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "reason"
+        },
         "response": {
-          "resource": "app\\modules\\Platform\\Files\\Transport\\Api\\DirectUploadResource",
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/migrations/run",
+      "method": "POST",
+      "name": "operations.runMigrations",
+      "controller": "Platform.Administration",
+      "action": "runMigrations",
+      "meta": {
+        "name": "推进迁移",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.migrate",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "migrationRun",
+          "rejectTruthy": {
+            "allow_contract": "Contract 迁移必须通过已激活且完成备份 Gate 的升级计划审批"
+          }
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminMigrationResource",
+          "shape": "collection",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/upgrades",
+      "method": "POST",
+      "name": "operations.createUpgrade",
+      "controller": "Platform.Administration",
+      "action": "createUpgrade",
+      "meta": {
+        "name": "创建系统升级计划",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "system.update",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "upgradeCreate",
+          "contentType": "multipart/form-data"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminUpgradePlanResource",
+          "shape": "item",
+          "status": 201
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/upgrades/:planId/advance",
+      "method": "POST",
+      "name": "operations.advanceUpgrade",
+      "controller": "Platform.Administration",
+      "action": "advanceUpgrade",
+      "meta": {
+        "name": "推进系统升级计划",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "system.update",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "reason"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminUpgradePlanResource",
           "shape": "item",
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/roles",
+      "path": "/admin/operations/upgrades/:planId/approve-contract",
+      "method": "POST",
+      "name": "operations.approveUpgradeContract",
+      "controller": "Platform.Administration",
+      "action": "approveUpgradeContract",
+      "meta": {
+        "name": "批准系统升级 Contract",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "system.update.contract",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "reason"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminUpgradePlanResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/upgrades/:planId/recover",
+      "method": "POST",
+      "name": "operations.recoverUpgrade",
+      "controller": "Platform.Administration",
+      "action": "recoverUpgrade",
+      "meta": {
+        "name": "恢复系统 Release",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "system.recover",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "reason"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminUpgradePlanResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/reports/:id/transition",
+      "method": "POST",
+      "name": "reports.transition",
+      "controller": "Platform.Administration",
+      "action": "transitionReport",
+      "meta": {
+        "name": "处理举报",
+        "group": "治理",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "reports.manage",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "transition"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Safety\\Transport\\Api\\AdminReportResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/roles",
       "method": "POST",
       "name": "roles.create",
       "controller": "Rbac.Roles",
@@ -2104,10 +4605,19 @@
       "meta": {
         "name": "创建角色",
         "group": "角色",
-        "caps": [
-          "roles.create"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "roles.create",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -2124,21 +4634,30 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/roles/:id/capabilities",
+      "path": "/admin/roles/:id/grants",
       "method": "POST",
-      "name": "roles.assignCapabilities",
+      "name": "roles.assignGrants",
       "controller": "Rbac.Roles",
-      "action": "assignCapabilities",
+      "action": "assignGrants",
       "meta": {
         "name": "分配能力",
         "group": "角色",
-        "caps": [
-          "roles.assign"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "roles.assign",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -2147,7 +4666,7 @@
       "contract": {
         "request": {
           "validate": "app\\modules\\Platform\\Rbac\\Transport\\Api\\Roles",
-          "scene": "assignCapabilities"
+          "scene": "assignGrants"
         },
         "response": {
           "resource": null,
@@ -2155,10 +4674,50 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/roles/reseed",
+      "path": "/admin/roles/batch",
+      "method": "POST",
+      "name": "roles.batch",
+      "controller": "Rbac.Roles",
+      "action": "batch",
+      "meta": {
+        "name": "角色批量操作",
+        "group": "角色",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "roles.delete",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\shared\\Transport\\Validation\\BatchOperationInput",
+          "scene": "BatchOperate"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/roles/reseed",
       "method": "POST",
       "name": "roles.reseed",
       "controller": "Rbac.Roles",
@@ -2166,10 +4725,19 @@
       "meta": {
         "name": "重新 seed 能力",
         "group": "角色",
-        "caps": [
-          "roles.assign"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "roles.assign",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -2183,10 +4751,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/sender/install",
+      "path": "/admin/sender/install",
       "method": "POST",
       "name": "sender.install",
       "controller": "Sender.Sender",
@@ -2194,10 +4762,19 @@
       "meta": {
         "name": "安装消息驱动",
         "group": "消息",
-        "caps": [
-          "sender.install"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "sender.install",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -2211,10 +4788,10 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/sender/test-channel",
+      "path": "/admin/sender/test-channel",
       "method": "POST",
       "name": "sender.testChannel",
       "controller": "Sender.Sender",
@@ -2222,10 +4799,59 @@
       "meta": {
         "name": "测试消息渠道",
         "group": "消息",
-        "caps": [
-          "sender.test"
-        ],
-        "public": false
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "sender.test",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\shared\\Transport\\Validation\\ChannelTestInput",
+          "scene": "test"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Sender\\Transport\\Api\\SenderResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/storage/install",
+      "method": "POST",
+      "name": "storage.install",
+      "controller": "Storage.Storage",
+      "action": "install",
+      "meta": {
+        "name": "安装存储驱动",
+        "group": "存储",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "storage.install",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
@@ -2234,12 +4860,848 @@
       "contract": {
         "request": null,
         "response": {
-          "resource": "app\\modules\\Platform\\Sender\\Transport\\Api\\SenderResource",
+          "resource": "app\\modules\\Platform\\Storage\\Transport\\Api\\StorageResource",
+          "shape": "collection",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/storage/test-channel",
+      "method": "POST",
+      "name": "storage.testChannel",
+      "controller": "Storage.Storage",
+      "action": "testChannel",
+      "meta": {
+        "name": "测试存储渠道",
+        "group": "存储",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "storage.test",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\shared\\Transport\\Validation\\ChannelTestInput",
+          "scene": "test"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Storage\\Transport\\Api\\StorageResource",
           "shape": "item",
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/tags/batch",
+      "method": "POST",
+      "name": "tags.batchManaged",
+      "controller": "Content.Tags",
+      "action": "batch",
+      "meta": {
+        "name": "管理标签批量操作",
+        "group": "标签",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\shared\\Transport\\Validation\\BatchOperationInput",
+          "scene": "BatchOperate"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/theme/activate",
+      "method": "POST",
+      "name": "theme.activate",
+      "controller": "Theme.ThemeManager",
+      "action": "activate",
+      "meta": {
+        "name": "Activate theme",
+        "group": "Theme",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "theme.activate",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Theme\\Transport\\Api\\Admin",
+          "scene": "activate"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/theme/upload",
+      "method": "POST",
+      "name": "theme.upload",
+      "controller": "Theme.ThemeManager",
+      "action": "upload",
+      "meta": {
+        "name": "Upload theme",
+        "group": "Theme",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "theme.upload",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Theme\\Transport\\Api\\Upload",
+          "scene": "default",
+          "contentType": "multipart/form-data"
+        },
+        "response": {
+          "resource": "app\\modules\\Theme\\Transport\\Api\\ThemeResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/users/:id/sessions/:sessionId/revoke",
+      "method": "POST",
+      "name": "users.revokeSession",
+      "controller": "Platform.Administration",
+      "action": "revokeSession",
+      "meta": {
+        "name": "撤销 Session",
+        "group": "安全",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "users.sessions.revoke",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "reason"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/users/:id/sessions/revoke-all",
+      "method": "POST",
+      "name": "users.revokeSessions",
+      "controller": "Platform.Administration",
+      "action": "revokeSessions",
+      "meta": {
+        "name": "撤销全部 Session",
+        "group": "安全",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "users.sessions.revoke",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "reason"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/users/batch",
+      "method": "POST",
+      "name": "users.batchManaged",
+      "controller": "User.Users",
+      "action": "batch",
+      "meta": {
+        "name": "管理用户批量操作",
+        "group": "用户",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\shared\\Transport\\Validation\\BatchOperationInput",
+          "scene": "BatchOperate"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/cards/:id/comments",
+      "method": "POST",
+      "name": "comments.create",
+      "controller": "Content.Comments",
+      "action": "create",
+      "meta": {
+        "name": "创建评论",
+        "group": "评论",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "comments.create",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Comments\\Transport\\Api\\Comments",
+          "scene": "selfCreate"
+        },
+        "response": {
+          "resource": "app\\modules\\Content\\Comments\\Transport\\Api\\CommentCreatedResource",
+          "shape": "item",
+          "status": 201
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/cards/:id/like",
+      "method": "POST",
+      "name": "cards.like",
+      "controller": "Content.Cards",
+      "action": "like",
+      "meta": {
+        "name": "点赞卡片",
+        "group": "卡片",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "likes.create",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Content\\Likes\\Transport\\Api\\LikeCountResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/cards",
+      "method": "POST",
+      "name": "cards.create",
+      "controller": "Content.Cards",
+      "action": "create",
+      "meta": {
+        "name": "创建卡片",
+        "group": "卡片",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "cards.create",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\CaptchaCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Cards\\Transport\\Api\\Cards",
+          "scene": "selfCreate"
+        },
+        "response": {
+          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardCreatedResource",
+          "shape": "item",
+          "status": 201
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/drafts",
+      "method": "POST",
+      "name": "drafts.create",
+      "controller": "Platform.Community",
+      "action": "saveDraft",
+      "meta": {
+        "name": "drafts.create",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "draft"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/email",
+      "method": "POST",
+      "name": "users.me.email",
+      "controller": "User.Profile",
+      "action": "email",
+      "meta": {
+        "name": "绑定邮箱",
+        "group": "用户",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "users.update",
+              "scope": "own"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\User\\Transport\\Api\\Profile",
+          "scene": "email"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/email-captcha",
+      "method": "POST",
+      "name": "users.me.emailCaptcha",
+      "controller": "User.Profile",
+      "action": "emailCaptcha",
+      "meta": {
+        "name": "邮箱验证码",
+        "group": "用户",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "users.update",
+              "scope": "own"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\User\\Transport\\Api\\Profile",
+          "scene": "emailCaptcha"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/files",
+      "method": "POST",
+      "name": "files.upload",
+      "controller": "Storage.Upload",
+      "action": "upload",
+      "meta": {
+        "name": "上传文件",
+        "group": "文件",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "files.upload",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Files\\Transport\\Api\\Files",
+          "scene": "upload",
+          "contentType": "multipart/form-data"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Files\\Transport\\Api\\FileResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/files/direct",
+      "method": "POST",
+      "name": "files.direct",
+      "controller": "Storage.Upload",
+      "action": "direct",
+      "meta": {
+        "name": "直传凭证",
+        "group": "文件",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "files.upload",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Files\\Transport\\Api\\Files",
+          "scene": "direct"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Files\\Transport\\Api\\DirectUploadResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/history",
+      "method": "POST",
+      "name": "library.history.record",
+      "controller": "Platform.Community",
+      "action": "recordHistory",
+      "meta": {
+        "name": "library.history.record",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Library\\Transport\\Api\\Library",
+          "scene": "resource"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/library",
+      "method": "POST",
+      "name": "library.save",
+      "controller": "Platform.Community",
+      "action": "save",
+      "meta": {
+        "name": "library.save",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Library\\Transport\\Api\\Library",
+          "scene": "resource"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/messages",
+      "method": "POST",
+      "name": "messages.send",
+      "controller": "Platform.Community",
+      "action": "sendMessage",
+      "meta": {
+        "name": "messages.send",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "messageSend"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/notifications/read",
+      "method": "POST",
+      "name": "notifications.read",
+      "controller": "Platform.Community",
+      "action": "read",
+      "meta": {
+        "name": "notifications.read",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "read"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/notifications/read-all",
+      "method": "POST",
+      "name": "notifications.readAll",
+      "controller": "Platform.Community",
+      "action": "readAll",
+      "meta": {
+        "name": "notifications.readAll",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/password",
+      "method": "POST",
+      "name": "users.me.password",
+      "controller": "User.Profile",
+      "action": "password",
+      "meta": {
+        "name": "修改密码",
+        "group": "用户",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "users.update",
+              "scope": "own"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\User\\Transport\\Api\\Profile",
+          "scene": "password"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/privacy",
+      "method": "POST",
+      "name": "safety.preferences.update",
+      "controller": "Platform.Community",
+      "action": "updatePreferences",
+      "meta": {
+        "name": "safety.preferences.update",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "preferences"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/tags",
+      "method": "POST",
+      "name": "tags.create",
+      "controller": "Content.Tags",
+      "action": "create",
+      "meta": {
+        "name": "创建标签",
+        "group": "标签",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "tags.create",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Tags\\Transport\\Api\\Tags",
+          "scene": "selfCreate"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/reports",
+      "method": "POST",
+      "name": "safety.report",
+      "controller": "Platform.Community",
+      "action": "report",
+      "meta": {
+        "name": "safety.report",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "report"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
     },
     {
       "path": "/session/captcha",
@@ -2250,8 +5712,9 @@
       "meta": {
         "name": "获取验证码",
         "group": "认证",
-        "caps": [],
-        "public": true
+        "access": {
+          "auth": "public"
+        }
       },
       "middleware": [
         "app\\api\\middleware\\SessionDebounce"
@@ -2267,7 +5730,7 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
       "path": "/session/guest",
@@ -2278,8 +5741,9 @@
       "meta": {
         "name": "访客登录",
         "group": "认证",
-        "caps": [],
-        "public": true
+        "access": {
+          "auth": "public"
+        }
       },
       "middleware": [],
       "contract": {
@@ -2290,7 +5754,7 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
       "path": "/session/login",
@@ -2301,8 +5765,9 @@
       "meta": {
         "name": "登录",
         "group": "认证",
-        "caps": [],
-        "public": true
+        "access": {
+          "auth": "public"
+        }
       },
       "middleware": [],
       "contract": {
@@ -2316,7 +5781,7 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
       "path": "/session/logout",
@@ -2327,8 +5792,9 @@
       "meta": {
         "name": "登出",
         "group": "认证",
-        "caps": [],
-        "public": false
+        "access": {
+          "auth": "required"
+        }
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck"
@@ -2341,7 +5807,65 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/session/recovery/request",
+      "method": "POST",
+      "name": "session.recovery.request",
+      "controller": "Platform.Recovery",
+      "action": "issue",
+      "meta": {
+        "name": "申请账号恢复",
+        "group": "认证",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\SessionDebounce"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Auth\\Transport\\Api\\Recovery",
+          "scene": "request"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/session/recovery/reset",
+      "method": "POST",
+      "name": "session.recovery.reset",
+      "controller": "Platform.Recovery",
+      "action": "reset",
+      "meta": {
+        "name": "完成账号恢复",
+        "group": "认证",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\SessionDebounce"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Auth\\Transport\\Api\\Recovery",
+          "scene": "reset"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
     },
     {
       "path": "/session/register",
@@ -2352,8 +5876,9 @@
       "meta": {
         "name": "注册",
         "group": "认证",
-        "caps": [],
-        "public": true
+        "access": {
+          "auth": "public"
+        }
       },
       "middleware": [
         "app\\api\\middleware\\SessionDebounce",
@@ -2370,140 +5895,23 @@
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/storage/install",
+      "path": "/users/:id/block",
       "method": "POST",
-      "name": "storage.install",
-      "controller": "Storage.Storage",
-      "action": "install",
+      "name": "safety.block",
+      "controller": "Platform.Community",
+      "action": "block",
       "meta": {
-        "name": "安装存储驱动",
-        "group": "存储",
-        "caps": [
-          "storage.install"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": "app\\modules\\Platform\\Storage\\Transport\\Api\\StorageResource",
-          "shape": "collection",
-          "status": 200
+        "name": "safety.block",
+        "group": "社区",
+        "access": {
+          "auth": "required"
         }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/storage/test-channel",
-      "method": "POST",
-      "name": "storage.testChannel",
-      "controller": "Storage.Storage",
-      "action": "testChannel",
-      "meta": {
-        "name": "测试存储渠道",
-        "group": "存储",
-        "caps": [
-          "storage.test"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": "app\\modules\\Platform\\Storage\\Transport\\Api\\StorageResource",
-          "shape": "item",
-          "status": 200
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/tags",
-      "method": "POST",
-      "name": "tags.create",
-      "controller": "Content.Tags",
-      "action": "create",
-      "meta": {
-        "name": "创建标签",
-        "group": "标签",
-        "caps": [
-          "tags.create"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": {
-          "validate": "app\\modules\\Content\\Tags\\Transport\\Api\\Tags",
-          "scene": "create"
-        },
-        "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/tags/batch",
-      "method": "POST",
-      "name": "tags.batch",
-      "controller": "Content.Tags",
-      "action": "batch",
-      "meta": {
-        "name": "标签批量操作",
-        "group": "标签",
-        "caps": [],
-        "public": false
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck"
-      ],
-      "contract": {
-        "request": {
-          "validate": "app\\shared\\Transport\\Validation\\BatchOperationInput",
-          "scene": "BatchOperate"
-        },
-        "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/theme/activate",
-      "method": "POST",
-      "name": "theme.activate",
-      "controller": "Theme.ThemeManager",
-      "action": "activate",
-      "meta": {
-        "name": "切换主题",
-        "group": "主题",
-        "caps": [
-          "theme.activate"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
       ],
       "contract": {
         "request": null,
@@ -2513,170 +5921,65 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/theme/freeze",
+      "path": "/users/:id/follow",
       "method": "POST",
-      "name": "theme.freeze",
-      "controller": "Theme.ThemeManager",
-      "action": "freezeConfig",
+      "name": "social.follow",
+      "controller": "Platform.Community",
+      "action": "follow",
       "meta": {
-        "name": "固化配置",
-        "group": "主题",
-        "caps": [
-          "theme.freeze"
-        ],
-        "public": false
+        "name": "social.follow",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
       },
       "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\JwtAuthCheck"
       ],
       "contract": {
         "request": null,
-        "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/theme/upload",
-      "method": "POST",
-      "name": "theme.upload",
-      "controller": "Theme.ThemeManager",
-      "action": "upload",
-      "meta": {
-        "name": "上传主题",
-        "group": "主题",
-        "caps": [
-          "theme.upload"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": {
-          "validate": "app\\modules\\Theme\\Transport\\Api\\Upload",
-          "scene": "default"
-        },
-        "response": {
-          "resource": "app\\modules\\Theme\\Transport\\Api\\ThemeResource",
-          "shape": "item",
-          "status": 200
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/users/batch",
-      "method": "POST",
-      "name": "users.batch",
-      "controller": "User.Users",
-      "action": "batch",
-      "meta": {
-        "name": "用户批量操作",
-        "group": "用户",
-        "caps": [],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck"
-      ],
-      "contract": {
-        "request": {
-          "validate": "app\\shared\\Transport\\Validation\\BatchOperationInput",
-          "scene": "BatchOperate"
-        },
-        "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/users/me/email",
-      "method": "POST",
-      "name": "users.me.email",
-      "controller": "User.Profile",
-      "action": "email",
-      "meta": {
-        "name": "绑定邮箱",
-        "group": "用户",
-        "caps": [],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck"
-      ],
-      "contract": {
-        "request": {
-          "validate": "app\\modules\\Platform\\User\\Transport\\Api\\Profile",
-          "scene": "email"
-        },
-        "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/users/me/email-captcha",
-      "method": "POST",
-      "name": "users.me.emailCaptcha",
-      "controller": "User.Profile",
-      "action": "emailCaptcha",
-      "meta": {
-        "name": "邮箱验证码",
-        "group": "用户",
-        "caps": [],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck"
-      ],
-      "contract": {
-        "request": {
-          "validate": "app\\modules\\Platform\\User\\Transport\\Api\\Profile",
-          "scene": "emailCaptcha"
-        },
         "response": {
           "resource": "app\\shared\\Transport\\Http\\ApiResource",
           "shape": "item",
           "status": 200
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/users/me/password",
-      "method": "POST",
-      "name": "users.me.password",
-      "controller": "User.Profile",
-      "action": "password",
+      "path": "/admin/theme/config",
+      "method": "PUT",
+      "name": "theme.updateConfig",
+      "controller": "Theme.ThemeManager",
+      "action": "updateConfig",
       "meta": {
-        "name": "修改密码",
-        "group": "用户",
-        "caps": [],
-        "public": false
+        "name": "Update theme config",
+        "group": "Theme",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "theme.update",
+              "scope": "global"
+            }
+          ]
+        }
       },
       "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck"
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
       ],
       "contract": {
         "request": {
-          "validate": "app\\modules\\Platform\\User\\Transport\\Api\\Profile",
-          "scene": "password"
+          "validate": "app\\modules\\Theme\\Transport\\Api\\Admin",
+          "scene": "updateConfig"
         },
         "response": {
           "resource": null,
@@ -2684,35 +5987,7 @@
           "status": 204
         }
       },
-      "source": "apps\\backend\\app\\api\\route"
-    },
-    {
-      "path": "/theme/config",
-      "method": "PUT",
-      "name": "theme.updateConfig",
-      "controller": "Theme.ThemeManager",
-      "action": "updateConfig",
-      "meta": {
-        "name": "更新配置",
-        "group": "主题",
-        "caps": [
-          "theme.update"
-        ],
-        "public": false
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": null,
-        "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
-        }
-      },
-      "source": "apps\\backend\\app\\api\\route"
+      "source": "apps/backend/app/api/route"
     }
   ]
 }

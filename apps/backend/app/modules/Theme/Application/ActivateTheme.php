@@ -2,9 +2,9 @@
 
 namespace app\modules\Theme\Application;
 
-use app\modules\Theme\Runtime\ThemeEngine;
+use app\modules\Theme\Service\ThemeManager;
 
 final class ActivateTheme
 {
-    public function execute(string $name): bool { return ThemeEngine::activateTheme($name); }
+    public function execute(string $id, string $release): bool { ThemeManager::activate($id, $release); return true; }
 }

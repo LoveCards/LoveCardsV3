@@ -28,10 +28,20 @@ class BaseController
     {
         $contract = $this->currentContract();
         $request = $contract['request'] ?? null;
-        $params = array_merge($requestParam ?? Request::param(), $routeParams);
+        $rawParams = $requestParam ?? Request::param();
+        $params = array_merge($rawParams, $routeParams);
 
         if ($request === null) {
             return $params;
+        }
+
+        // Deprecated high-risk switches may remain fail-closed without being
+        // advertised as supported OpenAPI/SDK fields.
+        foreach (($request['rejectTruthy'] ?? []) as $field => $message) {
+            if (array_key_exists($field, $rawParams)
+                && filter_var($rawParams[$field], FILTER_VALIDATE_BOOLEAN)) {
+                throw ApiException::forbidden((string) $message);
+            }
         }
 
         $validator = $request['validate'] ?? null;
@@ -126,9 +136,25 @@ class BaseController
 
         try {
             $params = InputNormalizer::sceneMessage($result, $ValidateClass);
-            validate($ValidateClass)
-                ->batch(true)
-                ->check($params);
+            // `all_scene` 是路由契约的可执行场景真源；ThinkPHP 默认会
+            // 校验验证器的全部规则，否则 Community 的 report/message
+            // 等无关场景会被错误地当成当前场景必填。
+            $fields = [];
+            foreach (['normal', 'require', 'nonNull', 'toNull'] as $bucket) {
+                if (is_array($scene[$bucket] ?? null)) {
+                    $fields = array_merge($fields, $scene[$bucket]);
+                }
+            }
+            $fields = array_values(array_unique(array_filter($fields, 'is_string')));
+
+            // ThinkPHP 将空 `only` 列表解释为“全部字段”，无规则场景必须
+            // 跳过框架规则校验，避免意外恢复完整规则集。
+            if ($fields !== []) {
+                validate($ValidateClass)
+                    ->only($fields)
+                    ->batch(true)
+                    ->check($params);
+            }
         } catch (ValidateException $e) {
             throw ApiException::badRequest('参数错误', ApiException::CODE_PARAM_INVALID, $e->getError());
         }

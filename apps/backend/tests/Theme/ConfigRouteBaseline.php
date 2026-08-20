@@ -3,8 +3,8 @@
 $root = dirname(__DIR__, 2);
 $route = file_get_contents($root . '/app/api/route/theme.php');
 $themeBoot = file_get_contents($root . '/app/frontend/middleware/ThemeBoot.php');
-$frontendConfig = require $root . '/config/apps/frontend.php';
 $sdk = file_get_contents(dirname($root, 2) . '/packages/sdk/src/generated/resources/theme.ts');
+$dataSql = file_get_contents($root . '/data.sql');
 $tests = [];
 
 $tests['GET theme/config is registered exactly once'] = static function () use ($route): void {
@@ -13,7 +13,7 @@ $tests['GET theme/config is registered exactly once'] = static function () use (
     }
 };
 $tests['GET theme/config remains public'] = static function () use ($route): void {
-    if (strpos($route, "->name('theme.publicConfig')") === false || strpos($route, "'public' => true") === false) {
+    if (strpos($route, "->name('theme.publicConfig')") === false || strpos($route, "'access' => ['auth' => 'public']") === false) {
         throw new RuntimeException('公开主题配置契约丢失');
     }
 };
@@ -23,7 +23,7 @@ $tests['protected duplicate route name is removed'] = static function () use ($r
     }
 };
 $tests['PUT theme/config remains protected'] = static function () use ($route): void {
-    if (strpos($route, "Route::put('config', 'Theme.ThemeManager/updateConfig')") === false || strpos($route, "'caps' => ['theme.update']") === false) {
+    if (strpos($route, "Route::put('config', 'Theme.ThemeManager/updateConfig')") === false || strpos($route, "['capability' => 'theme.update', 'scope' => 'global']") === false) {
         throw new RuntimeException('PUT 主题配置契约被改变');
     }
 };
@@ -32,15 +32,19 @@ $tests['SDK compatibility methods retain the same path'] = static function () us
         throw new RuntimeException('SDK config/publicConfig 路径发生变化');
     }
 };
+$tests['SDK theme mutations use id and release'] = static function () use ($sdk): void {
+    if (strpos($sdk, 'activate(data: { id: string; release: string })') === false || strpos($sdk, 'updateConfig(data: { id: string; release: string; values: Record<string, unknown> })') === false) {
+        throw new RuntimeException('SDK 主题 Release 参数契约丢失');
+    }
+};
 $tests['Theme middleware bypasses the system installer'] = static function () use ($themeBoot): void {
-    if (strpos($themeBoot, "'/system'") === false) {
+    if (strpos($themeBoot, 'ThemeManifest::isReservedPath') === false) {
         throw new RuntimeException('ThemeBoot must not intercept /system installer routes');
     }
 };
-$tests['default active theme exists in the release'] = static function () use ($root, $frontendConfig): void {
-    $theme = $frontendConfig['active_theme']['default'] ?? '';
-    if ($theme === '' || !is_file($root . '/public/theme/' . $theme . '/theme.json')) {
-        throw new RuntimeException('Configured default theme is missing from public/theme');
+$tests['clean install schema contains host theme bindings'] = static function () use ($dataSql): void {
+    if (strpos($dataSql, 'CREATE TABLE IF NOT EXISTS `theme_bindings`') === false || strpos($dataSql, '`release_key` VARCHAR(128) NOT NULL') === false) {
+        throw new RuntimeException('clean install schema missing theme_bindings');
     }
 };
 

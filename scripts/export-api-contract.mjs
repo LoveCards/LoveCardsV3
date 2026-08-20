@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
+import { loadBackendContractMetadata } from './lib/backend-contract-metadata.mjs'
 
 const root = process.cwd()
 const inventoryPath = path.join(root, 'contracts/api-inventory.json')
@@ -13,18 +13,11 @@ if (blocking.length) {
   throw new Error(`API audit has blocking findings: ${blocking.map(([severity, count]) => `${severity}=${count}`).join(', ')}`)
 }
 
-function loadBackendMetadata() {
-  const candidates = [process.env.PHP_BINARY, 'php', 'C:\\software\\phpstudy_pro\\Extensions\\php\\php8.0.2nts\\php.exe'].filter(Boolean)
-  for (const binary of candidates) {
-    const result = spawnSync(binary, [path.join(root, 'scripts/export-contract-metadata.php')], { cwd: root, encoding: 'utf8' })
-    if (result.status === 0 && result.stdout.trim()) {
-      try { return JSON.parse(result.stdout) } catch {}
-    }
-  }
-  return { resources: {}, validators: {} }
-}
+const backendMetadata = loadBackendContractMetadata(root)
 
-const backendMetadata = loadBackendMetadata()
+function cloneSchema(schema) {
+  return schema == null ? schema : structuredClone(schema)
+}
 
 function schemaForType(type) {
   const value = (type || '').trim()
@@ -61,18 +54,20 @@ function tsTypeForSchema(schema) {
 }
 
 function resourceType(route) {
+  if (route.response?.shape === 'raw') return route.response?.type || 'string'
   const operation = route.name || ''
   const operationTypes = {
     'files.upload': 'UploadResult', 'files.cleanup': '{ cleaned: number }',
-    'captcha.types': 'CaptchaDriver[]', 'captcha.drivers': 'CaptchaDriver[]', 'captcha.meta': 'CaptchaDriver', 'captcha.config': 'CaptchaConfig',
+    'captcha.types': 'CaptchaDriver[]', 'captcha.drivers': 'CaptchaDriver[]', 'captcha.meta': 'CaptchaDriver', 'captcha.config': 'CaptchaConfig', 'captcha.challenge': 'CaptchaChallenge',
     'sender.types': 'SenderType[]', 'sender.meta': 'SenderMeta', 'sender.channels': 'SenderChannel[]', 'sender.templates': 'SenderTemplate[]', 'sender.testChannel': '{ success: boolean; message?: string }',
     'storage.types': 'StorageDriver[]', 'storage.meta': 'StorageMeta', 'storage.channels': 'StorageChannel[]', 'storage.channelStats': 'ChannelStats', 'storage.testChannel': '{ success: boolean; message?: string }',
-    'theme.publicConfig': 'ThemeConfigData', 'theme.updateConfig': 'void', 'roles.getRoleCapabilities': 'string[]', 'permissions.all': 'CapabilityItem[]',
+    'theme.publicConfig': 'ThemeConfigData', 'theme.updateConfig': 'void', 'roles.getGrants': 'Grant[]', 'permissions.all': 'CapabilityItem[]',
+    'session.policy': 'AuthPolicy', 'session.check': 'SessionState',
   }
   if (operationTypes[operation]) return operationTypes[operation]
   const short = route.response?.resource || ''
   const base = short.replace(/Resource$/, '')
-  const map = { Card: 'Card', CardCreated: 'CreateResult', Comment: 'Comment', CommentCreated: 'CreateResult', Tag: 'Tag', User: 'User', Profile: 'User', Role: 'Role', Permission: 'CapabilityItem', Like: 'Like', LikeCount: '{ likes: number }', File: 'LCFile', DirectUpload: 'DirectUploadResult', Auth: 'LoginResult', Theme: 'ThemeItem', Config: 'ConfigData', Dashboard: 'DashboardData', System: 'SystemUpdateInfo', Sender: 'SenderMeta', Storage: 'StorageMeta', Captcha: 'CaptchaMeta' }
+  const map = { Card: 'Card', CardCreated: 'CreateResult', Comment: 'Comment', CommentCreated: 'CreateResult', Tag: 'Tag', User: 'User', Profile: 'User', Role: 'Role', Grant: 'Grant', Permission: 'CapabilityItem', Like: 'Like', LikeCount: '{ likes: number }', File: 'LCFile', DirectUpload: 'DirectUploadResult', Auth: 'LoginResult', AuthPolicy: 'AuthPolicy', Session: 'SessionState', Theme: 'ThemeItem', Config: 'ConfigData', Dashboard: 'DashboardData', System: 'SystemUpdateInfo', Sender: 'SenderMeta', Storage: 'StorageMeta', Captcha: 'CaptchaMeta', CaptchaChallenge: 'CaptchaChallenge', CursorPage: 'CursorPage', AdminOverview: 'OperationsOverview', AdminMigration: 'OperationsMigration', AdminRuntime: 'OperationsRuntimeStatus', AdminDelivery: 'OperationsDelivery', AdminAuditLog: 'OperationsAuditLog', AdminNotificationStats: 'OperationsNotificationStats', AdminCommunityInsights: 'OperationsCommunityInsights', AdminUpgradePlan: 'OperationsUpgradePlan', AdminReport: 'AdminReport', AdminSecurity: 'UserSecurityOverview', AdminSession: 'UserSession', AdminRecoveryChallenge: 'RecoveryChallenge', AdminFileUsage: 'FileUsage' }
   const item = map[base] || 'Record<string, unknown>'
   if (route.response?.shape === 'collection') return `${item}[]`
   if (route.response?.shape === 'paginated') return `ListResult<${item}>`
@@ -105,6 +100,8 @@ function validationSchema(route) {
   for (const validator of route.validators || []) {
     const details = backendMetadata.validators?.[validator]
     if (!details) continue
+    const explicitSchema = route.validatorScene ? details.requestSchemas?.[route.validatorScene] : null
+    if (explicitSchema) return cloneSchema(explicitSchema)
     const rules = details.rules || {}
     const scene = route.validatorScene && details.allScenes?.[route.validatorScene]
     const normal = Array.isArray(scene?.normal) ? scene.normal : []
@@ -114,19 +111,25 @@ function validationSchema(route) {
       ? [...new Set([...normal, ...requireFields, ...toNull])]
       : Object.keys(rules)
     for (const field of fields) {
-      properties[field] = fieldSchema(rules[field])
+      properties[field] = route.contract?.request?.contentType === 'multipart/form-data' && field === 'file'
+        ? { type: 'string', format: 'binary' }
+        : fieldSchema(rules[field])
       if (requireFields.includes(field)) required.push(field)
     }
   }
-  if (route.action === 'upload') properties.file = { type: 'string', format: 'binary' }
   if (!Object.keys(properties).length) return null
   return { type: 'object', properties, ...(required.length ? { required: [...new Set(required)] } : {}), additionalProperties: true }
 }
 
 function operationSchema(route) {
   const sdkType = resourceType(route)
-  const resourceSchema = Object.values(backendMetadata.resources || {}).find((item) => item.shortName === route.response?.resource)?.schema
-  const explicit = new Set(['files.upload', 'files.cleanup', 'captcha.types', 'captcha.drivers', 'captcha.meta', 'captcha.config', 'sender.types', 'sender.meta', 'sender.channels', 'sender.templates', 'sender.testChannel', 'storage.types', 'storage.meta', 'storage.channels', 'storage.channelStats', 'storage.testChannel', 'theme.publicConfig', 'theme.updateConfig', 'roles.getRoleCapabilities', 'permissions.all'])
+  if (route.response?.shape === 'raw') {
+    const schema = schemaForType(sdkType) || { type: 'string' }
+    schema['x-typescript-type'] = sdkType
+    return schema
+  }
+  const resourceSchema = cloneSchema(Object.values(backendMetadata.resources || {}).find((item) => item.shortName === route.response?.resource)?.schema)
+  const explicit = new Set(['files.upload', 'files.cleanup', 'captcha.types', 'captcha.drivers', 'captcha.meta', 'captcha.config', 'sender.types', 'sender.meta', 'sender.channels', 'sender.templates', 'sender.testChannel', 'storage.types', 'storage.meta', 'storage.channels', 'storage.channelStats', 'storage.testChannel', 'theme.updateConfig', 'roles.getGrants', 'permissions.all'])
   let schema = explicit.has(route.name) ? schemaForType(sdkType) : (resourceSchema && resourceSchema['x-runtime-schema'] !== true ? resourceSchema : schemaForType(sdkType))
   if (route.response?.shape === 'collection') schema = { type: 'array', items: schema || {} }
   if (route.response?.shape === 'paginated') {
@@ -139,14 +142,21 @@ function operationSchema(route) {
 
 function requestSchema(route) {
   const pathParams = [...route.path.matchAll(/:([^/]+)/g)].map((match) => match[1])
-  const formData = route.action === 'upload'
-  const schema = validationSchema(route) || { type: 'object', additionalProperties: true }
+  const formData = route.contract?.request?.contentType === 'multipart/form-data'
+  const schema = cloneSchema(validationSchema(route) || { type: 'object', additionalProperties: true })
   for (const name of pathParams) {
     delete schema.properties?.[name]
     if (Array.isArray(schema.required)) schema.required = schema.required.filter((value) => value !== name)
   }
   const fields = Object.entries(schema.properties || {}).map(([name, value]) => `${name}${(schema.required || []).includes(name) ? '' : '?'}: ${tsTypeForSchema(value)}`)
-  const params = formData ? 'formData: FormData' : (['GET', 'DELETE'].includes(route.method) ? `params?: { ${fields.join('; ')} }` : (fields.length ? `data: { ${fields.join('; ')} }` : 'data?: Record<string, unknown>'))
+  const requestRequired = (schema.required || []).length > 0
+  const params = formData
+    ? 'formData: FormData'
+    : ['GET', 'DELETE'].includes(route.method)
+      ? `params${requestRequired ? '' : '?'}: { ${fields.join('; ')} }`
+      : fields.length
+        ? `data${requestRequired ? '' : '?'}: { ${fields.join('; ')} }`
+        : 'data?: Record<string, unknown>'
   schema['x-typescript-params'] = params
   if (formData) schema['x-content-type'] = 'multipart/form-data'
   if (pathParams.length) schema['x-path-params'] = pathParams
@@ -165,8 +175,9 @@ for (const route of inventory.routes) {
     summary: route.meta.name || route.name,
     description: route.meta.name || route.name,
     'x-controller': `${route.controller}/${route.action}`,
-    'x-capabilities': route.meta.caps || [],
-    'x-public': Boolean(route.meta.public),
+    'x-access': route.meta.access || null,
+    'x-capabilities': [...(route.meta.access?.allOf || []), ...(route.meta.access?.anyOf || [])].map((grant) => grant.capability),
+    'x-public': route.meta.access?.auth === 'public',
     'x-middleware': route.middleware,
     'x-resource': route.response?.resource || null,
     'x-response-shape': route.response?.shape || 'dynamic',
@@ -178,11 +189,18 @@ for (const route of inventory.routes) {
   }
 
   if (route.middleware.includes('JwtAuthCheck')) operation.security = [{ bearerAuth: [] }]
-  else if (route.meta.public) operation.security = []
+  else if (route.meta.access?.auth === 'public') operation.security = []
 
   const responseStatus = String(route.response?.status || 200)
   if (responseStatus === '204') {
     operation.responses[responseStatus] = { description: 'No content' }
+  } else if (route.response?.shape === 'raw') {
+    operation.responses[responseStatus] = {
+      description: 'Success',
+      content: {
+        [route.response?.contentType || 'text/plain']: { schema: operationSchema(route) || { type: 'string' } },
+      },
+    }
   } else {
     const responseSchema = operationSchema(route)
     const envelopeSchema = {
@@ -213,13 +231,16 @@ for (const route of inventory.routes) {
     required: true,
     schema: { type: name === 'id' ? 'integer' : 'string' },
   }))
-  if (['GET', 'DELETE'].includes(route.method)) {
-    operation.parameters.push({ name: 'query', in: 'query', required: false, schema: requestSchema(route) })
-  } else {
+  const hasRequestContract = route.contract?.request != null
+  if (hasRequestContract && ['GET', 'DELETE'].includes(route.method)) {
+    const schema = requestSchema(route)
+    operation.parameters.push({ name: 'query', in: 'query', required: (schema.required || []).length > 0, schema })
+  } else if (hasRequestContract) {
+    const schema = requestSchema(route)
     operation.requestBody = {
-      required: route.action === 'upload',
+      required: (schema.required || []).length > 0,
       content: {
-        [route.action === 'upload' ? 'multipart/form-data' : 'application/json']: { schema: requestSchema(route) },
+        [route.contract?.request?.contentType || 'application/json']: { schema },
       },
     }
   }

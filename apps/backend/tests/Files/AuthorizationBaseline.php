@@ -157,8 +157,9 @@ namespace app\modules\Platform\Files\Infrastructure\Persistence\Model
         /**
          * 模拟 find() — 返回 scope 过滤后的第一个匹配项
          */
-        public function find(): ?object
+        public function find($id = null): ?object
         {
+            if ($id !== null) $this->calls[] = ['where', 'id', $id, '='];
             $rows = FilesQuery::selectFromMock($this->calls);
             $rows = $this->applyScope($rows);
             return $rows[0] ?? null;
@@ -522,6 +523,8 @@ namespace
      * @var array<int, MockFileRecord>
      */
     $mockFilesDb = [];
+    $mockFileReferenceCounts = [];
+    $mockFilePurgeRequests = [];
 
     /**
      * 重置模拟数据库到已知状态
@@ -535,7 +538,9 @@ namespace
      *   id=6  user_id=10  owner 正常, is_public=1
      */
     $resetMockDb = static function (): void {
-        global $mockFilesDb;
+        global $mockFilesDb, $mockFileReferenceCounts, $mockFilePurgeRequests;
+        $mockFileReferenceCounts = [];
+        $mockFilePurgeRequests = [];
         $mockFilesDb = [
             1 => new MockFileRecord([
                 'id' => 1,
@@ -606,6 +611,7 @@ namespace
             7 => new MockFileRecord([
                 'id' => 7,
                 'user_id' => 10,
+                'hash' => '0123456789abcdef',
                 'channel_slug' => 'local',
                 'file_path' => 'path/7.jpg',
                 'driver_path' => '',
@@ -633,13 +639,71 @@ namespace
         return $repository ??= new \app\modules\Platform\Files\Infrastructure\ThinkOrmFileRepository();
     }
 
+    function fileReferenceRepository(): object
+    {
+        return new class implements \app\modules\Platform\Files\Contract\FileReferenceRepository {
+            public function forFile(int $fileId): array
+            {
+                return [];
+            }
+
+            public function fileIdsForResource(string $resourceType, string $resourceId): array
+            {
+                return [];
+            }
+
+            public function fileIdsForResources(string $resourceType, array $resourceIds): array
+            {
+                return [];
+            }
+
+            public function countForFile(int $fileId): int
+            {
+                global $mockFileReferenceCounts;
+
+                return (int) ($mockFileReferenceCounts[$fileId] ?? 0);
+            }
+
+            public function replaceResource(
+                string $resourceType,
+                string $resourceId,
+                string $purpose,
+                array $fileIds,
+                int $ownerId,
+                bool $isPublic,
+                bool $allowAll
+            ): void {
+            }
+        };
+    }
+
+    function filePurgeRequester(): object
+    {
+        return new class implements \app\modules\Platform\Files\Contract\FilePurgeRequester {
+            public function requestMany(array $fileIds, int $actorId, string $ipAddress = ''): void
+            {
+                global $mockFilePurgeRequests;
+                $mockFilePurgeRequests[] = ['ids' => array_values($fileIds), 'actor_id' => $actorId];
+            }
+        };
+    }
+
     function batchOperate(string $method, array $ids, int $userId, array $caps): void
     {
         $useCase = new \app\modules\Platform\Files\Application\BatchOperateFiles(
             filesRepository(),
-            new \app\modules\Platform\Files\Infrastructure\DefaultStorageDriver()
+            fileReferenceRepository(),
+            filePurgeRequester()
         );
-        $useCase->execute($method, $ids, $userId, $caps);
+        $grants = [];
+        foreach ($caps as $capability) {
+            $scope = str_ends_with($capability, '.all')
+                ? \app\shared\Authorization\Scope::ALL
+                : \app\shared\Authorization\Scope::OWN;
+            if ($scope === \app\shared\Authorization\Scope::ALL) $capability = substr($capability, 0, -4);
+            $grants[] = new \app\shared\Authorization\Grant($capability, $scope);
+        }
+        $useCase->execute($method, $ids, $userId, new \app\shared\Authorization\GrantSet($grants));
     }
 
     function getFile(int $fileId, int $userId, bool $canReadAll): ?array
@@ -674,10 +738,16 @@ namespace
             ->executeOwn($params, $userId);
     }
 
-        require __DIR__ . '/../../app/shared/Authorization/OwnershipGuard.php';
-require __DIR__ . '/../../app/modules/Platform/Files/Contract/FileRepository.php';
+    require __DIR__ . '/../../app/shared/Authorization/Scope.php';
+    require __DIR__ . '/../../app/shared/Authorization/Grant.php';
+    require __DIR__ . '/../../app/shared/Authorization/GrantSet.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Contract/FileRepository.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Contract/FileReferenceRepository.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Contract/FilePurgeRequester.php';
     require __DIR__ . '/../../app/modules/Platform/Files/Domain/FileConstants.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Application/FilePolicy.php';
     require __DIR__ . '/../../app/modules/Platform/Files/Contract/StorageDriver.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Contract/LocalStorageReader.php';
     require __DIR__ . '/../../app/modules/Platform/Files/Contract/ChannelConfig.php';
     require __DIR__ . '/../../app/modules/Platform/Files/Contract/RateLimiter.php';
     require __DIR__ . '/../../app/modules/Platform/Files/Application/BatchOperateFiles.php';
@@ -755,19 +825,19 @@ namespace
     // 组 A：batch 授权序列
     // ──────────────────────────────────────────────────────
 
-    $test('A1: batch hard_delete owner — 删除自己文件通过', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
+    $test('A1: batch hard_delete owner — queues durable purge', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        // user=10, caps=['files.delete'] → 只能删除自己的
-        batchOperate('hard_delete', [1], 10, ['files.delete']);
-        // 无异常 = 授权检查通过
-        $assertTrue(true);
+        batchOperate('hard_delete', [1], 10, ['files.purge']);
+        global $mockFilesDb, $mockFilePurgeRequests;
+        $assertSame([['ids' => [1], 'actor_id' => 10]], $mockFilePurgeRequests, '永久删除必须进入可靠 purge 队列');
+        $assertTrue(isset($mockFilesDb[1]), '处理器确认存储删除前必须保留文件记录');
     });
 
     $test('A2: batch hard_delete non-owner — 无权操作他人文件 403', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
         $thrown = null;
         try {
-            batchOperate('hard_delete', [3], 10, ['files.delete']);
+            batchOperate('hard_delete', [3], 10, ['files.purge']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -777,7 +847,7 @@ namespace
 
     $test('A3: batch hard_delete .all — 任意用户可删除', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        batchOperate('hard_delete', [3], 10, ['files.delete.all']);
+        batchOperate('hard_delete', [3], 10, ['files.purge.all']);
         // 无异常 = 授权检查通过
         $assertTrue(true);
     });
@@ -786,7 +856,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            batchOperate('hard_delete', [999], 10, ['files.delete.all']);
+            batchOperate('hard_delete', [999], 10, ['files.purge.all']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -798,7 +868,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            batchOperate('hard_delete', [1, 999], 10, ['files.delete.all']);
+            batchOperate('hard_delete', [1, 999], 10, ['files.purge.all']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -807,6 +877,25 @@ namespace
         // 验证零写入 — 即使 id=1 存在也不应被删除
         global $mockFilesDb;
         $assertTrue(isset($mockFilesDb[1]), '检查失败后零写入 — id=1 应仍存在');
+    });
+
+    $test('A5b: batch hard_delete rejects files with business references', static function () use ($resetMockDb, $assertTrue, $assertSame, $assertExceptionHttpStatus): void {
+        $resetMockDb();
+        global $mockFilesDb, $mockFileReferenceCounts;
+        $mockFileReferenceCounts[1] = 2;
+
+        $thrown = null;
+        try {
+            batchOperate('hard_delete', [1], 10, ['files.purge']);
+        } catch (\Throwable $exception) {
+            $thrown = $exception;
+        }
+
+        $assertTrue($thrown !== null, '被业务引用的文件必须拒绝永久删除');
+        $assertExceptionHttpStatus($thrown, 400);
+        $assertTrue(isset($mockFilesDb[1]), '拒绝删除时文件记录必须保留');
+        global $mockFilePurgeRequests;
+        $assertSame([], $mockFilePurgeRequests, '有业务引用时不得发布 purge 请求');
     });
 
     $test('A6: batch approve 需要 files.update', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
@@ -843,7 +932,7 @@ namespace
         $thrown = null;
         try {
             // id=2 是 user_id=10 的软删除记录, 当前用户也是 10 — 应通过
-            batchOperate('hard_delete', [2], 10, ['files.delete']);
+            batchOperate('hard_delete', [2], 10, ['files.purge']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -855,7 +944,7 @@ namespace
         $thrown = null;
         try {
             // id=5 是 user_id=20 的软删除记录, 当前用户=10
-            batchOperate('hard_delete', [5], 10, ['files.delete']);
+            batchOperate('hard_delete', [5], 10, ['files.purge']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -866,7 +955,7 @@ namespace
     $test('B3: batch restore 需要 files.delete 并检查 owner', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
         // owner=10 恢复自己的软删除记录 id=2, 需要 files.delete
-        batchOperate('restore', [2], 10, ['files.delete']);
+        batchOperate('restore', [2], 10, ['files.restore']);
         $assertTrue(true);
     });
 
@@ -898,7 +987,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            batchOperate('hard_delete', [3], 10, ['files.delete']);
+            batchOperate('hard_delete', [3], 10, ['files.purge']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -940,7 +1029,7 @@ namespace
 
     $test('E1: allDelete 单条 hard_delete owner 通过', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        batchOperate('hard_delete', [1], 10, ['files.delete']);
+        batchOperate('hard_delete', [1], 10, ['files.purge']);
         // 无异常 = 授权检查通过
         $assertTrue(true);
     });
@@ -949,7 +1038,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            batchOperate('hard_delete', [3], 10, ['files.delete']);
+            batchOperate('hard_delete', [3], 10, ['files.purge']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -959,7 +1048,7 @@ namespace
 
     $test('E3: allDelete .all 可删除任意 owner', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
-        batchOperate('hard_delete', [3], 10, ['files.delete.all']);
+        batchOperate('hard_delete', [3], 10, ['files.purge.all']);
         // 无异常 = 授权检查通过
         $assertTrue(true);
     });
@@ -968,7 +1057,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            batchOperate('hard_delete', [999], 10, ['files.delete.all']);
+            batchOperate('hard_delete', [999], 10, ['files.purge.all']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -1025,7 +1114,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            batchOperate('hard_delete', [1, 3, 999], 10, ['files.delete']);
+            batchOperate('hard_delete', [1, 3, 999], 10, ['files.purge']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -1040,7 +1129,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            batchOperate('hard_delete', [3, 999], 10, ['files.delete']);
+            batchOperate('hard_delete', [3, 999], 10, ['files.purge']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -1052,7 +1141,7 @@ namespace
         $resetMockDb();
         $thrown = null;
         try {
-            batchOperate('hard_delete', [1, 999], 10, ['files.delete.all']);
+            batchOperate('hard_delete', [1, 999], 10, ['files.purge.all']);
         } catch (\Throwable $e) {
             $thrown = $e;
         }
@@ -1064,38 +1153,22 @@ namespace
     // 组 H：读取授权路径扫描
     // ──────────────────────────────────────────────────────
 
-    $test('H1: Controller cleanup 路由 cap 声明含 files.delete.all', static function () use ($assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
+    $test('H1: cleanup uses a dedicated global grant', static function () use ($assertTrue): void {
         $routeCode = file_get_contents(__DIR__ . '/../../app/api/route/files.php');
-        $assertTrue((bool)preg_match('/files\.delete\.all/', $routeCode), 'route 应声明 files.delete.all');
+        $assertTrue(str_contains($routeCode, '$grant(\'files.cleanup\', Scope::GLOBAL)'), 'cleanup grant missing');
     });
 
-    $test('H2: Controller allDelete 路由 cap 声明含 files.delete 和 files.delete.all', static function () use ($assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
+    $test('H2: purge is an explicit high-risk route', static function () use ($assertTrue): void {
         $routeCode = file_get_contents(__DIR__ . '/../../app/api/route/files.php');
-        // 提取 allDelete 路由语句（Route::delete 到分号）
-        $deleteSection = '';
-        if (preg_match("/Route::delete\(':id'[^;]+allDelete[^;]+caps['\"]\s*=>\s*\[([^\]]+)\]/s", $routeCode, $m)) {
-            $deleteSection = $m[1];
-        }
-        $hasDeleteCap = (bool)preg_match("/'files\\.delete'/", $deleteSection);
-        $hasDeleteAllCap = (bool)preg_match("/'files\\.delete\\.all'/", $deleteSection);
-        $assertTrue($hasDeleteCap && $hasDeleteAllCap, 'allDelete 路由 caps 应包含 files.delete 和 files.delete.all');
+        $assertTrue(str_contains($routeCode, "Route::delete(':id/purge', 'Storage.Upload/purge')"), 'purge route missing');
+        $assertTrue(str_contains($routeCode, '$grant(\'files.purge\', Scope::ALL)'), 'purge grant missing');
     });
 
-    $test('H3: Controller batch 路由 cap 声明含 files.update 和 files.delete', static function () use ($assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
+    $test('H3: admin batch is protected by structured access', static function () use ($assertTrue): void {
         $routeCode = file_get_contents(__DIR__ . '/../../app/api/route/files.php');
-        // 提取 batch 路由 caps 部分
-        $batchCaps = '';
-        if (preg_match("/Route::post\('files\/batch'[^;]+caps['\"]\s*=>\s*\[([^\]]+)\]/s", $routeCode, $m)) {
-            $batchCaps = $m[1];
-        }
-        $hasUpdate = (bool)preg_match("/'files\\.update'/", $batchCaps);
-        $hasDelete = (bool)preg_match("/'files\\.delete'/", $batchCaps);
-        $assertTrue($hasUpdate && $hasDelete, 'batch 路由 caps 应包含 files.update 和 files.delete');
+        $assertTrue(str_contains($routeCode, "Route::post('batch', 'Storage.Upload/batch')"), 'admin batch route missing');
+        $assertTrue(str_contains($routeCode, '$grant(\'admin.access\', Scope::GLOBAL)'), 'admin access grant missing');
     });
-
-    // ──────────────────────────────────────────────────────
-    // 组 I：batchTrash 授权
-    // ──────────────────────────────────────────────────────
 
     $test('I1: batch trash owner 通过', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
@@ -1126,15 +1199,10 @@ namespace
         $assertTrue($hasCleanupRoute, 'cleanup 路由应使用 DELETE');
     });
 
-    $test('J2: Route files.allDelete 使用 DELETE 方法', static function () use ($assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
+    $test('J2: purge uses DELETE', static function () use ($assertTrue): void {
         $routeCode = file_get_contents(__DIR__ . '/../../app/api/route/files.php');
-        $hasDeleteRoute = (bool)preg_match("/Route::delete\(':id'.*?allDelete/s", $routeCode);
-        $assertTrue($hasDeleteRoute, 'allDelete 路由应使用 DELETE');
+        $assertTrue((bool) preg_match("/Route::delete\\(':id\\/purge'.*?Storage\\.Upload\\/purge/s", $routeCode), 'purge route must use DELETE');
     });
-
-    // ──────────────────────────────────────────────────────
-    // 组 K：capability 负测试 — 错误的能力返回 403
-    // ──────────────────────────────────────────────────────
 
     $test('K1: approve 只有 files.delete 时 403', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
@@ -1176,18 +1244,11 @@ namespace
     // 组 L：Controller 代码扫描 — 无 hasCapability 单数调用
     // ──────────────────────────────────────────────────────
 
-    $test('L1: Controller 不包含 hasCapability( 单数', static function () use ($assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
+    $test('L1: controller uses structured grant scopes', static function () use ($assertTrue, $assertFalse): void {
         $controllerCode = file_get_contents(__DIR__ . '/../../app/api/controller/Storage/Upload.php');
-        // 允许 hasAnyCapability — 禁止 hasCapability( 单数
-        $hasSingular = (bool)preg_match('/hasCapability\s*\(/', $controllerCode);
-        $hasAny = (bool)preg_match('/hasAnyCapability\s*\(/', $controllerCode);
-        $assertTrue($hasAny, 'Controller 应使用 hasAnyCapability');
-        $assertFalse($hasSingular, 'Controller 不应包含 hasCapability( 单数');
+        $assertTrue(str_contains($controllerCode, "grants()->allows('files.read'"), 'structured read grant missing');
+        $assertFalse((bool) preg_match('/has(?:Any)?Capability\\s*\\(/', $controllerCode), 'legacy capability helper remains');
     });
-
-    // ──────────────────────────────────────────────────────
-    // 组 M：getFile/getByHash/getByHashes scope 验证
-    // ──────────────────────────────────────────────────────
 
     $test('M1: owner 可读取自己的正常记录', static function () use ($resetMockDb, $assertTrue, $assertFalse, $assertSame, $assertExceptionHttpStatus): void {
         $resetMockDb();
@@ -1302,7 +1363,8 @@ namespace
         $controllerCode = file_get_contents(__DIR__ . '/../../app/api/controller/Storage/Upload.php');
         preg_match('/public function batch\(\).*?public function direct\(\)/s', $controllerCode, $matches);
         $batchCode = $matches[0] ?? '';
-        $assertTrue(strpos($batchCode, 'throw ApiException::badRequest($validate->getError());') !== false, 'invalid batch method must throw coded bad request');
+        $assertTrue(strpos($batchCode, '$this->validated()') !== false, 'batch must use the route-owned validator, which preserves code 9002');
+        $assertFalse(strpos($batchCode, 'Request::param') !== false, 'batch must not bypass the route-owned validator');
         $assertTrue(strpos($batchCode, "throw ApiException::badRequest('参数不完整');") !== false, 'incomplete batch params must throw coded bad request');
         $assertFalse(strpos($batchCode, 'ApiResponse::createBadRequest') !== false, 'batch must not return uncoded bad request');
     });

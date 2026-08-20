@@ -1,6 +1,5 @@
 <!-- 渠道配置页面 -->
 <template>
-	<NuxtLayout name="root">
 		<v-row class="pt-2">
 			<v-col cols="12">
 				<h1 class="text-primary font-weight-bold">{{ channelName }} 配置</h1>
@@ -59,23 +58,26 @@
 				</v-card>
 			</v-col>
 		</v-row>
-	</NuxtLayout>
 </template>
 
 <script setup lang="ts">
 import { useApi } from '~/lib/api';
+import type { FieldDefinition, JsonObject, StorageChannel } from '@lovecards/sdk';
 const client = useApi();
 
 interface ChannelField {
 	key: string;
 	label: string;
 	type: string;
+	default?: unknown;
 }
+
+const isChannelField = (field: FieldDefinition): field is FieldDefinition & ChannelField => typeof field.key === 'string' && typeof field.label === 'string';
 
 const route = useRoute();
 const slug = route.params.slug as string;
 
-const config = ref<Record<string, any>>({});
+const config = ref<JsonObject>({});
 const fields = ref<ChannelField[]>([]);
 const channelName = ref(slug);
 const showPassword = ref(false);
@@ -89,10 +91,10 @@ const saveResult = ref<{ success: boolean; message: string } | null>(null);
 const loadChannelMeta = () => {
 	return client.storage.channels()
 		.then((channels) => {
-			const channel = channels.find((c: any) => c.slug === slug);
+			const channel = channels.find((c: StorageChannel) => c.slug === slug);
 			if (channel) {
 				channelName.value = channel.name;
-				fields.value = channel.fields ?? [];
+				fields.value = (channel.fields ?? []).filter(isChannelField);
 			}
 		});
 };
@@ -102,6 +104,10 @@ const loadConfig = () => {
 	loadError.value = null;
 	client.config.list()
 		.then((data) => {
+			if (!data || !data['storage_' + slug]) {
+				config.value = Object.fromEntries(fields.value.map((field: ChannelField) => [field.key, field.default ?? ''])) as JsonObject;
+				return;
+			}
 			if (data && data['storage_' + slug]) {
 				config.value = { ...data['storage_' + slug] };
 			} else {
@@ -123,7 +129,8 @@ const save = () => {
 	delete configToSave.type;
 	delete configToSave.file_count;
 	delete configToSave.total_size;
-	client.config.update({ ['storage_' + slug]: configToSave })
+	client.storage.install()
+		.then(() => client.config.update({ ['storage_' + slug]: configToSave }))
 		.then(() => {
 			saveResult.value = { success: true, message: '保存成功' };
 		})

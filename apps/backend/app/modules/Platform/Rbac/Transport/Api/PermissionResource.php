@@ -9,8 +9,9 @@ final class PermissionResource extends Resource
     public static function schema(string $variant = 'default'): array
     {
         return ['type' => 'object', 'properties' => [
-            'capability' => ['type' => 'string'], 'description' => ['type' => 'string'],
-        ], 'required' => ['capability', 'description']];
+            'capability' => ['type' => 'string'], 'scope' => ['type' => 'string', 'enum' => ['own', 'all', 'global']],
+            'description' => ['type' => 'string'],
+        ], 'required' => ['capability', 'scope', 'description']];
     }
 
     public static function make($value): array
@@ -20,6 +21,7 @@ final class PermissionResource extends Resource
 
         return [
             'capability' => (string) ($permission['capability'] ?? ''),
+            'scope' => (string) ($permission['scope'] ?? ''),
             'description' => (string) ($permission['description'] ?? ''),
         ];
     }

@@ -81,7 +81,7 @@ Content/
 ├─ Tags       标签
 └─ Likes      点赞
 
-Theme/        主题管理、SSR 数据和运行时
+Theme/        主题管理、SPA Release 和运行时
 Operations/   Dashboard、Installer、Version
 ```
 
@@ -144,7 +144,7 @@ Infrastructure / ORM / Driver / SDK
 4. 模块之间不直接访问对方的 Model、Service、Application 或 Driver。
 5. `shared` 只放无业务归属的跨模块技术能力；禁止重新创建 `common`。
 6. `Files` 使用 `Storage` 的公开存储能力；`Storage` 不依赖 `Files`。
-7. `Theme` 通过 `ThemeDataProvider` 等公开注册能力获取 SSR 数据，不直接读取 Content 内部类。
+7. `Theme` 通过 ThemeGateway 返回 Shell 和启动上下文，业务数据由浏览器 SDK 获取。
 
 ## 6. 驱动模块规范
 

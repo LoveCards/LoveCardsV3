@@ -25,5 +25,12 @@ final class FileConstants
     const UPLOAD_COMPLETED = 1;
     const UPLOAD_FAILED = 2;
 
+    // 物理清理状态
+    const PURGE_NONE = 'none';
+    const PURGE_PENDING = 'pending';
+    const PURGE_PROCESSING = 'processing';
+    const PURGE_STORAGE_DELETED = 'storage_deleted';
+    const PURGE_FAILED = 'failed';
+
     private function __construct() {}
 }

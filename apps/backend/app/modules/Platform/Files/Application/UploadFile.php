@@ -47,9 +47,11 @@ final class UploadFile
         $path = $this->channels->generatePath($file->getOriginalName());
 
         $result = $this->driver->uploadToDefault($file, $path);
+        $hash = bin2hex(random_bytes(8));
+        $mediaUrl = '/media/' . $hash;
 
         $id = $this->files->create([
-            'hash' => bin2hex(random_bytes(8)),
+            'hash' => $hash,
             'channel_slug' => $defaultChannel['slug'],
             'user_id' => $userId,
             'is_public' => $isPublic,
@@ -58,7 +60,7 @@ final class UploadFile
             'ref_id' => $refId,
             'original_name' => $result['original_name'],
             'file_path' => $result['path'],
-            'file_url' => $result['url'],
+            'file_url' => $mediaUrl,
             'file_size' => $result['size'],
             'file_ext' => strtolower(pathinfo($result['original_name'], PATHINFO_EXTENSION)),
             'mime_type' => $result['mime_type'],
@@ -68,6 +70,7 @@ final class UploadFile
         ]);
 
         $result['id'] = $id;
+        $result['url'] = $mediaUrl;
         unset($result['driver_path']);
         return $result;
     }

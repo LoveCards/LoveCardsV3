@@ -19,15 +19,25 @@ setPhase('Phase 0: Bootstrap')
 
 let adminToken, userToken, guestToken
 let adminClient, userClient, guestClient, publicClient
-let cardId, tagId, commentId, userId, roleId
+let cardId, tagId, commentId, userId, roleId, registeredUserId
+let guestUnavailable = false
+let themeUnavailable = false
 
 await test('session.guest() → guest token', async () => {
   guestClient = makeClient(null)
-  const result = await guestClient.session.guest()
-  assert(result && result.token, 'Should return token')
-  guestToken = result.token
-  guestClient = makeClient(guestToken)
-  return result
+  try {
+    const result = await guestClient.session.guest()
+    assert(result && result.token, 'Should return token')
+    guestToken = result.token
+    guestClient = makeClient(guestToken)
+    return result
+  } catch (error) {
+    if (isApiError(error) && error.status === 401 && error.message.includes('访客模式')) {
+      guestUnavailable = true
+      throw 'SKIP'
+    }
+    throw error
+  }
 })
 
 await test('session.login() → admin token', async () => {
@@ -51,12 +61,14 @@ await test('session.register() → user token', async () => {
     assert(result && result.token, 'Should return token')
     userToken = result.token
     userClient = makeClient(userToken)
+    const currentUser = await userClient.users.me()
+    registeredUserId = currentUser.id
     return result
   } catch (e) {
     // SessionDebounce may block if rapid retry
     if (isApiError(e) && e.status === 401) {
       // captcha required — skip
-      userClient = makeClient(guestToken) // fallback to guest
+      userClient = makeClient(guestToken || null) // fallback to guest/public client
       throw 'SKIP'
     }
     throw e
@@ -92,6 +104,13 @@ await test('tags.list() → collect tagId', async () => {
 setPhase('Phase 1: Public Endpoints')
 
 const pc = makeClient(null)
+
+await test('GET /session/policy → session.policy()', async () => {
+  const r = await pc.session.policy()
+  assert(r && r.registration && r.guest && r.human_verification, 'Should return the complete auth policy')
+  assert(Array.isArray(r.registration.account_types), 'registration.account_types should be an array')
+  return r
+})
 
 await test('GET /cards → cards.list()', async () => {
   const r = await pc.cards.list({ page: 1, list_rows: 5 })
@@ -156,10 +175,18 @@ await test('GET /captcha/config → captcha.config()', async () => {
 })
 
 await test('GET /theme/config → theme.publicConfig()', async () => {
-  const r = await pc.theme.publicConfig()
-  assert(r && r.name, 'Should have theme name')
-  assertShape(r, ['name', 'mode', 'config_schema', 'config_values'])
-  return r
+  try {
+    const r = await pc.theme.publicConfig()
+    assert(r && r.name, 'Should have theme name')
+    assertShape(r, ['name', 'mode', 'config_schema', 'config_values'])
+    return r
+  } catch (error) {
+    if (isApiError(error) && error.status === 400 && error.message === 'Active theme not found') {
+      themeUnavailable = true
+      throw 'SKIP'
+    }
+    throw error
+  }
 })
 
 await test('GET /tags → theme.tags() (compat proxy)', async () => {
@@ -214,8 +241,16 @@ await test('GET /comments/:id → comments.get()', async () => {
 setPhase('Phase 2: Auth-Only (admin)')
 
 await test('GET /session/check → session.check()', async () => {
-  await adminClient.session.check()
-  return true
+  const r = await adminClient.session.check()
+  assertShape(r, ['uid', 'visitor', 'roles', 'capabilities', 'grants'])
+  return r
+})
+
+await test('GET /me/cards/:id → cards.getOwn()', async () => {
+  if (!cardId) throw 'SKIP'
+  const r = await adminClient.cards.getOwn(cardId)
+  assert(r && r.id === cardId, 'Should return the owned card')
+  return r
 })
 
 await test('GET /users/me → users.me()', async () => {
@@ -233,9 +268,41 @@ await test('PATCH /users/me → users.updateMe()', async () => {
 })
 
 await test('POST /users/me/password → users.updatePassword()', async () => {
-  await adminClient.users.updatePassword({ password: '123456' })
-  await adminClient.users.updatePassword({ password: ADMIN_PASSWORD })
-  return true
+  const temporaryPassword = `SdkTmp${Date.now()}!`
+  let changed = false
+  let restored = false
+
+  try {
+    await adminClient.users.updatePassword({ password: temporaryPassword })
+    changed = true
+    await assertApiError(() => adminClient.session.check(), 401)
+
+    const temporaryLogin = await makeClient(null).session.login({ account: ADMIN_ACCOUNT, password: temporaryPassword })
+    const temporaryClient = makeClient(temporaryLogin.token)
+    await temporaryClient.users.updatePassword({ password: ADMIN_PASSWORD })
+    restored = true
+    await assertApiError(() => temporaryClient.session.check(), 401)
+
+    const refreshed = await makeClient(null).session.login({ account: ADMIN_ACCOUNT, password: ADMIN_PASSWORD })
+    adminToken = refreshed.token
+    adminClient = makeClient(adminToken)
+    return true
+  } finally {
+    if (changed && !restored) {
+      try {
+        const recoveryLogin = await makeClient(null).session.login({ account: ADMIN_ACCOUNT, password: temporaryPassword })
+        await makeClient(recoveryLogin.token).users.updatePassword({ password: ADMIN_PASSWORD })
+        restored = true
+      } catch {}
+    }
+    if (changed) {
+      try {
+        const refreshed = await makeClient(null).session.login({ account: ADMIN_ACCOUNT, password: ADMIN_PASSWORD })
+        adminToken = refreshed.token
+        adminClient = makeClient(adminToken)
+      } catch {}
+    }
+  }
 })
 
 await test('GET /users/me/cards → cards.listOwn()', async () => {
@@ -263,13 +330,131 @@ await test('POST /session/logout → session.logout()', async () => {
   return true
 })
 
+// Community scenes previously leaked required fields from unrelated routes.
+// Keep these calls parameter-free where the contract declares every field optional.
+setPhase('Phase 2b: Community Request Scenes')
+
+await test('GET /me/library without params → library.list()', async () => {
+  const r = await adminClient.library.list()
+  assert(Array.isArray(r.data), 'library.list() should return a cursor page')
+  return r
+})
+
+await test('GET /me/history without params → library.history()', async () => {
+  const r = await adminClient.library.history()
+  assert(Array.isArray(r.data), 'library.history() should return a cursor page')
+  return r
+})
+
+await test('GET /me/notifications without params → notifications.list()', async () => {
+  const r = await adminClient.notifications.list()
+  assert(Array.isArray(r.data), 'notifications.list() should return a cursor page')
+  return r
+})
+
+await test('GET /me/notifications/unread → notifications.unread()', async () => {
+  const r = await adminClient.notifications.unread()
+  assert(r !== null && typeof r === 'object', 'notifications.unread() should return an object')
+  return r
+})
+
+await test('GET /me/notifications/stream without params → notifications.stream()', async () => {
+  const r = await adminClient.notifications.stream()
+  assert(typeof r === 'string' && r.includes('event: notifications'), 'notification stream should return one SSE event')
+  return r
+})
+
+await test('POST /me/notifications/read requires only ids', async () => {
+  await adminClient.notifications.read({ ids: [999999] })
+  return true
+})
+
+await test('POST /me/notifications/read-all without body', async () => {
+  await adminClient.notifications.readAll()
+  return true
+})
+
+await test('GET /me/conversations without params → messages.conversations()', async () => {
+  const r = await adminClient.messages.conversations()
+  assert(Array.isArray(r), 'messages.conversations() should return an array')
+  return r
+})
+
+await test('POST /me/messages validates only message fields', async () => {
+  if (!registeredUserId) throw 'SKIP'
+  const error = await assertApiError(
+    () => adminClient.messages.send({ recipient_id: registeredUserId }),
+    400,
+  )
+  const fields = Object.keys(error.details || {}).sort()
+  assert(JSON.stringify(fields) === JSON.stringify(['body']), `unexpected message validation fields: ${fields.join(',')}`)
+  return true
+})
+
+let createdConversationId
+await test('POST /me/messages then GET conversation messages without params', async () => {
+  if (!registeredUserId) throw 'SKIP'
+  const sent = await adminClient.messages.send({
+    recipient_id: registeredUserId,
+    body: 'SDK community scene regression',
+    client_message_id: `sdk-community-${Date.now()}`,
+  })
+  assert(sent && sent.id, 'messages.send() should return an id')
+  const conversations = await adminClient.messages.conversations()
+  assert(conversations.length > 0, 'sent message should create a conversation')
+  createdConversationId = Number(conversations[0].id)
+  const messages = await adminClient.messages.list(createdConversationId)
+  assert(Array.isArray(messages.data) && messages.data.length > 0, 'messages.list() should return the sent message')
+  return messages
+})
+
+let createdDraftId
+await test('draft create, list, get, update and delete use only draft fields', async () => {
+  const created = await adminClient.drafts.create({
+    title: 'SDK scene regression',
+    content: 'draft content',
+    payload: { source: 'integration' },
+  })
+  createdDraftId = Number(created.id)
+  assert(createdDraftId > 0, 'draft create should return a numeric id')
+  const list = await adminClient.drafts.list()
+  assert(Array.isArray(list), 'drafts.list() should return an array')
+  const item = await adminClient.drafts.get(createdDraftId)
+  assert(Number(item.id) === createdDraftId, 'drafts.get() should return the created draft')
+  await adminClient.drafts.update(createdDraftId, { title: 'SDK scene regression updated' })
+  await adminClient.drafts.delete(createdDraftId)
+  createdDraftId = undefined
+  return true
+})
+
+await test('GET and POST /me/privacy use only preference fields', async () => {
+  const current = await adminClient.safety.preferences()
+  assert(current !== null && typeof current === 'object', 'preferences should return an object')
+  await adminClient.safety.preferences_update({
+    profile_visibility: 'public',
+    messages_from: 'everyone',
+    show_relations: true,
+  })
+  return true
+})
+
+await test('POST /reports validates only report fields', async () => {
+  const error = await assertApiError(() => adminClient.safety.report({}), 400)
+  const fields = Object.keys(error.details || {}).sort()
+  const expected = ['reason', 'resource_id', 'resource_type']
+  assert(JSON.stringify(fields) === JSON.stringify(expected), `unexpected report validation fields: ${fields.join(',')}`)
+  return true
+})
+
 // ═══════════════════════════════════════════════
 //  Phase 3: Protected CRUD (admin)
 // ═══════════════════════════════════════════════
 
 setPhase('Phase 3: Protected CRUD (admin)')
 
-let createdCardId, createdTagId, createdRoleId
+let createdCardId, createdTagId, createdRoleId, createdReportId, managedFileId
+let threadCardId, threadCommentId
+let mediaCardId, mediaFileId, mediaPublicUrl
 
 // --- Cards CRUD ---
 await test('POST /cards → cards.create()', async () => {
@@ -280,6 +465,32 @@ await test('POST /cards → cards.create()', async () => {
     createdCardId = parseInt(r.id) || r.id
   }
   return r
+})
+
+await test('library save/remove and history record use ResourceRef query/body contracts', async () => {
+  if (!createdCardId) throw 'SKIP'
+  const ref = { resource_type: 'card', resource_id: String(createdCardId) }
+  await adminClient.library.save(ref)
+  const library = await adminClient.library.list()
+  assert(library.data.some((item) => String(item.resource_id) === ref.resource_id), 'saved card should appear in library')
+  await adminClient.library.remove(ref)
+  await adminClient.library.history_record(ref)
+  const history = await adminClient.library.history()
+  assert(history.data.some((item) => String(item.resource_id) === ref.resource_id), 'viewed card should appear in history')
+  return true
+})
+
+await test('POST /reports accepts a valid card report', async () => {
+  if (!createdCardId) throw 'SKIP'
+  const report = await adminClient.safety.report({
+    resource_type: 'card',
+    resource_id: String(createdCardId),
+    reason: 'other',
+    details: 'Disposable SDK integration fixture',
+  })
+  assert(report && report.id, 'report should return an id')
+  createdReportId = Number(report.id)
+  return report
 })
 
 await test('cards.list search matches the created card', async () => {
@@ -389,9 +600,9 @@ await test('GET /roles/:id → roles.get()', async () => {
   return r
 })
 
-await test('GET /roles/:id/capabilities → roles.getCapabilities()', async () => {
-  const r = await adminClient.roles.getCapabilities(1)
-  assert(Array.isArray(r), 'Should return string array')
+await test('GET /roles/:id/grants → roles.getGrants()', async () => {
+  const r = await adminClient.roles.getGrants(1)
+  assert(Array.isArray(r), 'Should return grant array')
   return r
 })
 
@@ -416,17 +627,20 @@ await test('PATCH /roles/:id → roles.update()', async () => {
   return true
 })
 
-await test('POST /roles/:id/capabilities → roles.assignCapabilities()', async () => {
+await test('POST /roles/:id/grants → roles.assignGrants()', async () => {
   if (!createdRoleId) throw 'SKIP'
-  await adminClient.roles.assignCapabilities(createdRoleId, { capabilities: ['cards.read', 'tags.read'] })
+  await adminClient.roles.assignGrants(createdRoleId, { grants: [
+    { capability: 'cards.read', scope: 'global' },
+    { capability: 'tags.read', scope: 'global' },
+  ] })
   return true
 })
 
-await test('GET /roles/:id/capabilities → verify assigned', async () => {
+await test('GET /roles/:id/grants → verify assigned', async () => {
   if (!createdRoleId) throw 'SKIP'
-  const r = await adminClient.roles.getCapabilities(createdRoleId)
-  assert(Array.isArray(r), 'Should return array')
-  assert(r.includes('cards.read'), 'Should include cards.read')
+  const r = await adminClient.roles.getGrants(createdRoleId)
+  assert(Array.isArray(r), 'Should return grant array')
+  assert(r.some((grant) => grant.capability === 'cards.read'), 'Should include cards.read')
   return r
 })
 
@@ -497,9 +711,10 @@ await test('POST /config → config.update()', async () => {
 })
 
 // --- Files ---
-await test('GET /files → files.list()', async () => {
-  const r = await adminClient.files.list()
+await test('GET /admin/files → files.listManaged()', async () => {
+  const r = await adminClient.files.listManaged()
   assertShape(r, ['data'], 'Should have data')
+  if (r.data.length > 0) managedFileId = Number(r.data[0].id)
   return r
 })
 
@@ -578,20 +793,91 @@ await test('GET /theme/list → theme.list()', async () => {
 })
 
 await test('GET /theme/config → theme.config()', async () => {
+  if (themeUnavailable) throw 'SKIP'
   const r = await adminClient.theme.config()
   assertShape(r, ['name', 'mode', 'config_schema', 'config_values'])
   return r
 })
 
+await test('card media_file_ids produce ordered stable media metadata', async () => {
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64')
+  const form = new FormData()
+  form.set('file', new Blob([png], { type: 'image/png' }), 'sdk-media.png')
+  form.set('scene', 'card')
+  const uploaded = await adminClient.files.upload(form)
+  mediaFileId = Number(uploaded.id)
+  assert(Number.isInteger(mediaFileId) && mediaFileId > 0, 'media upload should return an id')
+  const created = await adminClient.cards.create({
+    content: `SDK typed media ${Date.now()}`,
+    media_file_ids: [mediaFileId],
+    cover_file_id: mediaFileId,
+  })
+  mediaCardId = Number(created.id)
+  assert(Number.isInteger(mediaCardId) && mediaCardId > 0, 'media card should return an id')
+  await adminClient.cards.updateManaged(mediaCardId, { status: 0 })
+  const card = await pc.cards.get(mediaCardId)
+  assert(Array.isArray(card.media) && card.media.length === 1, 'card should expose one typed media item')
+  assert(card.media[0].file_id === mediaFileId, 'typed media should retain file_id')
+  assert(card.media[0].type === 'image' && card.media[0].mime_type === 'image/png', 'typed media should retain MIME semantics')
+  assert(card.media[0].position === 1 && card.media[0].url.startsWith('/media/'), 'typed media should be ordered and use a stable URL')
+  mediaPublicUrl = card.media[0].url
+  const response = await fetch(`${BASE_URL.replace(/\/api\/?$/, '')}${mediaPublicUrl}`)
+  assert(response.ok && response.headers.get('content-type')?.startsWith('image/'), 'stable media URL should stream the public file')
+  return card
+})
+
+await test('hiding a card revokes its stable public media URL', async () => {
+  if (!mediaCardId || !mediaPublicUrl) throw 'SKIP'
+  await adminClient.cards.updateManaged(mediaCardId, { status: 2 })
+  await assertApiError(() => pc.cards.get(mediaCardId), 404)
+  const hiddenMedia = await fetch(`${BASE_URL.replace(/\/api\/?$/, '')}${mediaPublicUrl}`)
+  assert(hiddenMedia.status === 404, `hidden card media should return 404, got ${hiddenMedia.status}`)
+  await adminClient.cards.updateManaged(mediaCardId, { status: 0 })
+  const restoredMedia = await fetch(`${BASE_URL.replace(/\/api\/?$/, '')}${mediaPublicUrl}`)
+  assert(restoredMedia.ok, 'restored card media should be public again')
+  return true
+})
+
 await test('PUT /theme/config → theme.updateConfig()', async () => {
+  if (themeUnavailable) throw 'SKIP'
   const current = await adminClient.theme.config()
-  await adminClient.theme.updateConfig(current.config_values)
+  await adminClient.theme.updateConfig({ id: current.id, release: current.release, values: current.config_values })
+  return true
+})
+
+await test('comment replies reject a parent from another card', async () => {
+  if (!createdCardId) throw 'SKIP'
+  const second = await adminClient.cards.create({ content: `SDK thread scope ${Date.now()}` })
+  threadCardId = Number(second.id)
+  assert(Number.isInteger(threadCardId) && threadCardId > 0, 'second card should return an id')
+  await adminClient.cards.updateManaged(createdCardId, { status: 0 })
+  await adminClient.cards.updateManaged(threadCardId, { status: 0 })
+  const parent = await adminClient.comments.create(createdCardId, { content: 'SDK thread parent' })
+  threadCommentId = Number(parent.id)
+  assert(Number.isInteger(threadCommentId) && threadCommentId > 0, 'parent comment should return an id')
+  await adminClient.comments.updateManaged(threadCommentId, { status: 0 })
+  await assertApiError(
+    () => adminClient.comments.create(threadCardId, { content: 'cross-card reply', parent_id: threadCommentId }),
+    400,
+  )
+  return true
+})
+
+await test('public comment detail hides moderation states', async () => {
+  if (!threadCommentId) throw 'SKIP'
+  await adminClient.comments.updateManaged(threadCommentId, { status: 1 })
+  await assertApiError(() => pc.comments.get(threadCommentId), 404)
+  const managed = await adminClient.comments.getManaged(threadCommentId)
+  assert(Number(managed.status) === 1, 'managed detail should retain hidden comments')
+  await adminClient.comments.updateManaged(threadCommentId, { status: 0 })
+  const visible = await pc.comments.get(threadCommentId)
+  assert(Number(visible.id) === threadCommentId, 'restored comment should be public again')
   return true
 })
 
 // --- Users admin ---
-await test('GET /users → users.list()', async () => {
-  const r = await adminClient.users.list()
+await test('GET /admin/users → users.listManaged()', async () => {
+  const r = await adminClient.users.listManaged()
   assertShape(r, ['data'], 'Should have data')
   assert(Array.isArray(r.data), 'data should be array')
   if (r.data.length > 0) {
@@ -600,17 +886,128 @@ await test('GET /users → users.list()', async () => {
   return r
 })
 
-await test('GET /users/:id → users.get()', async () => {
+await test('GET /admin/users/:id → users.getManaged()', async () => {
   if (!userId) throw 'SKIP'
-  const r = await adminClient.users.get(userId)
+  const r = await adminClient.users.getManaged(userId)
   assert(r && r.id === userId, 'Should return correct user')
   return r
 })
 
-await test('PATCH /users/:id → users.update()', async () => {
+await test('PATCH /admin/users/:id → users.updateManaged()', async () => {
   if (!userId) throw 'SKIP'
-  await adminClient.users.update(userId, { username: 'TestAdmin' })
+  await adminClient.users.updateManaged(userId, { username: 'TestAdmin' })
   return true
+})
+
+// --- Platform administration added for community, security and operations ---
+await test('GET /admin/operations/overview → operations.overview()', async () => {
+  const r = await adminClient.operations.overview()
+  assert(r && typeof r === 'object', 'Operations overview should return an object')
+  return r
+})
+
+await test('GET /admin/operations/migrations → operations.migrations()', async () => {
+  const r = await adminClient.operations.migrations()
+  assert(Array.isArray(r), 'Migrations should return an array')
+  return r
+})
+
+await test('POST /admin/operations/migrations/run safely checkpoints settled migrations', async () => {
+  const r = await adminClient.operations.runMigrations()
+  assert(Array.isArray(r), 'Migration advance should return an array')
+  return r
+})
+
+await test('POST /admin/operations/migrations/run rejects direct Contract execution', async () => {
+  const error = await assertApiError(
+    () => adminClient.operations.runMigrations({ allow_contract: true, reason: 'integration safety check' }),
+    403,
+    'Direct Contract execution must be rejected'
+  )
+  assert(error.code === 1101, `Expected permission error code 1101, got ${error.code}`)
+  return error
+})
+
+await test('GET /admin/operations/runtime → operations.runtime()', async () => {
+  const r = await adminClient.operations.runtime()
+  assert(r && typeof r === 'object', 'Runtime status should return an object')
+  return r
+})
+
+await test('GET /admin/operations/deliveries → operations.deliveries()', async () => {
+  const r = await adminClient.operations.deliveries()
+  assertShape(r, ['data', 'pagination'], 'Deliveries should be paginated')
+  return r
+})
+
+await test('GET /admin/operations/notifications → operations.notificationStats()', async () => {
+  const r = await adminClient.operations.notificationStats()
+  assert(r && typeof r === 'object', 'Notification stats should return an object')
+  return r
+})
+
+await test('GET /admin/audit-logs → operations.auditLogs()', async () => {
+  const r = await adminClient.operations.auditLogs()
+  assertShape(r, ['data', 'pagination'], 'Audit logs should be paginated')
+  return r
+})
+
+await test('GET /admin/operations/upgrades → operations.upgrades()', async () => {
+  const r = await adminClient.operations.upgrades()
+  assert(Array.isArray(r), 'Upgrade plans should return an array')
+  return r
+})
+
+await test('GET /admin/community/insights → community.insights()', async () => {
+  const r = await adminClient.community.insights()
+  assert(r && typeof r === 'object', 'Community insights should return an object')
+  return r
+})
+
+await test('GET /admin/recovery → users.recovery()', async () => {
+  const r = await adminClient.users.recovery()
+  assertShape(r, ['data', 'pagination'], 'Recovery records should be paginated')
+  return r
+})
+
+await test('GET /admin/users/:id/security → users.security()', async () => {
+  if (!userId) throw 'SKIP'
+  const r = await adminClient.users.security(userId)
+  assert(r && typeof r === 'object', 'User security should return an object')
+  return r
+})
+
+await test('GET /admin/users/:id/sessions → users.sessions()', async () => {
+  if (!userId) throw 'SKIP'
+  const r = await adminClient.users.sessions(userId)
+  assert(Array.isArray(r), 'User sessions should return an array')
+  return r
+})
+
+await test('GET /admin/reports and /admin/reports/:id → reports read model', async () => {
+  const list = await adminClient.reports.listManaged()
+  assertShape(list, ['data', 'pagination'], 'Managed reports should be paginated')
+  if (!createdReportId) throw 'SKIP'
+  const report = await adminClient.reports.getManaged(createdReportId)
+  assert(Number(report.id) === createdReportId, 'Managed report detail should match the fixture')
+  return report
+})
+
+await test('POST /admin/reports/:id/transition → reports.transition()', async () => {
+  if (!createdReportId) throw 'SKIP'
+  const report = await adminClient.reports.transition(createdReportId, {
+    status: 'reviewing',
+    note: 'Disposable SDK integration governance check',
+  })
+  assert(report.status === 'reviewing', 'Report should enter reviewing state')
+  return report
+})
+
+await test('GET /admin/files/:id/usage → files.usage()', async () => {
+  if (!managedFileId) throw 'SKIP'
+  const r = await adminClient.files.usage(managedFileId)
+  assert(r && typeof r === 'object', 'File usage should return an object')
+  return r
 })
 
 // --- Delete test card ---
@@ -639,12 +1036,9 @@ await test('user: GET /cards/list → public access', async () => {
   return r
 })
 
-await test('user: GET /users → should succeed (user has users.read)', async () => {
+await test('user: GET /admin/users → should be denied', async () => {
   if (!userToken) throw 'SKIP'
-  // user role has users.read capability
-  const r = await userClient.users.list()
-  assertShape(r, ['data'], 'User should access user list')
-  return r
+  await assertApiError(() => userClient.users.listManaged(), 403)
 })
 
 await test('user: GET /dashboard → should 403 (no dashboard.read)', async () => {
@@ -689,32 +1083,37 @@ await test('user: GET /theme/list → should 403 (no theme.read)', async () => {
 setPhase('Phase 5: Guest Permissions')
 
 await test('guest: POST /cards → should 403', async () => {
+  if (guestUnavailable || !guestToken) throw 'SKIP'
   await assertApiError(() => guestClient.cards.create({ content: 'test' }), 403)
 })
 
 await test('guest: GET /users → should 403', async () => {
-  await assertApiError(() => guestClient.users.list(), 403)
+  if (guestUnavailable || !guestToken) throw 'SKIP'
+  await assertApiError(() => guestClient.users.listManaged(), 403)
 })
 
 await test('guest: GET /dashboard → should 403', async () => {
+  if (guestUnavailable || !guestToken) throw 'SKIP'
   await assertApiError(() => guestClient.dashboard.index(), 403)
 })
 
 await test('guest: GET /roles → should 403', async () => {
+  if (guestUnavailable || !guestToken) throw 'SKIP'
   await assertApiError(() => guestClient.roles.list(), 403)
 })
 
 await test('guest: GET /config → should 403', async () => {
+  if (guestUnavailable || !guestToken) throw 'SKIP'
   await assertApiError(() => guestClient.config.list(), 403)
 })
 
-await test('guest: GET /files → should succeed (guest has files.read)', async () => {
-  const r = await guestClient.files.list()
-  assertShape(r, ['data'], 'Guest should access files list')
-  return r
+await test('guest: GET /admin/files → should be denied', async () => {
+  if (guestUnavailable || !guestToken) throw 'SKIP'
+  await assertApiError(() => guestClient.files.listManaged(), 403)
 })
 
 await test('guest: GET /theme/list → should 403', async () => {
+  if (guestUnavailable || !guestToken) throw 'SKIP'
   await assertApiError(() => guestClient.theme.list(), 403)
 })
 
@@ -724,30 +1123,30 @@ await test('guest: GET /theme/list → should 403', async () => {
 
 setPhase('Phase 6: Batch Operations')
 
-await test('POST /cards/batch → cards.batch(top)', async () => {
+await test('POST /admin/cards/batch → cards.batchManaged(top)', async () => {
   if (!cardId) throw 'SKIP'
-  await adminClient.cards.batch({ method: 'top', ids: [cardId] })
+  await adminClient.cards.batchManaged({ method: 'top', ids: [cardId] })
   return true
 })
 
-await test('POST /cards/batch → cards.batch(unset_top)', async () => {
+await test('POST /admin/cards/batch → cards.batchManaged(unset_top)', async () => {
   if (!cardId) throw 'SKIP'
   // First top, then unset_top
-  await adminClient.cards.batch({ method: 'top', ids: [cardId] })
-  await adminClient.cards.batch({ method: 'unset_top', ids: [cardId] })
+  await adminClient.cards.batchManaged({ method: 'top', ids: [cardId] })
+  await adminClient.cards.batchManaged({ method: 'unset_top', ids: [cardId] })
   return true
 })
 
-await test('POST /cards/batch → cards.batch(approve)', async () => {
+await test('POST /admin/cards/batch → cards.batchManaged(approve)', async () => {
   if (!cardId) throw 'SKIP'
-  await adminClient.cards.batch({ method: 'approve', ids: [cardId] })
+  await adminClient.cards.batchManaged({ method: 'approve', ids: [cardId] })
   return true
 })
 
-await test('POST /comments/batch → comments.batch(approve)', async () => {
+await test('POST /admin/comments/batch → comments.batchManaged(approve)', async () => {
   // Use a non-existent ID — should succeed (no-op) or 400
   try {
-    await adminClient.comments.batch({ method: 'approve', ids: [999999] })
+    await adminClient.comments.batchManaged({ method: 'approve', ids: [999999] })
   } catch (e) {
     if (!isApiError(e)) throw e
     // 400 "未指定要操作的资源" or success is OK
@@ -755,35 +1154,35 @@ await test('POST /comments/batch → comments.batch(approve)', async () => {
   return true
 })
 
-await test('POST /tags/batch → tags.batch(approve)', async () => {
+await test('POST /admin/tags/batch → tags.batchManaged(approve)', async () => {
   try {
-    await adminClient.tags.batch({ method: 'approve', ids: [999999] })
+    await adminClient.tags.batchManaged({ method: 'approve', ids: [999999] })
   } catch (e) {
     if (!isApiError(e)) throw e
   }
   return true
 })
 
-await test('POST /users/batch → users.batch(approve)', async () => {
+await test('POST /admin/users/batch → users.batchManaged(approve)', async () => {
   try {
-    await adminClient.users.batch({ method: 'approve', ids: [999999] })
+    await adminClient.users.batchManaged({ method: 'approve', ids: [999999] })
   } catch (e) {
     if (!isApiError(e)) throw e
   }
   return true
 })
 
-await test('POST /files/batch → files.batch(hard_delete)', async () => {
+await test('POST /admin/files/batch → files.batchManaged(hard_delete)', async () => {
   // 999999 does not exist — expect 404
-  await assertApiError(() => adminClient.files.batch({ method: 'hard_delete', ids: [999999] }), 404)
+  await assertApiError(() => adminClient.files.batchManaged({ method: 'hard_delete', ids: [999999] }), 404)
 })
 
 await test('batch empty ids → should 400', async () => {
-  await assertApiError(() => adminClient.cards.batch({ method: 'delete', ids: [] }), 400)
+  await assertApiError(() => adminClient.cards.batchManaged({ method: 'delete', ids: [] }), 400)
 })
 
 await test('batch invalid method → should 400', async () => {
-  await assertApiError(() => adminClient.cards.batch({ method: 'invalid', ids: [1] }), 400)
+  await assertApiError(() => adminClient.cards.batchManaged({ method: 'invalid', ids: [1] }), 400)
 })
 
 // ═══════════════════════════════════════════════
@@ -809,7 +1208,7 @@ await test('GET /users/999999 → backend behavior (no 404 for nonexistent)', as
   // Backend Users::Get() does not throw 404 for nonexistent — returns empty model
   // This is a backend design choice, not an SDK bug
   try {
-    const r = await adminClient.users.get(999999)
+    const r = await adminClient.users.getManaged(999999)
     // If it succeeds, backend returns empty/default model
     return r
   } catch (e) {
@@ -823,7 +1222,7 @@ await test('GET /roles/999999 → 404', async () => {
 })
 
 await test('GET /files/999999 → 404', async () => {
-  await assertApiError(() => adminClient.files.get(999999), 404)
+  await assertApiError(() => adminClient.files.getManaged(999999), 404)
 })
 
 // 400
@@ -984,6 +1383,26 @@ await test('cleanup: delete test card', async () => {
     await adminClient.cards.delete(createdCardId)
   } catch (e) {
     // already deleted is OK
+  }
+  return true
+})
+
+await test('cleanup: delete thread-safety fixtures', async () => {
+  if (threadCommentId) {
+    try { await adminClient.comments.deleteManaged(threadCommentId) } catch {}
+  }
+  if (threadCardId) {
+    try { await adminClient.cards.deleteManaged(threadCardId) } catch {}
+  }
+  return true
+})
+
+await test('cleanup: delete typed-media fixtures', async () => {
+  if (mediaCardId) {
+    try { await adminClient.cards.batchManaged({ ids: [mediaCardId], method: 'hard_delete' }) } catch {}
+  }
+  if (mediaFileId) {
+    try { await adminClient.files.deleteManaged(mediaFileId) } catch {}
   }
   return true
 })

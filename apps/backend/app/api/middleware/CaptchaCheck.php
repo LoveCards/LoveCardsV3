@@ -10,6 +10,13 @@ class CaptchaCheck
 {
     public function handle($request, \Closure $next, ...$args)
     {
+        // The middleware may be attached to a route group for compatibility,
+        // but human verification only applies to mutating requests. Read-only
+        // list/detail endpoints must remain usable without a challenge.
+        if (!in_array(strtoupper((string) $request->method()), ['POST', 'PATCH'], true)) {
+            return $next($request);
+        }
+
         $type = '';
 
         if (!empty($args)) {
@@ -32,7 +39,7 @@ class CaptchaCheck
         try {
             $driver = Captcha::driver($type);
         } catch (\Throwable $e) {
-            return $next($request);
+            return ApiResponse::createUnavailable('人机验证服务不可用');
         }
 
         $params = $this->collectParams($type);

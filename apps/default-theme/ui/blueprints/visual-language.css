@@ -1,0 +1,292 @@
+/*
+  Blueprint 01 distilled migration layer.
+  Shared optical rules only; each blueprint keeps its own information architecture.
+*/
+:root{
+  --lc-canvas:#f5f5f7;
+  --lc-surface:#fff;
+  --lc-subtle:#f0f1f4;
+  --lc-ink:#1d1d1f;
+  --lc-body:#3a3a3c;
+  --lc-muted:#6e6e73;
+  --lc-tertiary:#8e8e93;
+  --lc-line:rgba(60,60,67,.14);
+  --lc-rose:#c92c60;
+  --lc-rose-deep:#a9234f;
+  --lc-rose-soft:#fff0f4;
+  --lc-danger:#c93642;
+  --lc-success:#24835b;
+  --lc-radius-control:9px;
+  --lc-radius-media:12px;
+  --lc-radius-panel:14px;
+  --lc-ease:cubic-bezier(.22,1,.36,1);
+}
+
+body{
+  font-family:"SF Pro Text","SF Pro Display","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+}
+
+:where(.shell,.ds-shell,.ds-mobile,.airy-shell,.v5-mobile,.p5-shell,.p5-mobile,.rb-shell,.rb-mobile){
+  --canvas:var(--lc-canvas);
+  --surface:var(--lc-surface);
+  --subtle:var(--lc-subtle);
+  --surface-blue:#f3f5f8;
+  --canvas-blue:var(--lc-canvas);
+  --ink:var(--lc-ink);
+  --body:var(--lc-body);
+  --muted:var(--lc-muted);
+  --line:var(--lc-line);
+  --hairline:var(--lc-line);
+  --rose:var(--lc-rose);
+  --rose-dark:var(--lc-rose-deep);
+  --rose-text:var(--lc-rose-deep);
+  --rose-wash:var(--lc-rose-soft);
+  --danger:var(--lc-danger);
+  --success:var(--lc-success);
+  color:var(--lc-ink);
+  background:var(--lc-canvas);
+}
+
+:where(.rb-auth){
+  --canvas:var(--lc-canvas);
+  --surface:var(--lc-surface);
+  --subtle:var(--lc-subtle);
+  --ink:var(--lc-ink);
+  --body:var(--lc-body);
+  --muted:var(--lc-muted);
+  --line:var(--lc-line);
+  --rose:var(--lc-rose);
+  --rose-dark:var(--lc-rose-deep);
+  --rose-wash:var(--lc-rose-soft);
+  color:var(--lc-ink);
+}
+
+:where(.topbar,.channels,.mobile-top,.mobile-channels,.bottom-nav,
+  .ds-top,.dm-search-top,.dm-page-top,.dm-topic-top,.dm-bottom,
+  .airy-top,.v5-nav,.v5-bottom,.p5-top,.p5-mobile-top,.p5-bottom,
+  .rb-top,.rb-mobile-top,.rb-bottom){
+  border-color:var(--lc-line);
+  background:var(--lc-surface);
+}
+
+:where(.brand i,.ds-brand i,.airy-brand i,.p5-top .airy-brand i,.rb-brand i){
+  border-radius:8px;
+  background:var(--lc-rose);
+  box-shadow:none;
+}
+
+:where(.search,.ds-search,.p5-search,.rb-search,.fresh-search,.airy-search,
+  .dm-search,.fresh-input,.airy-input,.v5-reply-cta,.rb-field,.rb-auth-field div,
+  .rb-chat-input div){
+  border-radius:10px;
+  color:var(--lc-muted);
+  background:var(--lc-subtle);
+  box-shadow:none;
+}
+
+:where(.primary,.ds-publish,.p5-publish,.rb-btn.primary,.rb-auth-card .primary,
+  .fresh-send,.airy-send){
+  border-color:var(--lc-rose);
+  border-radius:9px;
+  color:#fff;
+  background:var(--lc-rose);
+  box-shadow:none;
+}
+
+:where(button,.rb-btn,.p5-actions button,.fresh-follow,.airy-follow,.v5-author>button){
+  transition:color 180ms var(--lc-ease),background-color 180ms var(--lc-ease),transform 120ms var(--lc-ease);
+}
+
+:where(button,.rb-btn,.p5-actions button,.fresh-follow,.airy-follow,.v5-author>button):active{
+  transform:scale(.97);
+}
+
+:where(button,.rb-btn,[role="button"],a):focus-visible{
+  outline:2px solid rgba(169,35,79,.62);
+  outline-offset:2px;
+}
+
+/* Grouped surfaces: one quiet outline, never border + wide shadow. */
+:where(.ds-feature,.ds-topic-track,.ds-discovery,.ds-explore-side section,
+  .ds-list-panel,.ds-people-strip,.ds-best,.ds-result-feed,.ds-result-side section,
+  .ds-topic-hero,.ds-topic-feature,.ds-topic-feed,.ds-topic-side section,
+  .airy-stream,.airy-context,.p5-hero,.p5-side section,.p5-post,
+  .rb-rail,.rb-panel,.rb-list,.rb-state-card,.rb-auth-card){
+  border:0;
+  border-radius:var(--lc-radius-panel);
+  background:var(--lc-surface);
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.07);
+}
+
+:where(.ds-tile,.p5-mobile-post,.rb-mobile-section,.v5-post,.v5-discussion){
+  border-color:var(--lc-line);
+  background:var(--lc-surface);
+  box-shadow:none;
+}
+
+:where(.ds-tile-media,.ds-post-media,.dm-post-media,.ds-topic-cover,
+  .p5-cover,.p5-post-media,.p5-mobile-cover,.airy-media,.v5-media,
+  .story-media,.media,.gallery){
+  border-radius:var(--lc-radius-media);
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.07);
+}
+
+/* Real Blueprint 01 media becomes the shared visual source across page families. */
+:where(.media-coastline,.media-coast,.media-sunset,.cover-sunset,.story-media,.airy-media,.v5-media){
+  background-image:url("../assets/feed/seaside-morning-v1.webp")!important;
+  background-position:center 62%!important;
+  background-size:cover!important;
+}
+.preview-card .media.coast,
+.profile-post .media.coast{
+  background-image:url("../assets/feed/seaside-morning-v1.webp")!important;
+  background-position:center 62%!important;
+  background-size:cover!important;
+}
+.profile-post .media.run{
+  background-image:url("../assets/feed/morning-run-v1.webp")!important;
+  background-position:center 56%!important;
+  background-size:cover!important;
+}
+.profile-post .gallery{
+  background-image:url("../assets/feed/city-walk-grid-v1.webp")!important;
+  background-position:center!important;
+  background-size:cover!important;
+}
+.preview-card .media.coast::before,
+.preview-card .media.coast::after,
+.profile-post .media::before,
+.profile-post .media::after{content:none!important}
+.profile-post .gallery i{visibility:hidden}
+:where(.media-runner,.media-run,.cover-city){
+  background-image:url("../assets/feed/morning-run-v1.webp")!important;
+  background-position:center 56%!important;
+  background-size:cover!important;
+}
+:where(.media-street,.media-citylight,.media-window,.media-studio,.media-night,.media-blue,
+  .topic-night,.topic-room,.topic-food,.topic-film){
+  background-image:url("../assets/feed/city-walk-grid-v1.webp")!important;
+  background-position:center!important;
+  background-size:cover!important;
+}
+:where(.media-coastline,.media-coast,.media-sunset,.cover-sunset,.story-media,.airy-media,.v5-media,
+  .media-runner,.media-run,.cover-city)::before,
+:where(.media-coastline,.media-coast,.media-sunset,.cover-sunset,.story-media,.airy-media,.v5-media,
+  .media-runner,.media-run,.cover-city)::after{
+  content:none!important;
+}
+
+:where(.ds-media-badge,.ds-tile-media>span,.p5-cover span,.media-control){
+  border:0;
+  border-radius:999px;
+  color:#fff;
+  background:rgba(28,28,30,.66);
+  box-shadow:none;
+  backdrop-filter:none;
+}
+
+/* Context columns use one grouped surface rather than several floating cards. */
+:where(.ds-explore-side,.ds-result-side,.ds-topic-side,.p5-side){
+  gap:0;
+  align-self:start;
+  overflow:hidden;
+  border-radius:var(--lc-radius-panel);
+  background:rgba(255,255,255,.86);
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.07);
+}
+:where(.ds-explore-side,.ds-result-side,.ds-topic-side,.p5-side)>section{
+  border:0;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+:where(.ds-explore-side,.ds-result-side,.ds-topic-side,.p5-side)>section+section{
+  border-top:1px solid var(--lc-line);
+}
+
+/* Lists and forms follow iOS-style grouped rows. */
+:where(.rb-row,.rb-form-row,.rb-setting-row,.rb-conv,.ds-history-row,
+  .dm-history,.dm-trends li,.v5-comment,.airy-comment){
+  border-color:var(--lc-line);
+}
+:where(.rb-row:last-child,.rb-form-row:last-child,.rb-setting-row:last-child,.rb-conv:last-child){
+  border-bottom:0;
+}
+:where(.rb-rail a.active,.rb-conv.active){
+  color:var(--lc-ink);
+  background:var(--lc-subtle);
+}
+:where(.rb-bubble.mine){background:var(--lc-rose)}
+:where(.rb-unread){background:var(--lc-rose)}
+
+/* Auth is calm and neutral; brand emotion comes from copy and state color. */
+.rb-auth{
+  background:var(--lc-canvas);
+}
+.rb-auth-card{
+  box-shadow:0 1px 3px rgba(20,25,35,.06);
+}
+.rb-auth-card .rb-note{
+  border:0;
+  background:var(--lc-subtle);
+}
+
+.rb-auth-card .rb-brand em{color:var(--lc-rose)}
+.rb-auth-card .primary{
+  display:block;
+  color:#fff;
+  background:var(--lc-rose);
+}
+
+/* Library and draft thumbnails use the same real media language as the feed. */
+.rb-board:has(.rb-state-grid>.rb-card) .rb-card:nth-child(1)>div:first-child,
+.rb-board:has(.rb-state-grid>.rb-card) .rb-mobile-section article:nth-child(1)>div:first-child,
+.rb-board:has(.rb-state-grid>.rb-card) .rb-list .rb-row:nth-of-type(1)>div:first-child{
+  background:url("../assets/feed/seaside-morning-v1.webp") center 62%/cover no-repeat!important;
+}
+.rb-board:has(.rb-state-grid>.rb-card) .rb-card:nth-child(2)>div:first-child,
+.rb-board:has(.rb-state-grid>.rb-card) .rb-mobile-section article:nth-child(2)>div:first-child,
+.rb-board:has(.rb-state-grid>.rb-card) .rb-list .rb-row:nth-of-type(2)>div:first-child{
+  background:url("../assets/feed/city-walk-grid-v1.webp") center/cover no-repeat!important;
+}
+.rb-board:has(.rb-state-grid>.rb-card) .rb-card:nth-child(3)>div:first-child{
+  background:url("../assets/feed/morning-run-v1.webp") center 56%/cover no-repeat!important;
+}
+
+/* Mobile pages are solid, sectional, and structurally independent from desktop. */
+:where(.ds-mobile,.p5-mobile,.rb-mobile,.v5-mobile){background:var(--lc-canvas)}
+:where(.dm-intro,.dm-feature,.dm-section,.dm-list,.dm-best,.dm-result-feed,.dm-topic-id,.dm-topic-feed,
+  .p5-mobile-hero,.p5-mobile-post,.rb-mobile-title,.rb-mobile-section,.v5-post,.v5-discussion){
+  background:var(--lc-surface);
+}
+:where(.rb-mobile-section,.dm-section,.dm-list,.p5-mobile-post,.v5-discussion){
+  box-shadow:none;
+}
+
+/* Dark boards remain a semantic translation of the same hierarchy. */
+:where(.rb-dark){
+  --canvas:#101216;
+  --surface:#171a20;
+  --subtle:#20242c;
+  --ink:#f5f7fa;
+  --body:#d5dae1;
+  --muted:#a7b0bd;
+  --line:#2c313a;
+  --rose-wash:#2b171d;
+  color:var(--ink);
+  background:var(--canvas);
+}
+:where(.rb-dark) :where(.rb-state-card,.rb-panel,.rb-list,.rb-rail,.rb-mobile-section){
+  background:var(--surface)!important;
+  box-shadow:inset 0 0 0 .5px rgba(255,255,255,.08);
+}
+
+@media (hover:hover){
+  :where(.ds-tile,.p5-post,.rb-row,.rb-conv,.v5-comment,.airy-comment):hover{
+    background-color:#f8f8fa;
+  }
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}

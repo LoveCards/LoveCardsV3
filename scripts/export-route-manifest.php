@@ -74,12 +74,11 @@ foreach ($app->route->getRuleList() as $item) {
         'meta' => [
             'name' => $meta['name'] ?? null,
             'group' => $meta['group'] ?? null,
-            'caps' => array_values(array_map('strval', is_array($meta['caps'] ?? null) ? $meta['caps'] : [])),
-            'public' => (bool) ($meta['public'] ?? false),
+            'access' => is_array($meta['access'] ?? null) ? $meta['access'] : null,
         ],
         'middleware' => normalizeMiddleware($item['option']['middleware'] ?? []),
         'contract' => $contract,
-            'source' => str_replace($root . DIRECTORY_SEPARATOR, '', $routeDir),
+            'source' => str_replace('\\', '/', str_replace($root . DIRECTORY_SEPARATOR, '', $routeDir)),
         ];
     }
 }

@@ -190,7 +190,6 @@ namespace app\shared\Infrastructure\Persistence
 // ════════════════════════════════════════════════════════════
 namespace
 {
-        require __DIR__ . '/../../app/shared/Authorization/OwnershipGuard.php';
 require __DIR__ . '/../../app/modules/Platform/Files/Contract/FileRepository.php';
     require __DIR__ . '/../../app/modules/Platform/Files/Domain/FileConstants.php';
     require __DIR__ . '/../../app/modules/Platform/Files/Infrastructure/ThinkOrmFileRepository.php';
@@ -464,63 +463,54 @@ namespace
     // 组 C：筛选参数兼容 strict owner
     // ──────────────────────────────────────────────────────
 
-    $test('C1: strict owner + scene 筛选同步生效', static function () use ($reset, $assertSame): void {
+    $test('C1: strict owner + scene 筛选同步生效', static function () use ($reset, $assertTrue): void {
         $reset();
         listOwn(['scene' => 'card'], 10);
 
         $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
-        $assertSame(2, count($calls), '应有 2 个条件: user_id + scene');
-        $assertSame('where', $calls[0][0], '第 1 个条件应为 where');
-        $assertSame('user_id', $calls[0][1], '第 1 个应为 user_id');
-        $assertSame(10, $calls[0][2], 'user_id 值应为 10');
-        $assertSame('where', $calls[1][0], '第 2 个条件应为 where');
-        $assertSame('scene', $calls[1][1], '第 2 个应为 scene');
-        $assertSame('card', $calls[1][2], 'scene 值应为 card');
+        $assertTrue(hasCall($calls, 'where', 'user_id', 10));
+        $assertTrue(hasCall($calls, 'whereNull', 'purge_status'));
+        $assertTrue(hasCall($calls, 'where', 'scene', 'card'));
     });
 
-    $test('C2: strict owner + status 筛选同步生效', static function () use ($reset, $assertSame): void {
+    $test('C2: strict owner + status 筛选同步生效', static function () use ($reset, $assertTrue): void {
         $reset();
         listOwn(['status' => 0], 10);
 
         $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
-        $assertSame(2, count($calls));
-        $assertSame('where', $calls[0][0]);
-        $assertSame('user_id', $calls[0][1]);
-        $assertSame('where', $calls[1][0]);
-        $assertSame('status', $calls[1][1]);
-        $assertSame(0, $calls[1][2]);
+        $assertTrue(hasCall($calls, 'where', 'user_id', 10));
+        $assertTrue(hasCall($calls, 'whereNull', 'purge_status'));
+        $assertTrue(hasCall($calls, 'where', 'status', 0));
     });
 
-    $test('C3: strict owner + upload_status 筛选同步生效', static function () use ($reset, $assertSame): void {
+    $test('C3: strict owner + upload_status 筛选同步生效', static function () use ($reset, $assertTrue): void {
         $reset();
         listOwn(['upload_status' => 1], 10);
 
         $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
-        $assertSame(2, count($calls));
-        $assertSame('where', $calls[0][0]);
-        $assertSame('user_id', $calls[0][1]);
-        $assertSame('where', $calls[1][0]);
-        $assertSame('upload_status', $calls[1][1]);
-        $assertSame(1, $calls[1][2]);
+        $assertTrue(hasCall($calls, 'where', 'user_id', 10));
+        $assertTrue(hasCall($calls, 'whereNull', 'purge_status'));
+        $assertTrue(hasCall($calls, 'where', 'upload_status', 1));
     });
 
-    $test('C4: strict owner + scene + status + upload_status 三维组合', static function () use ($reset, $assertSame): void {
+    $test('C4: strict owner + scene + status + upload_status 三维组合', static function () use ($reset, $assertTrue): void {
         $reset();
         listOwn(['scene' => 'avatar', 'status' => 0, 'upload_status' => 1], 10);
 
         $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
-        $assertSame(4, count($calls), '应有 4 个条件: user_id + scene + status + upload_status');
-        $assertSame('where', $calls[0][0]);
-        $assertSame('user_id', $calls[0][1]);
-        $assertSame(10, $calls[0][2]);
+        $assertTrue(hasCall($calls, 'where', 'user_id', 10));
+        $assertTrue(hasCall($calls, 'whereNull', 'purge_status'));
+        $assertTrue(hasCall($calls, 'where', 'scene', 'avatar'));
+        $assertTrue(hasCall($calls, 'where', 'status', 0));
+        $assertTrue(hasCall($calls, 'where', 'upload_status', 1));
     });
 
     $test('C5: strict owner + ref_type 筛选同步生效', static function () use ($reset, $assertTrue): void {

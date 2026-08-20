@@ -27,6 +27,8 @@ class Users extends Model
         'password' => 'string',
         'status' => 'int',
         'roles_id' => 'json',
+        'security_version' => 'int',
+        'credentials_changed_at' => 'timestamp',
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp',
         'deleted_at' => 'timestamp',

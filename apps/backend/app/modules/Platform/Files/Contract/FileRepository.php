@@ -41,6 +41,21 @@ interface FileRepository
     public function findByHashes(array $hashes, int $userId, bool $canReadAll): array;
 
     /**
+     * 批量读取可用媒体；legacy reference 仅用于兼容尚未迁入 file_references 的记录。
+     *
+     * @param int[] $ids
+     * @param int[] $legacyReferenceIds
+     * @return array<int,array<string,mixed>>
+     */
+    public function findUsableByIdsOrLegacyReferences(
+        array $ids,
+        string $scene,
+        string $legacyReferenceType,
+        array $legacyReferenceIds,
+        bool $publicOnly
+    ): array;
+
+    /**
      * 按 ID 和 user_id 查找文件（确认上传用）
      */
     public function findOwnPending(int $recordId, int $userId): ?array;

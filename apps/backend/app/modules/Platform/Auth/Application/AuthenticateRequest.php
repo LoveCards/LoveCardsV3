@@ -40,39 +40,32 @@ final class AuthenticateRequest
             return $this->visitorContext();
         }
 
-        try {
-            $data = $this->tokens->verify($token);
-            $user = $this->users->findById((int) $data['uid']);
+        $data = $this->tokens->verify($token);
+        $user = $this->users->findById((int) $data['uid']);
 
-            if ($user === null) {
-                throw ApiException::unauthorized(
-                    '用户不存在',
-                    ApiException::CODE_USER_NOT_FOUND
-                );
-            }
-
-            $roleIds = $user->roleIds();
-
-            return AuthContext::authenticated(
-                $user->id(),
-                $user,
-                $roleIds,
-                $this->capabilities->forRoles($roleIds),
-                $data['_new_token'] ?? null
+        if ($user === null) {
+            throw ApiException::unauthorized(
+                '用户不存在',
+                ApiException::CODE_USER_NOT_FOUND
             );
-        } catch (\RuntimeException $exception) {
-            if (!$this->visitors->isEnabled()) {
-                throw $exception;
-            }
-
-            return $this->visitorContext();
-        } catch (ApiException $exception) {
-            if (!$this->visitors->isEnabled()) {
-                throw $exception;
-            }
-
-            return $this->visitorContext();
         }
+
+        if ($user->status() !== 0 && $user->status() !== 2) {
+            throw ApiException::forbidden(
+                '您的账户已被封禁或未激活',
+                ApiException::CODE_USER_BANNED
+            );
+        }
+
+        $roleIds = $user->roleIds();
+
+        return AuthContext::authenticated(
+            $user->id(),
+            $user,
+            $roleIds,
+            $this->capabilities->forRoles($roleIds),
+            $data['_new_token'] ?? null
+        );
     }
 
     private function visitorContext(): AuthContext

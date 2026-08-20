@@ -56,10 +56,12 @@ foreach ($map as $shortName => $candidates) {
                     'messages' => $messages,
                     'scenes' => $scenes,
                     'allScenes' => $allScene,
+                    'requestSchemas' => method_exists($class, 'requestSchemas') ? $class::requestSchemas() : [],
                 ];
             }
         } catch (Throwable $exception) {
-            fwrite(STDERR, "Metadata export skipped {$class}: {$exception->getMessage()}\n");
+            fwrite(STDERR, "Metadata export failed for {$class}: {$exception->getMessage()}\n");
+            exit(1);
         }
     }
 }

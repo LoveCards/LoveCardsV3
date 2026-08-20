@@ -4,8 +4,10 @@ namespace app\modules\Platform\Files\Application;
 
 use app\api\ApiException;
 use app\modules\Platform\Files\Contract\FileRepository;
-use app\modules\Platform\Files\Contract\StorageDriver;
+use app\modules\Platform\Files\Contract\FileReferenceRepository;
+use app\modules\Platform\Files\Contract\FilePurgeRequester;
 use app\modules\Platform\Files\Domain\FileConstants;
+use app\shared\Authorization\GrantSet;
 
 /**
  * 批量操作文件用例
@@ -16,12 +18,14 @@ use app\modules\Platform\Files\Domain\FileConstants;
 final class BatchOperateFiles
 {
     private FileRepository $files;
-    private StorageDriver $driver;
+    private FileReferenceRepository $references;
+    private FilePurgeRequester $purges;
 
-    public function __construct(FileRepository $files, StorageDriver $driver)
+    public function __construct(FileRepository $files, FileReferenceRepository $references, FilePurgeRequester $purges)
     {
         $this->files = $files;
-        $this->driver = $driver;
+        $this->references = $references;
+        $this->purges = $purges;
     }
 
     /**
@@ -32,8 +36,9 @@ final class BatchOperateFiles
      * @param int    $userId 当前用户 ID
      * @param array  $caps   当前用户 capability 列表
      */
-    public function execute(string $method, array $ids, int $userId, array $caps): void
+    public function execute(string $method, array $ids, int $userId, GrantSet $grants, string $ipAddress = ''): void
     {
+        $caps = $grants->capabilityNames();
         $ids = array_values(array_unique(array_map('intval', $ids)));
         $ids = array_filter($ids, fn($id) => $id > 0);
         if (empty($ids)) return;
@@ -44,8 +49,8 @@ final class BatchOperateFiles
             'ban' => 'files.update',
             'toggle_public' => 'files.update',
             'trash' => 'files.delete',
-            'restore' => 'files.delete',
-            'hard_delete' => 'files.delete',
+            'restore' => 'files.restore',
+            'hard_delete' => 'files.purge',
         ];
 
         $baseCap = $methodMap[$method] ?? null;
@@ -68,6 +73,8 @@ final class BatchOperateFiles
         if (!empty($missingIds)) {
             throw ApiException::notFound('文件不存在: ' . implode(', ', $missingIds));
         }
+
+        FilePolicy::assertOwners($grants, substr($baseCap, strlen('files.')), $idOwnerMap, $userId);
 
         // 归属检查（无 .all 时必须检查）
         if (!$canAll) {
@@ -100,22 +107,18 @@ final class BatchOperateFiles
                 }
                 break;
             case 'hard_delete':
-                foreach ($ids as $id) {
-                    $this->hardDelete($id);
-                }
+                foreach ($ids as $id) $this->assertNotReferenced($id);
+                $this->purges->requestMany($ids, $userId, $ipAddress);
                 break;
             default:
                 throw ApiException::badRequest('不支持的操作');
         }
     }
 
-    private function hardDelete(int $fileId): void
+    private function assertNotReferenced(int $fileId): void
     {
-        $meta = $this->files->getChannelAndDriverPath($fileId);
-        if ($meta === null) return;
-
-        $this->driver->deleteFile($meta['channel_slug'], $meta['driver_path']);
-
-        $this->files->hardDelete($fileId);
+        if ($this->references->countForFile($fileId) > 0) {
+            throw ApiException::badRequest('文件仍被业务资源引用，不能永久删除');
+        }
     }
 }

@@ -1,6 +1,5 @@
 <!-- 用户管理 -->
 <template>
-  <NuxtLayout name="root">
     <!-- 标题 -->
     <v-row class="pt-2">
       <v-col cols="6">
@@ -70,6 +69,9 @@
 
                   <!-- 操作 -->
                   <template v-slot:[`item.operate`]="{ item }">
+                    <AdminActionGuard capability="users.security.read">
+                      <v-btn :to="`/apps/users/${item.id}/security`" icon="mdi-shield-account-outline" elevation="0" size="small" title="账号安全" variant="text" />
+                    </AdminActionGuard>
                     <v-btn icon="mdi-pencil" elevation="0" size="small" variant="text"
                       @click="openEditUserDialog(item)"></v-btn>
                     <v-btn icon="mdi-delete" elevation="0" size="small" variant="text"
@@ -128,7 +130,6 @@
         </v-card>
       </v-col>
     </v-row>
-  </NuxtLayout>
 
   <!-- 编辑用户对话框 -->
   <EditUserDialog v-model:thisDialogState="EditUserDialog_state" v-model:editUserData="EditUserDialog_data"
@@ -147,11 +148,13 @@
 <script setup lang="ts">
 import { useApi } from '~/lib/api';
 import CommonUtils from "@/utils/common";
-import EditUserDialog from "~/components/apps/users/EditUserDialog.vue";
-import PublicDeleteDialog from "~/components/apps/public/Table/DeleteDialog.vue";
-import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
-import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
-import SelectUtils from "~/api/utils/select";
+import EditUserDialog from "~/components/users/EditUserDialog.vue";
+import PublicDeleteDialog from "~/components/shared/Table/DeleteDialog.vue";
+import PublicBatchDialog from "@/components/shared/Table/BatchDialog.vue";
+import PublicSearchDialog from "@/components/shared/Table/SearchDialog.vue";
+import SelectUtils from "~/utils/select";
+import type { User, UsersBatchMethod } from '@lovecards/sdk';
+import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue';
 const client = useApi();
 
 //表格头部
@@ -188,16 +191,18 @@ const TableListRowsOptions = [
 const UserRoles = ref<{ title: string; value: number }[]>([]);
 const loadUserRoles = async () => {
   const result = await client.roles.list({ list_rows: 100 });
-  UserRoles.value = result.data.map((r: any) => ({
+  UserRoles.value = result.data.map((r) => ({
     title: `#${r.id} ${r.name}`,
     value: r.id
   }));
 };
 loadUserRoles();
 //渲染用户标签数据预处理
-const renderUserRoles = (roles_id: any) => {
+const renderUserRoles = (roles_id: unknown) => {
   if (roles_id != null) {
-    roles_id = JSON.parse(roles_id);
+    if (typeof roles_id === 'string') {
+      try { roles_id = JSON.parse(roles_id); } catch { return []; }
+    }
     let roles_title: string[] = [];
     if (typeof roles_id === "number") {
       const roles = UserRoles.value.find((role) => role.value === roles_id);
@@ -205,7 +210,8 @@ const renderUserRoles = (roles_id: any) => {
         return roles.title;
       }
     } else {
-      roles_id.forEach((item: any) => {
+      if (!Array.isArray(roles_id)) return [];
+      roles_id.forEach((item) => {
         const roles = UserRoles.value.find((role) => role.value === item);
         if (roles) {
           roles_title.push(roles.title);
@@ -219,9 +225,9 @@ const renderUserRoles = (roles_id: any) => {
 };
 
 //表格数据
-const tableItems = ref([{} as any]);
+const tableItems = ref<User[]>([]);
 //批量选择数据
-const tableSelected = ref([]);
+const tableSelected = ref<number[]>([]);
 //页面数量
 const tablePaginationLength = ref(0);
 //当前页面
@@ -236,33 +242,35 @@ const tableListRows = ref(TableListRowsOptions[0]?.value);
 
 //EditUserDialog组件
 const EditUserDialog_state = ref(false);
-const EditUserDialog_data = ref({ origin: {}, edit: {} } as any);
-const openEditUserDialog = (data: {}) => {
+type EditableUser = { origin: Partial<User> & { roles_id?: number[] | string; password?: string }; edit: Partial<User> & { roles_id?: number[] | string; password?: string } };
+const EditUserDialog_data = ref<EditableUser>({ origin: {}, edit: {} });
+const openEditUserDialog = (data: User) => {
   EditUserDialog_data.value.origin = CommonUtils.deepClone(data);
   EditUserDialog_data.value.edit = CommonUtils.deepClone(data);
   EditUserDialog_state.value = true;
 };
 
 //DeleteUserDialog组件
-const DeleteUserFun = (id: any) => {
-  client.users.delete(id).then(() => {
+const DeleteUserFun = (id: number) => {
+  client.users.deleteManaged(id).then(() => {
     DeleteUserDialog_state.value = false;
     getTableData();
   });
 }
 const DeleteUserDialog_state = ref(false);
-const DeleteUserDialog_data = ref({} as any);
-const openDeleteUserDialog = (data: {}) => {
+const DeleteUserDialog_data = ref<{ id: number }>({ id: 0 });
+const openDeleteUserDialog = (data: { id: number }) => {
   DeleteUserDialog_data.value = data;
   DeleteUserDialog_state.value = true;
 };
 
 // 批量操作相关
-const BatchOperate = ref('');
+const BatchOperate = ref<UsersBatchMethod | ''>('');
 const BatchUserDialog_state = ref(false);
 //BatchCardDialog组件
 const BatchUserFun = () => {
-  client.users.batch({ method: BatchOperate.value as any, ids: tableSelected.value }).then(() => {
+  if (!BatchOperate.value) return;
+  client.users.batchManaged({ method: BatchOperate.value, ids: tableSelected.value }).then(() => {
     BatchUserDialog_state.value = false;
     getTableData();
   })
@@ -280,7 +288,7 @@ const openBatchUserDialog = () => {
 //SearchUserDialog组件
 const SearchUserDialog_state = ref(false);
 //子父传参
-const setTableSearchFilter = (data: any) => {
+const setTableSearchFilter = (data: Record<string, unknown>) => {
   tableSearchFilter.value = data;
 }
 const openSearchUserDialog = () => {
@@ -301,7 +309,7 @@ const getTableData = () => {
   //   //搜索时激活错误提醒
   //   ApiMonitor.setGetState(true);
   // }
-  client.users.list(params)
+  client.users.listManaged(params as Parameters<typeof client.users.listManaged>[0])
     .then((result) => {
       tableCurrentPage.value = result.pagination!.currentPage;
       tablePaginationLength.value = result.pagination!.totalPages;

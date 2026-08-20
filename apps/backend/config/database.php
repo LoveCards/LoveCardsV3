@@ -1,5 +1,8 @@
 <?php
 
+$backendRoot = dirname(__DIR__);
+$persistent = \app\shared\SystemPaths\PersistentConfiguration::database($backendRoot);
+
 return [
     // 默认使用的数据库连接配置
     'default'         => env('database.driver', 'mysql'),
@@ -24,19 +27,19 @@ return [
             // 数据库类型
             'type'            => env('database.type', 'mysql'),
             // 服务器地址
-            'hostname'        => env('database.hostname', 'localhost'),
+            'hostname'        => env('database.hostname', $persistent['hostname'] ?? 'localhost'),
             // 数据库名
-            'database'        => env('database.database', 'testtest'),
+            'database'        => env('database.database', $persistent['database'] ?? 'testtest'),
             // 用户名
-            'username'        => env('database.username', 'testtest'),
+            'username'        => env('database.username', $persistent['username'] ?? 'testtest'),
             // 密码
-            'password'        => env('database.password', 'testtest'),
+            'password'        => env('database.password', $persistent['password'] ?? ''),
             // 端口
-            'hostport'        => env('database.hostport', '3306'),
+            'hostport'        => env('database.hostport', $persistent['hostport'] ?? '3306'),
             // 数据库连接参数
-            'params'          => [],
+            'params'          => [\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true],
             // 数据库编码默认采用utf8
-            'charset'         => env('database.charset', 'utf8mb4'),
+            'charset'         => env('database.charset', $persistent['charset'] ?? 'utf8mb4'),
             // 数据库表前缀
             'prefix'          => env('database.prefix', ''),
 

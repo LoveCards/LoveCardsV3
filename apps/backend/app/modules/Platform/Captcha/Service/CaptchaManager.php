@@ -93,15 +93,33 @@ class CaptchaManager
         return $results;
     }
 
-    public static function config(): array
-    {
-        return [
+    public static function config(): array
+    {
+        $driver = (string) ConfigService::get('captcha.default_captcha_driver', 'geetest_v4');
+        $enabled = (bool) ConfigService::get('captcha.captcha_enabled', true);
+        if ($driver === 'geetest_v4' && !(bool) ConfigService::get('captcha_geetest_v4.status', false)) {
+            $enabled = false;
+        }
+
+        return [
             'captcha_geetest_v4' => [
                 'id'     => ConfigService::get('captcha_geetest_v4.id', ''),
                 'status' => ConfigService::get('captcha_geetest_v4.status', false),
             ],
-            'code_enabled'    => ConfigService::get('captcha.code_enabled', true),
-            'captcha_enabled' => ConfigService::get('captcha.captcha_enabled', true),
-        ];
-    }
+            'code_enabled'    => ConfigService::get('captcha.code_enabled', true),
+            'captcha_enabled' => $enabled,
+            'default_code_driver' => ConfigService::get('captcha.default_code_driver', 'smtp_code'),
+            'default_captcha_driver' => ConfigService::get('captcha.default_captcha_driver', 'geetest_v4'),
+            'registration_code_required' => ConfigService::get('user.captcha', false),
+        ];
+    }
+
+    public static function challenge(): array
+    {
+        $result = \app\modules\Platform\Captcha\Service\Captcha::generate('captcha');
+        if (!($result['status'] ?? true)) {
+            throw \app\api\ApiException::badRequest((string) ($result['msg'] ?? '人机验证未启用'), \app\api\ApiException::CODE_PARAM_INVALID);
+        }
+        return $result;
+    }
 }

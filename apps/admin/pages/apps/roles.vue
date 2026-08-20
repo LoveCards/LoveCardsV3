@@ -1,6 +1,5 @@
 <!-- 角色管理 -->
 <template>
-  <NuxtLayout name="root">
     <!-- 标题 -->
     <v-row class="pt-2">
       <v-col cols="6">
@@ -92,7 +91,6 @@
         </v-card>
       </v-col>
     </v-row>
-  </NuxtLayout>
 
   <CreateRoleDialog v-model:thisDialogState="CreateDialog_state" :getTableData="getTableData"></CreateRoleDialog>
   <EditRoleDialog v-model:thisDialogState="EditDialog_state" v-model:RoleData="EditDialog_data"
@@ -110,13 +108,14 @@
 <script setup lang="ts">
 import { useApi } from '~/lib/api';
 import CommonUtils from "@/utils/common";
-import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
-import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
-import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
-import CreateRoleDialog from "@/components/apps/roles/CreateRoleDialog.vue";
-import EditRoleDialog from "@/components/apps/roles/EditRoleDialog.vue";
-import AssignPermissionsDialog from "@/components/apps/roles/AssignPermissionsDialog.vue";
-import SelectUtils from "~/api/utils/select";
+import PublicDeleteDialog from "@/components/shared/Table/DeleteDialog.vue";
+import PublicBatchDialog from "@/components/shared/Table/BatchDialog.vue";
+import PublicSearchDialog from "@/components/shared/Table/SearchDialog.vue";
+import CreateRoleDialog from "@/components/roles/CreateRoleDialog.vue";
+import EditRoleDialog from "@/components/roles/EditRoleDialog.vue";
+import AssignPermissionsDialog from "@/components/roles/AssignPermissionsDialog.vue";
+import SelectUtils from "~/utils/select";
+import type { Role } from '@lovecards/sdk';
 const client = useApi();
 
 const TableHeaders = [
@@ -139,12 +138,12 @@ const TableBatchOptions = [
 ];
 
 // 表格状态
-const tableItems = ref<any[]>([]);
+const tableItems = ref<Role[]>([]);
 const tableSelected = ref<number[]>([]);
 const tablePaginationLength = ref(0);
 const tableCurrentPage = ref(1);
 const tableSearchValue = ref<string | undefined>(undefined);
-const tableSearchFilter = ref<any>({});
+const tableSearchFilter = ref<Record<string, unknown>>({});
 const tableListRows = ref(SelectUtils.Common.Table.ListRowsOptions[0]?.value);
 
 const getTableData = () => {
@@ -170,8 +169,8 @@ const CreateDialog_state = ref(false);
 
 // 编辑
 const EditDialog_state = ref(false);
-const EditDialog_data = ref<any>({});
-const openEditDialog = (item: any) => {
+const EditDialog_data = ref<Role | null>(null);
+const openEditDialog = (item: Role) => {
   EditDialog_data.value = item;
   EditDialog_state.value = true;
 };
@@ -179,21 +178,21 @@ const openEditDialog = (item: any) => {
 // 分配权限
 const AssignDialog_state = ref(false);
 const AssignDialog_roleId = ref<number>(0);
-const openAssignDialog = (item: any) => {
+const openAssignDialog = (item: Role) => {
   AssignDialog_roleId.value = item.id;
   AssignDialog_state.value = true;
 };
 
 // 删除
 const DeleteDialog_state = ref(false);
-const DeleteDialog_data = ref<any>({});
+const DeleteDialog_data = ref<{ id: number; display?: string }>({ id: 0 });
 const DeleteFun = (id: number) => {
   client.roles.delete(id).then(() => {
     DeleteDialog_state.value = false;
     getTableData();
   }).catch(() => {});
 };
-const openDeleteDialog = (item: any) => {
+const openDeleteDialog = (item: Role) => {
   DeleteDialog_data.value = { id: item.id, display: item.name };
   DeleteDialog_state.value = true;
 };
@@ -218,7 +217,7 @@ const BatchFun = () => {
 
 // 搜索
 const SearchDialog_state = ref(false);
-const setTableSearchFilter = (data: any) => { tableSearchFilter.value = data; };
+const setTableSearchFilter = (data: Record<string, unknown>) => { tableSearchFilter.value = data; };
 
 onMounted(() => getTableData());
 </script>

@@ -3,26 +3,23 @@ import type * as ApiTypes from '../../types'
 
 /** Generated from contracts/openapi.json. Do not edit manually. */
 export class Theme extends BaseResource {
-  activate(data?: Record<string, unknown>): Promise<void> {
-    return this._post<void>("/theme/activate", data)
+  activate(data: { id: string; release: string }): Promise<void> {
+    return this._post<void>("/admin/theme/activate", data)
+  }
+  updateConfig(data: { id: string; release: string; values: Record<string, unknown> }): Promise<void> {
+    return this._put<void>("/admin/theme/config", data)
+  }
+  delete(params: { id: string; release: string }): Promise<void> {
+    return this._delete<void>("/admin/theme/delete", params)
+  }
+  list(): Promise<ApiTypes.ThemeItem[]> {
+    return this._get<ApiTypes.ThemeItem[]>("/admin/theme/list")
+  }
+  upload(formData: FormData): Promise<ApiTypes.ThemeItem> {
+    return this._post<ApiTypes.ThemeItem>("/admin/theme/upload", formData, { headers: { 'Content-Type': 'multipart/form-data' } })
   }
   publicConfig(): Promise<ApiTypes.ThemeConfigData> {
     return this._get<ApiTypes.ThemeConfigData>("/theme/config")
-  }
-  updateConfig(data?: Record<string, unknown>): Promise<void> {
-    return this._put<void>("/theme/config", data)
-  }
-  delete(): Promise<void> {
-    return this._delete<void>("/theme/delete")
-  }
-  freeze(data?: Record<string, unknown>): Promise<void> {
-    return this._post<void>("/theme/freeze", data)
-  }
-  list(): Promise<ApiTypes.ThemeItem[]> {
-    return this._get<ApiTypes.ThemeItem[]>("/theme/list")
-  }
-  upload(formData: FormData): Promise<ApiTypes.ThemeItem> {
-    return this._post<ApiTypes.ThemeItem>("/theme/upload", formData, { headers: { 'Content-Type': 'multipart/form-data' } })
   }
   config(): Promise<ApiTypes.ThemeConfigData> {
     return this._get<ApiTypes.ThemeConfigData>("/theme/config")

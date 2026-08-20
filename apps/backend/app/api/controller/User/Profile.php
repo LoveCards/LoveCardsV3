@@ -27,7 +27,7 @@ class Profile extends BaseController
         try {
             ProfileService::changePassword(request()->auth->uid(), $params['password']);
         } catch (ApiException $e) {
-            throw ApiException::badRequest('编辑失败', [$e->getMessage()]);
+            throw ApiException::badRequest('编辑失败', ApiException::CODE_PARAM_INVALID, [$e->getMessage()]);
         }
         return $this->respond();
     }

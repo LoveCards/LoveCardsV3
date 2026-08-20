@@ -31,27 +31,54 @@ async function walk(directory, predicate, result = []) {
   return result
 }
 
-for (const directory of ['apps/backend', 'apps/admin', 'packages/sdk']) {
+for (const directory of ['apps/backend', 'apps/admin', 'apps/default-theme', 'packages/sdk']) {
   if (!(await exists(path.join(root, directory)))) fail(`Missing workspace directory: ${directory}`)
 }
 
 const rootPackage = await readJson(path.join(root, 'package.json'))
 const adminPackage = await readJson(path.join(root, 'apps/admin/package.json'))
+const defaultThemePackage = await readJson(path.join(root, 'apps/default-theme/package.json'))
 const sdkPackage = await readJson(path.join(root, 'packages/sdk/package.json'))
 
-const expectedWorkspaces = ['apps/admin', 'packages/sdk']
+const expectedWorkspaces = ['apps/admin', 'apps/default-theme', 'packages/sdk']
 if (JSON.stringify(rootPackage.workspaces) !== JSON.stringify(expectedWorkspaces)) {
   fail(`Root workspaces must be exactly: ${expectedWorkspaces.join(', ')}`)
 }
 if (adminPackage.name !== '@lovecards/admin') fail('Admin package name must be @lovecards/admin')
+if (defaultThemePackage.name !== '@lovecards/default-theme') fail('Default theme package name must be @lovecards/default-theme')
 if (sdkPackage.name !== '@lovecards/sdk') fail('SDK package name must be @lovecards/sdk')
 if (adminPackage.dependencies?.['@lovecards/sdk'] !== sdkPackage.version) {
   fail('Admin must depend on the local SDK version, not a filesystem path')
+}
+if (defaultThemePackage.dependencies?.['@lovecards/sdk'] !== sdkPackage.version) {
+  fail('Default theme must depend on the local SDK version, not a filesystem path')
 }
 if (sdkPackage.scripts?.postbuild) fail('SDK postbuild must not write into an application')
 if (adminPackage.dependencies?.axios) fail('Admin must not depend on Axios directly; use @lovecards/sdk')
 
 const adminSourceFiles = await walk(path.join(root, 'apps/admin'), (file) => /\.(?:ts|vue|js)$/.test(file))
+if (await exists(path.join(root, 'apps/ui'))) fail('Legacy apps/ui directory must not exist; use apps/default-theme/ui')
+
+const defaultThemeRoot = path.join(root, 'apps/default-theme')
+const defaultThemeDesignRoot = path.join(defaultThemeRoot, 'ui')
+const defaultThemeSourceFiles = await walk(path.join(defaultThemeRoot, 'src'), (file) => /\.(?:js|jsx|css)$/.test(file))
+for (const file of defaultThemeSourceFiles) {
+  const source = await readFile(file, 'utf8')
+  const references = [
+    ...source.matchAll(/['"](\.{1,2}\/[^'"]+)['"]/g),
+    ...source.matchAll(/url\(\s*['"]?(\.{1,2}\/[^'"\)]+)['"]?\s*\)/g),
+  ]
+  for (const match of references) {
+    const dependency = path.resolve(path.dirname(file), match[1])
+    if (dependency === defaultThemeDesignRoot || dependency.startsWith(`${defaultThemeDesignRoot}${path.sep}`)) {
+      fail(`Default theme runtime source must not depend on design references: ${relative(file)} -> ${match[1]}`)
+    }
+  }
+}
+
+for (const directory of ['apps/admin/api', 'apps/admin/components/apps', 'apps/admin/stores/api']) {
+  if (await exists(path.join(root, directory))) fail(`Admin legacy directory must not exist: ${directory}`)
+}
 for (const file of adminSourceFiles) {
   const source = await readFile(file, 'utf8')
   const rel = relative(file)
@@ -64,6 +91,20 @@ for (const file of adminSourceFiles) {
   if (/['"](?:~|@)\/?api\/(?:app|axios|interceptors)(?:\/|['"])/.test(source)) {
     fail(`Admin source references the removed API layer: ${rel}`)
   }
+  if (/NuxtLayout\s+name=['"]root['"]/.test(source)) {
+    fail(`Admin pages must use the application layout: ${rel}`)
+  }
+  if (/\buseNotifier\s*\(/.test(source) && !rel.endsWith('components/shared/NotificationNotifier.vue')) {
+    fail(`Admin business code must use useAdminNotifier: ${rel}`)
+  }
+  if (/\bany\b/.test(source)) {
+    fail(`Admin source must use explicit types or unknown, not any: ${rel}`)
+  }
+}
+
+const adminNuxtConfig = await readFile(path.join(root, 'apps/admin/nuxt.config.ts'), 'utf8')
+if (/['"]vuetify-notifier['"]/.test(adminNuxtConfig)) {
+  fail('Admin must register vuetify-notifier only through vuetify-notifier/nuxt')
 }
 
 const packageFiles = await walk(root, (file) => path.basename(file) === 'package.json')
@@ -78,7 +119,7 @@ for (const file of packageFiles) {
   }
 }
 
-for (const lock of ['apps/admin/package-lock.json', 'packages/sdk/package-lock.json']) {
+for (const lock of ['apps/admin/package-lock.json', 'apps/default-theme/package-lock.json', 'packages/sdk/package-lock.json']) {
   try {
     await readFile(path.join(root, lock))
     fail(`${lock} must be replaced by the root package-lock.json`)
@@ -87,7 +128,7 @@ for (const lock of ['apps/admin/package-lock.json', 'packages/sdk/package-lock.j
   }
 }
 
-for (const directory of ['apps/backend/.git', 'apps/admin/.git', 'packages/sdk/.git']) {
+for (const directory of ['apps/backend/.git', 'apps/admin/.git', 'apps/default-theme/.git', 'packages/sdk/.git']) {
   if (await exists(path.join(root, directory))) fail(`Nested Git repository is forbidden: ${directory}`)
 }
 

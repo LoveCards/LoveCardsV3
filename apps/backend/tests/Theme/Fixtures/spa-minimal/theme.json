@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "fixture-spa",
+  "name": "Fixture SPA",
+  "version": "1.2.3",
+  "author": "Tests",
+  "description": "Minimal SPA fixture",
+  "mode": "spa",
+  "entry": "dist/index.html",
+  "requires": { "sdk": "^2.0.0" },
+  "compatibility": { "min": "3.0.0", "max": "3.x" },
+  "config": {
+    "siteName": { "type": "string", "label": "Site name", "default": "Fixture" },
+    "primaryColor": { "type": "string", "format": "color", "label": "Primary color", "default": "#ff4d6d" }
+  }
+}

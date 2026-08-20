@@ -2,6 +2,8 @@
 
 namespace app\modules\Platform\Auth\Public;
 
+use app\shared\Authorization\GrantSet;
+
 final class AuthContext
 {
     private $uid;
@@ -10,19 +12,21 @@ final class AuthContext
     private $capabilities;
     private $renewedToken;
     private $visitor;
+    private GrantSet $grants;
 
     private function __construct(
         int $uid,
         $user,
         array $roleIds,
-        array $capabilities,
+        GrantSet $grants,
         ?string $renewedToken,
         bool $visitor
     ) {
         $this->uid = $uid;
         $this->user = $user;
         $this->roleIds = $roleIds;
-        $this->capabilities = $capabilities;
+        $this->grants = $grants;
+        $this->capabilities = $grants->capabilityNames();
         $this->renewedToken = $renewedToken;
         $this->visitor = $visitor;
     }
@@ -31,15 +35,15 @@ final class AuthContext
         int $uid,
         $user,
         array $roleIds,
-        array $capabilities,
+        GrantSet $grants,
         ?string $renewedToken = null
     ): self {
-        return new self($uid, $user, $roleIds, $capabilities, $renewedToken, false);
+        return new self($uid, $user, $roleIds, $grants, $renewedToken, false);
     }
 
-    public static function visitor(array $roleIds, array $capabilities): self
+    public static function visitor(array $roleIds, GrantSet $grants): self
     {
-        return new self(0, null, $roleIds, $capabilities, null, true);
+        return new self(0, null, $roleIds, $grants, null, true);
     }
 
     public function uid(): int
@@ -60,6 +64,11 @@ final class AuthContext
     public function capabilities(): array
     {
         return $this->capabilities;
+    }
+
+    public function grants(): GrantSet
+    {
+        return $this->grants;
     }
 
     public function renewedToken(): ?string

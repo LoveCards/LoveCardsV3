@@ -3,6 +3,7 @@
 namespace app\modules\Platform\Storage\Service;
 
 use app\modules\Platform\Storage\Infrastructure\StorageFactory;
+use app\modules\Platform\Storage\Infrastructure\ChannelManager;
 use app\modules\Platform\Config\Public\Config as ConfigService;
 
 /**
@@ -18,6 +19,7 @@ final class StorageAdmin
         }
 
         $meta = $driverClass::meta();
+        $meta['fields'] = self::normalizeFields($type, $meta['fields'] ?? []);
         $schema = [];
         foreach ($meta['fields'] ?? [] as $field) {
             $schema[$field['key']] = [
@@ -43,6 +45,7 @@ final class StorageAdmin
             $meta = self::meta($type);
             if ($meta && !empty($meta['schema'])) {
                 $results[] = ConfigService::register($meta['group'], $meta['schema']);
+                $results[] = ['filled' => ConfigService::fillDefaults($meta['group'], $meta['schema'])];
             }
         }
 
@@ -79,13 +82,28 @@ final class StorageAdmin
                 continue;
             }
             $meta = $driverClass::meta();
+            $meta['fields'] = self::normalizeFields($type, $meta['fields'] ?? []);
             $result[] = [
                 'slug' => $type,
                 'name' => $meta['name'] ?? $type,
                 'icon' => $meta['icon'] ?? 'mdi-cloud',
                 'fields' => $meta['fields'] ?? [],
+                'configured' => ChannelManager::exists($type),
+                'available' => ChannelManager::isAvailable($type),
             ];
         }
         return $result;
+    }
+
+    private static function normalizeFields(string $type, array $fields): array
+    {
+        if ($type !== 'local') return $fields;
+        return [
+            ['key' => 'root', 'label' => '存储根目录', 'type' => 'text', 'default' => 'public/storage'],
+            ['key' => 'url_prefix', 'label' => 'URL前缀', 'type' => 'text', 'default' => '/storage'],
+            ['key' => 'allow_mime_types', 'label' => '允许的MIME类型', 'type' => 'text', 'default' => 'image/jpeg,image/png,image/gif,image/webp,application/pdf'],
+            ['key' => 'max_file_size', 'label' => '最大文件大小(字节)', 'type' => 'number', 'default' => 10485760],
+            ['key' => 'path_template', 'label' => '路径模板', 'type' => 'text', 'default' => '{date}/{uuid}.{ext}'],
+        ];
     }
 }

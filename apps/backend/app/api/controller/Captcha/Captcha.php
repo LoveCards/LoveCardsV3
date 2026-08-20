@@ -6,6 +6,7 @@ use app\modules\Platform\Captcha\Service\CaptchaManager;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
 use app\modules\Platform\Captcha\Transport\Api\CaptchaResource;
+use app\modules\Platform\Captcha\Transport\Api\CaptchaChallengeResource;
 
 class Captcha extends BaseController
 {
@@ -32,5 +33,10 @@ class Captcha extends BaseController
     public function config()
     {
         return ApiResponse::createOk(CaptchaResource::make(CaptchaManager::config()));
+    }
+
+    public function challenge()
+    {
+        return ApiResponse::createOk(CaptchaChallengeResource::make(CaptchaManager::challenge()));
     }
 }

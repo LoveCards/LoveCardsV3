@@ -2,19 +2,10 @@
 
 namespace app\modules\Operations\Installer\Infrastructure;
 
-//use app\system\utils\Common;
+use app\shared\SystemPaths\SystemPaths;
 
 class Rsa
 {
-
-    public static $rsaPath = '../config/rsa/';
-
-    private static function overwriteFile($filePath, $content)
-    {
-        // 使用 file_put_contents 覆盖文件内容
-        return file_put_contents($filePath, $content);
-    }
-
     /**
      * 生成公私钥对
      *
@@ -48,14 +39,18 @@ class Rsa
      * @param string $private
      * @return boolean
      */
-    public static function UpdataRsa($public, $private): bool
+    public static function UpdataRsa($public, $private, ?SystemPaths $paths = null): bool
     {
-        $publicPath = self::$rsaPath . 'public.pem';
-        $privatePath = self::$rsaPath . 'private.pem';
-
         try {
-            self::overwriteFile($publicPath, $public);
-            self::overwriteFile($privatePath, $private);
+            $public = (string) $public;
+            $private = (string) $private;
+            if ($public === '' || $private === '' || strlen($public) > 1048576 || strlen($private) > 1048576) {
+                return false;
+            }
+            $paths = PersistentFile::paths($paths);
+            // Readers only select persistent keys when both files exist.
+            PersistentFile::write($paths->keysRoot(), 'private.pem', $private, 0600);
+            PersistentFile::write($paths->keysRoot(), 'public.pem', $public, 0640);
             return true;
         } catch (\Throwable $th) {
             return false;

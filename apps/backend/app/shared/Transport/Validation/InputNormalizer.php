@@ -17,7 +17,8 @@ final class InputNormalizer
     public static function sceneFilter(array $params, array $specifications): array
     {
         $result = [
-            'pass' => [],
+            // 动态对象场景仍由 Route Contract 约束外壳，但不能丢弃其运行时键。
+            'pass' => ($specifications['passthrough'] ?? false) === true ? $params : [],
             'require' => [],
             'nonNull' => []
         ];

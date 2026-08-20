@@ -12,14 +12,16 @@ class Likes extends BaseController
 {
     public function list()
     {
-        $type = Request::param('type', null);
+        $params = $this->validated();
+        $type = $params['type'] ?? null;
         $result = LikesService::getUserLikes(request()->auth->uid(), $type);
         return ApiResponse::createOk(LikeResource::collection($result));
     }
 
     public function unlike($id)
     {
-        $type = Request::param('type', 'card');
+        $params = $this->validated();
+        $type = $params['type'] ?? 'card';
         LikesService::unlike($type, (int) $id, request()->auth->uid());
         return ApiResponse::createNoContent();
     }

@@ -52,6 +52,11 @@ namespace app\shared\Infrastructure\Persistence
             return new self;
         }
 
+        public function trashScope(int $showDeleted = 0, bool $canReadAll = false): self
+        {
+            return $this;
+        }
+
         public function getPaginate(array $params): object
         {
             self::$capturedParams = $params;
@@ -80,7 +85,6 @@ namespace app\shared\Infrastructure\Persistence
 // ════════════════════════════════════════════════════════════
 namespace
 {
-        require __DIR__ . '/../../app/shared/Authorization/OwnershipGuard.php';
 require __DIR__ . '/../../app/modules/Content/Tags/Service/Tags.php';
 }
 

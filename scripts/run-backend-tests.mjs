@@ -1,12 +1,11 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { resolveSupportedPhp } from './lib/php-runtime.mjs'
 
 const root = process.cwd()
 const testRoot = path.join(root, 'apps', 'backend', 'tests')
-const php = process.env.PHP_BINARY || (process.platform === 'win32'
-  ? 'C:\\software\\phpstudy_pro\\Extensions\\php\\php8.0.2nts\\php.exe'
-  : 'php')
+const { binary: php } = resolveSupportedPhp()
 const files = []
 
 async function walk(dir) {
@@ -19,6 +18,10 @@ async function walk(dir) {
 
 await walk(testRoot)
 files.sort()
+if (files.length === 0) {
+  console.error(`No backend tests found under ${path.relative(root, testRoot)}.`)
+  process.exit(1)
+}
 let failed = 0
 for (const file of files) {
   const result = spawnSync(php, [file], { cwd: root, stdio: 'inherit' })

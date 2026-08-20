@@ -1,6 +1,5 @@
 <!-- 用户管理 -->
 <template>
-  <NuxtLayout name="root">
     <!-- 标题 -->
     <v-row class="pt-2">
       <v-col cols="6">
@@ -119,7 +118,6 @@
         </v-card>
       </v-col>
     </v-row>
-  </NuxtLayout>
 
   <!-- 创建对话框 -->
   <CreateTagDialog v-model:thisDialogState="CreateTagDialog_state" :getTableData="getTableData"></CreateTagDialog>
@@ -140,12 +138,13 @@
 <script setup lang="ts">
 import CommonUtils from "@/utils/common";
 import { useApi } from '~/lib/api';
-import CreateTagDialog from "@/components/apps/tags/CreateTagDialog.vue";
-import EditTagDialog from "@/components/apps/tags/EditTagDialog.vue";
-import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
-import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
-import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
-import SelectUtils from "~/api/utils/select";
+import CreateTagDialog from "@/components/tags/CreateTagDialog.vue";
+import EditTagDialog from "@/components/tags/EditTagDialog.vue";
+import PublicDeleteDialog from "@/components/shared/Table/DeleteDialog.vue";
+import PublicBatchDialog from "@/components/shared/Table/BatchDialog.vue";
+import PublicSearchDialog from "@/components/shared/Table/SearchDialog.vue";
+import SelectUtils from "~/utils/select";
+import type { Tag, TagsBatchMethod } from '@lovecards/sdk';
 const client = useApi();
 
 //表格头部
@@ -169,8 +168,8 @@ const TableBatchOptions = [
   { title: "删除", value: "delete" },
 ];
 
-const tableItems = ref([{} as any]);//表格数据
-const tableSelected = ref([]);//批量选择数据
+const tableItems = ref<Tag[]>([]);//表格数据
+const tableSelected = ref<number[]>([]);//批量选择数据
 const tablePaginationLength = ref(0);//页面数量
 const tableCurrentPage = ref(1);//当前页面
 const tableSearchValue = ref(undefined);//搜索值
@@ -187,31 +186,32 @@ const openCreateTagDialog = () => {
 
 //EditTagDialog组件
 const EditTagDialog_state = ref(false);
-const EditTagDialog_data = ref({} as any);
-const openEditTagDialog = (data: any) => {
+const EditTagDialog_data = ref<Tag | null>(null);
+const openEditTagDialog = (data: Tag) => {
   EditTagDialog_data.value = data;
   EditTagDialog_state.value = true;
 };
 
 //DeleteDialog组件
-const DeleteTagFun = (id: any) => {
-  client.tags.delete(id).then(() => {
+const DeleteTagFun = (id: number) => {
+  client.tags.deleteManaged(id).then(() => {
     DeleteTagDialog_state.value = false;
     getTableData();
   });
 }
 const DeleteTagDialog_state = ref(false);
-const DeleteTagDialog_data = ref({} as any);
-const openDeleteTagDialog = (data: {}) => {
+const DeleteTagDialog_data = ref<{ id: number }>({ id: 0 });
+const openDeleteTagDialog = (data: { id: number }) => {
   DeleteTagDialog_data.value = data;
   DeleteTagDialog_state.value = true;
 };
 
 // 批量操作相关
-const BatchOperate = ref('');
+const BatchOperate = ref<TagsBatchMethod | ''>('');
 //BatchTagDialog组件
 const BatchCardFun = () => {
-  client.tags.batch({ method: BatchOperate.value as any, ids: tableSelected.value }).then(() => {
+  if (!BatchOperate.value) return;
+  client.tags.batchManaged({ method: BatchOperate.value, ids: tableSelected.value }).then(() => {
     BatchTagDialog_state.value = false;
     getTableData();
   })
@@ -230,7 +230,7 @@ const openBatchTagDialog = () => {
 //SearchDialog组件
 const SearchTagsDialog_state = ref(false);
 //子父传参
-const setTableSearchFilter = (data: any) => {
+const setTableSearchFilter = (data: Record<string, unknown>) => {
   tableSearchFilter.value = data;
 }
 const openSearchUserDialog = () => {
@@ -247,7 +247,7 @@ const getTableData = () => {
     ...tableSearchFilter.value
   };
   //获取数据
-  client.tags.listAll(params)
+  client.tags.listManaged(params as Parameters<typeof client.tags.listManaged>[0])
     .then((result) => {
       tableCurrentPage.value = result.pagination!.currentPage;
       tablePaginationLength.value = result.pagination!.totalPages;

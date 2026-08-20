@@ -14,6 +14,7 @@ final class Config
     public static function setGroup(string $group, array $config): bool { return ConfigService::setGroup($group, $config); }
     public static function getSchemaGroups(): array { return ConfigService::getSchemaGroups(); }
     public static function register(string $group, array $schema, bool $clearCache = true): array { return ConfigService::register($group, $schema, $clearCache); }
+    public static function fillDefaults(string $group, array $schema): array { return ConfigService::fillDefaults($group, $schema); }
     public static function reload(?string $group = null): void { ConfigService::reload($group); }
     public static function deleteGroup(string $group): bool { return ConfigService::deleteGroup($group); }
     public static function deleteKey(string $group, string $key): bool { return ConfigService::deleteKey($group, $key); }

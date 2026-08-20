@@ -7,8 +7,8 @@ use think\Validate;
 class Tags extends Validate
 {
     public static $all_scene = [
-        'create' => [
-            'normal' => ['user_id'],
+        'selfCreate' => [
+            'normal' => [],
             'require' => ['name'],
             'nonNull' => false,
             'toNull' => false,
@@ -24,7 +24,10 @@ class Tags extends Validate
             'nonNull' => false,
             'toNull' => false,
         ],
-        'allUpdate' => [
+        'selfUpdate' => [
+            'normal' => ['name'], 'require' => ['id'], 'nonNull' => false, 'toNull' => false,
+        ],
+        'adminUpdate' => [
             'normal' => [
                 'aid',
                 'user_id',
@@ -37,6 +40,12 @@ class Tags extends Validate
             'nonNull' => false,
             'toNull' => false,
         ],
+        'create' => [
+            'normal' => ['user_id'], 'require' => ['name'], 'nonNull' => false, 'toNull' => false,
+        ],
+        'allUpdate' => [
+            'normal' => ['aid', 'user_id', 'name', 'status'], 'require' => ['id'], 'nonNull' => false, 'toNull' => false,
+        ],
     ];
     public static $scene_message = [
         'aid.require' => '应用ID不得为空',
@@ -46,7 +55,7 @@ class Tags extends Validate
     protected $rule =   [
         'id'  => 'number',
         'aid'  => 'number',
-        'uid'  => 'number',
+        'user_id'  => 'number',
         'name'  => 'chsDash|length:1,255',
         'status'   => 'number',
     ];

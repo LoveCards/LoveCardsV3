@@ -1,425 +1,176 @@
-# @lovecards/sdk API Reference
+# @lovecards/sdk 使用参考
 
-> 覆盖后端 55 个路由，16 个模块。所有方法返回解包后的业务数据。
+本文件提供调用模式和高风险接口示例。171 条路由的完整清单见 `API_ENDPOINT_REFERENCE.md`，精确类型以生成 `.d.ts` 为准。
 
----
-
-## 统一响应格式
-
-SDK 方法返回解包后的业务数据，不返回 HTTP 包装：
-
-```typescript
-// 列表
-const { data, pagination } = await client.cards.list()
-// data: Card[], pagination?: PaginationInfo
-
-// 单条
-const card = await client.cards.get(1)
-// card: Card
-
-// 创建
-const { id } = await client.cards.create({ content: '...' })
-// id: string | null（null = 审核模式）
-
-// 更新/删除
-await client.cards.update(1, { content: '...' })
-await client.cards.delete(1)
-```
-
-错误通过 `ApiError` 抛出：
-
-```typescript
-import { isApiError } from '@lovecards/sdk'
-
-try {
-  await client.cards.create({ content: '...' })
-} catch (e) {
-  if (isApiError(e)) {
-    console.log(e.code, e.message, e.status)
-  }
-}
-```
-
----
-
-## 快速入门
+## Client
 
 ```typescript
 import { createClient } from '@lovecards/sdk'
 
-const client = createClient({ apiUrl: '/api' })
-
-// 公开接口（无需 token）
-const { data } = await client.cards.list()
-
-// 登录后设置 token
-const { token } = await client.session.login({ account: 'admin@test.com', password: '123456' })
-client.setToken(token)
-
-// 需要 token 的接口
-const me = await client.users.me()
-```
-
----
-
-## Session — 认证（6 端点）
-
-### 登录
-
-```typescript
-const { token } = await client.session.login({ account: 'admin@test.com', password: '123456' })
-client.setToken(token)
-```
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `session.login(data)` | `POST` | `/session/login` | `LoginResult` |
-| `session.register(data)` | `POST` | `/session/register` | `LoginResult` |
-| `session.guest()` | `POST` | `/session/guest` | `LoginResult` |
-| `session.captcha(params)` | `POST` | `/session/captcha` | `void` |
-| `session.logout()` | `POST` | `/session/logout` | `void` |
-| `session.check()` | `GET` | `/session/check` | `void` |
-
----
-
-## Cards — 卡片（10 端点）
-
-### 列表
-
-```typescript
-const { data, pagination } = await client.cards.list({ page: 1, list_rows: 15 })
-// data: Card[], pagination: { currentPage, totalPages, totalItems, itemsPerPage }
-```
-
-### 创建（审核模式感知）
-
-```typescript
-const { id } = await client.cards.create({ content: '...' })
-if (id) {
-  router.push(`/cards/${id}`)
-} else {
-  showToast('已提交，等待审核')
-}
-```
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `cards.list(params?)` | `GET` | `/cards` | `ListResult<Card>` |
-| `cards.get(id)` | `GET` | `/cards/:id` | `Card` |
-| `cards.hot()` | `GET` | `/cards/hot` | `Card[]` |
-| `cards.search(params)` | `GET` | `/cards/search` | `ListResult<Card>` |
-| `cards.create(data)` | `POST` | `/cards` | `CreateResult` |
-| `cards.update(id, data)` | `PATCH` | `/cards/:id` | `void` |
-| `cards.delete(id)` | `DELETE` | `/cards/:id` | `void` |
-| `cards.like(id)` | `POST` | `/cards/:id/like` | `{ likes: number }` |
-| `cards.listOwn(params?)` | `GET` | `/users/me/cards` | `ListResult<Card>` |
-| `cards.batch(data)` | `POST` | `/cards/batch` | `void` |
-
----
-
-## Users — 用户（10 端点）
-
-### 获取当前用户
-
-```typescript
-const user = await client.users.me()
-// user: User { id, username, email, avatar, roles_id, status, ... }
-```
-
-### 更新资料
-
-```typescript
-await client.users.updateMe({ username: '新昵称' })
-```
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `users.me()` | `GET` | `/users/me` | `User` |
-| `users.updateMe(data)` | `PATCH` | `/users/me` | `void` |
-| `users.updatePassword(data)` | `POST` | `/users/me/password` | `void` |
-| `users.updateEmail(data)` | `POST` | `/users/me/email` | `void` |
-| `users.emailCaptcha(data)` | `POST` | `/users/me/email-captcha` | `void` |
-| `users.list(params?)` | `GET` | `/users` | `ListResult<User>` |
-| `users.get(id)` | `GET` | `/users/:id` | `User` |
-| `users.update(id, data)` | `PATCH` | `/users/:id` | `void` |
-| `users.delete(id)` | `DELETE` | `/users/:id` | `void` |
-| `users.batch(data)` | `POST` | `/users/batch` | `void` |
-
----
-
-## Comments — 评论（7 端点）
-
-### 获取卡片评论
-
-```typescript
-const { data, pagination } = await client.comments.cardList(1)
-// data: Comment[]
-```
-
-### 创建评论
-
-```typescript
-const { id } = await client.comments.create(1, { content: '好卡片！' })
-```
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `comments.cardList(cardId, params?)` | `GET` | `/cards/:id/comments` | `ListResult<Comment>` |
-| `comments.create(cardId, data)` | `POST` | `/cards/:id/comments` | `CreateResult` |
-| `comments.get(id)` | `GET` | `/comments/:id` | `Comment` |
-| `comments.update(id, data)` | `PATCH` | `/comments/:id` | `void` |
-| `comments.delete(id)` | `DELETE` | `/comments/:id` | `void` |
-| `comments.listOwn(params?)` | `GET` | `/users/me/comments` | `ListResult<Comment>` |
-| `comments.batch(data)` | `POST` | `/comments/batch` | `void` |
-
----
-
-## Tags — 标签（6 端点）
-
-```typescript
-const tags = await client.tags.list({ list_rows: 100 })
-// tags: Tag[]
-```
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `tags.list(params?)` | `GET` | `/tags` | `Tag[]` |
-| `tags.get(id)` | `GET` | `/tags/:id` | `Tag` |
-| `tags.create(data)` | `POST` | `/tags` | `void` |
-| `tags.update(id, data)` | `PATCH` | `/tags/:id` | `void` |
-| `tags.delete(id)` | `DELETE` | `/tags/:id` | `void` |
-| `tags.batch(data)` | `POST` | `/tags/batch` | `void` |
-
----
-
-## Likes — 点赞（2 端点）
-
-```typescript
-const likes = await client.likes.list()
-// likes: Like[]
-
-await client.likes.unlike(1)
-```
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `likes.list(params?)` | `GET` | `/likes` | `Like[]` |
-| `likes.unlike(id)` | `DELETE` | `/likes/:id` | `void` |
-
----
-
-## Files — 文件（10 端点）
-
-### 文件上传
-
-```typescript
-const formData = new FormData()
-formData.append('file', fileInput.files[0])
-const result = await client.files.upload(formData)
-// result: UploadResult { id, url, original_name, ... }
-```
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `files.upload(formData)` | `POST` | `/files` | `UploadResult` |
-| `files.list(params?)` | `GET` | `/files` | `ListResult<LCFile>` |
-| `files.listOwn(params?)` | `GET` | `/users/me/files` | `ListResult<LCFile>` |
-| `files.listMe(params?)` | `GET` | `/users/me/files` | `ListResult<LCFile>`（兼容别名） |
-| `files.get(id)` | `GET` | `/files/:id` | `LCFile` |
-| `files.direct(data?)` | `POST` | `/files/direct` | `DirectUploadResult` |
-| `files.confirm(id)` | `PATCH` | `/files/:id/confirm` | `void` |
-| `files.batch(data)` | `POST` | `/files/batch` | `void` |
-| `files.cleanup()` | `DELETE` | `/files/expired` | `void` |
-| `files.delete(id)` | `DELETE` | `/files/:id` | `void` |
-
----
-
-## Theme — 主题（8 端点）
-
-### 获取主题配置（公开）
-
-```typescript
-const config = await client.theme.publicConfig()
-// config: ThemeConfigData { name, mode, config_schema, config_values }
-```
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `theme.list()` | `GET` | `/theme/list` | `ThemeItem[]` |
-| `theme.upload(formData)` | `POST` | `/theme/upload` | `void` |
-| `theme.activate(data)` | `POST` | `/theme/activate` | `void` |
-| `theme.config()` | `GET` | `/theme/config` | `ThemeConfigData` |
-| `theme.updateConfig(data)` | `PUT` | `/theme/config` | `void` |
-| `theme.freeze()` | `POST` | `/theme/freeze` | `void` |
-| `theme.delete(data)` | `DELETE` | `/theme/delete` | `void` |
-| `theme.publicConfig()` | `GET` | `/theme/config` | `ThemeConfigData` |
-
----
-
-## Roles — 角色（8 端点）
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `roles.list(params?)` | `GET` | `/roles` | `ListResult<Role>` |
-| `roles.get(id)` | `GET` | `/roles/:id` | `Role` |
-| `roles.create(data)` | `POST` | `/roles` | `{ id: string }` |
-| `roles.update(id, data)` | `PATCH` | `/roles/:id` | `void` |
-| `roles.delete(id)` | `DELETE` | `/roles/:id` | `void` |
-| `roles.getCapabilities(id)` | `GET` | `/roles/:id/capabilities` | `string[]` |
-| `roles.assignCapabilities(id, data)` | `POST` | `/roles/:id/capabilities` | `void` |
-| `roles.reseed()` | `POST` | `/roles/reseed` | `ReseedResult` |
-
----
-
-## Permissions — 权限（2 端点）
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `permissions.list(params?)` | `GET` | `/permissions` | `ListResult<CapabilityItem>` |
-| `permissions.all()` | `GET` | `/permissions/all` | `CapabilityItem[]` |
-
----
-
-## Config — 系统配置（8 端点）
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `config.list()` | `GET` | `/config` | `ConfigData` |
-| `config.update(data)` | `POST` | `/config` | `void` |
-| `config.groups()` | `GET` | `/config/groups` | `string[]` |
-| `config.init()` | `POST` | `/config/init` | `void` |
-| `config.register(data)` | `POST` | `/config/register` | `void` |
-| `config.reload()` | `POST` | `/config/reload` | `void` |
-| `config.deleteGroup(group)` | `DELETE` | `/config` | `void` |
-| `config.deleteKey(group, key)` | `DELETE` | `/config/key` | `void` |
-
----
-
-## Dashboard — 控制台（1 端点）
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `dashboard.index()` | `GET` | `/dashboard` | `DashboardData` |
-
----
-
-## System — 系统（1 端点）
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `system.update()` | `GET` | `/system/update` | `SystemUpdateInfo` |
-
----
-
-## Storage — 存储管理（6 端点）
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `storage.types()` | `GET` | `/storage/types` | `StorageDriver[]` |
-| `storage.meta(type)` | `GET` | `/storage/:type/meta` | `StorageMeta` |
-| `storage.install()` | `POST` | `/storage/install` | `void` |
-| `storage.channels()` | `GET` | `/storage/channels` | `StorageChannel[]` |
-| `storage.testChannel(data)` | `POST` | `/storage/test-channel` | `{ success, message? }` |
-| `storage.channelStats()` | `GET` | `/storage/channel-stats` | `ChannelStats` |
-
----
-
-## Sender — 消息发送器（6 端点）
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `sender.types()` | `GET` | `/sender/types` | `SenderType[]` |
-| `sender.meta(type)` | `GET` | `/sender/:type/meta` | `SenderMeta` |
-| `sender.install()` | `POST` | `/sender/install` | `void` |
-| `sender.channels()` | `GET` | `/sender/channels` | `SenderChannel[]` |
-| `sender.templates()` | `GET` | `/sender/templates` | `SenderTemplate[]` |
-| `sender.testChannel(data)` | `POST` | `/sender/test-channel` | `{ success, message? }` |
-
----
-
-## Captcha — 验证码（5 端点）
-
-| 方法 | HTTP | 路径 | 返回 |
-|------|------|------|------|
-| `captcha.types()` | `GET` | `/captcha/types` | `CaptchaDriver[]` |
-| `captcha.drivers()` | `GET` | `/captcha/drivers` | `CaptchaDriver[]` |
-| `captcha.meta(slug)` | `GET` | `/captcha/:slug/meta` | `CaptchaMeta` |
-| `captcha.install()` | `POST` | `/captcha/install` | `void` |
-| `captcha.config()` | `GET` | `/captcha/config` | `CaptchaConfig`（公开） |
-
----
-
-## 错误码参考
-
-### HTTP 状态码
-
-| 状态码 | 说明 |
-|--------|------|
-| 400 | 请求参数错误 |
-| 401 | token 无效/过期 |
-| 403 | 权限不足 |
-| 404 | 资源不存在 |
-| 422 | 参数验证失败 |
-| 429 | 请求过于频繁 |
-| 500 | 服务器内部错误 |
-
-### 业务码
-
-| 业务码 | 消息 | 说明 |
-|--------|------|------|
-| 1001 | 用户不存在 | — |
-| 1005 | 登录失败 | 账号或密码错误 |
-| 1101 | 权限不足 | — |
-| 2001 | 卡片不存在 | — |
-| 3001 | 评论不存在 | — |
-| 4001 | 标签不存在 | — |
-| 9001 | 系统异常 | 服务器内部错误 |
-| 9002 | 参数错误 | 请求参数验证失败 |
-| 9003 | 资源不存在 | — |
-
----
-
-## 生命周期钩子
-
-SDK 提供 3 个生命周期钩子，用于监控和干预请求/响应流程。
-
-### 构造时注册
-
-```typescript
 const client = createClient({
   apiUrl: '/api',
-  hooks: {
-    beforeRequest: (ctx) => {
-      ctx.config.headers['X-Trace-Id'] = crypto.randomUUID()
-    },
-    afterResponse: (ctx) => {
-      console.log(`${ctx.method} ${ctx.url} → ${ctx.status} (${ctx.elapsedMs}ms)`)
-    },
-    onError: (ctx) => {
-      console.error(`[${ctx.reason}] ${ctx.status}: ${ctx.message}`)
-    },
-  },
+  timeout: 15_000,
+  retry: { maxRetries: 2 },
+  onAuthError: () => location.assign('/auth/login'),
 })
 ```
 
-### 运行时注册
+`setToken/getToken/clearToken` 管理当前身份，`setRole/getRole` 管理显式管理角色。自定义 `tokenStore` 可接入 SSR-safe 或应用自己的存储；不要在模块中直接读写 SDK 默认 localStorage key。
+
+## 返回 shape
 
 ```typescript
-// 注册
-const unsub = client.hooks.afterResponse((ctx) => {
-  logToAnalytics(ctx)
-})
+const page = await client.cards.list()
+page.data
+page.pagination
 
-// 取消注册
-unsub()
+const card = await client.cards.get(24)
+const result = await client.cards.create({ content: '正文' })
+await client.cards.delete(24) // void
 ```
 
-### Hook 类型参考
+cursor 接口返回包含 `items/next_cursor/has_more` 的业务对象；不要把它当 `ListResult`。SSE `notifications.stream()` 是 raw string/stream 契约，与 JSON envelope 不同。
 
-| 钩子 | 回调参数 | 可修改请求 |
-|------|---------|-----------|
-| `beforeRequest` | `RequestContext` | `config.headers` |
-| `afterResponse` | `ResponseContext` | 只读 |
-| `onError` | `ErrorContext` | 只读 |
+## 认证与恢复
 
-详见 `SDK_DESIGN.md` 生命周期钩子章节。
+```typescript
+const auth = await client.session.policy()
+const login = await client.session.login({ account, password })
+client.setToken(login.token)
+await client.session.check()
+await client.session.logout()
+
+const challenge = await client.session.recovery_request({ account })
+await client.session.recovery_reset({ challenge_id, code, password })
+```
+
+Visitor Mode 关闭时 `session.guest()` 会返回明确 401；调用方应按 `session.policy()` 展示入口，不把它当系统故障。密码变更或恢复后旧 Token 会立即失效。
+
+## 内容、评论与文件
+
+```typescript
+const created = await client.cards.create({
+  content,
+  picture_file_ids: uploadedIds,
+  cover_file_id: uploadedIds[0],
+})
+
+const comments = await client.comments.cardList(cardId, { page: 1 })
+const target = await client.comments.get(commentId)
+await client.comments.create(cardId, { content, parent_id })
+
+const formData = new FormData()
+formData.append('file', file)
+formData.append('scene', 'card')
+const uploaded = await client.files.upload(formData)
+```
+
+公开文件深链使用 `/media/:hash`，不能从 driver path 或对象存储内部 key 自行拼接。文件永久 purge 与引用检查是管理 API，不是用户删除别名。
+
+## 草稿、收藏与历史
+
+```typescript
+const drafts = await client.drafts.list()
+const draft = await client.drafts.create({ title, content, payload })
+await client.drafts.update(Number(draft.id), { content, payload })
+
+await client.library.save({ resource_type: 'card', resource_id: '24' })
+await client.library.remove({ resource_type: 'card', resource_id: '24' })
+const saved = await client.library.list()
+
+await client.library.history_record({ resource_type: 'card', resource_id: '24' })
+const history = await client.library.history()
+await client.library.history_clear()
+```
+
+`library.remove` 参数是必填 DELETE query。SDK transport 已覆盖这类参数；不要将它改回无参方法。
+
+## 社交、私信与通知
+
+```typescript
+const profile = await client.social.profile(handle)
+const relation = await client.social.relation(Number(profile.id))
+await client.social.follow(Number(profile.id))
+await client.social.unfollow(Number(profile.id))
+
+const conversations = await client.messages.conversations()
+const messages = await client.messages.list(conversationId)
+await client.messages.send({ recipient_id, body, client_message_id })
+
+const notifications = await client.notifications.list({ unread_only: true })
+await client.notifications.read({ ids: [1, 2] })
+await client.notifications.readAll()
+```
+
+消息发送的网络重试应复用同一个 `client_message_id`。SSE 不可用时继续调用 list/unread，数据正确性不依赖实时连接。
+
+## 隐私、安全与举报
+
+```typescript
+const preferences = await client.safety.preferences()
+await client.safety.preferences_update({
+  profile_visibility: 'public',
+  messages_from: 'following',
+  show_relations: true,
+})
+await client.safety.block(userId)
+await client.safety.unblock(userId)
+await client.safety.report({
+  resource_type: 'card',
+  resource_id: '24',
+  reason: 'spam',
+  details: '补充说明',
+})
+```
+
+reason 必须来自公开 schema；非法字段由该 scene 单独返回错误，不应在前端增加别的 scene 字段。
+
+## 管理端 Operations
+
+```typescript
+const runtime = await client.operations.runtime()
+const deliveries = await client.operations.deliveries({ status: 'failed' })
+await client.operations.retryDelivery(deliveryId, { reason })
+
+const plans = await client.operations.upgrades({ limit: 50 })
+const formData = new FormData()
+formData.append('file', releaseZip)
+formData.append('reason', reason)
+const plan = await client.operations.createUpgrade(formData)
+await client.operations.advanceUpgrade(plan.plan_id, { reason })
+await client.operations.approveUpgradeContract(plan.plan_id, { reason })
+await client.operations.recoverUpgrade(plan.plan_id, { reason })
+```
+
+Contract 批准和恢复是独立 capability。前端按钮 guard 只改善体验，后端 Route access 与状态机才是安全边界。
+
+## 错误、去重与 hooks
+
+```typescript
+import { isApiError } from '@lovecards/sdk'
+
+const stop = client.hooks.onError((context) => {
+  // 统一观测；不要记录 Token 或完整隐私数据
+})
+
+try {
+  await client.messages.send({ recipient_id, body: '' })
+} catch (error) {
+  if (isApiError(error)) console.log(error.details)
+}
+
+stop()
+```
+
+相同 GET 会自动去重；写请求不会自动幂等，业务必须使用 API 提供的唯一键。重试只适用于允许的错误/方法，不要把所有 POST 都无条件重放。
+
+## 契约元数据与维护
+
+```typescript
+import { generatedApiContract } from '@lovecards/sdk'
+
+generatedApiContract['messages.send']
+generatedApiContract['operations.createUpgrade']
+```
+
+新增或修改 API 的完整顺序见 `MAINTENANCE.md`。任何签名与本文冲突时，以当前生成源码、OpenAPI 和 Route Contract 为准，并修正文档，不维护兼容假象。

@@ -1,0 +1,518 @@
+/* Blueprint 01 - Apple-calibrated editorial discovery feed. */
+#blueprint-home .shell{
+  --feed-canvas:#f5f5f7;
+  --feed-surface:#fff;
+  --feed-ink:#1d1d1f;
+  --feed-secondary:#6e6e73;
+  --feed-tertiary:#8e8e93;
+  --feed-separator:rgba(60,60,67,.14);
+  background:var(--feed-canvas);
+}
+
+#blueprint-home .desktop-main{padding:24px 28px 28px}
+#blueprint-home .page-title{margin-bottom:18px}
+#blueprint-home .page-title h2{
+  color:var(--feed-ink);
+  font-size:22px;
+  font-weight:750;
+  letter-spacing:-.025em;
+}
+#blueprint-home .page-title p{
+  margin-top:5px;
+  color:var(--feed-secondary);
+  font-size:10px;
+}
+#blueprint-home .page-title button{
+  min-height:36px;
+  padding-inline:13px;
+  border-color:var(--feed-separator);
+  border-radius:10px;
+  color:var(--feed-ink);
+  background:rgba(255,255,255,.9);
+}
+
+/* Desktop is an editorial grid: one lead story, then quieter supporting stories. */
+#blueprint-home .feed-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 220px;
+  gap:24px;
+}
+#blueprint-home .feed-columns{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:22px 14px;
+  columns:auto;
+}
+#blueprint-home .feed-card{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-self:start;
+  min-width:0;
+  margin:0;
+  overflow:visible;
+  border:0;
+  border-radius:0;
+  background:transparent;
+}
+#blueprint-home .feed-card:nth-child(2){grid-column:1/3;grid-row:1}
+#blueprint-home .feed-card:first-child{grid-column:3;grid-row:1}
+#blueprint-home .feed-card:nth-child(3){grid-column:1;grid-row:2}
+#blueprint-home .feed-card:nth-child(4){grid-column:2;grid-row:2}
+#blueprint-home .feed-card:nth-child(5){grid-column:3;grid-row:2}
+
+#blueprint-home .feed-card .media,
+#blueprint-home .feed-card .gallery{
+  position:relative;
+  grid-row:1;
+  grid-column:1/-1;
+  width:100%;
+  margin:0;
+  overflow:hidden;
+  border-radius:14px;
+  background-color:#e8e8ed;
+  background-position:center;
+  background-repeat:no-repeat;
+  background-size:cover;
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.08);
+}
+#blueprint-home .feed-card .media{min-height:188px}
+#blueprint-home .feed-card:nth-child(2) .media{
+  min-height:208px;
+  background-image:url("../assets/feed/seaside-morning-v1.webp");
+  background-position:center 64%;
+}
+#blueprint-home .feed-card .media.run{
+  min-height:188px;
+  background-image:url("../assets/feed/morning-run-v1.webp");
+  background-position:center 58%;
+}
+#blueprint-home .feed-card .media.coast::before,
+#blueprint-home .feed-card .media.coast::after,
+#blueprint-home .feed-card .media.run::before,
+#blueprint-home .feed-card .media.run::after{content:none}
+
+#blueprint-home .feed-card .gallery{
+  height:188px;
+  padding:0;
+  background-image:url("../assets/feed/city-walk-grid-v1.webp");
+}
+#blueprint-home .feed-card .gallery i{visibility:hidden}
+#blueprint-home .feed-card .gallery::after{
+  content:"4";
+  position:absolute;
+  top:9px;
+  right:9px;
+  display:grid;
+  place-items:center;
+  min-width:25px;
+  height:25px;
+  padding:0 7px;
+  border-radius:999px;
+  color:#fff;
+  background:rgba(28,28,30,.66);
+  font-size:8px;
+  font-weight:700;
+}
+#blueprint-home .feed-card .media-label{
+  left:9px;
+  bottom:9px;
+  padding:5px 7px;
+  border-radius:999px;
+  color:#fff;
+  background:rgba(28,28,30,.66);
+  font-size:7px;
+  font-weight:700;
+  letter-spacing:.06em;
+}
+
+#blueprint-home .feed-card .feed-copy{
+  grid-row:2;
+  grid-column:1/-1;
+  padding:9px 1px 4px;
+}
+#blueprint-home .feed-card .feed-copy h3{
+  display:-webkit-box;
+  overflow:hidden;
+  margin:0;
+  color:var(--feed-ink);
+  font-size:12.5px;
+  font-weight:650;
+  line-height:1.45;
+  letter-spacing:-.008em;
+  text-overflow:ellipsis;
+  text-wrap:pretty;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+}
+#blueprint-home .feed-card:nth-child(2) .feed-copy h3{
+  font-size:15px;
+  font-weight:680;
+  letter-spacing:-.015em;
+}
+#blueprint-home .feed-card .feed-copy p,
+#blueprint-home .feed-card .topic,
+#blueprint-home .feed-card .identity small{display:none}
+
+#blueprint-home .feed-card header{
+  grid-row:3;
+  grid-column:1;
+  min-width:0;
+  gap:7px;
+  padding:3px 1px 0;
+}
+#blueprint-home .feed-card .mini-avatar{
+  width:24px;
+  height:24px;
+  color:#8f2747;
+  background:#ffe2ea;
+  font-size:8px;
+  font-weight:750;
+}
+#blueprint-home .feed-card .identity{
+  display:block;
+  overflow:hidden;
+  color:var(--feed-secondary);
+  font-size:10px;
+  font-weight:500;
+  line-height:24px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#blueprint-home .feed-card .actions{
+  grid-row:3;
+  grid-column:2;
+  align-self:center;
+  height:32px;
+  padding:3px 1px 0 10px;
+  border:0;
+  color:var(--feed-secondary);
+  font-size:9px;
+  font-variant-numeric:tabular-nums;
+}
+#blueprint-home .feed-card .actions span{
+  display:flex;
+  align-items:center;
+  gap:3px;
+}
+#blueprint-home .feed-card .action-more{
+  width:32px;
+  height:32px;
+  padding:0;
+  border:0;
+  color:var(--feed-secondary);
+  background:transparent;
+  font-size:12px;
+}
+
+/* Text-only and discussion stories are content surfaces, not decorative color blocks. */
+#blueprint-home .feed-card:first-child .feed-copy,
+#blueprint-home .feed-card:nth-child(5) .feed-copy{
+  position:relative;
+  display:flex;
+  min-height:240px;
+  padding:48px 17px 17px;
+  flex-direction:column;
+  justify-content:flex-end;
+  border-radius:14px;
+  background:var(--feed-surface);
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.07);
+}
+#blueprint-home .feed-card:first-child .feed-copy::before,
+#blueprint-home .feed-card:nth-child(5) .feed-copy::before{
+  position:absolute;
+  top:16px;
+  left:17px;
+  color:var(--feed-tertiary);
+  font-size:9px;
+  font-weight:650;
+}
+#blueprint-home .feed-card:first-child .feed-copy::before{content:"\968f\624b\8bb0"}
+#blueprint-home .feed-card:nth-child(5) .feed-copy::before{content:"\793e\533a\6295\7968"}
+#blueprint-home .feed-card:first-child .feed-copy h3,
+#blueprint-home .feed-card:nth-child(5) .feed-copy h3{
+  font-size:16px;
+  font-weight:680;
+  line-height:1.48;
+  letter-spacing:-.018em;
+  -webkit-line-clamp:4;
+}
+#blueprint-home .feed-card:first-child .feed-copy p{
+  display:block;
+  margin:9px 0 0;
+  color:var(--feed-secondary);
+  font-size:10px;
+  line-height:1.55;
+}
+#blueprint-home .feed-card:nth-child(5) .feed-copy{
+  min-height:188px;
+  justify-content:flex-start;
+}
+#blueprint-home .feed-card:nth-child(5) .feed-copy p{
+  display:block;
+  margin:10px 0 0;
+  color:var(--feed-secondary);
+  font-size:9px;
+  line-height:1.9;
+}
+
+#blueprint-home .side{
+  display:grid;
+  align-content:start;
+  align-self:start;
+  gap:0;
+  overflow:hidden;
+  border-radius:14px;
+  background:rgba(255,255,255,.82);
+  box-shadow:inset 0 0 0 .5px rgba(0,0,0,.07);
+}
+#blueprint-home .side-card{
+  padding:16px 15px 14px;
+  border:0;
+  border-radius:0;
+  background:transparent;
+}
+#blueprint-home .side-card + .side-card{
+  padding-top:15px;
+  border-top:1px solid var(--feed-separator);
+}
+#blueprint-home .side-section-head{
+  display:flex;
+  align-items:start;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:10px;
+}
+#blueprint-home .side-section-head h3{
+  margin:0;
+  color:var(--feed-ink);
+  font-size:12px;
+  font-weight:720;
+  letter-spacing:-.01em;
+}
+#blueprint-home .side-section-head p{
+  margin:3px 0 0;
+  color:var(--feed-secondary);
+  font-size:8px;
+  line-height:1.35;
+}
+#blueprint-home .side-section-head>button{
+  min-width:38px;
+  min-height:28px;
+  padding:0 7px;
+  border:0;
+  border-radius:7px;
+  color:var(--feed-secondary);
+  background:transparent;
+  font-size:8px;
+  font-weight:650;
+}
+#blueprint-home .trend-row{
+  display:grid;
+  grid-template-columns:20px minmax(0,1fr) 16px;
+  align-items:center;
+  width:100%;
+  min-height:45px;
+  padding:5px 4px;
+  border:0;
+  border-radius:9px;
+  color:var(--feed-ink);
+  background:transparent;
+  text-align:left;
+}
+#blueprint-home .trend-rank{
+  color:#b92757;
+  font-size:11px;
+  font-weight:750;
+  font-variant-numeric:tabular-nums;
+}
+#blueprint-home .trend-copy{
+  display:grid;
+  gap:2px;
+  min-width:0;
+}
+#blueprint-home .trend-copy b{
+  overflow:hidden;
+  font-size:9px;
+  font-weight:650;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#blueprint-home .trend-copy small{
+  color:var(--feed-secondary);
+  font-size:8px;
+}
+#blueprint-home .trend-signal{
+  color:#c42c5e;
+  font-size:10px;
+  text-align:center;
+}
+#blueprint-home .creator-row{
+  display:grid;
+  grid-template-columns:30px minmax(0,1fr) auto;
+  align-items:center;
+  gap:8px;
+  min-height:49px;
+}
+#blueprint-home .creator-avatar{
+  display:grid;
+  place-items:center;
+  width:30px;
+  height:30px;
+  border-radius:50%;
+  font-size:9px;
+  font-weight:750;
+}
+#blueprint-home .creator-avatar.tone-rose{color:#9d3153;background:#ffe1e9}
+#blueprint-home .creator-avatar.tone-blue{color:#375f79;background:#dcecf5}
+#blueprint-home .creator-avatar.tone-mint{color:#3f6a5d;background:#dceee8}
+#blueprint-home .creator-copy{
+  display:grid;
+  gap:2px;
+  min-width:0;
+}
+#blueprint-home .creator-copy b{
+  overflow:hidden;
+  color:var(--feed-ink);
+  font-size:9px;
+  font-weight:650;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#blueprint-home .creator-copy small{
+  overflow:hidden;
+  color:var(--feed-secondary);
+  font-size:7.5px;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#blueprint-home .creator-row>button{
+  min-width:42px;
+  min-height:28px;
+  padding:0 8px;
+  border:0;
+  border-radius:8px;
+  color:#b92757;
+  background:#fff0f4;
+  font-size:8px;
+  font-weight:700;
+}
+#blueprint-home .side-note{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  min-height:39px;
+  padding:0 15px;
+  border-top:1px solid var(--feed-separator);
+  color:var(--feed-tertiary);
+  font-size:7.5px;
+}
+#blueprint-home .side-note button{
+  min-width:48px;
+  min-height:28px;
+  padding:0 2px;
+  border:0;
+  color:var(--feed-secondary);
+  background:transparent;
+  font-size:7.5px;
+  font-weight:600;
+  white-space:nowrap;
+}
+@media (hover:hover){
+  #blueprint-home .trend-row,
+  #blueprint-home .side-section-head>button,
+  #blueprint-home .creator-row>button,
+  #blueprint-home .side-note button{
+    transition:color 160ms cubic-bezier(.22,1,.36,1),background-color 160ms cubic-bezier(.22,1,.36,1),transform 160ms cubic-bezier(.22,1,.36,1);
+  }
+  #blueprint-home .trend-row:hover,
+  #blueprint-home .side-section-head>button:hover{background:#f5f5f7}
+  #blueprint-home .creator-row>button:hover{color:#fff;background:#c92c60}
+  #blueprint-home .creator-row>button:active{transform:scale(.97)}
+  #blueprint-home .side-note button:hover{color:#b92757}
+}
+#blueprint-home .side button:focus-visible{
+  outline:2px solid rgba(185,39,87,.5);
+  outline-offset:2px;
+}
+
+/* Mobile keeps Xiaohongshu's quick two-column scan with less card chrome. */
+#blueprint-home .mobile-feed{
+  height:612px;
+  padding:10px 9px 20px;
+  overflow:hidden;
+  background:#fff;
+}
+#blueprint-home .mobile-feed .page-title{display:none}
+#blueprint-home .masonry{
+  display:block;
+  columns:2;
+  column-gap:9px;
+}
+#blueprint-home .masonry .feed-card{
+  display:inline-grid;
+  width:100%;
+  margin:0 0 16px;
+  break-inside:avoid;
+}
+#blueprint-home .masonry .feed-card .media,
+#blueprint-home .masonry .feed-card .gallery{border-radius:11px}
+#blueprint-home .masonry .feed-card .media{min-height:168px}
+#blueprint-home .masonry .feed-card:nth-child(2) .media{
+  min-height:184px;
+  background-position:center 62%;
+}
+#blueprint-home .masonry .feed-card .media.run{
+  min-height:202px;
+  background-position:center 55%;
+}
+#blueprint-home .masonry .feed-card .gallery{height:168px}
+#blueprint-home .masonry .feed-card .feed-copy{padding:8px 1px 4px}
+#blueprint-home .masonry .feed-card .feed-copy h3,
+#blueprint-home .masonry .feed-card:nth-child(2) .feed-copy h3{
+  font-size:12px;
+  font-weight:650;
+  line-height:1.45;
+}
+#blueprint-home .masonry .feed-card:first-child .feed-copy{
+  min-height:132px;
+  padding:38px 14px 14px;
+  border-radius:11px;
+}
+#blueprint-home .masonry .feed-card:first-child .feed-copy::before{
+  top:13px;
+  left:14px;
+  font-size:8px;
+}
+#blueprint-home .masonry .feed-card:first-child .feed-copy h3{
+  font-size:14px;
+  line-height:1.46;
+}
+#blueprint-home .masonry .feed-card:first-child .feed-copy p{display:none}
+#blueprint-home .masonry .feed-card header{gap:6px;padding-top:2px}
+#blueprint-home .masonry .feed-card .mini-avatar{width:22px;height:22px}
+#blueprint-home .masonry .feed-card .identity{
+  max-width:78px;
+  font-size:9px;
+  line-height:22px;
+}
+#blueprint-home .masonry .feed-card .actions{
+  height:30px;
+  padding-top:2px;
+  font-size:8.5px;
+}
+
+@media (hover:hover){
+  #blueprint-home .feed-card .media,
+  #blueprint-home .feed-card .gallery,
+  #blueprint-home .feed-card:first-child .feed-copy,
+  #blueprint-home .feed-card:nth-child(5) .feed-copy{
+    transition:transform 180ms cubic-bezier(.22,1,.36,1),box-shadow 180ms cubic-bezier(.22,1,.36,1);
+  }
+  #blueprint-home .feed-card:hover .media,
+  #blueprint-home .feed-card:hover .gallery,
+  #blueprint-home .feed-card:first-child:hover .feed-copy,
+  #blueprint-home .feed-card:nth-child(5):hover .feed-copy{transform:translateY(-1px)}
+}
+@media (prefers-reduced-motion:reduce){
+  #blueprint-home *{transition:none!important}
+}

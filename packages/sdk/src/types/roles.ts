@@ -20,9 +20,9 @@ export interface UpdateRoleParams {
   description?: string
 }
 
-export interface AssignCapabilitiesParams {
-  capabilities: string[]
-}
+import type { Grant } from './permissions'
+
+export interface AssignGrantsParams { grants: Grant[] }
 
 export interface ReseedResult {
   total: number

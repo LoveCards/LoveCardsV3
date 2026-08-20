@@ -9,14 +9,17 @@ class SessionDebounce
 {
     public function handle($request, \Closure $next)
     {
-        $name = 'LastPostTime';
+        $routeName = request()->rule() && method_exists(request()->rule(), 'getName')
+            ? (string) request()->rule()->getName()
+            : (string) request()->path();
+        $name = 'LastPostTime:' . $routeName . ':' . (string) request()->ip();
         $time = 6;
 
         $lastPostTime = Session::get($name);
         if ($lastPostTime === null || time() > strtotime((string) $lastPostTime)) {
             Session::set($name, date("Y-m-d H:i:s", strtotime('+' . $time . ' second')));
         } else {
-            return ApiResponse::createError('操作失败', ['您的操作太快了，稍后再试试试吧']);
+            return ApiResponse::createTooMany('操作太快了，请稍后再试');
         }
 
         return $next($request);

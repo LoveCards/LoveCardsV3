@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia';
 import { useApi } from '~/lib/api';
+import type { DashboardData } from '@lovecards/sdk';
 
 export const useDashboardStore = defineStore('dashboard', {
     state: () => ({
-        dashboard: null as any,
+        dashboard: null as DashboardData | null,
         loading: false,
         error: null as string | null,
     }),

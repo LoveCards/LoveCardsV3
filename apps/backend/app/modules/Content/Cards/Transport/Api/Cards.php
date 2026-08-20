@@ -40,11 +40,16 @@ class Cards extends Validate
 
     public static $all_scene = [
 
-        'create' => [
+        'selfCreate' => [
 
             'normal' => [
 
-                'pictures'
+                'pictures',
+                'data',
+                'media_file_ids',
+                'picture_file_ids',
+                'cover_file_id',
+                'tags'
 
             ],
 
@@ -66,29 +71,17 @@ class Cards extends Validate
 
         ],
 
-        'allUpdate' => [
+        'selfUpdate' => [
 
             'normal' => [
 
                 'pictures',
-
-
-
                 'content',
-
-                'is_top',
-
-                'status',
-
-
-
-                'user_id',
-
-                'comments',
-
-                'views',
-
-                'good'
+                'data',
+                'media_file_ids',
+                'picture_file_ids',
+                'cover_file_id',
+                'tags'
 
             ],
 
@@ -109,7 +102,18 @@ class Cards extends Validate
             ],
 
         ],
-
+        'adminUpdate' => [
+            'normal' => ['pictures', 'content', 'data', 'media_file_ids', 'picture_file_ids', 'cover_file_id', 'tags', 'is_top', 'status', 'user_id', 'comments', 'views', 'good'],
+            'require' => ['id'], 'nonNull' => false, 'toNull' => ['cover', 'tags'],
+        ],
+        'create' => [
+            'normal' => ['pictures', 'data', 'media_file_ids', 'picture_file_ids', 'cover_file_id', 'tags'],
+            'require' => ['content'], 'nonNull' => false, 'toNull' => ['cover', 'tags'],
+        ],
+        'allUpdate' => [
+            'normal' => ['pictures', 'content', 'data', 'media_file_ids', 'picture_file_ids', 'cover_file_id', 'tags', 'is_top', 'status', 'user_id', 'comments', 'views', 'good'],
+            'require' => ['id'], 'nonNull' => false, 'toNull' => ['cover', 'tags'],
+        ],
     ];
 
     public static $scene_message = [
@@ -133,6 +137,9 @@ class Cards extends Validate
         'user_id' => 'number',
 
         'data' => 'arrayJson',
+        'media_file_ids' => 'arrayJson|picturesLength',
+        'picture_file_ids' => 'arrayJson|picturesLength',
+        'cover_file_id' => 'number',
 
         'cover' => 'url|max:2083',
 

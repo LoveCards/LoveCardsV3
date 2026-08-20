@@ -1,6 +1,5 @@
 <!-- 用户管理 -->
 <template>
-	<NuxtLayout name="root">
 		<!-- 标题 -->
 		<v-row class="pt-2">
 			<v-col cols="6">
@@ -110,13 +109,37 @@
 				</v-card>
 			</v-col>
 		</v-row>
-	</NuxtLayout>
 </template>
 
 <script setup lang="ts">
 import { useApi } from '~/lib/api';
-import CommonUtils from "~/api/utils/common";
+import CommonUtils from "~/utils/common";
+import { readBoolean, readNumber, readObject, readString } from '~/utils/json';
+import type { JsonObject } from '@lovecards/sdk';
 const client = useApi();
+
+interface SiteSettings {
+	siteUrl: string;
+	siteName: string;
+	siteTitle: string;
+	siteKeywords: string;
+	siteDes: string;
+	siteICPId: string;
+	siteCopyright: string;
+}
+
+interface MasterSettings {
+	System: { VisitorMode: boolean };
+	UserAuth: { Captcha: boolean };
+	Upload: { UserImageSize: number; UserImageExt: string };
+	Cards: { PictureLimit: number; TagLimit: number; Approve: boolean };
+	Comments: { Approve: boolean };
+}
+
+interface FrontendConfig {
+	system: SiteSettings;
+	master: MasterSettings;
+}
 
 const ViewTab = ref('');
 const ViewMasterSwitchItems = [
@@ -125,42 +148,47 @@ const ViewMasterSwitchItems = [
 ]
 
 // 后端 snake_case → 前端 camelCase/PascalCase 转换
-const toFrontendFormat = (raw: any) => {
+const toFrontendFormat = (raw: JsonObject): FrontendConfig => {
+	const core = readObject(raw.core);
+	const user = readObject(raw.user);
+	const upload = readObject(raw.upload);
+	const cards = readObject(raw.cards);
+	const comments = readObject(raw.comments);
 	return {
 		system: {
-			siteUrl: raw.core?.url ?? '',
-			siteName: raw.core?.name ?? '',
-			siteTitle: raw.core?.title ?? '',
-			siteKeywords: raw.core?.keywords ?? '',
-			siteDes: raw.core?.description ?? '',
-			siteICPId: raw.core?.icp_id ?? '',
-			siteCopyright: raw.core?.copyright ?? '',
+			siteUrl: readString(core.url),
+			siteName: readString(core.name),
+			siteTitle: readString(core.title),
+			siteKeywords: readString(core.keywords),
+			siteDes: readString(core.description),
+			siteICPId: readString(core.icp_id),
+			siteCopyright: readString(core.copyright),
 		},
 		master: {
 			System: {
-				VisitorMode: raw.core?.visitor_mode ?? false,
+				VisitorMode: readBoolean(core.visitor_mode),
 			},
 			UserAuth: {
-				Captcha: raw.user?.captcha ?? false,
+				Captcha: readBoolean(user.captcha),
 			},
 			Upload: {
-				UserImageSize: raw.upload?.user_image_size ?? 2,
-				UserImageExt: raw.upload?.user_image_ext ?? '',
+				UserImageSize: readNumber(upload.user_image_size, 2),
+				UserImageExt: readString(upload.user_image_ext),
 			},
 			Cards: {
-				PictureLimit: raw.cards?.picture_limit ?? 15,
-				TagLimit: raw.cards?.tag_limit ?? 3,
-				Approve: raw.cards?.approve ?? false,
+				PictureLimit: readNumber(cards.picture_limit, 15),
+				TagLimit: readNumber(cards.tag_limit, 3),
+				Approve: readBoolean(cards.approve),
 			},
 			Comments: {
-				Approve: raw.comments?.approve ?? false,
+				Approve: readBoolean(comments.approve),
 			},
 		},
 	};
 };
 
 // 前端 master → 后端格式 反向转换
-const toBackendConfig = (master: any) => {
+const toBackendConfig = (master: MasterSettings): JsonObject => {
 	return {
 		core: {
 			visitor_mode: master.System?.VisitorMode ?? false,
@@ -184,7 +212,7 @@ const toBackendConfig = (master: any) => {
 };
 
 // 前端 system → 后端 core 格式
-const toBackendSite = (system: any) => {
+const toBackendSite = (system: SiteSettings): JsonObject => {
 	return {
 		core: {
 			url: system.siteUrl ?? '',
@@ -198,8 +226,12 @@ const toBackendSite = (system: any) => {
 	};
 };
 
-const systemConfig = ref({} as any);
-const OriginSystemConfig = ref({} as any);
+const emptyConfig: FrontendConfig = {
+	system: { siteUrl: '', siteName: '', siteTitle: '', siteKeywords: '', siteDes: '', siteICPId: '', siteCopyright: '' },
+	master: { System: { VisitorMode: false }, UserAuth: { Captcha: false }, Upload: { UserImageSize: 2, UserImageExt: '' }, Cards: { PictureLimit: 15, TagLimit: 3, Approve: false }, Comments: { Approve: false } },
+};
+const systemConfig = ref<FrontendConfig>(CommonUtils.deepClone(emptyConfig));
+const OriginSystemConfig = ref<FrontendConfig>(CommonUtils.deepClone(emptyConfig));
 const getConfig = () => {
 	client.config.list().then((result) => {
 		const converted = toFrontendFormat(result);

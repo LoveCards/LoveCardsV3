@@ -74,6 +74,12 @@ if (preg_match('/SELECT\s+1/i', $dbCode) || preg_match('/query\(\s*\'SELECT\b/',
     fail("Database::Connect() may not use a generic connection check");
 }
 
+if (preg_match("/'charset'\\s*=>\\s*'utf8mb4'/", $dbCode)) {
+    pass("Database::Connect() uses utf8mb4 for multilingual data");
+} else {
+    fail("Database::Connect() must use utf8mb4, not the legacy three-byte utf8 charset");
+}
+
 // ────────────────────────────────────────────────────────────
 //  2. Database.php: Clear() 返回 bool
 // ────────────────────────────────────────────────────────────
@@ -284,6 +290,24 @@ if (strpos($environmentCode, 'version_compare') !== false) {
     pass('Installer compares PHP versions with version_compare');
 } else {
     fail('Installer does not use version_compare');
+}
+
+// ────────────────────────────────────────────────────────────
+//  9. Passwordless local MySQL fallback matches .env.example
+// ────────────────────────────────────────────────────────────
+echo "\n--- 9. Database environment fallback ---\n";
+
+$databaseConfig = (string) file_get_contents($baseDir . '/config/database.php');
+$envExample = (string) file_get_contents($baseDir . '/.env.example');
+if (preg_match('/\'password\'\s*=>\s*env\(\'database\.password\',\s*\$persistent\[\'password\'\]\s*\?\?\s*\'\'\)/', $databaseConfig)) {
+    pass('Database config prefers environment, then persistent state, while permitting passwordless local MySQL');
+} else {
+    fail('Database config must preserve environment > persistent > passwordless fallback precedence');
+}
+if (preg_match('/^PASSWORD\\s*=\\s*$/m', $envExample)) {
+    pass('.env.example documents the passwordless local MySQL fallback');
+} else {
+    fail('.env.example database password contract changed unexpectedly');
 }
 
 // ────────────────────────────────────────────────────────────

@@ -9,14 +9,11 @@ use app\modules\Content\Infrastructure\Persistence\Model\TagsMap as TagsMapModel
 
 use app\shared\Infrastructure\Persistence\BulkFieldToggle;
 use app\shared\Infrastructure\Persistence\ModelQuery;
-use app\shared\Authorization\OwnershipGuard;
+use app\shared\Authorization\GrantSet;
+use app\modules\Content\Tags\Service\Policy\TagPolicy;
 
 class Tags
 {
-    use OwnershipGuard;
-
-    protected static string $guardModel = TagsModel::class;
-
     public static function noPaginateIndex($params): array
     {
         $params['search_default_key'] = 'name';
@@ -43,12 +40,16 @@ class Tags
     public static function listAll(array $params, array $caps = []): array
     {
         $params['search_default_key'] = 'name';
+        $canReadAll = in_array('tags.read.all', $caps, true);
 
-        if (!in_array('tags.read.all', $caps)) {
+        if (!$canReadAll) {
             $params['where']['status'] = 0;
         }
 
-        return self::Index($params);
+        return ModelQuery::make(TagsModel::class)
+            ->trashScope((int) ($params['show_deleted'] ?? 0), $canReadAll)
+            ->getPaginate($params)
+            ->toArray();
     }
 
     public static function createTag($params): void
@@ -65,7 +66,7 @@ class Tags
      * @param int    $uid
      * @param array  $caps
      */
-    public static function batchOperate(string $method, array $ids, int $uid, array $caps): void
+    public static function batchOperate(string $method, array $ids, int $uid, GrantSet $grants): void
     {
         if (empty($ids)) {
             throw \app\api\ApiException::badRequest('未指定要操作的资源');
@@ -76,6 +77,9 @@ class Tags
             'ban'     => 'tags.update',
             'hide'    => 'tags.update',
             'delete'  => 'tags.delete',
+            'trash'   => 'tags.delete',
+            'restore' => 'tags.delete',
+            'hard_delete' => 'tags.delete',
         ];
 
         $cap = $opCaps[$method] ?? null;
@@ -83,13 +87,15 @@ class Tags
             throw \app\api\ApiException::badRequest('不支持的操作');
         }
 
-        self::guardBatch($ids, $uid, $caps, $cap);
+        TagPolicy::assertCanBatch($grants, substr($cap, strlen('tags.')), $ids, $uid, in_array($method, ['restore', 'hard_delete'], true));
 
         match ($method) {
             'approve' => BulkFieldToggle::toggle(TagsModel::class, 'status', $ids, [0, 3], [1, 2]),
             'ban' => BulkFieldToggle::toggle(TagsModel::class, 'status', $ids, [0, 1], [2, 3]),
             'hide' => BulkFieldToggle::toggle(TagsModel::class, 'status', $ids, [0, 2], [1, 3]),
-            'delete' => self::deleteTagsWithMap($ids),
+            'delete', 'trash' => TagsModel::destroy($ids),
+            'restore' => TagsModel::withTrashed()->onlyTrashed()->whereIn('id', $ids)->update(['deleted_at' => null]),
+            'hard_delete' => self::hardDeleteTagsWithMap($ids),
         };
     }
 
@@ -100,14 +106,14 @@ class Tags
      * @param int   $uid
      * @param array $caps
      */
-    public static function deleteTags(array $ids, int $uid, array $caps): void
+    public static function deleteTags(array $ids, int $uid, GrantSet $grants): void
     {
         if (empty($ids)) {
             throw \app\api\ApiException::badRequest('未指定要删除的标签');
         }
 
         // 验证能力 + 归属
-        self::guardBatch($ids, $uid, $caps, 'tags.delete');
+        TagPolicy::assertCanBatch($grants, 'delete', $ids, $uid);
 
         Db::startTrans();
         try {
@@ -141,6 +147,26 @@ class Tags
         }
     }
 
+    public static function listOwn(array $params, int $uid): array
+    {
+        $params['search_default_key'] = 'name';
+        $params['where']['user_id'] = $uid;
+        return ModelQuery::make(TagsModel::class)->getPaginate($params)->toArray();
+    }
+
+    private static function hardDeleteTagsWithMap(array $ids): void
+    {
+        Db::startTrans();
+        try {
+            Db::table('tags_map')->whereIn('tag_id', $ids)->delete();
+            Db::table('tags')->whereIn('id', $ids)->delete();
+            Db::commit();
+        } catch (\Throwable $th) {
+            Db::rollback();
+            throw \app\api\ApiException::error('鍒犻櫎澶辫触', \app\api\ApiException::CODE_SYSTEM_ERROR, null, $th);
+        }
+    }
+
     /**
      * 更新标签
      *
@@ -148,12 +174,12 @@ class Tags
      * @param int   $uid
      * @param array $caps
      */
-    public static function updateTag(array $data, int $uid, array $caps): void
+    public static function updateTag(array $data, int $uid, GrantSet $grants): void
     {
         Db::startTrans();
         try {
             // 验证能力 + 归属
-            self::guard($data['id'], $uid, $caps, 'tags.update');
+            TagPolicy::assertCan($grants, 'update', (int) $data['id'], $uid);
 
             // 移除敏感字段
             unset($data['user_id']);

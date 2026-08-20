@@ -84,6 +84,26 @@ class ConfigService
         return ['group' => $group, 'seeded' => $seeded, 'skipped' => $skipped];
     }
 
+    public static function fillDefaults(string $group, array $schema): array
+    {
+        $filled = [];
+        foreach ($schema as $key => $definition) {
+            if (!array_key_exists('default', $definition)) continue;
+            $row = Db::table('configs')->where('group', $group)->where('key', $key)->find();
+            if (!$row || ($row['value'] ?? null) !== '') continue;
+            Db::table('configs')->where('group', $group)->where('key', $key)->update([
+                'value' => (string) $definition['default'],
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]);
+            $filled[] = "{$group}.{$key}";
+        }
+        if ($filled) {
+            unset(self::$cache[$group]);
+            CacheManager::clearDomain('config');
+        }
+        return $filled;
+    }
+
     // ═══════════════════════════════
     //  读取接口
     // ═══════════════════════════════

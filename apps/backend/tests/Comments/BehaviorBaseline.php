@@ -34,6 +34,49 @@ namespace app\modules\Content\Infrastructure\Persistence\Model
         const STATUS_BAN      = 2;
         const STATUS_APPROVAL = 3;
         const DELETE_NORMAL = 0;
+        public static array $rows = [];
+        public static array $capturedWhere = [];
+
+        public static function where(string $field, mixed $value): CommentQuery
+        {
+            self::$capturedWhere = [[$field, $value]];
+            return new CommentQuery(self::$capturedWhere);
+        }
+    }
+
+    final class CommentQuery
+    {
+        public function __construct(private array $where) {}
+        public function where(string $field, mixed $value): self
+        {
+            $this->where[] = [$field, $value];
+            Comments::$capturedWhere = $this->where;
+            return $this;
+        }
+        public function findOrEmpty(): object
+        {
+            $matched = null;
+            foreach (Comments::$rows as $row) {
+                $ok = true;
+                foreach ($this->where as [$field, $value]) {
+                    if (($row[$field] ?? null) !== $value) { $ok = false; break; }
+                }
+                if ($ok) { $matched = $row; break; }
+            }
+            return new class($matched) {
+                public function __construct(private ?array $row) {}
+                public function isEmpty(): bool { return $this->row === null; }
+                public function toArray(): array { return $this->row ?? []; }
+            };
+        }
+    }
+}
+
+namespace app\api
+{
+    class ApiException extends \RuntimeException
+    {
+        public static function notFound(string $message): self { return new self($message, 404); }
     }
 }
 
@@ -47,6 +90,11 @@ namespace app\shared\Infrastructure\Persistence
         public static function make($model = null): self
         {
             return new self;
+        }
+
+        public function trashScope(int $showDeleted = 0, bool $canReadAll = false): self
+        {
+            return $this;
         }
 
         public function getPaginate(array $params): object
@@ -73,7 +121,6 @@ namespace app\shared\Infrastructure\Persistence
 // ════════════════════════════════════════════════════════════
 namespace
 {
-        require __DIR__ . '/../../app/shared/Authorization/OwnershipGuard.php';
 require __DIR__ . '/../../app/modules/Content/Comments/Service/Comments.php';
 }
 
@@ -113,6 +160,8 @@ namespace
     $reset = static function (): void {
         \app\shared\Infrastructure\Persistence\ModelQuery::$capturedParams = [];
         \app\shared\Infrastructure\Persistence\ModelQuery::$callCount = 0;
+        \app\modules\Content\Infrastructure\Persistence\Model\Comments::$capturedWhere = [];
+        \app\modules\Content\Infrastructure\Persistence\Model\Comments::$rows = [];
     };
 }
 
@@ -175,6 +224,51 @@ namespace
         \app\modules\Content\Comments\Service\Comments::listAll([], ['comments.read']);
         $params = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedParams;
         $assertSame('content', $params['search_default_key'] ?? null, 'search_default_key 应为 content');
+    });
+
+    $test('C1: public comment detail requires published status', static function () use ($reset, $assertSame): void {
+        $reset();
+        \app\modules\Content\Infrastructure\Persistence\Model\Comments::$rows = [
+            ['id' => 9, 'status' => 0, 'content' => 'visible'],
+        ];
+        $result = \app\modules\Content\Comments\Service\Comments::get(9);
+        $assertSame('visible', $result['content'] ?? null, 'published comment should be readable');
+        $assertSame([['id', 9], ['status', 0]], \app\modules\Content\Infrastructure\Persistence\Model\Comments::$capturedWhere);
+    });
+
+    $test('C2: hidden comment detail is not exposed publicly', static function () use ($reset, $assertSame): void {
+        $reset();
+        \app\modules\Content\Infrastructure\Persistence\Model\Comments::$rows = [
+            ['id' => 10, 'status' => 3, 'content' => 'pending'],
+        ];
+        try {
+            \app\modules\Content\Comments\Service\Comments::get(10);
+        } catch (\app\api\ApiException $exception) {
+            $assertSame(404, $exception->getCode(), 'hidden public detail should be a 404');
+            return;
+        }
+        throw new \RuntimeException('hidden comment was exposed publicly');
+    });
+
+    $test('C3: managed comment detail may include hidden status', static function () use ($reset, $assertSame): void {
+        $reset();
+        \app\modules\Content\Infrastructure\Persistence\Model\Comments::$rows = [
+            ['id' => 11, 'status' => 3, 'content' => 'pending'],
+        ];
+        $result = \app\modules\Content\Comments\Service\Comments::get(11, true);
+        $assertSame('pending', $result['content'] ?? null, 'managed detail should retain moderation visibility');
+        $assertSame([['id', 11]], \app\modules\Content\Infrastructure\Persistence\Model\Comments::$capturedWhere);
+    });
+
+    $test('C4: reply creation validates visible parent scope before insert', static function () use ($assertTrue): void {
+        $source = (string) file_get_contents(__DIR__ . '/../../app/modules/Content/Comments/Service/Comments.php');
+        $parentLookup = strpos($source, "CommentsModel::where('id', \$parentId)");
+        $insert = strpos($source, 'CommentsModel::create($params)');
+        $assertTrue($parentLookup !== false && $insert !== false && $parentLookup < $insert, 'parent validation must precede insert');
+        $scope = substr($source, $parentLookup, $insert - $parentLookup);
+        foreach (["->where('aid', 1)", "->where('pid', \$id)", "->where('status', 0)", "->lock(true)"] as $guard) {
+            $assertTrue(strpos($scope, $guard) !== false, 'missing parent guard: ' . $guard);
+        }
     });
 }
 

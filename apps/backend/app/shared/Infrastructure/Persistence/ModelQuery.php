@@ -146,6 +146,24 @@ class ModelQuery
     }
 
     /**
+     * Apply the common lifecycle selector used by all soft-delete resources.
+     *
+     * 0 = active records (the ThinkORM default),
+     * 1 = active + trashed records, and
+     * 2 = trashed records only.  Trash visibility is always capability
+     * controlled; callers without the all-scope capability remain on active
+     * records even if a client sends show_deleted.
+     */
+    public function trashScope(int $showDeleted = 0, bool $canReadAll = false): self
+    {
+        if (!$canReadAll || $showDeleted === 0) {
+            return $this;
+        }
+
+        return $showDeleted === 2 ? $this->onlyTrashed() : $this->withTrashed();
+    }
+
+    /**
      * 排除指定字段
      * @param array $withoutField 需要排除的字段
      * @return $this 返回当前对象，支持链式调用

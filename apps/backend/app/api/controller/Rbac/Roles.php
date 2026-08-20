@@ -2,22 +2,28 @@
 
 namespace app\api\controller\Rbac;
 
-use think\facade\Request;
-
 use app\modules\Platform\Rbac\Service\Roles as RolesService;
-use app\modules\Platform\Rbac\Transport\Api\Roles as RolesValidate;
 
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
 use app\shared\Transport\Http\ApiResource;
 use app\modules\Platform\Rbac\Transport\Api\RoleResource;
+use app\modules\Platform\Rbac\Transport\Api\GrantResource;
+use app\api\controller\BatchOperateTrait;
 
 class Roles extends BaseController
 {
+    use BatchOperateTrait;
+
+    protected function getBatchService(): string
+    {
+        return RolesService::class;
+    }
+
     public function list()
     {
-        $params = $this->paramIndex(Request::param());
-        $result = RolesService::Index($params);
+        $params = $this->validated();
+        $result = RolesService::Index($params, request()->auth->capabilities());
         return ApiResponse::createOk(RoleResource::paginate($result));
     }
 
@@ -29,15 +35,15 @@ class Roles extends BaseController
 
     public function create()
     {
-        $params = $this->param(RolesValidate::class, RolesValidate::$all_scene['create'], Request::param());
+        $params = $this->validated();
         $id = RolesService::createRole($params);
         return ApiResponse::createOk(ApiResource::make(['id' => $id]));
     }
 
     public function update($id)
     {
-        $params = $this->param(RolesValidate::class, RolesValidate::$all_scene['update'], Request::param());
         $id = (int) $id;
+        $params = $this->validated(null, ['id' => $id]);
         unset($params['id']);
         RolesService::updateRole($id, $params);
         return ApiResponse::createNoContent();
@@ -49,24 +55,24 @@ class Roles extends BaseController
         return ApiResponse::createNoContent();
     }
 
-    public function assignCapabilities($id)
+    public function assignGrants($id)
     {
-        $params = $this->param(RolesValidate::class, RolesValidate::$all_scene['assignCapabilities'], Request::param());
         $roleId = (int) $id;
-        $caps = is_string($params['capabilities'])
-            ? json_decode($params['capabilities'], true)
-            : $params['capabilities'];
-        if (!is_array($caps)) {
+        $params = $this->validated(null, ['id' => $roleId]);
+        $grants = is_string($params['grants'])
+            ? json_decode($params['grants'], true)
+            : $params['grants'];
+        if (!is_array($grants)) {
             throw \app\api\ApiException::badRequest('能力列表格式错误');
         }
-        RolesService::assignCapabilities($roleId, $caps);
+        RolesService::assignCapabilities($roleId, $grants);
         return ApiResponse::createNoContent();
     }
 
-    public function getRoleCapabilities($id)
+    public function getRoleGrants($id)
     {
         $result = RolesService::getRoleCapabilities((int) $id);
-        return ApiResponse::createOk(ApiResource::make($result));
+        return ApiResponse::createOk(GrantResource::collection($result));
     }
 
     public function reseed()

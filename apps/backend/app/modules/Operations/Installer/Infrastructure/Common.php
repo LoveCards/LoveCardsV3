@@ -2,23 +2,28 @@
 
 namespace app\modules\Operations\Installer\Infrastructure;
 
+use app\shared\SystemPaths\SystemPaths;
+
 class Common
 {
-    public static $InstallLockPath = "../lock.txt";
-
-    public static function InstallLock(): bool
+    public static function InstallLock(?SystemPaths $paths = null): bool
     {
-        if (@fopen(self::$InstallLockPath, 'r')) {
-            return true;
-        }
-        if (file_put_contents(self::$InstallLockPath, "LoveCards.cn")) {
-            return true;
-        }
-        throw new \RuntimeException('安装锁创建失败，请检查权限或手动添加lock.txt文件到根目录！');
+        $paths = PersistentFile::paths($paths);
+        PersistentFile::write($paths->stateRoot(), 'install.lock', "LoveCards.cn\n", 0600);
+        return true;
     }
 
-    public static function CheckInstallLock(): bool
+    public static function CheckInstallLock(?SystemPaths $paths = null): bool
     {
-        return @fopen(self::$InstallLockPath, 'r') !== false;
+        $paths = PersistentFile::paths($paths);
+        $stateRoot = $paths->stateRoot();
+        if (is_link($stateRoot)) throw new \RuntimeException('实例状态目录不能是 symlink');
+        $persistent = $stateRoot . DIRECTORY_SEPARATOR . 'install.lock';
+        if (!is_link($persistent) && is_file($persistent)) return true;
+
+        // Read-only compatibility for deployments installed before persistent
+        // instance state existed. New installs never write into active code.
+        $legacy = $paths->activeReleaseRoot() . DIRECTORY_SEPARATOR . 'lock.txt';
+        return !is_link($legacy) && is_file($legacy);
     }
 }

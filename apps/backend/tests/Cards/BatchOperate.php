@@ -6,7 +6,22 @@
 
 namespace think\facade
 {
-    class Db {}
+    class Db
+    {
+        public static function startTrans(): void {}
+        public static function commit(): void {}
+        public static function rollback(): void {}
+        public static function table(string $table): object
+        {
+            return new class {
+                public function where(...$args): self { return $this; }
+                public function whereIn(...$args): self { return $this; }
+                public function field(...$args): self { return $this; }
+                public function find(): ?array { return ['status' => 0, 'deleted_at' => null]; }
+                public function delete(): int { return 1; }
+            };
+        }
+    }
 }
 
 namespace app\api
@@ -151,8 +166,30 @@ namespace app\shared\Infrastructure\Persistence
 // ============================================================
 // require 生产文件（此后所有替身必须已就绪）
 // ============================================================
+namespace app\shared\Authorization
+{
+    class GrantSet {}
+}
+
+namespace app\modules\Platform\Files\Public
+{
+    final class Files
+    {
+        public static function referenceFileIds(string $type, string $id): array { return []; }
+        public static function replaceReferences(string $type, string $id, string $purpose, array $fileIds, int $ownerId, bool $isPublic, bool $allowAll): void {}
+    }
+}
+
+namespace app\modules\Content\Cards\Service\Policy
+{
+    class CardPolicy
+    {
+        public static function assertCanBatch(...$args): void {}
+        public static function assertCan(...$args): void {}
+    }
+}
+
 namespace {
-        require __DIR__ . '/../../app/shared/Authorization/OwnershipGuard.php';
 require __DIR__ . '/../../app/modules/Content/Cards/Domain/PublicationStatus.php';
     require __DIR__ . '/../../app/modules/Content/Cards/Service/Cards.php';
 }
@@ -194,7 +231,7 @@ namespace {
 
     $test('unhide builds whereIn → where → update chain', static function () use ($reset, $assertSame): void {
         $reset();
-        \app\modules\Content\Cards\Service\Cards::batchOperate('unhide', [1, 2, 3], 1, ['cards.update.all']);
+        \app\modules\Content\Cards\Service\Cards::batchOperate('unhide', [1, 2, 3], 1, new \app\shared\Authorization\GrantSet());
 
         $query = \app\modules\Content\Infrastructure\Persistence\Model\Cards::$lastQuery;
         $calls = $query->calls;
@@ -214,7 +251,7 @@ namespace {
 
     $test('hide delegates to FieldsToggle with correct params', static function () use ($reset, $assertSame): void {
         $reset();
-        \app\modules\Content\Cards\Service\Cards::batchOperate('hide', [10, 20], 1, ['cards.update.all']);
+        \app\modules\Content\Cards\Service\Cards::batchOperate('hide', [10, 20], 1, new \app\shared\Authorization\GrantSet());
 
         $call = \app\shared\Infrastructure\Persistence\BulkFieldToggle::$lastToggleCall;
         $assertSame(\app\modules\Content\Infrastructure\Persistence\Model\Cards::class, $call[0], 'modelClass');
@@ -228,7 +265,7 @@ namespace {
         $reset();
         $assertThrows(
             static function (): void {
-                \app\modules\Content\Cards\Service\Cards::batchOperate('nonexistent', [1], 1, []);
+                \app\modules\Content\Cards\Service\Cards::batchOperate('nonexistent', [1], 1, new \app\shared\Authorization\GrantSet());
             },
             '不支持的操作'
         );

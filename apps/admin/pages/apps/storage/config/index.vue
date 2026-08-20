@@ -1,6 +1,5 @@
 <!-- 存储配置 - 渠道列表 + 基础设置 -->
 <template>
-	<NuxtLayout name="root">
 		<v-row class="pt-2">
 			<v-col cols="6">
 				<h1 class="text-primary font-weight-bold">存储配置</h1>
@@ -42,7 +41,8 @@
 													</v-icon>
 												</template>
 												<v-card-title>{{ channel.name }}</v-card-title>
-												<v-card-subtitle>{{ channel.slug }}</v-card-subtitle>
+														<v-card-subtitle>{{ channel.slug }}</v-card-subtitle>
+														<v-chip v-if="channel.configured === false" size="small" color="warning" variant="tonal">未初始化</v-chip>
 												<template v-slot:append>
 													<v-chip v-if="channel.slug === settings.default" size="small" color="accent"
 														variant="flat">默认</v-chip>
@@ -57,7 +57,7 @@
 													{{ formatSize(stats[channel.slug]?.total_size ?? 0) }}
 												</div>
 												<div class="text-caption text-medium-emphasis">
-													限制: {{ formatSize(channels[channel.slug]?.max_file_size ?? 0) }}
+															限制: {{ formatSize(readNumber(channels[channel.slug]?.max_file_size)) }}
 												</div>
 											</v-card-text>
 
@@ -66,11 +66,12 @@
 											<v-card-actions>
 												<v-btn size="small" color="accent" variant="text"
 													@click="setDefault(channel.slug)"
-													:disabled="channel.slug === settings.default">
+														:disabled="channel.slug === settings.default || channel.available === false">
 													设为默认
 												</v-btn>
 												<v-spacer></v-spacer>
-												<v-btn size="small" color="accent" variant="flat"
+													<v-btn size="small" color="accent" variant="flat"
+														:disabled="channel.configured === false"
 													@click="router.push('/apps/storage/config/' + channel.slug)">
 													编辑
 													<v-icon end size="small">mdi-arrow-right</v-icon>
@@ -148,12 +149,13 @@
 				</v-card>
 			</v-col>
 		</v-row>
-	</NuxtLayout>
 </template>
 
 <script setup lang="ts">
 import { useApi } from '~/lib/api';
 import { formatSize } from '~/utils/storage';
+import type { JsonObject } from '@lovecards/sdk';
+import { readNumber } from '~/utils/json';
 const client = useApi();
 
 interface ChannelMeta {
@@ -161,13 +163,15 @@ interface ChannelMeta {
 	name: string;
 	icon: string;
 	fields: Array<{ key: string; label: string; type: string }>;
+	configured?: boolean;
+	available?: boolean;
 }
 
 const router = useRouter();
 const tab = ref('channels');
 
 const channelList = ref<ChannelMeta[]>([]);
-const channels = ref<Record<string, any>>({});
+const channels = ref<Record<string, JsonObject>>({});
 const settings = ref({
 	default: 'local',
 	rate_limit_max: 10,
@@ -184,7 +188,7 @@ const channelOptions = computed(() =>
 const loadChannels = () => {
 	client.storage.channels()
 		.then((channels) => {
-			channelList.value = channels ?? [];
+			channelList.value = (channels ?? []) as ChannelMeta[];
 		})
 		.catch((error) => {
 			console.error('加载渠道列表失败:', error);
@@ -196,7 +200,7 @@ const loadConfig = () => {
 		.then((data) => {
 			settings.value = { ...settings.value, ...data.storage };
 			channels.value = {};
-			channelList.value.forEach(ch => {
+			channelList.value.forEach((ch: ChannelMeta) => {
 				channels.value[ch.slug] = data['storage_' + ch.slug] ?? {};
 			});
 		})

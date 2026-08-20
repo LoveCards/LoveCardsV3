@@ -1,5 +1,4 @@
 <template>
-	<NuxtLayout name="root">
 		<v-row class="pt-2">
 			<v-col cols="6">
 				<h1 class="text-primary font-weight-bold">验证配置</h1>
@@ -129,11 +128,11 @@
 				</v-card>
 			</v-col>
 		</v-row>
-	</NuxtLayout>
 </template>
 
 <script setup lang="ts">
 import { useApi } from '~/lib/api';
+import { readBoolean, readString } from '~/utils/json';
 const client = useApi();
 
 const router = useRouter();
@@ -145,7 +144,7 @@ interface DriverMeta {
 	type: string;
 	name: string;
 	icon: string;
-	fields?: Array<{ key: string; label: string; type: string }>;
+	fields?: Array<{ key?: string; label?: string; type: string }>;
 }
 
 interface DriverGroup {
@@ -192,13 +191,13 @@ const loadDrivers = () => {
 const loadSettings = () => {
 	client.config.list()
 		.then((data) => {
-			settings.value.code_enabled = data.captcha?.code_enabled ?? true;
-			settings.value.captcha_enabled = data.captcha?.captcha_enabled ?? true;
-			settings.value.code_channel = data.captcha?.code_channel ?? 'smtp';
+			settings.value.code_enabled = readBoolean(data.captcha?.code_enabled, true);
+			settings.value.captcha_enabled = readBoolean(data.captcha?.captcha_enabled, true);
+			settings.value.code_channel = readString(data.captcha?.code_channel, 'smtp');
 		});
 	client.config.list()
 		.then((data) => {
-			settings.value.user_captcha = data.user?.captcha ?? false;
+			settings.value.user_captcha = readBoolean(data.user?.captcha, false);
 		});
 };
 
@@ -207,7 +206,7 @@ const loadDefaults = () => {
 		.then((data) => {
 			for (const group of driverGroups.value) {
 				const key = 'default_' + group.type;
-				group.defaultSlug = data.captcha?.[key] ?? group.drivers[0]?.slug ?? '';
+				group.defaultSlug = readString(data.captcha?.[key], group.drivers[0]?.slug ?? '');
 			}
 		});
 };

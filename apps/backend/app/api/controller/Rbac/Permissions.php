@@ -6,7 +6,6 @@ use app\modules\Platform\Rbac\Service\RBAC;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
 use app\modules\Platform\Rbac\Transport\Api\PermissionResource;
-use think\facade\Request;
 
 class Permissions extends BaseController
 {
@@ -15,10 +14,12 @@ class Permissions extends BaseController
      */
     public function all()
     {
-        $allCaps = RBAC::getAllCapabilities();
+        $allCaps = \app\modules\Platform\Rbac\Domain\CapabilityCatalog::canonical();
         $result = [];
         foreach ($allCaps as $cap => $desc) {
-            $result[] = ['capability' => $cap, 'description' => $desc];
+            foreach (\app\modules\Platform\Rbac\Domain\CapabilityCatalog::scopesFor($cap) as $scope) {
+                $result[] = ['capability' => $cap, 'scope' => $scope, 'description' => $desc];
+            }
         }
         return ApiResponse::createOk(PermissionResource::collection($result));
     }
@@ -28,13 +29,15 @@ class Permissions extends BaseController
      */
     public function list()
     {
-        $allCaps = RBAC::getAllCapabilities();
+        $allCaps = \app\modules\Platform\Rbac\Domain\CapabilityCatalog::canonical();
         $items = [];
         foreach ($allCaps as $cap => $desc) {
-            $items[] = ['capability' => $cap, 'description' => $desc];
+            foreach (\app\modules\Platform\Rbac\Domain\CapabilityCatalog::scopesFor($cap) as $scope) {
+                $items[] = ['capability' => $cap, 'scope' => $scope, 'description' => $desc];
+            }
         }
 
-        $params = $this->paramIndex(Request::param());
+        $params = $this->validated();
         $search = $params['search_value'] ?? '';
         $page = $params['page'] ?? 1;
         $listRows = $params['list_rows'] ?? 15;

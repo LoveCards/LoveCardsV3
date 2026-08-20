@@ -1,6 +1,5 @@
 <!-- 发信配置 - 渠道列表 -->
 <template>
-	<NuxtLayout name="root">
 		<v-row class="pt-2">
 			<v-col cols="6">
 				<h1 class="text-primary font-weight-bold">发信配置</h1>
@@ -76,19 +75,26 @@
 				</v-card>
 			</v-col>
 		</v-row>
-	</NuxtLayout>
 </template>
 
 <script setup lang="ts">
 import { useApi } from '~/lib/api';
-import type { SenderChannel } from '@lovecards/sdk';
+interface SenderChannelLocal {
+	slug: string;
+	name: string;
+	icon?: string;
+	channelType?: string;
+	fields: unknown[];
+	supportedTypes?: string[];
+}
+import { readString } from '~/utils/json';
 const client = useApi();
 
 const router = useRouter();
 
 interface ChannelGroup {
 	channelType: string;
-	channels: SenderChannel[];
+	channels: SenderChannelLocal[];
 	defaultSlug: string;
 }
 
@@ -98,7 +104,7 @@ const scanning = ref(false);
 const loadChannels = () => {
 	client.sender.channels()
 		.then((channels) => {
-			const groups: Record<string, SenderChannel[]> = {};
+			const groups: Record<string, SenderChannelLocal[]> = {};
 			for (const ch of channels) {
 				const ct = ch.channelType || ch.slug;
 				if (!groups[ct]) groups[ct] = [];
@@ -120,7 +126,7 @@ const loadDefaults = () => {
 		.then((data) => {
 			for (const group of channelGroups.value) {
 				const key = 'default_' + group.channelType;
-				group.defaultSlug = data.sender?.[key] ?? group.channels[0]?.slug ?? '';
+				group.defaultSlug = readString(data.sender?.[key], group.channels[0]?.slug ?? '');
 			}
 		})
 		.catch((error) => {

@@ -1,194 +1,140 @@
 # @lovecards/sdk
 
-LoveCards3 JavaScript SDK — 框架无关的 REST API 封装层，覆盖后端 91 个命名路由。
+LoveCardsV3 的框架无关 TypeScript/JavaScript 客户端。当前版本 `2.0.0` 由后端 OpenAPI 生成 25 个 Resource，覆盖 171 条命名路由；请求方法、路径、参数位置、必填性、返回 shape 和公开性以生成契约为准。
 
-**依赖**：axios
-**产物**：ESM / CJS / UMD（gzip ~3KB）
-**TypeScript**：16 个类型模块，全量类型定义
-
----
-
-## 安装
+## 安装与创建客户端
 
 ```bash
-# npm
 npm install @lovecards/sdk
-
-# 本地开发（monorepo）
-npm install
 ```
-
-### UMD（<script> 标签）
-
-```html
-<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-<script src="/lovecards.umd.js"></script>
-<script>
-  var client = window.LC.createClient({ apiUrl: '/api' })
-</script>
-```
-
----
-
-## 快速开始
 
 ```typescript
-import { createClient } from '@lovecards/sdk'
+import { createClient, isApiError } from '@lovecards/sdk'
 
 const client = createClient({
   apiUrl: '/api',
-  onAuthError: () => { location.href = '/login' },
+  onAuthError: () => location.assign('/auth/login'),
 })
 
-// 公开接口 — 列表返回 ListResult<T>（含 data + pagination）
-const list = await client.cards.list({ page: 1 })
-console.log(list.data)    // Card[]
-console.log(list.pagination) // { currentPage, totalPages, totalItems, itemsPerPage }
+const result = await client.session.login({ account, password })
+client.setToken(result.token)
 
-// 登录 — 返回 LoginResult（已解包）
-const loginResult = await client.session.login({ account, password })
-client.setToken(loginResult.token)
-
-// 单条 — 直接返回业务对象
-const user = await client.users.me()
-console.log(user) // User
+const cards = await client.cards.list({ page: 1 })
+console.log(cards.data, cards.pagination)
 ```
 
----
+客户端自动把 Token 添加到 `Authorization: Bearer` 与 `X-Token`，并支持可注入 TokenStore、当前角色、GET 去重、受配置状态限制的重试和 before/after/error hooks。
 
-## 完整 API 参考
+## Resource
 
-见 [`docs/API_REFERENCE.md`](./docs/API_REFERENCE.md)，覆盖全部模块和示例。
+```text
+session       cards         users          comments       tags
+likes         files         theme          roles          permissions
+config        dashboard     storage        sender         captcha
+system        drafts        library        messages       notifications
+safety        social        operations     reports        community
+```
 
----
+完整路由分组与 HTTP 契约见 [`docs/API_ENDPOINT_REFERENCE.md`](docs/API_ENDPOINT_REFERENCE.md)。准确调用签名直接查看构建生成的 `.d.ts` 或 `src/generated/resources/*.ts`；不要在文档和源码中手写第二套方法签名。
 
-## 响应格式
-
-所有方法返回已解包的业务数据，不再包裹在 `ApiResponse` 中：
+## 新社区能力示例
 
 ```typescript
-// 列表 — 返回 ListResult<T>
+// 收藏与取消收藏：DELETE 参数是真实 query，不会被 SDK 丢弃
+await client.library.save({ resource_type: 'card', resource_id: '24' })
+await client.library.remove({ resource_type: 'card', resource_id: '24' })
+
+// 无参列表不需要发送无关占位字段
+const notifications = await client.notifications.list()
+const drafts = await client.drafts.list()
+
+// 私信重试复用 client_message_id
+await client.messages.send({
+  recipient_id: 42,
+  body: '你好',
+  client_message_id: crypto.randomUUID(),
+})
+
+// 账号恢复
+const challenge = await client.session.recovery_request({ account })
+await client.session.recovery_reset({
+  challenge_id: Number(challenge.id),
+  code,
+  password,
+})
+```
+
+社区与前端路由接手说明见 [`../../docs/engineering/FRONTEND-AGENT-HANDOFF.md`](../../docs/engineering/FRONTEND-AGENT-HANDOFF.md)。
+
+## 响应与错误
+
+SDK 解包统一 API envelope：
+
+```typescript
 const { data, pagination } = await client.cards.list()
-// data: Card[]                  ← 直接是业务数据数组
-// pagination: PaginationInfo    ← 列表接口才有
-
-// 单条 — 直接返回业务对象
-const card = await client.cards.get(1)
-// card: Card
-
-// 创建 — 返回 CreateResult
-const result = await client.cards.create({ content: '...' })
-// result: { id: string }
-
-// void 操作 — 无返回值
-await client.cards.delete(1)
+const card = await client.cards.get(24)
+const created = await client.cards.create({ content: '...' })
+await client.cards.delete(24) // Promise<void>
 ```
 
-## Token 管理
-
 ```typescript
-client.setToken('eyJhbGci...')       // 设置 token
-client.getToken()                     // 获取当前 token
-client.clearToken()                   // 清除 token
-```
-
-Token 自动附加到每个请求的 `Authorization` 和 `X-Token` header。
-
-### 自定义 Token 存储
-
-```typescript
-const client = createClient({
-  apiUrl: '/api',
-  tokenStore: {
-    get: () => localStorage.getItem('my_token'),
-    set: (t) => localStorage.setItem('my_token', t),
-    clear: () => localStorage.removeItem('my_token'),
-  },
-})
-```
-
----
-
-## 错误处理
-
-```typescript
-import { ApiError, isApiError } from '@lovecards/sdk'
-
 try {
-  const list = await client.cards.list()
-} catch (e) {
-  if (isApiError(e)) {
-    console.log(e.code, e.message, e.status)
+  await client.notifications.read({ ids: [] })
+} catch (error) {
+  if (isApiError(error)) {
+    console.log(error.status, error.code, error.message, error.details)
   }
 }
 ```
 
----
+401 只有在请求实际携带 Token 时才触发 `onAuthError`。密码修改或账号恢复会使旧 Session 的 security version 失效，调用方应清除旧 Token 并重新登录。
 
-## SSR 预加载
+## 契约元数据
+
+`generatedApiContract` 是 171 条路由的生成元数据：
 
 ```typescript
-import { PUBLIC_API } from '@lovecards/sdk'
+import { generatedApiContract } from '@lovecards/sdk'
 
-console.log(PUBLIC_API['cards.hot'])
-// { method: 'GET', path: '/api/cards/hot' }
+console.log(generatedApiContract['library.remove'])
+// { method: 'DELETE', path: '/me/library', status: 204, ... }
 ```
 
-| Key | 端点 | 公开 |
-|-----|------|:----:|
-| `cards.hot` | GET /api/cards/hot | ✅ |
-| `cards.list` | GET /api/cards | ✅ |
-| `cards.get` | GET /api/cards/:id | ✅ |
-| `cards.search` | GET /api/cards/search | ✅ |
-| `tags.list` | GET /api/tags | ✅ |
-| `tags.get` | GET /api/tags/:id | ✅ |
-| `comments.list` | GET /api/cards/:id/comments | ✅ |
-| `users.me` | GET /api/users/me | ❌ |
-| `system.theme` | GET /api/theme/config | ✅ |
-| `captcha.config` | GET /api/captcha/config | ✅ |
+`PUBLIC_API` 只保留历史兼容用途，不是完整路由清单；新代码应使用 `generatedApiContract`。
 
-PHP 侧维护相同数据（`ThemeEngine::PUBLIC_API`），用于内部调度获取首屏数据。
+## 构建与同步
 
----
-
-## 构建产物
+在 monorepo 根目录执行：
 
 ```bash
-npm run build        # 构建（自动同步 UMD 到 SSR theme）
-npm run typecheck    # 类型检查
+npm run generate:sdk       # Route/Validate/Resource -> OpenAPI -> generated source
+npm run build:sdk          # 同时构建 ESM/CJS/UMD 与自包含 browser bundle
+npm run sync:sdk-theme     # 同步 browser bundle 到后端主题公开资产
+npm run check              # 契约、transport、同步、类型和消费者门禁
 ```
 
-| 文件 | 格式 | 大小 | gzip |
-|------|------|:----:|:----:|
-| `lovecards.es.js` | ESM | ~13 KB | ~3 KB |
-| `lovecards.cjs.js` | CJS | ~8 KB | ~3 KB |
-| `lovecards.umd.js` | UMD | ~9 KB | ~3 KB |
-
----
-
-## 版本策略
-
-| 变更 | 版本 |
-|------|------|
-| 新增 API 端点 | minor |
-| 新增类型定义 | minor 或 patch |
-| API 端点删除 | major |
-| 签名/响应格式变更 | major |
-| 内部优化 | patch |
-
----
+`packages/sdk/src/generated/**`、`contracts/*.json`、`dist/*` 与 `apps/backend/public/_lc/sdk-v2-lovecards.js` 都是生成物，不手工修改。源头与完整维护流程见 [`../../docs/engineering/API-SDK-CONTRACT.md`](../../docs/engineering/API-SDK-CONTRACT.md)。
 
 ## 集成测试安全门禁
 
-完整集成套件会修改账号、内容、配置和 RBAC，只能对一次性本地数据库运行。入口默认拒绝执行，
-必须显式提供以下变量，且 Base URL 只能使用 `localhost` 或 `127.0.0.1`：
+完整套件会修改账号、内容、配置和 RBAC，只能对一次性 localhost 数据库运行：
 
 ```powershell
 $env:LOVECARDS_SDK_TEST_ISOLATED='1'
 $env:LOVECARDS_SDK_TEST_BASE_URL='http://127.0.0.1:8001/api'
-$env:LOVECARDS_SDK_TEST_ADMIN_ACCOUNT='sdk-test@example.com'
-$env:LOVECARDS_SDK_TEST_ADMIN_PASSWORD='replace-with-fixture-password'
+$env:LOVECARDS_SDK_TEST_ADMIN_ACCOUNT='本地测试账号'
+$env:LOVECARDS_SDK_TEST_ADMIN_PASSWORD='本地测试密码'
 npm run test:sdk:integration
 ```
 
-禁止对生产库、共享开发库或含有需保留数据的环境运行。
+运行脚本先重新构建 SDK、同步主题 browser bundle，再执行真实 HTTP。它会拒绝非 localhost、缺少隔离标记或不安全配置。最近结果见 [`test/TEST_REPORT.md`](test/TEST_REPORT.md)。
+
+## 版本策略
+
+| 变更 | SemVer |
+| --- | --- |
+| 向后兼容的新端点/类型 | minor |
+| 修复生成或 transport，不改变公开签名 | patch |
+| 删除端点、改变必填性/参数位置/返回 shape | major |
+
+后端 Route Contract 变更是否破坏兼容性，应以生成 `.d.ts` 和 OpenAPI diff 判断，不能只看 URL 是否变化。

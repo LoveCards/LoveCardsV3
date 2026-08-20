@@ -4,7 +4,10 @@ const adminOrigin = process.env.LOVECARDS_DEV_ADMIN_ORIGIN || 'http://127.0.0.1:
 const backendOrigin = process.env.LOVECARDS_DEV_BACKEND_ORIGIN || 'http://127.0.0.1:6001'
 const adminPort = new URL(adminOrigin).port || '3000'
 const authFile = 'apps/admin/test-results/.auth/admin.json'
-const chromeExecutable = process.env.PLAYWRIGHT_CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
+const chromeExecutable = process.env.PLAYWRIGHT_CHROME_PATH
+  || (process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '')
+const browserChannel = process.platform === 'win32' ? { channel: 'chrome' as const } : {}
+const browserLaunch = chromeExecutable ? { launchOptions: { executablePath: chromeExecutable } } : {}
 
 export default defineConfig({
   testDir: './e2e',
@@ -16,8 +19,8 @@ export default defineConfig({
   reporter: process.env.CI ? [['line'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: `${adminOrigin}/admin/`,
-    channel: 'chrome',
-    launchOptions: { executablePath: chromeExecutable },
+    ...browserChannel,
+    ...browserLaunch,
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -31,6 +34,7 @@ export default defineConfig({
       timeout: 120_000,
       env: {
         ...process.env,
+        NUXT_PUBLIC_API_BASE: '/api',
         NUXT_PUBLIC_MATOMO_ENABLED: 'false',
       },
     },
@@ -51,14 +55,15 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: /auth\.setup\.ts/,
-      use: { channel: 'chrome' },
+      use: { ...browserChannel, ...browserLaunch },
     },
     {
       name: 'chromium',
       dependencies: ['setup'],
       use: {
         ...devices['Desktop Chrome'],
-        channel: 'chrome',
+        ...browserChannel,
+        ...browserLaunch,
         storageState: authFile,
       },
       testIgnore: /auth\.setup\.ts/,

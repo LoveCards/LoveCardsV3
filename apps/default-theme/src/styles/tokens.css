@@ -1,0 +1,68 @@
+@layer lovecards-theme {
+  :root {
+    --lc-canvas: #f5f5f7;
+    --lc-surface: #ffffff;
+    --lc-surface-subtle: #f0f1f4;
+    --lc-ink: #1d1d1f;
+    --lc-body: #3a3a3c;
+    --lc-muted: #6e6e73;
+    --lc-tertiary: #8e8e93;
+    --lc-separator: rgba(60, 60, 67, 0.16);
+    --lc-rose: #c92c60;
+    --lc-rose-deep: #a9234f;
+    --lc-rose-soft: #fff0f4;
+    --lc-signal: #e63d63;
+    --lc-danger: #c93642;
+    --lc-success: #24835b;
+    --lc-radius-control: 9px;
+    --lc-radius-media: 12px;
+    --lc-radius-panel: 14px;
+    --lc-radius-feed: 14px;
+    --lc-radius-surface: 14px;
+    --lc-page-max: 1240px;
+    --lc-reading-max: 720px;
+    --lc-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --lc-z-sticky: 20;
+    --lc-z-popover: 40;
+    --lc-z-modal: 60;
+    --lc-z-toast: 80;
+  }
+
+  [data-theme='dark'] {
+    --lc-canvas: #101216;
+    --lc-surface: #171a20;
+    --lc-surface-subtle: #20242c;
+    --lc-ink: #f5f7fa;
+    --lc-body: #d5dae1;
+    --lc-muted: #a7b0bd;
+    --lc-tertiary: #858f9d;
+    --lc-separator: rgba(255, 255, 255, 0.12);
+    --lc-rose: #ee6c91;
+    --lc-rose-deep: #ff90ae;
+    --lc-rose-soft: #2b171d;
+    --lc-signal: #ff7898;
+    --lc-danger: #ff7b83;
+    --lc-success: #65c99a;
+  }
+
+  [data-astryx-theme='neutral'] {
+    --font-family-body: 'SF Pro Text', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+    --font-family-heading: 'SF Pro Display', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+    --color-accent: var(--lc-rose);
+    --color-accent-muted: var(--lc-rose-soft);
+    --color-background-body: var(--lc-canvas);
+    --color-background-surface: var(--lc-surface);
+    --color-background-card: var(--lc-surface);
+    --color-background-subtle: var(--lc-surface-subtle);
+    --color-text-primary: var(--lc-ink);
+    --color-text-secondary: var(--lc-body);
+    --color-text-tertiary: var(--lc-muted);
+    --color-border: var(--lc-separator);
+    --radius-inner: 0.5rem;
+    --radius-element: 0.5625rem;
+    --radius-container: 0.875rem;
+    --shadow-low: 0 1px 3px rgba(20, 25, 35, 0.08);
+    --shadow-med: 0 6px 16px rgba(20, 25, 35, 0.14);
+    --shadow-high: 0 16px 36px rgba(20, 25, 35, 0.2);
+  }
+}

@@ -1,5 +1,5 @@
 import { createClient, isApiError, type LCClient } from '@lovecards/sdk'
-import { showErrorNotification } from '~/api/utils/notifier'
+import { notifyError } from '~/composables/useAdminNotifier'
 
 let client: LCClient
 
@@ -14,10 +14,10 @@ export function useApi(): LCClient {
       },
       hooks: {
         onError: (ctx) => {
-          if (ctx.status === 403) showErrorNotification('权限不足，无法执行此操作')
-          else if (ctx.reason === 'timeout') showErrorNotification('请求超时，请稍后重试')
-          else if (ctx.reason === 'network') showErrorNotification('网络连接失败，请检查网络设置')
-          else if (ctx.status !== 401) showErrorNotification(ctx.message)
+          if (ctx.status === 403) notifyError('权限不足，无法执行此操作')
+          else if (ctx.reason === 'timeout') notifyError('请求超时，请稍后重试')
+          else if (ctx.reason === 'network') notifyError('网络连接失败，请检查网络设置')
+          else if (ctx.status >= 500) notifyError(ctx.message)
         },
       },
     })

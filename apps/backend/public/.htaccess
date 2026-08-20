@@ -17,3 +17,11 @@
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteRule ^(.*)$ index.php?s=/$1 [QSA,L]
 </IfModule>
+
+# The PHP response helper declares the same headers for normal responses, but
+# Apache answers OPTIONS preflight requests before PHP runs. Keep the SDK's
+# compatibility X-Token header in that preflight allow-list as well.
+<IfModule mod_headers.c>
+  Header always set Access-Control-Allow-Headers "Authorization, Content-Type, If-Match, If-Modified-Since, If-None-Match, X-CSRF-TOKEN, X-Requested-With, X-Token"
+  Header always set Access-Control-Allow-Methods "GET, POST, PATCH, PUT, DELETE, OPTIONS"
+</IfModule>

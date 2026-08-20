@@ -1,5 +1,4 @@
 <template>
-	<NuxtLayout name="root">
 		<v-row class="pt-2">
 			<v-col cols="12">
 				<h1 class="text-primary font-weight-bold">{{ driverName }} 配置</h1>
@@ -62,18 +61,21 @@
 				</v-card>
 			</v-col>
 		</v-row>
-	</NuxtLayout>
 </template>
 
 <script setup lang="ts">
 import { useApi } from '~/lib/api';
+import type { CaptchaDriver, FieldDefinition, JsonObject } from '@lovecards/sdk';
 const client = useApi();
+
+type DriverField = FieldDefinition & { key: string; label: string };
+const isDriverField = (field: FieldDefinition): field is DriverField => typeof field.key === 'string' && typeof field.label === 'string';
 
 const route = useRoute();
 const slug = route.params.slug as string;
 
-const config = ref<Record<string, any>>({});
-const fields = ref<Array<{ key: string; label: string; type: string; options?: any[] }>>([]);
+const config = ref<JsonObject>({});
+const fields = ref<DriverField[]>([]);
 const driverName = ref(slug);
 const showPassword = ref(false);
 const loading = ref(true);
@@ -85,10 +87,10 @@ const group = 'captcha_' + slug;
 const loadMeta = () => {
 	client.captcha.drivers()
 		.then((drivers) => {
-			const driver = drivers.find((d: any) => d.slug === slug);
+			const driver = drivers.find((d: CaptchaDriver) => d.slug === slug);
 			if (driver) {
 				driverName.value = driver.name;
-				fields.value = driver.fields ?? [];
+				fields.value = (driver.fields ?? []).filter(isDriverField);
 			}
 		});
 };

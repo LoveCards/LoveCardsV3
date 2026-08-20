@@ -1,3 +1,10 @@
+export interface DashboardNotice {
+  title: string
+  url: string
+  content: string
+  date: string
+}
+
 export interface DashboardData {
   count: {
     cards: number
@@ -6,7 +13,7 @@ export interface DashboardData {
   }
   chart: ChartDataset[]
   ver: VersionInfo
-  notice: any[]
+  notice: DashboardNotice[]
 }
 
 export interface ChartDataset {

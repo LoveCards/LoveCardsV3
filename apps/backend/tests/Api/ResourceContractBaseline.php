@@ -23,6 +23,7 @@ require $root . '/app/modules/Platform/Captcha/Transport/Api/CaptchaResource.php
 require $root . '/app/modules/Platform/Sender/Transport/Api/SenderResource.php';
 require $root . '/app/modules/Platform/Storage/Transport/Api/StorageResource.php';
 require $root . '/app/modules/Theme/Transport/Api/ThemeResource.php';
+require $root . '/app/modules/Theme/Transport/Api/ThemeConfigResource.php';
 require $root . '/app/modules/Platform/User/Transport/Api/ProfileResource.php';
 
 use app\shared\Transport\Http\ApiResource;
@@ -37,6 +38,8 @@ use app\modules\Platform\Files\Transport\Api\FileResource;
 use app\modules\Content\Likes\Transport\Api\LikeResource;
 use app\modules\Platform\Rbac\Transport\Api\PermissionResource;
 use app\modules\Platform\Rbac\Transport\Api\RoleResource;
+use app\modules\Theme\Transport\Api\ThemeResource;
+use app\modules\Theme\Transport\Api\ThemeConfigResource;
 
 $tests = [];
 
@@ -66,6 +69,7 @@ $test('card resource decodes json fields and exposes the public card contract', 
         'data' => '{"title":"hello"}',
         'tags' => '["a","b"]',
         'pictures' => '["/a.jpg"]',
+        'media' => '[]',
         'password' => 'secret',
         'deleted_at' => '2026-01-01',
     ]);
@@ -73,6 +77,7 @@ $test('card resource decodes json fields and exposes the public card contract', 
     $assertSame(['title' => 'hello'], $result['data']);
     $assertSame(['a', 'b'], $result['tags']);
     $assertSame(['/a.jpg'], $result['pictures']);
+    $assertSame([], $result['media']);
     $assertFalse(array_key_exists('password', $result));
     $assertFalse(array_key_exists('deleted_at', $result));
 });
@@ -95,9 +100,9 @@ $test('role pagination maps each row through role resource', static function () 
 });
 
 $test('permission resource keeps the capability tuple stable', static function () use ($assertSame): void {
-    $result = PermissionResource::make(['capability' => 'cards.read', 'description' => 'Read cards', 'extra' => true]);
+    $result = PermissionResource::make(['capability' => 'cards.read', 'scope' => 'own', 'description' => 'Read cards', 'extra' => true]);
 
-    $assertSame(['capability' => 'cards.read', 'description' => 'Read cards'], $result);
+    $assertSame(['capability' => 'cards.read', 'scope' => 'own', 'description' => 'Read cards'], $result);
 });
 
 $test('file resource removes storage internals but keeps public upload fields', static function () use ($assertSame, $assertFalse): void {
@@ -153,9 +158,18 @@ $test('command resources expose stable fields only', static function () use ($as
 });
 
 $test('config resource preserves dynamic config groups', static function () use ($assertSame): void {
-    $result = ConfigResource::make(['frontend' => ['active_theme' => 'default-ssr']]);
+    $result = ConfigResource::make(['frontend' => ['active_theme' => 'default']]);
 
-    $assertSame('default-ssr', $result['frontend']['active_theme']);
+    $assertSame('default', $result['frontend']['active_theme']);
+});
+
+$test('theme resources expose only the SPA release contract', static function () use ($assertSame, $assertFalse): void {
+    $item = ThemeResource::make(['id' => 'default', 'name' => 'Default', 'version' => '1.0.0', 'mode' => 'spa', 'release' => '1.0.0-abcd1234', 'author' => 'LoveCards', 'description' => '', 'active' => true, 'engine' => 'html']);
+    $assertSame('spa', $item['mode']);
+    $assertFalse(array_key_exists('engine', $item));
+    $config = ThemeConfigResource::make(['theme' => ['id' => 'default', 'name' => 'Default', 'version' => '1.0.0', 'mode' => 'spa', 'release' => '1.0.0-abcd1234'], 'config_schema' => [], 'config_values' => []]);
+    $assertSame('default', $config['id']);
+    $assertSame('1.0.0-abcd1234', $config['release']);
 });
 
 $failures = 0;

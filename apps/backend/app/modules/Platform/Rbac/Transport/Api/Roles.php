@@ -6,6 +6,21 @@ use think\Validate;
 
 class Roles extends Validate
 {
+    public static function requestSchemas(): array
+    {
+        return ['assignGrants' => [
+            'type' => 'object',
+            'properties' => ['grants' => [
+                'type' => 'array',
+                'items' => ['type' => 'object', 'properties' => [
+                    'capability' => ['type' => 'string'],
+                    'scope' => ['type' => 'string', 'enum' => ['own', 'all', 'global']],
+                ], 'required' => ['capability', 'scope'], 'additionalProperties' => false],
+            ]],
+            'required' => ['grants'],
+            'additionalProperties' => false,
+        ]];
+    }
     public static $all_scene = [
         'create' => [
             'normal' => [
@@ -30,11 +45,11 @@ class Roles extends Validate
             'nonNull' => false,
             'toNull' => false,
         ],
-        'assignCapabilities' => [
+        'assignGrants' => [
             'normal' => false,
             'require' => [
                 'id',
-                'capabilities'
+                'grants'
             ],
             'nonNull' => false,
             'toNull' => false,
@@ -52,7 +67,7 @@ class Roles extends Validate
         'name' => 'length:1,50|chsDash',
         'slug' => 'length:1,50|alphaDash|unique:roles',
         'description' => 'max:255',
-        'capabilities' => 'arrayJson',
+        'grants' => 'arrayJson',
     ];
 
     protected $message = [

@@ -27,7 +27,11 @@ class JwtAuthCheck
         }
 
         try {
-            $this->attachContext($request, $this->authenticate->execute($token));
+            $context = $this->authenticate->execute($token);
+            if ($context->isVisitor()) {
+                return ApiResponse::createUnauthorized('请先登入');
+            }
+            $this->attachContext($request, $context);
         } catch (MissingCredentials $exception) {
             return ApiResponse::createUnauthorized($exception->getMessage());
         } catch (\RuntimeException $exception) {

@@ -1,0 +1,90 @@
+@layer lovecards-base {
+  html {
+    background: var(--lc-canvas);
+    color: var(--lc-ink);
+    font-family: var(--font-family-body);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-height: 100vh;
+    margin: 0;
+    background: var(--lc-canvas);
+  }
+
+  #root,
+  [data-astryx-theme='neutral'] {
+    min-height: 100vh;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
+
+  a { color: inherit; }
+
+  h1,
+  h2,
+  h3,
+  p { margin-block-start: 0; }
+
+  h1,
+  h2,
+  h3 {
+    color: var(--lc-ink);
+    font-family: var(--font-family-heading);
+    text-wrap: balance;
+  }
+
+  p { text-wrap: pretty; }
+
+  :where(a, summary, .lc-native-control):focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--lc-rose-deep) 78%, transparent);
+    outline-offset: 3px;
+  }
+
+  ::selection {
+    color: var(--lc-ink);
+    background: var(--lc-rose-soft);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  :root {
+    --lc-radius-feed: 11px;
+    --lc-radius-surface: 11px;
+  }
+}
+
+[data-reduce-motion='true'] *,
+[data-reduce-motion='true'] *::before,
+[data-reduce-motion='true'] *::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+}

@@ -2,12 +2,11 @@
 
 namespace app\api\controller\Theme;
 
-use think\facade\Request;
 use app\api\ApiException;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
 use app\modules\Theme\Transport\Api\ThemeResource;
-use app\modules\Theme\Transport\Api\Upload as UploadValidate;
+use app\modules\Theme\Transport\Api\ThemeConfigResource;
 use app\modules\Theme\Service\ThemeManager as ThemeService;
 
 class ThemeManager extends BaseController
@@ -20,77 +19,48 @@ class ThemeManager extends BaseController
     public function upload()
     {
         $file = request()->file('file');
-        $validate = new UploadValidate();
-        if (!$validate->check(['file' => $file])) {
-            throw ApiException::badRequest($validate->getError());
-        }
-        if ($file->getSize() > ThemeService::maxZipBytes()) {
-            throw ApiException::badRequest('ZIP 文件过大');
-        }
-
+        $params = $this->validated(null, ['file' => $file]);
+        $file = $params['file'];
+        if ($file->getSize() > ThemeService::maxZipBytes()) throw ApiException::badRequest('Theme archive is too large');
         $info = $file->move(runtime_path() . 'theme_upload');
-        if (!$info) {
-            throw ApiException::badRequest('文件上传失败');
-        }
-
+        if (!$info) throw ApiException::badRequest('Theme upload failed');
         $zipPath = $info->getRealPath();
         try {
             return ApiResponse::createOk(ThemeResource::make(ThemeService::install($zipPath)));
+        } catch (\Throwable $e) {
+            throw ApiException::badRequest($e->getMessage());
         } finally {
-            if (is_file($zipPath)) {
-                @unlink($zipPath);
-            }
+            if (is_file($zipPath)) @unlink($zipPath);
         }
     }
 
     public function activate()
     {
-        $name = Request::param('name', '');
-        if (empty($name)) {
-            throw ApiException::badRequest('缺少主题名称');
-        }
-        ThemeService::activate($name);
+        $params = $this->validated();
+        try { ThemeService::activate((string)$params['id'], (string)$params['release']); } catch (\Throwable $e) { throw ApiException::badRequest($e->getMessage()); }
         return ApiResponse::createNoContent();
     }
 
     public function config()
     {
         $theme = ThemeService::active();
-        if (empty($theme)) {
-            throw ApiException::badRequest('未找到活跃主题');
-        }
-
-        return ApiResponse::createOk(ThemeResource::make([
-            'name' => $theme['name'],
-            'mode' => $theme['mode'] ?? 'spa',
-            'config_schema' => $theme['config'] ?? [],
-            'config_values' => ThemeService::config($theme['name']),
-        ]));
+        if (empty($theme['theme'])) throw ApiException::badRequest('Active theme not found');
+        return ApiResponse::createOk(ThemeConfigResource::make($theme));
     }
 
     public function updateConfig()
     {
-        $params = Request::param();
-        if (empty($params)) {
-            throw ApiException::badRequest('缺少配置参数');
-        }
-        ThemeService::updateConfig($params);
-        return ApiResponse::createNoContent();
-    }
-
-    public function freezeConfig()
-    {
-        ThemeService::freezeConfig();
+        $params = $this->validated();
+        $values = is_string($params['values']) ? json_decode($params['values'], true) : $params['values'];
+        if (!is_array($values)) throw ApiException::badRequest('Theme values must be an object');
+        try { ThemeService::updateConfig((string)$params['id'], (string)$params['release'], $values); } catch (\Throwable $e) { throw ApiException::badRequest($e->getMessage()); }
         return ApiResponse::createNoContent();
     }
 
     public function delete()
     {
-        $name = Request::param('name', '');
-        if (empty($name)) {
-            throw ApiException::badRequest('缺少主题名称');
-        }
-        ThemeService::delete($name);
+        $params = $this->validated();
+        try { ThemeService::delete((string)$params['id'], (string)$params['release']); } catch (\Throwable $e) { throw ApiException::badRequest($e->getMessage()); }
         return ApiResponse::createNoContent();
     }
 }

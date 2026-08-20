@@ -1,12 +1,15 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import { loadBackendContractMetadata } from './lib/backend-contract-metadata.mjs'
+import { auditRequestContract, hasBlockingIssues, inspectControllerAction } from './lib/request-contract-audit.mjs'
 
 const root = process.cwd()
 const controllerRoot = path.join(root, 'apps/backend/app/api/controller')
 const reportDir = path.join(root, 'contracts')
-const sdkResourceRoot = path.join(root, 'packages/sdk/src/generated/resources')
 const routeManifestPath = path.join(root, 'contracts', 'route-manifest.json')
 const checkOnly = process.argv.includes('--check')
+const backendMetadata = loadBackendContractMetadata(root)
+const batchTraitSource = await fs.readFile(path.join(controllerRoot, 'BatchOperateTrait.php'), 'utf8')
 
 function normalizePath(prefix, route) {
   const value = [prefix, route].filter(Boolean).join('/').replaceAll(/\/+/g, '/').replace(/^\//, '').replace(/\/$/, '')
@@ -23,6 +26,13 @@ function parseMeta(statement) {
   if (caps) meta.caps = [...caps[1].matchAll(/'([^']+)'/g)].map((match) => match[1])
   meta.public = /'public'\s*=>\s*true/.test(statement)
   return meta
+}
+
+function routeAccess(route) {
+  const access = route.meta?.access
+  const auth = access?.auth
+  const requirements = [...(access?.allOf || []), ...(access?.anyOf || [])]
+  return { access, auth, requirements }
 }
 
 function middleware(statement) {
@@ -80,12 +90,8 @@ async function inspectController(route) {
   const file = controllerPath(route.controller)
   let source = ''
   try { source = await fs.readFile(file, 'utf8') } catch { return { controllerFile: file, missingController: true } }
-  const start = source.indexOf(`function ${route.action}(`)
-  const end = start < 0 ? -1 : source.indexOf('\n    public function ', start + 10)
-  let body = start < 0 ? '' : source.slice(start, end < 0 ? source.length : end)
-  if (route.action === 'batch' && /BatchOperateTrait/.test(source)) {
-    body += await fs.readFile(path.join(controllerRoot, 'BatchOperateTrait.php'), 'utf8')
-  }
+  const requestInspection = inspectControllerAction(source, route.action, /BatchOperateTrait/.test(source) ? [batchTraitSource] : [])
+  const body = requestInspection.body
   const responses = [...body.matchAll(/ApiResponse::(create[A-Za-z]+)/g)].map((match) => match[1])
   const resources = [...body.matchAll(/([A-Za-z]+Resource)::(make|collection|paginate)/g)].map((match) => `${match[1]}::${match[2]}`)
   const imports = new Map([...source.matchAll(/use\s+(app\\[^;]+Transport\\Api\\(\w+))(?:\s+as\s+(\w+))?;/g)].map((match) => [match[3] || match[2], match[1]]))
@@ -96,53 +102,71 @@ async function inspectController(route) {
   if (/BatchOperationInput::class/.test(body)) validators.push('app\\shared\\Transport\\Validation\\BatchOperationInput')
   const scene = (body.match(/\$all_scene\[['"]([^'"]+)['"]\]/) || body.match(/->scene\(['"]([^'"]+)['"]\)/) || [])[1] || null
   return {
-    controllerFile: path.relative(root, file),
+    controllerFile: path.relative(root, file).replaceAll(path.sep, '/'),
     missingController: false,
-    validates: /\b(?:param|validate)\s*\(|->check\s*\(/.test(body),
+    validates: requestInspection.usesValidated || requestInspection.usesLegacyValidation,
     responses: [...new Set(responses)],
     resources: [...new Set(resources)],
     validators: [...new Set(validators)],
     validatorScene: scene,
-    hasApiResponse: responses.length > 0,
+    requestInspection,
+    hasApiResponse: responses.length > 0 || requestInspection.usesContractResponse || requestInspection.usesRawResponse,
+    usesRawResponse: requestInspection.usesRawResponse,
     multipleSuccessShapes: new Set(responses.filter((value) => value === 'createOk' || value === 'createCreated' || value === 'createNoContent')).size > 1,
   }
 }
 
 function issue(severity, code, message) { return { severity, code, message } }
 
+function auditResponseContract(route) {
+  const response = route.contract?.response
+  if (!response || typeof response !== 'object' || Array.isArray(response)) {
+    return [issue('P0', 'INVALID_RESPONSE_CONTRACT', 'response contract must be an object')]
+  }
+
+  const issues = []
+  const shape = response.shape
+  const status = Number(response.status)
+  const allowedShapes = new Set(['item', 'collection', 'paginated', 'void', 'raw'])
+  if (!allowedShapes.has(shape)) issues.push(issue('P0', 'INVALID_RESPONSE_SHAPE', `unsupported response shape: ${shape || 'missing'}`))
+  if (!Number.isInteger(status) || status < 200 || status >= 300) issues.push(issue('P0', 'INVALID_RESPONSE_STATUS', `invalid success status: ${response.status}`))
+
+  if (shape === 'void') {
+    if (status !== 204 || response.resource != null) issues.push(issue('P1', 'VOID_RESPONSE_CONTRACT_MISMATCH', 'void responses must use status 204 and resource=null'))
+  } else if (shape === 'raw') {
+    if (response.resource != null || typeof response.type !== 'string' || !response.type || typeof response.contentType !== 'string' || !response.contentType) {
+      issues.push(issue('P1', 'RAW_RESPONSE_CONTRACT_INCOMPLETE', 'raw responses require resource=null, type and contentType'))
+    }
+  } else if (typeof response.resource !== 'string' || !backendMetadata.resources?.[response.resource]) {
+    issues.push(issue('P0', 'UNKNOWN_RESPONSE_RESOURCE', `response resource metadata is unavailable: ${response.resource || 'null'}`))
+  }
+
+  if (status === 204 && shape !== 'void') issues.push(issue('P1', 'NO_CONTENT_SHAPE_MISMATCH', 'status 204 requires shape=void'))
+  return issues
+}
+
 function responseDescriptor(route) {
+  if (route.contract?.response && typeof route.contract.response === 'object') {
+    const response = route.contract.response
+    const resource = typeof response.resource === 'string' ? response.resource.split('\\').at(-1) : null
+    const shape = response.shape || 'item'
+    const operation = shape === 'paginated' ? 'paginate' : shape === 'collection' ? 'collection' : shape === 'item' ? 'make' : null
+    return {
+      status: Number(response.status || 200),
+      shape,
+      resource,
+      operation,
+      ...(typeof response.type === 'string' ? { type: response.type } : {}),
+      ...(typeof response.contentType === 'string' ? { contentType: response.contentType } : {}),
+    }
+  }
   const responseFns = route.responses || []
   const status = responseFns.includes('createNoContent') ? 204 : responseFns.includes('createCreated') ? 201 : 200
   const resource = route.resources?.[0]?.split('::')[0] || null
   const operation = route.resources?.[0]?.split('::')[1] || null
   const shape = status === 204 ? 'void' : operation === 'paginate' ? 'paginated' : operation === 'collection' ? 'collection' : resource === 'ApiResource' ? 'dynamic' : 'item'
-  return { status, shape, resource, operation, sdkReturnType: route.sdk?.returnType || null }
+  return { status, shape, resource, operation }
 }
-
-function normalizeSdkPath(value) {
-  return value
-    .replaceAll(/`/g, '')
-    .replaceAll(/\$\{[^}]+\}/g, ':param')
-    .replaceAll(/\$\{[^}]+\}/g, ':param')
-    .replace(/\/$/, '') || '/'
-}
-
-async function readSdkMethods() {
-  const methods = []
-  const files = (await fs.readdir(sdkResourceRoot)).filter((name) => name.endsWith('.ts')).sort()
-  for (const file of files) {
-    const source = await fs.readFile(path.join(sdkResourceRoot, file), 'utf8')
-    const methodRe = /^\s{2}(\w+)\(([^)]*)\):\s*Promise<(.+?)>\s*\{\s*return\s+this\._(get|post|put|patch|delete)<(.+?)>\((['"`])([^'"`]+)\6/gm
-    let match
-    while ((match = methodRe.exec(source))) {
-      methods.push({ file: `packages/sdk/src/resources/${file}`, resource: file.replace(/\.ts$/, ''), method: match[1], params: match[2].trim(), httpMethod: match[4].toUpperCase(), returnType: match[3], path: normalizeSdkPath(match[7]) })
-    }
-  }
-  return methods
-}
-
-const sdkMethods = await readSdkMethods()
-const sdkByEndpoint = new Map(sdkMethods.map((method) => [`${method.httpMethod} ${method.path}`, method]))
 
 const routeManifest = JSON.parse(await fs.readFile(routeManifestPath, 'utf8'))
 const routes = (routeManifest.routes || []).map((route) => ({
@@ -155,8 +179,9 @@ const routes = (routeManifest.routes || []).map((route) => ({
 routes.sort((a, b) => `${a.path}:${a.method}:${a.name}`.localeCompare(`${b.path}:${b.method}:${b.name}`))
 
 for (const route of routes) {
+  const controller = await inspectController(route)
   if (!route.contract) {
-    Object.assign(route, await inspectController(route))
+    Object.assign(route, controller)
     continue
   }
 
@@ -170,15 +195,17 @@ for (const route of routes) {
     : response.shape === 'collection' ? 'collection' : 'make'
 
   Object.assign(route, {
-    controllerFile: `apps/backend/app/api/controller/${route.controller.replaceAll('.', '/')}.php`,
-    missingController: false,
+    controllerFile: controller.controllerFile,
+    missingController: controller.missingController,
     validates: request !== null,
     responses: response.status === 204 ? ['createNoContent'] : response.status === 201 ? ['createCreated'] : ['createOk'],
     resources: resource ? [`${resource}::${operation}`] : [],
     validators: request?.validate ? [request.validate] : [],
     validatorScene: request?.scene || null,
-    hasApiResponse: true,
-    multipleSuccessShapes: false,
+    hasApiResponse: controller.hasApiResponse,
+    multipleSuccessShapes: controller.multipleSuccessShapes,
+    requestInspection: controller.requestInspection ? { ...controller.requestInspection, body: undefined } : null,
+    usesRawResponse: controller.usesRawResponse,
   })
 }
 
@@ -194,14 +221,17 @@ for (const route of routes) {
   route.issues ??= []
   if (!route.name) route.issues.push(issue('P1', 'MISSING_OPERATION_ID', 'route has no stable operation name'))
   if (!route.meta.name || !route.meta.group) route.issues.push(issue('P2', 'INCOMPLETE_ROUTE_META', 'route meta lacks name or group'))
-  if (route.meta.caps?.length && !route.middleware.includes('PermissionCheck')) {
-    route.issues.push(issue('P1', 'CAPABILITY_WITHOUT_PERMISSION_MIDDLEWARE', 'capabilities are declared but PermissionCheck is absent'))
+  const { access, auth, requirements } = routeAccess(route)
+  if (!access) route.issues.push(issue('P1', 'MISSING_ACCESS_POLICY', 'route has no structured access policy'))
+  else if (!['public', 'required'].includes(auth)) route.issues.push(issue('P1', 'INVALID_ACCESS_POLICY', 'route access policy must explicitly declare auth=public or auth=required'))
+  if (requirements.length && !route.middleware.includes('PermissionCheck')) {
+    route.issues.push(issue('P1', 'GRANT_WITHOUT_PERMISSION_MIDDLEWARE', 'grant requirements are declared but PermissionCheck is absent'))
   }
-  if (route.meta.public && route.middleware.includes('JwtAuthCheck')) {
+  if (auth === 'public' && route.middleware.includes('JwtAuthCheck')) {
     route.issues.push(issue('P1', 'PUBLIC_META_WITH_JWT', 'route metadata says public but JWT middleware requires authentication'))
   }
-  if (!route.meta.public && !route.meta.caps?.length && !route.middleware.includes('JwtAuthCheck')) {
-    route.issues.push(issue('P1', 'UNAUTHENTICATED_NONPUBLIC_ROUTE', 'route is neither public nor protected by JWT/capability'))
+  if (auth === 'required' && !route.middleware.includes('JwtAuthCheck')) {
+    route.issues.push(issue('P1', 'REQUIRED_ACCESS_WITHOUT_JWT', 'required access policy is missing JwtAuthCheck'))
   }
   if (route.missingController) route.issues.push(issue('P0', 'MISSING_CONTROLLER', 'controller file cannot be resolved'))
   if (!route.hasApiResponse) route.issues.push(issue('P1', 'MISSING_API_RESPONSE', 'controller action does not visibly return ApiResponse'))
@@ -210,11 +240,13 @@ for (const route of routes) {
     route.issues.push(issue('P1', 'UPLOAD_WITHOUT_VALIDATION', 'multipart upload endpoint has no formal request validation contract'))
   }
 
-  const sdk = sdkByEndpoint.get(`${route.method} ${route.path.replace(/:[^/]+/g, ':param')}`)
-  route.sdk = sdk || null
-  if (!sdk) route.issues.push(issue('P2', 'SDK_ENDPOINT_MISSING', 'no SDK resource method maps to this HTTP endpoint'))
-  if (sdk && sdk.returnType.trim() === 'void' && route.responses.some((value) => value === 'createOk' || value === 'createCreated')) {
-    route.issues.push(issue('P1', 'SDK_RESPONSE_TYPE_MISMATCH', `SDK returns void but backend emits ${route.responses.filter((value) => value === 'createOk' || value === 'createCreated').join(', ')}`))
+  if (route.contract) route.issues.push(...auditResponseContract(route))
+  if (route.requestInspection) route.issues.push(...auditRequestContract(route, route.requestInspection, backendMetadata))
+  if (route.usesRawResponse && route.contract?.response?.shape !== 'raw') {
+    route.issues.push(issue('P1', 'RAW_RESPONSE_CONTRACT_MISMATCH', 'controller returns a raw response but route contract is not shape=raw'))
+  }
+  if (!route.usesRawResponse && route.contract?.response?.shape === 'raw') {
+    route.issues.push(issue('P1', 'RAW_CONTRACT_WITHOUT_RAW_RESPONSE', 'route declares shape=raw but the controller does not return a raw response'))
   }
 }
 for (const route of routes) route.response = responseDescriptor(route)
@@ -224,16 +256,12 @@ const summary = routes.flatMap((route) => route.issues || []).reduce((acc, curre
   return acc
 }, {})
 
-if (!checkOnly) {
-  await fs.mkdir(reportDir, { recursive: true })
-  await fs.writeFile(path.join(reportDir, 'api-inventory.json'), `${JSON.stringify({ routeCount: routes.length, sdkMethodCount: sdkMethods.length, summary, sdkMethods, routes }, null, 2)}\n`)
-}
+const inventoryOutput = `${JSON.stringify({ routeCount: routes.length, summary, routes }, null, 2)}\n`
 
 const lines = [
   '# API Contract Audit',
   '',
   `- Routes inspected: ${routes.length}`,
-  `- SDK methods inspected: ${sdkMethods.length}`,
   `- P0: ${summary.P0 || 0}`,
   `- P1: ${summary.P1 || 0}`,
   `- P2: ${summary.P2 || 0}`,
@@ -244,10 +272,29 @@ const lines = [
   '|---|---|---|---|---:|---|---|',
 ]
 for (const route of routes) {
-  const auth = route.meta.public ? 'public' : route.meta.caps?.length ? `caps:${route.meta.caps.join(',')}` : route.middleware.includes('JwtAuthCheck') ? 'jwt' : 'unknown'
+  const access = routeAccess(route)
+  const auth = access.auth === 'public' ? 'public' : access.auth === 'required'
+    ? `grants:${access.requirements.map((item) => `${item.capability}:${item.scope}`).join(',') || 'authenticated'}`
+    : 'unknown'
   lines.push(`| ${route.method} | \`${route.path}\` | \`${route.name || ''}\` | ${auth} | ${route.validates ? 'yes' : 'no'} | ${route.resources.join(', ') || route.responses.join(', ') || 'unknown'} | ${(route.issues || []).map((item) => `${item.severity}:${item.code}`).join('<br>') || '—'} |`)
 }
-if (!checkOnly) await fs.writeFile(path.join(reportDir, 'API-AUDIT.md'), `${lines.join('\n')}\n`)
+const reportOutput = `${lines.join('\n')}\n`
+await fs.mkdir(reportDir, { recursive: true })
+if (checkOnly) {
+  const stale = []
+  for (const [file, expected] of [['api-inventory.json', inventoryOutput], ['API-AUDIT.md', reportOutput]]) {
+    let current = ''
+    try { current = await fs.readFile(path.join(reportDir, file), 'utf8') } catch {}
+    if (current !== expected) stale.push(file)
+  }
+  if (stale.length) {
+    console.error(`API audit artifacts are stale: ${stale.join(', ')}. Run: npm run audit:api`)
+    process.exitCode = 1
+  }
+} else {
+  await fs.writeFile(path.join(reportDir, 'api-inventory.json'), inventoryOutput)
+  await fs.writeFile(path.join(reportDir, 'API-AUDIT.md'), reportOutput)
+}
 
 console.log(`API audit complete: routes=${routes.length} P0=${summary.P0 || 0} P1=${summary.P1 || 0} P2=${summary.P2 || 0}`)
-if ((summary.P0 || 0) > 0) process.exitCode = 2
+if (hasBlockingIssues(summary)) process.exitCode = 2

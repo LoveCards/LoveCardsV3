@@ -12,7 +12,8 @@
   -> API audit
   -> openapi.json
   -> generated SDK
-  -> SDK typecheck / live integration
+  -> localhost SDK transport / SDK typecheck / live integration
+  -> SDK dist / 主题公开 SDK
   -> Admin typecheck / browser E2E
 ```
 
@@ -21,14 +22,17 @@
 | 内容 | 唯一维护位置 | 是否手工编辑 |
 | --- | --- | --- |
 | 接口身份、HTTP 方法、公开性、能力要求 | `apps/backend/app/api/route/*.php` | 是 |
+| Controller 请求输入 | 路由对应的 API Controller，经 `$this->validated()` 读取 | 是 |
 | 请求字段、类型、场景、白名单 | 模块 `Transport/Api` 下的 Validate | 是 |
 | 响应字段和数据映射 | 模块 `Transport/Api` 下的 Resource | 是 |
 | 成功、分页和错误外壳 | `ApiResponse` / `ApiException` | 是 |
 | 实际路由清单 | `contracts/route-manifest.json` | 否，命令生成 |
 | OpenAPI 契约 | `contracts/openapi.json` | 否，命令生成 |
 | SDK 资源和契约类型 | `packages/sdk/src/generated/**` | 否，命令生成 |
+| SDK 浏览器 bundle | `packages/sdk/dist/lovecards.browser.js` | 否，命令构建 |
+| 主题公开 SDK | `apps/backend/public/_lc/sdk-v2-lovecards.js` | 否，从 SDK dist 同步 |
 
-生成文件落后于源码即为失败，禁止直接修改生成物来让检查通过。
+生成文件落后于源码即为失败，禁止直接修改生成物来让检查通过。SDK 的完整所有权和生成顺序见 `API-SDK-CONTRACT.md`。
 
 ## 2. 测试分层
 
@@ -38,15 +42,18 @@
 
 ### L1：模块行为与 Resource 契约
 
-`npm run test:backend` 递归发现并执行 `apps/backend/tests/**/*.php`。每个文件都是可独立执行的测试程序，成功返回 0，失败返回非 0；新增测试文件不需要手工注册。
+`npm run test:backend` 递归发现并执行 `apps/backend/tests/**/*.php`。每个文件都是可独立执行的测试程序，成功返回 0，失败返回非 0；新增测试文件不需要手工注册。根运行器是本仓库和 CI 的完整入口，Composer 中的历史手工测试清单不作为覆盖证明。
 
 当前基线覆盖：
 
 - Auth 登录、注册、访客策略、权限和 JWT 续期；
+- 账号恢复、security version、Session rotation/revoke；
 - Cards、Comments、Tags、Files 的行为与所有权边界；
+- 卡片媒体整页批量装配、稳定 URL/公开性撤权，以及本地媒体 HEAD/Range/416；
+- Drafts、Library、Social、Safety、Messaging、Notifications 与 Eventing 的状态、幂等、事务和资源范围；
 - Resource 字段白名单、动态 schema 外壳和敏感字段隐藏；
-- 安装脚本、数据库 schema 与迁移安全；
-- Theme 路由唯一性和 ZIP 安装安全。
+- 安装脚本、数据库 schema、升级账本、Release 签名与迁移安全；
+- Theme 路由唯一性、ZIP 安装安全、Host Binding、Bootstrap 与 History fallback。
 
 这层优先使用内存替身或最小框架替身，测试 Domain、Application、Service 和 Resource 的确定性行为。涉及真实 HTTP、真实数据库和 SDK 序列化的场景不能只停留在本层。
 
@@ -69,10 +76,18 @@ Route::post('', 'Content.Cards/create')
 相关门禁：
 
 - `npm run check:routes:strict`：真实加载 ThinkPHP 路由，确认清单未漂移，且每条路由都有可执行契约；
-- `npm run check:api-contract`：审计 Controller、Validate、Resource 和响应形状，P0/P1 问题阻止导出；
+- `npm run check:admin-contracts`：交叉检查 Route access、`CapabilityCatalog`、`SystemRolePolicy`、数据库迁移种子、管理端 navigation 和 Nuxt 页面，阻止能力或入口漂移；
+- `npm run test:contract-workflow`：用最小故障夹具确认 Controller/scene/schema 漂移、P1 阻断、metadata fail-closed 和 SDK 参数位置不会再次漏检；
+- `npm run check:api-contract`：审计 Controller、Validate、Resource 和响应形状，P0/P1 问题阻止导出或检查，P2 仅记录；
 - `npm run check:generated:sdk`：确认 SDK 生成物与 OpenAPI 完全一致。
 
-### L3：SDK 真实集成
+Controller 不得通过 `Request::param()`、`request()->param()`、`$this->param()` 或 `$this->paramIndex()` 绕过路由契约；声明请求契约后只能经 `$this->validated()` 读取字段。`request => null` 明确表示没有 query、body 或上传输入，不得用于掩盖缺失 schema。动态请求也要声明 Validator scene 和 `requestSchemas()`，并在运行时显式允许受 schema 约束的动态键。
+
+`rejectTruthy` 仅允许在 Route Contract 内拒绝已经移除的危险兼容开关；它不能成为隐藏输入通道。测试必须证明该字段未进入 OpenAPI/SDK，同时旧真值请求会被拒绝。
+
+### L3：SDK transport 与真实集成
+
+`npm run test:sdk:transport` 从当前 SDK source 临时构建 client，并在随机 localhost HTTP server 上验证 DELETE query、path + query、GET 布尔值、POST/PATCH body 和数组 query JSON 序列化。它不连接业务数据库，属于默认 `check` 门禁，用来证明生成签名不仅“看起来正确”，而且真实 transport 会把参数发出去。
 
 `npm run test:sdk:integration` 通过真实 HTTP 调用构建后的 `@lovecards/sdk`，覆盖公开接口、认证、CRUD、权限、批量操作、错误状态、请求去重和生命周期 hook。这层验证的是“后端返回值能否被真实 SDK 正确消费”，不能由静态 OpenAPI 检查替代。
 
@@ -94,6 +109,18 @@ npm.cmd run test:sdk:integration
 
 这层属于跨系统发布验证，不替代后端模块测试。页面上的搜索、清空搜索、保存、删除等关键交互，应当同时在 SDK 集成层验证接口语义，在浏览器层验证用户操作结果。
 
+### L5：Theme Gateway 浏览器 E2E
+
+`npm run test:theme:e2e` 对已运行的本地 Theme Gateway 验证 SPA entry/History fallback、公开 API、深层路由、Bootstrap 与同一 Release 资源；提供本地测试账号时继续验证登录、发布和评论。测试目标必须是 localhost，活动主题绑定和测试数据在隔离实例中准备并清理。
+
+管理端 runner 设置 `LOVECARDS_E2E_RUN_SDK_INTEGRATION=1` 与 `LOVECARDS_E2E_RUN_THEME=1` 后，会在同一个一次性数据库中依次执行 SDK integration、Admin Playwright、默认主题安装/激活和 Theme E2E。运行前应执行 `npm run package:default-theme`；该命令会先构建当前 SDK，再生成与 `theme.json` 版本一致的 ZIP。runner 只删除由本次 bootstrap 确认创建的数据库，并在同名库已经存在时拒绝复用。
+
+### L6：签名升级与 CI 集成
+
+`npm run test:upgrade:e2e` 在独立的 `lovecards_e2e_*` 数据库和临时实例根中生成真实签名 Release。它会把后端复制到系统临时目录，仅向该 Release 副本注入 E2E-only Contract migration，再通过 JWT/multipart 创建持久升级计划；测试必须验证提前批准被拒绝、计划进入 waiting、独立批准持久化、Contract SQL probe、激活、active pointer、Release header 与健康检查。工作树和生产 migration 不会被测试修改，临时数据库与 Release source 必须在 `finally` 清理。`npm run test:e2e:safety` 另覆盖 localhost fence、数据库命名限制、同名库碰撞及哨兵数据保留。
+
+GitHub Actions 的 `integration` 作业使用 MySQL 8 和 Playwright Chromium，按“构建 SDK/打包主题 → 碰撞安全 → 组合 SDK/Admin/Theme E2E → 签名 Upgrade E2E → 全仓 build”的顺序运行。失败时上传 Playwright 报告、trace、截图、视频和 SDK 测试报告；长驻测试进程使用可回收的进程树，并有超时强制清理。
+
 ## 3. 日常质量门禁
 
 在仓库根目录执行：
@@ -104,17 +131,22 @@ npm.cmd run check
 
 该命令必须保持无外部副作用，并串行执行：
 
-1. 后端行为与 Resource 测试；
-2. 架构边界检查；
-3. 严格路由契约检查；
-4. API 审计和 OpenAPI 一致性检查；
-5. SDK 生成一致性检查；
-6. SDK 与管理端类型检查。
+1. PHP 运行时、上传边界和 E2E 隔离安全夹具；
+2. 后端行为与 Resource 测试；
+3. 契约工作流故障夹具；
+4. 架构边界检查；
+5. 严格路由契约检查；
+6. 管理路由、capability、系统角色、迁移授权种子和 navigation 一致性检查；
+7. API 审计、OpenAPI 与 SDK 生成一致性检查；
+8. SDK package、localhost transport 和 safety 检查；
+9. SDK source、dist 与主题公开资产一致性；
+10. SDK、管理端与默认主题类型/行为检查。
 
 接口或契约发生预期变化时，先生成再检查：
 
 ```powershell
-npm.cmd run generate:sdk
+npm.cmd run build:sdk
+npm.cmd run sync:sdk-theme
 npm.cmd run check
 ```
 
@@ -125,13 +157,13 @@ npm.cmd run check
 以 `Content/Cards` 为例：
 
 1. 在 `app/modules/Content/Cards` 内完成业务入口，不让 Controller 直接访问 Model、Driver 或第三方 SDK。
-2. 在模块 `Transport/Api` 的 Validate 中维护请求规则和场景；请求字段只维护一份。
+2. 在模块 `Transport/Api` 的 Validate 中维护请求规则、场景和 `requestSchemas()`；运行时字段和公开 schema 必须一致。
 3. 在模块 `Transport/Api` 的 Resource 中维护响应映射与 `schema()`；敏感字段采用白名单输出。
-4. 在 `app/api/route/cards.php` 声明唯一 route name、meta、request contract、response resource、shape 和 HTTP status。
+4. 在 `app/api/route/cards.php` 声明唯一 route name、meta、request contract、response resource、shape 和 HTTP status；Controller 只通过 `$this->validated()` 取得 query、body 或文件输入。
 5. 在 `apps/backend/tests/Cards` 增加正常、非法输入、未认证/无权限、所有权、事务或副作用失败测试；Resource 变化同步补 `tests/Api/ResourceContractBaseline.php`。
-6. 运行 `npm run generate:sdk`，只检查生成差异，不手改 `packages/sdk/src/generated`。
+6. 运行 `npm run build:sdk` 和 `npm run sync:sdk-theme`，生成 OpenAPI/SDK、构建 dist 并同步主题公开 bundle；不手改 `packages/sdk/src/generated` 或构建产物。
 7. 在 `packages/sdk/test/integration-suite.mjs` 增加真实调用场景，至少断言请求参数、响应 shape、错误状态以及空值/清空条件。
-8. 运行 `npm run check`；进入发版候选时再运行真实 SDK 集成和管理端 E2E。
+8. 运行 `npm run check`，其中 localhost transport 必须实际观察请求；进入发版候选时再运行真实 SDK 集成和管理端 E2E。
 
 一个接口只有“请求能返回 200”不算完成。至少要覆盖成功路径、输入边界、认证/授权、响应结构和一个真实消费者场景。
 
@@ -148,9 +180,12 @@ npm.cmd run check
 
 - PHP 8.1–8.x。无法从 `PATH` 找到 PHP 时，在当前终端设置 `PHP_BINARY` 环境变量；根 `.env.example` 只作为变量清单，不会被测试脚本自动加载。
 - Node.js 22+，npm 11+；统一使用根 `package-lock.json`。
+- CI 的根 `check` job 必须同时安装 Node、PHP、Composer 和后端依赖；PHP 版本矩阵必须调用根 `test:backend` 递归运行器，不能退回 Composer 的手工文件清单。
 - SDK 集成和 E2E 只运行在 disposable localhost 环境，禁止指向线上、预发布或多人共享数据库。
 - 账号、密码、Token 和私钥不得写入测试源码、报告或 Git；只通过环境变量注入。
 - 测试创建的数据必须使用唯一前缀并在 `finally`/清理阶段删除；清理失败视为测试基础设施问题并显式报告。
+
+Ubuntu CI 同时承担可移植性门禁：generated resource 文件名与 import 大小写必须一致，route manifest 的 source 路径统一为 `/`，任何检查都不能依赖 Windows 大小写不敏感或反斜杠路径行为。
 
 ## 7. 覆盖边界
 

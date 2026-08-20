@@ -54,8 +54,9 @@ final class DirectUpload
         $expire = $this->channels->getDirectUploadExpire();
         $expireAt = date('Y-m-d H:i:s', time() + $expire);
 
+        $hash = bin2hex(random_bytes(8));
         $id = $this->files->createPendingRecord(
-            bin2hex(random_bytes(8)),
+            $hash,
             $channelSlug,
             $userId,
             $filename,
@@ -106,7 +107,12 @@ final class DirectUpload
                 return false;
             }
 
-            $url = $this->driver->getUrl($meta['channel_slug'], $meta['driver_path'] ?: $file['file_path'] ?? '');
+            $hash = trim((string) ($meta['hash'] ?? $file['hash'] ?? ''));
+            if (preg_match('/^[a-f0-9]{16,64}$/', $hash) !== 1) {
+                $this->files->markAsFailed($recordId);
+                return false;
+            }
+            $url = '/media/' . $hash;
             $this->files->markAsCompleted($recordId, $url, $file['file_path'] ?? '');
             return true;
         } catch (\Exception $e) {

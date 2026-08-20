@@ -30,8 +30,9 @@ class ApiResponse
     public static function setHeader($object)
     {
         $data = [
+            'Content-Type'                 => 'application/json; charset=utf-8',
             'Access-Control-Allow-Origin'  => '*',
-            'Access-Control-Allow-Headers' => 'Authorization, Content-Type, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, X-CSRF-TOKEN, X-Requested-With, X-Token',
+            'Access-Control-Allow-Headers' => 'Authorization, Content-Type, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, X-CSRF-TOKEN, X-Requested-With, X-Token, X-Request-Id, X-Correlation-Id',
             'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
         ];
         return $object->header($data);
@@ -98,6 +99,12 @@ class ApiResponse
     private static function normalizeEncoding($value)
     {
         if (is_string($value)) {
+            // Already-correct UTF-8 text must not be converted a second time.
+            // Only legacy mojibake strings (which contain the characteristic
+            // GBK-decoding markers) should go through the repair path.
+            if (!preg_match('/[鍊娓瀛閰鐭璇鐧缁濡鎴鐗榛鍓緤鈥闂]/u', $value)) {
+                return $value;
+            }
             $converted = @iconv('UTF-8', 'GBK//IGNORE', $value);
             // A converted value is safe only when the GBK byte sequence also
             // forms valid UTF-8. This distinguishes legacy mojibake from

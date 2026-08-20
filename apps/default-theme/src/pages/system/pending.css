@@ -1,0 +1,52 @@
+@layer lovecards-pages {
+  .pending-page {
+    width: min(720px, calc(100% - 40px));
+    min-height: calc(100vh - 132px);
+    margin: 0 auto;
+    padding: 72px 0 96px;
+  }
+
+  .pending-context {
+    margin: 0 0 14px;
+    color: var(--lc-rose-deep);
+    font-size: 0.76rem;
+    font-weight: 700;
+  }
+
+  .pending-back { margin-bottom: 42px; }
+
+  .pending-page h1 {
+    margin: 0 0 12px;
+    font-size: 1.6rem;
+    letter-spacing: -0.025em;
+  }
+
+  .pending-page > p:not(.pending-context) {
+    max-width: 60ch;
+    margin-bottom: 34px;
+    color: var(--lc-muted);
+    line-height: 1.7;
+  }
+
+  .pending-boundary {
+    padding: 20px 0;
+    display: grid;
+    gap: 7px;
+    border-top: 1px solid var(--lc-separator);
+    border-bottom: 1px solid var(--lc-separator);
+  }
+
+  .pending-boundary strong { font-size: 0.9rem; }
+  .pending-boundary span { color: var(--lc-muted); font-size: 0.78rem; line-height: 1.6; }
+  .pending-actions { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 9px; }
+
+  @media (max-width: 760px) {
+    .pending-page {
+      width: calc(100% - 32px);
+      min-height: calc(100vh - 56px);
+      padding: 48px 0 calc(100px + env(safe-area-inset-bottom));
+    }
+    .pending-page h1 { font-size: 1.4rem; }
+    .pending-back { margin-bottom: 32px; }
+  }
+}

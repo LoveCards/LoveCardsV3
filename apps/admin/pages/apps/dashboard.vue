@@ -1,6 +1,5 @@
 <!-- 主页 -->
 <template>
-	<NuxtLayout name="root">
 		<!-- 标题 -->
 		<v-row class="pt-2">
 			<v-col cols="6">
@@ -60,19 +59,6 @@
 				<v-card>
 
 					<v-card-text>
-						<!-- <v-row>
-								<v-col cols="3" class="text-center">
-									<v-avatar class="h-100 w-100 hidden-md-and-down"
-										image="http://192.168.3.142:7001/view/admin/assets/img/lcl.png"></v-avatar>
-									<v-avatar class="w-100 hidden-lg-and-up"
-										image="http://192.168.3.142:7001/view/admin/assets/img/lcl.png"></v-avatar>
-								</v-col>
-
-								<v-col cols="9">
-									<h6 class="text-h6 font-weight-black">LoveCards</h6>
-									<div class="text-subtitle-1">2.3.2</div>
-								</v-col>
-							</v-row> -->
 						<v-list-item :title="dashboard.ver.app_name" :subtitle="dashboard.ver.version"
 							prepend-avatar="~/assets/images/logo.png">
 						</v-list-item>
@@ -124,15 +110,19 @@
 				</v-card>
 			</v-col>
 		</v-row>
-	</NuxtLayout>
 </template>
 
 <script setup lang="ts">
-import TrendCharts from '~/components/apps/dashboard/TrendCharts.vue';
+import TrendCharts from '~/components/dashboard/TrendCharts.vue';
 import { useDashboardStore } from '~/stores/dashboardStore';
+import type { DashboardData } from '@lovecards/sdk';
 
 //仪表盘数据
-const dashboard = ref({} as any);
 const dashboardStore = useDashboardStore();
-dashboard.value = dashboardStore.dashboard;
+const dashboard = computed<DashboardData>(() => dashboardStore.dashboard ?? {
+	count: { cards: 0, comments: 0, good: 0 },
+	chart: [],
+	ver: { app_name: '', homepage: '', version: '', build: 0, github: '', qgroup: '' },
+	notice: [],
+});
 </script>

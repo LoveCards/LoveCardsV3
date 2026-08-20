@@ -15,6 +15,22 @@ final class CardResource extends Resource
                 'id' => ['type' => 'integer'], 'is_top' => ['type' => 'integer'], 'status' => ['type' => 'integer'],
                 'user_id' => ['type' => 'integer'], 'data' => ['type' => 'object', 'additionalProperties' => true],
                 'cover' => ['type' => 'string', 'nullable' => true], 'pictures' => ['type' => 'array'],
+                'media' => ['type' => 'array', 'items' => [
+                    'type' => 'object', 'additionalProperties' => false,
+                    'properties' => [
+                        'file_id' => ['type' => 'integer', 'nullable' => true],
+                        'type' => ['type' => 'string', 'enum' => ['image', 'video']],
+                        'url' => ['type' => 'string'],
+                        'mime_type' => ['type' => 'string', 'nullable' => true],
+                        'size' => ['type' => 'integer', 'nullable' => true],
+                        'width' => ['type' => 'integer', 'nullable' => true],
+                        'height' => ['type' => 'integer', 'nullable' => true],
+                        'duration_ms' => ['type' => 'integer', 'nullable' => true],
+                        'poster_url' => ['type' => 'string', 'nullable' => true],
+                        'is_animated' => ['type' => 'boolean'],
+                        'position' => ['type' => 'integer'],
+                    ],
+                ]],
                 'content' => ['type' => 'string'], 'tags' => ['type' => 'array'],
                 'goods' => ['type' => 'integer'], 'views' => ['type' => 'integer'], 'comments' => ['type' => 'integer'],
                 'created_at' => ['type' => 'string'], 'updated_at' => ['type' => 'string'],
@@ -27,7 +43,7 @@ final class CardResource extends Resource
         $card = is_object($value) && method_exists($value, 'toArray')
             ? $value->toArray()
             : (array) $value;
-        foreach (['data', 'tags', 'pictures'] as $field) {
+        foreach (['data', 'tags', 'pictures', 'media'] as $field) {
             if (isset($card[$field]) && is_string($card[$field])) {
                 $decoded = json_decode($card[$field], true);
                 if (json_last_error() === JSON_ERROR_NONE) {
@@ -36,7 +52,7 @@ final class CardResource extends Resource
             }
         }
         $fields = [
-            'id', 'is_top', 'status', 'user_id', 'data', 'cover', 'pictures',
+            'id', 'is_top', 'status', 'user_id', 'data', 'cover', 'pictures', 'media',
             'content', 'tags', 'goods', 'views', 'comments', 'created_at', 'updated_at',
         ];
         $result = [];

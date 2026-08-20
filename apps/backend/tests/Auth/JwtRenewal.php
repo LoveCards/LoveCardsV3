@@ -125,6 +125,17 @@ namespace think\facade {
 
     final class Cache
     {
+        public static function get(string $key)
+        {
+            return \Tests\Auth\CacheTag::$tokens[$key] ?? null;
+        }
+
+        public static function delete(string $key): void
+        {
+            \Tests\Auth\CacheTag::$deleted[] = $key;
+            unset(\Tests\Auth\CacheTag::$tokens[$key]);
+        }
+
         public static function tag(string $tag): \Tests\Auth\CacheTag
         {
             return new \Tests\Auth\CacheTag();
@@ -145,11 +156,10 @@ namespace app\shared\Infrastructure\Cache {
 }
 
 namespace {
-    use app\shared\Infrastructure\Cache\CacheManager;
     use app\modules\Platform\Auth\Infrastructure\Jwt;
     use Firebase\JWT\JWT as FirebaseJwt;
-    use Tests\Auth\CacheTag;
 
+    require dirname(__DIR__, 2) . '/app/shared/SystemPaths/PersistentConfiguration.php';
     require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Infrastructure/Jwt.php';
 
     $failures = 0;
@@ -163,38 +173,37 @@ namespace {
         }
     };
 
-    $payload = json_encode(['data' => ['uid' => 42]]);
+    $payload = json_encode([
+        'iss' => 'https://example.test',
+        'iat' => 100,
+        'exp' => 200,
+        'data' => ['uid' => 42],
+    ]);
     $body = rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
     $expiredToken = 'header.' . $body . '.signature';
-    $cacheKey = 'token_' . $expiredToken;
-    CacheTag::$tokens[$cacheKey] = 1;
 
     try {
-        $result = Jwt::verify($expiredToken);
-        $assertSame(42, $result['uid'], 'renewal preserves uid');
-        $assertSame('renewed-token', $result['_new_token'], 'renewal returns the new token');
+        $result = Jwt::inspect($expiredToken);
+        $assertSame(42, $result['data']['uid'], 'expired claims preserve uid');
+        $assertSame(true, $result['expired'], 'expired claims are marked');
         $assertSame(1, FirebaseJwt::$decodeCalls, 'expired token is not decoded twice');
-        $assertSame([$cacheKey], CacheTag::$deleted, 'old renewal credential is consumed');
-        $assertSame(720, CacheManager::$setCalls[0]['ttl'], 'cache covers token life and renewal window');
-        fwrite(STDOUT, "PASS expired token renewal preserves authentication context\n");
+        fwrite(STDOUT, "PASS expired token exposes verified claims once\n");
     } catch (\Throwable $exception) {
         $failures++;
-        fwrite(STDERR, "FAIL expired token renewal: {$exception->getMessage()}\n");
+        fwrite(STDERR, "FAIL expired token inspection: {$exception->getMessage()}\n");
     }
 
-    CacheTag::$tokens = [];
-
     try {
-        Jwt::verify($expiredToken);
+        Jwt::inspect('invalid-token');
         $failures++;
-        fwrite(STDERR, "FAIL expired token without cache: expected RuntimeException\n");
+        fwrite(STDERR, "FAIL malformed expired token: expected RuntimeException\n");
     } catch (\RuntimeException $exception) {
         try {
-            $assertSame('token已失效', $exception->getMessage(), 'missing renewal credential is rejected');
-            fwrite(STDOUT, "PASS expired token without renewal credential is rejected\n");
+            $assertSame('token内容无效', $exception->getMessage(), 'malformed payload is rejected');
+            fwrite(STDOUT, "PASS malformed expired token is rejected\n");
         } catch (\Throwable $assertionFailure) {
             $failures++;
-            fwrite(STDERR, "FAIL expired token without cache: {$assertionFailure->getMessage()}\n");
+            fwrite(STDERR, "FAIL malformed expired token: {$assertionFailure->getMessage()}\n");
         }
     }
 
@@ -207,5 +216,5 @@ namespace {
         exit(1);
     }
 
-    fwrite(STDOUT, "2 JWT renewal regression tests passed.\n");
+    fwrite(STDOUT, "2 JWT codec regression tests passed.\n");
 }

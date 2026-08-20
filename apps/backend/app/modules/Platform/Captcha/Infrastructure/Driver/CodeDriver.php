@@ -5,6 +5,7 @@ namespace app\modules\Platform\Captcha\Infrastructure\Driver;
 use app\modules\Platform\Captcha\Infrastructure\Driver\AbstractDriver;
 use app\modules\Platform\Sender\Public\Sender;
 use app\shared\Infrastructure\Cache\CacheManager;
+use app\modules\Platform\Captcha\Service\ChannelManager;
 
 class CodeDriver extends AbstractDriver
 {
@@ -39,8 +40,12 @@ class CodeDriver extends AbstractDriver
 
         CacheManager::set('captcha', $key, $code, $ttl);
 
-        $channelType = $this->config['code_channel'] ?? 'smtp';
-        Sender::code($channelType, $to, $code, (int) ceil($ttl / 60));
+        $channelType = ChannelManager::getCodeChannel();
+        $result = Sender::code($channelType, $to, $code, (int) ceil($ttl / 60));
+        if (!$result->success) {
+            CacheManager::delete($key);
+            return ['status' => false, 'msg' => $result->error ?: '验证码发送失败'];
+        }
 
         return ['status' => true, 'msg' => '验证码已发送'];
     }

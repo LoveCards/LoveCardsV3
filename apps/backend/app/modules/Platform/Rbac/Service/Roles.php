@@ -4,18 +4,69 @@ namespace app\modules\Platform\Rbac\Service;
 
 use think\facade\Db;
 use app\modules\Platform\Rbac\Infrastructure\Persistence\Model\Roles as RolesModel;
-use app\modules\Platform\Rbac\Infrastructure\Persistence\Model\RoleCapabilities;
+use app\modules\Platform\Rbac\Infrastructure\Persistence\Model\Capabilities;
+use app\modules\Platform\Rbac\Infrastructure\Persistence\Model\RoleGrants;
 use app\api\ApiException;
 use app\shared\Infrastructure\Persistence\ModelQuery;
 use app\shared\Infrastructure\Cache\CacheManager;
 use app\modules\Platform\Rbac\Domain\SystemRolePolicy;
+use app\modules\Platform\Rbac\Domain\CapabilityCatalog;
+use app\shared\Authorization\Scope;
+use app\shared\Authorization\GrantSet;
 
 class Roles
 {
-    public static function Index(array $params): array
+    public static function batchOperate(string $method, array $ids, int $uid, GrantSet $grants): void
+    {
+        if (!$grants->allows('roles.delete', Scope::GLOBAL)) {
+            throw ApiException::forbidden('鏉冮檺涓嶈冻');
+        }
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+        if ($ids === []) {
+            throw ApiException::badRequest('no role ids supplied');
+        }
+        if (!in_array($method, ['delete', 'trash', 'restore', 'hard_delete'], true)) {
+            throw ApiException::badRequest('涓嶆敮鎸佺殑鎿嶄綔');
+        }
+
+        $roles = RolesModel::withTrashed()->whereIn('id', $ids)->select();
+        if ($roles->count() !== count($ids)) {
+            throw ApiException::notFound('role not found');
+        }
+        foreach ($roles as $role) {
+            if ($role->is_system && in_array($method, ['delete', 'trash', 'hard_delete'], true)) {
+                throw ApiException::badRequest('绯荤粺瑙掕壊涓嶅彲鍒犻櫎');
+            }
+        }
+
+        if (in_array($method, ['delete', 'trash'], true)) {
+            RolesModel::whereIn('id', $ids)->delete();
+            return;
+        }
+        if ($method === 'restore') {
+            RolesModel::withTrashed()->onlyTrashed()->whereIn('id', $ids)->update(['deleted_at' => null]);
+            return;
+        }
+
+        Db::startTrans();
+        try {
+            RoleGrants::whereIn('role_id', $ids)->delete();
+            Db::table('roles')->whereIn('id', $ids)->delete();
+            Db::commit();
+            foreach ($ids as $roleId) RBAC::clearCache($roleId);
+        } catch (\Throwable $e) {
+            Db::rollback();
+            throw ApiException::error('鍒犻櫎瑙掕壊澶辫触', ApiException::CODE_SYSTEM_ERROR, null, $e);
+        }
+    }
+
+    public static function Index(array $params, array $caps = []): array
     {
         $params['search_default_key'] = 'name';
-        $result = ModelQuery::make(RolesModel::class)->getPaginate($params);
+        // roles.read is currently the module-wide management capability.
+        $result = ModelQuery::make(RolesModel::class)
+            ->trashScope((int) ($params['show_deleted'] ?? 0), in_array('roles.read', $caps, true))
+            ->getPaginate($params);
         return $result->toArray();
     }
 
@@ -98,7 +149,7 @@ class Roles
 
         Db::startTrans();
         try {
-            RoleCapabilities::where('role_id', 'in', $data)->delete();
+            RoleGrants::where('role_id', 'in', $data)->delete();
             RolesModel::destroy($data);
             Db::commit();
 
@@ -130,18 +181,25 @@ class Roles
             }
 
             // 校验能力字符串存在性
-            $validCaps = RBAC::getAllCapabilities();
-            $invalidCaps = array_diff($caps, array_keys($validCaps));
+            $invalidCaps = [];
+            foreach ($caps as $cap) {
+                $name = is_array($cap) ? (string) ($cap['capability'] ?? '') : (string) $cap;
+                $name = str_ends_with($name, '.all') ? substr($name, 0, -4) : $name;
+                if (!array_key_exists($name, CapabilityCatalog::canonical())) $invalidCaps[] = $name;
+            }
             if (!empty($invalidCaps)) {
                 throw ApiException::badRequest('不存在的能力：' . implode(', ', $invalidCaps));
             }
 
-            RoleCapabilities::where('role_id', $roleId)->delete();
+            $grants = self::normalizeGrants($caps);
+            RoleGrants::where('role_id', $roleId)->delete();
 
-            foreach ($caps as $cap) {
-                RoleCapabilities::create([
-                    'role_id'    => $roleId,
-                    'capability' => $cap,
+            foreach ($grants as $grant) {
+                RoleGrants::create([
+                    'role_id' => $roleId,
+                    'capability' => $grant['capability'],
+                    'scope' => $grant['scope'],
+                    'created_at' => date('Y-m-d H:i:s'),
                 ]);
             }
 
@@ -169,8 +227,7 @@ class Roles
             throw ApiException::notFound('角色不存在');
         }
 
-        return RoleCapabilities::where('role_id', $roleId)
-            ->column('capability') ?: [];
+        return RBAC::getRoleGrants($roleId)->toArray();
     }
 
     /**
@@ -207,18 +264,21 @@ class Roles
 
         Db::startTrans();
         try {
-            Db::table('role_capabilities')->delete(true);
+            self::syncCapabilityCatalog();
+            Db::table('role_grants')->delete(true);
 
             $rows = [];
             foreach ($roleCaps as $roleId => $caps) {
-                foreach ($caps as $cap) {
+                foreach (self::normalizeGrants($caps) as $grant) {
                     $rows[] = [
-                        'role_id'    => $roleId,
-                        'capability' => $cap,
+                        'role_id' => $roleId,
+                        'capability' => $grant['capability'],
+                        'scope' => $grant['scope'],
+                        'created_at' => date('Y-m-d H:i:s'),
                     ];
                 }
             }
-            RoleCapabilities::insertAll($rows);
+            RoleGrants::insertAll($rows);
 
             Db::commit();
             CacheManager::clearDomain('rbac');
@@ -286,14 +346,21 @@ class Roles
         // 6. 事务性写入 — commit 后清理 cache
         Db::startTrans();
         try {
+            self::syncCapabilityCatalog();
             $results = [];
             foreach ($roleCaps as $roleId => $caps) {
                 $inserted = 0;
-                foreach ($caps as $cap) {
-                    $exists = RoleCapabilities::where('role_id', $roleId)
-                        ->where('capability', $cap)->find();
+                foreach (self::normalizeGrants($caps) as $grant) {
+                    $exists = RoleGrants::where('role_id', $roleId)
+                        ->where('capability', $grant['capability'])
+                        ->where('scope', $grant['scope'])->find();
                     if (!$exists) {
-                        RoleCapabilities::create(['role_id' => $roleId, 'capability' => $cap]);
+                        RoleGrants::create([
+                            'role_id' => $roleId,
+                            'capability' => $grant['capability'],
+                            'scope' => $grant['scope'],
+                            'created_at' => date('Y-m-d H:i:s'),
+                        ]);
                         $inserted++;
                     }
                 }
@@ -308,5 +375,43 @@ class Roles
         // commit 成功后清理缓存
         RBAC::clearCache();
         return $results;
+    }
+
+    private static function normalizeGrants(array $values): array
+    {
+        $result = [];
+        foreach ($values as $value) {
+            if (is_array($value)) {
+                $capability = (string) ($value['capability'] ?? '');
+                $scope = (string) ($value['scope'] ?? '');
+            } else {
+                $capability = (string) $value;
+                $scope = str_ends_with($capability, '.all') ? Scope::ALL : Scope::GLOBAL;
+                if ($scope === Scope::ALL) $capability = substr($capability, 0, -4);
+                if ($scope === Scope::GLOBAL && array_key_exists($capability . '.all', CapabilityCatalog::all())) {
+                    $scope = Scope::OWN;
+                }
+            }
+            if (!array_key_exists($capability, CapabilityCatalog::canonical())) {
+                throw ApiException::badRequest('Unknown capability: ' . $capability);
+            }
+            Scope::assertValid($scope);
+            $result[$capability . ':' . $scope] = ['capability' => $capability, 'scope' => $scope];
+        }
+        return array_values($result);
+    }
+
+    private static function syncCapabilityCatalog(): void
+    {
+        foreach (CapabilityCatalog::canonical() as $capability => $description) {
+            $existing = Capabilities::where('capability', $capability)->find();
+            if (!$existing) {
+                Capabilities::create([
+                    'capability' => $capability,
+                    'description' => $description,
+                    'risk_level' => 0,
+                ]);
+            }
+        }
     }
 }

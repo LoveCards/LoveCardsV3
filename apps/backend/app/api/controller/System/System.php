@@ -33,8 +33,8 @@ class System extends BaseController
                     'header' => "User-Agent: PHP\r\n",
                 ],
                 'ssl' => [
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
+                    'verify_peer' => true,
+                    'verify_peer_name' => true,
                 ],
             ]);
 
@@ -54,8 +54,8 @@ class System extends BaseController
                     'header' => "User-Agent: PHP\r\n",
                 ],
                 'ssl' => [
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
+                    'verify_peer' => true,
+                    'verify_peer_name' => true,
                 ],
             ]);
 

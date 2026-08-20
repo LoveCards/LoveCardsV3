@@ -1,6 +1,5 @@
 <!-- 渠道配置页面 -->
 <template>
-	<NuxtLayout name="root">
 		<v-row class="pt-2">
 			<v-col cols="12">
 				<h1 class="text-primary font-weight-bold">{{ channelName }} 配置</h1>
@@ -84,18 +83,21 @@
 				</v-card>
 			</v-col>
 		</v-row>
-	</NuxtLayout>
 </template>
 
 <script setup lang="ts">
 import { useApi } from '~/lib/api';
+import type { FieldDefinition, JsonObject, SenderChannel } from '@lovecards/sdk';
 const client = useApi();
+
+type DriverField = FieldDefinition & { key: string; label: string };
+const isDriverField = (field: FieldDefinition): field is DriverField => typeof field.key === 'string' && typeof field.label === 'string';
 
 const route = useRoute();
 const slug = route.params.slug as string;
 
-const config = ref<Record<string, any>>({});
-const fields = ref<Array<{ key: string; label: string; type: string; options?: Array<{ value: string; label: string }> }>>([]);
+const config = ref<JsonObject>({});
+const fields = ref<DriverField[]>([]);
 const channelName = ref(slug);
 const showPassword = ref(false);
 const loading = ref(true);
@@ -110,10 +112,10 @@ const saveResult = ref<{ success: boolean; message: string } | null>(null);
 const loadChannelMeta = () => {
 	return client.sender.channels()
 		.then((channels) => {
-			const channel = channels.find((c: any) => c.slug === slug);
+			const channel = channels.find((c: SenderChannel) => c.slug === slug);
 			if (channel) {
 				channelName.value = channel.name;
-				fields.value = channel.fields ?? [];
+				fields.value = (channel.fields ?? []).filter(isDriverField);
 			}
 		});
 };

@@ -27,6 +27,13 @@ class Cards extends BaseController
         return $this->respond($result);
     }
 
+    public function listAll()
+    {
+        $params = $this->validated();
+        $result = CardsService::listAll($params, request()->auth->capabilities());
+        return $this->respond($result);
+    }
+
     public function search()
     {
         $params = $this->validated();
@@ -45,6 +52,12 @@ class Cards extends BaseController
     {
         $auth = request()->auth ?? null;
         $result = CardsService::get((int) $id, $auth ? $auth->capabilities() : []);
+        return $this->respond($result);
+    }
+
+    public function getManaged($id)
+    {
+        $result = CardsService::get((int) $id, request()->auth->capabilities());
         return $this->respond($result);
     }
 
@@ -71,7 +84,7 @@ class Cards extends BaseController
         $params = $this->validated(null, ['id' => (int) $id]);
 
         $auth = request()->auth;
-        CardsService::updateCard($params, $auth->uid(), $auth->capabilities());
+        CardsService::updateCard($params, $auth->uid(), $auth->grants());
 
         return $this->respond();
     }
@@ -79,7 +92,7 @@ class Cards extends BaseController
     public function delete($id)
     {
         $auth = request()->auth;
-        CardsService::deleteCards([(int) $id], $auth->uid(), $auth->capabilities());
+        CardsService::deleteCards([(int) $id], $auth->uid(), $auth->grants());
         return $this->respond();
     }
 
@@ -89,10 +102,21 @@ class Cards extends BaseController
         return $this->respond(['likes' => $likes]);
     }
 
+    public function unlike($id)
+    {
+        LikesService::unlike('card', (int) $id, request()->auth->uid());
+        return $this->respond();
+    }
+
     public function listOwn()
     {
         $params = $this->validated();
         $result = CardsService::listOwn($params, request()->auth->uid());
         return $this->respond($result);
+    }
+
+    public function getOwn($id)
+    {
+        return $this->respond(CardsService::getOwn((int) $id, request()->auth->uid()));
     }
 }

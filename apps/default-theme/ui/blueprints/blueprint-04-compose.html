@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LoveCards · Blueprint 04 Compose</title>
+  <link rel="stylesheet" href="./base.css" />
+  <link rel="stylesheet" href="./responsive-overrides.css" />
+  <link rel="stylesheet" href="./visual-language.css" />
+  <link rel="stylesheet" href="./blueprint-04-compose.css" />
+</head>
+<body>
+<main class="blueprint-page">
+  <section class="board" id="blueprint-compose">
+    <header class="board-meta"><div><h1>Blueprint 04 · 发布器与草稿</h1><p>先选择随笔、图文或视频，再在同一编辑轴内完成正文、媒体与话题。</p></div><span class="board-tag">Compose · Explicit Type</span></header>
+    <section class="compose-type-contract" aria-label="发布类型规则">
+      <header><strong>发布类型是用户选择，不再由文件数量猜测</strong><span>切换类型会移除不兼容媒体，必须先确认</span></header>
+      <div class="compose-type-rules">
+        <div><b>随笔</b><strong>纯文字</strong><span>隐藏媒体工作区，正文必填。</span></div>
+        <div class="is-current"><b>图文</b><strong>1–9 张图片或 GIF</strong><span>1 张写入 image，多张写入 gallery。</span></div>
+        <div><b>视频</b><strong>1 个视频</strong><span>支持 MP4、WebM、MOV 与 M4V。</span></div>
+      </div>
+    </section>
+    <section class="compose-type-demo" aria-label="桌面与手机发布类型选择器">
+      <div><span>桌面编辑器</span><div class="compose-type-segments" role="radiogroup" aria-label="桌面发布类型"><button type="button" role="radio" aria-checked="false">随笔</button><button class="is-selected" type="button" role="radio" aria-checked="true">图文</button><button type="button" role="radio" aria-checked="false">视频</button></div><p>图文 · 已选择 2 / 9 张 · 将发布为图集状态</p></div>
+      <div><span>手机编辑器</span><div class="compose-type-segments" role="radiogroup" aria-label="手机发布类型"><button type="button" role="radio" aria-checked="false">随笔</button><button class="is-selected" type="button" role="radio" aria-checked="true">图文</button><button type="button" role="radio" aria-checked="false">视频</button></div><p>触控目标 44px · 左右方向键可切换</p></div>
+    </section>
+    <div class="frames">
+      <div class="frame desktop"><div class="shell"><header class="topbar"><div class="brand"><i>L</i><span>Love<em>Cards</em></span></div><div class="search">⌕　搜索内容、作者或话题</div><div class="top-actions"><span>草稿箱</span><div class="avatar">W</div></div></header><div class="desktop-main"><div class="compose-layout"><aside class="compose-steps"><div class="step active"><b>1</b><span>编辑内容<br><small>文字与媒体</small></span></div><div class="step"><b>2</b><span>补充信息<br><small>话题与可见范围</small></span></div><div class="step"><b>3</b><span>发布检查<br><small>必填项与权限</small></span></div></aside><main class="composer"><header class="composer-head"><h2>创建一张新卡片</h2><span>内容已填充 · 尚未发布</span></header><div class="composer-author"><div class="mini-avatar">晚</div><b>晚风收藏家</b></div><textarea readonly placeholder="分享此刻的想法…">傍晚的风从窗边经过，带走了白天最后一点燥热。</textarea><div class="media-drop"><div><b>＋</b>添加图片<br><small>支持拖放，最多 9 项</small></div></div><div class="composer-tools"><span class="tool">图片</span><span class="tool">话题</span></div><footer class="composer-footer"><span>所有人可见 · 允许回复</span><button class="primary">存入草稿箱</button></footer></main><aside class="compose-check-panel"><section class="checklist"><h3>发布检查</h3><span><b>✓</b>正文已填写</span><span><b>✓</b>图文媒体已就绪</span><span><b>✓</b>可见范围明确</span><span><b>✓</b>发布权限已确认</span></section></aside></div></div></div></div>
+      <div class="frame phone"><div class="shell"><div class="mobile-compose"><header class="mobile-compose-head"><span>取消</span><span>发布新内容</span><button class="primary">存入草稿箱</button></header><div class="composer-author"><div class="mini-avatar">晚</div><div class="identity">晚风收藏家<small>所有人可见</small></div></div><textarea readonly>傍晚的风从窗边经过，带走了白天最后一点燥热。</textarea><div class="media-drop"><div><b>＋</b>添加图片<br><small>最多 9 项</small></div></div><div class="mobile-tool-row"><span class="tool">图片</span><span class="tool">话题</span></div><footer class="mobile-compose-foot"><span>未发布</span><b>存入草稿箱</b></footer></div></div></div>
+    </div>
+  </section>
+  <section class="board" id="blueprint-drafts">
+    <header class="board-meta"><div><h1>Blueprint 04B · 草稿箱与恢复编辑</h1><p>草稿是发布页主动保存的未发布状态；恢复后回到同一套发布编辑器。</p></div><span class="board-tag">Drafts · Restore Compose</span></header>
+    <div class="frames">
+      <div class="frame desktop"><div class="shell drafts-shell"><header class="topbar"><div class="brand"><i>L</i><span>Love<em>Cards</em></span></div><div class="search">⌕　搜索内容、作者或话题</div><div class="top-actions"><span>发布</span><div class="avatar">W</div></div></header><main class="drafts-main"><header class="drafts-heading"><div><span>创作空间</span><h2>草稿箱</h2><p>这里只展示从发布页存入的未发布内容。</p></div></header><div class="drafts-workspace"><aside class="drafts-summary"><strong>3</strong><span>份未发布内容</span><p><i></i>云端同步正常</p><small>最近更新 · 18:24</small></aside><section class="drafts-list"><header><h3>最近编辑</h3><span>按更新时间排列</span></header><article class="draft-item"><div class="draft-thumb coast"></div><div><h4>傍晚的风从窗边经过</h4><p>带走了白天最后一点燥热。想把这段城市散步整理成完整记录。</p><small>图文 · 最近更新 · 今天 18:24</small></div><button>恢复编辑</button></article><article class="draft-item"><div class="draft-thumb text">文</div><div><h4>周末书单与咖啡馆</h4><p>三本书、两家安静的店，还有一段没写完的路线说明。</p><small>随笔 · 最近更新 · 昨天 22:16</small></div><button>恢复编辑</button></article><article class="draft-item"><div class="draft-thumb text">视</div><div><h4>视频草稿</h4><p>正文尚未完成，恢复后回到发布页继续编辑。</p><small class="draft-error">视频 · 未发布</small></div><button>恢复编辑</button></article></section></div></main></div></div>
+      <div class="frame phone"><div class="shell"><div class="mobile-drafts-list"><header class="mobile-drafts-head"><button>←</button><strong>草稿箱</strong><span>3 份</span></header><p class="mobile-drafts-note">从发布页存入的未发布内容，点击后恢复到同一编辑器。</p><article class="mobile-draft-row"><div class="draft-thumb coast"></div><div><strong>傍晚的风从窗边经过</strong><small>图文 · 今天 18:24</small></div><button>恢复</button></article><article class="mobile-draft-row"><div class="draft-thumb text">文</div><div><strong>周末书单与咖啡馆</strong><small>随笔 · 昨天 22:16</small></div><button>恢复</button></article><article class="mobile-draft-row"><div class="draft-thumb text">视</div><div><strong>视频草稿</strong><small>视频 · 未发布</small></div><button>恢复</button></article></div></div></div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

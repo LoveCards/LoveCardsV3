@@ -17,6 +17,8 @@ class PaginationInput extends Validate
                 'search_like',
                 'order_desc',
                 'order_key',
+                'show_deleted',
+                'tag_id',
             ],
             'require' => false,
             'nonNull' => false,
@@ -33,7 +35,7 @@ class PaginationInput extends Validate
         //列表长度
         'list_rows'   => 'number|between:1,1000',
         //搜索值
-        // 'search_value' => '',
+        'search_value' => 'max:255',
         //搜索字段
         'search_keys' => 'searchKey',
         'search_like' => 'number|between:0,2',
@@ -41,6 +43,9 @@ class PaginationInput extends Validate
         'order_desc' => 'stringBool',
         //排序字段
         'order_key' => 'alphaDash',
+        // 0=active, 1=with trashed, 2=only trashed
+        'show_deleted' => 'number|between:0,2',
+        'tag_id' => 'number',
     ];
     //定义错误信息
     protected $message  =   [

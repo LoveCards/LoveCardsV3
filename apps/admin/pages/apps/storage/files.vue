@@ -1,6 +1,5 @@
 <!-- 文件管理 -->
 <template>
-  <NuxtLayout name="root">
     <!-- 标题 -->
     <v-row class="pt-2">
       <v-col cols="6">
@@ -50,7 +49,7 @@
                   <!-- 预览 -->
                   <template v-slot:[`item.preview`]="{ item }">
                     <v-img v-if="isImage(item.mime_type)" class="rounded-lg" :width="40" :height="40" cover
-                      :src="item.file_url" :alt="item.original_name"></v-img>
+                      :src="item.file_url" :alt="item.original_name ?? undefined"></v-img>
                     <v-icon v-else size="40" color="grey">mdi-file-outline</v-icon>
                   </template>
 
@@ -87,6 +86,9 @@
 
                   <!-- 操作 -->
                   <template v-slot:[`item.operate`]="{ item }">
+                    <AdminActionGuard capability="files.usage.read">
+                      <v-btn :to="`/apps/storage/files/${item.id}/usage`" icon="mdi-link-variant" elevation="0" size="small" title="查看引用" variant="text" />
+                    </AdminActionGuard>
                     <!-- 正常文件视图 -->
                     <template v-if="viewMode === 'normal'">
                       <v-btn icon="mdi-pencil" elevation="0" size="small" variant="text"
@@ -139,7 +141,6 @@
         </v-card>
       </v-col>
     </v-row>
-  </NuxtLayout>
 
   <!-- 编辑文件对话框 -->
   <EditFileDialog v-model:thisDialogState="EditDialog_state" v-model:FileData="EditDialog_data"
@@ -158,12 +159,14 @@
 <script setup lang="ts">
 import { useApi } from '~/lib/api';
 import type { FilesBatchMethod } from '@lovecards/sdk';
+import type { LCFile } from '@lovecards/sdk';
 import CommonUtils from "~/utils/common";
-import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
-import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
-import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
-import EditFileDialog from "@/components/apps/storage/EditFileDialog.vue";
-import SelectUtils from "~/api/utils/select";
+import PublicDeleteDialog from "@/components/shared/Table/DeleteDialog.vue";
+import PublicBatchDialog from "@/components/shared/Table/BatchDialog.vue";
+import PublicSearchDialog from "@/components/shared/Table/SearchDialog.vue";
+import EditFileDialog from "@/components/storage/EditFileDialog.vue";
+import SelectUtils from "~/utils/select";
+import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue';
 const client = useApi();
 
 // 视图模式
@@ -221,18 +224,18 @@ const formatSize = (bytes: number) => {
   return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
 };
 
-const sceneColor = (scene: string) => {
+const sceneColor = (scene: string | null) => {
   const map: Record<string, string> = { card: 'blue', comment: 'cyan', avatar: 'purple', direct: 'grey' };
-  return map[scene] || 'grey';
+  return scene ? (map[scene] || 'grey') : 'grey';
 };
 
 // 表格状态
-const tableItems = ref<any[]>([]);
+const tableItems = ref<LCFile[]>([]);
 const tableSelected = ref<number[]>([]);
 const tablePaginationLength = ref(0);
 const tableCurrentPage = ref(1);
 const tableSearchValue = ref<string | undefined>(undefined);
-const tableSearchFilter = ref<any>({});
+const tableSearchFilter = ref<Record<string, unknown>>({});
 const tableListRows = ref(SelectUtils.Common.Table.ListRowsOptions[0]?.value);
 
 // 获取表格数据
@@ -244,7 +247,7 @@ const getTableData = () => {
     show_deleted: viewMode.value === 'deleted' ? 2 : 0,
     ...tableSearchFilter.value,
   };
-  client.files.list(params).then((result) => {
+  client.files.listManaged(params).then((result) => {
     tableCurrentPage.value = result.pagination!.currentPage;
     tablePaginationLength.value = result.pagination!.totalPages;
     tableItems.value = result.data;
@@ -270,15 +273,15 @@ watch(viewMode, () => {
 
 // 统一操作方法
 const handleBatchOp = (ids: number[], method: FilesBatchMethod) => {
-  client.files.batch({ ids, method }).then(() => {
+  client.files.batchManaged({ ids, method }).then(() => {
     getTableData();
   });
 };
 
 // 编辑对话框
 const EditDialog_state = ref(false);
-const EditDialog_data = ref<any>({});
-const openEditDialog = (item: any) => {
+const EditDialog_data = ref<{ edit: LCFile; origin: LCFile }>({ edit: {} as LCFile, origin: {} as LCFile });
+const openEditDialog = (item: LCFile) => {
   EditDialog_data.value = {
     origin: CommonUtils.deepClone(item),
     edit: CommonUtils.deepClone(item),
@@ -288,14 +291,14 @@ const openEditDialog = (item: any) => {
 
 // 永久删除
 const DeleteDialog_state = ref(false);
-const DeleteDialog_data = ref<any>({});
+const DeleteDialog_data = ref<{ id: number; display?: string }>({ id: 0 });
 const HardDeleteFun = (id: number) => {
-  client.files.batch({ ids: [id], method: 'hard_delete' }).then(() => {
+  client.files.batchManaged({ ids: [id], method: 'hard_delete' }).then(() => {
     DeleteDialog_state.value = false;
     getTableData();
   });
 };
-const openHardDeleteDialog = (item: any) => {
+const openHardDeleteDialog = (item: LCFile) => {
   DeleteDialog_data.value = { id: item.id, display: item.original_name || item.file_url };
   DeleteDialog_state.value = true;
 };
@@ -327,7 +330,7 @@ const BatchFun = () => {
 
 // 搜索
 const SearchDialog_state = ref(false);
-const setTableSearchFilter = (data: any) => { tableSearchFilter.value = data; };
+const setTableSearchFilter = (data: Record<string, unknown>) => { tableSearchFilter.value = data; };
 
 onMounted(() => getTableData());
 </script>

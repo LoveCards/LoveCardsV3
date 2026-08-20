@@ -22,7 +22,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
     }
 
     if (!userStore.userInfo || !userStore.hasAdminAccess()) return navigateTo('/client/error');
-    if (to.path.startsWith('/apps') && !canAccessPath(to.path, userStore.permissions, userStore.isRoot())) {
+    if (to.path.startsWith('/apps') && !canAccessPath(to.path, userStore.grants)) {
         errorStore.setViewData({
             message: '权限不足',
             jumpBtn: { text: '返回首页', clickFun: CommonUtils.jumpRoot }

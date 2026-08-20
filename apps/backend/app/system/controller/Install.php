@@ -17,6 +17,7 @@ use app\modules\Operations\Installer\Infrastructure\Environment;
 use app\modules\Operations\Installer\Infrastructure\Rsa;
 
 use app\modules\Platform\Auth\Infrastructure\Jwt;
+use app\modules\Operations\SystemLifecycle\Application\SystemLifecycleCoordinator;
 
 class Install
 {
@@ -106,7 +107,11 @@ class Install
             }
             //导入数据库文件
             try {
-                Database::ImportSQLFile('../data.sql');
+                Database::ImportSQLFile(app()->getRootPath() . 'data.sql');
+                // 全新安装必须完成全部增量迁移；contract 阶段仍由运维流程显式审批。
+                app(SystemLifecycleCoordinator::class)->runUntilSettled(
+                    dirname(__DIR__, 3) . '/database/migrations'
+                );
                 return Export::Create(null, 200);
             } catch (\Throwable $e) {
                 $msg = $e->getMessage();

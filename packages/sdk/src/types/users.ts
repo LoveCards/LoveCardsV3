@@ -14,6 +14,7 @@ export interface User {
   roles_id: number[]
   roles?: RoleInfo[]
   capabilities?: string[]
+  grants?: import('./permissions').Grant[]
   status: number
 }
 
@@ -50,7 +51,6 @@ export interface ProfileUpdateParams {
 }
 
 export interface AdminUserUpdateParams extends ProfileUpdateParams {
-  roles_id?: number[]
   status?: number
   email?: string
   phone?: string

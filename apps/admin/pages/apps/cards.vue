@@ -1,6 +1,5 @@
 <!-- 用户管理 -->
 <template>
-  <NuxtLayout name="root">
     <!-- 标题 -->
     <v-row class="pt-2">
       <v-col cols="6">
@@ -69,7 +68,7 @@
                   <!-- 封面 -->
                   <template v-slot:[`item.cover`]="{ item }">
                     <v-img class="rounded-lg" :width="100" aspect-ratio="16/9" cover :alt="item.username"
-                      :src="item.cover"></v-img>
+                      :src="item.cover ?? undefined"></v-img>
                   </template>
 
                   <!-- 操作 -->
@@ -140,7 +139,6 @@
         </v-card>
       </v-col>
     </v-row>
-  </NuxtLayout>
 
   <!-- 编辑对话框 -->
   <EditCardDialog v-model:thisDialogState="EditCardDialog_state" v-model:editCardData="EditCardDialog_data"
@@ -159,19 +157,21 @@
 <script setup lang="ts">
 import { useApi } from '~/lib/api';
 import CommonUtils from "@/utils/common";
-import PublicDeleteDialog from "@/components/apps/public/Table/DeleteDialog.vue";
-import EditCardDialog from "@/components/apps/cards/EditCardDialog.vue";
-import PublicBatchDialog from "@/components/apps/public/Table/BatchDialog.vue";
-import PublicSearchDialog from "@/components/apps/public/Table/SearchDialog.vue";
-import SelectUtils from "~/api/utils/select";
+import PublicDeleteDialog from "@/components/shared/Table/DeleteDialog.vue";
+import EditCardDialog from "@/components/cards/EditCardDialog.vue";
+import PublicBatchDialog from "@/components/shared/Table/BatchDialog.vue";
+import PublicSearchDialog from "@/components/shared/Table/SearchDialog.vue";
+import SelectUtils from "~/utils/select";
 import { useTagsStore } from "@/stores/tagsStore";
+import type { Card, CardsBatchMethod } from '@lovecards/sdk';
 const client = useApi();
+const route = useRoute();
 
 //渲染数据预处理
-const renderTop = (data: any) => {
+const renderTop = (data: unknown) => {
   if (data !== '' && data !== undefined) {
     let result = "";
-    const top = SelectUtils.Cards.top.find((item: any) => item.value == data);
+    const top = SelectUtils.Cards.top.find((item) => item.value === Number(data));
     if (top) {
       result = top.title;
     }
@@ -213,9 +213,9 @@ const TableBatchOptions = [
 //标签
 const tagsStore = useTagsStore();
 const Tags = computed(() => Array.isArray(tagsStore.tags) ? tagsStore.tags : []);
-const normalizeTagIds = (tags: any): any[] => {
+const normalizeTagIds = (tags: unknown): string[] => {
   if (Array.isArray(tags)) {
-    return tags;
+    return tags.map(String);
   }
   if (typeof tags === 'string' && tags.trim() !== '') {
     try {
@@ -228,10 +228,10 @@ const normalizeTagIds = (tags: any): any[] => {
   return [];
 };
 //标签数据预处理
-const renderTags = (tags: any) => {
+const renderTags = (tags: unknown) => {
   const TagsValue: string[] = [];
-  normalizeTagIds(tags).forEach((item: any) => {
-    const tag = Tags.value.find((tagItem: any) => Number(tagItem.id) === Number(item));
+  normalizeTagIds(tags).forEach((item) => {
+    const tag = Tags.value.find((tagItem) => Number(tagItem.id) === Number(item));
     if (tag) {
       TagsValue.push('#' + tag.id + ' ' + tag.name);
     }
@@ -239,11 +239,11 @@ const renderTags = (tags: any) => {
   return TagsValue;
 };
 
-const tableItems = ref([{} as any]);//表格数据
-const tableSelected = ref([]);//批量选择数据
+const tableItems = ref<Card[]>([]);//表格数据
+const tableSelected = ref<number[]>([]);//批量选择数据
 const tablePaginationLength = ref(0);//页面数量
 const tableCurrentPage = ref(1);//当前页面
-const tableSearchValue = ref<string | undefined>(undefined);//搜索值
+const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);//搜索值
 const tableSearchFilter = ref({});//搜索过滤器
 
 //每页项目数量
@@ -251,31 +251,32 @@ const tableListRows = ref(SelectUtils.Common.Table.ListRowsOptions[0]?.value);
 
 //EditCardDialog组件
 const EditCardDialog_state = ref(false);
-const EditCardDialog_data = ref({} as any);
-const openEditCardDialog = (data: any) => {
+const EditCardDialog_data = ref<Card | null>(null);
+const openEditCardDialog = (data: Card) => {
   EditCardDialog_data.value = data;
   EditCardDialog_state.value = true;
 };
 
 //DeleteDialog组件
-const DeleteCardFun = (id: any) => {
-  client.cards.delete(id).then(() => {
+const DeleteCardFun = (id: number) => {
+  client.cards.deleteManaged(id).then(() => {
     DeleteCardDialog_state.value = false;
     getTableData();
   });
 }
 const DeleteCardDialog_state = ref(false);
-const DeleteCardDialog_data = ref({} as any);
-const openDeleteCardDialog = (data: {}) => {
+const DeleteCardDialog_data = ref<{ id: number }>({ id: 0 });
+const openDeleteCardDialog = (data: { id: number }) => {
   DeleteCardDialog_data.value = data;
   DeleteCardDialog_state.value = true;
 };
 
 // 批量操作相关
-const BatchOperate = ref('');
+const BatchOperate = ref<CardsBatchMethod | ''>('');
 //BatchCardDialog组件
 const BatchCardFun = () => {
-  client.cards.batch({ method: BatchOperate.value as any, ids: tableSelected.value }).then(() => {
+  if (!BatchOperate.value) return;
+  client.cards.batchManaged({ method: BatchOperate.value, ids: tableSelected.value }).then(() => {
     BatchCardDialog_state.value = false;
     getTableData();
   })
@@ -294,7 +295,7 @@ const openBatchCardDialog = () => {
 //SearchDialog组件
 const SearchCardsDialog_state = ref(false);
 //子父传参
-const setTableSearchFilter = (data: any) => {
+const setTableSearchFilter = (data: Record<string, unknown>) => {
   tableSearchFilter.value = data;
 }
 const openSearchUserDialog = () => {
@@ -304,7 +305,7 @@ const openSearchUserDialog = () => {
 //获取表格数据
 const getTableData = () => {
   const searchValue = typeof tableSearchValue.value === 'string' ? tableSearchValue.value.trim() : tableSearchValue.value;
-  const params: any = {
+  const params: Record<string, unknown> = {
     page: tableCurrentPage.value,
     list_rows: tableListRows.value,
     ...tableSearchFilter.value
@@ -313,7 +314,7 @@ const getTableData = () => {
     params.search_value = searchValue;
     params.search_like = 2;
   }
-  client.cards.list(params)
+  client.cards.listManaged(params as Parameters<typeof client.cards.listManaged>[0])
     .then((result) => {
       tableCurrentPage.value = result.pagination!.currentPage;
       tablePaginationLength.value = result.pagination!.totalPages;

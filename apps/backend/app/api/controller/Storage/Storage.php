@@ -46,7 +46,8 @@ class Storage extends BaseController
 
     public function testChannel($channel = '')
     {
-        $channel = $channel ?: Request::param('channel', '');
+        $params = $this->validated();
+        $channel = $channel ?: ($params['channel'] ?? '');
         if (empty($channel)) {
             return ApiResponse::createBadRequest('请指定渠道');
         }

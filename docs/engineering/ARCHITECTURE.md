@@ -2,7 +2,7 @@
 
 ## 总体判断
 
-当前代码已具备 Controller、Service、Model、Middleware、SDK 等分工，但部分目录名承担了多种概念，依赖方向主要靠约定，尚未形成稳定架构。目标不是一次重写，而是以垂直切片逐步把“概念、依赖方向、验证”对齐。
+当前代码以模块化单体为边界：Route/Transport 适配 HTTP，简单业务使用 Service，复杂状态与副作用使用 Application/Domain/Contract/Infrastructure。目标不是把所有模块套进同一层级模板，而是让依赖方向、事务边界和可执行契约保持一致。
 
 ```text
 Admin / Theme
@@ -22,6 +22,7 @@ Route Meta -> Controller -> Validate -> Business -> Resource -> ApiResponse
 | 区域 | 职责 | 允许依赖 | 禁止依赖 | 自动化状态 |
 | --- | --- | --- | --- | --- |
 | `apps/admin` | 管理界面与交互 | SDK、UI 库 | 后端文件、SDK 源码相对路径 | 已检查 workspace 依赖 |
+| `apps/default-theme` | 用户前端与默认视觉实现 | SDK、UI 库、目录内运行资产 | 后端文件、SDK 源码相对路径、`ui/` 设计参考 | workspace 检查 + 前端 check |
 | `packages/sdk` | HTTP 契约、类型、客户端 | 通用第三方库 | 任一 app | 已检查包级副作用 |
 | API Controller | 请求解析、校验、响应映射 | Validate、Service、Resource、DTO | Model、基础设施细节 | 已检查 Controller -> Model |
 | Validate | 请求字段验证 | ThinkPHP Validate、场景规则 | 响应结构、业务流程 | 人工维护，逐步补测试 |
@@ -72,15 +73,21 @@ Auth 的 `UserRepository` 返回只读 `AuthUser`，不会把 ThinkORM Model 带
 ## 当前架构基线
 
 - `app/common` 已删除；公共技术能力统一归入 `app/shared`，业务能力归入所属模块。
-- 后端业务层采用两档结构。Auth、Files、RBAC 和 Content/Cards 已作为复杂模块样板推进；普通模块保持简单 Service。
+- 后端业务层采用两档结构。Auth、Files、Drafts、Library、Social、Safety、Messaging、Notifications、Eventing 和 SystemLifecycle 已按复杂度使用 Application/Domain/Contract；普通模块保持简单 Service。
+- MySQL 是最小运行时的可靠状态源；Redis、Worker、Scheduler 和 SSE 均通过 Facility/Port 可裁剪，不进入业务模块依赖。
+- 系统安装、迁移、不可变 Release、签名校验、备份、激活与恢复由 SystemLifecycle 统一，不允许 Host 自行覆盖文件或执行无账本 SQL。
 
 ## 已完成样板
 
 - Auth：认证用例、认证上下文、Token Port 和用户持久化 Port 位于 `modules/Platform/Auth`。
 - Files：用例位于 `modules/Platform/Files/Application`，Port 位于 `modules/Platform/Files/Contract`，ORM 和存储适配位于模块 Infrastructure。
-- Storage/Sender/Captcha：驱动、Factory 和第三方技术实现位于 `infrastructure`，Service 保留管理入口与业务调用语义。
-- RBAC：capability 清单和系统角色策略位于 `service/Rbac/Domain`，Service 负责事务、ORM 写入和 API 错误映射。
-- Content/Cards：发布状态和批处理状态转换位于 `service/Content/Domain`，Cards Service 保留当前 CRUD 与事务编排。
+- Storage/Sender/Captcha：驱动、Factory 和第三方技术实现位于模块 `Infrastructure`，Service 保留管理入口与业务调用语义。
+- RBAC：capability 清单和系统角色策略位于 `modules/Platform/Rbac/Domain`，Service 负责事务、ORM 写入和 API 错误映射。
+- Content/Cards：发布状态和批处理状态转换位于 `modules/Content/Cards/Domain`，Cards Service 保留当前 CRUD 与事务编排。
+- Community：草稿、收藏/历史、社交图、隐私/举报、私信和通知按数据归属拆分模块，HTTP 聚合 Controller 不持有业务状态。
+- Eventing：EventEnvelope、Handler Registry 与 MySQL Outbox 提供至少一次投递；request-safe 与常驻 Worker 共用同一处理器协议。
+- SystemLifecycle：签名 Release、持久升级计划、迁移 phase/cursor、Lease、备份 Gate、Contract 批准和恢复形成完整状态机。
+- Observability：业务依赖 PSR Logger，ThinkPHP Adapter 统一 request/correlation context 与脱敏；高风险审计进入独立表。
 
 Likes 在 1.0 中明确为 card-only 点赞；`comment` 多目标点赞需要单独产品决策和数据迁移，不作为本次发布的隐式能力。
 

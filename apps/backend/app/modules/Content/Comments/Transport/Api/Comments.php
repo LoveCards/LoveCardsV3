@@ -7,7 +7,7 @@ use think\Validate;
 class Comments extends Validate
 {
     public static $all_scene = [
-        'create' => [
+        'selfCreate' => [
             'normal' => [
                 'parent_id'
             ],
@@ -20,22 +20,24 @@ class Comments extends Validate
                 'data'
             ],
         ],
-        'allUpdate' => [
-            'normal' => [
-                'id',
-                'aid',
-                'pid',
-                'is_top',
-                'status',
-                'user_id',
-                'good',
-                'content',
-            ],
+        'selfUpdate' => [
+            'normal' => ['id', 'content'],
             'require' => false,
             'nonNull' => false,
             'toNull' => [
                 'data'
             ],
+        ],
+        'adminUpdate' => [
+            'normal' => ['id', 'aid', 'pid', 'is_top', 'status', 'user_id', 'good', 'content'],
+            'require' => false, 'nonNull' => false, 'toNull' => ['data'],
+        ],
+        'create' => [
+            'normal' => ['parent_id'], 'require' => ['id', 'content'], 'nonNull' => false, 'toNull' => ['data'],
+        ],
+        'allUpdate' => [
+            'normal' => ['id', 'aid', 'pid', 'is_top', 'status', 'user_id', 'good', 'content'],
+            'require' => false, 'nonNull' => false, 'toNull' => ['data'],
         ],
     ];
     public static $scene_message = [

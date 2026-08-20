@@ -13,12 +13,45 @@ class Session
 {
     public function captchaEnabled(): bool
     {
+        return (bool) ConfigService::get('captcha.code_enabled', true);
+    }
+
+    public function registrationEmailVerificationRequired(): bool
+    {
         return (bool) ConfigService::get('user.captcha');
     }
 
     public function visitorModeEnabled(): bool
     {
         return (bool) ConfigService::get('core.visitor_mode');
+    }
+
+    public function policy(): array
+    {
+        $emailVerification = (bool) ConfigService::get('user.captcha');
+        $codeEnabled = (bool) ConfigService::get('captcha.code_enabled', true);
+        $captchaEnabled = (bool) ConfigService::get('captcha.captcha_enabled', false);
+        $captchaDriver = (string) ConfigService::get('captcha.default_captcha_driver', 'geetest_v4');
+
+        // Geetest is only usable after its credentials have been activated.
+        // The image driver has no separate activation flag.
+        if ($captchaDriver === 'geetest_v4' && !(bool) ConfigService::get('captcha_geetest_v4.status', false)) {
+            $captchaEnabled = false;
+        }
+
+        return [
+            'registration' => [
+                'enabled' => true,
+                'account_types' => $emailVerification ? ['email'] : ['email', 'phone', 'username'],
+                'email_verification_required' => $emailVerification,
+                'email_verification_available' => $codeEnabled,
+            ],
+            'guest' => ['enabled' => $this->visitorModeEnabled()],
+            'human_verification' => [
+                'enabled' => $captchaEnabled,
+                'driver' => $captchaDriver,
+            ],
+        ];
     }
     private $tokens;
     private $users;
@@ -79,13 +112,18 @@ class Session
         }
     }
 
-    public function sendCaptcha(string $email): void
+    public function sendCaptcha(string $email): array
     {
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             throw ApiException::badRequest('目前仅支持邮箱验证', ApiException::CODE_PARAM_INVALID);
         }
 
-        Captcha::generate('code', ['to' => $email, 'scene' => 'Auth', 'ttl' => 300]);
+        $result = Captcha::generate('code', ['to' => $email, 'scene' => 'Auth', 'ttl' => 300]);
+        if (!($result['status'] ?? false)) {
+            throw ApiException::badRequest((string) ($result['msg'] ?? '验证码发送失败'), ApiException::CODE_PARAM_INVALID);
+        }
+
+        return $result;
     }
 
     public function verifyCaptcha(string $email, string $code): bool
@@ -117,5 +155,34 @@ class Session
             $number .= $characters[random_int(0, strlen($characters) - 1)];
         }
         return $number;
+    }
+
+    public function humanVerificationEnabled(): bool
+    {
+        return (bool) ($this->policy()['human_verification']['enabled'] ?? false);
+    }
+
+    public function verifyHumanVerification(array $params): bool
+    {
+        $driver = (string) ($this->policy()['human_verification']['driver'] ?? '');
+        if ($driver === 'gd_image') {
+            return Captcha::verify('captcha', [
+                'image_id' => (string) ($params['captcha_id'] ?? ''),
+                'code' => (string) ($params['captcha_code'] ?? ''),
+            ]);
+        }
+        return Captcha::verify('captcha', [
+            'lot_number' => (string) ($params['lot_number'] ?? ''),
+            'captcha_output' => (string) ($params['captcha_output'] ?? ''),
+            'pass_token' => (string) ($params['pass_token'] ?? ''),
+            'gen_time' => (string) ($params['gen_time'] ?? ''),
+        ]);
+    }
+
+    public function logout(string $token): void
+    {
+        if ($token !== '') {
+            $this->tokens->invalidate($token);
+        }
     }
 }

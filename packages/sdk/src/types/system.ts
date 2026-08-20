@@ -9,6 +9,11 @@ export interface SystemVersionInfo {
 
 export interface SystemUpdateInfo {
   ver: SystemVersionInfo
-  latest: Record<string, any>
+  latest: {
+    tag_name?: string
+    name?: string
+    url?: string
+    [key: string]: unknown
+  }
   verlog: string
 }

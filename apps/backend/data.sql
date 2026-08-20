@@ -54,6 +54,69 @@ INSERT INTO `roles` (`id`, `name`, `slug`, `is_system`, `description`, `created_
 (4, '访客', 'guest', 1, NULL, '2026-01-19 03:08:40', '2026-01-19 03:08:40', NULL);
 
 -- ------------------------------------------------------------
+--  Required Table: user_roles
+--  Normalized user-to-role assignments. users.roles_id is kept
+--  temporarily for rollback and is not the target runtime source.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `user_roles` (
+  `user_id` INT(11) NOT NULL,
+  `role_id` INT(11) NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`user_id`, `role_id`),
+  KEY `idx_user_roles_role` (`role_id`),
+  CONSTRAINT `fk_user_roles_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_user_roles_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+--  Required Table: capabilities
+--  Runtime mirror of the code-owned capability catalog.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `capabilities` (
+  `capability` VARCHAR(100) NOT NULL,
+  `description` VARCHAR(255) NOT NULL,
+  `risk_level` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`capability`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+--  Required Table: role_grants
+--  Structured capability assignment with explicit resource scope.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `role_grants` (
+  `role_id` INT(11) NOT NULL,
+  `capability` VARCHAR(100) NOT NULL,
+  `scope` VARCHAR(16) NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`role_id`, `capability`, `scope`),
+  KEY `idx_role_grants_capability` (`capability`),
+  CONSTRAINT `fk_role_grants_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_role_grants_capability` FOREIGN KEY (`capability`) REFERENCES `capabilities` (`capability`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+--  Required Table: auth_sessions
+--  Revocable JWT session registry. Only token hashes are stored.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `auth_sessions` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `jti_hash` CHAR(64) NOT NULL,
+  `user_id` INT(11) NOT NULL,
+  `token_expires_at` DATETIME NOT NULL,
+  `renewable_until` DATETIME NOT NULL,
+  `security_version` INT UNSIGNED NOT NULL DEFAULT 1,
+  `revoked_at` DATETIME DEFAULT NULL,
+  `revoked_reason` VARCHAR(64) DEFAULT NULL,
+  `rotated_to_session_id` BIGINT UNSIGNED DEFAULT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_auth_sessions_jti` (`jti_hash`),
+  KEY `idx_auth_sessions_user` (`user_id`),
+  KEY `idx_auth_sessions_expiry` (`token_expires_at`),
+  CONSTRAINT `fk_auth_sessions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
 --  Required Table: role_capabilities
 --  RBAC capability assignments (role_id, capability) unique.
 --  Seed data is initialized by Roles::reseed() after install.
@@ -93,6 +156,24 @@ CREATE TABLE IF NOT EXISTS `configs` (
 -- NOTE: configs seed data is initialized after install by
 -- Config::init() which scans config/apps/*.php.
 -- No static seed data is provided here.
+
+-- ------------------------------------------------------------
+-- Required Table: theme_bindings
+-- Host to immutable theme Release and host-level configuration.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `theme_bindings` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `hostname` VARCHAR(253) NOT NULL,
+  `theme_id` VARCHAR(64) NOT NULL,
+  `release_key` VARCHAR(128) NOT NULL,
+  `config_overrides` JSON NULL,
+  `enabled` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_theme_bindings_hostname` (`hostname`),
+  KEY `idx_theme_bindings_theme` (`theme_id`, `release_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
 --  Required Table: files
@@ -525,6 +606,11 @@ INSERT INTO `system` (`id`, `name`, `value`) VALUES
 -- ============================================================
 INSERT INTO `users` (`id`, `number`, `avatar`, `email`, `phone`, `username`, `password`, `status`, `roles_id`, `created_at`, `updated_at`, `deleted_at`) VALUES
 (1, '1000000000', '', 'admin@lovecards.cn', '', '超级管理员', '$2y$10$uBowOFgOBNTx1NT1uYJTleEo1r8d91R9iwxRCqncPJUShfsJoMvr6', 0, '[1, 2, 3]', '2023-12-06 20:09:26', '2025-08-01 20:50:25', NULL);
+
+INSERT INTO `user_roles` (`user_id`, `role_id`, `created_at`) VALUES
+(1, 1, '2025-08-01 20:50:25'),
+(1, 2, '2025-08-01 20:50:25'),
+(1, 3, '2025-08-01 20:50:25');
 
 -- ============================================================
 --  Foreign Key Constraints (legacy role_permissions)

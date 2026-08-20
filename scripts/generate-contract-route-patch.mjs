@@ -1,10 +1,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { resolveSupportedPhp } from './lib/php-runtime.mjs'
 
 const root = process.cwd()
 const inventory = JSON.parse(fs.readFileSync(path.join(root, 'contracts', 'api-inventory.json'), 'utf8'))
-const metadataResult = spawnSync(process.env.PHP_BINARY || 'C:\\software\\phpstudy_pro\\Extensions\\php\\php8.0.2nts\\php.exe', [path.join(root, 'scripts', 'export-contract-metadata.php')], { cwd: root, encoding: 'utf8' })
+const { binary: php } = resolveSupportedPhp()
+const metadataResult = spawnSync(php, [path.join(root, 'scripts', 'export-contract-metadata.php')], { cwd: root, encoding: 'utf8' })
 if (metadataResult.status !== 0) throw new Error(metadataResult.stderr || metadataResult.stdout)
 const metadata = JSON.parse(metadataResult.stdout)
 

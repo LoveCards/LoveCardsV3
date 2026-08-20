@@ -5,6 +5,8 @@ namespace app\modules\Platform\Auth\Infrastructure;
 use app\modules\Platform\Auth\Public\AuthUser;
 use app\modules\Platform\Auth\Contract\UserRepository;
 use app\modules\Platform\User\Infrastructure\Persistence\Model\Users as UsersModel;
+use app\modules\Platform\Rbac\Infrastructure\Persistence\Model\UserRoles;
+use think\facade\Db;
 
 class ThinkOrmUserRepository implements UserRepository
 {
@@ -49,15 +51,26 @@ class ThinkOrmUserRepository implements UserRepository
         array $roleIds,
         int $status
     ): AuthUser {
-        $user = UsersModel::create([
-            'number' => $number,
-            'username' => $username,
-            'email' => $email,
-            'phone' => $phone,
-            'roles_id' => $roleIds,
-            'status' => $status,
-            'password' => $passwordHash,
-        ]);
+        Db::startTrans();
+        try {
+            $user = UsersModel::create([
+                'number' => $number,
+                'username' => $username,
+                'email' => $email,
+                'phone' => $phone,
+                'status' => $status,
+                'password' => $passwordHash,
+            ]);
+            $now = date('Y-m-d H:i:s');
+            $rows = array_map(static function ($roleId) use ($user, $now) {
+                return ['user_id' => (int) $user->id, 'role_id' => (int) $roleId, 'created_at' => $now];
+            }, array_values(array_unique($roleIds)));
+            if ($rows !== []) UserRoles::insertAll($rows);
+            Db::commit();
+        } catch (\Throwable $e) {
+            Db::rollback();
+            throw $e;
+        }
 
         return $this->map($user);
     }
@@ -68,9 +81,7 @@ class ThinkOrmUserRepository implements UserRepository
             return null;
         }
 
-        $roleIds = is_array($user->roles_id)
-            ? $user->roles_id
-            : (json_decode($user->roles_id, true) ?: []);
+        $roleIds = UserRoles::where('user_id', (int) $user->id)->column('role_id') ?: [];
 
         return new AuthUser(
             (int) $user->id,

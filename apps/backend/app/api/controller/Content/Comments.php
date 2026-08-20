@@ -53,12 +53,17 @@ class Comments extends BaseController
         return $this->respond($result);
     }
 
+    public function getManaged($id)
+    {
+        return $this->respond(CommentsService::get((int) $id, true));
+    }
+
     public function update($id)
     {
         $params = $this->validated(null, ['id' => (int) $id]);
 
         $auth = request()->auth;
-        CommentsService::updateComment($params, $auth->uid(), $auth->capabilities());
+        CommentsService::updateComment($params, $auth->uid(), $auth->grants());
 
         return $this->respond();
     }
@@ -66,7 +71,7 @@ class Comments extends BaseController
     public function delete($id)
     {
         $auth = request()->auth;
-        CommentsService::deleteComments([(int) $id], $auth->uid(), $auth->capabilities());
+        CommentsService::deleteComments([(int) $id], $auth->uid(), $auth->grants());
         return $this->respond();
     }
 

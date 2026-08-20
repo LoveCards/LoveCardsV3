@@ -3,25 +3,40 @@ import type * as ApiTypes from '../../types'
 
 /** Generated from contracts/openapi.json. Do not edit manually. */
 export class Tags extends BaseResource {
-  list(): Promise<ApiTypes.Tag[]> {
-    return this._get<ApiTypes.Tag[]>("/tags")
+  listManaged(params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }): Promise<ApiTypes.ListResult<ApiTypes.Tag>> {
+    return this._get<ApiTypes.ListResult<ApiTypes.Tag>>("/admin/tags", params)
   }
-  create(data: { user_id?: string; name: string }): Promise<void> {
-    return this._post<void>("/tags", data)
+  deleteManaged(id: number): Promise<void> {
+    return this._delete<void>(`/admin/tags/${id}`)
+  }
+  getManaged(id: number): Promise<ApiTypes.Tag> {
+    return this._get<ApiTypes.Tag>(`/admin/tags/${id}`)
+  }
+  updateManaged(id: number, data?: { aid?: number; user_id?: number; name?: string; status?: number }): Promise<void> {
+    return this._patch<void>(`/admin/tags/${id}`, data)
+  }
+  batchManaged(data: { ids: unknown[]; method: string }): Promise<void> {
+    return this._post<void>("/admin/tags/batch", data)
+  }
+  listOwn(params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }): Promise<ApiTypes.ListResult<ApiTypes.Tag>> {
+    return this._get<ApiTypes.ListResult<ApiTypes.Tag>>("/me/tags", params)
+  }
+  create(data: { name: string }): Promise<void> {
+    return this._post<void>("/me/tags", data)
   }
   delete(id: number): Promise<void> {
-    return this._delete<void>(`/tags/${id}`)
+    return this._delete<void>(`/me/tags/${id}`)
+  }
+  update(id: number, data?: { name?: string }): Promise<void> {
+    return this._patch<void>(`/me/tags/${id}`, data)
+  }
+  list(): Promise<ApiTypes.Tag[]> {
+    return this._get<ApiTypes.Tag[]>("/tags")
   }
   get(id: number): Promise<ApiTypes.Tag> {
     return this._get<ApiTypes.Tag>(`/tags/${id}`)
   }
-  update(id: number, data: { aid?: number; user_id?: string; name?: string; status?: number }): Promise<void> {
-    return this._patch<void>(`/tags/${id}`, data)
-  }
-  listAll(params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; search_value?: string }): Promise<ApiTypes.ListResult<ApiTypes.Tag>> {
-    return this._get<ApiTypes.ListResult<ApiTypes.Tag>>("/tags/all", params)
-  }
-  batch(data: { ids: unknown[]; method: string }): Promise<void> {
-    return this._post<void>("/tags/batch", data)
+  listMe(params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }): Promise<ApiTypes.ListResult<ApiTypes.Tag>> {
+    return this.listOwn(params)
   }
 }

@@ -1,0 +1,90 @@
+import coastImage from '../assets/feed/seaside-morning-v1.webp';
+import runImage from '../assets/feed/morning-run-v1.webp';
+import cityWalkImage from '../assets/feed/city-walk-grid-v1.webp';
+
+export const feedMediaByKey = Object.freeze({
+  'seaside-morning-v1': coastImage,
+  'morning-run-v1': runImage,
+  'city-walk-grid-v1': cityWalkImage,
+});
+
+export const previewFeed = [
+  {
+    id: 'preview-text-01',
+    layout: 'note',
+    kind: 'text',
+    author: '小卡同学',
+    meta: '2 小时前 · 上海',
+    title: '最近在读《人类简史》，越读越觉得每个人都是时代的一张小卡片。',
+    body: '记录此刻的想法，也给未来回看的自己留一张卡。',
+    topic: '# 今天的想法',
+    likes: 128,
+    replies: 36,
+  },
+  {
+    id: 'preview-image-01',
+    layout: 'lead',
+    kind: 'image',
+    author: '卡卡旅行记',
+    meta: '5 小时前 · 青岛',
+    title: '海边的风，治愈一切。',
+    topic: '# 周末去哪儿',
+    likes: 96,
+    replies: 18,
+    mediaUrl: coastImage,
+    mediaAlt: '清晨海岸边，一位行人沿着海水散步',
+  },
+  {
+    id: 'preview-gallery-01',
+    layout: 'tile-a',
+    kind: 'gallery',
+    author: '摄影小白',
+    meta: '1 天前 · 杭州',
+    title: '周末扫街记录：城市角落里的温柔。',
+    topic: '# 城市漫游',
+    likes: 132,
+    replies: 24,
+    mediaUrl: cityWalkImage,
+    mediaAlt: '四张城市街角照片组成的周末扫街图集',
+    mediaCount: 4,
+  },
+  {
+    id: 'preview-video-01',
+    layout: 'tile-b',
+    kind: 'video',
+    author: '运动女孩',
+    meta: '3 小时前 · 上海',
+    title: '晨跑 5 公里，开启元气一天！',
+    topic: '# 生活方式',
+    likes: 88,
+    replies: 16,
+    mediaUrl: runImage,
+    mediaAlt: '晨跑中的人物与城市天际线',
+    mediaLabel: 'MORNING RUN',
+    duration: '00:32',
+  },
+  {
+    id: 'preview-discussion-01',
+    layout: 'note',
+    kind: 'discussion',
+    author: '产品小助手',
+    meta: '4 小时前 · 社区',
+    title: '大家最近都在讨论什么？',
+    body: '把你的问题和经验留在这里，其他人可以直接回复，讨论会在详情页继续展开。',
+    topic: '# 社区讨论',
+    likes: 52,
+    replies: 36,
+  },
+];
+
+export const previewTrends = [
+  { rank: 1, label: '# 心动时刻', count: '12.4万条讨论', signal: '↗', slug: '心动时刻' },
+  { rank: 2, label: '# 随手记录', count: '8.7万条讨论', signal: '↗', slug: '随手记录' },
+  { rank: 3, label: '# 今日份美好', count: '6.3万条讨论', signal: '·', slug: '今日份美好' },
+];
+
+export const previewCreators = [
+  { id: 'anan', name: '安安小姐姐', meta: '生活方式 · 上海', tone: 'rose' },
+  { id: 'ayuan', name: '阿远的视界', meta: '摄影 · 城市漫游', tone: 'blue' },
+  { id: 'sweet', name: '甜味收藏家', meta: '美食 · 甜品灵感', tone: 'mint' },
+];

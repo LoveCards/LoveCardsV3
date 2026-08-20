@@ -1,7 +1,7 @@
 import { useUserStore } from "@/stores/userStore";
 import { useDashboardStore } from '@/stores/dashboardStore';
 import { useTagsStore } from "@/stores/tagsStore";
-import { useSystemStore } from '~/stores/api/admin/systemStore';
+import { useSystemStore } from '~/stores/systemStore';
 
 export default defineNuxtRouteMiddleware(async (to, from) => {
 
@@ -13,11 +13,9 @@ export default defineNuxtRouteMiddleware(async (to, from) => {
     const dashboardStore = useDashboardStore();
     const tagsStore = useTagsStore();
 
-    //超级管理员加载项
-    const userInfo: any = await userStore.userInfo;
     // Optional page data must not block route navigation or leave the login
     // button spinning while a slow/failed auxiliary endpoint responds.
-    if (userStore.isRoot()) void systemStore.init();
+    if (userStore.hasGrant('config.read', 'global')) void systemStore.init();
     void dashboardStore.init();
     void tagsStore.init();
 });

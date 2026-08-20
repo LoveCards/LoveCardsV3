@@ -31,10 +31,10 @@ export abstract class BaseResource {
    * 序列化 GET/DELETE 参数中的数组为 JSON 字符串
    * 后端 InputNormalizer::paramsJsonToArray() 用 json_decode 接收，期望 JSON 字符串
    */
-  private _serializeParams(params?: any): any {
+  private _serializeParams(params?: unknown): unknown {
     if (!params || typeof params !== 'object' || Array.isArray(params)) return params
-    const out: any = {}
-    for (const [k, v] of Object.entries(params)) {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(params as Record<string, unknown>)) {
       if (Array.isArray(v)) {
         out[k] = JSON.stringify(v)
       } else if (k === 'order_desc') {
@@ -47,7 +47,7 @@ export abstract class BaseResource {
     return out
   }
 
-  protected async _get<T>(url: string, params?: any, signal?: AbortSignal): Promise<T> {
+  protected async _get<T>(url: string, params?: unknown, signal?: AbortSignal): Promise<T> {
     const serialized = this._serializeParams(params)
     const key = methodKey('GET', url, serialized)
     return this._opts.dedupe.execute(key, () =>
@@ -55,19 +55,19 @@ export abstract class BaseResource {
     )
   }
 
-  protected async _post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  protected async _post<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     return this._request<T>('POST', url, { ...config, data })
   }
 
-  protected async _patch<T>(url: string, data?: any): Promise<T> {
+  protected async _patch<T>(url: string, data?: unknown): Promise<T> {
     return this._request<T>('PATCH', url, { data })
   }
 
-  protected async _put<T>(url: string, data?: any): Promise<T> {
+  protected async _put<T>(url: string, data?: unknown): Promise<T> {
     return this._request<T>('PUT', url, { data })
   }
 
-  protected async _delete<T>(url: string, params?: any): Promise<T> {
+  protected async _delete<T>(url: string, params?: unknown): Promise<T> {
     return this._request<T>('DELETE', url, { params: this._serializeParams(params) })
   }
 

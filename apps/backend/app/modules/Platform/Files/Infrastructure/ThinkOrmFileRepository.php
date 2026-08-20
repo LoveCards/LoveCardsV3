@@ -30,7 +30,7 @@ class ThinkOrmFileRepository implements FileRepository
 
     public function findById(int $id): ?array
     {
-        $file = FilesModel::find($id);
+        $file = FilesModel::where('id', $id)->whereNull('purge_status')->find();
         return $file ? $file->toArray() : null;
     }
 
@@ -88,10 +88,47 @@ class ThinkOrmFileRepository implements FileRepository
         return $result;
     }
 
+    public function findUsableByIdsOrLegacyReferences(
+        array $ids,
+        string $scene,
+        string $legacyReferenceType,
+        array $legacyReferenceIds,
+        bool $publicOnly
+    ): array {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0)));
+        $legacyReferenceIds = array_values(array_unique(array_filter(
+            array_map('intval', $legacyReferenceIds),
+            static fn(int $id): bool => $id > 0
+        )));
+        if ($ids === [] && $legacyReferenceIds === []) return [];
+
+        $query = FilesModel::where(function ($scope) use ($ids, $legacyReferenceType, $legacyReferenceIds): void {
+            if ($ids !== []) $scope->whereIn('id', $ids);
+            if ($legacyReferenceIds === []) return;
+            $legacy = static function ($reference) use ($legacyReferenceType, $legacyReferenceIds): void {
+                $reference->where('ref_type', $legacyReferenceType)->whereIn('ref_id', $legacyReferenceIds);
+            };
+            if ($ids === []) {
+                $legacy($scope);
+            } else {
+                $scope->whereOr($legacy);
+            }
+        })
+            ->where('scene', $scene)
+            ->where('status', FileConstants::STATUS_NORMAL)
+            ->where('upload_status', FileConstants::UPLOAD_COMPLETED)
+            ->whereNull('purge_status')
+            ->order('id', 'asc');
+        if ($publicOnly) $query->securePublic();
+
+        return $query->select()->toArray();
+    }
+
     public function findOwnPending(int $recordId, int $userId): ?array
     {
         $file = FilesModel::where('id', $recordId)
             ->where('user_id', $userId)
+            ->whereNull('purge_status')
             ->find();
 
         if ($file === null) {
@@ -214,6 +251,7 @@ class ThinkOrmFileRepository implements FileRepository
                 };
             }
         }
+        if (!$canReadAll) $where[] = static function ($query): void { $query->whereNull('purge_status'); };
 
         if (isset($params['scene'])) {
             $where[] = ['scene', '=', $params['scene']];
@@ -242,6 +280,7 @@ class ThinkOrmFileRepository implements FileRepository
         $modelList = ModelQuery::make(FilesModel::class);
         $where = $params['where'] ?? [];
         $where[] = ['user_id', '=', $userId];
+        $where[] = static function ($query): void { $query->whereNull('purge_status'); };
         if (isset($params['scene'])) {
             $where[] = ['scene', '=', $params['scene']];
         }
@@ -270,6 +309,7 @@ class ThinkOrmFileRepository implements FileRepository
             'channel_slug' => $file->channel_slug,
             'driver_path' => $file->driver_path,
             'file_path' => $file->file_path,
+            'hash' => $file->hash,
         ];
     }
 

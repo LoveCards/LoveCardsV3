@@ -6,6 +6,15 @@ use think\Validate;
 
 class Users extends Validate
 {
+    public static function requestSchemas(): array
+    {
+        return ['assignRoles' => [
+            'type' => 'object',
+            'properties' => ['roles_id' => ['type' => 'array', 'items' => ['type' => 'integer']]],
+            'required' => ['roles_id'],
+            'additionalProperties' => false,
+        ]];
+    }
     public static $all_scene = [
         'edit' => ['id', 'avatar', 'number', 'roles_id', 'email', 'phone', 'username', 'password', 'status'],
         'register' => ['email', 'phone', 'username', 'password'],
@@ -54,6 +63,18 @@ class Users extends Validate
                 'password',
                 'number'
             ],
+            'toNull' => false,
+        ],
+        'adminUpdate' => [
+            'normal' => ['avatar', 'email', 'phone', 'username', 'status'],
+            'require' => false,
+            'nonNull' => ['id', 'password', 'number'],
+            'toNull' => false,
+        ],
+        'assignRoles' => [
+            'normal' => false,
+            'require' => ['id', 'roles_id'],
+            'nonNull' => false,
             'toNull' => false,
         ],
     ];

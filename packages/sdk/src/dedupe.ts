@@ -1,5 +1,5 @@
 export class Deduplicator {
-  private _pending = new Map<string, Promise<any>>()
+  private _pending = new Map<string, Promise<unknown>>()
 
   execute<T>(key: string, factory: () => Promise<T>): Promise<T> {
     if (this._pending.has(key)) return this._pending.get(key)! as Promise<T>

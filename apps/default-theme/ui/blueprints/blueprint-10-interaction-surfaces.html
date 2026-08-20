@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blueprint 10 · Interaction Surfaces</title>
+  <link rel="stylesheet" href="./blueprint-10-interaction-surfaces.css">
+  <link rel="stylesheet" href="./blueprint-10-dialogs.css">
+</head>
+<body>
+  <header class="bp-topbar">
+    <a class="bp-brand" href="#top"><span class="bp-mark">L</span><span>LoveCards</span></a>
+    <nav aria-label="Blueprint sections">
+      <a class="is-active" href="#shell">Shell</a>
+      <a href="#search">Search</a>
+      <a href="#thread">Thread</a>
+      <a href="#dialogs">Dialogs</a>
+      <a href="#patterns">Patterns</a>
+    </nav>
+    <button class="bp-search-trigger" type="button" aria-label="打开搜索"><span>⌕</span><span>搜索内容、作者或话题</span><kbd>⌘ K</kbd></button>
+    <span class="bp-meta">v1.2 · UI first</span>
+  </header>
+
+  <main id="top" class="bp-page">
+    <header class="bp-hero">
+      <p class="bp-eyebrow">INTERACTION SURFACES</p>
+      <h1>让内容保持安静，<br><em>让动作在需要时出现。</em></h1>
+      <p class="bp-lede">评论线程、快速搜索、移动壳层和 Dialog 系统共用同一套系统材质。这里冻结的是结构、密度、焦点和状态，不是某一页的临时装饰。</p>
+      <div class="bp-chips"><span>内容优先</span><span>结构化弹窗</span><span>Astryx 原生行为</span><span>无假成功</span></div>
+    </header>
+
+    <section id="shell" class="bp-section">
+      <div class="bp-section-head"><div><span class="bp-index">01</span><h2>移动壳层</h2></div><p>顶部只负责快速进入搜索；底部“我的”是唯一用户中心入口。</p></div>
+      <div class="bp-device-row">
+        <article class="bp-phone" aria-label="移动首页壳层示例">
+          <div class="bp-phone-top"><span class="bp-mark">L</span><strong>LoveCards</strong><button aria-label="搜索">⌕</button></div>
+          <div class="bp-phone-content"><span class="bp-skeleton wide"></span><span class="bp-skeleton"></span><div class="bp-mini-media"></div><span class="bp-skeleton short"></span><span class="bp-skeleton"></span></div>
+          <nav class="bp-phone-bottom" aria-label="移动导航"><span class="is-active">⌂<b>首页</b></span><span>⌕<b>发现</b></span><span class="bp-create">＋</span><span class="is-disabled">□<b>消息</b><i>未开放</i></span><span>◎<b>我的</b></span></nav>
+        </article>
+        <div class="bp-callout-list">
+          <div><b>顶栏头像移除</b><p>避免与底栏“我的”产生两个入口、两个状态。</p></div>
+          <div><b>搜索触发器 44px</b><p>点击后打开全屏 Dialog，输入时键盘不被页面重排打断。</p></div>
+          <div><b>发布仍是主动作</b><p>居中但不漂浮遮挡内容；消息保留结构并明确标记未开放。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="search" class="bp-section">
+      <div class="bp-section-head"><div><span class="bp-index">02</span><h2>Search Surface</h2></div><p>同一 SearchSource，桌面原位展开，手机进入全屏。</p></div>
+      <div class="bp-search-demo">
+        <div class="bp-search-field"><span>⌕</span><span class="bp-search-value">城市漫游</span><button aria-label="清除搜索">×</button></div>
+        <div class="bp-results" role="listbox" aria-label="搜索结果">
+          <div class="bp-result" role="option"><span class="bp-result-icon rose">#</span><div><b># 城市漫游</b><small>2.4k 条内容 · 话题</small></div><span>↗</span></div>
+          <div class="bp-result" role="option"><span class="bp-result-avatar">摄</span><div><b>周末扫街记录：城市角落里的温柔</b><small>摄影小白 · 内容</small></div><span>↗</span></div>
+          <div class="bp-result" role="option"><span class="bp-result-icon ink">↗</span><div><b>城市漫游路线分享</b><small>小卡同学 · 内容</small></div><span>↗</span></div>
+          <div class="bp-result-foot">按 Enter 打开高亮结果 · Esc 关闭</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="thread" class="bp-section">
+      <div class="bp-section-head"><div><span class="bp-index">03</span><h2>Comment Thread</h2></div><p>评论是关系轨道，不是很多张松散的小卡片。</p></div>
+      <div class="bp-thread-demo">
+        <div class="bp-thread-head"><div><h3>讨论</h3><span>6 条 · 按时间</span></div><button>排序⌄</button></div>
+        <article class="bp-comment">
+          <span class="bp-comment-avatar rose">林</span><div><header><b>林间有风</b><time>12 分钟前</time></header><p>这条街的光线很像旧电影，尤其是转角那家花店。</p><footer><button>♡ 12</button><button>回复</button><button>更多</button></footer>
+            <div class="bp-replies"><article class="bp-comment bp-reply"><span class="bp-comment-avatar ink">摄</span><div><header><b>摄影小白</b><time>8 分钟前</time></header><p>下次一起去？我把路线整理成卡片。</p><footer><button>♡ 3</button><button>回复</button></footer></div></article></div>
+          </div>
+        </article>
+        <article class="bp-comment"><span class="bp-comment-avatar sand">卡</span><div><header><b>卡卡旅行记</b><time>刚刚</time></header><p>收藏了这条路线，周末试试看。</p><footer><button>♡ 1</button><button>回复</button></footer></div></article>
+        <div class="bp-composer"><div class="bp-reply-context"><span>回复 <b>@林间有风</b></span><button aria-label="取消回复">×</button></div><div class="bp-composer-input">写下你的回复…<span>0 / 1000</span></div><div class="bp-composer-actions"><span>Enter 发送 · Shift+Enter 换行</span><button>发送</button></div></div>
+      </div>
+    </section>
+
+    <section id="dialogs" class="bp-section bp-dialog-system">
+      <div class="bp-section-head"><div><span class="bp-index">04</span><h2>Dialog System</h2></div><p>所有离开文档流的任务共用三行骨架：Header、独立滚动 Body、固定 Footer。</p></div>
+      <div class="bp-dialog-layout">
+        <aside class="bp-dialog-contract" aria-label="Dialog 结构约束">
+          <p class="bp-dialog-kicker">FORM DIALOG · EDIT COMMENT</p>
+          <h3>先稳定结构，<br>再承载状态。</h3>
+          <p class="bp-dialog-contract-lede">错位不是视觉小问题，而是弹窗没有明确的滚动边界。标题、输入区和操作区必须各自拥有稳定的空间。</p>
+          <ol class="bp-dialog-anatomy">
+            <li><span>01</span><div><b>Header</b><small>标题、说明、44px 关闭按钮在同一行流中。</small></div></li>
+            <li><span>02</span><div><b>Body</b><small>只有正文滚动；错误、计数和辅助信息留在字段轴内。</small></div></li>
+            <li><span>03</span><div><b>Footer</b><small>操作栏不参与正文滚动，主动作始终可见。</small></div></li>
+          </ol>
+          <div class="bp-dialog-tokens"><span>520px max</span><span>14px radius</span><span>44px target</span><span>70 / 80 layer</span></div>
+        </aside>
+
+        <div class="bp-dialog-stage" aria-label="桌面编辑评论弹窗参考">
+          <div class="bp-dialog-stage-app" aria-hidden="true">
+            <header><span class="bp-mini-avatar">林</span><div><b>林间有风</b><small>12 分钟前 · 城市漫游</small></div><span class="bp-mini-more">···</span></header>
+            <div class="bp-mini-lines"><i class="long"></i><i></i><i class="short"></i></div>
+            <div class="bp-mini-thread"><span class="bp-mini-thread-title">讨论 · 6 条</span><i></i><i></i><i class="short"></i></div>
+          </div>
+          <div class="bp-dialog-backdrop" aria-hidden="true"></div>
+          <section class="bp-dialog-surface bp-dialog-form-surface" aria-label="编辑评论对话框">
+            <header class="bp-dialog-header">
+              <div class="bp-dialog-heading"><span class="bp-dialog-signal">✎</span><div><h3>编辑评论</h3><p>修改后会立即更新到讨论中。</p></div></div>
+              <button class="bp-dialog-icon-button" type="button" aria-label="关闭编辑评论">×</button>
+            </header>
+            <div class="bp-dialog-body">
+              <div class="bp-dialog-field">
+                <label id="bp-comment-label">评论内容</label>
+                <div id="bp-comment-preview" class="bp-dialog-textarea" role="textbox" aria-labelledby="bp-comment-label" aria-multiline="true" tabindex="0">这条街的光线很像旧电影，尤其是转角那家花店。</div>
+                <div class="bp-dialog-field-meta"><span>支持换行，最多 1000 字</span><span>42 / 1000</span></div>
+              </div>
+            </div>
+            <footer class="bp-dialog-footer"><span class="bp-dialog-footer-note">修改会保留原评论的位置。</span><div><button class="bp-dialog-button is-secondary" type="button">取消</button><button class="bp-dialog-button is-primary" type="button">保存修改</button></div></footer>
+          </section>
+        </div>
+      </div>
+
+      <div class="bp-dialog-showcase-grid">
+        <article class="bp-dialog-showcase">
+          <header class="bp-showcase-head"><div><span>手机 · Form Sheet</span><h3>软键盘出现时仍可提交</h3></div><span class="bp-showcase-tag">MOBILE</span></header>
+          <div class="bp-mobile-dialog-frame" aria-label="手机编辑评论底部 Sheet 参考">
+            <div class="bp-mobile-app-lines" aria-hidden="true"><i class="long"></i><i></i><i class="short"></i><div></div><i></i><i class="long"></i></div>
+            <div class="bp-mobile-dialog-backdrop" aria-hidden="true"></div>
+            <section class="bp-dialog-surface bp-dialog-sheet" aria-label="手机编辑评论 Sheet">
+              <span class="bp-sheet-grabber" aria-hidden="true"></span>
+              <header class="bp-dialog-header"><div class="bp-dialog-heading"><div><h3>编辑评论</h3><p>当前评论 · 42 字</p></div></div><button class="bp-dialog-icon-button" type="button" aria-label="关闭">×</button></header>
+              <div class="bp-dialog-body"><div class="bp-dialog-field"><label>评论内容</label><div class="bp-dialog-textarea">这条街的光线很像旧电影，尤其是转角那家花店。</div><div class="bp-dialog-field-meta"><span>最多 1000 字</span><span>42 / 1000</span></div></div></div>
+              <footer class="bp-dialog-footer"><button class="bp-dialog-button is-secondary" type="button">取消</button><button class="bp-dialog-button is-primary" type="button">保存修改</button></footer>
+            </section>
+          </div>
+          <p class="bp-showcase-note">Sheet 贴近视口底部，操作栏包含安全区内边距；不把关闭动作藏在拖拽手柄里。</p>
+        </article>
+
+        <article class="bp-dialog-showcase">
+          <header class="bp-showcase-head"><div><span>危险确认 · Alert</span><h3>动作后果必须先被看见</h3></div><span class="bp-showcase-tag is-danger">DANGER</span></header>
+          <div class="bp-confirm-demo" aria-label="删除评论确认弹窗参考">
+            <div class="bp-confirm-icon">!</div>
+            <div class="bp-confirm-copy"><h3>删除这条评论？</h3><p>删除后评论会从讨论中移除，回复关系保留为“原评论已删除”。此操作无法撤销。</p></div>
+            <div class="bp-confirm-actions"><button class="bp-dialog-button is-secondary" type="button">取消</button><button class="bp-dialog-button is-danger" type="button">删除评论</button></div>
+          </div>
+          <p class="bp-showcase-note">危险动作使用明确动词与语义色；不使用模糊的“确定”，也不把危险按钮放在视觉主位。</p>
+        </article>
+
+        <article class="bp-dialog-showcase">
+          <header class="bp-showcase-head"><div><span>提交失败 · Error</span><h3>错误就地恢复，内容不丢失</h3></div><span class="bp-showcase-tag is-error">ERROR</span></header>
+          <div class="bp-error-demo" aria-label="编辑评论提交失败状态参考">
+            <div class="bp-error-demo-header"><span class="bp-dialog-signal is-error">!</span><div><b>编辑评论</b><small>保存失败，仍可重试。</small></div><button class="bp-dialog-icon-button" type="button" aria-label="关闭">×</button></div>
+            <div class="bp-dialog-field"><label>评论内容</label><div class="bp-dialog-textarea">这条街的光线很像旧电影，尤其是转角那家花店。</div><div class="bp-dialog-field-meta"><span>内容已保留</span><span>42 / 1000</span></div><p class="bp-dialog-error"><span>!</span>网络暂时不可用，请重试。</p></div>
+            <div class="bp-error-demo-footer"><button class="bp-dialog-button is-secondary" type="button">取消</button><button class="bp-dialog-button is-primary" type="button">重试保存</button></div>
+          </div>
+          <p class="bp-showcase-note">错误出现在相关字段或操作栏上方；按钮保留宽度，加载中只替换标签，不让布局跳动。</p>
+        </article>
+      </div>
+
+      <div class="bp-dialog-rules" aria-label="Dialog 响应式和状态规则">
+        <div><b>桌面</b><span>Form 480–560px；居中；高度由内容决定，最大高度后只滚动 Body。</span></div>
+        <div><b>手机</b><span>Form 转底部 Sheet；宽度贴近视口；Footer 处于 safe-area 上方。</span></div>
+        <div><b>长内容</b><span>Header 与 Footer 不滚动；标题、关闭、主动作永远不被正文覆盖。</span></div>
+        <div><b>退出</b><span>Form 允许 Esc；保存中禁用关闭与重复提交；关闭后焦点回到触发器。</span></div>
+      </div>
+      <div class="bp-dialog-state-strip" aria-label="Dialog 操作状态参考">
+        <span class="bp-dialog-state-label">操作状态</span>
+        <button class="bp-dialog-button is-primary" type="button">保存修改</button>
+        <button class="bp-dialog-button is-loading" type="button" disabled>保存中…</button>
+        <button class="bp-dialog-button is-disabled" type="button" disabled>不可用</button>
+        <span class="bp-dialog-state-error">! 可恢复错误</span>
+      </div>
+    </section>
+
+    <section id="patterns" class="bp-section">
+      <div class="bp-section-head"><div><span class="bp-index">05</span><h2>Card Pattern Registry</h2></div><p><code>data.kind</code> 只决定内容轮廓；权限和资源归属永远来自 SDK。</p></div>
+      <div class="bp-pattern-grid">
+        <article class="bp-pattern is-text"><span class="bp-pattern-type">TEXT</span><h3>纯文字想法</h3><p>阅读节奏优先，正文直接成为主表面。</p><footer>评论线程 · 喜欢</footer></article>
+        <article class="bp-pattern is-gallery"><div class="bp-four"><i></i><i></i><i></i><i></i></div><span class="bp-pattern-type">GALLERY</span><h3>真实有序图集</h3><p>2/3/4+ 媒体由数组决定，不再使用预拼图。</p><footer>查看器 · GIF 标记</footer></article>
+        <article class="bp-pattern is-discussion"><span class="bp-pattern-type">DISCUSSION · COMMENTS V1</span><h3>社区讨论</h3><p>问题与经验使用普通文字内容面，完整回复在详情线程中展开。</p><footer>评论 · 回复 · 喜欢</footer></article>
+        <article class="bp-pattern is-future"><span class="bp-pattern-type">PRODUCT · FUTURE</span><h3>社区商品扩展</h3><p>先保留内容与行动位置，交易能力接入后再开放。</p><footer>暂未开放</footer></article>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,50 @@
+@layer lovecards-pages {
+  .auth-page {
+    min-height: 100vh;
+    padding: 48px 20px;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(150deg, var(--lc-canvas) 0 62%, var(--lc-rose-soft) 62%);
+  }
+
+  .auth-panel {
+    width: min(420px, 100%);
+    padding: 28px;
+    border-radius: 16px;
+    background: var(--lc-surface);
+    box-shadow: 0 2px 7px rgba(33, 38, 47, 0.08);
+  }
+
+  .auth-heading { margin-top: 24px; }
+  .auth-heading h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.025em; }
+  .auth-heading p { margin: 8px 0 0; color: var(--lc-muted); font-size: 0.82rem; line-height: 1.65; }
+
+  .auth-form { margin-top: 22px; display: grid; gap: 8px; }
+  .auth-fields { gap: 14px; }
+  .auth-fields .astryx-text-input,
+  .auth-submit.astryx-button { min-height: 44px; }
+
+  .auth-message { min-height: 20px; margin: 4px 0 0; color: var(--lc-muted); font-size: 0.74rem; line-height: 1.5; }
+  .auth-message.is-error { color: var(--lc-danger); }
+  .auth-message.is-success { color: var(--lc-success); }
+  .auth-policy-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .auth-policy-status .auth-message { margin: 0; }
+
+  .auth-submit.astryx-button { margin-top: 4px; }
+
+  .auth-links { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--lc-muted); font-size: 0.72rem; }
+  .auth-links .auth-guest { min-height: 44px; flex: 0 0 auto; }
+  .auth-links a,
+  .auth-register a { color: var(--lc-rose-deep); font-weight: 680; }
+  .auth-register { margin: 20px 0 0; padding: 13px; border-radius: 10px; color: var(--lc-body); background: var(--lc-surface-subtle); font-size: 0.76rem; text-align: center; }
+
+  @media (max-width: 520px) {
+    .auth-page { padding: 0; place-items: stretch; background: var(--lc-surface); }
+    .auth-panel { width: 100%; min-height: 100vh; padding: 28px 22px calc(36px + env(safe-area-inset-bottom)); border-radius: 0; box-shadow: none; }
+    .auth-panel > .brand { min-height: 44px; }
+    .auth-heading { margin-top: 40px; }
+    .auth-heading h1 { font-size: 1.4rem; }
+    .auth-form { margin-top: 26px; }
+    .auth-links { min-height: 44px; }
+  }
+}

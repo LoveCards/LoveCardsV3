@@ -1,14 +1,13 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
+import { resolveSupportedPhp } from './lib/php-runtime.mjs'
 
 const root = process.cwd()
 const outputPath = path.join(root, 'contracts', 'route-manifest.json')
 const checkOnly = process.argv.includes('--check')
 const strict = process.argv.includes('--strict')
-const php = process.env.PHP_BINARY || (process.platform === 'win32'
-  ? 'C:\\software\\phpstudy_pro\\Extensions\\php\\php8.0.2nts\\php.exe'
-  : 'php')
+const { binary: php } = resolveSupportedPhp()
 
 const result = spawnSync(php, [path.join(root, 'scripts', 'export-route-manifest.php')], {
   cwd: root,

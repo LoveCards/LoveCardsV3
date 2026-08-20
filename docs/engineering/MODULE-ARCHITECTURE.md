@@ -6,10 +6,11 @@
 
 ```text
 app/modules/
-├─ Platform/       Config User Auth Rbac Storage Files Sender Captcha
+├─ Platform/       Auth User Rbac Config Captcha Sender Storage Files
+│                  Drafts Library Social Safety Messaging Notifications Eventing
 ├─ Content/        Cards Comments Tags Likes
-├─ Theme/          管理与 SPA/SSR 运行时
-└─ Operations/     Dashboard Version Installer
+├─ Theme/          主题 Release 管理与 SPA 运行时
+└─ Operations/     Dashboard Version Installer Runtime SystemLifecycle Administration
 ```
 
 ## 模块内部
@@ -33,14 +34,14 @@ Module/
 
 当前已提供的稳定入口包括：
 
-- Platform：Auth Contract/Public、Config/Public、Rbac/Public、Files/Public、Storage/Public、Sender/Public、Captcha/Public、User/Public；
+- Platform：Auth、Config、Rbac、Files、Storage、Sender、Captcha、User，以及 Drafts、Library、Social、Safety、Messaging、Notifications、Eventing 的 Public/Contract；
 - Content：Cards/Public、Comments/Public、Tags/Public、Likes/Public；
-- Theme：Theme/Public（渲染）和 Theme/Public/ThemeDataProvider（SSR 数据）；
-- Operations：Version/Public。
+- Theme：Theme/Public 负责主题入口，Runtime/Infrastructure 负责主题协议、文件目录和 Host 绑定；
+- Operations：Version、Administration、Runtime 与 SystemLifecycle 的稳定入口/Port。
 
 `app/common` 已删除；`app/system` 只保留 Installer Host，不再承载实现。新增代码不得创建新的顶层公共目录。
 
-不要求每个模块拥有所有目录。Auth、Files 使用 Application；简单 CRUD 使用 Service；Theme 使用 Runtime；驱动实现统一放在 Infrastructure/Driver。
+不要求每个模块拥有所有目录。Auth、Files、社区状态模块、Eventing 与 SystemLifecycle 使用 Application；简单 CRUD 使用 Service；Theme 使用 Runtime；驱动实现统一放在 Infrastructure/Driver。
 
 ## 依赖规则
 
@@ -49,8 +50,11 @@ Module/
 - Domain 不依赖 ThinkPHP、ORM、HTTP、缓存、JWT 或第三方 SDK。
 - Contract 不依赖 Transport、ORM 或 Infrastructure。
 - Files 依赖 Storage 的公开存储能力；Storage 不依赖 Files。
+- Messaging 通过 Notifications 的稳定通知入口产生收件提醒；Social 通过 Eventing 传播 `social.followed`，不能直接写通知表。
+- Eventing 只认识 EventEnvelope、Registry 与 Port；业务 Handler 位于拥有副作用的目标模块 Infrastructure。
+- SystemLifecycle 通过 Contract 操作 Release、Migration、Backup、Lease、Pointer 和 Runtime，Domain 不依赖 ZIP、PDO、文件系统或 ThinkPHP。
 - Content 的跨 Cards/Comments/Tags/Likes 一致性由 Content 协调用例负责，禁止子模块互相直接写对方 Model。
-- Theme SSR 数据通过 ThemeDataProvider 注册表获取，不直接调用 Content 内部类。
+- 前台主题只返回 Shell 和启动上下文，页面数据统一由浏览器 SDK 请求 API。
 - Dashboard 是跨模块只读组合，不直接读取其他模块 Model。
 - Installer 不依赖正常运行期 Auth/Rbac。
 - `shared/` 只能放无业务语义的 HTTP、缓存、分页、事务和基础技术能力。

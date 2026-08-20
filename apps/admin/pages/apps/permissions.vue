@@ -1,6 +1,5 @@
 <!-- 权限管理（只读） -->
 <template>
-  <NuxtLayout name="root">
     <!-- 标题 -->
     <v-row class="pt-2">
       <v-col cols="6">
@@ -28,8 +27,8 @@
           <v-row>
             <v-col cols="12">
               <v-card variant="outlined" color="#E0E0E0">
-                <v-data-table :style="{ 'white-space': 'nowrap' }" :headers="TableHeaders" :items="tableItems"
-                  :items-per-page="tableListRows" item-value="capability">
+                <v-data-table :style="{ 'white-space': 'nowrap' }" :headers="TableHeaders" :items="tableRows"
+                  :items-per-page="tableListRows" item-value="key">
 
                   <template v-slot:no-data>没有找到相关数据</template>
                   <template v-slot:bottom></template>
@@ -63,13 +62,12 @@
         </v-card>
       </v-col>
     </v-row>
-  </NuxtLayout>
 </template>
 
 <script setup lang="ts">
 import type { CapabilityItem } from '@lovecards/sdk';
 import { useApi } from '~/lib/api';
-import SelectUtils from "~/api/utils/select";
+import SelectUtils from "~/utils/select";
 const client = useApi();
 
 const TableHeaders = [
@@ -79,6 +77,10 @@ const TableHeaders = [
 
 // 表格状态
 const tableItems = ref<CapabilityItem[]>([]);
+const tableRows = computed(() => tableItems.value.map((item) => ({
+  ...item,
+  key: `${item.capability}:${item.scope}`,
+})));
 const tablePaginationLength = ref(0);
 const tableCurrentPage = ref(1);
 const tableSearchValue = ref<string | undefined>(undefined);

@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "default",
+  "name": "LoveCards 默认主题",
+  "version": "1.0.0",
+  "author": "LoveCards",
+  "description": "LoveCards 官方 React SPA 主题",
+  "mode": "spa",
+  "entry": "dist/index.html",
+  "requires": {
+    "sdk": "^2.0.0"
+  },
+  "compatibility": {
+    "min": "3.0.0",
+    "max": "3.x"
+  },
+  "config": {
+    "siteName": {
+      "type": "string",
+      "label": "站点名称",
+      "default": "LoveCards",
+      "maxLength": 80
+    },
+    "primaryColor": {
+      "type": "string",
+      "format": "color",
+      "label": "主题色",
+      "default": "#c92c60"
+    }
+  }
+}

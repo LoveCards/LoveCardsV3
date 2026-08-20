@@ -3,6 +3,7 @@
 namespace app\modules\Platform\Storage\Service;
 
 use app\modules\Platform\Storage\Infrastructure\ChannelManager;
+use app\shared\SystemPaths\LocalStoragePath;
 
 class ChannelTester
 {
@@ -32,16 +33,17 @@ class ChannelTester
 
     private static function testLocal(array $config): array
     {
-        $root = $config['root'] ?? 'public/storage';
-        $fullPath = app()->getRootPath() . $root;
-        if (!is_dir($fullPath)) {
-            @mkdir($fullPath, 0755, true);
+        try {
+            $fullPath = LocalStoragePath::root(null, rtrim(app()->getRootPath(), '/\\'), $config);
+            LocalStoragePath::ensureRoot($fullPath);
+            $writable = is_writable($fullPath);
+            return [
+                'success' => $writable,
+                'message' => $writable ? '目录可写' : '目录不可写: ' . $fullPath,
+            ];
+        } catch (\Throwable $exception) {
+            return ['success' => false, 'message' => $exception->getMessage()];
         }
-        $writable = is_writable($fullPath);
-        return [
-            'success' => $writable,
-            'message' => $writable ? '目录可写' : '目录不可写: ' . $fullPath,
-        ];
     }
 
     private static function testCos(array $config): array

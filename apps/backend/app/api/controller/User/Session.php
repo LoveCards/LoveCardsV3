@@ -24,7 +24,12 @@ class Session extends BaseController
 
     public function check()
     {
-        return $this->respond([]);
+        return $this->respond(request()->auth);
+    }
+
+    public function policy()
+    {
+        return $this->respond($this->session->policy());
     }
 
     public function login()
@@ -37,14 +42,22 @@ class Session extends BaseController
     public function register()
     {
         $params = $this->validated();
+        if ($this->session->humanVerificationEnabled() && !$this->session->verifyHumanVerification($params)) {
+            throw ApiException::unauthorized('人机验证失败');
+        }
         $account = $params['account'];
-        if ($this->session->captchaEnabled() && !$this->session->verifyCaptcha($account, $params['code'] ?? '')) {
+        if ($this->session->registrationEmailVerificationRequired() && !$this->session->captchaEnabled()) {
+            throw ApiException::badRequest('注册验证码服务未启用', ApiException::CODE_PARAM_INVALID);
+        }
+        if ($this->session->registrationEmailVerificationRequired() && !$this->session->verifyCaptcha($account, $params['code'] ?? '')) {
             throw ApiException::unauthorized('注册失败', ['验证码错误']);
         }
 
-        $username = 'USER' . strtoupper(substr(md5($account . $params['password'] . time()), 0, 5));
-        $number = $this->session->generateNumber();
         $accountMap = $this->session->resolveAccountType($account);
+        $number = $accountMap['number'] !== '' ? $accountMap['number'] : $this->session->generateNumber();
+        $username = $accountMap['number'] !== ''
+            ? $account
+            : 'USER' . strtoupper(substr(md5($account . $params['password'] . time()), 0, 5));
         $result = $this->registerUser->execute(
             $number,
             $username,
@@ -77,6 +90,9 @@ class Session extends BaseController
 
     public function logout()
     {
+        $token = request()->header('authorization') ?: request()->header('x-token', '');
+        $token = preg_replace('/^Bearer\s+/', '', (string) $token);
+        $this->session->logout($token);
         return $this->respond();
     }
 }

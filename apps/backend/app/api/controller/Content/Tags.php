@@ -23,6 +23,13 @@ class Tags extends BaseController
         return $this->respond($result);
     }
 
+    public function listOwn()
+    {
+        $params = $this->validated();
+        $result = TagsService::listOwn($params, request()->auth->uid());
+        return $this->respond($result);
+    }
+
     public function list()
     {
         $params = [
@@ -51,7 +58,7 @@ class Tags extends BaseController
         $params = $this->validated(null, ['id' => (int) $id]);
 
         $auth = request()->auth;
-        TagsService::updateTag($params, $auth->uid(), $auth->capabilities());
+        TagsService::updateTag($params, $auth->uid(), $auth->grants());
 
         return $this->respond();
     }
@@ -59,7 +66,7 @@ class Tags extends BaseController
     public function delete($id)
     {
         $auth = request()->auth;
-        TagsService::deleteTags([(int) $id], $auth->uid(), $auth->capabilities());
+        TagsService::deleteTags([(int) $id], $auth->uid(), $auth->grants());
         return $this->respond();
     }
 }

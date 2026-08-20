@@ -5,17 +5,86 @@ declare(strict_types=1);
 $mode = $argv[1] ?? 'create';
 $database = $argv[2] ?? '';
 
+// The bundled Windows PHP runtime may not inherit an OpenSSL configuration
+// path. RSA generation otherwise fails with "configuration file routines";
+// resolve the bundled fixture config without changing production settings.
+if (!is_string(getenv('OPENSSL_CONF')) || trim((string) getenv('OPENSSL_CONF')) === '') {
+    $bundledOpenSsl = dirname(PHP_BINARY) . DIRECTORY_SEPARATOR . 'extras' . DIRECTORY_SEPARATOR . 'ssl' . DIRECTORY_SEPARATOR . 'openssl.cnf';
+    if (is_file($bundledOpenSsl)) putenv('OPENSSL_CONF=' . $bundledOpenSsl);
+}
+
+if (getenv('LOVECARDS_E2E_ISOLATED') !== '1') {
+    fwrite(STDERR, "Refusing E2E database operation without LOVECARDS_E2E_ISOLATED=1\n");
+    exit(1);
+}
 if (!preg_match('/^lovecards_e2e_[a-z0-9_]+$/', $database)) {
     fwrite(STDERR, "Refusing E2E database name: {$database}\n");
     exit(1);
 }
 
 $host = getenv('LOVECARDS_E2E_DB_HOST') ?: '127.0.0.1';
+if (!in_array($host, ['127.0.0.1', 'localhost', '::1'], true)) {
+    fwrite(STDERR, "Refusing non-local E2E database host: {$host}\n");
+    exit(1);
+}
+$instanceRoot = trim((string) (getenv('LC_INSTANCE_ROOT') ?: ''));
+if ($mode === 'create') {
+    if ($instanceRoot === '' || strpos($instanceRoot, "\0") !== false) {
+        fwrite(STDERR, "Refusing E2E bootstrap without an isolated LC_INSTANCE_ROOT\n");
+        exit(1);
+    }
+    $instanceRoot = str_replace('\\', '/', $instanceRoot);
+    if (!preg_match('#^(?:[A-Za-z]:/|/|//)#', $instanceRoot)) {
+        fwrite(STDERR, "Refusing non-absolute E2E instance root\n");
+        exit(1);
+    }
+    $instanceRoot = rtrim($instanceRoot, '/');
+    $sourceRoot = str_replace('\\', '/', realpath(__DIR__ . '/../apps/backend') ?: (__DIR__ . '/../apps/backend'));
+    $normalizedInstance = strtolower($instanceRoot);
+    $normalizedSource = strtolower(rtrim($sourceRoot, '/'));
+    if ($normalizedInstance === $normalizedSource || str_starts_with($normalizedInstance, $normalizedSource . '/')) {
+        fwrite(STDERR, "Refusing E2E instance root inside active application code\n");
+        exit(1);
+    }
+    $stateRoot = $instanceRoot . '/shared/state';
+    if (is_link($stateRoot) || (!is_dir($stateRoot) && !mkdir($stateRoot, 0700, true) && !is_dir($stateRoot))) {
+        fwrite(STDERR, "Unable to create isolated state directory\n");
+        exit(1);
+    }
+    if (!is_string(getenv('RANDFILE')) || trim((string) getenv('RANDFILE')) === '') {
+        putenv('RANDFILE=' . $stateRoot . '/openssl.rand');
+    }
+    $randFile = (string) getenv('RANDFILE');
+    if ($randFile !== '' && !file_exists($randFile) && file_put_contents($randFile, '') === false) {
+        fwrite(STDERR, "Unable to create isolated OpenSSL random state\n");
+        exit(1);
+    }
+}
 $port = getenv('LOVECARDS_E2E_DB_PORT') ?: '3306';
 $user = getenv('LOVECARDS_E2E_DB_USER') ?: 'root';
 $password = getenv('LOVECARDS_E2E_DB_PASSWORD') ?: '';
+$runtimeDatabaseEnv = [
+    'DATABASE_DRIVER' => 'mysql',
+    'DATABASE_TYPE' => 'mysql',
+    'DATABASE_HOSTNAME' => $host,
+    'DATABASE_HOSTPORT' => $port,
+    'DATABASE_DATABASE' => $database,
+    'DATABASE_USERNAME' => $user,
+    'DATABASE_PASSWORD' => $password,
+    'PHP_DATABASE_DRIVER' => 'mysql',
+    'PHP_DATABASE_TYPE' => 'mysql',
+    'PHP_DATABASE_HOSTNAME' => $host,
+    'PHP_DATABASE_HOSTPORT' => $port,
+    'PHP_DATABASE_DATABASE' => $database,
+    'PHP_DATABASE_USERNAME' => $user,
+    'PHP_DATABASE_PASSWORD' => $password,
+];
+foreach ($runtimeDatabaseEnv as $key => $value) {
+    putenv($key . '=' . $value);
+}
 $dsn = "mysql:host={$host};port={$port};charset=utf8mb4";
 $pdo = null;
+$databaseCreated = false;
 $quoted = '`' . str_replace('`', '``', $database) . '`';
 
 try {
@@ -28,7 +97,13 @@ try {
         exit(0);
     }
 
+    $exists = $pdo->prepare('SELECT 1 FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = ? LIMIT 1');
+    $exists->execute([$database]);
+    if ($exists->fetchColumn() !== false) {
+        throw new RuntimeException('Refusing to reuse an existing E2E database: ' . $database);
+    }
     $pdo->exec("CREATE DATABASE {$quoted} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    $databaseCreated = true;
     $databasePdo = new PDO("{$dsn};dbname={$database}", $user, $password, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     ]);
@@ -38,7 +113,57 @@ try {
     }
     $databasePdo->exec($sql);
 
-    $rsaDir = __DIR__ . '/../apps/backend/config/rsa';
+    // E2E 数据库必须与安装后的运行时一致：基础 data.sql 之后还要推进
+    // 当前所有可执行迁移，否则认证会缺少 session 字段，社区表也不存在。
+    $backend = __DIR__ . '/../apps/backend';
+    $php = escapeshellarg(PHP_BINARY);
+    $think = escapeshellarg($backend . '/think');
+    $previousDirectory = getcwd();
+    chdir($backend);
+    try {
+        $complete = false;
+        $migrationFiles = glob($backend . '/database/migrations/*.sql') ?: [];
+        $expectedMigrations = count($migrationFiles);
+        if ($expectedMigrations < 1) {
+            throw new RuntimeException('No database migrations found for E2E bootstrap');
+        }
+        for ($attempt = 0; $attempt < 128 && !$complete; $attempt++) {
+            $lines = [];
+            $command = $php . ' ' . $think . ' lc:system:migrate';
+            exec($command, $lines, $exitCode);
+            if ($exitCode !== 0) {
+                throw new RuntimeException('E2E migration failed: ' . implode("\n", $lines));
+            }
+
+            // 每次 CLI 调用只推进一个 phase；不能仅根据本次输出的
+            // 单条记录判断全库完成。必须以账本全表和迁移文件数量交叉确认。
+            $ledgerCount = (int) $databasePdo
+                ->query('SELECT COUNT(*) FROM `system_upgrade_steps`')
+                ->fetchColumn();
+            $openCount = (int) $databasePdo
+                ->query("SELECT COUNT(*) FROM `system_upgrade_steps` WHERE `status` <> 'complete'")
+                ->fetchColumn();
+            $complete = $ledgerCount >= $expectedMigrations && $openCount === 0;
+        }
+        if (!$complete) {
+            throw new RuntimeException('E2E migrations did not reach a terminal state');
+        }
+    } finally {
+        if (is_string($previousDirectory)) {
+            chdir($previousDirectory);
+        }
+    }
+
+    $keysRoot = $instanceRoot . '/shared/keys';
+    if (is_link($instanceRoot) || (!is_dir($instanceRoot) && !mkdir($instanceRoot, 0700, true) && !is_dir($instanceRoot))) {
+        throw new RuntimeException('Unable to create isolated instance root');
+    }
+    if (is_link($keysRoot) || (!is_dir($keysRoot) && !mkdir($keysRoot, 0700, true) && !is_dir($keysRoot))) {
+        throw new RuntimeException('Unable to create isolated key directory');
+    }
+    @chmod($instanceRoot, 0700);
+    @chmod($keysRoot, 0700);
+    $rsaDir = $keysRoot;
     if (!is_dir($rsaDir) && !mkdir($rsaDir, 0777, true) && !is_dir($rsaDir)) {
         throw new RuntimeException('Unable to create RSA directory');
     }
@@ -60,9 +185,11 @@ try {
     echo $database . PHP_EOL;
 } catch (Throwable $error) {
     fwrite(STDERR, $error->getMessage() . PHP_EOL);
-    try {
-        $pdo->exec("DROP DATABASE IF EXISTS {$quoted}");
-    } catch (Throwable) {
+    if ($databaseCreated && $pdo instanceof PDO) {
+        try {
+            $pdo->exec("DROP DATABASE IF EXISTS {$quoted}");
+        } catch (Throwable) {
+        }
     }
     exit(1);
 }

@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/lovecards.cjs",
   "module": "dist/lovecards.es.js",
-  "types": "dist/lovecards.d.ts",
+  "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -19,7 +19,7 @@
   ],
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build --configLoader runner && vite build --config vite.browser.config.ts --configLoader runner",
     "typecheck": "tsc --noEmit",
     "generate:contract": "node ../../scripts/generate-sdk-contract.mjs"
   },

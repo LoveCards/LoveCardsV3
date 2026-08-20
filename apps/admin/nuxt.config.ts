@@ -6,10 +6,14 @@ export default defineNuxtConfig({
             title: 'LoveCards Admin',
         }
     },
+    css: ['@mdi/font/css/materialdesignicons.css'],
     runtimeConfig: {
         public: {
             gitSha: 'localdev',
-            apiBase: '/api',
+            // The standalone admin preview has no Nuxt dev proxy. Keep the
+            // local backend reachable by default; deployments can override
+            // this with NUXT_PUBLIC_API_BASE at build time.
+            apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://127.0.0.1:6001/api',
             matomoEnabled: false,
         }
     },
@@ -40,8 +44,12 @@ export default defineNuxtConfig({
             },
         },
     },
-    modules: [// 直接使用模块名称
-        'vuetify-nuxt-module', 'vuetify-notifier/nuxt', '@pinia/nuxt', "vuetify-notifier", "@nuxt/scripts"],
+    modules: [
+        'vuetify-nuxt-module',
+        'vuetify-notifier/nuxt',
+        '@pinia/nuxt',
+        '@nuxt/scripts',
+    ],
     scripts: process.env.NUXT_PUBLIC_MATOMO_ENABLED === 'true' ? {
         registry: {
             matomoAnalytics: {
