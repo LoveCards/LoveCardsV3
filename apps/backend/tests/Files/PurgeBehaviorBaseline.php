@@ -59,8 +59,8 @@ final class FakeReferences implements FileReferenceRepository
 {
     public array $counts = [];
     public function forFile(int $fileId): array { return []; }
-    public function fileIdsForResource(string $resourceType, string $resourceId): array { return []; }
-    public function fileIdsForResources(string $resourceType, array $resourceIds): array { return []; }
+    public function fileIdsForResource(string $resourceType, string $resourceId, ?string $purpose = null): array { return []; }
+    public function fileIdsForResources(string $resourceType, array $resourceIds, ?string $purpose = null): array { return []; }
     public function countForFile(int $fileId): int { return (int) ($this->counts[$fileId] ?? 0); }
     public function replaceResource(string $resourceType, string $resourceId, string $purpose, array $fileIds, int $ownerId, bool $isPublic, bool $allowAll): void {}
 }

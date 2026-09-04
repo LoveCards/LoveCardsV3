@@ -12,12 +12,15 @@ final class AdminSecurityResource extends Resource
         return ['type' => 'object', 'additionalProperties' => false, 'properties' => [
             'user' => ['type' => 'object'], 'privacy' => ['type' => 'object', 'nullable' => true],
             'sessions' => ['type' => 'object'], 'recovery_challenges' => ['type' => 'integer'],
-        ]];
+            'session_mutation_allowed' => ['type' => 'boolean'],
+        ], 'required' => ['user', 'privacy', 'sessions', 'recovery_challenges', 'session_mutation_allowed']];
     }
 
     public static function make($value): array
     {
         $data = self::normalize($value);
-        return is_array($data) ? $data : [];
+        if (!is_array($data)) return [];
+        $data['session_mutation_allowed'] = (bool) ($data['session_mutation_allowed'] ?? false);
+        return $data;
     }
 }

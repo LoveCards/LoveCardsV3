@@ -10,7 +10,7 @@ export interface AuthPolicy {
 }
 
 export interface SessionState {
-  uid: number
+  uid: string
   visitor: boolean
   roles: number[]
   capabilities: string[]

@@ -17,7 +17,9 @@ final class DeliveryFailure
             throw new \InvalidArgumentException('Delivery failure error 不能为空');
         }
         if (strlen($error) > 2048) {
-            $error = substr($error, 0, 2048);
+            $error = function_exists('mb_strcut')
+                ? mb_strcut($error, 0, 2048, 'UTF-8')
+                : substr($error, 0, 2048);
         }
         $this->terminal = $terminal;
         $this->error = $error;

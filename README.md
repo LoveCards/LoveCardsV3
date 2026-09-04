@@ -80,7 +80,7 @@ php think lc:system:upgrade --help
 3. 先记录行为基线和验证方法，再改代码。
 4. 提交前至少运行 `npm run check`，并按影响范围执行构建或后端检查。
 
-后端测试分层、接口新增测试流程和后端到 SDK 的质量门禁见 `docs/engineering/BACKEND-TESTING.md`。管理端目录、状态、通知和 SDK 边界见 `docs/engineering/ADMIN-ARCHITECTURE.md`。跨模块依赖、Auth 目标切片和已知债务见 `docs/engineering/ARCHITECTURE.md`。Git 规则见 `docs/engineering/GIT-WORKFLOW.md`。
+后端测试分层、接口新增测试流程和后端到 SDK 的质量门禁见 `docs/engineering/BACKEND-TESTING.md`。站内通知的强制触发与实现边界见 `docs/engineering/NOTIFICATIONS.md`。管理端目录、状态和 SDK 边界见 `docs/engineering/ADMIN-ARCHITECTURE.md`。跨模块依赖、Auth 目标切片和已知债务见 `docs/engineering/ARCHITECTURE.md`。Git 规则见 `docs/engineering/GIT-WORKFLOW.md`。
 
 完整文档索引见 [`docs/README.md`](docs/README.md)，其中包括可裁剪运行时、系统升级、事件投递、日志审计、数据库运维、社区能力和 API/SDK 契约说明。
 

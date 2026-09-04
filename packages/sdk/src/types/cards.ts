@@ -1,4 +1,5 @@
 import type { JsonObject } from './json'
+import type { ContentMention } from './mentions'
 
 export interface CardMedia {
   file_id: number | null
@@ -14,19 +15,27 @@ export interface CardMedia {
   position: number
 }
 
+export interface CardTopic {
+  id: number
+  name: string
+}
+
 export interface Card {
   id: number
   user_id: number
+  uid: string
   username?: string
   status: number
   is_top: number
   content: string
-  /** 卡片自定义数据（如 title 等扩展字段） */
+  /** 原始卡片扩展数据；新写入不使用 title/summary 作为正文层级。 */
   data: JsonObject
   cover: string | null
   pictures: string[]
   media: CardMedia[]
-  tags: string[]
+  tags: number[]
+  topics: CardTopic[]
+  mentions: ContentMention[]
   goods: number
   views: number
   comments: number
@@ -52,7 +61,7 @@ export interface CardsListParams {
 export interface CreateCardParams {
   content: string
   data?: JsonObject
-  tags?: string
+  tags?: string[] | number[]
   cover?: string
   pictures?: string[]
   media_file_ids?: number[]
@@ -62,7 +71,7 @@ export interface CreateCardParams {
 export interface UpdateCardParams {
   content?: string
   data?: JsonObject
-  tags?: string
+  tags?: string[] | number[]
   cover?: string
   media_file_ids?: number[]
   cover_file_id?: number

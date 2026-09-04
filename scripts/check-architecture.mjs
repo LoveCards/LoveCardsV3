@@ -56,13 +56,36 @@ if (defaultThemePackage.dependencies?.['@lovecards/sdk'] !== sdkPackage.version)
 if (sdkPackage.scripts?.postbuild) fail('SDK postbuild must not write into an application')
 if (adminPackage.dependencies?.axios) fail('Admin must not depend on Axios directly; use @lovecards/sdk')
 
-const adminSourceFiles = await walk(path.join(root, 'apps/admin'), (file) => /\.(?:ts|vue|js)$/.test(file))
+const adminSourceFiles = await walk(path.join(root, 'apps/admin'), (file) => {
+  if (!/\.(?:ts|vue|js)$/.test(file)) return false
+  // Browser fixtures intentionally exercise the HTTP boundary; production admin
+  // code remains required to use the generated SDK.
+  return !/[\\/]e2e[\\/]/.test(file) && !/\.test\.[^.]+$/i.test(file)
+})
+const adminPagesRoot = path.join(root, 'apps/admin/pages')
+for (const file of adminSourceFiles) {
+  if (!file.startsWith(`${adminPagesRoot}${path.sep}`) || !file.endsWith('.vue') || path.basename(file) === 'index.vue') continue
+  const siblingDirectory = file.slice(0, -'.vue'.length)
+  try {
+    const info = await stat(siblingDirectory)
+    if (!info.isDirectory()) continue
+    const source = await readFile(file, 'utf8')
+    if (!/<NuxtPage\b/i.test(source)) {
+      fail(`Admin page file shadows nested routes; move it to index.vue or render NuxtPage: ${relative(file)}`)
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+  }
+}
 if (await exists(path.join(root, 'apps/ui'))) fail('Legacy apps/ui directory must not exist; use apps/default-theme/ui')
 
 const defaultThemeRoot = path.join(root, 'apps/default-theme')
 const defaultThemeDesignRoot = path.join(defaultThemeRoot, 'ui')
 const defaultThemeSourceFiles = await walk(path.join(defaultThemeRoot, 'src'), (file) => /\.(?:js|jsx|css)$/.test(file))
 for (const file of defaultThemeSourceFiles) {
+  // Tests may read design specifications as executable acceptance criteria;
+  // only production source must remain independent from the design workspace.
+  if (/[\\/]test[\\/]/.test(file) || /\.test\.[^.]+$/i.test(file)) continue
   const source = await readFile(file, 'utf8')
   const references = [
     ...source.matchAll(/['"](\.{1,2}\/[^'"]+)['"]/g),
@@ -82,6 +105,12 @@ for (const directory of ['apps/admin/api', 'apps/admin/components/apps', 'apps/a
 for (const file of adminSourceFiles) {
   const source = await readFile(file, 'utf8')
   const rel = relative(file)
+  if (file.startsWith(`${adminPagesRoot}${path.sep}`)) {
+    const legacyRoute = source.match(/\/apps\/(?:cards|comments|tags|governance|system|storage|sender|captcha|roles|permissions|view|updata)(?=[/?#'"`]|$)/)
+    if (legacyRoute) {
+      fail(`Admin production pages must link to canonical routes, not ${legacyRoute[0]}: ${rel}`)
+    }
+  }
   if (/from\s+['"](?:axios|ofetch)['"]/.test(source)) {
     fail(`Admin source must not import a transport client: ${rel}`)
   }
@@ -99,6 +128,54 @@ for (const file of adminSourceFiles) {
   }
   if (/\bany\b/.test(source)) {
     fail(`Admin source must use explicit types or unknown, not any: ${rel}`)
+  }
+
+  if (file.endsWith('.vue')) {
+    const templateStart = source.match(/<template(?:\s[^>]*)?>/i)
+    const templateEnd = source.lastIndexOf('</template>')
+    const template = templateStart && templateEnd > (templateStart.index ?? 0)
+      ? source.slice((templateStart.index ?? 0) + templateStart[0].length, templateEnd)
+      : ''
+    const templateWithoutComments = template.replace(/<!--[\s\S]*?-->/g, '')
+    const rawControl = templateWithoutComments.match(/<(?:button|input|select|textarea|form|table|dialog)\b/i)
+    if (rawControl) {
+      fail(`Admin interactive controls must use Vuetify primitives: ${rel}`)
+    }
+    if (/(?:^|\s):?style\s*=/im.test(templateWithoutComments)) {
+      fail(`Admin templates must use Vuetify props, theme tokens, and utility classes instead of inline styles: ${rel}`)
+    }
+    if (/#[0-9a-f]{3,8}\b/i.test(source) || /rgba?\(\s*\d/i.test(source)) {
+      fail(`Admin Vue files must use Vuetify theme tokens instead of hard-coded colors: ${rel}`)
+    }
+
+    for (const match of templateWithoutComments.matchAll(/<v-btn\b[\s\S]*?>/gi)) {
+      const tag = match[0]
+      const iconOnly = /(?:\s|:)icon(?:\s|=)/i.test(tag)
+      const accessibleName = /(?:aria-label|\btitle)\s*=/i.test(tag)
+      if (iconOnly && !accessibleName) {
+        fail(`Admin icon-only buttons need an aria-label or title: ${rel}`)
+      }
+    }
+
+    for (const match of templateWithoutComments.matchAll(/<v-dialog\b[\s\S]*?>/gi)) {
+      if (!/(?:aria-label|aria-labelledby)\s*=/i.test(match[0])) {
+        fail(`Admin dialogs need an accessible name via aria-label or aria-labelledby: ${rel}`)
+      }
+    }
+
+    let cardDepth = 0
+    let maximumCardDepth = 0
+    for (const match of templateWithoutComments.matchAll(/<\/?v-card(?:\s|>)[^>]*>/gi)) {
+      const tag = match[0]
+      if (tag.startsWith('</')) cardDepth = Math.max(0, cardDepth - 1)
+      else if (!tag.endsWith('/>')) {
+        cardDepth += 1
+        maximumCardDepth = Math.max(maximumCardDepth, cardDepth)
+      }
+    }
+    if (maximumCardDepth > 1) {
+      fail(`Admin pages must not nest v-card surfaces: ${rel}`)
+    }
   }
 }
 

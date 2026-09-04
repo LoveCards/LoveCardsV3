@@ -40,14 +40,16 @@ function schemaForType(type) {
   return { type: 'object', additionalProperties: true }
 }
 
-function tsTypeForSchema(schema) {
+function tsTypeForSchema(schema, literalEnums = false) {
   if (!schema) return 'unknown'
+  if (schema['x-typescript-type']) return schema['x-typescript-type']
+  if (literalEnums && Array.isArray(schema.enum) && schema.enum.length) return schema.enum.map((value) => JSON.stringify(value)).join(' | ')
   if (schema.type === 'integer' || schema.type === 'number') return 'number'
   if (schema.type === 'boolean') return 'boolean'
   if (schema.type === 'string') return schema.format === 'binary' ? 'File' : 'string'
-  if (schema.type === 'array') return `${tsTypeForSchema(schema.items)}[]`
+  if (schema.type === 'array') return `${tsTypeForSchema(schema.items, literalEnums)}[]`
   if (schema.type === 'object') {
-    const fields = Object.entries(schema.properties || {}).map(([name, value]) => `${name}${(schema.required || []).includes(name) ? '' : '?'}: ${tsTypeForSchema(value)}`)
+    const fields = Object.entries(schema.properties || {}).map(([name, value]) => `${name}${(schema.required || []).includes(name) ? '' : '?'}: ${tsTypeForSchema(value, literalEnums)}`)
     return fields.length ? `{ ${fields.join('; ')} }` : 'Record<string, unknown>'
   }
   return 'unknown'
@@ -63,11 +65,12 @@ function resourceType(route) {
     'storage.types': 'StorageDriver[]', 'storage.meta': 'StorageMeta', 'storage.channels': 'StorageChannel[]', 'storage.channelStats': 'ChannelStats', 'storage.testChannel': '{ success: boolean; message?: string }',
     'theme.publicConfig': 'ThemeConfigData', 'theme.updateConfig': 'void', 'roles.getGrants': 'Grant[]', 'permissions.all': 'CapabilityItem[]',
     'session.policy': 'AuthPolicy', 'session.check': 'SessionState',
+    'notifications.unread': 'NotificationUnread',
   }
   if (operationTypes[operation]) return operationTypes[operation]
   const short = route.response?.resource || ''
   const base = short.replace(/Resource$/, '')
-  const map = { Card: 'Card', CardCreated: 'CreateResult', Comment: 'Comment', CommentCreated: 'CreateResult', Tag: 'Tag', User: 'User', Profile: 'User', Role: 'Role', Grant: 'Grant', Permission: 'CapabilityItem', Like: 'Like', LikeCount: '{ likes: number }', File: 'LCFile', DirectUpload: 'DirectUploadResult', Auth: 'LoginResult', AuthPolicy: 'AuthPolicy', Session: 'SessionState', Theme: 'ThemeItem', Config: 'ConfigData', Dashboard: 'DashboardData', System: 'SystemUpdateInfo', Sender: 'SenderMeta', Storage: 'StorageMeta', Captcha: 'CaptchaMeta', CaptchaChallenge: 'CaptchaChallenge', CursorPage: 'CursorPage', AdminOverview: 'OperationsOverview', AdminMigration: 'OperationsMigration', AdminRuntime: 'OperationsRuntimeStatus', AdminDelivery: 'OperationsDelivery', AdminAuditLog: 'OperationsAuditLog', AdminNotificationStats: 'OperationsNotificationStats', AdminCommunityInsights: 'OperationsCommunityInsights', AdminUpgradePlan: 'OperationsUpgradePlan', AdminReport: 'AdminReport', AdminSecurity: 'UserSecurityOverview', AdminSession: 'UserSession', AdminRecoveryChallenge: 'RecoveryChallenge', AdminFileUsage: 'FileUsage' }
+  const map = { Card: 'Card', CardCreated: 'CreateResult', Comment: 'Comment', CommentCreated: 'CreateResult', Tag: 'Tag', User: 'User', Profile: 'CurrentUser', PublicUserProfile: 'PublicUserProfile', SocialRelation: 'SocialRelation', CurrentUserSession: 'CurrentUserSession', EmailCaptcha: 'EmailCaptchaResult', PrivacyPreferences: 'PrivacyPreferences', BlockedUserCursorPage: 'BlockedUserCursorPage', MentionCandidate: 'MentionCandidate', Role: 'Role', Grant: 'Grant', Permission: 'CapabilityItem', Like: 'Like', LikeCount: '{ likes: number }', File: 'LCFile', DirectUpload: 'DirectUploadResult', Auth: 'LoginResult', AuthPolicy: 'AuthPolicy', Session: 'SessionState', Theme: 'ThemeItem', Config: 'ConfigData', Dashboard: 'DashboardData', System: 'SystemUpdateInfo', Sender: 'SenderMeta', Storage: 'StorageMeta', Captcha: 'CaptchaMeta', CaptchaChallenge: 'CaptchaChallenge', CursorPage: 'CursorPage', NotificationItem: 'NotificationItem', NotificationCursorPage: 'NotificationCursorPage', NotificationUnread: 'NotificationUnread', NotificationPreferences: 'NotificationPreferences', AdminOverview: 'OperationsOverview', AdminMigration: 'OperationsMigration', AdminRuntime: 'OperationsRuntimeStatus', AdminDelivery: 'OperationsDelivery', AdminAuditLog: 'OperationsAuditLog', AdminNotificationStats: 'OperationsNotificationStats', AdminCommunityInsights: 'OperationsCommunityInsights', AdminUpgradePlan: 'OperationsUpgradePlan', AdminReport: 'AdminReport', AdminSecurity: 'UserSecurityOverview', AdminSession: 'UserSession', AdminRecoveryChallenge: 'RecoveryChallenge', AdminFileUsage: 'FileUsage' }
   const item = map[base] || 'Record<string, unknown>'
   if (route.response?.shape === 'collection') return `${item}[]`
   if (route.response?.shape === 'paginated') return `ListResult<${item}>`
@@ -144,13 +147,21 @@ function requestSchema(route) {
   const pathParams = [...route.path.matchAll(/:([^/]+)/g)].map((match) => match[1])
   const formData = route.contract?.request?.contentType === 'multipart/form-data'
   const schema = cloneSchema(validationSchema(route) || { type: 'object', additionalProperties: true })
+  // Keep the public cards SDK contract aligned with the shared source types.
+  // The validator intentionally describes JSON arrays generically, but cards
+  // have a stable, user-facing payload contract that must not degrade to
+  // unknown[].
+  if (route.name === 'cards.create') schema['x-typescript-type'] = 'CreateCardParams'
+  if (route.name === 'cards.update' || route.name === 'cards.updateManaged') schema['x-typescript-type'] = 'UpdateCardParams'
   for (const name of pathParams) {
     delete schema.properties?.[name]
     if (Array.isArray(schema.required)) schema.required = schema.required.filter((value) => value !== name)
   }
-  const fields = Object.entries(schema.properties || {}).map(([name, value]) => `${name}${(schema.required || []).includes(name) ? '' : '?'}: ${tsTypeForSchema(value)}`)
-  const requestRequired = (schema.required || []).length > 0
-  const params = formData
+  const fields = Object.entries(schema.properties || {}).map(([name, value]) => `${name}${(schema.required || []).includes(name) ? '' : '?'}: ${tsTypeForSchema(value, route.name === 'notifications.list')}`)
+  const requestRequired = (schema.required || []).length > 0 || route.name === 'cards.update' || route.name === 'cards.updateManaged'
+  const params = schema['x-typescript-type']
+    ? `data${requestRequired ? '' : '?'}: ${schema['x-typescript-type']}`
+    : formData
     ? 'formData: FormData'
     : ['GET', 'DELETE'].includes(route.method)
       ? `params${requestRequired ? '' : '?'}: { ${fields.join('; ')} }`

@@ -12,6 +12,7 @@ final class AuthContext
     private $capabilities;
     private $renewedToken;
     private $visitor;
+    private ?string $sessionPublicId;
     private GrantSet $grants;
 
     private function __construct(
@@ -20,7 +21,8 @@ final class AuthContext
         array $roleIds,
         GrantSet $grants,
         ?string $renewedToken,
-        bool $visitor
+        bool $visitor,
+        ?string $sessionPublicId
     ) {
         $this->uid = $uid;
         $this->user = $user;
@@ -29,6 +31,7 @@ final class AuthContext
         $this->capabilities = $grants->capabilityNames();
         $this->renewedToken = $renewedToken;
         $this->visitor = $visitor;
+        $this->sessionPublicId = $sessionPublicId;
     }
 
     public static function authenticated(
@@ -36,17 +39,24 @@ final class AuthContext
         $user,
         array $roleIds,
         GrantSet $grants,
-        ?string $renewedToken = null
+        ?string $renewedToken = null,
+        ?string $sessionPublicId = null
     ): self {
-        return new self($uid, $user, $roleIds, $grants, $renewedToken, false);
+        return new self($uid, $user, $roleIds, $grants, $renewedToken, false, $sessionPublicId);
     }
 
     public static function visitor(array $roleIds, GrantSet $grants): self
     {
-        return new self(0, null, $roleIds, $grants, null, true);
+        return new self(0, null, $roleIds, $grants, null, true, null);
     }
 
     public function uid(): int
+    {
+        return $this->uid;
+    }
+
+    /** Internal database identity. Public API identities use users.uid. */
+    public function userId(): int
     {
         return $this->uid;
     }
@@ -75,6 +85,8 @@ final class AuthContext
     {
         return $this->renewedToken;
     }
+
+    public function sessionPublicId(): ?string { return $this->sessionPublicId; }
 
     public function isVisitor(): bool
     {

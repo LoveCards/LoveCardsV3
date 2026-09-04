@@ -2,24 +2,24 @@
 name: LoveCards System Material Feed
 description: 以系统级精度承载真实内容的社区信息流设计系统
 colors:
-  primary-rose: "#d92f68"
-  highlight-rose: "#ff4d6d"
-  rose-soft: "#fff0f3"
+  primary-rose: "#c92c60"
+  highlight-rose: "#e63d63"
+  rose-soft: "#fff0f4"
   canvas: "#f5f5f7"
   surface: "#ffffff"
-  surface-subtle: "#f2f4f7"
+  surface-subtle: "#f0f1f4"
   ink: "#1d1d1f"
   ink-muted: "#6e6e73"
-  separator: "rgba(60,60,67,.14)"
-  danger: "#e5484d"
-  success: "#1f9d68"
-  warning: "#b7791f"
+  separator: "rgba(60,60,67,.16)"
+  danger: "#c93642"
+  success: "#24835b"
+  warning: "#9a6700"
   canvas-dark: "#101216"
   surface-dark: "#171a20"
   surface-subtle-dark: "#20242c"
   ink-on-dark: "#f5f7fa"
   ink-muted-on-dark: "#a7b0bd"
-  separator-dark: "#2c313a"
+  separator-dark: "rgba(255,255,255,.12)"
   rose-soft-dark: "#2b171d"
 typography:
   headline:
@@ -53,7 +53,7 @@ typography:
     lineHeight: 1.4
     letterSpacing: "normal"
 rounded:
-  control: "8px"
+  control: "9px"
   field: "10px"
   media: "12px"
   card: "12px"
@@ -145,14 +145,14 @@ LoveCards 像一套成熟操作系统中的社区信息流：结构熟悉、反�
 
 ### Primary
 
-- **Accessible Deep Rose**（`primary-rose`）：主按钮、焦点、选中标签和可阅读的玫瑰文字。白字与该色对比度为 4.61:1，可用于普通字号的填充按钮。
-- **Signal Rose**（`highlight-rose`）：喜欢图标、轻量计数变化和小面积高光。它在白色上的对比度只有 3.21:1，禁止作为普通正文或白字按钮背景。
+- **Accessible Deep Rose**（`primary-rose`）：主按钮、焦点、选中标签和可阅读的玫瑰文字。白字与该色对比度为 5.23:1，可用于普通字号的填充按钮。
+- **Signal Rose**（`highlight-rose`）：喜欢图标、轻量计数变化和小面积高光。它在白色上的对比度为 4.03:1，禁止作为普通正文或白字按钮背景。
 - **Rose Mist**（`rose-soft`）：选中背景、引用材质和局部关系反馈；面积可见但饱和度必须低。
 
 ### Neutral
 
 - **Cool Canvas**（`canvas`）承载页面背景；**True Surface**（`surface`）承载主要内容；**Subtle Surface**（`surface-subtle`）承载输入、骨架和局部选中层。
-- **Near-black Ink**（`ink`）用于主要阅读；**Slate Ink**（`ink-muted`）用于仍需阅读的元数据。Slate Ink 在白色上为 4.90:1、在画布上为 4.61:1，不能继续变浅。
+- **Near-black Ink**（`ink`）用于主要阅读；**Slate Ink**（`ink-muted`）用于仍需阅读的元数据。Slate Ink 在白色上为 5.07:1、在画布上为 4.66:1，不能继续变浅。
 - **Quiet Separator**（`separator`）只用于需要解释结构的 1px 分隔，不为每个区域描边。
 
 ### Semantic
@@ -210,7 +210,7 @@ LoveCards 像一套成熟操作系统中的社区信息流：结构熟悉、反�
 
 ### Buttons
 
-- **Shape:** 系统控制圆角（8px），常规高度 40px，移动端触控热区至少 44×44px；只有纯图标控制允许等宽方形。
+- **Shape:** 系统控制圆角（9px），常规高度 40px，移动端触控热区至少 44×44px；只有纯图标控制允许等宽方形。
 - **Primary:** `primary-rose` 填充、白字、左右 16px 内边距。悬停通过降低约 2% 明度反馈，不能加宽阴影；按下使用 `scale(.97)`。
 - **Secondary:** 白色或当前表面、近黑文字、1px 静默分隔线；同一区域不能与主按钮争夺视觉重量。
 - **Ghost:** 透明底，默认使用次文本色；悬停出现低色度表面，不在静止状态绘制圆角胶囊。

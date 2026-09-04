@@ -5,12 +5,14 @@ namespace app\command;
 
 use app\modules\Platform\Eventing\Application\RequestExecutor;
 use app\modules\Platform\Eventing\Domain\RequestExecutionBudget;
+use app\modules\Platform\Eventing\Public\ExecutionMode;
+use app\modules\Platform\Eventing\Public\HandlerRegistry;
 use think\console\Command;
 use think\console\input\Option;
 use think\console\Input;
 use think\console\Output;
 
-/** Runs request-safe work for cron/systemd timers when no daemon is enabled. */
+/** Runs bounded Eventing work for cron/systemd timers when no daemon is enabled. */
 final class SchedulerRunOnce extends Command
 {
     protected function configure(): void
@@ -22,12 +24,14 @@ final class SchedulerRunOnce extends Command
 
     protected function execute(Input $input, Output $output): int
     {
+        $executionModes = [ExecutionMode::REQUEST_SAFE, ExecutionMode::DAEMON_REQUIRED];
         $report = app(RequestExecutor::class)->run(new RequestExecutionBudget(
             'scheduler-' . getmypid(),
             max(1, min(20, (int) $input->getOption('max-jobs'))),
             max(1, min(1000, (int) $input->getOption('max-ms'))),
-            30,
-            ['critical', 'default', 'bulk']
+            300,
+            app(HandlerRegistry::class)->queueNamesFor($executionModes),
+            $executionModes
         ));
         $output->writeln('claimed=' . $report->claimed());
         return 0;

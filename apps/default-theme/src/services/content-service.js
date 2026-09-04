@@ -6,22 +6,8 @@ function clientOrThrow() {
   return client;
 }
 
-export async function updateCard({ id, content, tags, cover }) {
-  if (!content?.trim()) throw new Error('正文不能为空。');
-  return clientOrThrow().cards.update(Number(id), {
-    content: content.trim(),
-    ...(tags ? { tags } : {}),
-    ...(cover ? { cover } : {}),
-  });
-}
-
 export async function deleteCard(id) {
   return clientOrThrow().cards.delete(Number(id));
-}
-
-export async function updateComment(id, content) {
-  if (!content?.trim()) throw new Error('评论不能为空。');
-  return clientOrThrow().comments.update(Number(id), { content: content.trim() });
 }
 
 export async function deleteComment(id) {
@@ -33,19 +19,14 @@ export async function loadLikes() {
   return Array.isArray(likes) ? likes : [];
 }
 
-export async function loadOwnComments() {
-  const result = await clientOrThrow().comments.listOwn({ page: 1, list_rows: 50, order_desc: true, order_key: 'created_at' });
-  return result?.data || [];
+export async function updatePassword({ current_password, new_password } = {}) {
+  if (!current_password?.trim() || !new_password?.trim()) throw new Error('请输入当前密码和新密码。');
+  return clientOrThrow().users.updatePassword({ current_password: current_password.trim(), new_password: new_password.trim() });
 }
 
-export async function updatePassword(password) {
-  if (!password?.trim()) throw new Error('请输入新密码。');
-  return clientOrThrow().users.updatePassword({ password });
-}
-
-export async function updateEmail(email, captcha) {
-  if (!email?.trim() || !captcha?.trim()) throw new Error('请输入邮箱和验证码。');
-  return clientOrThrow().users.updateEmail({ email: email.trim(), captcha: captcha.trim() });
+export async function updateEmail({ current_password, email, captcha } = {}) {
+  if (!current_password?.trim() || !email?.trim() || !captcha?.trim()) throw new Error('请输入当前密码、邮箱和验证码。');
+  return clientOrThrow().users.updateEmail({ current_password: current_password.trim(), email: email.trim(), captcha: captcha.trim() });
 }
 
 export async function sendEmailCaptcha(email) {

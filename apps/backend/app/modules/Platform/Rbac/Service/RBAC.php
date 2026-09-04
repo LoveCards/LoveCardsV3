@@ -28,14 +28,7 @@ class RBAC
         if ($roleIds === []) return new GrantSet();
 
         if (in_array(config('system.system_roles.root'), $roleIds, true)) {
-            $catalog = self::getAllCapabilities();
-            $grants = [];
-            foreach ($catalog as $capability => $_description) {
-                if (str_ends_with($capability, '.all')) continue;
-                $scope = array_key_exists($capability . '.all', $catalog) ? Scope::ALL : Scope::GLOBAL;
-                $grants[] = new Grant($capability, $scope);
-            }
-            return new GrantSet($grants);
+            return self::rootGrantSet();
         }
 
         $sorted = array_values(array_unique(array_map('intval', $roleIds)));
@@ -50,6 +43,20 @@ class RBAC
         }, CacheManager::TTL_LONG);
 
         return GrantSet::fromRows($rows);
+    }
+
+    /** 管理端高风险动作使用的非缓存读取，避免授权上限检查命中过期角色缓存。 */
+    public static function getFreshUserGrants(array $roleIds): GrantSet
+    {
+        if ($roleIds === []) return new GrantSet();
+        if (in_array(config('system.system_roles.root'), $roleIds, true)) return self::rootGrantSet();
+        return GrantSet::fromRows(
+            RoleGrants::whereIn('role_id', array_values(array_unique(array_map('intval', $roleIds))))
+                ->distinct(true)
+                ->field('capability,scope')
+                ->select()
+                ->toArray()
+        );
     }
 
     /** @return string[] Compatibility view for the current admin client. */
@@ -69,6 +76,16 @@ class RBAC
         }, CacheManager::TTL_LONG);
 
         return GrantSet::fromRows($rows);
+    }
+
+    public static function getFreshRoleGrants(int $roleId): GrantSet
+    {
+        return GrantSet::fromRows(
+            RoleGrants::where('role_id', $roleId)
+                ->field('capability,scope')
+                ->select()
+                ->toArray()
+        );
     }
 
     public static function getRouteMeta(): array
@@ -107,5 +124,17 @@ class RBAC
     public static function clearCache(int $roleId = 0): void
     {
         CacheManager::clearDomain('rbac');
+    }
+
+    private static function rootGrantSet(): GrantSet
+    {
+        $catalog = self::getAllCapabilities();
+        $grants = [];
+        foreach ($catalog as $capability => $_description) {
+            if (str_ends_with($capability, '.all')) continue;
+            $scope = array_key_exists($capability . '.all', $catalog) ? Scope::ALL : Scope::GLOBAL;
+            $grants[] = new Grant($capability, $scope);
+        }
+        return new GrantSet($grants);
     }
 }

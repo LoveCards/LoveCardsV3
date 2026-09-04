@@ -5,6 +5,7 @@ namespace app\modules\Platform\Auth\Application;
 use app\api\ApiException;
 use app\modules\Platform\Auth\Contract\TokenService;
 use app\modules\Platform\Auth\Contract\UserRepository;
+use app\modules\Platform\User\Public\UserStatus;
 
 final class LoginUser
 {
@@ -25,7 +26,7 @@ final class LoginUser
             throw ApiException::unauthorized('用户不存在', ApiException::CODE_USER_NOT_FOUND);
         }
 
-        if ($user->status() != 0 && $user->status() != 2) {
+        if (!UserStatus::canAuthenticate($user->status())) {
             throw ApiException::forbidden('您的账户已被封禁或未激活', ApiException::CODE_USER_BANNED);
         }
 

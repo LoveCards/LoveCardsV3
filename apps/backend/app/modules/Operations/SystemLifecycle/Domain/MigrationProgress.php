@@ -122,6 +122,15 @@ final class MigrationProgress
         return new self($this->id, $this->checksum, $this->phase, MigrationStatus::FAILED, $this->cursor, $this->revision, $this->attempts, $failureCode);
     }
 
+    /** Explicit operator-only retry transition; schedulers must not call it implicitly. */
+    public function retry(): self
+    {
+        if ($this->status !== MigrationStatus::FAILED) {
+            throw new \LogicException('只有失败的 Migration 可以重试');
+        }
+        return new self($this->id, $this->checksum, $this->phase, MigrationStatus::PENDING, $this->cursor, $this->revision, $this->attempts, null);
+    }
+
     /** 由 MigrationLedger 持久化实现调用。 */
     public function withRevision(int $revision): self
     {

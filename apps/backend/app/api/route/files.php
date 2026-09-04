@@ -44,7 +44,7 @@ Route::group('admin/files', function () use ($required, $grant) {
     Route::get(':id', 'Storage.Upload/get')->name('files.getManaged')
         ->setOption('contract', ['request' => null, 'response' => ['resource' => FileResource::class, 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => '管理文件详情', 'group' => '文件', 'access' => $required([$admin, $grant('files.read', Scope::ALL)])]);
-    Route::delete(':id', 'Storage.Upload/delete')->name('files.deleteManaged')
+    Route::delete(':id', 'Storage.Upload/deleteManaged')->name('files.deleteManaged')
         ->setOption('contract', ['request' => null, 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
         ->setOption('meta', ['name' => '管理文件删除', 'group' => '文件', 'access' => $required([$admin, $grant('files.delete', Scope::ALL)])]);
     Route::delete(':id/purge', 'Storage.Upload/purge')->name('files.purge')

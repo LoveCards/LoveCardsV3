@@ -6,16 +6,22 @@ export class Operations extends BaseResource {
   auditLogs(params?: { page?: number; list_rows?: number; search_value?: string; search_keys?: string; status?: string; resource_type?: string; actor_id?: number; unread_only?: boolean; worker_type?: string }): Promise<ApiTypes.ListResult<ApiTypes.OperationsAuditLog>> {
     return this._get<ApiTypes.ListResult<ApiTypes.OperationsAuditLog>>("/admin/audit-logs", params)
   }
+  auditLog(id: number): Promise<ApiTypes.OperationsAuditLog> {
+    return this._get<ApiTypes.OperationsAuditLog>(`/admin/audit-logs/${id}`)
+  }
   deliveries(params?: { page?: number; list_rows?: number; search_value?: string; search_keys?: string; status?: string; resource_type?: string; actor_id?: number; unread_only?: boolean; worker_type?: string }): Promise<ApiTypes.ListResult<ApiTypes.OperationsDelivery>> {
     return this._get<ApiTypes.ListResult<ApiTypes.OperationsDelivery>>("/admin/operations/deliveries", params)
   }
-  retryDelivery(id: number, data: { reason: string }): Promise<void> {
-    return this._post<void>(`/admin/operations/deliveries/${id}/retry`, data)
+  delivery(id: number): Promise<ApiTypes.OperationsDelivery> {
+    return this._get<ApiTypes.OperationsDelivery>(`/admin/operations/deliveries/${id}`)
+  }
+  retryDelivery(id: number): Promise<void> {
+    return this._post<void>(`/admin/operations/deliveries/${id}/retry`)
   }
   migrations(): Promise<ApiTypes.OperationsMigration[]> {
     return this._get<ApiTypes.OperationsMigration[]>("/admin/operations/migrations")
   }
-  runMigrations(data?: { reason?: string }): Promise<ApiTypes.OperationsMigration[]> {
+  runMigrations(data?: Record<string, unknown>): Promise<ApiTypes.OperationsMigration[]> {
     return this._post<ApiTypes.OperationsMigration[]>("/admin/operations/migrations/run", data)
   }
   notificationStats(): Promise<ApiTypes.OperationsNotificationStats> {
@@ -34,15 +40,15 @@ export class Operations extends BaseResource {
     return this._post<ApiTypes.OperationsUpgradePlan>("/admin/operations/upgrades", formData, { headers: { 'Content-Type': 'multipart/form-data' } })
   }
   upgrade(planId: string): Promise<ApiTypes.OperationsUpgradePlan> {
-    return this._get<ApiTypes.OperationsUpgradePlan>(`/admin/operations/upgrades/${planId}`)
+    return this._get<ApiTypes.OperationsUpgradePlan>(`/admin/operations/upgrades/${encodeURIComponent(String(planId))}`)
   }
-  advanceUpgrade(planId: string, data: { reason: string }): Promise<ApiTypes.OperationsUpgradePlan> {
-    return this._post<ApiTypes.OperationsUpgradePlan>(`/admin/operations/upgrades/${planId}/advance`, data)
+  advanceUpgrade(planId: string): Promise<ApiTypes.OperationsUpgradePlan> {
+    return this._post<ApiTypes.OperationsUpgradePlan>(`/admin/operations/upgrades/${encodeURIComponent(String(planId))}/advance`)
   }
-  approveUpgradeContract(planId: string, data: { reason: string }): Promise<ApiTypes.OperationsUpgradePlan> {
-    return this._post<ApiTypes.OperationsUpgradePlan>(`/admin/operations/upgrades/${planId}/approve-contract`, data)
+  approveUpgradeContract(planId: string): Promise<ApiTypes.OperationsUpgradePlan> {
+    return this._post<ApiTypes.OperationsUpgradePlan>(`/admin/operations/upgrades/${encodeURIComponent(String(planId))}/approve-contract`)
   }
-  recoverUpgrade(planId: string, data: { reason: string }): Promise<ApiTypes.OperationsUpgradePlan> {
-    return this._post<ApiTypes.OperationsUpgradePlan>(`/admin/operations/upgrades/${planId}/recover`, data)
+  recoverUpgrade(planId: string): Promise<ApiTypes.OperationsUpgradePlan> {
+    return this._post<ApiTypes.OperationsUpgradePlan>(`/admin/operations/upgrades/${encodeURIComponent(String(planId))}/recover`)
   }
 }

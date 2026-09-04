@@ -1,82 +1,112 @@
 <template>
-	<!-- 编辑用户对话框 -->
-	<v-dialog v-model="thisDialogState" max-width="600">
-		<v-card prepend-icon="mdi-filter" title="搜索过滤">
-			<v-card-text>
-				<v-row dense>
-					<v-col cols="12">
-						<v-select clearable chips label="搜索字段" item-title="title" item-value="value" :items="KEYS" multiple
-							variant="underlined" v-model="filter.search_keys" :messages="props.KeysMessages"></v-select>
-					</v-col>
-					<v-col cols="12" sm="8">
-						<v-select clearable label="排序字段" item-title="title" item-value="value" :items="KEYS" variant="underlined"
-							v-model="filter.order_key" messages="默认ID"></v-select>
-					</v-col>
-					<v-col cols="12" sm="4">
-						<v-select label="排序规则" item-title="title" item-value="value" :items="ORDER_DESC" variant="underlined"
-							v-model="filter.order_desc"></v-select>
-					</v-col>
-				</v-row>
-			</v-card-text>
-
-			<v-divider></v-divider>
-
-			<v-card-actions>
-				<v-spacer></v-spacer>
-				<v-btn color="accent" text="取消" variant="text" @click="thisDialogState = false"></v-btn>
-				<v-btn color="accent" text="保存" variant="flat" @click="submit()"></v-btn>
-			</v-card-actions>
-		</v-card>
-	</v-dialog>
+  <v-dialog v-model="thisDialogState" aria-label="高级筛选" max-width="600">
+    <v-card prepend-icon="mdi-filter-outline" title="搜索与排序">
+      <v-card-text class="pt-4">
+        <v-alert v-if="applyError" class="mb-4" role="alert" type="error" variant="tonal">
+          {{ applyError }}
+        </v-alert>
+        <v-row dense>
+          <v-col cols="12">
+            <v-select
+              v-model="filter.search_keys"
+              chips
+              clearable
+              density="comfortable"
+              item-title="title"
+              item-value="value"
+              :items="KEYS"
+              label="搜索字段"
+              multiple
+              :messages="props.KeysMessages"
+              variant="outlined"
+            />
+          </v-col>
+          <v-col cols="12" sm="8">
+            <v-select
+              v-model="filter.order_key"
+              clearable
+              density="comfortable"
+              item-title="title"
+              item-value="value"
+              :items="KEYS"
+              label="排序字段"
+              messages="默认按资源 ID 排序"
+              variant="outlined"
+            />
+          </v-col>
+          <v-col cols="12" sm="4">
+            <v-select
+              v-model="filter.order_desc"
+              density="comfortable"
+              item-title="title"
+              item-value="value"
+              :items="ORDER_DESC"
+              label="排序方式"
+              variant="outlined"
+            />
+          </v-col>
+        </v-row>
+      </v-card-text>
+      <v-divider />
+      <v-card-actions class="pa-4">
+        <v-btn :disabled="applying" variant="text" @click="reset">重置</v-btn>
+        <v-spacer />
+        <v-btn :disabled="applying" variant="text" @click="thisDialogState = false">取消</v-btn>
+        <v-btn color="primary" :loading="applying" variant="flat" @click="submit">应用筛选</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
 const ORDER_DESC = [
-	{ title: "升序", value: false },
-	{ title: "降序", value: true },
-];
+  { title: '升序', value: false },
+  { title: '降序', value: true },
+]
 
-//Props
-const props = defineProps({
-	KEYS: Array,
-	getTableData: Function,
-	setFilter: Function,
-	KeysMessages: String,
-});
+const props = defineProps<{
+  KEYS?: unknown[]
+  getTableData?: () => unknown
+  setFilter?: (data: Record<string, unknown>) => unknown
+  KeysMessages?: string
+}>()
 
-const getTableData = () => {
-	if (props.getTableData) {
-		props.getTableData();
-	}
-};
-const setFilter = (data: Record<string, unknown>) => {
-	if (props.setFilter) {
-		props.setFilter(data);
-	}
-};
-const KEYS = props.KEYS;
-
-//Model
-//对话框状态
-const thisDialogState = defineModel<boolean>('thisDialogState');
-
-//提交
+const KEYS = computed(() => props.KEYS ?? [])
+const thisDialogState = defineModel<boolean>('thisDialogState', { default: false })
+const applying = ref(false)
+const applyError = ref('')
 const filter = ref({
-	//搜索字段
-	search_keys: [],
-	//排序字段
-	order_key: undefined as string | undefined,
-	//排序规则
-	order_desc: true,
-});
-const submit = () => {
-	const nextFilter: Record<string, unknown> = { ...filter.value };
-	if (!nextFilter.order_key) delete nextFilter.order_key;
-	if (Array.isArray(nextFilter.search_keys) && nextFilter.search_keys.length === 0) {
-		delete nextFilter.search_keys;
-	}
-	setFilter(nextFilter);
-	getTableData();
-	thisDialogState.value = false;
-};
+  search_keys: [] as unknown[],
+  order_key: undefined as string | undefined,
+  order_desc: true,
+})
+
+watch(thisDialogState, (open) => {
+  if (open) applyError.value = ''
+})
+
+const reset = () => {
+  filter.value = { search_keys: [], order_key: undefined, order_desc: true }
+}
+
+const submit = async () => {
+  if (applying.value) return
+  const nextFilter: Record<string, unknown> = { ...filter.value }
+  if (!nextFilter.order_key) delete nextFilter.order_key
+  if (Array.isArray(nextFilter.search_keys) && nextFilter.search_keys.length === 0) {
+    delete nextFilter.search_keys
+  }
+
+  applying.value = true
+  applyError.value = ''
+  try {
+    await props.setFilter?.(nextFilter)
+    await props.getTableData?.()
+    thisDialogState.value = false
+  } catch (cause) {
+    applyError.value = cause instanceof Error ? cause.message : '应用筛选失败，请稍后重试。'
+  } finally {
+    applying.value = false
+  }
+}
 </script>

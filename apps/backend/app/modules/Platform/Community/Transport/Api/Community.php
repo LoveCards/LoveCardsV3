@@ -2,6 +2,7 @@
 
 namespace app\modules\Platform\Community\Transport\Api;
 
+use app\modules\Platform\Notifications\Contract\NotificationTypeCatalog;
 use think\Validate;
 
 /** Shared request contract for community-facing cursor, safety and messaging APIs. */
@@ -9,6 +10,7 @@ final class Community extends Validate
 {
     public static function requestSchemas(): array
     {
+        $notificationTypes = NotificationTypeCatalog::types();
         $cursor = [
             'type' => 'object',
             'properties' => [
@@ -22,7 +24,25 @@ final class Community extends Validate
             'cursor' => $cursor,
             'notifications' => [
                 'type' => 'object',
-                'properties' => $cursor['properties'] + ['unread_only' => ['type' => 'boolean']],
+                'properties' => $cursor['properties'] + [
+                    'unread_only' => ['type' => 'boolean'],
+                    'type' => ['type' => 'string', 'enum' => $notificationTypes],
+                    'category' => ['type' => 'string', 'enum' => NotificationTypeCatalog::LIST_CATEGORIES, 'x-typescript-type' => 'NotificationListCategory'],
+                ],
+                'additionalProperties' => false,
+            ],
+            'notificationUnread' => [
+                'type' => 'object',
+                'properties' => [
+                    'category' => ['type' => 'string', 'enum' => NotificationTypeCatalog::LIST_CATEGORIES, 'x-typescript-type' => 'NotificationListCategory'],
+                ],
+                'additionalProperties' => false,
+            ],
+            'notificationReadAll' => [
+                'type' => 'object',
+                'properties' => [
+                    'category' => ['type' => 'string', 'enum' => NotificationTypeCatalog::LIST_CATEGORIES, 'x-typescript-type' => 'NotificationListCategory'],
+                ],
                 'additionalProperties' => false,
             ],
             'read' => [
@@ -33,11 +53,32 @@ final class Community extends Validate
             ],
             'preferences' => [
                 'type' => 'object',
+                'x-typescript-type' => 'Partial<PrivacyPreferences>',
                 'properties' => [
                     'profile_visibility' => ['type' => 'string', 'enum' => ['public', 'followers', 'private']],
                     'messages_from' => ['type' => 'string', 'enum' => ['everyone', 'following', 'none']],
                     'show_relations' => ['type' => 'boolean'],
+                    'gender_visibility' => ['type' => 'string', 'enum' => ['public', 'followers', 'private']],
+                    'birth_date_visibility' => ['type' => 'string', 'enum' => ['public', 'followers', 'private']],
                 ],
+                'additionalProperties' => false,
+            ],
+            'blockedUsers' => [
+                'type' => 'object',
+                'properties' => $cursor['properties'] + ['query' => ['type' => 'string', 'maxLength' => 12]],
+                'additionalProperties' => false,
+            ],
+            'notificationPreferences' => [
+                'type' => 'object',
+                'x-typescript-type' => 'NotificationPreferencesUpdate',
+                'properties' => [
+                    'in_app' => [
+                        'type' => 'object',
+                        'additionalProperties' => false,
+                        'properties' => array_fill_keys(NotificationTypeCatalog::configurableTypes(), ['type' => 'boolean']),
+                    ],
+                ],
+                'required' => ['in_app'],
                 'additionalProperties' => false,
             ],
             'report' => [
@@ -63,11 +104,11 @@ final class Community extends Validate
             'messageSend' => [
                 'type' => 'object',
                 'properties' => [
-                    'recipient_id' => ['type' => 'integer', 'minimum' => 1],
+                    'recipient_uid' => ['type' => 'string', 'pattern' => '^[0-9]{12}$'],
                     'body' => ['type' => 'string', 'maxLength' => 5000],
                     'client_message_id' => ['type' => 'string', 'maxLength' => 128],
                 ],
-                'required' => ['recipient_id', 'body'],
+                'required' => ['recipient_uid', 'body'],
                 'additionalProperties' => false,
             ],
             'stream' => [
@@ -80,12 +121,16 @@ final class Community extends Validate
 
     public static $all_scene = [
         'cursor' => ['normal' => ['cursor', 'limit'], 'require' => false, 'nonNull' => false, 'toNull' => false],
-        'notifications' => ['normal' => ['cursor', 'limit', 'unread_only'], 'require' => false, 'nonNull' => false, 'toNull' => false],
+        'notifications' => ['normal' => ['cursor', 'limit', 'unread_only', 'type', 'category'], 'require' => false, 'nonNull' => false, 'toNull' => false],
+        'notificationUnread' => ['normal' => ['category'], 'require' => false, 'nonNull' => false, 'toNull' => false],
+        'notificationReadAll' => ['normal' => ['category'], 'require' => false, 'nonNull' => false, 'toNull' => false],
         'read' => ['normal' => false, 'require' => ['ids'], 'nonNull' => false, 'toNull' => false],
-        'preferences' => ['normal' => ['profile_visibility', 'messages_from', 'show_relations'], 'require' => false, 'nonNull' => false, 'toNull' => false],
+        'preferences' => ['normal' => ['profile_visibility', 'messages_from', 'show_relations', 'gender_visibility', 'birth_date_visibility'], 'require' => false, 'nonNull' => false, 'toNull' => false],
+        'blockedUsers' => ['normal' => ['cursor', 'limit', 'query'], 'require' => false, 'nonNull' => false, 'toNull' => false],
+        'notificationPreferences' => ['normal' => false, 'require' => ['in_app'], 'nonNull' => false, 'toNull' => false],
         'report' => ['normal' => ['details'], 'require' => ['resource_type', 'resource_id', 'reason'], 'nonNull' => false, 'toNull' => false],
         'draft' => ['normal' => ['title', 'content', 'payload'], 'require' => false, 'nonNull' => false, 'toNull' => false],
-        'messageSend' => ['normal' => ['client_message_id'], 'require' => ['recipient_id', 'body'], 'nonNull' => false, 'toNull' => false],
+        'messageSend' => ['normal' => ['client_message_id'], 'require' => ['recipient_uid', 'body'], 'nonNull' => false, 'toNull' => false],
         'stream' => ['normal' => ['after'], 'require' => false, 'nonNull' => false, 'toNull' => false],
     ];
 
@@ -93,10 +138,16 @@ final class Community extends Validate
         'cursor' => 'max:128',
         'limit' => 'number|between:1,100',
         'unread_only' => 'stringBool',
+        'type' => 'in:social.followed,message,content.card_liked,content.comment_liked,library.saved,content.commented,content.replied,content.mentioned,system.notice,system.security,system.moderation',
+        'category' => 'in:social,message,interaction,system,engagement',
         'ids' => 'arrayJson',
         'profile_visibility' => 'in:public,followers,private',
         'messages_from' => 'in:everyone,following,none',
         'show_relations' => 'stringBool',
+        'gender_visibility' => 'in:public,followers,private',
+        'birth_date_visibility' => 'in:public,followers,private',
+        'query' => 'max:12|chsDash',
+        'in_app' => 'require|arrayJson',
         'resource_type' => 'require|max:32|regex:/^[a-z][a-z0-9_]{0,31}$/',
         'resource_id' => 'require|max:128|regex:/^[A-Za-z0-9][A-Za-z0-9._:-]*$/',
         'reason' => 'require|max:64',
@@ -104,7 +155,7 @@ final class Community extends Validate
         'title' => 'max:255',
         'content' => 'max:100000',
         'payload' => 'arrayJson',
-        'recipient_id' => 'require|number',
+        'recipient_uid' => 'require|regex:/^[0-9]{12}$/',
         'body' => 'require|max:5000',
         'client_message_id' => 'max:128',
         'after' => 'number|between:0,2147483647',

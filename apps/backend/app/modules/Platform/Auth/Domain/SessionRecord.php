@@ -15,7 +15,8 @@ final class SessionRecord
         private int $securityVersion,
         private ?DateTimeImmutable $revokedAt = null,
         private ?string $revokedReason = null,
-        private ?int $rotatedToSessionId = null
+        private ?int $rotatedToSessionId = null,
+        private ?string $publicId = null
     ) {
         if ($id < 1 || $userId < 1 || $securityVersion < 1) {
             throw new \InvalidArgumentException('Session 标识或安全版本无效');
@@ -26,6 +27,8 @@ final class SessionRecord
         if ($renewableUntil < $tokenExpiresAt) {
             throw new \InvalidArgumentException('续期截止时间不得早于 Token 到期时间');
         }
+        $this->publicId ??= substr($jtiHash, 0, 32);
+        if (preg_match('/^[a-f0-9]{32}$/D', $this->publicId) !== 1) throw new \InvalidArgumentException('Session 公开标识无效');
     }
 
     public function id(): int
@@ -37,6 +40,8 @@ final class SessionRecord
     {
         return $this->jtiHash;
     }
+
+    public function publicId(): string { return (string) $this->publicId; }
 
     public function userId(): int
     {
@@ -103,7 +108,8 @@ final class SessionRecord
             $this->securityVersion,
             $at,
             $reason,
-            $rotatedToSessionId
+            $rotatedToSessionId,
+            $this->publicId
         );
     }
 }

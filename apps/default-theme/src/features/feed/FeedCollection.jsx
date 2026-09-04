@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../app/providers.jsx';
 import { useToast } from '../../ui/index.js';
 import { FeedStory } from './FeedStory.jsx';
+import { useFeedMasonry } from './use-feed-masonry.js';
 import { listSavedItems } from '../../services/community-service.js';
 
 export function FeedCollection({ items, source, className, ariaLabel }) {
@@ -41,38 +42,7 @@ export function FeedCollection({ items, source, className, ariaLabel }) {
     });
   }, []);
 
-  useEffect(() => {
-    const element = masonryRef.current;
-    if (!element || !items.length) return undefined;
-    let active = true;
-    let masonry;
-    let observer;
-    let frame;
-    const schedule = (callback) => typeof requestAnimationFrame === 'function' ? requestAnimationFrame(callback) : setTimeout(callback, 0);
-    const cancel = (handle) => typeof cancelAnimationFrame === 'function' ? cancelAnimationFrame(handle) : clearTimeout(handle);
-    import('masonry-layout').then(({ default: Masonry }) => {
-      if (!active) return;
-      masonry = new Masonry(element, {
-        itemSelector: '.feed-story',
-      columnWidth: '.masonry-column-sizer',
-      gutter: '.masonry-gutter-sizer',
-      percentPosition: true,
-      transitionDuration: 0,
-      });
-      frame = schedule(() => masonry.layout());
-      observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
-        cancel(frame);
-        frame = schedule(() => masonry.layout());
-      }) : null;
-      element.querySelectorAll('.feed-story').forEach((item) => observer?.observe(item));
-    });
-    return () => {
-      active = false;
-      cancel(frame);
-      observer?.disconnect();
-      masonry?.destroy();
-    };
-  }, [items]);
+  useFeedMasonry(masonryRef, items);
 
   return (
     <section ref={masonryRef} className={`${className} feed-masonry`} aria-label={ariaLabel}>
@@ -84,7 +54,7 @@ export function FeedCollection({ items, source, className, ariaLabel }) {
           source={source}
           isAuthenticated={isAuthenticated}
           isSaved={savedIds.has(Number(card.id))}
-          canReport={!isAuthenticated || Number(card.ownerId) !== Number(session?.uid)}
+          canReport={!isAuthenticated || (card.ownerUid ? card.ownerUid !== session?.uid : Number(card.ownerId) !== Number(session?.uid))}
           onRequireLogin={requestLogin}
           onSavedChange={(saved) => updateSavedState(card.id, saved)}
           onFeedback={showFeedback}

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { reportResource } from '../../services/community-service.js';
+import { getUserFacingError } from '../../app/user-facing-error.js';
 import { Button, FormDialog, Selector, TextArea } from '../../ui/index.js';
 
 const REPORT_OPTIONS = [
@@ -37,7 +38,7 @@ export function ReportResourceDialog({ isOpen, onOpenChange, resourceType, resou
       onOpenChange(false);
       onFeedback?.('举报已提交，我们会按流程处理', 'info');
     } catch (error) {
-      onFeedback?.(error?.message || '举报提交失败，请稍后重试', 'error');
+      onFeedback?.(getUserFacingError(error, { fallback: '举报暂时没有提交，请稍后重试。', validationFallback: '举报内容不符合要求，请检查原因和补充说明。' }), 'error');
     } finally {
       setBusy(false);
     }

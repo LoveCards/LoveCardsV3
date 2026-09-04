@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | 草稿箱 | `Platform/Drafts`、`card_drafts` | `client.drafts.list/create/get/update/delete` | owner 过滤、软删除、updated/id cursor、version 字段 |
 | 他人主页、关注/粉丝 | `Platform/Social`、`user_follows` | `profile/follow/unfollow/followers/following/relation` | handle 公开查找；禁止自关注和重复边；关系列表需认证 |
-| 通知 | `Platform/Notifications`、`notifications` | `list/unread/read/readAll/stream` | recipient 归属、dedupe/read 状态；SSE 可回退刷新 |
+| 通知 | `Platform/Notifications`、`notifications` | `list/unread/read/readAll/stream` | `engagement` 仅为联合查询分类；服务端复合游标、recipient 归属、dedupe/read 状态；SSE 可回退刷新 |
 | 私信 | `Platform/Messaging`、conversation 三表 | `conversations/list/send` | 会话成员范围、block/privacy 检查、client message 幂等 |
 | 账号恢复 | `Platform/Auth`、`security_challenges`、`auth_sessions` | `session.recovery_request/recovery_reset` | 一次性挑战、过期/尝试次数；成功后 security version 增长并撤销旧 Session |
 | 收藏与浏览历史 | `Platform/Library`、`library_items`/`view_history` | `list/save/remove/history/history_record/history_clear` | 用户+资源唯一；cursor；记录浏览累计次数 |
@@ -46,7 +46,10 @@ GET/DELETE 的非路径参数由 SDK 作为 query 发送，POST/PATCH 作为 JSO
 
 ## 通知与事件一致性
 
-关注和私信先完成业务事务，再通过 MySQL Outbox 投递通知；通知自身用 dedupe key 幂等。最小环境由请求预算推进，完整环境由 Worker 推进。SSE 是读取通知的增强通道，不是通知事实来源；断线后客户端使用 `after`/未读接口恢复。
+关注、私信、点赞、收藏、评论/回复、提及和系统通知都先确认业务事实，再通过 MySQL Outbox 投影通知；通知自身用 dedupe key 幂等。最小环境由请求预算推进，完整环境由 Worker 推进。SSE 是读取通知的增强通道，不是通知事实来源；断线后客户端使用 `after`/未读接口恢复。
+
+系统通知的强制触发条件、类型、严重级别、收件人状态、前后端边界与测试要求见
+[NOTIFICATIONS.md](NOTIFICATIONS.md)，本文件不重复维护第二份规则。
 
 ## 深链协议
 
@@ -68,4 +71,4 @@ GET/DELETE 的非路径参数由 SDK 作为 query 发送，POST/PATCH 作为 JSO
 
 ## 为什么不做一张通用互动表
 
-点赞、收藏、历史、关注、拉黑和举报只有“用户对资源做动作”的表面相似，核心约束不同：点赞当前是 card-only；收藏按用户+资源幂等；历史需要 view count/last viewed；关注是双用户图；拉黑影响授权；举报有状态机、证据与审计。因此只共享 `ResourceRef` 等值对象和权限/错误协议，表结构按查询、唯一性和生命周期拆分。
+点赞、收藏、历史、关注、拉黑和举报只有“用户对资源做动作”的表面相似，核心约束不同：点赞支持 card/comment 并按 actor+目标幂等；收藏按用户+资源幂等；历史需要 view count/last viewed；关注是双用户图；拉黑影响授权；举报有状态机、证据与审计。因此只共享 `ResourceRef` 等值对象和权限/错误协议，表结构按查询、唯一性和生命周期拆分。

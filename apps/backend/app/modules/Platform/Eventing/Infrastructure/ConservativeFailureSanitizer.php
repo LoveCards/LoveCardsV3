@@ -18,6 +18,9 @@ final class ConservativeFailureSanitizer implements FailureSanitizer
         ) ?: 'handler failed';
         $class = str_replace("\0", '', get_class($exception));
 
-        return substr($class . ': ' . trim($message), 0, 2048);
+        $summary = $class . ': ' . trim($message);
+        return function_exists('mb_strcut')
+            ? mb_strcut($summary, 0, 2048, 'UTF-8')
+            : substr($summary, 0, 2048);
     }
 }

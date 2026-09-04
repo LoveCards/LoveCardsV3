@@ -440,10 +440,15 @@ $test('Manual coordinator rejects an unsettled upgrade plan inside the lifecycle
     $assertSame(2, count($lease->acquireCalls), 'the conflict check must happen after acquiring the shared lease');
     $assertSame(2, count($lease->releaseCalls), 'the shared lease must be released after a rejected manual migration');
 
-    // UpgradeCoordinator owns runPhase calls and already holds the plan identity;
-    // its phase executor must remain usable for the active plan.
-    $assertSame(1, count($coordinator->runPhase('/not-used', MigrationPhase::PREFLIGHT)));
-    $assertSame(1, $migration->preflightCalls);
+    // The public phase executor is a manual entry point and must obey the same
+    // unsettled-plan fence as run()/runUntilSettled(). UpgradeCoordinator uses
+    // runPhaseWithLease() while it owns the active plan lease.
+    $assertThrows(
+        UnsettledUpgradePlanException::class,
+        static fn() => $coordinator->runPhase('/not-used', MigrationPhase::PREFLIGHT),
+        '未完成的升级计划'
+    );
+    $assertSame(0, $migration->preflightCalls, 'manual phase execution must stop before migration work');
 });
 
 $test('SqlFileMigration treats an unmarked legacy file as expand SQL', static function () use ($assertSame, $readSqlPhases, $withSqlFile): void {

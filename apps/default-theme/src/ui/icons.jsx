@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+
 export function Icon({ name, size = 18 }) {
   const paths = {
     search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
@@ -22,6 +24,7 @@ export function Icon({ name, size = 18 }) {
     trash: <><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13" /><path d="M10 11v5M14 11v5" /></>,
     copy: <><rect x="8" y="8" width="11" height="11" rx="2" /><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" /></>,
     flag: <><path d="M5 21V4" /><path d="M5 5h10.5l-1.8 3 1.8 3H5" /></>,
+    pin: <><path d="m8 4 8 8" /><path d="m14.5 3.5 6 6-3 1-4 4-1 3-6-6 3-1 4-4 1-3Z" /><path d="m9 15-5 5" /></>,
     settings: <><circle cx="12" cy="12" r="3" /><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1A7 7 0 0 0 14.8 6L14.5 3h-5l-.3 3a7 7 0 0 0-1.7 1.1l-2.4-1-2 3.4L5.1 11a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1A7 7 0 0 0 9.2 18l.3 3h5l.3-3a7 7 0 0 0 1.7-1.1l2.4 1 2-3.4-2-1.5c.1-.3.1-.7.1-1Z" /></>,
     logout: <><path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9" /></>,
     close: <path d="m6 6 12 12M18 6 6 18" />,
@@ -29,6 +32,14 @@ export function Icon({ name, size = 18 }) {
   return <svg aria-hidden="true" focusable="false" className="icon" width={size} height={size} viewBox="0 0 24 24">{paths[name]}</svg>;
 }
 
-export function Avatar({ label, tone = 'rose', size = 'md' }) {
-  return <span className={`avatar avatar-${tone} avatar-${size}`} aria-hidden="true">{label.slice(0, 1)}</span>;
+export function Avatar({ label, tone = 'rose', size = 'md', src, className = '' }) {
+  const normalizedSrc = typeof src === 'string' ? src.trim() : '';
+  const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [normalizedSrc]);
+  const fallback = String(label || '?').trim().slice(0, 1) || '?';
+  return (
+    <span className={`avatar avatar-${tone} avatar-${size} ${className}`.trim()} aria-hidden="true">
+      {normalizedSrc && !imageFailed ? <img src={normalizedSrc} alt="" onError={() => setImageFailed(true)} /> : fallback}
+    </span>
+  );
 }

@@ -37,6 +37,20 @@ final class ThinkDbAdminSecurityRepository implements AdminSecurityRepository
         ];
     }
 
+    public function findUserRoleIds(int $userId, bool $forUpdate = false): array
+    {
+        $query = Db::table('user_roles')->alias('ur')
+            ->join('roles r', 'r.id = ur.role_id')
+            ->where('ur.user_id', $userId)
+            ->field('ur.role_id');
+        if ($forUpdate) $query->lock(true);
+        $rows = $query->select()->toArray();
+        return array_values(array_unique(array_map(
+            static fn (array $row): int => (int) $row['role_id'],
+            $rows
+        )));
+    }
+
     public function listRecoveryChallenges(?string $status, int $page, int $limit, \DateTimeImmutable $now): array
     {
         $query = Db::table('security_challenges')

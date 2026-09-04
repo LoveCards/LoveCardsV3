@@ -13,8 +13,9 @@ final class CardResource extends Resource
             'type' => 'object',
             'properties' => [
                 'id' => ['type' => 'integer'], 'is_top' => ['type' => 'integer'], 'status' => ['type' => 'integer'],
-                'user_id' => ['type' => 'integer'], 'data' => ['type' => 'object', 'additionalProperties' => true],
-                'cover' => ['type' => 'string', 'nullable' => true], 'pictures' => ['type' => 'array'],
+                'user_id' => ['type' => 'integer'], 'uid' => ['type' => 'string', 'nullable' => true], 'username' => ['type' => 'string'],
+                'data' => ['type' => 'object', 'additionalProperties' => true],
+                'cover' => ['type' => 'string', 'nullable' => true], 'pictures' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'media' => ['type' => 'array', 'items' => [
                     'type' => 'object', 'additionalProperties' => false,
                     'properties' => [
@@ -31,7 +32,9 @@ final class CardResource extends Resource
                         'position' => ['type' => 'integer'],
                     ],
                 ]],
-                'content' => ['type' => 'string'], 'tags' => ['type' => 'array'],
+                'content' => ['type' => 'string'], 'tags' => ['type' => 'array', 'items' => ['type' => 'integer']],
+                'topics' => ['type' => 'array', 'items' => ['type' => 'object', 'additionalProperties' => false, 'required' => ['id', 'name'], 'properties' => ['id' => ['type' => 'integer'], 'name' => ['type' => 'string']]]],
+                'mentions' => self::mentionsSchema(),
                 'goods' => ['type' => 'integer'], 'views' => ['type' => 'integer'], 'comments' => ['type' => 'integer'],
                 'created_at' => ['type' => 'string'], 'updated_at' => ['type' => 'string'],
             ],
@@ -51,9 +54,15 @@ final class CardResource extends Resource
                 }
             }
         }
+        $rawTags = $card['tags'] ?? [];
+        $card['tags'] = is_array($rawTags)
+            ? array_values(array_filter(array_map('intval', $rawTags), static fn(int $id): bool => $id > 0))
+            : [];
+        $card['topics'] = is_array($card['topics'] ?? null) ? array_values($card['topics']) : [];
+        $card['mentions'] = is_array($card['mentions'] ?? null) ? array_values($card['mentions']) : [];
         $fields = [
-            'id', 'is_top', 'status', 'user_id', 'data', 'cover', 'pictures', 'media',
-            'content', 'tags', 'goods', 'views', 'comments', 'created_at', 'updated_at',
+            'id', 'is_top', 'status', 'user_id', 'uid', 'username', 'data', 'cover', 'pictures', 'media',
+            'content', 'tags', 'topics', 'mentions', 'goods', 'views', 'comments', 'created_at', 'updated_at',
         ];
         $result = [];
         foreach ($fields as $field) {
@@ -62,5 +71,19 @@ final class CardResource extends Resource
             }
         }
         return $result;
+    }
+
+    private static function mentionsSchema(): array
+    {
+        return ['type' => 'array', 'items' => [
+            'type' => 'object', 'additionalProperties' => false,
+            'required' => ['start', 'end', 'username', 'uid', 'state', 'action_url'],
+            'properties' => [
+                'start' => ['type' => 'integer'], 'end' => ['type' => 'integer'],
+                'username' => ['type' => 'string'], 'uid' => ['type' => 'string', 'nullable' => true],
+                'state' => ['type' => 'string', 'enum' => ['active', 'unavailable']],
+                'action_url' => ['type' => 'string', 'nullable' => true],
+            ],
+        ]];
     }
 }

@@ -157,6 +157,35 @@ namespace {
     $assert(array_column($cards[1]['media'], 'file_id') === [3], 'legacy ref_type/ref_id media must remain readable without ledger rows');
     $assert($cards[0]['pictures'] === ['/media/bbbbbbbbbbbbbbbb', '/media/aaaaaaaaaaaaaaaa'], 'public media must use stable hash URLs');
 
+    $singleCard = new ReflectionMethod(Cards::class, 'hydrateCard');
+    $singleCard->setAccessible(true);
+    $legacyPictures = $singleCard->invoke(null, [
+        'id' => 30,
+        'cover' => 'https://private.example/secret-cover.jpg',
+        'pictures' => ['https://private.example/secret.jpg', '/media/cccccccccccccccc'],
+    ], true, [], [], []);
+    $assert($legacyPictures['pictures'] === ['/media/cccccccccccccccc'], 'public hydration must drop unverified legacy media URLs');
+    $assert($legacyPictures['cover'] === null, 'public hydration must drop unverified legacy cover URLs');
+
+    $mediaResource = new ReflectionMethod(Cards::class, 'mediaResource');
+    $mediaResource->setAccessible(true);
+    $assert($mediaResource->invoke(null, [
+        'id' => 4,
+        'hash' => 'not-a-public-hash',
+        'file_url' => 'https://private.example/secret-video.mp4',
+        'mime_type' => 'video/mp4',
+        'metadata' => ['poster_url' => 'https://private.example/secret-poster.jpg'],
+    ], 1, true) === null, 'public hydration must reject files without a stable hash URL');
+    $publicMedia = $mediaResource->invoke(null, [
+        'id' => 5,
+        'hash' => 'dddddddddddddddd',
+        'file_url' => 'https://private.example/legacy.jpg',
+        'mime_type' => 'image/jpeg',
+        'metadata' => ['poster_url' => 'https://private.example/secret-poster.jpg'],
+    ], 1, true);
+    $assert($publicMedia['url'] === '/media/dddddddddddddddd', 'public media must use the stable hash URL');
+    $assert($publicMedia['poster_url'] === null, 'public hydration must drop unverified poster URLs');
+
     $whereIn = array_values(array_filter(
         Db::$lastReferenceQuery?->calls ?? [],
         static fn(array $call): bool => $call[0] === 'whereIn' && $call[1] === 'resource_id'

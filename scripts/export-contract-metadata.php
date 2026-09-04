@@ -2,6 +2,10 @@
 
 declare(strict_types=1);
 
+// Machine-readable contract export must not be prefixed by dependency
+// deprecation notices emitted by newer PHP runtimes.
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
+
 $root = dirname(__DIR__);
 $backend = $root . DIRECTORY_SEPARATOR . 'apps' . DIRECTORY_SEPARATOR . 'backend';
 require $backend . DIRECTORY_SEPARATOR . 'vendor' . DIRECTORY_SEPARATOR . 'autoload.php';

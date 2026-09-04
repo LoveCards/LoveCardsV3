@@ -4,7 +4,7 @@ import type * as ApiTypes from '../../types'
 /** Generated from contracts/openapi.json. Do not edit manually. */
 export class Captcha extends BaseResource {
   meta(slug: string): Promise<ApiTypes.CaptchaDriver> {
-    return this._get<ApiTypes.CaptchaDriver>(`/admin/captcha/${slug}/meta`)
+    return this._get<ApiTypes.CaptchaDriver>(`/admin/captcha/${encodeURIComponent(String(slug))}/meta`)
   }
   drivers(): Promise<ApiTypes.CaptchaDriver[]> {
     return this._get<ApiTypes.CaptchaDriver[]>("/admin/captcha/drivers")

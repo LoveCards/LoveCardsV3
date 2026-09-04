@@ -32,7 +32,7 @@ final class JwtTokenService implements TokenService
             throw new RuntimeException('Token 缺少有效用户标识');
         }
 
-        unset($data['_new_token'], $data['security_version']);
+        unset($data['_new_token'], $data['_session_public_id'], $data['security_version']);
         $now = $this->now();
         [$tokenExpiresAt, $renewableUntil] = $this->deadlines($now);
         $jti = $this->newJti();
@@ -75,6 +75,7 @@ final class JwtTokenService implements TokenService
                 throw new RuntimeException('token已失效');
             }
 
+            $data['_session_public_id'] = $session->publicId();
             return $data;
         }
 
@@ -116,7 +117,7 @@ final class JwtTokenService implements TokenService
             throw new RuntimeException('token已失效');
         }
 
-        unset($data['_new_token']);
+        unset($data['_new_token'], $data['_session_public_id']);
         $data['security_version'] = $session->securityVersion();
         $newToken = Jwt::issue(
             $data,
@@ -125,6 +126,7 @@ final class JwtTokenService implements TokenService
             $tokenExpiresAt->getTimestamp()
         );
         $data['_new_token'] = $newToken;
+        $data['_session_public_id'] = $session->publicId();
 
         return $data;
     }
@@ -145,6 +147,10 @@ final class JwtTokenService implements TokenService
 
         $data = $claims['data'];
         $data['_new_token'] = $this->sign($data);
+        $newClaims = Jwt::inspect($data['_new_token']);
+        $newJti = SessionId::fromRaw((string) $newClaims['jti']);
+        $newSession = $this->sessions->findActive($newJti->hash(), $now);
+        if ($newSession !== null) $data['_session_public_id'] = $newSession->publicId();
 
         return $data;
     }

@@ -104,7 +104,9 @@ export abstract class BaseResource {
       // ─── 实际 HTTP 请求 ───
       try {
         if (this._opts.debug) {
-          console.log(`[LC] ${method} ${url}`, config.data ?? config.params ?? '')
+          // Debug traces are intentionally metadata-only. Request bodies and
+          // query parameters may contain credentials or private content.
+          console.log(`[LC] ${method} ${url}`, { requestId, attempt })
         }
 
         const response: AxiosResponse<RawApiResponse<T>> = await this._instance.request({
@@ -115,7 +117,7 @@ export abstract class BaseResource {
         })
 
         if (this._opts.debug) {
-          console.log(`[LC] ${response.status}`, response.data)
+          console.log(`[LC] ${response.status}`, { requestId, elapsedMs: Date.now() - startTime })
         }
 
         const result = this._unwrap<T>(response)

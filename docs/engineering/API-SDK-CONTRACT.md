@@ -19,13 +19,15 @@ Route Meta / Contract
 
 Route Meta 声明接口身份、认证、capability 和 scope；Route Contract 声明请求校验场景与响应形状。目录名、Controller 注释或手写 SDK 方法都不能替代这份可执行契约。
 
-截至 2026-08-20，真源导出 171 条命名路由（19 public、152 required）和 25 个 SDK Resource。生成目录共 26 个 TypeScript 文件：1 个 `api-contract.ts` 加 25 个 Resource；文件数不能误写成 Resource 数。`contracts/route-manifest.json`、`api-inventory.json`、`openapi.json` 与 `packages/sdk/src/generated/**` 必须由同一次生成保持一致。
+历史快照（2026-08-20）曾导出 171 条命名路由（19 public、152 required）和 25 个 SDK Resource。当前发行审查基线为 178 条路由；生成目录共 26 个 TypeScript 文件：1 个 `api-contract.ts` 加 25 个 Resource。`contracts/route-manifest.json`、`api-inventory.json`、`openapi.json` 与 `packages/sdk/src/generated/**` 必须由同一次生成保持一致。
 
 ## 2. 请求契约
 
 每个会读取 query、body 或上传文件的路由，都必须声明 `request.validate` 和 `request.scene`。Validator 的 `$all_scene` 是运行时字段白名单，`requestSchemas()` 是 OpenAPI/SDK 的公开 schema，两者的字段与必填性必须一致。
 
 ThinkPHP `$rule` 是所有 scene 的共享规则集合。可选字段不能在共享规则中保留无条件 `require`，否则即使 `scene()` 只选了字段也会在无参列表请求中变成必填。requiredness 必须由 `$all_scene`/scene 对该接口明确声明；契约工作流对此有反例门禁。
+
+普通 Card 只有顶层 `content` 正文。创建和主动更新正文使用服务端 `mb_strlen` 的 Unicode 码点计数，长度范围为 1–1000；中文和单码点 Emoji 各计为一个字符，组合字符按其码点分别计数。服务端不得截断，超限统一返回 422 的 `errors.content` 字段错误。历史超过 1000 字的正文可读取；未提交 `content` 的部分更新不得触发历史内容复验。`data.title`/`data.summary` 只允许作为历史数据读取，不属于新写入语义。
 
 Controller 只能通过路由拥有的 `$this->validated()` 取得这些输入。以下入口会绕过契约，禁止在 API Controller 中使用：
 

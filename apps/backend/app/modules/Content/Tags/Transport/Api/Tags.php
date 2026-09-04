@@ -13,38 +13,18 @@ class Tags extends Validate
             'nonNull' => false,
             'toNull' => false,
         ],
-        'allCreate' => [
-            'normal' => [
-                'user_id',
-            ],
-            'require' => [
-                'aid',
-                'name',
-            ],
-            'nonNull' => false,
-            'toNull' => false,
-        ],
         'selfUpdate' => [
             'normal' => ['name'], 'require' => ['id'], 'nonNull' => false, 'toNull' => false,
         ],
         'adminUpdate' => [
-            'normal' => [
-                'aid',
-                'user_id',
-                'name',
-                'status',
-            ],
-            'require' => [
-                'id',
-            ],
+            // Application and ownership are immutable administration boundaries.
+            'normal' => ['name', 'status'],
+            'require' => ['id'],
             'nonNull' => false,
             'toNull' => false,
         ],
         'create' => [
             'normal' => ['user_id'], 'require' => ['name'], 'nonNull' => false, 'toNull' => false,
-        ],
-        'allUpdate' => [
-            'normal' => ['aid', 'user_id', 'name', 'status'], 'require' => ['id'], 'nonNull' => false, 'toNull' => false,
         ],
     ];
     public static $scene_message = [
@@ -57,7 +37,7 @@ class Tags extends Validate
         'aid'  => 'number',
         'user_id'  => 'number',
         'name'  => 'chsDash|length:1,255',
-        'status'   => 'number',
+        'status'   => 'number|in:0,1,2,3',
     ];
 
     protected $message  =   [

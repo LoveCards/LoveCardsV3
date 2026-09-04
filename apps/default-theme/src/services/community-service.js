@@ -1,4 +1,5 @@
 import { getSdkClient } from '../app/sdk-client.js';
+import { normalizeSdkCard } from './feed-service.js';
 
 const STABLE_ID_KEYS = [
   'id',
@@ -145,12 +146,39 @@ export function draftSummary(item) {
   return `${type}草稿`;
 }
 
-export const getPublicProfile = (handle) => client().social.profile(handle);
-export const getUserRelation = (userId) => client().social.relation(userId);
-export const listFollowers = async (userId) => normalizeCollection(await client().social.followers(userId));
-export const listFollowing = async (userId) => normalizeCollection(await client().social.following(userId));
-export const followUser = (userId) => client().social.follow(userId);
-export const unfollowUser = (userId) => client().social.unfollow(userId);
+export const getPublicProfile = (uid) => client().social.profile(uid);
+function positiveInteger(value, fallback) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return fallback;
+  const number = typeof value === 'number' ? value : Number(value);
+  return Number.isInteger(number) && number > 0 ? number : fallback;
+}
+
+function normalizePageSize(value) {
+  if (value === null || value === undefined || value === '' || typeof value === 'boolean') return 30;
+  const number = typeof value === 'number' ? value : Number(value);
+  if (!Number.isInteger(number)) return 30;
+  return Math.min(100, Math.max(1, number));
+}
+
+export async function listPublicCardsByUser(uid, params = {}) {
+  const normalizedUid = typeof uid === 'string' ? uid.trim() : '';
+  if (!/^\d{12}$/.test(normalizedUid)) throw new Error('用户主页 UID 无效。');
+  const sdk = client();
+  if (typeof sdk.cards?.listPublicByUser !== 'function') {
+    throw new CommunityCapabilityError('cards.listPublicByUser', '当前 SDK 尚未提供公开用户内容接口。');
+  }
+  const result = await sdk.cards.listPublicByUser(normalizedUid, {
+    page: positiveInteger(params.page, 1),
+    list_rows: normalizePageSize(params.list_rows),
+  });
+  if (!result || !Array.isArray(result.data)) throw new Error('SDK 契约错误：cards.listPublicByUser() 应返回 ListResult。');
+  return { ...result, data: result.data.map(normalizeSdkCard) };
+}
+export const getUserRelation = (uid) => client().social.relation(uid);
+export const listFollowers = async (uid, params = {}) => normalizeCollection(await client().social.followers(uid, { cursor: params.cursor || undefined, limit: params.limit || 20 }));
+export const listFollowing = async (uid, params = {}) => normalizeCollection(await client().social.following(uid, { cursor: params.cursor || undefined, limit: params.limit || 20 }));
+export const followUser = (uid) => client().social.follow(uid);
+export const unfollowUser = (uid) => client().social.unfollow(uid);
 
 export const listDrafts = async () => normalizeCollection(await client().drafts.list());
 export const getDraft = (draftId) => client().drafts.get(draftId);
@@ -189,33 +217,29 @@ export function recordHistoryItem(resourceId) {
 }
 export const clearHistory = () => client().library.history_clear();
 
-export const listNotifications = async () => normalizeCollection(await client().notifications.list());
-export const getUnreadNotificationCount = () => client().notifications.unread();
+export const listNotifications = async (params) => normalizeCollection(await client().notifications.list(params));
+export const getUnreadNotificationCount = (params) => client().notifications.unread(params);
 export function markNotificationRead(input) {
   const values = Array.isArray(input) ? input : [input];
   const ids = [...new Set(values.map(Number).filter((value) => Number.isInteger(value) && value > 0))];
   if (!ids.length) throw new Error('请选择要标记为已读的通知。');
   return client().notifications.read({ ids });
 }
-export const markAllNotificationsRead = () => client().notifications.readAll();
-export async function getNotificationStreamSnapshot() {
-  const snapshot = await client().notifications.stream();
-  return typeof snapshot === 'string' ? parseNotificationSseSnapshot(snapshot) : snapshot;
-}
+export const markAllNotificationsRead = (params) => client().notifications.readAll(params);
 
 export const listConversations = async () => normalizeCollection(await client().messages.conversations());
 export const listMessages = async (conversationId) => normalizeCollection(await client().messages.list(conversationId));
-export function sendMessage({ recipientId, body, clientMessageId }) {
-  const normalizedRecipientId = Number(recipientId);
+export function sendMessage({ recipientUid, body, clientMessageId }) {
+  const normalizedRecipientUid = String(recipientUid ?? '').trim();
   const normalizedBody = typeof body === 'string' ? body.trim() : '';
-  if (!Number.isInteger(normalizedRecipientId) || normalizedRecipientId < 1) {
-    throw new Error('当前会话缺少有效的收件人，暂时无法发送消息。');
+  if (!/^\d{12}$/.test(normalizedRecipientUid)) {
+    throw new Error('当前会话缺少有效的收件人 UID，暂时无法发送消息。');
   }
   if (!normalizedBody) {
     throw new Error('消息内容不能为空。');
   }
   return client().messages.send({
-    recipient_id: normalizedRecipientId,
+    recipient_uid: normalizedRecipientUid,
     body: normalizedBody,
     client_message_id: ensureClientMessageId(clientMessageId),
   });

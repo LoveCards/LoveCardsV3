@@ -18,12 +18,12 @@ interface SocialGraphRepository
     /**
      * @return array{items: array<int, array<string, mixed>>, next_cursor: ?string, has_more: bool}
      */
-    public function listFollowers(int $userId, ?string $cursor, int $limit): array;
+    public function listFollowers(int $userId, ?string $cursor, int $limit, array $excludedUserIds = []): array;
 
     /**
      * @return array{items: array<int, array<string, mixed>>, next_cursor: ?string, has_more: bool}
      */
-    public function listFollowing(int $userId, ?string $cursor, int $limit): array;
+    public function listFollowing(int $userId, ?string $cursor, int $limit, array $excludedUserIds = []): array;
 
     /** @return array{followers: int, following: int} */
     public function counts(int $userId): array;

@@ -25,7 +25,7 @@
 | 举报/隐私/拉黑 | `Platform/Safety` | preferences、relations、reports/events，状态流与证据快照 |
 | 文件/媒体 | `Platform/Files` | `files`、`file_references`、purge ledger |
 
-点赞当前仍是 card-only，不应为了表面统一把点赞、收藏、历史、关注、拉黑和举报合并到一张互动表。
+点赞支持 card 与 comment，但仍不应为了表面统一把点赞、收藏、历史、关注、拉黑和举报合并到一张互动表。
 
 ## 已固定的安全与一致性约束
 
@@ -36,17 +36,19 @@
 5. 全局只允许一个未完成升级计划。活动计划会阻止手动迁移；手动入口永远不能执行 Contract，旧 `allow_contract=true` 只会 fail-closed。
 6. `backup_gate` 在任何迁移 phase 之前，必须同时验证数据库、默认文件存储和 active pointer Artifact。普通 `recover` 只恢复代码 pointer，不伪装成数据库/文件自动回滚。
 7. E2E 数据库必须是 localhost、名称符合 `lovecards_e2e_*` 且本次调用新建；同名数据库已存在时拒绝并保留，不得清理共享或碰撞数据库。
+8. 新增用户可感知的安全、治理、互动或平台状态转换前，必须按 `NOTIFICATIONS.md` 完成通知判定；业务模块不直接写通知表，前端不补发通知。
 
 ## 修改接口的标准顺序
 
-1. 在所属模块完成 Domain/Application/Contract/Infrastructure；Controller 只做适配。
-2. 更新 Route access 与 executable contract，再更新 Validate scene 和 Resource 白名单。
-3. 先补行为、权限、事务/幂等和 Resource 测试。
-4. 执行 `npm run build:sdk` 和 `npm run sync:sdk-theme`，从 Route Contract 生成 OpenAPI/SDK、构建 dist 并同步主题公开 bundle；不手改这些生成产物。
-5. 补 SDK transport/真实 JWT HTTP 用例；涉及页面再补 Admin 或 Theme E2E。
-6. 执行根 `npm run check`、生产构建、PHP lint 和对应真实 E2E。
+1. 先判断状态变化是否影响用户安全、权限、可见性或后续行动；若不通知，必须在设计或测试中记录明确理由。
+2. 在所属模块完成 Domain/Application/Contract/Infrastructure；Controller 只做适配。
+3. 更新 Route access 与 executable contract，再更新 Validate scene 和 Resource 白名单。
+4. 先补行为、权限、事务/幂等、通知判定和 Resource 测试。
+5. 执行 `npm run build:sdk` 和 `npm run sync:sdk-theme`，从 Route Contract 生成 OpenAPI/SDK、构建 dist 并同步主题公开 bundle；不手改这些生成产物。
+6. 补 SDK transport/真实 JWT HTTP 用例；涉及页面再补 Admin 或 Theme E2E。
+7. 执行根 `npm run check`、生产构建、PHP lint 和对应真实 E2E。
 
-完整命令与隔离环境变量见 `BACKEND-TESTING.md`；最终实测数字见 `IMPLEMENTATION-AUDIT-2026-08-20.md` 和 `packages/sdk/test/TEST_REPORT.md`。
+完整通知规则见 `NOTIFICATIONS.md`；命令与隔离环境变量见 `BACKEND-TESTING.md`；最终实测数字见 `IMPLEMENTATION-AUDIT-2026-08-20.md` 和 `packages/sdk/test/TEST_REPORT.md`。
 
 ## 容量边界
 

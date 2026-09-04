@@ -2,6 +2,7 @@
 
 namespace app\modules\Platform\Notifications\Domain;
 
+use app\modules\Platform\Notifications\Contract\NotificationTypeCatalog;
 use app\shared\Resource\ResourceRef;
 
 final class NotificationIntent
@@ -15,10 +16,10 @@ final class NotificationIntent
         private array $data = []
     ) {
         $this->dedupeKey = trim($dedupeKey);
-        $this->type = strtolower(trim($type));
+        $this->type = NotificationTypeCatalog::normalizeType($type);
         if ($recipientId <= 0) throw new \InvalidArgumentException('通知接收用户无效');
+        if ($actorId !== null && $actorId <= 0) throw new \InvalidArgumentException('通知发起用户无效');
         if ($this->dedupeKey === '' || strlen($this->dedupeKey) > 128) throw new \InvalidArgumentException('通知幂等键无效');
-        if (!preg_match('/^[a-z][a-z0-9_.-]{0,63}$/', $this->type)) throw new \InvalidArgumentException('通知类型无效');
         $payload = json_encode($this->data, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
         if (strlen($payload) > 4096) throw new \InvalidArgumentException('通知数据超出限制');
     }

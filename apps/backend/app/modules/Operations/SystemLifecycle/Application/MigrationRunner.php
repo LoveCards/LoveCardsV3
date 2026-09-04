@@ -20,7 +20,7 @@ final class MigrationRunner
 
     public function __construct(MigrationLedger $ledger) { $this->ledger = $ledger; }
 
-    public function runNext(Migration $migration, bool $allowContract = false): MigrationProgress
+    public function runNext(Migration $migration, bool $allowContract = false, bool $retryFailed = false): MigrationProgress
     {
         $descriptor = $migration->descriptor();
         $progress = $this->ledger->find($descriptor->id()) ?? $this->ledger->initialize($descriptor);
@@ -28,6 +28,17 @@ final class MigrationRunner
             throw DirtyMigrationException::forId($descriptor->id());
         }
         if ($progress->isComplete()) return $progress;
+        // A failed migration is a deliberate operator stop. Retrying it from
+        // the scheduler would create an unbounded failure loop and can repeat
+        // non-idempotent expand/backfill work. Require an explicit reset or
+        // retry command to transition FAILED back to PENDING.
+        if ($progress->status() === MigrationStatus::FAILED) {
+            if ($retryFailed) {
+                $progress = $this->ledger->save($progress->retry(), $progress->revision());
+            } else {
+                return $progress;
+            }
+        }
         if ($progress->phase() === MigrationPhase::CONTRACT && !$allowContract) {
             if ($progress->status() === MigrationStatus::WAITING) return $progress;
             return $this->ledger->save($progress->waitForContract(), $progress->revision());

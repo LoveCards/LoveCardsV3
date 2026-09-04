@@ -30,11 +30,51 @@ final class HandlerRegistry
             new \app\modules\Platform\Notifications\Infrastructure\MessageSentNotificationHandler()
         ));
         $this->register(new HandlerRegistration(
+            'content.liked',
+            1,
+            'notifications.content-liked',
+            'notifications',
+            ExecutionMode::REQUEST_SAFE,
+            new \app\modules\Platform\Notifications\Infrastructure\ContentLikedNotificationHandler()
+        ));
+        $this->register(new HandlerRegistration(
+            'library.saved',
+            1,
+            'notifications.library-saved',
+            'notifications',
+            ExecutionMode::REQUEST_SAFE,
+            new \app\modules\Platform\Notifications\Infrastructure\LibrarySavedNotificationHandler()
+        ));
+        $this->register(new HandlerRegistration(
+            'content.comment.published',
+            1,
+            'notifications.content-comment-published',
+            'notifications',
+            ExecutionMode::REQUEST_SAFE,
+            new \app\modules\Platform\Notifications\Infrastructure\ContentCommentPublishedNotificationHandler()
+        ));
+        $this->register(new HandlerRegistration(
+            'content.mentions.added',
+            1,
+            'notifications.content-mentions-added',
+            'notifications',
+            ExecutionMode::REQUEST_SAFE,
+            new \app\modules\Platform\Notifications\Infrastructure\ContentMentionsAddedNotificationHandler()
+        ));
+        $this->register(new HandlerRegistration(
+            'system.notification.issued',
+            1,
+            'notifications.system-notification-issued',
+            'notifications',
+            ExecutionMode::REQUEST_SAFE,
+            new \app\modules\Platform\Notifications\Infrastructure\SystemNotificationIssuedHandler()
+        ));
+        $this->register(new HandlerRegistration(
             'file.purge.requested',
             1,
             'files.purge',
             'storage',
-            ExecutionMode::REQUEST_SAFE,
+            ExecutionMode::DAEMON_REQUIRED,
             new \app\modules\Platform\Files\Infrastructure\PurgeFileHandler(),
             8,
             [5, 30, 300, 1800, 7200, 21600, 86400]
@@ -64,6 +104,36 @@ final class HandlerRegistry
     public function handlersFor(EventEnvelope $event): array
     {
         return $this->byEvent[$this->eventKey($event->eventType(), $event->eventVersion())] ?? [];
+    }
+
+    /**
+     * 返回指定执行模式实际注册的队列，供 HTTP、Scheduler 与 Worker 共用。
+     *
+     * @param string[] $executionModes
+     * @return string[]
+     */
+    public function queueNamesFor(array $executionModes): array
+    {
+        if ($executionModes === []) {
+            throw new \InvalidArgumentException('execution_modes 不能为空');
+        }
+        foreach ($executionModes as $executionMode) {
+            if (!is_string($executionMode)) {
+                throw new \InvalidArgumentException('execution_mode 必须是字符串');
+            }
+            ExecutionMode::assert($executionMode);
+        }
+
+        $queueNames = [];
+        foreach ($this->byKey as $registration) {
+            if (in_array($registration->executionMode(), $executionModes, true)) {
+                $queueNames[$registration->queueName()] = true;
+            }
+        }
+        $queueNames = array_keys($queueNames);
+        sort($queueNames, SORT_STRING);
+
+        return $queueNames;
     }
 
     public function catalogHash(): string

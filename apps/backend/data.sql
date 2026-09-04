@@ -14,19 +14,38 @@
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `uid` CHAR(12) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
   `number` VARCHAR(32) NOT NULL,
   `avatar` VARCHAR(255) NOT NULL DEFAULT '',
   `email` VARCHAR(320) NOT NULL,
   `phone` VARCHAR(20) NOT NULL,
   `username` VARCHAR(255) NOT NULL,
+  `bio` VARCHAR(160) DEFAULT NULL,
+  `location` VARCHAR(64) DEFAULT NULL,
+  `gender` VARCHAR(24) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `birth_date` DATE DEFAULT NULL,
   `password` VARCHAR(255) NOT NULL,
   `status` INT(11) NOT NULL,
   `roles_id` JSON DEFAULT NULL,
   `created_at` DATETIME NOT NULL,
   `updated_at` DATETIME NOT NULL,
   `deleted_at` DATETIME DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_users_uid` (`uid`),
+  UNIQUE KEY `uk_users_username` (`username`(191)),
+  KEY `idx_users_public_handle` (`username`(191), `status`, `deleted_at`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
+
+-- Public immutable user UID reservation ledger. Migration backfills existing users.
+CREATE TABLE IF NOT EXISTS `user_uid_registry` (
+  `uid` CHAR(12) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `user_id` INT(11) NULL,
+  `issued_at` DATETIME NOT NULL,
+  `retired_at` DATETIME NULL,
+  PRIMARY KEY (`uid`),
+  UNIQUE KEY `uk_user_uid_registry_user_id` (`user_id`),
+  CONSTRAINT `fk_user_uid_registry_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin;
 
 -- ------------------------------------------------------------
 --  Required Table: roles
@@ -52,6 +71,17 @@ INSERT INTO `roles` (`id`, `name`, `slug`, `is_system`, `description`, `created_
 (2, '管理员', 'admin', 1, NULL, '2026-01-19 03:07:58', '2026-01-19 03:07:58', NULL),
 (3, '用户', 'user', 1, NULL, '2026-01-19 03:08:26', '2026-01-19 03:08:26', NULL),
 (4, '访客', 'guest', 1, NULL, '2026-01-19 03:08:40', '2026-01-19 03:08:40', NULL);
+
+-- Built-in administration templates use stable slugs but intentionally have no
+-- fixed ID anchors. PostInstallLock seeds their minimum grants and never assigns
+-- them to an existing user.
+INSERT INTO `roles` (`name`, `slug`, `is_system`, `description`, `created_at`, `updated_at`, `deleted_at`) VALUES
+('内容运营', 'content_operator', 1, '负责卡片与标签的日常内容治理，不包含审核、用户或系统权限。', NOW(), NOW(), NULL),
+('社区运营', 'community_operator', 1, '负责评论、举报和社区聚合信息，不包含内容编辑或系统配置。', NOW(), NOW(), NULL),
+('审核员', 'moderator', 1, '处理卡片、评论和举报审核，不获得正文编辑、删除或系统权限。', NOW(), NOW(), NULL),
+('安全管理员', 'security_admin', 1, '处理账号状态、会话和恢复事件，并读取安全相关审计记录。', NOW(), NOW(), NULL),
+('运维管理员', 'operations_admin', 1, '负责基础设施配置、事件投递、升级迁移和运行恢复。', NOW(), NOW(), NULL),
+('审计员', 'auditor', 1, '只读核对获授权的内容、用户、配置摘要、运行状态和审计记录。', NOW(), NOW(), NULL);
 
 -- ------------------------------------------------------------
 --  Required Table: user_roles
@@ -100,6 +130,7 @@ CREATE TABLE IF NOT EXISTS `role_grants` (
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `auth_sessions` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `public_id` CHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
   `jti_hash` CHAR(64) NOT NULL,
   `user_id` INT(11) NOT NULL,
   `token_expires_at` DATETIME NOT NULL,
@@ -110,6 +141,7 @@ CREATE TABLE IF NOT EXISTS `auth_sessions` (
   `rotated_to_session_id` BIGINT UNSIGNED DEFAULT NULL,
   `created_at` DATETIME NOT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_auth_sessions_public_id` (`public_id`),
   UNIQUE KEY `uk_auth_sessions_jti` (`jti_hash`),
   KEY `idx_auth_sessions_user` (`user_id`),
   KEY `idx_auth_sessions_expiry` (`token_expires_at`),
@@ -219,13 +251,13 @@ CREATE TABLE IF NOT EXISTS `likes` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `aid` INT(11) NOT NULL COMMENT '应用ID (legacy)',
   `pid` INT(11) NOT NULL COMMENT '条目ID (legacy)',
-  `ref_type` VARCHAR(32) DEFAULT NULL COMMENT '内容类型: card, comment',
-  `ref_id` INT(11) DEFAULT NULL COMMENT '内容ID',
+  `ref_type` VARCHAR(32) NOT NULL COMMENT '内容类型: card, comment',
+  `ref_id` INT(11) NOT NULL COMMENT '内容ID',
   `uid` INT(11) NOT NULL,
   `ip` VARCHAR(32) NOT NULL COMMENT '发布IP',
   `created_at` TIMESTAMP NULL DEFAULT NULL COMMENT '发布时间',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_likes_pid_uid` (`pid`, `uid`),
+  UNIQUE KEY `uk_likes_ref_uid` (`ref_type`, `ref_id`, `uid`),
   KEY `idx_uid` (`uid`),
   KEY `idx_ref` (`ref_type`, `ref_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -251,7 +283,8 @@ CREATE TABLE IF NOT EXISTS `cards` (
   `created_at` TIMESTAMP NULL DEFAULT NULL,
   `updated_at` TIMESTAMP NULL DEFAULT NULL,
   `deleted_at` TIMESTAMP NULL DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_cards_public_user` (`user_id`, `status`, `deleted_at`, `created_at`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
@@ -274,6 +307,26 @@ CREATE TABLE IF NOT EXISTS `comments` (
   `updated_at` TIMESTAMP NULL DEFAULT NULL,
   `deleted_at` TIMESTAMP NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+--  Required Table: content_mentions
+--  Durable mention relations used for notification idempotency.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `content_mentions` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `resource_type` VARCHAR(16) NOT NULL,
+  `resource_id` BIGINT UNSIGNED NOT NULL,
+  `card_id` BIGINT UNSIGNED NOT NULL,
+  `comment_id` BIGINT UNSIGNED DEFAULT NULL,
+  `actor_id` INT(11) NOT NULL,
+  `mentioned_user_id` INT(11) NOT NULL,
+  `mentioned_username` VARCHAR(255) NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_content_mentions_resource_user` (`resource_type`, `resource_id`, `mentioned_user_id`),
+  KEY `idx_content_mentions_user_id` (`mentioned_user_id`, `id`),
+  KEY `idx_content_mentions_card_id` (`card_id`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------

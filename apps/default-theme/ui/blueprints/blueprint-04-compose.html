@@ -12,30 +12,111 @@
 <body>
 <main class="blueprint-page">
   <section class="board" id="blueprint-compose">
-    <header class="board-meta"><div><h1>Blueprint 04 · 发布器与草稿</h1><p>先选择随笔、图文或视频，再在同一编辑轴内完成正文、媒体与话题。</p></div><span class="board-tag">Compose · Explicit Type</span></header>
+    <header class="board-meta">
+      <div><h1>Blueprint 04A · 发布新内容</h1><p>发布是一个连续创作任务：类型、媒体、正文、话题与可见范围沿同一内容轴完成；图文和视频先上传媒体，再填写必填正文；手机使用沉浸式编辑壳，不叠加产品 BottomNav。</p></div>
+      <span class="board-tag">Compose · Immersive Mobile</span>
+    </header>
+
     <section class="compose-type-contract" aria-label="发布类型规则">
-      <header><strong>发布类型是用户选择，不再由文件数量猜测</strong><span>切换类型会移除不兼容媒体，必须先确认</span></header>
+      <header><strong>发布类型由用户显式选择</strong><span>切换到不兼容类型前确认；正文与话题保留，媒体移除</span></header>
       <div class="compose-type-rules">
-        <div><b>随笔</b><strong>纯文字</strong><span>隐藏媒体工作区，正文必填。</span></div>
-        <div class="is-current"><b>图文</b><strong>1–9 张图片或 GIF</strong><span>1 张写入 image，多张写入 gallery。</span></div>
+        <div><b>随笔</b><strong>纯文字</strong><span>正文必填，不显示媒体区。</span></div>
+        <div class="is-current"><b>图文</b><strong>1–9 张图片或 GIF</strong><span>一张为单图，多张自动成为图集。</span></div>
         <div><b>视频</b><strong>1 个视频</strong><span>支持 MP4、WebM、MOV 与 M4V。</span></div>
       </div>
     </section>
-    <section class="compose-type-demo" aria-label="桌面与手机发布类型选择器">
-      <div><span>桌面编辑器</span><div class="compose-type-segments" role="radiogroup" aria-label="桌面发布类型"><button type="button" role="radio" aria-checked="false">随笔</button><button class="is-selected" type="button" role="radio" aria-checked="true">图文</button><button type="button" role="radio" aria-checked="false">视频</button></div><p>图文 · 已选择 2 / 9 张 · 将发布为图集状态</p></div>
-      <div><span>手机编辑器</span><div class="compose-type-segments" role="radiogroup" aria-label="手机发布类型"><button type="button" role="radio" aria-checked="false">随笔</button><button class="is-selected" type="button" role="radio" aria-checked="true">图文</button><button type="button" role="radio" aria-checked="false">视频</button></div><p>触控目标 44px · 左右方向键可切换</p></div>
-    </section>
-    <div class="frames">
-      <div class="frame desktop"><div class="shell"><header class="topbar"><div class="brand"><i>L</i><span>Love<em>Cards</em></span></div><div class="search">⌕　搜索内容、作者或话题</div><div class="top-actions"><span>草稿箱</span><div class="avatar">W</div></div></header><div class="desktop-main"><div class="compose-layout"><aside class="compose-steps"><div class="step active"><b>1</b><span>编辑内容<br><small>文字与媒体</small></span></div><div class="step"><b>2</b><span>补充信息<br><small>话题与可见范围</small></span></div><div class="step"><b>3</b><span>发布检查<br><small>必填项与权限</small></span></div></aside><main class="composer"><header class="composer-head"><h2>创建一张新卡片</h2><span>内容已填充 · 尚未发布</span></header><div class="composer-author"><div class="mini-avatar">晚</div><b>晚风收藏家</b></div><textarea readonly placeholder="分享此刻的想法…">傍晚的风从窗边经过，带走了白天最后一点燥热。</textarea><div class="media-drop"><div><b>＋</b>添加图片<br><small>支持拖放，最多 9 项</small></div></div><div class="composer-tools"><span class="tool">图片</span><span class="tool">话题</span></div><footer class="composer-footer"><span>所有人可见 · 允许回复</span><button class="primary">存入草稿箱</button></footer></main><aside class="compose-check-panel"><section class="checklist"><h3>发布检查</h3><span><b>✓</b>正文已填写</span><span><b>✓</b>图文媒体已就绪</span><span><b>✓</b>可见范围明确</span><span><b>✓</b>发布权限已确认</span></section></aside></div></div></div></div>
-      <div class="frame phone"><div class="shell"><div class="mobile-compose"><header class="mobile-compose-head"><span>取消</span><span>发布新内容</span><button class="primary">存入草稿箱</button></header><div class="composer-author"><div class="mini-avatar">晚</div><div class="identity">晚风收藏家<small>所有人可见</small></div></div><textarea readonly>傍晚的风从窗边经过，带走了白天最后一点燥热。</textarea><div class="media-drop"><div><b>＋</b>添加图片<br><small>最多 9 项</small></div></div><div class="mobile-tool-row"><span class="tool">图片</span><span class="tool">话题</span></div><footer class="mobile-compose-foot"><span>未发布</span><b>存入草稿箱</b></footer></div></div></div>
+
+    <div class="frames compose-frames">
+      <div class="frame desktop">
+        <div class="shell compose-shell">
+          <header class="topbar"><div class="brand"><i>L</i><span>Love<em>Cards</em></span></div><div class="search">⌕　搜索内容、作者或话题</div><div class="top-actions"><span>发布</span><div class="avatar">W</div></div></header>
+          <main class="compose-demo-page">
+            <header class="compose-page-head">
+              <button type="button" class="compose-back">← 返回</button>
+              <div><h2>发布新内容</h2><p>把想法整理成一张卡片。</p></div>
+              <button type="button" class="compose-drafts">草稿箱</button>
+            </header>
+            <form class="composer" aria-label="发布新内容示例">
+              <section class="compose-section compose-type-field">
+                <header><div><b>发布类型</b><small>选择这张卡片的内容形态</small></div></header>
+                <div class="compose-type-segments" role="radiogroup" aria-label="桌面发布类型"><button type="button" role="radio" aria-checked="false">随笔</button><button class="is-selected" type="button" role="radio" aria-checked="true">图文</button><button type="button" role="radio" aria-checked="false">视频</button></div>
+              </section>
+              <section class="compose-section compose-media-field"><header><div><b>图片</b><small>JPEG、PNG、WebP 或 GIF；每张最大 10MB</small></div><span>2 / 9</span></header><button type="button" class="compact-upload"><i>＋</i><span><b>继续添加图片</b><small>点击选择，桌面也支持拖放</small></span></button><div class="compose-media-queue"><figure class="media-coast"><span>1</span><button type="button" aria-label="移除第 1 张图片">×</button></figure><figure class="media-run"><span>2</span><button type="button" aria-label="移除第 2 张图片">×</button></figure></div></section>
+              <section class="compose-section compose-copy-field"><label for="desktop-compose-copy">正文 <em>必填</em></label><small>普通卡片不设置标题，图文和视频必须填写正文，最多 1000 字。</small><textarea id="desktop-compose-copy" readonly>傍晚的风从窗边经过，带走了白天最后一点燥热。</textarea><span>29 / 1000</span></section>
+              <section class="compose-section compose-details-field"><div class="compose-topic-field"><label for="desktop-compose-topic">话题 <em>可选</em></label><small>最多 3 个，输入名称后选择或确认。</small><div id="desktop-compose-topic" class="topic-input"><span>#城市漫游 <i>×</i></span><span>#傍晚散步 <i>×</i></span><b>添加话题</b></div></div><div class="compose-visibility"><i>✓</i><div><b>所有人可见</b><small>发布后进入公开内容流与个人主页</small></div></div></section>
+              <footer class="composer-actions"><button type="button">取消</button><span class="compose-save-status is-dirty"><i aria-hidden="true"></i>尚未存入草稿箱</span><button type="button">存入草稿箱</button><button type="button" class="primary">确认发布</button></footer>
+            </form>
+          </main>
+        </div>
+      </div>
+
+      <div class="frame phone">
+        <div class="shell compose-phone-shell">
+          <main class="mobile-compose">
+            <header class="mobile-compose-head"><button type="button">取消</button><strong>发布新内容</strong><button type="button">草稿箱</button></header>
+            <form class="mobile-composer">
+              <section class="compose-section compose-type-field"><div class="compose-type-segments" role="radiogroup" aria-label="手机发布类型"><button type="button" role="radio" aria-checked="false">随笔</button><button class="is-selected" type="button" role="radio" aria-checked="true">图文</button><button type="button" role="radio" aria-checked="false">视频</button></div></section>
+              <section class="compose-section compose-media-field"><header><div><b>图片</b><small>最多 9 张 · 每张最大 10MB</small></div><span>2 / 9</span></header><button type="button" class="compact-upload"><i>＋</i><span><b>继续添加图片</b><small>点击选择图片或 GIF</small></span></button><div class="compose-media-queue"><figure class="media-coast"><span>1</span><button type="button" aria-label="移除第 1 张图片">×</button></figure><figure class="media-run"><span>2</span><button type="button" aria-label="移除第 2 张图片">×</button></figure></div></section>
+              <section class="compose-section compose-copy-field"><label for="mobile-compose-copy">正文 <em>必填</em></label><small>普通卡片不设置标题，图文和视频必须填写正文，最多 1000 字。</small><textarea id="mobile-compose-copy" readonly>傍晚的风从窗边经过，带走了白天最后一点燥热。</textarea><span>29 / 1000</span></section>
+              <section class="compose-section compose-topic-field"><label for="mobile-compose-topic">话题 <em>可选</em></label><div id="mobile-compose-topic" class="topic-input"><span>#城市漫游 <i>×</i></span><b>添加话题</b></div></section>
+              <section class="compose-visibility"><i>✓</i><div><b>所有人可见</b><small>发布后进入公开内容流与个人主页</small></div></section>
+            </form>
+            <footer class="mobile-compose-actions"><span class="compose-save-status is-dirty"><i aria-hidden="true"></i>尚未存入草稿箱</span><button type="button">存入草稿箱</button><button type="button" class="primary">确认发布</button></footer>
+          </main>
+        </div>
+      </div>
     </div>
+
+    <section class="compose-state-contract" aria-label="发布反馈与加载状态">
+      <article><b>字段错误</b><p>正文、话题数量、文件格式和大小紧贴对应控件；修正后消失。</p><span class="field-error">请先写下要分享的内容。</span></article>
+      <article><b>任务错误</b><p>网络、权限或服务端失败使用编辑器内 Banner，并保留全部输入。</p><div class="task-banner"><strong>内容没有发布</strong><span>网络连接不稳定，当前输入仍保留在页面。</span><button type="button">重试发布</button></div></article>
+      <article><b>加载骨架</b><p>恢复草稿时保留标题、编辑器宽度和字段节奏，不使用通用灰卡。</p><div class="compose-skeleton"><i></i><span></span><span></span><b></b></div></article>
+    </section>
+    <section class="compose-type-contract" aria-label="已发布内容编辑模式">
+      <header><strong>已发布内容继续使用同一编辑轴</strong><span>/compose?edit=&lt;cardId&gt; · 不是详情页内嵌输入框</span></header>
+      <div class="compose-type-rules">
+        <div><b>恢复</b><strong>正文 · 全部话题 · 媒体</strong><span>只读取自己的卡片，并保留原有顺序。</span></div>
+        <div class="is-current"><b>编辑</b><strong>完整发布器结构</strong><span>页面标题改为“编辑内容”，字段和校验不缩水。</span></div>
+        <div><b>保存</b><strong>取消 · 保存修改</strong><span>回到原详情；不显示草稿箱与存草稿动作。</span></div>
+      </div>
+    </section>
   </section>
   <section class="board" id="blueprint-drafts">
-    <header class="board-meta"><div><h1>Blueprint 04B · 草稿箱与恢复编辑</h1><p>草稿是发布页主动保存的未发布状态；恢复后回到同一套发布编辑器。</p></div><span class="board-tag">Drafts · Restore Compose</span></header>
+    <header class="board-meta"><div><h1>Blueprint 04B · 草稿箱与恢复编辑</h1><p>草稿箱只回答三件事：写了什么、什么时候更新、如何继续；不展示无来源的同步状态或重复统计侧栏。</p></div><span class="board-tag">Drafts · Continuous List</span></header>
     <div class="frames">
-      <div class="frame desktop"><div class="shell drafts-shell"><header class="topbar"><div class="brand"><i>L</i><span>Love<em>Cards</em></span></div><div class="search">⌕　搜索内容、作者或话题</div><div class="top-actions"><span>发布</span><div class="avatar">W</div></div></header><main class="drafts-main"><header class="drafts-heading"><div><span>创作空间</span><h2>草稿箱</h2><p>这里只展示从发布页存入的未发布内容。</p></div></header><div class="drafts-workspace"><aside class="drafts-summary"><strong>3</strong><span>份未发布内容</span><p><i></i>云端同步正常</p><small>最近更新 · 18:24</small></aside><section class="drafts-list"><header><h3>最近编辑</h3><span>按更新时间排列</span></header><article class="draft-item"><div class="draft-thumb coast"></div><div><h4>傍晚的风从窗边经过</h4><p>带走了白天最后一点燥热。想把这段城市散步整理成完整记录。</p><small>图文 · 最近更新 · 今天 18:24</small></div><button>恢复编辑</button></article><article class="draft-item"><div class="draft-thumb text">文</div><div><h4>周末书单与咖啡馆</h4><p>三本书、两家安静的店，还有一段没写完的路线说明。</p><small>随笔 · 最近更新 · 昨天 22:16</small></div><button>恢复编辑</button></article><article class="draft-item"><div class="draft-thumb text">视</div><div><h4>视频草稿</h4><p>正文尚未完成，恢复后回到发布页继续编辑。</p><small class="draft-error">视频 · 未发布</small></div><button>恢复编辑</button></article></section></div></main></div></div>
-      <div class="frame phone"><div class="shell"><div class="mobile-drafts-list"><header class="mobile-drafts-head"><button>←</button><strong>草稿箱</strong><span>3 份</span></header><p class="mobile-drafts-note">从发布页存入的未发布内容，点击后恢复到同一编辑器。</p><article class="mobile-draft-row"><div class="draft-thumb coast"></div><div><strong>傍晚的风从窗边经过</strong><small>图文 · 今天 18:24</small></div><button>恢复</button></article><article class="mobile-draft-row"><div class="draft-thumb text">文</div><div><strong>周末书单与咖啡馆</strong><small>随笔 · 昨天 22:16</small></div><button>恢复</button></article><article class="mobile-draft-row"><div class="draft-thumb text">视</div><div><strong>视频草稿</strong><small>视频 · 未发布</small></div><button>恢复</button></article></div></div></div>
+      <div class="frame desktop">
+        <div class="shell drafts-shell">
+          <header class="topbar"><div class="brand"><i>L</i><span>Love<em>Cards</em></span></div><div class="search">⌕　搜索内容、作者或话题</div><div class="top-actions"><span>发布</span><div class="avatar">W</div></div></header>
+          <main class="drafts-main">
+            <header class="drafts-page-head"><button type="button">← 返回发布</button><div><h2>草稿箱</h2><p>恢复后继续在发布页编辑。</p></div><button type="button">发布新内容</button></header>
+            <section class="drafts-list" aria-label="草稿列表">
+              <header><h3>最近编辑</h3><small>按更新时间排列</small></header>
+              <article class="draft-item"><a href="#"><div class="draft-thumb coast"></div><div><h4>傍晚的风从窗边经过</h4><p>带走了白天最后一点燥热，想把这段城市散步整理成完整记录。</p><small>图文 · 2 张图片 · 8 分钟前</small></div><span>恢复编辑 →</span></a><button type="button" aria-label="删除草稿">⌫</button></article>
+              <article class="draft-item"><a href="#"><div class="draft-thumb text">文</div><div><h4>周末书单与咖啡馆</h4><p>三本书、两家安静的店，还有一段没写完的路线说明。</p><small>随笔 · 昨天 22:16</small></div><span>恢复编辑 →</span></a><button type="button" aria-label="删除草稿">⌫</button></article>
+              <article class="draft-item"><a href="#"><div class="draft-thumb video">▷</div><div><h4>视频草稿</h4><p>这份草稿没有正文，恢复后继续完成发布。</p><small>视频 · 6 月 9 日 18:40</small></div><span>恢复编辑 →</span></a><button type="button" aria-label="删除草稿">⌫</button></article>
+            </section>
+          </main>
+        </div>
+      </div>
+      <div class="frame phone">
+        <div class="shell">
+          <main class="mobile-drafts-list">
+            <header class="mobile-drafts-head"><button type="button">←</button><strong>草稿箱</strong><button type="button">发布</button></header>
+            <p class="mobile-drafts-note">按最近编辑排序，点击内容继续完成发布。</p>
+            <section class="mobile-drafts-surface">
+              <article class="mobile-draft-row"><a href="#"><div class="draft-thumb coast"></div><div><strong>傍晚的风从窗边经过</strong><span>带走了白天最后一点燥热…</span><small>图文 · 2 张图片 · 8 分钟前</small></div></a><button type="button" aria-label="删除草稿">⌫</button></article>
+              <article class="mobile-draft-row"><a href="#"><div class="draft-thumb text">文</div><div><strong>周末书单与咖啡馆</strong><span>三本书、两家安静的店…</span><small>随笔 · 昨天 22:16</small></div></a><button type="button" aria-label="删除草稿">⌫</button></article>
+              <article class="mobile-draft-row"><a href="#"><div class="draft-thumb video">▷</div><div><strong>视频草稿</strong><span>恢复后继续完成发布。</span><small>视频 · 6 月 9 日 18:40</small></div></a><button type="button" aria-label="删除草稿">⌫</button></article>
+            </section>
+          </main>
+        </div>
+      </div>
     </div>
+    <section class="drafts-state-contract" aria-label="草稿箱状态">
+      <article><b>加载</b><p>保留页面头、列表宽度、缩略图与三条文字轨道，Skeleton 不改变行高。</p></article>
+      <article><b>删除失败</b><p>列表上方显示 scoped Banner，已有草稿继续可用；成功删除使用短 Toast。</p></article>
+      <article><b>空列表</b><p>说明草稿只由发布页主动保存，并提供“发布新内容”这一条下一步。</p></article>
+    </section>
   </section>
 </main>
 </body>

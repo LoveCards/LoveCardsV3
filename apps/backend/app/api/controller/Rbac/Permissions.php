@@ -16,9 +16,13 @@ class Permissions extends BaseController
     {
         $allCaps = \app\modules\Platform\Rbac\Domain\CapabilityCatalog::canonical();
         $result = [];
-        foreach ($allCaps as $cap => $desc) {
+        foreach ($allCaps as $cap => $_desc) {
             foreach (\app\modules\Platform\Rbac\Domain\CapabilityCatalog::scopesFor($cap) as $scope) {
-                $result[] = ['capability' => $cap, 'scope' => $scope, 'description' => $desc];
+                $result[] = [
+                    'capability' => $cap,
+                    'scope' => $scope,
+                    'description' => \app\modules\Platform\Rbac\Domain\CapabilityCatalog::descriptionFor($cap, $scope),
+                ];
             }
         }
         return ApiResponse::createOk(PermissionResource::collection($result));
@@ -31,9 +35,13 @@ class Permissions extends BaseController
     {
         $allCaps = \app\modules\Platform\Rbac\Domain\CapabilityCatalog::canonical();
         $items = [];
-        foreach ($allCaps as $cap => $desc) {
+        foreach ($allCaps as $cap => $_desc) {
             foreach (\app\modules\Platform\Rbac\Domain\CapabilityCatalog::scopesFor($cap) as $scope) {
-                $items[] = ['capability' => $cap, 'scope' => $scope, 'description' => $desc];
+                $items[] = [
+                    'capability' => $cap,
+                    'scope' => $scope,
+                    'description' => \app\modules\Platform\Rbac\Domain\CapabilityCatalog::descriptionFor($cap, $scope),
+                ];
             }
         }
 

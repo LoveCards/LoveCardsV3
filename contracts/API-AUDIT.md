@@ -1,6 +1,6 @@
 # API Contract Audit
 
-- Routes inspected: 171
+- Routes inspected: 189
 - P0: 0
 - P1: 0
 - P2: 0
@@ -10,6 +10,7 @@
 | Method | Path | Operation | Auth | Validate | Response | Issues |
 |---|---|---|---|---:|---|---|
 | GET | `/admin/audit-logs` | `operations.auditLogs` | grants:admin.access:global,audit.read:global | yes | AdminAuditLogResource::paginate | — |
+| GET | `/admin/audit-logs/:id` | `operations.auditLog` | grants:admin.access:global,audit.read:global | no | AdminAuditLogResource::make | — |
 | GET | `/admin/captcha/:slug/meta` | `captcha.meta` | grants:admin.access:global,captcha.read:global | no | CaptchaResource::make | — |
 | GET | `/admin/captcha/drivers` | `captcha.drivers` | grants:admin.access:global,captcha.read:global | no | CaptchaResource::collection | — |
 | POST | `/admin/captcha/install` | `captcha.install` | grants:admin.access:global,captcha.install:global | no | CaptchaResource::collection | — |
@@ -18,11 +19,13 @@
 | DELETE | `/admin/cards/:id` | `cards.deleteManaged` | grants:admin.access:global,cards.delete:all | no | createNoContent | — |
 | GET | `/admin/cards/:id` | `cards.getManaged` | grants:admin.access:global,cards.read:all | no | CardResource::make | — |
 | PATCH | `/admin/cards/:id` | `cards.updateManaged` | grants:admin.access:global,cards.update:all | yes | createNoContent | — |
+| DELETE | `/admin/cards/:id/pinned-comment` | `comments.unpinManaged` | grants:admin.access:global,comments.pin:all | yes | createNoContent | — |
+| PUT | `/admin/cards/:id/pinned-comment` | `comments.pinManaged` | grants:admin.access:global,comments.pin:all | yes | createNoContent | — |
 | POST | `/admin/cards/batch` | `cards.batchManaged` | grants:admin.access:global | yes | createNoContent | — |
 | GET | `/admin/comments` | `comments.listManaged` | grants:admin.access:global,comments.read:all | yes | CommentResource::paginate | — |
 | DELETE | `/admin/comments/:id` | `comments.deleteManaged` | grants:admin.access:global,comments.delete:all | no | createNoContent | — |
 | GET | `/admin/comments/:id` | `comments.getManaged` | grants:admin.access:global,comments.read:all | no | CommentResource::make | — |
-| PATCH | `/admin/comments/:id` | `comments.updateManaged` | grants:admin.access:global,comments.update:all | yes | createNoContent | — |
+| PATCH | `/admin/comments/:id` | `comments.moderateManaged` | grants:admin.access:global,comments.update:all,comments.moderate:all | yes | createNoContent | — |
 | POST | `/admin/comments/batch` | `comments.batchManaged` | grants:admin.access:global | yes | createNoContent | — |
 | GET | `/admin/community/insights` | `community.insights` | grants:admin.access:global,community.insights.read:global | no | AdminCommunityInsightsResource::make | — |
 | DELETE | `/admin/config` | `config.delete` | grants:admin.access:global,config.deleteKey:global | yes | createNoContent | — |
@@ -42,7 +45,8 @@
 | POST | `/admin/files/batch` | `files.batchManaged` | grants:admin.access:global | yes | createNoContent | — |
 | DELETE | `/admin/files/expired` | `files.cleanup` | grants:admin.access:global,files.cleanup:global | yes | ApiResource::make | — |
 | GET | `/admin/operations/deliveries` | `operations.deliveries` | grants:admin.access:global,communications.read:global | yes | AdminDeliveryResource::paginate | — |
-| POST | `/admin/operations/deliveries/:id/retry` | `operations.retryDelivery` | grants:admin.access:global,operations.retry:global | yes | createNoContent | — |
+| GET | `/admin/operations/deliveries/:id` | `operations.delivery` | grants:admin.access:global,communications.read:global | no | AdminDeliveryResource::make | — |
+| POST | `/admin/operations/deliveries/:id/retry` | `operations.retryDelivery` | grants:admin.access:global,operations.retry:global | no | createNoContent | — |
 | GET | `/admin/operations/migrations` | `operations.migrations` | grants:admin.access:global,operations.read:global | no | AdminMigrationResource::collection | — |
 | POST | `/admin/operations/migrations/run` | `operations.runMigrations` | grants:admin.access:global,operations.migrate:global | yes | AdminMigrationResource::collection | — |
 | GET | `/admin/operations/notifications` | `operations.notificationStats` | grants:admin.access:global,communications.read:global | no | AdminNotificationStatsResource::make | — |
@@ -51,9 +55,9 @@
 | GET | `/admin/operations/upgrades` | `operations.upgrades` | grants:admin.access:global,operations.read:global | yes | AdminUpgradePlanResource::collection | — |
 | POST | `/admin/operations/upgrades` | `operations.createUpgrade` | grants:admin.access:global,system.update:global | yes | AdminUpgradePlanResource::make | — |
 | GET | `/admin/operations/upgrades/:planId` | `operations.upgrade` | grants:admin.access:global,operations.read:global | no | AdminUpgradePlanResource::make | — |
-| POST | `/admin/operations/upgrades/:planId/advance` | `operations.advanceUpgrade` | grants:admin.access:global,system.update:global | yes | AdminUpgradePlanResource::make | — |
-| POST | `/admin/operations/upgrades/:planId/approve-contract` | `operations.approveUpgradeContract` | grants:admin.access:global,system.update.contract:global | yes | AdminUpgradePlanResource::make | — |
-| POST | `/admin/operations/upgrades/:planId/recover` | `operations.recoverUpgrade` | grants:admin.access:global,system.recover:global | yes | AdminUpgradePlanResource::make | — |
+| POST | `/admin/operations/upgrades/:planId/advance` | `operations.advanceUpgrade` | grants:admin.access:global,system.update:global | no | AdminUpgradePlanResource::make | — |
+| POST | `/admin/operations/upgrades/:planId/approve-contract` | `operations.approveUpgradeContract` | grants:admin.access:global,system.update.contract:global | no | AdminUpgradePlanResource::make | — |
+| POST | `/admin/operations/upgrades/:planId/recover` | `operations.recoverUpgrade` | grants:admin.access:global,system.recover:global | no | AdminUpgradePlanResource::make | — |
 | GET | `/admin/permissions` | `permissions.list` | grants:admin.access:global,permissions.read:global | yes | PermissionResource::paginate | — |
 | GET | `/admin/permissions/all` | `permissions.all` | grants:admin.access:global,permissions.read:global | no | PermissionResource::collection | — |
 | GET | `/admin/recovery` | `users.recovery` | grants:admin.access:global,users.recovery.read:global | yes | AdminRecoveryChallengeResource::paginate | — |
@@ -99,8 +103,8 @@
 | PATCH | `/admin/users/:id/roles` | `users.assignRoles` | grants:admin.access:global,users.roles.assign:global | yes | createNoContent | — |
 | GET | `/admin/users/:id/security` | `users.security` | grants:admin.access:global,users.security.read:global | no | AdminSecurityResource::make | — |
 | GET | `/admin/users/:id/sessions` | `users.sessions` | grants:admin.access:global,users.security.read:global | no | AdminSessionResource::collection | — |
-| POST | `/admin/users/:id/sessions/:sessionId/revoke` | `users.revokeSession` | grants:admin.access:global,users.sessions.revoke:global | yes | createNoContent | — |
-| POST | `/admin/users/:id/sessions/revoke-all` | `users.revokeSessions` | grants:admin.access:global,users.sessions.revoke:global | yes | createNoContent | — |
+| POST | `/admin/users/:id/sessions/:sessionId/revoke` | `users.revokeSession` | grants:admin.access:global,users.sessions.revoke:global | no | createNoContent | — |
+| POST | `/admin/users/:id/sessions/revoke-all` | `users.revokeSessions` | grants:admin.access:global,users.sessions.revoke:global | no | createNoContent | — |
 | POST | `/admin/users/batch` | `users.batchManaged` | grants:admin.access:global | yes | createNoContent | — |
 | GET | `/captcha/challenge` | `captcha.challenge` | public | no | CaptchaChallengeResource::make | — |
 | GET | `/captcha/config` | `captcha.config` | public | no | CaptchaResource::make | — |
@@ -113,16 +117,20 @@
 | GET | `/cards/hot` | `cards.hot` | public | no | CardResource::collection | — |
 | GET | `/cards/search` | `cards.search` | public | yes | CardResource::paginate | — |
 | GET | `/comments/:id` | `comments.get` | public | no | CommentResource::make | — |
+| DELETE | `/comments/:id/like` | `comments.unlike` | grants:likes.delete:global | no | createNoContent | — |
+| POST | `/comments/:id/like` | `comments.like` | grants:likes.create:global | no | LikeCountResource::make | — |
 | GET | `/me` | `users.me.get` | grants:users.read:own | no | ProfileResource::make | — |
-| PATCH | `/me` | `users.me.update` | grants:users.update:own | yes | createNoContent | — |
+| PATCH | `/me` | `users.me.update` | grants:users.update:own | yes | ProfileResource::make | — |
+| GET | `/me/blocked-users` | `safety.listBlocked` | grants:authenticated | yes | BlockedUserCursorPageResource::make | — |
 | GET | `/me/cards` | `cards.listOwn` | grants:cards.read:own | yes | CardResource::paginate | — |
 | POST | `/me/cards` | `cards.create` | grants:cards.create:global | yes | CardCreatedResource::make | — |
 | DELETE | `/me/cards/:id` | `cards.delete` | grants:cards.delete:own,cards.delete:all | no | createNoContent | — |
 | GET | `/me/cards/:id` | `cards.getOwn` | grants:cards.read:own | no | CardResource::make | — |
 | PATCH | `/me/cards/:id` | `cards.update` | grants:cards.update:own,cards.update:all | yes | createNoContent | — |
+| DELETE | `/me/cards/:id/pinned-comment` | `comments.unpin` | grants:comments.pin:own | no | createNoContent | — |
+| PUT | `/me/cards/:id/pinned-comment` | `comments.pin` | grants:comments.pin:own | yes | createNoContent | — |
 | GET | `/me/comments` | `comments.listOwn` | grants:comments.read:own | yes | CommentResource::paginate | — |
 | DELETE | `/me/comments/:id` | `comments.delete` | grants:comments.delete:own,comments.delete:all | no | createNoContent | — |
-| PATCH | `/me/comments/:id` | `comments.update` | grants:comments.update:own,comments.update:all | yes | createNoContent | — |
 | GET | `/me/conversations` | `messages.conversations` | grants:authenticated | no | ApiResource::collection | — |
 | GET | `/me/conversations/:id/messages` | `messages.list` | grants:authenticated | yes | CursorPageResource::make | — |
 | GET | `/me/drafts` | `drafts.list` | grants:authenticated | yes | ApiResource::collection | — |
@@ -130,8 +138,9 @@
 | DELETE | `/me/drafts/:id` | `drafts.delete` | grants:authenticated | no | createNoContent | — |
 | GET | `/me/drafts/:id` | `drafts.get` | grants:authenticated | no | ApiResource::make | — |
 | PATCH | `/me/drafts/:id` | `drafts.update` | grants:authenticated | yes | ApiResource::make | — |
-| POST | `/me/email-captcha` | `users.me.emailCaptcha` | grants:users.update:own | yes | ApiResource::make | — |
+| POST | `/me/email-captcha` | `users.me.emailCaptcha` | grants:users.update:own | yes | EmailCaptchaResource::make | — |
 | POST | `/me/email` | `users.me.email` | grants:users.update:own | yes | createNoContent | — |
+| GET | `/me/feed/following` | `cards.listFollowing` | grants:authenticated | yes | CardResource::paginate | — |
 | GET | `/me/files` | `files.listOwn` | grants:files.read:own | yes | FileResource::paginate | — |
 | POST | `/me/files` | `files.upload` | grants:files.upload:global | yes | FileResource::make | — |
 | DELETE | `/me/files/:id` | `files.delete` | grants:files.delete:own,files.delete:all | no | createNoContent | — |
@@ -147,16 +156,21 @@
 | GET | `/me/likes` | `likes.list` | grants:likes.read:global | yes | LikeResource::collection | — |
 | DELETE | `/me/likes/:id` | `likes.unlike` | grants:likes.delete:global | yes | createNoContent | — |
 | POST | `/me/messages` | `messages.send` | grants:authenticated | yes | ApiResource::make | — |
-| GET | `/me/notifications` | `notifications.list` | grants:authenticated | yes | CursorPageResource::make | — |
-| POST | `/me/notifications/read-all` | `notifications.readAll` | grants:authenticated | no | createNoContent | — |
+| GET | `/me/notifications` | `notifications.list` | grants:authenticated | yes | NotificationCursorPageResource::make | — |
+| GET | `/me/notifications/preferences` | `notifications.preferences` | grants:authenticated | no | NotificationPreferencesResource::make | — |
+| POST | `/me/notifications/preferences` | `notifications.updatePreferences` | grants:authenticated | yes | NotificationPreferencesResource::make | — |
+| POST | `/me/notifications/read-all` | `notifications.readAll` | grants:authenticated | yes | createNoContent | — |
 | POST | `/me/notifications/read` | `notifications.read` | grants:authenticated | yes | createNoContent | — |
 | GET | `/me/notifications/stream` | `notifications.stream` | grants:authenticated | yes | createOk | — |
-| GET | `/me/notifications/unread` | `notifications.unread` | grants:authenticated | no | ApiResource::make | — |
+| GET | `/me/notifications/unread` | `notifications.unread` | grants:authenticated | yes | NotificationUnreadResource::make | — |
 | POST | `/me/password` | `users.me.password` | grants:users.update:own | yes | createNoContent | — |
-| GET | `/me/privacy` | `safety.preferences` | grants:authenticated | no | ApiResource::make | — |
-| POST | `/me/privacy` | `safety.preferences.update` | grants:authenticated | yes | createNoContent | — |
+| GET | `/me/privacy` | `safety.preferences` | grants:authenticated | no | PrivacyPreferencesResource::make | — |
+| POST | `/me/privacy` | `safety.preferences.update` | grants:authenticated | yes | PrivacyPreferencesResource::make | — |
+| GET | `/me/sessions` | `session.listSessions` | grants:authenticated | no | CurrentUserSessionResource::collection | — |
+| DELETE | `/me/sessions/:sessionId` | `session.revokeSession` | grants:authenticated | no | createNoContent | — |
+| POST | `/me/sessions/revoke-others` | `session.revokeOthers` | grants:authenticated | no | createNoContent | — |
 | GET | `/me/tags` | `tags.listOwn` | grants:tags.read:own | yes | TagResource::paginate | — |
-| POST | `/me/tags` | `tags.create` | grants:tags.create:global | yes | createNoContent | — |
+| POST | `/me/tags` | `tags.create` | grants:tags.create:global | yes | TagResource::make | — |
 | DELETE | `/me/tags/:id` | `tags.delete` | grants:tags.delete:own,tags.delete:all | no | createNoContent | — |
 | PATCH | `/me/tags/:id` | `tags.update` | grants:tags.update:own,tags.update:all | yes | createNoContent | — |
 | POST | `/reports` | `safety.report` | grants:authenticated | yes | ApiResource::make | — |
@@ -172,11 +186,15 @@
 | GET | `/tags` | `tags.list` | public | no | TagResource::collection | — |
 | GET | `/tags/:id` | `tags.get` | public | no | TagResource::make | — |
 | GET | `/theme/config` | `theme.publicConfig` | public | no | ThemeConfigResource::make | — |
-| DELETE | `/users/:id/block` | `safety.unblock` | grants:authenticated | no | createNoContent | — |
-| POST | `/users/:id/block` | `safety.block` | grants:authenticated | no | createNoContent | — |
-| DELETE | `/users/:id/follow` | `social.unfollow` | grants:authenticated | no | createNoContent | — |
-| POST | `/users/:id/follow` | `social.follow` | grants:authenticated | no | ApiResource::make | — |
-| GET | `/users/:id/followers` | `social.followers` | grants:authenticated | yes | CursorPageResource::make | — |
-| GET | `/users/:id/following` | `social.following` | grants:authenticated | yes | CursorPageResource::make | — |
-| GET | `/users/:id/relation` | `social.relation` | grants:authenticated | no | ApiResource::make | — |
-| GET | `/users/by-handle/:handle` | `social.profile` | public | no | ApiResource::make | — |
+| DELETE | `/users/:uid/block` | `safety.unblock` | grants:authenticated | no | createNoContent | — |
+| POST | `/users/:uid/block` | `safety.block` | grants:authenticated | no | createNoContent | — |
+| GET | `/users/:uid/cards` | `cards.listPublicByUser` | public | yes | CardResource::paginate | — |
+| DELETE | `/users/:uid/follow` | `social.unfollow` | grants:authenticated | no | createNoContent | — |
+| POST | `/users/:uid/follow` | `social.follow` | grants:authenticated | no | ApiResource::make | — |
+| GET | `/users/:uid/followers` | `social.followers` | grants:authenticated | yes | CursorPageResource::make | — |
+| GET | `/users/:uid/following` | `social.following` | grants:authenticated | yes | CursorPageResource::make | — |
+| GET | `/users/:uid/profile` | `social.profile` | public | no | PublicUserProfileResource::make | — |
+| GET | `/users/:uid/relation` | `social.relation` | grants:authenticated | no | SocialRelationResource::make | — |
+| GET | `/users/by-handle/:handle` | `social.profileByHandle` | public | no | PublicUserProfileResource::make | — |
+| GET | `/users/by-handle/:handle/cards` | `cards.publicByHandle` | public | yes | CardResource::paginate | — |
+| GET | `/users/mention-candidates` | `users.searchMentionCandidates` | grants:authenticated | yes | MentionCandidateResource::paginate | — |

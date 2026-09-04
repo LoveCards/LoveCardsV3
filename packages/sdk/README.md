@@ -1,6 +1,6 @@
 # @lovecards/sdk
 
-LoveCardsV3 的框架无关 TypeScript/JavaScript 客户端。当前版本 `2.0.0` 由后端 OpenAPI 生成 25 个 Resource，覆盖 171 条命名路由；请求方法、路径、参数位置、必填性、返回 shape 和公开性以生成契约为准。
+LoveCardsV3 的框架无关 TypeScript/JavaScript 客户端。当前版本 `2.0.0` 由后端 OpenAPI 生成 25 个 Resource，覆盖 174 条命名路由；请求方法、路径、参数位置、必填性、返回 shape 和公开性以生成契约为准。
 
 ## 安装与创建客户端
 
@@ -91,7 +91,7 @@ try {
 
 ## 契约元数据
 
-`generatedApiContract` 是 171 条路由的生成元数据：
+`generatedApiContract` 是 174 条路由的生成元数据：
 
 ```typescript
 import { generatedApiContract } from '@lovecards/sdk'

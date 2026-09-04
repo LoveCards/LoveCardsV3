@@ -12,7 +12,7 @@ export class Cards extends BaseResource {
   getManaged(id: number): Promise<ApiTypes.Card> {
     return this._get<ApiTypes.Card>(`/admin/cards/${id}`)
   }
-  updateManaged(id: number, data?: { pictures?: unknown[]; content?: string; data?: unknown[]; media_file_ids?: unknown[]; picture_file_ids?: unknown[]; cover_file_id?: number; tags?: unknown[]; is_top?: number; status?: number; user_id?: number; comments?: number; views?: number; good?: number; cover?: string }): Promise<void> {
+  updateManaged(id: number, data: ApiTypes.UpdateCardParams): Promise<void> {
     return this._patch<void>(`/admin/cards/${id}`, data)
   }
   batchManaged(data: { ids: unknown[]; method: string }): Promise<void> {
@@ -39,7 +39,7 @@ export class Cards extends BaseResource {
   listOwn(params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }): Promise<ApiTypes.ListResult<ApiTypes.Card>> {
     return this._get<ApiTypes.ListResult<ApiTypes.Card>>("/me/cards", params)
   }
-  create(data: { pictures?: unknown[]; data?: unknown[]; media_file_ids?: unknown[]; picture_file_ids?: unknown[]; cover_file_id?: number; tags?: unknown[]; content: string; cover?: string }): Promise<ApiTypes.CreateResult> {
+  create(data: ApiTypes.CreateCardParams): Promise<ApiTypes.CreateResult> {
     return this._post<ApiTypes.CreateResult>("/me/cards", data)
   }
   delete(id: number): Promise<void> {
@@ -48,8 +48,17 @@ export class Cards extends BaseResource {
   getOwn(id: number): Promise<ApiTypes.Card> {
     return this._get<ApiTypes.Card>(`/me/cards/${id}`)
   }
-  update(id: number, data?: { pictures?: unknown[]; content?: string; data?: unknown[]; media_file_ids?: unknown[]; picture_file_ids?: unknown[]; cover_file_id?: number; tags?: unknown[]; cover?: string }): Promise<void> {
+  update(id: number, data: ApiTypes.UpdateCardParams): Promise<void> {
     return this._patch<void>(`/me/cards/${id}`, data)
+  }
+  listFollowing(params?: { page?: number; list_rows?: number }): Promise<ApiTypes.ListResult<ApiTypes.Card>> {
+    return this._get<ApiTypes.ListResult<ApiTypes.Card>>("/me/feed/following", params)
+  }
+  listPublicByUser(uid: string, params?: { page?: number; list_rows?: number }): Promise<ApiTypes.ListResult<ApiTypes.Card>> {
+    return this._get<ApiTypes.ListResult<ApiTypes.Card>>(`/users/${encodeURIComponent(String(uid))}/cards`, params)
+  }
+  publicByHandle(handle: string, params?: { page?: number; list_rows?: number }): Promise<ApiTypes.ListResult<ApiTypes.Card>> {
+    return this._get<ApiTypes.ListResult<ApiTypes.Card>>(`/users/by-handle/${encodeURIComponent(String(handle))}/cards`, params)
   }
   listMe(params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }): Promise<ApiTypes.ListResult<ApiTypes.Card>> {
     return this.listOwn(params)

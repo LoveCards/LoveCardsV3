@@ -12,15 +12,15 @@ final class ListRelations
     }
 
     /** @return array{data: array<int, mixed>, next_cursor: ?string, has_more: bool} */
-    public function followers(int $userId, ?string $cursor = null, int $limit = 20): array
+    public function followers(int $userId, ?string $cursor = null, int $limit = 20, array $excludedUserIds = []): array
     {
-        return $this->page($this->repository->listFollowers($userId, $cursor, $this->limit($limit)));
+        return $this->page($this->repository->listFollowers($userId, $cursor, $this->limit($limit), $excludedUserIds));
     }
 
     /** @return array{data: array<int, mixed>, next_cursor: ?string, has_more: bool} */
-    public function following(int $userId, ?string $cursor = null, int $limit = 20): array
+    public function following(int $userId, ?string $cursor = null, int $limit = 20, array $excludedUserIds = []): array
     {
-        return $this->page($this->repository->listFollowing($userId, $cursor, $this->limit($limit)));
+        return $this->page($this->repository->listFollowing($userId, $cursor, $this->limit($limit), $excludedUserIds));
     }
 
     private function limit(int $limit): int

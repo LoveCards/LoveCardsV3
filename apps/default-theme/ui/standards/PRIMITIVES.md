@@ -1,6 +1,6 @@
 # LoveCards Primitive Components
 
-> v1.1 · 施工前冻结。通用组件负责行为和状态；Feed Card 的内容轮廓归 [`CARD-SYSTEM.md`](./CARD-SYSTEM.md)，模式注册归 [`../docs/registries/CARD-PATTERNS.md`](../docs/registries/CARD-PATTERNS.md)。
+> v1.2 · 施工前冻结。通用组件负责行为和状态；完整组件选型见 [`../docs/registries/ASTRYX-COMPONENTS.md`](../docs/registries/ASTRYX-COMPONENTS.md)，Feed Card 的内容轮廓归 [`CARD-SYSTEM.md`](./CARD-SYSTEM.md)。
 
 ## 通用状态契约
 
@@ -52,6 +52,16 @@
 
 Avatar 24/32/36/48px 分级，图片失败必须有稳定 Fallback；官方、创作者、社区身份使用独立 Badge。Badge 只承载短状态（官方、置顶、GIF、广告、待审核），不能把所有元数据做成彩色胶囊。
 
+`AuthorIdentity` 是卡片作者的唯一身份原语：头像与用户名由同一个语义化链接包裹，地址为 `/user/{username}`，链接支持 Tab/Enter，并使用全局 Focus Visible ring。只有后端返回非空且有效的 username/handle 时生成链接；展示昵称、数字用户 ID、“未知用户”或注销状态都不能推导主页地址。无有效 handle 时保留同尺寸的普通头像与文本，避免布局跳变。
+
+身份入口不以容器类型为边界：信息流卡片、详情作者栏、评论与回复、收藏记录以及关系列表中，只要同时出现用户头像或用户名，就复用相同主页入口和无效 handle 降级规则。评论操作菜单、回复按钮与身份链接保持独立热区。
+
+统一身份行为不等于统一排版。运行实现固定使用四个变体：`compact` 用于信息流与作品元数据；`byline` 用于详情作者栏；`comment` 保留 32px 左头像及右侧用户名、时间、正文阅读轴；`list` 用于关系、收藏与会话列表。变体只能调整头像尺寸、间距和元数据排列，不能改变主页地址、键盘行为或无效 handle 降级规则。
+
+会话行采用合法的双路径结构：`AuthorIdentity` 进入用户主页，“进入会话”作为兄弟链接打开对话。搜索 Typeahead 是单动作 Listbox，内容结果中的作者仅作为说明文字；用户主页入口应作为独立用户结果出现，禁止在 `option` 内嵌第二个链接。
+
+当卡片正文可进入详情时，`AuthorIdentity` 与正文链接必须是兄弟热区，不允许用整卡 `<a>` 包住作者、菜单或操作控件。作者链接的点击事件不得冒泡到卡片详情；触控端头像与用户名共享连续命中区，不能与更多菜单或统计区域重叠。
+
 ## Overlay
 
 - Dropdown/MoreMenu：项目级动作，项高 ≥40px，破坏性动作分组。
@@ -64,14 +74,16 @@ Avatar 24/32/36/48px 分级，图片失败必须有稳定 Fallback；官方、�
 
 ## Feedback
 
-- Toast：只提示已完成且不需立即处理的短反馈；错误优先 Inline Message/Banner。
+- FieldStatus：字段和文件值的校验反馈；不承担网络、权限或页面错误。
+- Banner：页面、Section 或任务区的持续信息；error 在问题解决前保留，同类信息不堆叠。
+- Toast：只提示已完成且不需立即处理的短反馈；关键失败、表单验证和需要行动的信息不能使用 Toast。
 - Progress：已知进度；Spinner：短未知等待；Skeleton：复制最终结构并保留媒体比例。
-- Empty：标题 + 原因 + 一个下一步，不写完“暂无数据”就结束。
-- Banner/Message：原因、范围和恢复动作相邻显示；禁止彩色粗侧条。
+- Empty：只表示成功加载后的零数据，标题 + 原因 + 一个下一步；403、404、删除和网络失败使用 ResourceState。
+- 完整选择矩阵和头像上传流程见 [`../docs/specifications/FEEDBACK-AND-STATUS.md`](../docs/specifications/FEEDBACK-AND-STATUS.md)。
 
 ## Astryx mapping
 
-施工时优先映射到 Astryx：Button/IconButton、TextInput/TextArea/Field、TabList/SegmentedControl、Selector/Typeahead、CheckboxInput/RadioList/Switch、Avatar/Badge、MoreMenu/Popover/Tooltip、Dialog/Overlay、Toast/Banner/Skeleton/EmptyState、AppShell/TopNav。LoveCards 只维护 Theme、Primitive policy 和 Community Pattern，默认不复制或 swizzle Astryx Core。
+施工时按 [`ASTRYX-COMPONENTS.md`](../docs/registries/ASTRYX-COMPONENTS.md) 的 `adopt/compose/defer/avoid` 状态选型。LoveCards 只维护 Theme、Primitive policy 和 Community Pattern，默认不复制或 swizzle Astryx Core；当前实现 API 以锁定的 `@astryxdesign/core@0.3.0` 本地文档为准。
 
 ## 验收
 

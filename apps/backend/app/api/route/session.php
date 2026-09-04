@@ -11,6 +11,7 @@ use app\modules\Platform\Auth\Transport\Api\AuthPolicyResource;
 use app\modules\Platform\Auth\Transport\Api\SessionResource;
 use app\modules\Platform\Auth\Transport\Api\Recovery as RecoveryValidate;
 use app\shared\Transport\Http\ApiResource;
+use app\modules\Platform\Auth\Transport\Api\CurrentUserSessionResource;
 
 // ─── 公开路由 ───
 Route::post('session/login', 'User.Session/login')
@@ -59,3 +60,17 @@ Route::group('session', function () {
     ->setOption('contract', ['request' => null, 'response' => ['resource' => SessionResource::class, 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => 'Token校验', 'group' => '认证', 'access' => ['auth' => 'required']]);
 })->middleware(JwtAuthCheck::class);
+
+Route::get('me/sessions', 'User.Session/listSessions')->name('session.listSessions')
+    ->setOption('contract', ['request' => null, 'response' => ['resource' => CurrentUserSessionResource::class, 'shape' => 'collection', 'status' => 200]])
+    ->setOption('meta', ['name' => '我的登录会话', 'group' => '认证', 'access' => ['auth' => 'required']])
+    ->middleware(JwtAuthCheck::class);
+Route::delete('me/sessions/:sessionId', 'User.Session/revokeSession')->name('session.revokeSession')
+    ->pattern(['sessionId' => '[a-f0-9]{32}'])
+    ->setOption('contract', ['request' => null, 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
+    ->setOption('meta', ['name' => '撤销我的登录会话', 'group' => '认证', 'access' => ['auth' => 'required']])
+    ->middleware(JwtAuthCheck::class);
+Route::post('me/sessions/revoke-others', 'User.Session/revokeOthers')->name('session.revokeOthers')
+    ->setOption('contract', ['request' => null, 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
+    ->setOption('meta', ['name' => '撤销其他登录会话', 'group' => '认证', 'access' => ['auth' => 'required']])
+    ->middleware(JwtAuthCheck::class);

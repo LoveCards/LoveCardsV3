@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Icon } from '../../ui/icons.jsx';
 import { removeSavedItem, saveCard } from '../../services/community-service.js';
+import { getUserFacingError } from '../../app/user-facing-error.js';
 
 export function useCardSave({ cardId, source = 'live', isAuthenticated = false, isSaved = false, isStatic = false, onRequireLogin, onFeedback, onSavedChange }) {
   const [saved, setSaved] = useState(Boolean(isSaved));
@@ -26,7 +27,7 @@ export function useCardSave({ cardId, source = 'live', isAuthenticated = false, 
       return true;
     }
     catch (error) {
-      onFeedback?.(error?.message || '收藏失败，请稍后重试', 'error');
+      onFeedback?.(getUserFacingError(error, { fallback: next ? '内容暂时没有收藏，请稍后重试。' : '暂时无法取消收藏，请稍后重试。' }), 'error');
       return false;
     } finally {
       setBusy(false);

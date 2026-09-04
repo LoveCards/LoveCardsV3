@@ -647,12 +647,12 @@ namespace
                 return [];
             }
 
-            public function fileIdsForResource(string $resourceType, string $resourceId): array
+            public function fileIdsForResource(string $resourceType, string $resourceId, ?string $purpose = null): array
             {
                 return [];
             }
 
-            public function fileIdsForResources(string $resourceType, array $resourceIds): array
+            public function fileIdsForResources(string $resourceType, array $resourceIds, ?string $purpose = null): array
             {
                 return [];
             }

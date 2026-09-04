@@ -14,6 +14,8 @@ use app\modules\Platform\Eventing\Domain\DeliveryOutcome;
 use app\modules\Platform\Eventing\Public\DeliveryContext;
 use app\modules\Platform\Eventing\Public\HandlerRegistration;
 use app\modules\Platform\Eventing\Public\HandlerRegistry;
+use app\shared\Observability\LogContext;
+use app\shared\Observability\LogContextScope;
 
 final class DeliveryProcessor
 {
@@ -22,19 +24,22 @@ final class DeliveryProcessor
     private HandlerRegistry $handlers;
     private Clock $clock;
     private FailureSanitizer $sanitizer;
+    private LogContextScope $logContext;
 
     public function __construct(
         OutboxEventRepository $events,
         DeliveryRepository $deliveries,
         HandlerRegistry $handlers,
         Clock $clock,
-        FailureSanitizer $sanitizer
+        FailureSanitizer $sanitizer,
+        LogContextScope $logContext
     ) {
         $this->events = $events;
         $this->deliveries = $deliveries;
         $this->handlers = $handlers;
         $this->clock = $clock;
         $this->sanitizer = $sanitizer;
+        $this->logContext = $logContext;
     }
 
     public function process(ClaimedDelivery $delivery): string
@@ -68,6 +73,22 @@ final class DeliveryProcessor
                 true
             );
         }
+        if ($delivery->attemptCount() > $registration->maxAttempts()) {
+            return $this->fail(
+                $delivery,
+                $registration,
+                new \RuntimeException('Delivery 超过最大尝试次数后被重新领取'),
+                true
+            );
+        }
+
+        $this->logContext->set(LogContext::start(null, $event->correlationId(), [
+            'event.id' => $delivery->eventId(),
+            'event.type' => $event->eventType(),
+            'delivery.id' => $delivery->id(),
+            'delivery.handler' => $delivery->handlerKey(),
+            'event.causation_id' => $event->causationId(),
+        ]));
 
         try {
             $registration->handler()->handle(
@@ -86,6 +107,8 @@ final class DeliveryProcessor
                 $exception,
                 $delivery->attemptCount() >= $registration->maxAttempts()
             );
+        } finally {
+            $this->logContext->clear();
         }
 
         $completed = $this->deliveries->complete(

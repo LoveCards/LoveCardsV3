@@ -7,9 +7,13 @@ import {
   classifyCommunityError,
   dedupeByStableId,
   ensureClientMessageId,
+  getUnreadNotificationCount,
+  listNotifications,
+  listPublicCardsByUser,
   listDrafts,
   draftSummary,
   markNotificationRead,
+  markAllNotificationsRead,
   normalizeCollection,
   normalizeDraftPayload,
   parseNotificationSseSnapshot,
@@ -100,20 +104,67 @@ describe('community SDK adapter', () => {
     expect(list).toHaveBeenCalledOnce();
   });
 
+  it('normalizes public card pagination and clamps page size to the backend limit', async () => {
+    const listPublicByUser = vi.fn().mockResolvedValue({ data: [] });
+    sdk.getSdkClient.mockReturnValue({ cards: { listPublicByUser } });
+
+    await listPublicCardsByUser('123456789012', { page: '0', list_rows: 999 });
+    expect(listPublicByUser).toHaveBeenCalledWith('123456789012', { page: 1, list_rows: 100 });
+
+    await listPublicCardsByUser('123456789012', { page: '-2', list_rows: 0 });
+    expect(listPublicByUser).toHaveBeenLastCalledWith('123456789012', { page: 1, list_rows: 1 });
+  });
+
+  it('passes engagement filters and opaque cursors to the generated SDK resource', async () => {
+    const list = vi.fn().mockResolvedValue({ data: [], next_cursor: null, has_more: false });
+    sdk.getSdkClient.mockReturnValue({ notifications: { list } });
+    const cursor = 'opaque:created=2026-08-22T10%3A00%3A00Z&id=91';
+    await listNotifications({ cursor, limit: 20, category: 'engagement' });
+    expect(list).toHaveBeenCalledWith({ cursor, limit: 20, category: 'engagement' });
+  });
+
+  it('scopes unread and read-all operations to the active notification category', async () => {
+    const unread = vi.fn().mockResolvedValue({ unread: 3 });
+    const readAll = vi.fn().mockResolvedValue(undefined);
+    sdk.getSdkClient.mockReturnValue({ notifications: { unread, readAll } });
+
+    await expect(getUnreadNotificationCount({ category: 'engagement' })).resolves.toEqual({ unread: 3 });
+    await expect(markAllNotificationsRead({ category: 'system' })).resolves.toBeUndefined();
+    expect(unread).toHaveBeenCalledWith({ category: 'engagement' });
+    expect(readAll).toHaveBeenCalledWith({ category: 'system' });
+  });
+
+  it('loads public cards by canonical handle and normalizes each CardResource', async () => {
+    const listPublicByUser = vi.fn().mockResolvedValue({
+      data: [{ id: 24, user_id: 7, username: 'forest', content: '公开内容', pictures: [], goods: 3, comments: 2 }],
+      pagination: { currentPage: 1, totalItems: 1 },
+    });
+    sdk.getSdkClient.mockReturnValue({ cards: { listPublicByUser } });
+    const result = await listPublicCardsByUser('123456789012', { page: 2, list_rows: 12 });
+    expect(listPublicByUser).toHaveBeenCalledWith('123456789012', { page: 2, list_rows: 12 });
+    expect(result.data[0]).toMatchObject({ id: '24', author: 'forest', authorHandle: 'forest', likes: 3, replies: 2 });
+  });
+
+  it('does not invent a public-card request when the SDK capability is absent', async () => {
+    sdk.getSdkClient.mockReturnValue({ cards: {} });
+    await expect(listPublicCardsByUser('123456789012')).rejects.toMatchObject({ code: 'community_capability_unavailable', capability: 'cards.listPublicByUser' });
+  });
+
   it('derives draft labels from body content and payload type', () => {
     expect(normalizeDraftPayload('{"publishType":"video"}')).toEqual({ publishType: 'video' });
     expect(normalizeDraftPayload('not json')).toEqual({});
     expect(draftSummary({ content: '  第一行标题\n第二行正文', payload: '{}' })).toBe('第一行标题');
     expect(draftSummary({ content: '', payload: { publishType: 'video' } })).toBe('视频草稿');
+    expect(draftSummary({ content: '   ', payload: { publishType: 'image' } })).toBe('图文草稿');
     expect(draftSummary({ content: '', payload: { kind: 'gallery' } })).toBe('图文草稿');
   });
 
   it('sends the message idempotency fields required by the SDK contract', async () => {
     const send = vi.fn().mockResolvedValue({ id: 8 });
     sdk.getSdkClient.mockReturnValue({ messages: { send } });
-    await sendMessage({ recipientId: 12, body: ' hello ', clientMessageId: 'stable-id' });
+    await sendMessage({ recipientUid: '123456789012', body: ' hello ', clientMessageId: 'stable-id' });
     expect(send).toHaveBeenCalledWith({
-      recipient_id: 12,
+      recipient_uid: '123456789012',
       body: 'hello',
       client_message_id: 'stable-id',
     });
@@ -122,8 +173,8 @@ describe('community SDK adapter', () => {
   it('rejects invalid message parameters before calling the SDK', async () => {
     const send = vi.fn();
     sdk.getSdkClient.mockReturnValue({ messages: { send } });
-    expect(() => sendMessage({ recipientId: 'invalid', body: 'hello' })).toThrow('收件人');
-    expect(() => sendMessage({ recipientId: 12, body: '   ' })).toThrow('消息内容不能为空');
+    expect(() => sendMessage({ recipientUid: 'invalid', body: 'hello' })).toThrow('收件人');
+    expect(() => sendMessage({ recipientUid: '123456789012', body: '   ' })).toThrow('消息内容不能为空');
     expect(send).not.toHaveBeenCalled();
   });
 

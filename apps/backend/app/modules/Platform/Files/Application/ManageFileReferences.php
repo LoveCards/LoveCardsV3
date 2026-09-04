@@ -37,17 +37,17 @@ final class ManageFileReferences
     }
 
     /** @return int[] */
-    public function fileIds(string $resourceType, string $resourceId): array
+    public function fileIds(string $resourceType, string $resourceId, ?string $purpose = null): array
     {
-        return $this->references->fileIdsForResource($resourceType, $resourceId);
+        return $this->references->fileIdsForResource($resourceType, $resourceId, $purpose);
     }
 
     /**
      * @param string[] $resourceIds
      * @return array<string,int[]>
      */
-    public function fileIdsForResources(string $resourceType, array $resourceIds): array
+    public function fileIdsForResources(string $resourceType, array $resourceIds, ?string $purpose = null): array
     {
-        return $this->references->fileIdsForResources($resourceType, $resourceIds);
+        return $this->references->fileIdsForResources($resourceType, $resourceIds, $purpose);
     }
 }

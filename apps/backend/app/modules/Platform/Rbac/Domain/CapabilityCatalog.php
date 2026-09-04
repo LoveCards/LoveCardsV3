@@ -29,8 +29,12 @@ final class CapabilityCatalog
             'comments.read'         => '查看评论',
             'comments.read.all'     => '查看全部评论',
             'comments.create'       => '创建评论',
-            'comments.update'       => '编辑自己的评论',
-            'comments.update.all'   => '编辑任意评论',
+            'comments.update'       => '编辑评论正文',
+            'comments.update.all'   => '编辑任意评论正文',
+            'comments.moderate'     => '审核评论',
+            'comments.moderate.all' => '审核任意评论',
+            'comments.pin'          => '置顶评论',
+            'comments.pin.all'      => '置顶任意卡片的评论',
             'comments.delete'       => '删除自己的评论',
             'comments.delete.all'   => '删除任意评论',
             // Tags
@@ -143,5 +147,15 @@ final class CapabilityCatalog
     public static function scopesFor(string $capability): array
     {
         return array_key_exists($capability . '.all', self::all()) ? ['own', 'all'] : ['global'];
+    }
+
+    /** Return copy that describes the concrete grant, not only its canonical name. */
+    public static function descriptionFor(string $capability, string $scope): string
+    {
+        $catalog = self::all();
+        $key = $scope === 'all' && array_key_exists($capability . '.all', $catalog)
+            ? $capability . '.all'
+            : $capability;
+        return (string) ($catalog[$key] ?? $capability);
     }
 }

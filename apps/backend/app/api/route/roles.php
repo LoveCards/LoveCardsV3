@@ -50,7 +50,7 @@ Route::group('admin/roles', function () {
 
 Route::post('admin/roles/batch', 'Rbac.Roles/batch')
     ->name('roles.batch')
-    ->setOption('contract', ['request' => ['validate' => BatchOperationInput::class, 'scene' => 'BatchOperate'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
+    ->setOption('contract', ['request' => ['validate' => BatchOperationInput::class, 'scene' => 'AdminBatchOperate'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
     ->middleware(JwtAuthCheck::class)
     ->middleware(PermissionCheck::class)
     ->setOption('meta', ['name' => '角色批量操作', 'group' => '角色', 'access' => ['auth' => 'required', 'allOf' => [['capability' => 'admin.access', 'scope' => 'global'], ['capability' => 'roles.delete', 'scope' => 'global']]]]);

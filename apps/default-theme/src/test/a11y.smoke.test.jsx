@@ -14,7 +14,7 @@ function buttonsWithoutNames(markup) {
 }
 
 describe('accessibility smoke', () => {
-  for (const path of ['/', '/explore', '/missing']) {
+  for (const path of ['/', '/explore', '/compose', '/drafts', '/settings/appearance', '/settings/security', '/settings/privacy', '/settings/session', '/missing']) {
     it(`${path} has one main landmark and one h1`, () => {
       const html = renderRoute(path);
       expect(count(html, /<main\b/g)).toBe(1);

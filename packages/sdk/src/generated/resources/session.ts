@@ -3,6 +3,15 @@ import type * as ApiTypes from '../../types'
 
 /** Generated from contracts/openapi.json. Do not edit manually. */
 export class Session extends BaseResource {
+  listSessions(): Promise<ApiTypes.CurrentUserSession[]> {
+    return this._get<ApiTypes.CurrentUserSession[]>("/me/sessions")
+  }
+  revokeSession(sessionId: string): Promise<void> {
+    return this._delete<void>(`/me/sessions/${encodeURIComponent(String(sessionId))}`)
+  }
+  revokeOthers(): Promise<void> {
+    return this._post<void>("/me/sessions/revoke-others")
+  }
   captcha(data: { account: string }): Promise<void> {
     return this._post<void>("/session/captcha", data)
   }

@@ -50,7 +50,7 @@ Module/
 - Domain 不依赖 ThinkPHP、ORM、HTTP、缓存、JWT 或第三方 SDK。
 - Contract 不依赖 Transport、ORM 或 Infrastructure。
 - Files 依赖 Storage 的公开存储能力；Storage 不依赖 Files。
-- Messaging 通过 Notifications 的稳定通知入口产生收件提醒；Social 通过 Eventing 传播 `social.followed`，不能直接写通知表。
+- Messaging 与 Social 分别通过 Eventing 传播 `message.sent`、`social.followed`，再由 Notifications Handler 投影收件提醒；业务模块不能直接写通知表。
 - Eventing 只认识 EventEnvelope、Registry 与 Port；业务 Handler 位于拥有副作用的目标模块 Infrastructure。
 - SystemLifecycle 通过 Contract 操作 Release、Migration、Backup、Lease、Pointer 和 Runtime，Domain 不依赖 ZIP、PDO、文件系统或 ThinkPHP。
 - Content 的跨 Cards/Comments/Tags/Likes 一致性由 Content 协调用例负责，禁止子模块互相直接写对方 Model。

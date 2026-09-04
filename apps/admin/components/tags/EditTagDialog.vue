@@ -1,120 +1,150 @@
 <template>
-	<!-- 编辑用户对话框 -->
-	<v-dialog v-model="thisDialogState" max-width="800">
-		<v-card prepend-icon="mdi-file-edit" title="修改标签">
-			<v-card-text>
-				<v-row dense>
-					<v-col cols="6" sm="3">
-						<v-text-field label="用户ID" v-model="EditTagData.edit.user_id" variant="underlined" color="accent"
-							readonly></v-text-field>
-					</v-col>
-					<v-col cols="6" sm="3">
-						<v-text-field label="应用ID" v-model="EditTagData.edit.aid" variant="underlined" color="accent"
-							readonly></v-text-field>
-					</v-col>
-					<v-col cols="12" sm="6">
-						<v-text-field label="发布时间" v-model="EditTagData.edit.created_at" variant="underlined" color="accent"
-							readonly></v-text-field>
-					</v-col>
-					<v-col cols="12" sm="6">
-						<v-text-field label="标签名" v-model="EditTagData.edit.name" variant="underlined"
-							color="accent"></v-text-field>
-					</v-col>
-					<v-col cols="12" sm="6">
-						<v-select label="状态" item-title="title" item-value="value" v-model="EditTagData.edit.status"
-							:items="SelectUtils.Common.Status" variant="underlined" color="accent"></v-select>
-					</v-col>
+  <v-dialog v-model="thisDialogState" :aria-label="panelTitle" max-width="680" :persistent="saving">
+    <v-card prepend-icon="mdi-tag-edit-outline" :title="panelTitle">
+      <v-card-text class="pt-4">
+        <v-progress-linear v-if="loading" class="mb-4" indeterminate />
+        <v-alert v-if="loadError" class="mb-4" role="alert" type="error" variant="tonal">
+          {{ loadError }}
+          <template #append><v-btn variant="outlined" @click="loadTag">重试</v-btn></template>
+        </v-alert>
+        <v-alert v-else-if="!canUpdateTag" class="mb-4" type="info" variant="tonal">
+          当前账号只有查看权限，标签名称和状态保持只读。
+        </v-alert>
+        <v-alert v-if="formError && !loadError" class="mb-4" role="alert" type="error" variant="tonal">
+          {{ formError }}
+        </v-alert>
 
-					<v-col cols="12">
+        <v-list bg-color="surface-variant" class="mb-4" density="compact" rounded="lg">
+          <v-row dense>
+            <v-col cols="12" sm="4">
+              <v-list-item prepend-icon="mdi-account-outline" subtitle="创建用户 ID" :title="displayValue(editTagData.edit.user_id)" />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-list-item prepend-icon="mdi-application-outline" subtitle="应用 ID" :title="displayValue(editTagData.edit.aid)" />
+            </v-col>
+            <v-col cols="12" sm="4">
+              <v-list-item prepend-icon="mdi-clock-outline" subtitle="创建时间" :title="displayValue(editTagData.edit.created_at)" />
+            </v-col>
+          </v-row>
+        </v-list>
 
-					</v-col>
-				</v-row>
-				<!-- <small class="text-caption text-medium-emphasis"> * 为必填字段</small> -->
-			</v-card-text>
+        <v-row v-if="!loading && !loadError" dense>
+          <v-col cols="12" sm="7">
+            <v-text-field
+              v-model="editTagData.edit.name"
+              :disabled="saving || !canUpdateTag"
+              density="comfortable"
+              label="标签名称"
+              maxlength="50"
+              required
+              variant="outlined"
+            />
+          </v-col>
+          <v-col cols="12" sm="5">
+            <v-select
+              v-model="editTagData.edit.status"
+              :disabled="saving || !canUpdateTag"
+              density="comfortable"
+              item-title="title"
+              item-value="value"
+              :items="SelectUtils.Common.Status"
+              label="标签状态"
+              variant="outlined"
+            />
+          </v-col>
+        </v-row>
 
-			<v-divider></v-divider>
-
-			<v-card-actions>
-				<v-spacer></v-spacer>
-				<v-btn color="accent" text="取消" variant="text" @click="thisDialogState = false"></v-btn>
-				<v-btn color="accent" text="保存" variant="flat" @click="viewSubmitEditComment()"></v-btn>
-			</v-card-actions>
-		</v-card>
-	</v-dialog>
+      </v-card-text>
+      <v-divider />
+      <v-card-actions class="pa-4">
+        <v-spacer />
+        <v-btn :disabled="saving" variant="text" @click="thisDialogState = false">{{ canUpdateTag ? '取消' : '关闭' }}</v-btn>
+        <v-btn v-if="canUpdateTag" color="primary" :disabled="!canSubmit || loading || Boolean(loadError)" :loading="saving" variant="flat" @click="submit">
+          保存修改
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
-import CommonUtils from "~/utils/common";
-import { useApi } from '~/lib/api';
-import { useAdminNotifier } from '~/composables/useAdminNotifier';
-import SelectUtils from "~/utils/select";
-import type { Tag } from '@lovecards/sdk';
-const client = useApi();
-const notifier = useAdminNotifier();
+import type { Tag } from '@lovecards/sdk'
+import { isApiError, useApi } from '~/lib/api'
+import { useAdminNotifier } from '~/composables/useAdminNotifier'
+import { useUserStore } from '~/stores/userStore'
+import CommonUtils from '~/utils/common'
+import SelectUtils from '~/utils/select'
 
-//Props
-const props = defineProps({
-	getTableData: Function
-});
-const getTableData = () => {
-	if (props.getTableData) {
-		props.getTableData();
-	}
-};
+type UpdateTagInput = { name?: string; status?: number }
 
-//Model
-//对话框状态
-const thisDialogState = defineModel<boolean>('thisDialogState');
-const TagData = defineModel<Tag | null>('TagData');
-const emptyTag = {} as Tag;
-const EditTagData = ref<{ edit: Tag; origin: Tag }>({ edit: emptyTag, origin: emptyTag });
-type UpdateTagInput = { aid?: number; user_id?: number; name?: string; status?: number };
+const client = useApi()
+const notifier = useAdminNotifier()
+const userStore = useUserStore()
+const canUpdateTag = computed(() => userStore.hasGrant('tags.update', 'all'))
+const panelTitle = computed(() => canUpdateTag.value ? '编辑标签' : '查看标签')
+const props = defineProps<{ getTableData?: () => unknown }>()
+const thisDialogState = defineModel<boolean>('thisDialogState', { default: false })
+const TagData = defineModel<Tag | null>('TagData')
+const emptyTag = {} as Tag
+const editTagData = ref<{ edit: Tag; origin: Tag }>({ edit: emptyTag, origin: emptyTag })
+const saving = ref(false)
+const loading = ref(false)
+const loadError = ref('')
+const formError = ref('')
+const canSubmit = computed(() => !saving.value && Boolean(editTagData.value.edit.name?.trim()))
+const displayValue = (value: unknown) => value === undefined || value === null || value === '' ? '—' : String(value)
 
-//页面操作提交修改
-const viewSubmitEditComment = () => {
-	patchComment().then((response) => {
-		thisDialogState.value = false;
-		getTableData();
-	}).catch((error) => {
-		if (error.notifier) {
-			notifier.toast(error.notifier);
-		}
-	});
-};
-
-//API
-//数据
-const patchComment = () => {
-	//多次一举是因为没办法比较，主要是mysql输出的json和js的json转字符串格式不一样
-	if (!EditTagData.value.edit.id) return Promise.reject(new Error('标签数据尚未加载'));
-	const editTagData = CommonUtils.deepClone(EditTagData.value.edit);
-	const originTagData = CommonUtils.deepClone(EditTagData.value.origin);
-	const editInput: UpdateTagInput = { aid: editTagData.aid, user_id: editTagData.user_id, name: editTagData.name, status: editTagData.status };
-	const originInput: UpdateTagInput = { aid: originTagData.aid, user_id: originTagData.user_id, name: originTagData.name, status: originTagData.status };
-	//清除不需要提交的属性
-	const params = CommonUtils.removeCommonProperties(editInput, originInput);
-
-	if (Object.keys(params).length === 0) {
-		return Promise.reject({
-			notifier: {
-				text: "请修改后再提交",
-				type: "warning",
-			}
-		});
-	}
-	//返回原生Promise
-  return client.tags.updateManaged(editTagData.id, params);
+const loadTag = async () => {
+  const id = Number(TagData.value?.id)
+  if (!Number.isInteger(id) || id < 1) {
+    loadError.value = '标签 ID 无效。'
+    return
+  }
+  loading.value = true
+  loadError.value = ''
+  formError.value = ''
+  try {
+    const tag = await client.tags.getManaged(id)
+    editTagData.value = {
+      origin: CommonUtils.deepClone(tag),
+      edit: CommonUtils.deepClone(tag),
+    }
+  } catch (cause) {
+    loadError.value = isApiError(cause) ? cause.message : '无法加载标签详情，请稍后重试。'
+  } finally {
+    loading.value = false
+  }
 }
 
-//数据初始化
-watch(thisDialogState, (newValue, oldValue) => {
-	if (newValue) {
-		if (TagData.value) {
-			EditTagData.value = {
-				origin: CommonUtils.deepClone(TagData.value),
-				edit: CommonUtils.deepClone(TagData.value),
-			};
-		}
-	}
-});
+const submit = async () => {
+  if (!canSubmit.value || !editTagData.value.edit.id) return
+  const editInput: UpdateTagInput = {
+    name: editTagData.value.edit.name.trim(),
+    status: editTagData.value.edit.status,
+  }
+  const originInput: UpdateTagInput = {
+    name: editTagData.value.origin.name,
+    status: editTagData.value.origin.status,
+  }
+  const params = CommonUtils.removeCommonProperties(editInput, originInput)
+  if (Object.keys(params).length === 0) {
+    notifier.warning('请修改后再提交')
+    return
+  }
+  saving.value = true
+  formError.value = ''
+  try {
+    await client.tags.updateManaged(editTagData.value.edit.id, params)
+    thisDialogState.value = false
+    await props.getTableData?.()
+  } catch (cause) {
+    formError.value = isApiError(cause) ? cause.message : '标签保存失败，请检查字段后重试。'
+  } finally {
+    saving.value = false
+  }
+}
+
+watch(thisDialogState, (open) => {
+  if (open) void loadTag()
+})
 </script>

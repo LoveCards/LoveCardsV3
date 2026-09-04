@@ -81,22 +81,22 @@ try {
 
   await client.library.remove({ resource_type: 'card', resource_id: '24' })
   await client.likes.unlike(27, { type: 'card' })
-  await client.notifications.list({ cursor: 'notice-cursor', limit: 15, unread_only: true })
+  await client.notifications.list({ cursor: 'opaque:created=2026-08-22T10%3A00%3A00Z&id=91', limit: 15, unread_only: true, type: 'content.card_liked', category: 'engagement' })
   await client.messages.list(31, { cursor: 'message-cursor', limit: 20 })
   await client.library.save({ resource_type: 'card', resource_id: '25' })
   await client.drafts.update(41, { title: 'Draft', content: 'Body', payload: { revision: 2 } })
   await client.files.listManaged({ search_keys: ['name', 'original_name'], order_desc: true })
   await client.operations.deliveries({ status: 'failed', worker_type: 'notification' })
-  await client.operations.retryDelivery(52, { reason: 'manual retry' })
-  await client.operations.runMigrations({ reason: 'verified rollout' })
+  await client.operations.retryDelivery(52)
+  await client.operations.runMigrations()
   await client.reports.transition(61, { status: 'resolved', resolution: 'policy_applied', note: 'reviewed' })
-  await client.users.revokeSession(7, 'session-9', { reason: 'account recovery' })
+  await client.users.revokeSession(7, 'session-9')
   const stream = await client.notifications.stream({ after: 9 })
   await client.library.history()
   await client.library.history_record({ resource_type: 'card', resource_id: '26' })
   await client.library.history_clear()
-  await client.notifications.unread()
-  await client.notifications.readAll()
+  await client.notifications.unread({ category: 'engagement' })
+  await client.notifications.readAll({ category: 'system' })
   await client.notifications.read({ ids: [1, 2] })
   await client.messages.conversations()
   await client.messages.send({ recipient_id: 8, body: 'transport message', client_message_id: 'transport-1' })
@@ -105,8 +105,9 @@ try {
   await client.safety.preferences()
   await client.safety.preferences_update({ profile_visibility: 'public', messages_from: 'everyone', show_relations: true })
   await client.safety.report({ resource_type: 'card', resource_id: '26', reason: 'transport_test', details: 'fixture' })
+  await client.cards.listPublicByUser('123456789012', { page: 2, list_rows: 30 })
 
-  assert.equal(requests.length, 26)
+  assert.equal(requests.length, 27)
 
   assert.equal(requests[0].method, 'DELETE')
   assert.equal(requests[0].url.pathname, '/api/me/library')
@@ -118,7 +119,7 @@ try {
 
   assert.equal(requests[2].method, 'GET')
   assert.equal(requests[2].url.pathname, '/api/me/notifications')
-  assert.deepEqual(query(requests[2]), { cursor: 'notice-cursor', limit: '15', unread_only: 'true' })
+  assert.deepEqual(query(requests[2]), { cursor: 'opaque:created=2026-08-22T10%3A00%3A00Z&id=91', limit: '15', unread_only: 'true', type: 'content.card_liked', category: 'engagement' })
 
   assert.equal(requests[3].method, 'GET')
   assert.equal(requests[3].url.pathname, '/api/me/conversations/31/messages')
@@ -142,11 +143,11 @@ try {
 
   assert.equal(requests[8].method, 'POST')
   assert.equal(requests[8].url.pathname, '/api/admin/operations/deliveries/52/retry')
-  assert.deepEqual(body(requests[8]), { reason: 'manual retry' })
+  assert.equal(body(requests[8]), undefined)
 
   assert.equal(requests[9].method, 'POST')
   assert.equal(requests[9].url.pathname, '/api/admin/operations/migrations/run')
-  assert.deepEqual(body(requests[9]), { reason: 'verified rollout' })
+  assert.equal(body(requests[9]), undefined)
 
   assert.equal(requests[10].method, 'POST')
   assert.equal(requests[10].url.pathname, '/api/admin/reports/61/transition')
@@ -154,7 +155,7 @@ try {
 
   assert.equal(requests[11].method, 'POST')
   assert.equal(requests[11].url.pathname, '/api/admin/users/7/sessions/session-9/revoke')
-  assert.deepEqual(body(requests[11]), { reason: 'account recovery' })
+  assert.equal(body(requests[11]), undefined)
 
   assert.equal(requests[12].method, 'GET')
   assert.equal(requests[12].url.pathname, '/api/me/notifications/stream')
@@ -175,11 +176,11 @@ try {
 
   assert.equal(requests[16].method, 'GET')
   assert.equal(requests[16].url.pathname, '/api/me/notifications/unread')
-  assert.deepEqual(query(requests[16]), {})
+  assert.deepEqual(query(requests[16]), { category: 'engagement' })
 
   assert.equal(requests[17].method, 'POST')
   assert.equal(requests[17].url.pathname, '/api/me/notifications/read-all')
-  assert.deepEqual(body(requests[17]), undefined)
+  assert.deepEqual(body(requests[17]), { category: 'system' })
 
   assert.equal(requests[18].method, 'POST')
   assert.equal(requests[18].url.pathname, '/api/me/notifications/read')
@@ -213,7 +214,11 @@ try {
   assert.equal(requests[25].url.pathname, '/api/reports')
   assert.deepEqual(body(requests[25]), { resource_type: 'card', resource_id: '26', reason: 'transport_test', details: 'fixture' })
 
-  console.log('SDK localhost transport tests passed (26 requests).')
+  assert.equal(requests[26].method, 'GET')
+  assert.equal(requests[26].url.pathname, '/api/users/123456789012/cards')
+  assert.deepEqual(query(requests[26]), { page: '2', list_rows: '30' })
+
+  console.log('SDK localhost transport tests passed (27 requests).')
 } finally {
   if (server?.listening) {
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))

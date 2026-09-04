@@ -66,6 +66,9 @@ for (const [route, operations] of Object.entries(contract.paths)) {
     const parts = String(operation.operationId || '').split('.')
     const resource = className(parts[0] || 'Api')
     let methodName = parts[1] || operation.operationId
+    // Keep the public-card SDK verb aligned with the established list* API
+    // naming, while retaining the concise route operation id in contracts.
+    if (operation.operationId === 'cards.publicByUser') methodName = 'listPublicByUser'
     if (parts.length > 2 && parts[1] === 'me') {
       methodName = ({ get: 'me', update: 'updateMe', password: 'updatePassword', email: 'updateEmail', emailCaptcha: 'emailCaptcha' })[parts[2]] || parts[2]
     } else if (parts.length > 2) {

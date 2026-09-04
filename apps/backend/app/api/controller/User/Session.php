@@ -7,6 +7,7 @@ use app\api\controller\BaseController;
 use app\modules\Platform\Auth\Application\LoginUser;
 use app\modules\Platform\Auth\Application\RegisterUser;
 use app\modules\Platform\Auth\Application\Session as SessionService;
+use app\modules\Platform\Auth\Application\UserSessions;
 
 class Session extends BaseController
 {
@@ -93,6 +94,26 @@ class Session extends BaseController
         $token = request()->header('authorization') ?: request()->header('x-token', '');
         $token = preg_replace('/^Bearer\s+/', '', (string) $token);
         $this->session->logout($token);
+        return $this->respond();
+    }
+
+    public function listSessions()
+    {
+        $auth = request()->auth;
+        return $this->respond(app(UserSessions::class)->list((int) $auth->uid(), (string) $auth->sessionPublicId()));
+    }
+
+    public function revokeSession(string $sessionId)
+    {
+        $auth = request()->auth;
+        app(UserSessions::class)->revoke((int) $auth->uid(), (string) $auth->sessionPublicId(), $sessionId, request()->ip());
+        return $this->respond();
+    }
+
+    public function revokeOthers()
+    {
+        $auth = request()->auth;
+        app(UserSessions::class)->revokeOthers((int) $auth->uid(), (string) $auth->sessionPublicId(), request()->ip());
         return $this->respond();
     }
 }

@@ -68,6 +68,7 @@ assert.match(bootstrapSource, /\^lovecards_e2e_\[a-z0-9_\]\+\$/)
 assert.match(bootstrapSource, /127\.0\.0\.1.*localhost.*::1/s)
 assert.match(bootstrapSource, /Refusing to reuse an existing E2E database/)
 assert.match(bootstrapSource, /if \(\$databaseCreated && \$pdo instanceof PDO\)/)
+assert.match(bootstrapSource, /lc:system:migrate --contract/)
 
 const adminRunnerSource = await readFile(path.join(root, 'scripts/run-admin-e2e.mjs'), 'utf8')
 assert.match(adminRunnerSource, /let databaseCreated = false/)

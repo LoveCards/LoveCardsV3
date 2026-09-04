@@ -1,4 +1,17 @@
 // nuxt.config.ts
+const appEnvironment = process.env.NUXT_PUBLIC_APP_ENV || 'development'
+const configuredApiBase = process.env.NUXT_PUBLIC_API_BASE?.trim()
+const publicApiBase = configuredApiBase || '/api'
+
+if (appEnvironment === 'production') {
+    const isLoopback = /^(https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:\/|$)/i.test(publicApiBase)
+    const isRelative = publicApiBase.startsWith('/')
+    const isHttps = publicApiBase.startsWith('https://')
+    if (isLoopback || (!isRelative && !isHttps)) {
+        throw new Error('Production admin builds require NUXT_PUBLIC_API_BASE to be a relative /api path or an approved HTTPS URL.')
+    }
+}
+
 export default defineNuxtConfig({
     app: {
         baseURL: '/admin/',
@@ -6,14 +19,24 @@ export default defineNuxtConfig({
             title: 'LoveCards Admin',
         }
     },
-    css: ['@mdi/font/css/materialdesignicons.css'],
+    css: [
+        '@mdi/font/css/materialdesignicons.css',
+        '~/assets/admin-accessibility.css',
+    ],
+    // Shared admin primitives are intentionally addressable by their
+    // capability-oriented names (AdminPageHeader, AdminAsyncState, ...).
+    // Without this explicit directory entry Nuxt prefixes nested paths and
+    // legacy pages silently render the guards as unknown custom elements.
+    components: [
+        { path: '~/components/shared/admin', pathPrefix: false },
+    ],
     runtimeConfig: {
         public: {
             gitSha: 'localdev',
-            // The standalone admin preview has no Nuxt dev proxy. Keep the
-            // local backend reachable by default; deployments can override
-            // this with NUXT_PUBLIC_API_BASE at build time.
-            apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://127.0.0.1:6001/api',
+            environment: appEnvironment,
+            // A relative API path works for the backend-served admin bundle.
+            // Local Nuxt development is routed to the backend by nitro.devProxy.
+            apiBase: publicApiBase,
             matomoEnabled: false,
         }
     },
@@ -38,6 +61,13 @@ export default defineNuxtConfig({
         transpile: ['@lovecards/sdk'],
     },
     vite: {
+        // The SDK is already built and intentionally owns its transport.
+        // Excluding both packages prevents Vite's dev optimizer from walking
+        // workspace ancestors on Windows, where restricted user directories
+        // can otherwise abort an otherwise valid admin preview.
+        optimizeDeps: {
+            exclude: ['@lovecards/sdk', 'axios', 'lodash', 'lodash-es'],
+        },
         server: {
             watch: {
                 ignored: ['**/SDK/dist/**'],
@@ -76,9 +106,22 @@ export default defineNuxtConfig({
                     indigoTheme: {
                         dark: false,
                         colors: {
+                            background: "#F7F8FB",
+                            surface: "#FFFFFF",
+                            "surface-variant": "#F5F5F5",
+                            "on-background": "#212121",
+                            "on-surface": "#212121",
+                            "on-surface-variant": "#5F6368",
+                            outline: "#E0E0E0",
                             primary: "#3F51B5",
+                            "primary-darken-1": "#303F9F",
+                            "primary-container": "#E8EAF6",
+                            "on-primary": "#FFFFFF",
+                            "on-primary-container": "#303F9F",
                             secondary: "#FFC107",
-                            accent: "#FF4081",
+                            // Keep the legacy accent token aligned with the approved Indigo admin visual language.
+                            // Existing pages still use accent; mapping it here avoids a pink secondary brand.
+                            accent: "#3F51B5",
                             error: "#F44336",
                             info: "#2196F3",
                             success: "#43A047",

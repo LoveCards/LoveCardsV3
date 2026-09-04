@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Brand } from '../../components/Brand.jsx';
 import { requestAccountRecovery, resetAccountRecovery } from '../../services/community-service.js';
+import { getUserFacingError } from '../../app/user-facing-error.js';
 import { Button, FormLayout, TextInput } from '../../ui/index.js';
 
 const stepNumber = { identify: 1, verify: 2, reset: 3, done: 4 };
@@ -30,7 +31,7 @@ export function RecoveryFlowPage() {
     if (!account.trim() || busy) return;
     setBusy(true); setMessage('');
     try { const result = await requestAccountRecovery({ account: account.trim() }); setChallengeId(result?.challenge_id ?? null); const seconds = Math.max(60, Number(result?.expires_in) || 600); setExpiresAt(Date.now() + seconds * 1000); setNow(Date.now()); setStep('verify'); setMessage('如果账号可恢复，验证码已经发送。'); }
-    catch (error) { setMessage(error?.message || '暂时无法发起账号恢复。'); }
+    catch (error) { setMessage(getUserFacingError(error, { fallback: '账号恢复申请暂时没有提交，请稍后重试。', validationFallback: '账号信息不符合要求，请检查后重试。' })); }
     finally { setBusy(false); }
   };
   const reset = async (event) => {
@@ -38,7 +39,7 @@ export function RecoveryFlowPage() {
     if (busy || expired || !code.trim() || password.length < 8 || password !== passwordConfirm) return;
     setBusy(true); setMessage('');
     try { await resetAccountRecovery({ challenge_id: challengeId, code: code.trim(), password }); setStep('done'); setMessage('密码已重置，旧会话已经失效。'); }
-    catch (error) { setMessage(error?.message || '验证或重置失败，输入内容已保留。'); }
+    catch (error) { setMessage(getUserFacingError(error, { fallback: '密码暂时没有重置，输入内容已保留，请稍后重试。', validationFallback: '验证码或新密码不符合要求，请检查后重试。' })); }
     finally { setBusy(false); }
   };
   const restart = () => { setStep('identify'); setChallengeId(null); setCode(''); setPassword(''); setPasswordConfirm(''); setExpiresAt(0); setMessage(''); };

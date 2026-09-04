@@ -44,7 +44,9 @@ use app\modules\Platform\Safety\Infrastructure\ThinkDbReportTargetResolver;
 use app\modules\Platform\Safety\Contract\AdminReportRepository;
 use app\modules\Platform\Safety\Infrastructure\ThinkDbAdminReportRepository;
 use app\modules\Platform\Notifications\Contract\NotificationRepository;
+use app\modules\Platform\Notifications\Contract\SystemNoticeIssuer;
 use app\modules\Platform\Notifications\Infrastructure\ThinkOrmNotificationRepository;
+use app\modules\Platform\Notifications\Public\SystemNotifications;
 use app\modules\Platform\Messaging\Contract\MessagingRepository;
 use app\modules\Platform\Messaging\Contract\MessagePermission;
 use app\modules\Platform\Messaging\Contract\MessageNotifier;
@@ -139,6 +141,7 @@ return [
     ReportTargetResolver::class => ThinkDbReportTargetResolver::class,
     AdminReportRepository::class => ThinkDbAdminReportRepository::class,
     NotificationRepository::class => ThinkOrmNotificationRepository::class,
+    SystemNoticeIssuer::class => SystemNotifications::class,
     MessagingRepository::class => ThinkDbMessagingRepository::class,
     MessagePermission::class => SafetyMessagePermission::class,
     MessageNotifier::class => NotificationMessageNotifier::class,

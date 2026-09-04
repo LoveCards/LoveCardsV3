@@ -33,11 +33,11 @@ function SkeletonStory({ story }) {
   );
 }
 
-export function FeedSkeleton({ className = '', label = '内容加载中' }) {
+export function FeedSkeleton({ className = '', label = '内容加载中', count = skeletonStories.length }) {
   return (
     <section className={`feed-skeleton-grid feed-masonry ${className}`.trim()} aria-label={label} role="status">
       <span className="sr-only">{label}</span>
-      {skeletonStories.map((story, index) => <SkeletonStory story={story} key={`${story.kind}-${index}`} />)}
+      {skeletonStories.slice(0, Math.max(0, count)).map((story, index) => <SkeletonStory story={story} key={`${story.kind}-${index}`} />)}
     </section>
   );
 }

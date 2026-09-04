@@ -10,16 +10,24 @@ function dataMode() {
 
 function normalizeComment(comment) {
   if (!Number.isInteger(comment?.id) || !Number.isInteger(comment?.user_id)) throw new Error('SDK 契约错误：评论缺少有效 id 或 user_id。');
+  const authorUid = /^\d{12}$/.test(String(comment.uid || '').trim()) ? String(comment.uid).trim() : null;
+  const authorHandle = typeof comment.username === 'string' && comment.username.trim() ? comment.username.trim() : null;
+  const authorAvatar = typeof comment.avatar === 'string' && comment.avatar.trim() ? comment.avatar.trim() : null;
   return {
     id: comment.id,
     ownerId: comment.user_id,
-    author: `用户 ${comment.user_id}`,
+    authorUid,
+    author: authorHandle || `用户 ${comment.user_id}`,
+    authorHandle,
+    authorAvatar,
     content: String(comment.content || '').trim(),
+    mentions: Array.isArray(comment.mentions) ? comment.mentions : [],
     createdAt: comment.created_at || '',
     createdAtMs: Date.parse(comment.created_at || ''),
     likes: Number(comment.goods || 0),
     parentId: comment.parent_id ?? null,
     status: Number(comment.status ?? 0),
+    isPinned: comment.is_pinned === true,
   };
 }
 
@@ -91,7 +99,7 @@ export async function loadDetail({ id, commentId, signal }) {
     ? recordHistoryItem(numericId).catch(() => undefined)
     : Promise.resolve();
   try {
-    rawComments = await client.comments.cardList(numericId, { page: 1, list_rows: 50, order_key: 'created_at', order_desc: false });
+    rawComments = await client.comments.cardList(numericId, { page: 1, list_rows: 50 });
   } catch (error) {
     if (error?.status === 403) {
       await historyWrite;
@@ -120,4 +128,35 @@ export async function createDetailComment(cardId, content, parentId = null) {
     content: content.trim(),
     ...(Number.isInteger(numericParentId) && numericParentId > 0 ? { parent_id: numericParentId } : {}),
   });
+}
+
+export async function updateDetailCommentLike(commentId, liked) {
+  if (dataMode() !== 'api') throw new Error('当前模式不能修改评论喜欢状态。');
+  const client = getSdkClient();
+  if (!client?.getToken()) throw new Error('请先登录后再进行互动。');
+  const numericId = Number(commentId);
+  if (!Number.isInteger(numericId) || numericId <= 0) throw new Error('当前评论不可操作。');
+  if (liked) return client.comments.like(numericId);
+  await client.comments.unlike(numericId);
+  return undefined;
+}
+
+export function supportsUserCommentPinning() {
+  const comments = getSdkClient()?.comments;
+  return typeof comments?.pin === 'function' && typeof comments?.unpin === 'function';
+}
+
+export async function updatePinnedComment(cardId, commentId, pinned) {
+  if (dataMode() !== 'api') throw new Error('设计预览为只读，评论置顶不会保存。');
+  const client = getSdkClient();
+  if (!client?.getToken()) throw new Error('请先登录后再管理评论。');
+  const numericCardId = Number(cardId);
+  const numericCommentId = Number(commentId);
+  if (!Number.isInteger(numericCardId) || numericCardId <= 0) throw new Error('当前卡片不可操作。');
+  if (!supportsUserCommentPinning()) throw new Error('当前 SDK 暂不支持作者置顶评论。');
+  if (pinned) {
+    if (!Number.isInteger(numericCommentId) || numericCommentId <= 0) throw new Error('当前评论不可操作。');
+    return client.comments.pin(numericCardId, { comment_id: numericCommentId });
+  }
+  return client.comments.unpin(numericCardId);
 }

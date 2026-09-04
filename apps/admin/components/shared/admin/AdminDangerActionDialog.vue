@@ -1,13 +1,14 @@
 <template>
   <v-dialog
     v-model="dialogOpen"
+    :aria-label="title"
     :persistent="loading"
     max-width="560"
     @after-leave="reset"
   >
     <v-card>
       <v-card-title class="d-flex align-center ga-2 text-h6">
-        <v-icon color="error">mdi-alert-outline</v-icon>
+        <v-icon :color="color">mdi-alert-outline</v-icon>
         {{ title }}
       </v-card-title>
       <v-divider />
@@ -17,25 +18,6 @@
           <dt>目标资源</dt>
           <dd>{{ resourceLabel }}</dd>
         </dl>
-        <v-alert
-          :text="auditHint"
-          class="mb-4"
-          density="compact"
-          type="info"
-          variant="tonal"
-        />
-        <v-textarea
-          v-if="requireReason"
-          v-model="reason"
-          :disabled="loading"
-          :error-messages="reasonTouched && !normalizedReason ? ['请输入操作原因'] : []"
-          autofocus
-          label="操作原因"
-          maxlength="500"
-          rows="3"
-          variant="outlined"
-          @blur="reasonTouched = true"
-        />
         <v-text-field
           v-if="confirmText"
           v-model="confirmation"
@@ -56,7 +38,7 @@
         <v-btn
           :disabled="!canConfirm"
           :loading="loading"
-          color="error"
+          :color="color"
           data-testid="danger-confirm"
           min-height="44"
           variant="flat"
@@ -76,52 +58,43 @@ const props = withDefaults(defineProps<{
   actionLabel?: string
   resourceLabel?: string
   impact: string
-  auditHint?: string
-  requireReason?: boolean
   confirmText?: string
   loading?: boolean
   error?: string
+  color?: string
 }>(), {
   actionLabel: '确认执行',
   resourceLabel: '',
-  auditHint: '本次操作将记录操作者、原因、目标资源和请求标识。',
-  requireReason: true,
   confirmText: '',
   loading: false,
   error: '',
+  color: 'error',
 })
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  confirm: [payload: { reason: string }]
+  confirm: []
 }>()
 
-const reason = ref('')
 const confirmation = ref('')
-const reasonTouched = ref(false)
 
 const dialogOpen = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value),
 })
-const normalizedReason = computed(() => reason.value.trim())
 const canConfirm = computed(() => {
   if (props.loading) return false
-  if (props.requireReason && !normalizedReason.value) return false
   if (props.confirmText && confirmation.value !== props.confirmText) return false
   return true
 })
 
 const confirm = () => {
-  reasonTouched.value = true
   if (!canConfirm.value) return
-  emit('confirm', { reason: normalizedReason.value })
+  emit('confirm')
 }
 
 const reset = () => {
-  reason.value = ''
   confirmation.value = ''
-  reasonTouched.value = false
 }
 </script>
 

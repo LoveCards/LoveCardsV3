@@ -1,0 +1,1 @@
+export const CARD_CONTENT_MAX_LENGTH = 1000;

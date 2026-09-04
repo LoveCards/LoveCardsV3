@@ -20,8 +20,8 @@ final class FakeSocialGraphRepository implements SocialGraphRepository
     public function follow(int $actorId, int $targetId): bool { $key = "{$actorId}:{$targetId}"; if (isset($this->relations[$key])) return false; return $this->relations[$key] = true; }
     public function unfollow(int $actorId, int $targetId): bool { $key = "{$actorId}:{$targetId}"; if (!isset($this->relations[$key])) return false; unset($this->relations[$key]); return true; }
     public function isFollowing(int $actorId, int $targetId): bool { return isset($this->relations["{$actorId}:{$targetId}"]); }
-    public function listFollowers(int $userId, ?string $cursor, int $limit): array { return ['items' => [['id' => 1]], 'next_cursor' => '10', 'has_more' => true]; }
-    public function listFollowing(int $userId, ?string $cursor, int $limit): array { return ['items' => [['id' => 2]], 'next_cursor' => null, 'has_more' => false]; }
+    public function listFollowers(int $userId, ?string $cursor, int $limit, array $excludedUserIds = []): array { return ['items' => [['id' => 1]], 'next_cursor' => '10', 'has_more' => true]; }
+    public function listFollowing(int $userId, ?string $cursor, int $limit, array $excludedUserIds = []): array { return ['items' => [['id' => 2]], 'next_cursor' => null, 'has_more' => false]; }
     public function counts(int $userId): array { return ['followers' => 1, 'following' => 1]; }
 }
 

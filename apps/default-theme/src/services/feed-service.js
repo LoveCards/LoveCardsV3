@@ -9,9 +9,6 @@ export const HOME_CHANNELS = [
   { id: 'recommended', label: '推荐' },
   { id: 'following', label: '关注' },
   { id: 'latest', label: '最新' },
-  { id: 'gallery', label: '图集' },
-  { id: 'video', label: '视频' },
-  { id: 'discussion', label: '讨论' },
 ];
 
 export class FeatureUnavailableError extends Error {
@@ -138,26 +135,51 @@ export function normalizeSdkCard(card) {
   const isCurated = Number(card?.is_top) === 1;
   const interactions = normalizeCardInteractions();
   const content = String(card?.content || '').trim();
-  const title = readString(data.title) || content || '未命名内容';
-  const body = data.title ? content : readString(data.summary);
+  // Card has one authorable text field. The view-model keeps the historical
+  // `title` key for component compatibility, but it always represents content.
+  // Legacy curated titles are only a last-resort fallback for records without
+  // content and never create a second text hierarchy.
+  const title = content || readString(data.title) || '未命名内容';
+  const body = '';
   const mediaAlt = readString(data.alt) || title;
   const mediaItems = normalizeMediaItems(card, data, isCurated, mediaAlt);
   const kind = inferCardPattern({ requestedKind: readString(data.kind), mediaItems });
   const pattern = resolveCardPattern(kind);
+  const authorUid = /^\d{12}$/.test(readString(card.uid)) ? readString(card.uid) : null;
+  const authorHandle = readString(card.username) || null;
+  const authorAvatar = readString(card.avatar) || readString(data.avatar) || null;
 
   return {
     id: String(card.id),
     ownerId: card.user_id,
+    ownerUid: authorUid,
     kind,
     layout: resolveLayout(card, kind, readString(data.layout)),
     pattern,
     patternLabel: pattern.label,
     interactions,
-    author: card.username || (isCurated ? readString(data.author) : '') || `用户 ${card.user_id}`,
+    author: authorHandle || (isCurated ? readString(data.author) : '') || `用户 ${card.user_id}`,
+    authorHandle,
+    authorAvatar,
+    authorUid,
+    authorHref: authorUid
+      ? `/user/${encodeURIComponent(authorUid)}`
+      : (authorHandle ? `/user/${encodeURIComponent(authorHandle)}` : null),
     meta: (isCurated ? readString(data.meta) : '') || card?.created_at || '',
+    content: title,
     title,
     body,
-    topic: readString(data.topic) || (card?.tags?.[0] ? `# ${card.tags[0]}` : ''),
+    mentions: Array.isArray(card?.mentions) ? card.mentions : [],
+    topics: Array.isArray(card?.topics) ? card.topics.filter((topic) => Number.isInteger(Number(topic?.id)) && String(topic?.name || '').trim()).map((topic) => ({ id: Number(topic.id), name: String(topic.name).trim() })) : [],
+    // The hydrated topics relation is authoritative. `data.topic` is a legacy
+    // presentation field and may contain an id-like value (for example `#12`).
+    // Never let that legacy value override the human-readable tag name.
+    topic: card?.topics?.[0]?.name
+      ? `# ${String(card.topics[0].name).trim()}`
+      : (/^#?\s*\d+$/.test(readString(data.topic))
+        ? ''
+        : (readString(data.topic) || (typeof card?.tags?.[0] === 'string' && !/^\s*\d+\s*$/.test(card.tags[0]) ? `# ${card.tags[0]}` : ''))),
+    topicId: Number(card?.topics?.[0]?.id) || null,
     likes: Number(card?.goods || 0),
     replies: Number(card?.comments || 0),
     viewerLiked: null,
@@ -194,16 +216,16 @@ export function getDataMode() {
 }
 
 export function getHomeFeedSnapshot(channel = 'recommended') {
-  if (channel === 'following') {
+  const mode = getDataMode();
+  if (channel === 'following' && mode === 'design-preview') {
     return {
       source: 'unavailable',
       items: [],
-      message: '关注流暂未开放',
-      detail: '当前 SDK 尚未提供关注与粉丝关系。',
+      message: '关注流预览暂未开放',
+      detail: '关注流需要登录并读取真实关注关系，设计预览不会伪造关注数据。',
     };
   }
 
-  const mode = getDataMode();
   if (mode === 'design-preview') {
     return { source: 'preview', items: stabilizeFeedLayouts(filterCards(previewFeed, channel)) };
   }
@@ -245,6 +267,8 @@ export async function loadHomeFeed({ channel = 'recommended', signal } = {}) {
 
   const response = channel === 'recommended'
     ? await client.cards.hot()
+    : channel === 'following'
+      ? await client.cards.listFollowing({ page: 1, list_rows: 30 })
     : await client.cards.list({
       page: 1,
       list_rows: 30,
@@ -258,12 +282,12 @@ export async function loadHomeFeed({ channel = 'recommended', signal } = {}) {
     if (!Array.isArray(response)) throw new Error('SDK 契约错误：cards.hot() 应返回数组。');
     rawItems = response;
   } else {
-    if (!response || !Array.isArray(response.data)) throw new Error('SDK 契约错误：cards.list() 应返回 ListResult。');
+    if (!response || !Array.isArray(response.data)) throw new Error(`SDK 契约错误：cards.${channel === 'following' ? 'listFollowing' : 'list'}() 应返回 ListResult。`);
     rawItems = response.data;
   }
   return {
     source: 'live',
-    strategy: channel === 'recommended' ? 'hot' : 'latest',
+    strategy: channel === 'recommended' ? 'hot' : channel === 'following' ? 'following' : 'latest',
     items: stabilizeFeedLayouts(filterCards(rawItems.map(normalizeSdkCard), channel)),
   };
 }
@@ -281,9 +305,9 @@ export async function updateCardLike(cardId, liked) {
   return undefined;
 }
 
-export async function loadViewerLikeIds() {
+export async function loadViewerLikeIds(type = 'card') {
   const client = getSdkClient();
   if (!client?.getToken()) return new Set();
-  const likes = await client.likes.list();
-  return new Set((Array.isArray(likes) ? likes : []).map((item) => Number(item.aid || item.ref_id)).filter(Number.isInteger));
+  const likes = await client.likes.list({ type });
+  return new Set((Array.isArray(likes) ? likes : []).map((item) => Number(item.ref_id ?? item.pid)).filter(Number.isInteger));
 }

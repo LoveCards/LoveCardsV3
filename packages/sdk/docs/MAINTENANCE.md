@@ -4,7 +4,7 @@ SDK 不是手写 API 清单。后端 Route Contract 是唯一输入，生成流�
 
 ## 当前规模
 
-- 171 条命名路由；
+- 174 条命名路由；
 - 25 个生成 Resource；
 - 19 条 public、152 条 authenticated；
 - HTTP 方法：81 GET、55 POST、22 DELETE、12 PATCH、1 PUT。

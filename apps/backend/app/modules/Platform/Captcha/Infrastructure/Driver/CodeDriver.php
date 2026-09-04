@@ -52,6 +52,12 @@ class CodeDriver extends AbstractDriver
 
     public function verify(array $params): bool
     {
+        return $this->verifyDetailed($params) === 'valid';
+    }
+
+    /** @return 'valid'|'expired'|'invalid' */
+    public function verifyDetailed(array $params): string
+    {
         $key   = $params['key'];
         $code  = $params['code'];
         $scene = $params['scene'] ?? 'default';
@@ -59,12 +65,14 @@ class CodeDriver extends AbstractDriver
         $cacheKey = 'Captcha_' . $scene . '_' . $key;
         $cached   = CacheManager::get('captcha', $cacheKey);
 
-        if ($cached && strtoupper($cached) === strtoupper($code)) {
+        if ($cached === null || $cached === false || $cached === '') return 'expired';
+
+        if (hash_equals(strtoupper((string) $cached), strtoupper((string) $code))) {
             CacheManager::delete($cacheKey);
-            return true;
+            return 'valid';
         }
 
-        return false;
+        return 'invalid';
     }
 
     public function delete(string $key, string $scene = 'default'): bool

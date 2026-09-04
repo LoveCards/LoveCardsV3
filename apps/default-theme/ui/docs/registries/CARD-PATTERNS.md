@@ -9,12 +9,12 @@
 ```text
 Card resource
   ├─ Pattern（视觉轮廓）        data.kind / media
-  ├─ Payload（内容与媒体）      content / title / media[]
+  ├─ Payload（内容与媒体）      content / media[]
   ├─ Interaction adapter        comments.thread.v1
   └─ Runtime capability/state   SDK 权限、登录、审核、结果、加载状态
 ```
 
-- **Pattern** 决定卡片的密度、媒体轮廓、标题位置和操作槽位；不代表谁能写入。
+- **Pattern** 决定卡片的密度、媒体轮廓、正文位置和操作槽位；不代表谁能写入。
 - **Payload** 是要展示的内容；媒体归属、审核和顺序来自资源契约，不来自 `data`。
 - **Interaction adapter** 只描述共享评论线程如何接入；它不能打开权限，也不承载业务规则。
 - **Runtime capability/state** 由 SDK、会话和服务端响应决定。没有能力时必须显示只读或“暂未开放”，不能假装成功。
@@ -55,7 +55,7 @@ type CardPatternDefinition = {
 
 ### 信息流统一呈现
 
-`image`、`gallery` 和 `video` 都属于 `media` 家族：`image` 是单媒体状态，`gallery` 是多媒体拼贴状态，`video` 是带播放语义的媒体状态。它们在信息流共享同一单元结构，只保留媒体表面和底部作者/互动元信息；话题、标题与完整正文只在详情页展开。
+`image`、`gallery` 和 `video` 都属于 `media` 家族：`image` 是单媒体状态，`gallery` 是多媒体拼贴状态，`video` 是带播放语义的媒体状态。它们在信息流共享同一单元结构，只保留媒体表面和底部作者/互动元信息；话题与完整正文只在详情页展开。
 
 `text` 是无媒体的 `content` 家族状态，在信息流显示文字内容块，并复用同一底部作者/互动元信息。`discussion` 使用同源文字内容面；完整评论与回复只在详情线程中展开，不在信息流追加选择控件。
 
@@ -86,12 +86,15 @@ type CardInteractionDescriptor = {
 ```json
 {
   "kind": "discussion",
-  "title": "最近有什么值得分享的发现？",
-  "topic": "社区讨论"
+  "topics": [
+    { "id": 13, "name": "社区讨论" }
+  ]
 }
 ```
 
-- `kind`、`layout`、`title`、`topic` 和 `alt` 是声明/展示数据。
+- Card 的唯一用户正文是资源顶层 `content`，上限 1000 字；普通 Card 不提供标题字段。
+- `kind`、`layout` 和 `alt` 是声明/展示数据；人类可读话题来自 CardResource 顶层 `topics[]`，详情最多展示当前允许的 3 项。历史 `data.topic` 不得覆盖关系数据或显示数字 ID。
+- 历史 `data.title` 只允许在 `content` 缺失的异常旧记录中作为只读回退，不与正文并列显示，也不进入发布、编辑或搜索契约。
 - `cover`、`pictures`、未来 `media[]` 是媒体来源；真实 MIME、文件归属、排序和审核状态只认媒体契约。
 - `data` 不保存喜欢状态、评论结果、作者权限、审核结果或浏览者身份。
 - 未登记或已移除的 `kind` 安全降级为 `text` 或按真实媒体数量推导为媒体类型，不生成额外互动。
@@ -103,7 +106,7 @@ Feed、Detail、Search 接收同一个 `CardViewModel`：
 
 ```ts
 {
-  id, kind, pattern, author, meta, title, body, topic,
+  id, kind, pattern, author, meta, content, topics,
   mediaItems, mediaFit, interactions, replies,
   source: 'live' | 'preview'
 }
@@ -116,7 +119,7 @@ Pattern 组件只负责轮廓和状态；评论线程、媒体查看器和喜欢
 ## 6. 完成门槛
 
 - 每个模式有默认、加载、空媒体、媒体失败、不可用和错误状态。
-- 320/390/768/1440 通过布局回归；标题、媒体和操作不互相覆盖。
+- 320/390/768/1440 通过布局回归；正文、媒体和操作不互相覆盖。
 - 视觉模式和评论适配器保持独立，未知模式安全降级。
 - 当前范围只允许普通评论线程；结构化互动不得借用评论正文绕过资源契约。
 - 新能力先更新 UI 蓝图、注册表和后端 handoff，再进入业务组件。

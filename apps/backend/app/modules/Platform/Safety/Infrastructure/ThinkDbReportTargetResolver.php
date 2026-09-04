@@ -12,6 +12,10 @@ final class ThinkDbReportTargetResolver implements ReportTargetResolver
     public function snapshotForReporter(int $reporterId, ResourceRef $resource): ?array
     {
         $id = $resource->id();
+        if ($resource->type() === 'user' && preg_match('/^[0-9]{12}$/', $id)) {
+            $row = Db::table('users')->where('uid', $id)->whereNull('deleted_at')->field('id,uid,number,username,status')->find();
+            return $row ? ['type' => 'user', 'captured' => $row] : null;
+        }
         if (!ctype_digit($id) || (int) $id < 1) return null;
         return match ($resource->type()) {
             'user' => $this->user((int) $id),

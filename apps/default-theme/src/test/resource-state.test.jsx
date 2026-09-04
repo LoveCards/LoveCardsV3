@@ -14,8 +14,27 @@ describe('ResourceState', () => {
     const error = renderToStaticMarkup(<ResourceState status="error" error={new Error('网络错误')}>content</ResourceState>);
     const empty = renderToStaticMarkup(<ResourceState status="success" empty>content</ResourceState>);
     expect(error).toContain('role="alert"');
-    expect(error).toContain('网络错误');
+    expect(error).toContain('网络连接不稳定，请检查网络后重试。');
     expect(empty).toContain('这里还没有内容');
+    expect(empty).toContain('astryx-empty-state');
+  });
+
+  it('renders an empty state when the resource status uses the empty vocabulary', () => {
+    const html = renderToStaticMarkup(<ResourceState status="empty" emptyTitle="暂时没有通知" emptyDescription="新的通知会显示在这里。" />);
+    expect(html).toContain('暂时没有通知');
+    expect(html).toContain('新的通知会显示在这里。');
+    expect(html).toContain('astryx-empty-state');
+  });
+
+  it('renders explicit permission and availability states without treating them as empty', () => {
+    const forbidden = renderToStaticMarkup(<ResourceState status="forbidden" />);
+    const deleted = renderToStaticMarkup(<ResourceState status="deleted" />);
+    const offline = renderToStaticMarkup(<ResourceState status="offline" onRetry={() => {}} />);
+    expect(forbidden).toContain('当前内容不可访问');
+    expect(forbidden).toContain('role="status"');
+    expect(deleted).toContain('内容已删除');
+    expect(offline).toContain('role="alert"');
+    expect(offline).toContain('重试加载');
   });
 
   it('renders a feed skeleton with the same card structure when requested', () => {

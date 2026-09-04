@@ -4,7 +4,7 @@ import type * as ApiTypes from '../../types'
 /** Generated from contracts/openapi.json. Do not edit manually. */
 export class Sender extends BaseResource {
   meta(type: string): Promise<ApiTypes.SenderMeta> {
-    return this._get<ApiTypes.SenderMeta>(`/admin/sender/${type}/meta`)
+    return this._get<ApiTypes.SenderMeta>(`/admin/sender/${encodeURIComponent(String(type))}/meta`)
   }
   channels(): Promise<ApiTypes.SenderChannel[]> {
     return this._get<ApiTypes.SenderChannel[]>("/admin/sender/channels")

@@ -9,6 +9,7 @@ final class Authorization
 {
     public static function capabilities(array $roleIds): array { return RBAC::getUserCapabilities($roleIds); }
     public static function grants(array $roleIds): GrantSet { return RBAC::getUserGrants($roleIds); }
+    public static function freshGrants(array $roleIds): GrantSet { return RBAC::getFreshUserGrants($roleIds); }
     public static function allCapabilities(): array { return RBAC::getAllCapabilities(); }
     public static function routeMeta(): array { return RBAC::getRouteMeta(); }
 }

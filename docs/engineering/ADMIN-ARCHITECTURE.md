@@ -59,32 +59,38 @@ SDK hook / Page -> useAdminNotifier -> notificationStore -> NotificationNotifier
 - 表单校验和可预期业务错误：由当前页面显示。
 - 业务组件不得直接调用第三方 `useNotifier()`。
 
+## Vuetify 组件边界
+
+管理端的按钮、输入、选择、上传、菜单、对话框、数据表格、分页、标签页、列表、图片、头像、内容表面和异步状态必须使用 Vuetify 原生组件。共享业务组件只能组合 Vuetify 原语，不得再实现一套平行控件或视觉 API。
+
+`header`、`nav`、`main`、`section`、标题、段落、`time`、`dl` 等表达文档结构的语义 HTML 可以保留；它们不是 Vuetify 控件的替代品。页面模板不得使用原生 `button/input/select/textarea/form/table/dialog`，不得写内联样式或硬编码颜色，图标按钮必须提供可访问名称，常驻内容不得嵌套 `v-card`。这些约束由 `npm run check:architecture` 执行检查。
+
 ## 本轮六个管理域
 
 管理端没有为社区成员的草稿、收藏、历史或私信正文提供任意浏览入口。后台只提供治理、账号安全、投递、审计、运行时和隐私安全的最小运维面：
 
 | # | 管理域 | 页面 | SDK / 权限 | 行为边界 |
 | --- | --- | --- | --- | --- |
-| 1 | 举报治理 | `/apps/governance/reports`、`/:id` | `reports.listManaged/getManaged/transition`；`reports.read/manage` | 按状态分页、查看证据快照与事件、填写原因转换状态 |
-| 2 | 账号恢复与 Session | `/apps/security/recovery`、`/apps/users/:id/security` | `users.recovery/security/sessions/revokeSession/revokeSessions`；`users.recovery.read`、`users.security.read`、`users.sessions.revoke` | 恢复挑战只读；敏感字段遮罩；单 Session/全部撤销必须确认原因 |
-| 3 | 通知投递 | `/apps/operations/deliveries` | `operations.deliveries/retryDelivery/notificationStats`；`communications.read`、`operations.retry` | 查看 Outbox 状态、失败摘要与 attempts；只对允许状态手工重试 |
-| 4 | 审计日志 | `/apps/operations/audit` | `operations.auditLogs`；`audit.read` | 以 resource、request/correlation id 追踪；payload 只显示后端白名单 |
-| 5 | 运行时与升级 | `/apps/system/runtime`、`/apps/system/upgrade` | `operations.runtime/migrations/runMigrations/upgrades/...`；`operations.read/migrate`、`system.update/update.contract/recover` | Facility/Worker 状态；签名 ZIP、单步推进、Contract 独立批准、pointer 恢复 |
+| 1 | 举报治理 | `/apps/community/reports`、`/:id` | `reports.listManaged/getManaged/transition`；`reports.read/manage` | 按状态分页、查看证据快照与事件、选择审核结论并转换状态 |
+| 2 | 账号恢复与 Session | `/apps/security/recovery`、`/apps/users/:id/security` | `users.recovery/security/sessions/revokeSession/revokeSessions`；`users.recovery.read`、`users.security.read`、`users.sessions.revoke` | 恢复挑战只读；敏感字段遮罩；单 Session/全部撤销必须明确确认 |
+| 3 | 通知投递 | `/apps/operations/deliveries`、`/:id` | `operations.deliveries/delivery/retryDelivery/notificationStats`；`communications.read`、`operations.retry` | 列表下沉投递详情；查看 Outbox 状态、失败摘要与 attempts；只对允许状态手工重试 |
+| 4 | 审计日志 | `/apps/operations/audit`、`/:id` | `operations.auditLogs/auditLog`；`audit.read` | 以 resource、request/correlation id 追踪；详情 payload 只显示后端白名单 |
+| 5 | 运行时与升级 | `/apps/operations/runtime`、`/apps/operations/upgrade` | `operations.runtime/migrations/runMigrations/upgrades/...`；`operations.read/migrate`、`system.update/update.contract/recover` | Facility/Worker 状态；签名 ZIP、单步推进、Contract 独立批准、pointer 恢复 |
 | 6 | 社区聚合 | `/apps/community/insights` | `community.insights`；`community.insights.read` | 仅显示草稿、收藏、历史的总量和参与人数，不返回成员私密明细 |
 
-旧 `/apps/updata` 只作为兼容入口映射到系统升级权限，不继续承载另一套升级实现。
+旧 `/apps/governance/*`、`/apps/system/*`、`/apps/updata` 等地址只作为兼容入口，并保留 query/hash；它们不继续承载另一套页面实现。
 
-升级页必须按持久状态机渲染，而不是本地模拟进度：上传使用包含 `file` 和非空 `reason` 的 `FormData`；每次 `advanceUpgrade` 只代表一个 Step、一个 migration phase 单元或一个 backfill batch。页面根据 API 返回的 step state 显示继续推进、等待批准、失败或完成。Contract 批准使用独立 `system.update.contract`，恢复使用 `system.recover`。
+升级页必须按持久状态机渲染，而不是本地模拟进度：上传使用只包含 Release `file` 的 `FormData`；每次 `advanceUpgrade` 只代表一个 Step、一个 migration phase 单元或一个 backfill batch。页面根据 API 返回的 step state 显示继续推进、等待批准、失败或完成。Contract 批准使用独立 `system.update.contract`，恢复使用 `system.recover`。
 
 当前 `recoverUpgrade` 的后端语义是回切旧 Release pointer、更新 Release 账本并执行可用的 reload/health-check；它不自动导入数据库 SQL，也不调用文件 ZIP 恢复原语。管理端文案不得承诺“整站数据自动回滚”。上传超过 PHP 限制时后端会返回 413 及 `post_max_size`/`upload_max_filesize` 诊断；若请求被 Nginx 更早拒绝，则展示网关响应和运维提示。
 
 ### 高风险操作
 
-升级推进、Contract、恢复、投递重试、举报转换和 Session 撤销统一使用显式 action guard 与确认对话框。确认文本/原因由页面收集，真正的 capability、状态前置条件和审计由后端执行；隐藏按钮不能代替后端授权。
+所有后台治理统一使用显式 action guard，真正的 capability、状态前置条件和事务内 before/after 审计由后端执行。系统不提供通用“操作原因”字段；高风险动作使用影响说明、确认文案或强确认文本防误触，成功后自动记录操作者、动作、资源、变更快照和请求链路。举报理由、审核结论等真实业务语义保留在各自领域模型中。隐藏按钮不能代替后端授权。
 
 ### 页面状态
 
-上述页面使用 `AdminPageHeader`、`AdminAsyncState`、`AdminStatusChip`、`AdminActionGuard`、`AdminDangerActionDialog`、`AdminAuditTrail`、`AdminResourceLink` 等共享组件，保持 loading/error/empty/disabled 状态一致。固定导航唯一来源是 `config/navigation.ts`，页面 capability 必须同时出现在后端 Route access、`CapabilityCatalog`、系统角色种子和导航契约中。
+上述页面使用 `AdminPageHeader`、`AdminAsyncState`、`AdminStatusChip`、`AdminActionGuard`、`AdminDangerActionDialog`、`AdminAuditTrail`、`AdminResourceLink`、`AdminResourceTableShell`、`AdminFilterToolbar` 和 `AdminConfigSection` 等共享组件，保持 loading/error/empty/disabled 状态一致。列表的 URL 状态、列设置和命名视图由共享表格壳统一编排，浏览器持久化键必须按当前管理员隔离。配置页面统一通过 `useAdminUnsavedChanges` 拦截站内离开和浏览器关闭。固定导航唯一来源是 `config/navigation.ts`，页面 capability 必须同时出现在后端 Route access、`CapabilityCatalog`、系统角色种子和导航契约中。
 
 ## 验证门禁
 
@@ -97,6 +103,8 @@ npm run build:admin
 
 跨后端契约或真实页面行为时，还要运行 `npm run check`、SDK 集成测试和隔离数据库管理端 E2E。架构检查必须阻止旧 API 目录、直接 transport、重复布局和重复插件重新出现。
 
-`npm run check:admin-contracts` 会交叉检查 171 条路由中的管理授权、capability catalog、system role、迁移授权种子；2026-08-20 的结果为 217 个管理授权引用、23 个 navigation/fixed entries。浏览器 E2E 为 28 项通过（3 项认证场景、25 个固定/动态页面路径），并覆盖登录、未认证跳转和错误登录反馈；它不替代每项高风险动作的后端状态机测试。
+`npm run check:admin-contracts` 会交叉检查管理路由授权、capability catalog、system role、迁移授权种子和固定导航。API/SDK 生成门禁同时检查自助接口与后台治理接口是否显式分离，并阻止通用操作原因重新进入管理契约。浏览器 E2E 覆盖登录、未认证跳转、规范/兼容路由、角色可见性、列表内资源面板、必要详情页和错误反馈；它不替代每项高风险动作的后端状态机测试。
 
-同日根 `npm run check` exit 0，Admin typecheck 通过。系统升级的独立真实 HTTP E2E 在一次性数据库/实例根中通过：它在临时复制的 Release source 中加入 E2E-only Contract migration，签名 ZIP 上传后经 21 次单元推进，验证提前批准被拒绝、`contract_migrations` waiting、独立批准持久化、Contract SQL、激活、pointer、Release header 与 health。当前生产迁移目录仍没有 Contract phase；恢复正向约束由专项状态机测试覆盖，这次演练也不代表数据库或文件已经支持自动恢复。
+历史快照（2026-08-23）合并验收基线为 176 个端点和 25 个资源。当前发行审查基线为 178 条路由、226 个管理授权引用和 22 个导航项；后端基线测试为 66/66。Admin 的生产 client 与 SSR server 已成功编译；本地 Nitro 最终打包若因受限执行环境无法读取用户目录符号链接，应记录为环境限制，不得误报为代码编译失败或绕过沙箱。
+
+系统升级的独立真实 HTTP E2E 使用一次性数据库和实例根验证签名 ZIP、逐单元推进、Contract 独立批准、激活、pointer、Release header 与 health。恢复语义仅回切旧 Release pointer 并执行可用的 reload/health-check，不承诺自动恢复数据库或文件数据。

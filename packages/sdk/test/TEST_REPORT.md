@@ -1,16 +1,16 @@
 # SDK Endpoint Test Report
 
-> Generated: 2026-08-20T07:55:33.547Z
+> Generated: 2026-08-24T08:16:45.223Z
 
 ## Summary
 
 | Metric | Count |
 |--------|-------|
-| Passed | 133 |
+| Passed | 134 |
 | Failed | 0 |
 | Skipped | 24 |
-| Total | 157 |
-| Pass Rate | 84.7% |
+| Total | 158 |
+| Pass Rate | 84.8% |
 
 ## Phase 0: Bootstrap (4/5)
 
@@ -55,23 +55,24 @@
 | 7 | GET /users/me/comments → comments.listOwn() | ✅ PASS | - |
 | 8 | POST /session/logout → session.logout() | ✅ PASS | - |
 
-## Phase 2b: Community Request Scenes (13/13)
+## Phase 2b: Community Request Scenes (14/14)
 
 | # | Test | Status | Detail |
 |---|------|--------|--------|
 | 1 | GET /me/library without params → library.list() | ✅ PASS | - |
 | 2 | GET /me/history without params → library.history() | ✅ PASS | - |
 | 3 | GET /me/notifications without params → notifications.list() | ✅ PASS | - |
-| 4 | GET /me/notifications/unread → notifications.unread() | ✅ PASS | - |
-| 5 | GET /me/notifications/stream without params → notifications.stream() | ✅ PASS | - |
-| 6 | POST /me/notifications/read requires only ids | ✅ PASS | - |
-| 7 | POST /me/notifications/read-all without body | ✅ PASS | - |
-| 8 | GET /me/conversations without params → messages.conversations() | ✅ PASS | - |
-| 9 | POST /me/messages validates only message fields | ✅ PASS | - |
-| 10 | POST /me/messages then GET conversation messages without params | ✅ PASS | - |
-| 11 | draft create, list, get, update and delete use only draft fields | ✅ PASS | - |
-| 12 | GET and POST /me/privacy use only preference fields | ✅ PASS | - |
-| 13 | POST /reports validates only report fields | ✅ PASS | - |
+| 4 | GET /me/notifications?category=engagement → unified notification list | ✅ PASS | - |
+| 5 | GET /me/notifications/unread → notifications.unread() | ✅ PASS | - |
+| 6 | GET /me/notifications/stream without params → notifications.stream() | ✅ PASS | - |
+| 7 | POST /me/notifications/read requires only ids | ✅ PASS | - |
+| 8 | POST /me/notifications/read-all without body | ✅ PASS | - |
+| 9 | GET /me/conversations without params → messages.conversations() | ✅ PASS | - |
+| 10 | POST /me/messages validates only message fields | ✅ PASS | - |
+| 11 | POST /me/messages then GET conversation messages without params | ✅ PASS | - |
+| 12 | draft create, list, get, update and delete use only draft fields | ✅ PASS | - |
+| 13 | GET and POST /me/privacy use only preference fields | ✅ PASS | - |
+| 14 | POST /reports validates only report fields | ✅ PASS | - |
 
 ## Phase 3: Protected CRUD (admin) (59/66)
 
@@ -89,7 +90,7 @@
 | 10 | PATCH /tags/:id → tags.update() | ✅ PASS | - |
 | 11 | DELETE /tags/:id → tags.delete() | ✅ PASS | - |
 | 12 | POST /cards/:id/comments → comments.create() | ⏭️ SKIP | - |
-| 13 | PATCH /comments/:id → comments.update() | ⏭️ SKIP | - |
+| 13 | PATCH /admin/comments/:id → comments.moderateManaged() | ⏭️ SKIP | - |
 | 14 | DELETE /comments/:id → comments.delete() | ⏭️ SKIP | - |
 | 15 | GET /roles → roles.list() | ✅ PASS | - |
 | 16 | GET /roles/:id → roles.get() | ✅ PASS | - |
@@ -195,7 +196,7 @@
 | 4 | GET /users/999999 → backend behavior (no 404 for nonexistent) | ✅ PASS | - |
 | 5 | GET /roles/999999 → 404 | ✅ PASS | - |
 | 6 | GET /files/999999 → 404 | ✅ PASS | - |
-| 7 | POST /cards empty content → 400 | ✅ PASS | - |
+| 7 | POST /cards empty content → 422 | ✅ PASS | - |
 | 8 | PATCH /cards/999999 → 404 | ✅ PASS | - |
 | 9 | DELETE /cards/999999 → backend behavior (no 404 for nonexistent) | ✅ PASS | - |
 | 10 | no token → protected endpoint → 401 | ✅ PASS | - |

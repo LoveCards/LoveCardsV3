@@ -13,7 +13,7 @@
     "packages/sdk"
   ],
   "scripts": {
-    "check": "npm run test:php-runtime && npm run test:php-upload-limits && npm run test:e2e:safety && npm run test:backend && npm run test:contract-workflow && npm run check:architecture && npm run check:routes:strict && npm run check:admin-contracts && npm run check:api-contract && npm run check:generated:sdk && npm run check:sdk-package && npm run test:sdk:transport && npm run test:sdk:safety && npm run check:sdk-theme && npm run typecheck:sdk && npm run typecheck:admin && npm run check:default-theme",
+    "check": "npm run test:php-runtime && npm run test:php-upload-limits && npm run test:e2e:safety && npm run test:backend && npm run test:contract-workflow && npm run check:architecture && npm run check:routes:strict && npm run check:admin-contracts && npm run check:api-contract && npm run check:generated:sdk && npm run check:sdk-package && npm run test:sdk:transport && npm run test:sdk:safety && npm run test:sdk:debug && npm run check:sdk-theme && npm run typecheck:sdk && npm run typecheck:admin && npm run check:default-theme",
     "check:architecture": "node scripts/check-architecture.mjs",
     "audit:api": "node scripts/audit-api-contract.mjs",
     "export:routes": "node scripts/check-route-manifest.mjs",
@@ -31,6 +31,7 @@
     "test:contract-workflow": "node scripts/test-api-contract-workflow.mjs",
     "test:sdk:transport": "node scripts/test-sdk-transport.mjs",
     "test:sdk:safety": "node packages/sdk/test/safety-guard.test.mjs",
+    "test:sdk:debug": "node packages/sdk/test/debug-logging.test.mjs",
     "generate:sdk": "npm run export:api && node scripts/generate-sdk-contract.mjs",
     "typecheck:sdk": "npm run typecheck --workspace @lovecards/sdk",
     "typecheck:admin": "npm run typecheck --workspace @lovecards/admin",

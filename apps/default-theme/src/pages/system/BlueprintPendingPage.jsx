@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
 
-export function BlueprintPendingPage({ title, description, capability, backTo, backLabel }) {
+export function BlueprintPendingPage({ title, description, capability, backTo, backLabel, mobileMode = 'standard' }) {
   return (
-    <AppShell>
+    <AppShell mobileMode={mobileMode}>
       <main className="pending-page" aria-labelledby="pending-title">
         {backTo && <Link className="detail-back pending-back" to={backTo}>← {backLabel || '返回上一级'}</Link>}
         <p className="pending-context">功能状态</p>

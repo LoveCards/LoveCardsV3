@@ -1,0 +1,29 @@
+:where(a, button, [role='button'], [tabindex='0']):focus-visible {
+  outline: 3px solid rgb(var(--v-theme-primary));
+  outline-offset: 2px;
+}
+
+:where(.v-btn, .v-list-item, .v-tab, .v-chip):focus-visible {
+  outline-offset: 3px;
+}
+
+@media (forced-colors: active) {
+  :where(a, button, [role='button'], [tabindex='0']):focus-visible {
+    outline: 2px solid CanvasText;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -5,6 +5,8 @@ namespace app\modules\Platform\Safety\Application;
 
 use app\api\ApiException;
 use app\modules\Platform\Safety\Contract\AdminReportRepository;
+use app\modules\Platform\Notifications\Contract\SystemNoticeIssuer;
+use app\modules\Platform\Notifications\Domain\SystemNotice;
 use app\shared\Observability\AuditLogger;
 use app\shared\Transaction\TransactionManager;
 
@@ -14,7 +16,8 @@ final class AdminReports
     public function __construct(
         private AdminReportRepository $repository,
         private AuditLogger $audit,
-        private TransactionManager $transactions
+        private TransactionManager $transactions,
+        private SystemNoticeIssuer $notices
     ) {}
 
     public function list(array $params): array
@@ -40,15 +43,12 @@ final class AdminReports
         return $report;
     }
 
-    public function transition(int $id, int $actorId, string $status, string $reason, ?string $resolution, ?string $note, string $ipAddress): array
+    public function transition(int $id, int $actorId, string $status, ?string $resolution, ?string $note, string $ipAddress): array
     {
         $status = strtolower(trim($status));
         $allowed = ['open', 'reviewing', 'resolved', 'rejected', 'closed'];
         if (!in_array($status, $allowed, true)) throw ApiException::badRequest('举报状态不合法');
-        $reason = trim($reason);
-        if ($reason === '') throw ApiException::badRequest('操作原因不能为空');
-
-        return $this->transactions->run(function () use ($id, $actorId, $status, $reason, $resolution, $note, $ipAddress): array {
+        return $this->transactions->run(function () use ($id, $actorId, $status, $resolution, $note, $ipAddress): array {
             $report = $this->repository->lockForUpdate($id);
             if (!$report) throw ApiException::notFound('举报不存在');
             $from = (string) $report['status'];
@@ -67,13 +67,24 @@ final class AdminReports
             if ($resolution !== null) $values['resolution'] = substr(trim($resolution), 0, 255);
             $this->repository->update($id, $values);
             $this->repository->appendEvent($id, $actorId, $from === $status ? 'note' : 'status_changed', [
-                'from_status' => $from, 'to_status' => $status, 'reason' => $reason, 'note' => $note,
+                'from_status' => $from, 'to_status' => $status, 'resolution' => $resolution, 'note' => $note,
                 'assignee_id' => $assigned ? $actorId : ($report['assignee_id'] ?? null),
             ], $now);
             $this->audit->record($actorId, 'safety.report.transition', 'report', (string) $id, [
-                'from_status' => $from, 'to_status' => $status, 'reason' => $reason, 'note' => $note,
+                'from_status' => $from, 'to_status' => $status, 'resolution' => $resolution, 'note' => $note,
                 'assignee_id' => $assigned ? $actorId : ($report['assignee_id'] ?? null), '_ip' => $ipAddress,
             ]);
+            if ($from !== $status && in_array($status, ['resolved', 'rejected'], true)) {
+                $resolved = $status === 'resolved';
+                $this->notices->issue(
+                    (int) $report['reporter_id'],
+                    'safety.report.outcome:' . $id . ':' . $status,
+                    SystemNotice::MODERATION,
+                    $resolved ? '你提交的举报已处理完成。' : '你提交的举报经审核后未予处理。',
+                    null,
+                    $resolved ? 'success' : 'info'
+                );
+            }
             return $this->get($id);
         });
     }

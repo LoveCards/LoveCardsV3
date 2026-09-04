@@ -20,6 +20,21 @@ class Roles extends BaseController
         return RolesService::class;
     }
 
+    public function batch()
+    {
+        $params = $this->validated();
+        $auth = request()->auth;
+        RolesService::batchOperate(
+            $params['method'],
+            $params['ids'],
+            $auth->uid(),
+            $auth->grants(),
+            $auth->roleIds(),
+            (string) request()->ip()
+        );
+        return $this->respond();
+    }
+
     public function list()
     {
         $params = $this->validated();
@@ -36,7 +51,7 @@ class Roles extends BaseController
     public function create()
     {
         $params = $this->validated();
-        $id = RolesService::createRole($params);
+        $id = RolesService::createRole($params, request()->auth->uid(), (string) request()->ip());
         return ApiResponse::createOk(ApiResource::make(['id' => $id]));
     }
 
@@ -45,13 +60,15 @@ class Roles extends BaseController
         $id = (int) $id;
         $params = $this->validated(null, ['id' => $id]);
         unset($params['id']);
-        RolesService::updateRole($id, $params);
+        $auth = request()->auth;
+        RolesService::updateRole($id, $params, $auth->uid(), $auth->roleIds(), $auth->grants(), (string) request()->ip());
         return ApiResponse::createNoContent();
     }
 
     public function delete($id)
     {
-        RolesService::deleteRoles((int) $id);
+        $auth = request()->auth;
+        RolesService::deleteRoles((int) $id, $auth->uid(), $auth->roleIds(), $auth->grants(), (string) request()->ip());
         return ApiResponse::createNoContent();
     }
 
@@ -65,7 +82,8 @@ class Roles extends BaseController
         if (!is_array($grants)) {
             throw \app\api\ApiException::badRequest('能力列表格式错误');
         }
-        RolesService::assignCapabilities($roleId, $grants);
+        $auth = request()->auth;
+        RolesService::assignCapabilities($roleId, $grants, $auth->uid(), $auth->roleIds(), $auth->grants(), (string) request()->ip());
         return ApiResponse::createNoContent();
     }
 
@@ -77,7 +95,13 @@ class Roles extends BaseController
 
     public function reseed()
     {
-        $result = RolesService::reseed();
+        $auth = request()->auth;
+        $result = RolesService::reseed(
+            $auth->uid(),
+            $auth->roleIds(),
+            $auth->grants(),
+            (string) request()->ip()
+        );
         return ApiResponse::createOk(ApiResource::make($result));
     }
 }

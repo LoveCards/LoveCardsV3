@@ -20,7 +20,7 @@ button, input, textarea { font: inherit; }
 .frame { overflow: hidden; border: 1px solid #393d47; background: #f7f8fa; box-shadow: 0 3px 8px rgba(0,0,0,.22); }
 .desktop { width: 1160px; height: 760px; border-radius: 14px; }
 .phone { width: 340px; height: 760px; border-radius: 16px; }
-.shell { --canvas:#f7f8fa; --surface:#fff; --subtle:#f2f4f7; --ink:#1a1a1a; --muted:#667280; --line:#e5e7eb; --rose:#d92f68; --rose-soft:#fff0f3; min-height: 100%; color: var(--ink); background: var(--canvas); }
+.shell { --canvas:#f5f5f7; --surface:#fff; --subtle:#f0f1f4; --ink:#1d1d1f; --muted:#6e6e73; --line:rgba(60,60,67,.16); --rose:#c92c60; --rose-soft:#fff0f4; min-height: 100%; color: var(--ink); background: var(--canvas); }
 .topbar { display: flex; align-items: center; height: 54px; padding: 0 22px; border-bottom: 1px solid var(--line); background: var(--surface); }
 .brand { display: flex; align-items: center; gap: 7px; min-width: 158px; font-size: 15px; font-weight: 850; letter-spacing: -.03em; }
 .brand i { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 8px; color: #fff; background: var(--rose); font-size: 12px; font-style: normal; }

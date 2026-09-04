@@ -33,7 +33,8 @@ final class Messaging
         return $result;
     }
 
-    public function send(int $userId, int $recipientId, string $body, ?string $clientMessageId = null): int
+    /** @return array{id:int,conversation_id:int} */
+    public function send(int $userId, int $recipientId, string $body, ?string $clientMessageId = null): array
     {
         $this->assertUser($userId);
         if ($recipientId <= 0 || $recipientId === $userId) throw ApiException::badRequest('收件人无效');
@@ -46,21 +47,21 @@ final class Messaging
         if ($clientMessageId === '') $clientMessageId = bin2hex(random_bytes(16));
         if (strlen($clientMessageId) > 128) throw ApiException::badRequest('消息幂等标识过长');
 
-        return $this->transactions->run(function () use ($userId, $recipientId, $body, $clientMessageId): int {
-            $existing = $this->repository->findMessageIdByClientId($userId, $recipientId, $clientMessageId);
+        return $this->transactions->run(function () use ($userId, $recipientId, $body, $clientMessageId): array {
+            $existing = $this->repository->findMessageByClientId($userId, $recipientId, $clientMessageId);
             if ($existing !== null) return $existing;
             $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
             $conversationId = $this->repository->findOrCreateDirectConversation($userId, $recipientId, $now);
             try {
                 $messageId = $this->repository->createMessage($conversationId, $userId, $clientMessageId, $body, $now);
             } catch (\Throwable $exception) {
-                $existing = $this->repository->findMessageIdByClientId($userId, $recipientId, $clientMessageId);
+                $existing = $this->repository->findMessageByClientId($userId, $recipientId, $clientMessageId);
                 if ($existing !== null) return $existing;
                 throw $exception;
             }
             $this->repository->touchConversation($conversationId, $now);
             $this->notifier->messageSent($recipientId, $userId, $conversationId, $messageId);
-            return $messageId;
+            return ['id' => $messageId, 'conversation_id' => $conversationId];
         });
     }
 

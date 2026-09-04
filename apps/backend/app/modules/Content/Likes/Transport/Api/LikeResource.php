@@ -10,7 +10,8 @@ final class LikeResource extends Resource
     {
         return ['type' => 'object', 'properties' => [
             'id' => ['type' => 'integer'], 'aid' => ['type' => 'integer'], 'pid' => ['type' => 'integer'],
-            'uid' => ['type' => 'integer'], 'created_at' => ['type' => 'string'], 'updated_at' => ['type' => 'string'],
+            'ref_type' => ['type' => 'string'], 'ref_id' => ['type' => 'integer'], 'uid' => ['type' => 'integer'],
+            'created_at' => ['type' => 'string'],
         ]];
     }
 
@@ -23,7 +24,7 @@ final class LikeResource extends Resource
             unset($like[$field]);
         }
 
-        $fields = ['id', 'aid', 'pid', 'uid', 'created_at', 'updated_at'];
+        $fields = ['id', 'aid', 'pid', 'ref_type', 'ref_id', 'uid', 'created_at'];
         $result = [];
         foreach ($fields as $field) {
             if (array_key_exists($field, $like)) {

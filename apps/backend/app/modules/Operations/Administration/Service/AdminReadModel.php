@@ -45,13 +45,26 @@ final class AdminReadModel
         $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
         foreach ($workers as &$worker) {
             $heartbeat = isset($worker['heartbeat_at']) ? new \DateTimeImmutable((string) $worker['heartbeat_at'], new \DateTimeZone('UTC')) : null;
-            $worker['online'] = $heartbeat !== null && $heartbeat->modify('+90 seconds') >= $now;
+            $worker['online'] = ($worker['state'] ?? null) === 'running'
+                && $heartbeat !== null
+                && $heartbeat->modify('+90 seconds') >= $now;
         }
         unset($worker);
 
         $delivery = Db::table('event_deliveries')
-            ->field("SUM(status = 'pending') AS pending, SUM(status = 'processing') AS processing, SUM(status = 'dead') AS dead, MAX(updated_at) AS last_updated")
+            ->field("SUM(status = 'pending') AS pending, SUM(status = 'processing') AS processing, SUM(status = 'dead') AS dead, MIN(CASE WHEN status = 'pending' THEN available_at END) AS oldest_pending_at, SUM(status = 'processing' AND lease_expires_at < UTC_TIMESTAMP(6)) AS expired_processing, MAX(updated_at) AS last_updated")
             ->find();
+        $oldestPendingAt = $delivery['oldest_pending_at'] ?? null;
+        $oldestPendingAge = null;
+        if (is_string($oldestPendingAt) && $oldestPendingAt !== '') {
+            $oldestPendingAge = max(0, $now->getTimestamp() - (new \DateTimeImmutable($oldestPendingAt, new \DateTimeZone('UTC')))->getTimestamp());
+        }
+        $queues = Db::table('event_deliveries')
+            ->field("queue_name,execution_mode,SUM(status = 'pending') AS pending,SUM(status = 'processing') AS processing,SUM(status = 'dead') AS dead")
+            ->group('queue_name,execution_mode')
+            ->order('queue_name', 'asc')
+            ->select()
+            ->toArray();
         return [
             'facilities' => array_map(static fn ($status): array => $status->toArray(), $this->facilities->execute($this->facilityCatalog->configs())),
             'workers' => $workers,
@@ -59,6 +72,10 @@ final class AdminReadModel
                 'pending' => (int) ($delivery['pending'] ?? 0),
                 'processing' => (int) ($delivery['processing'] ?? 0),
                 'dead' => (int) ($delivery['dead'] ?? 0),
+                'oldest_pending_at' => $oldestPendingAt,
+                'oldest_pending_age_seconds' => $oldestPendingAge,
+                'expired_processing' => (int) ($delivery['expired_processing'] ?? 0),
+                'queues' => $queues,
                 'last_updated' => $delivery['last_updated'] ?? null,
             ],
         ];
@@ -79,6 +96,18 @@ final class AdminReadModel
         return $this->paginate($rows, (int) $total, $page, $limit);
     }
 
+    /** @return array<string,mixed> */
+    public function delivery(int $id): array
+    {
+        $row = Db::table('event_deliveries')->alias('d')
+            ->leftJoin('outbox_events e', 'e.id = d.event_id')
+            ->field('d.id,d.event_id,d.handler_key,d.queue_name,d.execution_mode,d.status,d.attempt_count,d.available_at,d.last_error,d.created_at,d.updated_at,e.event_type,e.correlation_id')
+            ->where('d.id', $id)
+            ->find();
+        if (!$row) throw \app\api\ApiException::notFound('投递记录不存在');
+        return $row;
+    }
+
     /** @return array{data: array<int,array<string,mixed>>,total:int,per_page:int,current_page:int,last_page:int} */
     public function auditLogs(array $params): array
     {
@@ -92,6 +121,14 @@ final class AdminReadModel
         $total = (clone $query)->count('id');
         $rows = $query->order('id', 'desc')->page($page, $limit)->select()->toArray();
         return $this->paginate($rows, (int) $total, $page, $limit);
+    }
+
+    /** @return array<string,mixed> */
+    public function auditLog(int $id): array
+    {
+        $row = Db::table('audit_logs')->where('id', $id)->find();
+        if (!$row) throw \app\api\ApiException::notFound('审计记录不存在');
+        return $row;
     }
 
     public function notificationsStats(): array

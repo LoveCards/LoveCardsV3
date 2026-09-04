@@ -67,6 +67,14 @@ export async function checkSession() {
   }
 }
 
+export async function loadCurrentUser() {
+  const client = getSdkClient();
+  if (!client?.getToken()) return null;
+  const user = await client.users.me();
+  if (!user || !/^\d{12}$/.test(String(user.uid || ''))) throw new Error('SDK 契约错误：users.me() 未返回有效 UID。');
+  return user;
+}
+
 export async function logout() {
   const client = getSdkClient();
   try { if (client?.getToken()) await client.session.logout(); } finally {

@@ -45,6 +45,7 @@ namespace Tests\Auth\SessionLifecycle {
                 }
                 $rows[] = [
                     'id' => $record->id(),
+                    'public_id' => $record->publicId(),
                     'user_id' => $record->userId(),
                     'token_expires_at' => $record->tokenExpiresAt()->format('Y-m-d H:i:s'),
                     'renewable_until' => $record->renewableUntil()->format('Y-m-d H:i:s'),
@@ -65,6 +66,29 @@ namespace Tests\Auth\SessionLifecycle {
             }
 
             return false;
+        }
+
+        public function findForUserByPublicId(int $userId, string $publicId): ?array
+        {
+            foreach ($this->listForUser($userId, true) as $row) if ($row['public_id'] === $publicId) return $row;
+            return null;
+        }
+
+        public function revokeByPublicId(int $userId, string $publicId, string $reason, DateTimeImmutable $at): bool
+        {
+            foreach ($this->sessions as $hash => $record) {
+                if ($record->userId() === $userId && $record->publicId() === $publicId) return $this->revoke($hash, $reason, $at);
+            }
+            return false;
+        }
+
+        public function revokeOthers(int $userId, string $currentPublicId, string $reason, DateTimeImmutable $at): int
+        {
+            $count = 0;
+            foreach ($this->sessions as $hash => $record) {
+                if ($record->userId() === $userId && $record->publicId() !== $currentPublicId && $this->revoke($hash, $reason, $at)) $count++;
+            }
+            return $count;
         }
 
         public function start(

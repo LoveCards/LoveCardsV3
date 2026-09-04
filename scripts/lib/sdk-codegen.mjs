@@ -1,4 +1,4 @@
-const qualifiedTypeNames = 'ListResult CursorPage CreateResult Card Comment Tag User Role Grant AuthorizationScope Like LCFile ThemeItem ThemeConfigData ThemeActivateParams ThemeDeleteParams ConfigData ConfigRegisterResult CaptchaDriver CaptchaMeta CaptchaConfig CaptchaChallenge StorageDriver StorageMeta StorageChannel ChannelStats SenderType SenderMeta SenderChannel SenderTemplate SystemUpdateInfo DashboardData DirectUploadResult UploadResult CapabilityItem CheckResult LoginResult AuthPolicy SessionState EmailCaptchaResult CardsListParams CreateCardParams UpdateCardParams CreateCommentParams BatchOperateParams PaginationParams ConfigRegisterParams ConfigUpdateParams FilesBatchOperateParams AssignGrantsParams CreateRoleParams ReseedResult UpdateRoleParams CaptchaSendParams LoginParams RegisterParams EmailParams EmailCaptchaParams PasswordParams ProfileUpdateParams AdminUserUpdateParams ListParams OperationsOverview OperationsMigration OperationsRuntimeStatus OperationsDelivery OperationsAuditLog OperationsNotificationStats OperationsCommunityInsights OperationsUpgradePlan AdminReport UserSecurityOverview UserSession RecoveryChallenge FileUsage'.split(' ')
+const qualifiedTypeNames = 'ListResult CursorPage CreateResult Card Comment Tag User CurrentUser PublicUserProfile SocialRelation CurrentUserSession PrivacyPreferences BlockedUserItem BlockedUserCursorPage MentionCandidate Role Grant AuthorizationScope Like LCFile ThemeItem ThemeConfigData ThemeActivateParams ThemeDeleteParams ConfigData ConfigRegisterResult CaptchaDriver CaptchaMeta CaptchaConfig CaptchaChallenge StorageDriver StorageMeta StorageChannel ChannelStats SenderType SenderMeta SenderChannel SenderTemplate SystemUpdateInfo DashboardData DirectUploadResult UploadResult CapabilityItem CheckResult LoginResult AuthPolicy SessionState CardsListParams CreateCardParams UpdateCardParams CreateCommentParams BatchOperateParams PaginationParams ConfigRegisterParams ConfigUpdateParams FilesBatchOperateParams AssignGrantsParams CreateRoleParams ReseedResult UpdateRoleParams CaptchaSendParams LoginParams RegisterParams EmailParams EmailCaptchaParams EmailCaptchaResult PasswordParams ProfileUpdateParams AdminUserUpdateParams ListParams NotificationType ConfigurableNotificationType SystemNotificationType NotificationCategory NotificationListCategory NotificationActorState NotificationResourceState NotificationActor NotificationItem NotificationCursorPage NotificationUnread NotificationPreferences NotificationPreferencesUpdate OperationsOverview OperationsMigration OperationsRuntimeStatus OperationsDelivery OperationsAuditLog OperationsNotificationStats OperationsCommunityInsights OperationsUpgradePlan AdminReport UserSecurityOverview UserSession RecoveryChallenge FileUsage'.split(' ')
 
 export function schemaType(schema, fallback = 'unknown') {
   if (!schema) return fallback
@@ -26,7 +26,9 @@ export function operationResponseType(operation, fallback = 'unknown') {
 }
 
 export function qualifyType(type) {
-  return type.replace(new RegExp(`\\b(${qualifiedTypeNames.join('|')})\\b`, 'g'), 'ApiTypes.$1')
+  return type.replace(new RegExp(`\\b(${qualifiedTypeNames.join('|')})\\b`, 'g'), (match, _name, offset, source) => {
+    return source.slice(Math.max(0, offset - 9), offset) === 'ApiTypes.' ? match : `ApiTypes.${match}`
+  })
 }
 
 export function splitParams(value) {
@@ -57,8 +59,17 @@ export function resourceFileName(resource) {
 export function generatedResourceMethod(method) {
   const params = splitParams(method.params)
   const pathParams = [...method.path.matchAll(/:([A-Za-z_]\w*)/g)].map((match, index) => params[index]?.name || match[1] || `param${index + 1}`)
+  const pathParamExpression = (name) => {
+    const declaration = params.find((param) => param.name === name)?.declaration || ''
+    // Path values are user-controlled URL segments. Numeric identifiers can
+    // remain numeric for readable generated code; string handles/slugs must
+    // be encoded so Unicode, spaces and reserved characters cannot alter the
+    // route shape. The generated SDK is the single place that owns this rule.
+    const type = declaration.replace(/^\w+\??\s*:\s*/, '').trim()
+    return type === 'number' || type === 'boolean' ? name : `encodeURIComponent(String(${name}))`
+  }
   let pathIndex = 0
-  const url = method.path.replaceAll(/:[A-Za-z_]\w*/g, () => `\${${pathParams[pathIndex++]}}`)
+  const url = method.path.replaceAll(/:[A-Za-z_]\w*/g, () => `\${${pathParamExpression(pathParams[pathIndex++])}}`)
   const urlLiteral = pathParams.length ? `\`${url}\`` : JSON.stringify(method.path)
   const remaining = params.slice(pathParams.length)
   const returnType = qualifyType(method.returnType)

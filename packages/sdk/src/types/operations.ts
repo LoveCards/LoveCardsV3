@@ -63,7 +63,16 @@ export interface OperationsWorker {
 export interface OperationsRuntimeStatus {
   facilities: OperationsFacility[]
   workers: OperationsWorker[]
-  eventing: { pending: number; processing: number; dead: number; last_updated?: string | null }
+  eventing: {
+    pending: number
+    processing: number
+    dead: number
+    oldest_pending_at?: string | null
+    oldest_pending_age_seconds?: number | null
+    expired_processing?: number
+    queues?: Array<{ queue_name: string; execution_mode: string; pending: number; processing: number; dead: number }>
+    last_updated?: string | null
+  }
 }
 
 export interface OperationsDelivery {
@@ -174,6 +183,7 @@ export interface UserSecurityOverview {
   privacy?: { profile_visibility: string; messages_from: string; show_relations: number; updated_at: string } | null
   sessions: { active: number; total: number }
   recovery_challenges: number
+  session_mutation_allowed: boolean
 }
 
 export interface UserSession {

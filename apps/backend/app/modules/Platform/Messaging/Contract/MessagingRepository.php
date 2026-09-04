@@ -11,7 +11,8 @@ interface MessagingRepository
     /** @return array{items:array<int,array<string,mixed>>,next_cursor:?string,has_more:bool} */
     public function messagesForUser(int $userId, int $conversationId, ?string $cursor, int $limit): array;
 
-    public function findMessageIdByClientId(int $senderId, int $recipientId, string $clientMessageId): ?int;
+    /** @return array{id:int,conversation_id:int}|null */
+    public function findMessageByClientId(int $senderId, int $recipientId, string $clientMessageId): ?array;
 
     public function findOrCreateDirectConversation(int $firstUserId, int $secondUserId, \DateTimeImmutable $at): int;
 

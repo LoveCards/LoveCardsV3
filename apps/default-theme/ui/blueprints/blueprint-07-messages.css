@@ -1,0 +1,69 @@
+.rb-frames:first-of-type { grid-template-columns: 1160px 798px; }
+.rb-phone-pair { display: grid; grid-template-columns: repeat(2, 390px); gap: 18px; }
+.rb-phone-pair .rb-phone { width: 390px; }
+.rb-mobile-tabs { display: flex; align-items: end; gap: 30px; height: 48px; padding: 0 16px; border-bottom: 1px solid var(--line); background: #fff; }
+.rb-mobile-tabs span { position: relative; height: 48px; padding-top: 17px; color: var(--muted); font-size: 10px; }
+.rb-mobile-tabs .active { color: var(--rose-dark); font-weight: 700; }
+.rb-mobile-tabs .active:after { content: ''; position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--rose); }
+.rb-message-list-screen { height: 740px; background: var(--canvas); }
+.rb-mobile-search { height: 36px; margin: 12px 16px 8px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--radius-field); color: var(--muted); background: var(--surface); font-size: 10px; line-height: 36px; }
+.rb-mobile-list-label { padding: 8px 16px; color: var(--body); font-size: 10px; font-weight: 700; }
+.rb-message-list { margin-top: 0; padding: 0; }
+.rb-message-list .rb-row { position: relative; min-height: 72px; padding: 12px 16px; }
+.rb-message-list .rb-row.active { background: var(--rose-wash); }
+.rb-message-list .rb-row > div:nth-child(2) { flex: 1; }
+.rb-message-list .rb-row time { margin-left: auto; color: var(--muted); font-size: 8px; }
+.rb-unread-dot { width: 7px; height: 7px; margin-left: 3px; border-radius: 50%; background: var(--rose); }
+
+/* Blueprint radius contract: panel 14 / field 10 / control 9 / button 8 /
+   media and message bubble 12 / identity 50%.  Rows stay square inside a
+   continuous list surface. */
+.rb-shell, .rb-mobile {
+  --radius-panel: 14px;
+  --radius-field: 10px;
+  --radius-control: 9px;
+  --radius-button: 8px;
+  --radius-media: 12px;
+}
+.rb-brand i { border-radius: var(--radius-button); }
+.rb-search { border-radius: var(--radius-field); }
+.rb-title button, .rb-btn { border-radius: var(--radius-button); }
+.rb-rail, .rb-panel, .rb-list, .rb-detail, .rb-state-card { border-radius: var(--radius-panel); }
+.rb-rail a, .rb-note { border-radius: var(--radius-control); }
+.rb-field, .rb-mobile-search { border-radius: var(--radius-field); }
+.rb-chat-input div { border-radius: var(--radius-control); }
+.rb-chat-input button { border-radius: var(--radius-button); }
+.rb-bubble { border-radius: var(--radius-media) var(--radius-media) var(--radius-media) 4px; }
+.rb-bubble.mine { border-radius: var(--radius-media) var(--radius-media) 4px var(--radius-media); }
+.rb-message-list { border-radius: 0; }
+.rb-message-list .rb-row { border-radius: 0; }
+.rb-bottom .compose b { border-radius: 50%; }
+
+/* Message-specific geometry and type corrections. */
+.rb-split { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-panel); }
+.rb-conversation-tools { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; }
+.rb-conversation-tools .rb-search { width: auto; min-width: 0; height: 36px; flex: 1; margin: 0; padding-inline: 10px; border-radius: var(--radius-field); font-size: 10px; }
+.rb-meta-copy { color: var(--muted); font-size: 11px; }
+.rb-conv { min-width: 0; align-items: center; }
+.rb-conv > div:nth-child(2) { min-width: 0; overflow: hidden; }
+.rb-conv b { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.rb-conv p { font-size: 11px; line-height: 1.45; }
+.rb-conv time { flex: 0 0 auto; font-size: 11px; white-space: nowrap; }
+.rb-chat h3 { font-size: 13px; }
+.rb-chat-body { min-width: 0; }
+.rb-bubble { font-size: 11px; line-height: 1.55; }
+.rb-chat-input div { font-size: 11px; }
+.rb-chat-input button { min-width: 64px; font-size: 11px; }
+.rb-message-list-top { grid-template-columns: minmax(0, 1fr) 48px; }
+.rb-message-list-top strong { text-align: left; padding-left: 16px; font-size: 17px; }
+.rb-message-list-top button { justify-self: end; margin-right: 8px; color: var(--rose-dark); font-size: 21px; }
+.rb-search-trigger { border: 0; background: transparent; }
+.rb-message-list { padding: 16px; }
+.rb-message-list .rb-row { min-width: 0; margin: 0; padding-inline: 0; }
+.rb-message-list .rb-row b { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.rb-message-list .rb-row small { overflow: hidden; font-size: 11px; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+.rb-message-list .rb-row time { flex: 0 0 auto; font-size: 11px; white-space: nowrap; }
+.rb-mobile-notification-tabs { display: flex; gap: 22px; height: 34px; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
+.rb-mobile-notification-tabs span { position: relative; color: var(--muted); font-size: 11px; }
+.rb-mobile-notification-tabs span.active { color: var(--ink); font-weight: 700; }
+.rb-mobile-notification-tabs span.active:after { content: ''; position: absolute; right: 0; bottom: -1px; left: 0; height: 2px; background: var(--rose); }

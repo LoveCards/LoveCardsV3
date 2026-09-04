@@ -29,6 +29,10 @@ final class FakeSafetyRepository implements SafetyRepository
     public function addRelation(int $actorId, int $targetId, string $kind): bool { $key = "{$actorId}:{$targetId}:{$kind}"; if (isset($this->relations[$key])) return false; return $this->relations[$key] = true; }
     public function removeRelation(int $actorId, int $targetId, string $kind): bool { $key = "{$actorId}:{$targetId}:{$kind}"; if (!isset($this->relations[$key])) return false; unset($this->relations[$key]); return true; }
     public function hasRelation(int $actorId, int $targetId, string $kind): bool { return isset($this->relations["{$actorId}:{$targetId}:{$kind}"]); }
+    public function isBlockedEitherDirection(int $firstUserId, int $secondUserId): bool { return $this->hasRelation($firstUserId, $secondUserId, 'block') || $this->hasRelation($secondUserId, $firstUserId, 'block'); }
+    public function blockedUserIds(int $userId): array { return []; }
+    public function userExists(int $userId): bool { return $userId > 0; }
+    public function listBlocked(int $userId, ?string $cursor, int $limit, ?string $query): array { return ['items' => [], 'next_cursor' => null, 'has_more' => false]; }
     public function canMessage(int $senderId, int $recipientId): bool { return !$this->hasRelation($recipientId, $senderId, 'block'); }
     public function createReport(ReportSubmission $submission, array $evidenceSnapshot): int { $this->evidence = $evidenceSnapshot; return 7; }
 }
@@ -53,7 +57,7 @@ $assert(!$safety->addRelation(1, 2, 'block'), 'repeated block should be idempote
 $assert($safety->removeRelation(1, 2, 'block'), 'unblock should remove relation');
 
 $selfRejected = false;
-try { $safety->addRelation(1, 1, 'mute'); } catch (InvalidArgumentException) { $selfRejected = true; }
+try { $safety->addRelation(1, 1, 'mute'); } catch (\app\api\ApiException $exception) { $selfRejected = $exception->getHttpStatus() === 422; }
 $assert($selfRejected, 'self safety relation must be rejected');
 
 $report = new ReportSubmission(1, new ResourceRef('comment', 9), 'abuse', '测试');

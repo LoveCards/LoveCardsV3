@@ -27,6 +27,42 @@ namespace
 
 namespace app\modules\Content\Infrastructure\Persistence\Model
 {
+    class Cards
+    {
+        public static array $rows = [];
+        public static function where(string $field, mixed $value): CardQuery
+        {
+            return new CardQuery([[$field, $value]]);
+        }
+    }
+
+    final class CardQuery
+    {
+        public function __construct(private array $where) {}
+        public function where(string $field, mixed $value): self
+        {
+            $this->where[] = [$field, $value];
+            return $this;
+        }
+        public function findOrEmpty(): object
+        {
+            $matched = null;
+            foreach (Cards::$rows as $row) {
+                $ok = true;
+                foreach ($this->where as [$field, $value]) {
+                    if (($row[$field] ?? null) !== $value) { $ok = false; break; }
+                }
+                if ($ok) { $matched = $row; break; }
+            }
+            return new class($matched) {
+                public function __construct(private ?array $row) {}
+                public function __get(string $name): mixed { return $this->row[$name] ?? null; }
+                public function isEmpty(): bool { return $this->row === null; }
+                public function toArray(): array { return $this->row ?? []; }
+            };
+        }
+    }
+
     class Comments
     {
         const STATUS_NORMAL   = 0;
@@ -65,6 +101,7 @@ namespace app\modules\Content\Infrastructure\Persistence\Model
             }
             return new class($matched) {
                 public function __construct(private ?array $row) {}
+                public function __get(string $name): mixed { return $this->row[$name] ?? null; }
                 public function isEmpty(): bool { return $this->row === null; }
                 public function toArray(): array { return $this->row ?? []; }
             };
@@ -77,6 +114,26 @@ namespace app\api
     class ApiException extends \RuntimeException
     {
         public static function notFound(string $message): self { return new self($message, 404); }
+    }
+}
+
+namespace think\facade
+{
+    class Db
+    {
+        public static function table(string $table): object
+        {
+            return new class {
+                public function whereIn(string $field, array $values): self { return $this; }
+                public function field(string $fields): self { return $this; }
+                public function select(): object
+                {
+                    return new class {
+                        public function toArray(): array { return []; }
+                    };
+                }
+            };
+        }
     }
 }
 
@@ -228,8 +285,11 @@ namespace
 
     $test('C1: public comment detail requires published status', static function () use ($reset, $assertSame): void {
         $reset();
+        \app\modules\Content\Infrastructure\Persistence\Model\Cards::$rows = [
+            ['id' => 42, 'status' => 0],
+        ];
         \app\modules\Content\Infrastructure\Persistence\Model\Comments::$rows = [
-            ['id' => 9, 'status' => 0, 'content' => 'visible'],
+            ['id' => 9, 'pid' => 42, 'status' => 0, 'content' => 'visible'],
         ];
         $result = \app\modules\Content\Comments\Service\Comments::get(9);
         $assertSame('visible', $result['content'] ?? null, 'published comment should be readable');

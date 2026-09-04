@@ -352,9 +352,16 @@ await test('GET /me/notifications without params → notifications.list()', asyn
   return r
 })
 
+await test('GET /me/notifications?category=engagement → unified notification list', async () => {
+  const r = await adminClient.notifications.list({ category: 'engagement', limit: 20 })
+  assert(Array.isArray(r.data), 'engagement notifications should return a cursor page')
+  assert(r.data.every((item) => item.category !== 'system'), 'engagement notifications must exclude system items')
+  return r
+})
+
 await test('GET /me/notifications/unread → notifications.unread()', async () => {
-  const r = await adminClient.notifications.unread()
-  assert(r !== null && typeof r === 'object', 'notifications.unread() should return an object')
+  const r = await adminClient.notifications.unread({ category: 'engagement' })
+  assert(r !== null && typeof r.unread === 'number', 'notifications.unread() should return a numeric unread count')
   return r
 })
 
@@ -557,7 +564,7 @@ await test('PATCH /tags/:id → tags.update()', async () => {
 
 await test('DELETE /tags/:id → tags.delete()', async () => {
   if (!createdTagId) throw 'SKIP'
-  await adminClient.tags.delete(createdTagId)
+  await adminClient.tags.delete(createdTagId, { reason: 'SDK integration test deletes tag' })
   return true
 })
 
@@ -569,9 +576,9 @@ await test('POST /cards/:id/comments → comments.create()', async () => {
   return r
 })
 
-await test('PATCH /comments/:id → comments.update()', async () => {
+await test('PATCH /admin/comments/:id → comments.moderateManaged()', async () => {
   if (!commentId) throw 'SKIP'
-  await adminClient.comments.update(commentId, { content: 'Updated SDK test comment' })
+  await adminClient.comments.moderateManaged(commentId, { status: 0 })
   return true
 })
 
@@ -607,7 +614,7 @@ await test('GET /roles/:id/grants → roles.getGrants()', async () => {
 })
 
 await test('POST /roles → roles.create()', async () => {
-  const r = await adminClient.roles.create({ name: 'SDK-Test-Role', slug: `sdk_test_${Date.now()}`, description: 'test' })
+  const r = await adminClient.roles.create({ name: 'SDK-Test-Role', slug: `sdk_test_${Date.now()}`, description: 'test', reason: 'SDK integration test creates role' })
   assert(r && r.id, 'Should return { id }')
   assert(typeof r.id === 'string' || typeof r.id === 'number', 'id should be string or number')
   createdRoleId = r.id
@@ -618,7 +625,7 @@ await test('PATCH /roles/:id → roles.update()', async () => {
   if (!createdRoleId) throw 'SKIP'
   console.log(`    (updating role ${createdRoleId}, type: ${typeof createdRoleId})`)
   try {
-    await adminClient.roles.update(createdRoleId, { name: 'SDK-Test-Role-Updated' })
+    await adminClient.roles.update(createdRoleId, { name: 'SDK-Test-Role-Updated', reason: 'SDK integration test updates role' })
     console.log('    (update succeeded)')
   } catch (e) {
     console.log(`    (update error: ${e.status} ${e.message})`)
@@ -630,9 +637,9 @@ await test('PATCH /roles/:id → roles.update()', async () => {
 await test('POST /roles/:id/grants → roles.assignGrants()', async () => {
   if (!createdRoleId) throw 'SKIP'
   await adminClient.roles.assignGrants(createdRoleId, { grants: [
-    { capability: 'cards.read', scope: 'global' },
-    { capability: 'tags.read', scope: 'global' },
-  ] })
+    { capability: 'cards.read', scope: 'all' },
+    { capability: 'tags.read', scope: 'all' },
+    ], reason: 'SDK integration test assigns grants' })
   return true
 })
 
@@ -646,12 +653,12 @@ await test('GET /roles/:id/grants → verify assigned', async () => {
 
 await test('DELETE /roles/:id → roles.delete()', async () => {
   if (!createdRoleId) throw 'SKIP'
-  await adminClient.roles.delete(createdRoleId)
+  await adminClient.roles.delete(createdRoleId, { reason: 'SDK integration test deletes role' })
   return true
 })
 
 await test('POST /roles/reseed → roles.reseed()', async () => {
-  const r = await adminClient.roles.reseed()
+  const r = await adminClient.roles.reseed({ reason: 'SDK integration test reseeds role templates' })
   assert(r && typeof r.total === 'number', 'Should return ReseedResult')
   assertShape(r, ['total', 'guest', 'user', 'admin', 'root'])
   return r
@@ -855,7 +862,7 @@ await test('comment replies reject a parent from another card', async () => {
   const parent = await adminClient.comments.create(createdCardId, { content: 'SDK thread parent' })
   threadCommentId = Number(parent.id)
   assert(Number.isInteger(threadCommentId) && threadCommentId > 0, 'parent comment should return an id')
-  await adminClient.comments.updateManaged(threadCommentId, { status: 0 })
+  await adminClient.comments.moderateManaged(threadCommentId, { status: 0 })
   await assertApiError(
     () => adminClient.comments.create(threadCardId, { content: 'cross-card reply', parent_id: threadCommentId }),
     400,
@@ -865,11 +872,11 @@ await test('comment replies reject a parent from another card', async () => {
 
 await test('public comment detail hides moderation states', async () => {
   if (!threadCommentId) throw 'SKIP'
-  await adminClient.comments.updateManaged(threadCommentId, { status: 1 })
+  await adminClient.comments.moderateManaged(threadCommentId, { status: 1 })
   await assertApiError(() => pc.comments.get(threadCommentId), 404)
   const managed = await adminClient.comments.getManaged(threadCommentId)
   assert(Number(managed.status) === 1, 'managed detail should retain hidden comments')
-  await adminClient.comments.updateManaged(threadCommentId, { status: 0 })
+  await adminClient.comments.moderateManaged(threadCommentId, { status: 0 })
   const visible = await pc.comments.get(threadCommentId)
   assert(Number(visible.id) === threadCommentId, 'restored comment should be public again')
   return true
@@ -895,7 +902,7 @@ await test('GET /admin/users/:id → users.getManaged()', async () => {
 
 await test('PATCH /admin/users/:id → users.updateManaged()', async () => {
   if (!userId) throw 'SKIP'
-  await adminClient.users.updateManaged(userId, { username: 'TestAdmin' })
+  await adminClient.users.updateManaged(userId, { username: 'TestAdmin', reason: 'SDK integration test updates user' })
   return true
 })
 
@@ -913,7 +920,7 @@ await test('GET /admin/operations/migrations → operations.migrations()', async
 })
 
 await test('POST /admin/operations/migrations/run safely checkpoints settled migrations', async () => {
-  const r = await adminClient.operations.runMigrations()
+  const r = await adminClient.operations.runMigrations({ reason: 'SDK integration test checkpoints settled migrations' })
   assert(Array.isArray(r), 'Migration advance should return an array')
   return r
 })
@@ -1125,28 +1132,28 @@ setPhase('Phase 6: Batch Operations')
 
 await test('POST /admin/cards/batch → cards.batchManaged(top)', async () => {
   if (!cardId) throw 'SKIP'
-  await adminClient.cards.batchManaged({ method: 'top', ids: [cardId] })
+  await adminClient.cards.batchManaged({ method: 'top', ids: [cardId], reason: 'SDK integration test pins card' })
   return true
 })
 
 await test('POST /admin/cards/batch → cards.batchManaged(unset_top)', async () => {
   if (!cardId) throw 'SKIP'
   // First top, then unset_top
-  await adminClient.cards.batchManaged({ method: 'top', ids: [cardId] })
-  await adminClient.cards.batchManaged({ method: 'unset_top', ids: [cardId] })
+  await adminClient.cards.batchManaged({ method: 'top', ids: [cardId], reason: 'SDK integration test pins card' })
+  await adminClient.cards.batchManaged({ method: 'unset_top', ids: [cardId], reason: 'SDK integration test unpins card' })
   return true
 })
 
 await test('POST /admin/cards/batch → cards.batchManaged(approve)', async () => {
   if (!cardId) throw 'SKIP'
-  await adminClient.cards.batchManaged({ method: 'approve', ids: [cardId] })
+  await adminClient.cards.batchManaged({ method: 'approve', ids: [cardId], reason: 'SDK integration test approves card' })
   return true
 })
 
 await test('POST /admin/comments/batch → comments.batchManaged(approve)', async () => {
   // Use a non-existent ID — should succeed (no-op) or 400
   try {
-    await adminClient.comments.batchManaged({ method: 'approve', ids: [999999] })
+    await adminClient.comments.batchManaged({ method: 'approve', ids: [999999], reason: 'SDK integration test approves comment' })
   } catch (e) {
     if (!isApiError(e)) throw e
     // 400 "未指定要操作的资源" or success is OK
@@ -1156,7 +1163,7 @@ await test('POST /admin/comments/batch → comments.batchManaged(approve)', asyn
 
 await test('POST /admin/tags/batch → tags.batchManaged(approve)', async () => {
   try {
-    await adminClient.tags.batchManaged({ method: 'approve', ids: [999999] })
+    await adminClient.tags.batchManaged({ method: 'approve', ids: [999999], reason: 'SDK integration test approves tag' })
   } catch (e) {
     if (!isApiError(e)) throw e
   }
@@ -1165,7 +1172,7 @@ await test('POST /admin/tags/batch → tags.batchManaged(approve)', async () => 
 
 await test('POST /admin/users/batch → users.batchManaged(approve)', async () => {
   try {
-    await adminClient.users.batchManaged({ method: 'approve', ids: [999999] })
+    await adminClient.users.batchManaged({ method: 'approve', ids: [999999], reason: 'SDK integration test approves user' })
   } catch (e) {
     if (!isApiError(e)) throw e
   }
@@ -1174,15 +1181,15 @@ await test('POST /admin/users/batch → users.batchManaged(approve)', async () =
 
 await test('POST /admin/files/batch → files.batchManaged(hard_delete)', async () => {
   // 999999 does not exist — expect 404
-  await assertApiError(() => adminClient.files.batchManaged({ method: 'hard_delete', ids: [999999] }), 404)
+  await assertApiError(() => adminClient.files.batchManaged({ method: 'hard_delete', ids: [999999], reason: 'SDK integration test purges file' }), 404)
 })
 
 await test('batch empty ids → should 400', async () => {
-  await assertApiError(() => adminClient.cards.batchManaged({ method: 'delete', ids: [] }), 400)
+  await assertApiError(() => adminClient.cards.batchManaged({ method: 'delete', ids: [], reason: 'SDK integration test validates empty batch' }), 400)
 })
 
 await test('batch invalid method → should 400', async () => {
-  await assertApiError(() => adminClient.cards.batchManaged({ method: 'invalid', ids: [1] }), 400)
+  await assertApiError(() => adminClient.cards.batchManaged({ method: 'invalid', ids: [1], reason: 'SDK integration test validates method' }), 400)
 })
 
 // ═══════════════════════════════════════════════
@@ -1226,8 +1233,8 @@ await test('GET /files/999999 → 404', async () => {
 })
 
 // 400
-await test('POST /cards empty content → 400', async () => {
-  await assertApiError(() => adminClient.cards.create({ content: '' }), 400)
+await test('POST /cards empty content → 422', async () => {
+  await assertApiError(() => adminClient.cards.create({ content: '' }), 422)
 })
 
 await test('PATCH /cards/999999 → 404', async () => {
@@ -1389,20 +1396,20 @@ await test('cleanup: delete test card', async () => {
 
 await test('cleanup: delete thread-safety fixtures', async () => {
   if (threadCommentId) {
-    try { await adminClient.comments.deleteManaged(threadCommentId) } catch {}
+    try { await adminClient.comments.deleteManaged(threadCommentId, { reason: 'SDK integration test cleanup' }) } catch {}
   }
   if (threadCardId) {
-    try { await adminClient.cards.deleteManaged(threadCardId) } catch {}
+    try { await adminClient.cards.deleteManaged(threadCardId, { reason: 'SDK integration test cleanup' }) } catch {}
   }
   return true
 })
 
 await test('cleanup: delete typed-media fixtures', async () => {
   if (mediaCardId) {
-    try { await adminClient.cards.batchManaged({ ids: [mediaCardId], method: 'hard_delete' }) } catch {}
+    try { await adminClient.cards.batchManaged({ ids: [mediaCardId], method: 'hard_delete', reason: 'SDK integration test cleanup' }) } catch {}
   }
   if (mediaFileId) {
-    try { await adminClient.files.deleteManaged(mediaFileId) } catch {}
+    try { await adminClient.files.deleteManaged(mediaFileId, { reason: 'SDK integration test cleanup' }) } catch {}
   }
   return true
 })
@@ -1410,7 +1417,7 @@ await test('cleanup: delete typed-media fixtures', async () => {
 await test('cleanup: delete test tag', async () => {
   if (!createdTagId) { console.log('    (no tag to clean)'); return true }
   try {
-    await adminClient.tags.delete(createdTagId)
+    await adminClient.tags.delete(createdTagId, { reason: 'SDK integration test cleanup' })
   } catch (e) {}
   return true
 })
@@ -1418,7 +1425,7 @@ await test('cleanup: delete test tag', async () => {
 await test('cleanup: delete test role', async () => {
   if (!createdRoleId) { console.log('    (no role to clean)'); return true }
   try {
-    await adminClient.roles.delete(createdRoleId)
+    await adminClient.roles.delete(createdRoleId, { reason: 'SDK integration test cleanup' })
   } catch (e) {}
   return true
 })

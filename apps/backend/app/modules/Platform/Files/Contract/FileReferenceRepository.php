@@ -9,13 +9,13 @@ interface FileReferenceRepository
     public function forFile(int $fileId): array;
 
     /** @return int[] */
-    public function fileIdsForResource(string $resourceType, string $resourceId): array;
+    public function fileIdsForResource(string $resourceType, string $resourceId, ?string $purpose = null): array;
 
     /**
      * @param string[] $resourceIds
      * @return array<string,int[]>
      */
-    public function fileIdsForResources(string $resourceType, array $resourceIds): array;
+    public function fileIdsForResources(string $resourceType, array $resourceIds, ?string $purpose = null): array;
 
     public function countForFile(int $fileId): int;
 

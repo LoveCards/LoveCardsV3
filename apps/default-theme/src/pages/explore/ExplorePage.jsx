@@ -4,7 +4,7 @@ import { AppShell } from '../../layouts/AppShell.jsx';
 import { ResourceState } from '../../components/ResourceState.jsx';
 import { FeedCollection } from '../../features/feed/FeedCollection.jsx';
 import { useResource } from '../../app/use-resource.js';
-import { getDiscoverySnapshot, loadDiscovery } from '../../services/discovery-service.js';
+import { getDiscoverySnapshot, loadDiscovery, topicHref } from '../../services/discovery-service.js';
 import { DiscoverySearchSurface } from '../../features/search/DiscoverySearchSurface.jsx';
 import { MediaFrame } from '../../features/media/MediaFrame.jsx';
 
@@ -24,7 +24,7 @@ export function ExplorePage({ search = false, topic = false }) {
   const navigate = useNavigate();
   const scope = ['posts', 'media', 'topics'].includes(routeParams.scope) ? routeParams.scope : 'posts';
   const query = topic ? routeParams.slug || '' : params.get('q') || '';
-  const loader = useCallback((signal) => loadDiscovery({ query, signal }), [query]);
+  const loader = useCallback((signal) => loadDiscovery({ query, signal, topic }), [query, topic]);
   const initial = useMemo(() => getDiscoverySnapshot(query), [query]);
   const resource = useResource(loader, initial);
   const data = resource.data || initial;
@@ -48,7 +48,7 @@ export function ExplorePage({ search = false, topic = false }) {
       <main className="discovery-page" aria-labelledby="discovery-title">
         <header className="discovery-heading">
           <div>
-            <h1 id="discovery-title">{topic ? `# ${query}` : (search && query ? `搜索“${query}”` : '去发现，今天的新鲜事')}</h1>
+            <h1 id="discovery-title">{topic ? `# ${data.topic?.name || query}` : (search && query ? `搜索“${query}”` : '去发现，今天的新鲜事')}</h1>
             <p>{topic ? '围绕同一兴趣继续浏览内容。' : '从正在发生的城市、兴趣和创作者开始。'}</p>
           </div>
           <span className="capability-note">关注、趋势与个性推荐暂未开放</span>
@@ -70,7 +70,7 @@ export function ExplorePage({ search = false, topic = false }) {
           </nav>
         )}
 
-        {data.source === 'configuration-error' ? <Boundary data={data} /> : (
+        {data.source === 'configuration-error' ? <Boundary data={data} /> : data.topicMissing ? <section className="discovery-boundary" role="status"><h2>这个话题不存在</h2><p>它可能已被删除，或链接已经失效。</p><Link className="discovery-link" to="/explore">回到发现</Link></section> : (
           <div className="discovery-layout">
             <section className="discovery-main">
               {featured && (
@@ -94,7 +94,7 @@ export function ExplorePage({ search = false, topic = false }) {
                 </header>
                 <ResourceState status={resource.status} error={resource.error} empty={data.source !== 'loading' && (scope === 'topics' ? !topicResults.length : !feedItems.length)} onRetry={resource.reload} loadingVariant={scope === 'topics' ? 'generic' : 'feed'} loadingClassName={feedClass} loadingLabel="发现内容加载中">
                   {scope === 'topics' ? (
-                    <div className="topic-result-list">{topicResults.map((trend) => <Link key={trend.label} to={`/topic/${encodeURIComponent(trend.label.replace(/^# /, ''))}`}><strong>{trend.label}</strong><span>{trend.count || '查看话题内容'}</span></Link>)}</div>
+                    <div className="topic-result-list">{topicResults.map((trend) => <Link key={trend.label} to={topicHref({ id: trend.tagId, name: trend.name || trend.label })}><strong>{trend.label}</strong><span>{trend.count || '查看话题内容'}</span></Link>)}</div>
                   ) : <FeedCollection className={feedClass} ariaLabel="发现内容" items={feedItems} source={data.source} />}
                 </ResourceState>
               </section>
@@ -107,7 +107,7 @@ export function ExplorePage({ search = false, topic = false }) {
                   <ol>{data.trends.map((trend) => (
                     <li key={`${trend.rank}-${trend.label}`}>
                       <b>{String(trend.rank).padStart(2, '0')}</b>
-                      <Link to={`/topic/${encodeURIComponent(trend.label.replace(/^# /, ''))}`}>
+                      <Link to={topicHref({ id: trend.tagId, name: trend.name || trend.label })}>
                         <strong>{trend.label}</strong><small>{trend.count || '话题详情'}</small>
                       </Link>
                     </li>

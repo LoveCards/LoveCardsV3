@@ -100,7 +100,7 @@ class Upload extends BaseController
         }
 
         $auth = request()->auth;
-        $this->batchOperate->execute($method, $ids, $auth->uid(), $auth->grants(), (string) request()->ip());
+        $this->batchOperate->execute($method, $ids, $auth->uid(), $auth->grants(), (string) request()->ip(), true);
         return ApiResponse::createNoContent();
     }
 
@@ -133,7 +133,11 @@ class Upload extends BaseController
     {
         $params = $this->validated();
         $limit = (int) ($params['limit'] ?? 100);
-        $cleaned = $this->directUpload->cleanup($limit);
+        $cleaned = $this->directUpload->cleanup(
+            $limit,
+            request()->auth->uid(),
+            (string) request()->ip()
+        );
         return ApiResponse::createOk(ApiResource::make(['cleaned' => count($cleaned)]));
     }
 
@@ -144,10 +148,24 @@ class Upload extends BaseController
         return ApiResponse::createNoContent();
     }
 
+    public function deleteManaged($id)
+    {
+        $auth = request()->auth;
+        $this->batchOperate->execute(
+            'trash',
+            [(int) $id],
+            $auth->uid(),
+            $auth->grants(),
+            (string) request()->ip(),
+            true
+        );
+        return ApiResponse::createNoContent();
+    }
+
     public function purge($id)
     {
         $auth = request()->auth;
-        $this->batchOperate->execute('hard_delete', [(int) $id], $auth->uid(), $auth->grants(), (string) request()->ip());
+        $this->batchOperate->execute('hard_delete', [(int) $id], $auth->uid(), $auth->grants(), (string) request()->ip(), true);
         return ApiResponse::createNoContent();
     }
 }

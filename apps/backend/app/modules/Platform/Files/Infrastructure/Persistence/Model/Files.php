@@ -24,6 +24,7 @@ class Files extends Model
     const SCENE_CARD = FileConstants::SCENE_CARD;
     const SCENE_COMMENT = FileConstants::SCENE_COMMENT;
     const SCENE_AVATAR = FileConstants::SCENE_AVATAR;
+    const SCENE_PROFILE_COVER = FileConstants::SCENE_PROFILE_COVER;
     const SCENE_DIRECT = FileConstants::SCENE_DIRECT;
     const STATUS_NORMAL = FileConstants::STATUS_NORMAL;
     const STATUS_BANNED = FileConstants::STATUS_BANNED;

@@ -3,6 +3,7 @@
 namespace app\api\controller\Content;
 
 use app\modules\Content\Comments\Service\Comments as CommentsService;
+use app\modules\Content\Likes\Service\Likes as LikesService;
 
 use app\api\controller\BaseController;
 use app\api\controller\BatchOperateTrait;
@@ -19,8 +20,7 @@ class Comments extends BaseController
     public function cardList($id)
     {
         $params = $this->validated();
-        $params['where'] = ['aid' => 1, 'pid' => $id];
-        $result = CommentsService::listAll($params);
+        $result = CommentsService::listCard((int) $id, $params);
         return $this->respond($result);
     }
 
@@ -58,12 +58,23 @@ class Comments extends BaseController
         return $this->respond(CommentsService::get((int) $id, true));
     }
 
-    public function update($id)
+    public function like($id)
+    {
+        $likes = LikesService::like('comment', (int) $id, request()->auth->uid(), request()->ip());
+        return $this->respond(['likes' => $likes]);
+    }
+
+    public function unlike($id)
+    {
+        LikesService::unlike('comment', (int) $id, request()->auth->uid());
+        return $this->respond();
+    }
+
+    public function moderate($id)
     {
         $params = $this->validated(null, ['id' => (int) $id]);
-
         $auth = request()->auth;
-        CommentsService::updateComment($params, $auth->uid(), $auth->grants());
+        CommentsService::moderateComment($params, $auth->uid(), $auth->grants(), (string) request()->ip(), true);
 
         return $this->respond();
     }
@@ -72,6 +83,66 @@ class Comments extends BaseController
     {
         $auth = request()->auth;
         CommentsService::deleteComments([(int) $id], $auth->uid(), $auth->grants());
+        return $this->respond();
+    }
+
+    public function pin($id)
+    {
+        $params = $this->validated(null, ['id' => (int) $id]);
+        $auth = request()->auth;
+        CommentsService::pinComment(
+            (int) $params['id'],
+            (int) $params['comment_id'],
+            $auth->uid(),
+            $auth->grants(),
+            (string) request()->ip()
+        );
+        return $this->respond();
+    }
+
+    public function unpin($id)
+    {
+        $params = $this->validated(null, ['id' => (int) $id]);
+        $auth = request()->auth;
+        CommentsService::unpinComment(
+            (int) $params['id'],
+            $auth->uid(),
+            $auth->grants(),
+            (string) request()->ip()
+        );
+        return $this->respond();
+    }
+
+    public function pinOwn($id)
+    {
+        $params = $this->validated(null, ['id' => (int) $id]);
+        $auth = request()->auth;
+        CommentsService::pinOwnComment(
+            (int) $params['id'],
+            (int) $params['comment_id'],
+            $auth->uid(),
+            $auth->grants()
+        );
+        return $this->respond();
+    }
+
+    public function unpinOwn($id)
+    {
+        $auth = request()->auth;
+        CommentsService::unpinOwnComment((int) $id, $auth->uid(), $auth->grants());
+        return $this->respond();
+    }
+
+    public function deleteManaged($id)
+    {
+        $auth = request()->auth;
+        CommentsService::deleteComments(
+            [(int) $id],
+            $auth->uid(),
+            $auth->grants(),
+            (string) request()->ip(),
+            true
+        );
         return $this->respond();
     }
 

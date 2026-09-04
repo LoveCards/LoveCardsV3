@@ -3,6 +3,7 @@ import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { Brand } from '../../components/Brand.jsx';
 import { getLoginState, loadAuthPolicy, login, register, startGuestSession } from '../../services/auth-service.js';
 import { useAuth } from '../../app/providers.jsx';
+import { getUserFacingError } from '../../app/user-facing-error.js';
 import { Button, FormLayout, TextInput } from '../../ui/index.js';
 
 export function AuthPage({ mode = 'login' }) {
@@ -66,7 +67,7 @@ export function AuthPage({ mode = 'login' }) {
       navigate('/me', { replace: true });
     } catch (error) {
       setStatus('error');
-      setMessage(error?.message || '登录失败，请检查账号和密码。');
+      setMessage(getUserFacingError(error, { fallback: isRegister ? '账号暂时没有创建，请稍后重试。' : '登录没有完成，请检查账号和密码后重试。', validationFallback: isRegister ? '注册信息不符合要求，请检查后重试。' : '账号或密码格式不符合要求，请检查后重试。' }));
     } finally {
       setPendingAction('');
     }
@@ -81,7 +82,7 @@ export function AuthPage({ mode = 'login' }) {
       navigate('/');
     } catch (error) {
       setStatus('error');
-      setMessage(error?.message || '游客会话暂不可用。');
+      setMessage(getUserFacingError(error, { fallback: '游客会话暂不可用，请稍后重试。' }));
     } finally {
       setPendingAction('');
     }

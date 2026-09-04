@@ -15,16 +15,13 @@ final class SystemMigrate extends Command
     {
         $this->setName('lc:system:migrate')->setDescription('Run one resumable system migration phase')
             ->addArgument('directory', Argument::OPTIONAL, 'Migration directory', dirname(__DIR__, 2) . '/database/migrations')
-            ->addOption('contract', 'c', null, 'Allow destructive contract phase');
+            ->addOption('contract', 'c', null, 'Allow destructive contract phase')
+            ->addOption('retry-failed', null, null, 'Explicitly retry the first failed migration');
     }
 
     protected function execute(Input $input, Output $output): int
     {
-        if ((bool) $input->getOption('contract')) {
-            $output->writeln('<error>Contract Migration 必须通过 Upgrade Plan 审批入口执行</error>');
-            return 1;
-        }
-        $rows = app(SystemLifecycleCoordinator::class)->run((string) $input->getArgument('directory'), false);
+        $rows = app(SystemLifecycleCoordinator::class)->run((string) $input->getArgument('directory'), (bool) $input->getOption('contract'), (bool) $input->getOption('retry-failed'));
         foreach ($rows as $row) $output->writeln(json_encode($row, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         return 0;
     }

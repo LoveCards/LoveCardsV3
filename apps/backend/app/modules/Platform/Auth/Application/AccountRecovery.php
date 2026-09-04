@@ -7,6 +7,8 @@ namespace app\modules\Platform\Auth\Application;
 use app\api\ApiException;
 use app\modules\Platform\Auth\Contract\RecoveryRepository;
 use app\modules\Platform\Auth\Contract\SessionRegistry;
+use app\modules\Platform\Notifications\Contract\SystemNoticeIssuer;
+use app\modules\Platform\Notifications\Domain\SystemNotice;
 use app\shared\Observability\AuditLogger;
 use app\shared\Transaction\TransactionManager;
 
@@ -19,7 +21,8 @@ final class AccountRecovery
         private RecoveryRepository $recovery,
         private SessionRegistry $sessions,
         private AuditLogger $audit,
-        private TransactionManager $transactions
+        private TransactionManager $transactions,
+        private SystemNoticeIssuer $notices
     ) {
     }
 
@@ -80,6 +83,14 @@ final class AccountRecovery
                 'challenge_id' => $challengeId,
                 '_ip' => $ipAddress,
             ]);
+            $this->notices->issue(
+                $userId,
+                'auth.recovery.reset:' . $challengeId,
+                SystemNotice::SECURITY,
+                '你的账号密码已通过找回流程重置，所有登录会话已退出。若非本人操作，请尽快联系站点管理员。',
+                '/settings',
+                'critical'
+            );
             return null;
         });
 

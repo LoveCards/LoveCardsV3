@@ -49,16 +49,23 @@ class Tags extends BaseController
     {
         $params = $this->validated();
         $params['user_id'] = request()->auth->uid();
-        TagsService::createTag($params);
-        return $this->respond();
+        return $this->respond(TagsService::createTag($params));
     }
 
     public function update($id)
     {
         $params = $this->validated(null, ['id' => (int) $id]);
-
         $auth = request()->auth;
         TagsService::updateTag($params, $auth->uid(), $auth->grants());
+
+        return $this->respond();
+    }
+
+    public function updateManaged($id)
+    {
+        $params = $this->validated(null, ['id' => (int) $id]);
+        $auth = request()->auth;
+        TagsService::updateTag($params, $auth->uid(), $auth->grants(), (string) request()->ip(), true);
 
         return $this->respond();
     }
@@ -67,6 +74,19 @@ class Tags extends BaseController
     {
         $auth = request()->auth;
         TagsService::deleteTags([(int) $id], $auth->uid(), $auth->grants());
+        return $this->respond();
+    }
+
+    public function deleteManaged($id)
+    {
+        $auth = request()->auth;
+        TagsService::deleteTags(
+            [(int) $id],
+            $auth->uid(),
+            $auth->grants(),
+            (string) request()->ip(),
+            true
+        );
         return $this->respond();
     }
 }

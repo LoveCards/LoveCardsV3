@@ -5,11 +5,13 @@ namespace app\modules\Content\Likes\Service;
 use think\facade\Db;
 use app\modules\Content\Infrastructure\Persistence\Model\Likes as LikesModel;
 use app\modules\Content\Infrastructure\Persistence\Model\Cards as CardsModel;
+use app\modules\Content\Infrastructure\Persistence\Model\Comments as CommentsModel;
+use app\modules\Platform\Eventing\Public\DomainEventBus;
 use app\api\ApiException;
 
 class Likes
 {
-    const TYPES = ['card'];
+    const TYPES = ['card', 'comment'];
 
     public static function like(string $refType, int $refId, int $uid, string $ip): int
     {
@@ -17,7 +19,10 @@ class Likes
 
         Db::startTrans();
         try {
-            $exists = LikesModel::where('pid', $refId)
+            $target = self::likeTarget($refType, $refId);
+
+            $exists = LikesModel::where('ref_type', $refType)
+                ->where('ref_id', $refId)
                 ->where('uid', $uid)
                 ->find();
 
@@ -28,15 +33,35 @@ class Likes
             LikesModel::create([
                 'aid' => 1,
                 'pid' => $refId,
+                'ref_type' => $refType,
+                'ref_id' => $refId,
                 'uid' => $uid,
                 'ip' => $ip,
             ]);
 
-            self::incCounter($refId);
+            self::incCounter($refType, $refId);
+
+            $payload = [
+                'actor_id' => $uid,
+                'target_type' => $refType,
+                'target_id' => $refId,
+                'owner_id' => $target['owner_id'],
+                'card_id' => $target['card_id'],
+            ];
+            if ($target['comment_id'] !== null) {
+                $payload['comment_id'] = $target['comment_id'];
+            }
+            app(DomainEventBus::class)->publish(
+                'content.liked',
+                $refType,
+                (string) $refId,
+                $payload,
+                $uid
+            );
 
             Db::commit();
 
-            return self::count($refId);
+            return self::count($refType, $refId);
         } catch (\Throwable $e) {
             Db::rollback();
             throw $e;
@@ -49,7 +74,8 @@ class Likes
 
         Db::startTrans();
         try {
-            $like = LikesModel::where('pid', $refId)
+            $like = LikesModel::where('ref_type', $refType)
+                ->where('ref_id', $refId)
                 ->where('uid', $uid)
                 ->find();
 
@@ -59,7 +85,7 @@ class Likes
 
             $like->delete();
 
-            self::decCounter($refId);
+            self::decCounter($refType, $refId);
 
             Db::commit();
         } catch (\Throwable $e) {
@@ -73,22 +99,55 @@ class Likes
         if ($refType !== null) {
             self::assertSupportedType($refType);
         }
-        return LikesModel::where('uid', $uid)->select()->toArray();
+        $query = LikesModel::where('uid', $uid);
+        if ($refType !== null) $query->where('ref_type', $refType);
+        return $query->select()->toArray();
     }
 
-    public static function count(int $refId): int
+    public static function count(string $refType, int $refId): int
     {
-        return (int) LikesModel::where('pid', $refId)->count();
+        self::assertSupportedType($refType);
+        return (int) LikesModel::where('ref_type', $refType)->where('ref_id', $refId)->count();
     }
 
-    private static function incCounter(int $refId): void
+    private static function incCounter(string $refType, int $refId): void
     {
-        CardsModel::where('id', $refId)->inc('goods')->update();
+        self::counterQuery($refType, $refId)->inc('goods')->update();
     }
 
-    private static function decCounter(int $refId): void
+    private static function decCounter(string $refType, int $refId): void
     {
-        CardsModel::where('id', $refId)->where('goods', '>', 0)->dec('goods')->update();
+        self::counterQuery($refType, $refId)->where('goods', '>', 0)->dec('goods')->update();
+    }
+
+    /** @return array{owner_id:int,card_id:int,comment_id:?int} */
+    private static function likeTarget(string $refType, int $refId): array
+    {
+        $resource = match ($refType) {
+            'card' => CardsModel::where('id', $refId)->where('status', 0)->lock(true)->findOrEmpty(),
+            'comment' => CommentsModel::where('id', $refId)->where('status', 0)->lock(true)->findOrEmpty(),
+        };
+        if ($resource->isEmpty()) throw ApiException::notFound('内容不存在或不可点赞');
+
+        $ownerId = (int) $resource->user_id;
+        $cardId = $refType === 'card' ? $refId : (int) $resource->pid;
+        if ($ownerId < 1 || $cardId < 1) {
+            throw new \UnexpectedValueException('点赞目标缺少作者或卡片标识');
+        }
+
+        return [
+            'owner_id' => $ownerId,
+            'card_id' => $cardId,
+            'comment_id' => $refType === 'comment' ? $refId : null,
+        ];
+    }
+
+    private static function counterQuery(string $refType, int $refId)
+    {
+        return match ($refType) {
+            'card' => CardsModel::where('id', $refId),
+            'comment' => CommentsModel::where('id', $refId),
+        };
     }
 
     private static function assertSupportedType(string $refType): void

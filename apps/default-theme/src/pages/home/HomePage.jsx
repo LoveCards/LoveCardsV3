@@ -90,7 +90,7 @@ export function HomePage() {
     <AppShell>
       <main className="home-page" aria-labelledby="home-title">
         <nav className="home-channels" aria-label="内容频道">
-          {(isPreview ? HOME_CHANNELS : HOME_CHANNELS.filter((item) => item.id === 'recommended' || item.id === 'latest')).map((item) => (
+          {(isPreview ? HOME_CHANNELS : HOME_CHANNELS.filter((item) => ['recommended', 'following', 'latest'].includes(item.id))).map((item) => (
             <Link
               to={channelHref(item.id)}
               aria-current={channel === item.id ? 'page' : undefined}
@@ -98,13 +98,12 @@ export function HomePage() {
               key={item.id}
             >{item.label}</Link>
           ))}
-          {!isPreview && <span className="home-channels-note">关注与媒体频道暂未开放</span>}
         </nav>
         {isPreview && <p className="home-preview-disclosure" role="status">设计预览 · 演示数据 · 操作不会保存</p>}
         <header className="home-heading">
           <div>
             <h1 id="home-title">{channelLabel}</h1>
-            <p>{data.strategy === 'hot' ? '当前按社区热度展示内容。' : '发现值得停留的内容，也遇见值得关注的人。'}</p>
+            <p>{data.strategy === 'hot' ? '当前按社区热度展示内容。' : data.strategy === 'following' ? '只显示你关注的人公开发布的内容。' : '发现值得停留的内容，也遇见值得关注的人。'}</p>
           </div>
           <div className="home-heading-actions">
             {isPreview && <span className="preview-label">设计预览 · 演示数据 · 操作不会保存</span>}

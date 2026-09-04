@@ -89,7 +89,7 @@ Auth 的 `UserRepository` 返回只读 `AuthUser`，不会把 ThinkORM Model 带
 - SystemLifecycle：签名 Release、持久升级计划、迁移 phase/cursor、Lease、备份 Gate、Contract 批准和恢复形成完整状态机。
 - Observability：业务依赖 PSR Logger，ThinkPHP Adapter 统一 request/correlation context 与脱敏；高风险审计进入独立表。
 
-Likes 在 1.0 中明确为 card-only 点赞；`comment` 多目标点赞需要单独产品决策和数据迁移，不作为本次发布的隐式能力。
+Likes 支持 `card` 与 `comment` 两类内容；多目标点赞以 `ref_type`、`ref_id` 和 `uid` 作为唯一关系，计数分别维护在对应内容的 `goods` 字段。
 
 ## Auth 垂直切片
 

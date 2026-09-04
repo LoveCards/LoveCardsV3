@@ -222,7 +222,7 @@
     padding: 9px 1px 4px;
   }
 
-  .story-copy h2 {
+  .story-copy-primary {
     margin: 0;
     display: -webkit-box;
     overflow: hidden;
@@ -235,8 +235,8 @@
     -webkit-line-clamp: 2;
   }
 
-  .story-copy h2 a { text-decoration: none; }
-  .story-copy h2 a:hover { color: var(--lc-rose-deep); }
+  .story-copy-primary a { color: inherit; text-decoration: none; }
+  .story-copy-primary a:hover { color: var(--lc-rose-deep); }
 
   .story-copy > p {
     margin: 9px 0 0;
@@ -255,6 +255,26 @@
     justify-content: space-between;
     gap: 8px;
   }
+
+  .story-topics {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .story-topic {
+    padding: 3px 7px;
+    border-radius: 999px;
+    color: var(--lc-rose-deep);
+    background: var(--lc-rose-soft);
+    font-size: 0.66rem;
+    line-height: 1.35;
+    text-decoration: none;
+  }
+
+  .story-topic:hover { color: var(--lc-rose); }
 
   .story-author {
     min-width: 0;
@@ -311,8 +331,8 @@
 
   .feed-story-family-text .story-copy { min-height: 0; }
 
-  .feed-story-family-text .story-copy h2,
-  .feed-story-family-discussion .story-copy h2 {
+  .feed-story-family-text .story-copy-primary,
+  .feed-story-family-discussion .story-copy-primary {
     font-size: 1rem;
     font-weight: 680;
     line-height: 1.48;
@@ -473,7 +493,7 @@
     .feed-skeleton-avatar { width: 22px; height: 22px; }
 
     .story-copy { padding: 8px 1px 3px; }
-    .story-copy h2 { font-size: 0.76rem; line-height: 1.45; }
+    .story-copy-primary { font-size: 0.76rem; line-height: 1.45; }
 
     .story-meta { min-height: 36px; }
     .story-author .avatar { width: 22px; height: 22px; }
@@ -489,9 +509,11 @@
       border-radius: var(--lc-radius-feed);
     }
 
-    .feed-story-family-text .story-copy h2,
-    .feed-story-family-discussion .story-copy h2 { font-size: 0.86rem; }
-    .feed-story-family-text .story-copy > p { display: none; }
+    .feed-story-family-text .story-copy-primary,
+    .feed-story-family-discussion .story-copy-primary { font-size: 0.86rem; }
+    /* Text cards keep their content on mobile; hiding the paragraph made
+       journal cards appear empty while leaving only the author row visible. */
+    .feed-story-family-text .story-copy > p { display: block; }
     .resource-state,
     .home-unavailable { min-height: 360px; margin-top: 10px; }
   }

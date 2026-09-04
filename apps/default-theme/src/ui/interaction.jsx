@@ -1,4 +1,5 @@
 import { AlertDialog } from '@astryxdesign/core/AlertDialog';
+import { Banner } from '@astryxdesign/core/Banner';
 import { Dialog, DialogHeader } from '@astryxdesign/core/Dialog';
 import { FileInput } from '@astryxdesign/core/FileInput';
 import { MoreMenu } from '@astryxdesign/core/MoreMenu';
@@ -17,6 +18,13 @@ export function ActionMenu({ items, label = '更多操作', icon = <Icon name="m
 
 export function ConfirmActionDialog({ isOpen, onOpenChange, title, description, actionLabel, isLoading, onAction }) {
   return <AlertDialog className="lc-alert-dialog" isOpen={isOpen} onOpenChange={onOpenChange} title={title} description={description} cancelLabel="取消" actionLabel={actionLabel} isActionLoading={isLoading} onAction={onAction} width="min(420px, calc(100vw - 32px))" />;
+}
+
+export function ScopedBanner({ status = 'error', title, description, actionLabel, onAction, className = '' }) {
+  const endContent = actionLabel
+    ? <Button type="button" label={actionLabel} variant="ghost" size="lg" onClick={onAction} />
+    : undefined;
+  return <Banner className={`lc-status-banner ${className}`.trim()} status={status} title={title} description={description} endContent={endContent} container="card" />;
 }
 
 export function FormDialog({ isOpen, onOpenChange, title, subtitle, children, footer, isBusy = false, width = 'min(520px, calc(100vw - 32px))', className = '' }) {
@@ -39,7 +47,7 @@ export function MediaDropzone({ label, description, value, onChange, isDisabled,
 }
 
 export function ImageDropzone(props) {
-  return <MediaDropzone accept="image/jpeg,image/png,image/webp" maxSize={12 * 1024 * 1024} placeholder={props.isMultiple ? '拖入多张图片，或点击选择' : '拖入图片，或点击选择'} {...props} />;
+  return <MediaDropzone accept="image/jpeg,image/png,image/gif,image/webp" maxSize={10 * 1024 * 1024} placeholder={props.isMultiple ? '拖入多张图片，或点击选择' : '拖入图片，或点击选择'} {...props} />;
 }
 
 export function InfoPopover({ label, children }) {
@@ -48,4 +56,4 @@ export function InfoPopover({ label, children }) {
   </Popover>;
 }
 
-export { Dialog, DialogHeader, SegmentedControl, SegmentedControlItem, Selector, Switch, Tooltip, useToast };
+export { Dialog, DialogHeader, FileInput, SegmentedControl, SegmentedControlItem, Selector, Switch, Tooltip, useToast };

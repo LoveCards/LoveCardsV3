@@ -20,6 +20,8 @@
     --lc-radius-feed: 14px;
     --lc-radius-surface: 14px;
     --lc-page-max: 1240px;
+    /* Shared mobile content gutter for discovery and profile feeds. */
+    --lc-feed-mobile-gutter: 9px;
     --lc-reading-max: 720px;
     --lc-ease: cubic-bezier(0.22, 1, 0.36, 1);
     --lc-z-sticky: 20;

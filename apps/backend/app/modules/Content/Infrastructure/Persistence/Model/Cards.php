@@ -33,6 +33,7 @@ class Cards extends Model
         'goods' => 'INT',
         'views' => 'INT',
         'comments' => 'INT',
+        'pinned_comment_id' => 'INT',
         'post_ip' => 'VARCHAR',
         'created_at' => 'TIMESTAMP',
         'updated_at' => 'TIMESTAMP',

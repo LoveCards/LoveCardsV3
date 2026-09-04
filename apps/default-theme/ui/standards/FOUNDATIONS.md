@@ -16,26 +16,26 @@
 |---|---|---|
 | Canvas | `#f5f5f7` | 页面背景 |
 | Surface | `#ffffff` | 内容与表单 |
-| Subtle Surface | `#f2f4f7` | 输入、Skeleton、局部层次 |
+| Subtle Surface | `#f0f1f4` | 输入、Skeleton、局部层次 |
 | Primary Ink | `#1d1d1f` | 标题、正文 |
 | Muted Ink | `#6e6e73` | 时间、来源、次级文字 |
-| Separator | `rgba(60,60,67,.14)` | 必要的 1px 结构线 |
-| Deep Rose | `#d92f68` | 主行动、焦点、选中、可读玫瑰文字 |
-| Signal Rose | `#ff4d6d` | 喜欢和小面积高光 |
-| Rose Mist | `#fff0f3` | 选中背景、引用、社区邀请 |
+| Separator | `rgba(60,60,67,.16)` | 必要的 1px 结构线 |
+| Deep Rose | `#c92c60` | 主行动、焦点、选中、可读玫瑰文字 |
+| Signal Rose | `#e63d63` | 喜欢和小面积高光 |
+| Rose Mist | `#fff0f4` | 选中背景、引用、社区邀请 |
 
-Deep Rose/white 对比度 4.61:1；Signal Rose/white 仅 3.21:1，Signal Rose 禁止普通正文和白字按钮。暗色映射见 `DESIGN.md`，不增加霓虹、紫色渐变或发光。
+Deep Rose/white 对比度 5.23:1；Signal Rose/white 为 4.03:1，Signal Rose 禁止普通正文和白字按钮。暗色映射见 `DESIGN.md`，不增加霓虹、紫色渐变或发光。
 
 ### 尺度
 
-间距：4/8/12/16/24/32/48px。控制圆角 8–10px，媒体 12px，内容面板 14px，标签和头像使用全圆/50%。文字角色为 24/21/17/15/13/12/11px，正文行宽 65–75ch。固定层级：Content 0、Sticky 30/40、Overlay 60、Backdrop 70、Modal 80、Toast 100、Tooltip 110。
+间距：4/8/12/16/24/32/48px。控制圆角以 9px 为基准，字段可为 10px，媒体 12px，内容面板 14px，标签和头像使用全圆/50%。文字角色为 24/21/17/15/13/12/11px，正文行宽 65–75ch。固定层级：Content 0、Sticky 30/40、Overlay 60、Backdrop 70、Modal 80、Toast 100、Tooltip 110。
 
 ## Responsive layout
 
 | 视口 | gutter | 发现流 | 关系/讨论流 | 辅助栏 |
 |---|---:|---|---|---|
-| 320–359px | 12px | 单列安全回退 | 单列 | 无 |
-| 360–760px | 12px | 双列 Compact，10px gap | 单列 Standard | 流内或入口 |
+| 320–359px | 12px；Compact Feed 可为 8–9px | 单列安全回退 | 单列 | 无 |
+| 360–760px | 12–16px；Compact Feed 固定 9px | 双列 Compact，8–10px gap | 单列 Standard | 流内或入口 |
 | 761–1050px | 20px | 三列 | 单列，≤680px | 隐藏/折叠 |
 | 1051–1439px | 20px | 3–4 列 + 280px | ≤680px | 固定 280px |
 | ≥1440px | 居中 | 仍最多 4 列 | ≤680px | 不继续扩张 |
@@ -71,3 +71,4 @@ Deep Rose/white 对比度 4.61:1；Signal Rose/white 仅 3.21:1，Signal Rose �
 - 320/360/760/1050/1440px 无横溢出、遮挡和不可达操作。
 - 亮暗模式保持同层级；正文/占位 ≥4.5:1，图标/焦点 ≥3:1。
 - 媒体有比例、失败态和替代内容；Overlay 不被 `overflow` 裁切。
+- 页面容器、Feed gutter 与 edge-to-edge 例外遵循 [`../docs/specifications/LAYOUT-RESPONSIVE.md`](../docs/specifications/LAYOUT-RESPONSIVE.md)。

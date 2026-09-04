@@ -1,32 +1,54 @@
 <template>
-	<v-dialog v-model="thisDialogState" max-width="400">
-		<v-card>
-			<v-card-title class="text-h5"> 确认批量操作 </v-card-title>
-			<v-card-text>
-				确定要 {{ batchOptions }} 选中的 {{ batchData.length }} 个数据吗？此操作不可恢复。
-			</v-card-text>
-			<v-card-actions>
-				<v-spacer></v-spacer>
-				<v-btn color="accent" text="取消" variant="text" @click="thisDialogState = false"></v-btn>
-				<v-btn color="accent" text="确认" variant="flat" @click="batchFun"></v-btn>
-			</v-card-actions>
-		</v-card>
-	</v-dialog>
+  <AdminDangerActionDialog
+    v-model="thisDialogState"
+    :action-label="actionLabel"
+    :confirm-text="confirmText"
+    :error="actionError"
+    :impact="impact"
+    :loading="processing"
+    :resource-label="resourceLabel"
+    :title="title"
+    @confirm="submitBatch"
+  />
 </template>
 
 <script setup lang="ts">
-//Props
-const props = defineProps({
-	batchFun: Function
-});
-const batchFun = () => {
-	if (props.batchFun) {
-		props.batchFun();
-	}
-};
+import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue'
 
-//Model
-const thisDialogState = defineModel<boolean>('thisDialogState');
-const batchData = defineModel<unknown[]>('batchData', { default: [] });
-const batchOptions = defineModel<string>('batchOptions', { default: '' });
+const props = defineProps<{
+  batchFun?: () => unknown
+}>()
+
+const thisDialogState = defineModel<boolean>('thisDialogState', { default: false })
+const batchData = defineModel<unknown[]>('batchData', { default: [] })
+const batchOptions = defineModel<string>('batchOptions', { default: '' })
+
+const processing = ref(false)
+const actionError = ref('')
+const actionName = computed(() => batchOptions.value.trim() || '处理')
+const title = computed(() => `确认批量${actionName.value}`)
+const actionLabel = computed(() => `确认${actionName.value}`)
+const confirmText = computed(() => `${actionName.value}${batchData.value.length}`)
+const resourceLabel = computed(() => `已选择 ${batchData.value.length} 个资源`)
+const impact = computed(() => {
+  return `即将对 ${batchData.value.length} 个资源执行“${actionName.value}”。批量操作可能改变内容可见性、账号状态或资源可用性，请确认选择范围无误。`
+})
+
+watch(thisDialogState, (open) => {
+  if (open) actionError.value = ''
+})
+
+const submitBatch = async () => {
+  if (!props.batchFun || processing.value || batchData.value.length === 0) return
+  processing.value = true
+  actionError.value = ''
+  try {
+    await props.batchFun()
+    thisDialogState.value = false
+  } catch (cause) {
+    actionError.value = cause instanceof Error ? cause.message : '批量操作失败，请稍后重试。'
+  } finally {
+    processing.value = false
+  }
+}
 </script>

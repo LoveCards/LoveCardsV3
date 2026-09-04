@@ -10,7 +10,6 @@ use app\modules\Platform\Eventing\Contract\DeliveryRepository;
 use app\modules\Platform\Eventing\Domain\DeliveryClaim;
 use app\modules\Platform\Eventing\Domain\ExecutionReport;
 use app\modules\Platform\Eventing\Domain\RequestExecutionBudget;
-use app\modules\Platform\Eventing\Public\ExecutionMode;
 
 final class RequestExecutor
 {
@@ -45,7 +44,7 @@ final class RequestExecutor
             $claimed = $this->deliveries->claim(new DeliveryClaim(
                 $budget->workerId(),
                 $budget->queueNames(),
-                [ExecutionMode::REQUEST_SAFE],
+                $budget->executionModes(),
                 1,
                 $this->tokens->generate(),
                 $now,

@@ -1,16 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderRoute } from './renderRoute.jsx';
 
-const state = vi.hoisted(() => ({ uid: 1 }));
+const state = vi.hoisted(() => ({ uid: 1, pinSupported: false, updatePinnedComment: vi.fn() }));
 const detail = vi.hoisted(() => ({
   card: {
     id: '42',
     ownerId: 1,
     author: '内容作者',
+    content: '一条可编辑的内容',
     title: '一条可编辑的内容',
-    body: '正文',
+    body: '',
     likes: 2,
     replies: 1,
+    topics: [{ id: 13, name: '牛的' }, { id: 5, name: '纪念日' }, { id: 4, name: '生日' }],
     mediaItems: [
       { type: 'image', url: '/media/1.webp', alt: '第一张' },
       { type: 'image', url: '/media/2.webp', alt: '第二张' },
@@ -19,7 +21,7 @@ const detail = vi.hoisted(() => ({
       { type: 'image', url: '/media/5.webp', alt: '第五张' },
     ],
   },
-  comments: [{ id: 7, ownerId: 2, author: '评论作者', content: '评论内容', likes: 0 }],
+  comments: [{ id: 7, ownerId: 2, author: '评论作者', authorHandle: 'commenter', content: '评论内容', likes: 0, parentId: null, isPinned: false }],
 }));
 
 vi.mock('../app/providers.jsx', async (importOriginal) => {
@@ -28,7 +30,7 @@ vi.mock('../app/providers.jsx', async (importOriginal) => {
     ...actual,
     useAuth: () => ({
       status: 'ready',
-      session: { uid: state.uid, capabilities: ['cards.update', 'cards.delete', 'comments.update', 'comments.delete'] },
+      session: { uid: state.uid, capabilities: ['cards.update', 'cards.delete', 'comments.delete'] },
       isAuthenticated: true,
       isVisitor: false,
       can: () => true,
@@ -41,10 +43,21 @@ vi.mock('../services/detail-service.js', () => ({
   createDetailComment: vi.fn(),
   getDetailSnapshot: () => ({ source: 'live', card: detail.card, comments: detail.comments }),
   loadDetail: async () => ({ source: 'live', card: detail.card, comments: detail.comments }),
+  supportsUserCommentPinning: () => state.pinSupported,
+  updateDetailCommentLike: vi.fn(),
+  updatePinnedComment: state.updatePinnedComment,
 }));
 
 describe('detail interaction hierarchy', () => {
-  beforeEach(() => { state.uid = 1; });
+  beforeEach(() => { state.uid = 1; state.pinSupported = false; state.updatePinnedComment.mockReset(); detail.comments[0].authorHandle = 'commenter'; });
+
+  it('links a valid comment identity and leaves a missing handle as text', () => {
+    expect(renderRoute('/post/42')).toContain('href="/user/commenter"');
+    detail.comments[0].authorHandle = null;
+    const html = renderRoute('/post/42');
+    expect(html).not.toContain('href="/user/commenter"');
+    expect(html).toContain('评论作者');
+  });
 
   it('keeps sharing explicit and reserves the content menu for owner actions', () => {
     const html = renderRoute('/post/42');
@@ -54,6 +67,15 @@ describe('detail interaction hierarchy', () => {
     expect(html).not.toContain('分享或复制链接');
     expect(html).not.toContain('举报 · 暂未开放');
     expect(html).not.toContain('aria-label="评论操作"');
+    expect(html).not.toContain('编辑正文');
+  });
+
+  it('renders every hydrated topic on detail instead of the legacy first topic only', () => {
+    const html = renderRoute('/post/42');
+    expect(html).toContain('aria-label="内容话题"');
+    expect(html).toContain('href="/topic/13-%E7%89%9B%E7%9A%84"');
+    expect(html).toContain('href="/topic/5-%E7%BA%AA%E5%BF%B5%E6%97%A5"');
+    expect(html).toContain('href="/topic/4-%E7%94%9F%E6%97%A5"');
   });
 
   it('shows the comment menu only to the comment owner', () => {
@@ -61,6 +83,14 @@ describe('detail interaction hierarchy', () => {
     const html = renderRoute('/post/42');
     expect(html).not.toContain('aria-label="内容操作"');
     expect(html).toContain('aria-label="评论操作"');
+    expect(html).not.toContain('>置顶评论</span>');
+  });
+
+  it('reveals the root-comment pin action only when the owner SDK boundary is available', () => {
+    state.pinSupported = true;
+    const html = renderRoute('/post/42');
+    expect(html).toContain('aria-label="评论操作"');
+    expect(html).toContain('>置顶评论</span>');
   });
 
   it('renders normalized media items through the real detail gallery', () => {

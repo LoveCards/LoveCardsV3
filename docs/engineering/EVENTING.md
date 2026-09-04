@@ -48,9 +48,13 @@ claim 使用随机 token、worker id 与 lease expiry；完成或失败更新必
 ## 两种执行模式
 
 - `request_safe`：没有 Worker 时由受预算的 `RequestExecutor` 处理，单请求最大 jobs 在 1–20 之间；Handler 必须短、可重入、不得依赖请求结束后的内存。
-- `worker`：由 `lc:eventing:work` 常驻消费，适合发送、媒体处理和较慢任务；Worker 以 `runtime_workers` 心跳报告状态。
+- `daemon_required`：由 `lc:eventing:work` 或 Scheduler 消费，适合发送、媒体处理和较慢任务；Worker 以 `runtime_workers` 心跳报告状态。
 
-Redis `eventing.wakeup` 只减少 Worker 的轮询延迟。publish 失败不回滚 MySQL Outbox，Worker 始终可以通过 MySQL poll 找到任务。
+队列只在 `HandlerRegistry` 注册。HTTP request drain 只从其中派生
+`request_safe` 队列；Scheduler 与 Worker 派生全部模式。当前 `notifications`
+允许 HTTP 预算兜底，`storage` 仅允许 Scheduler/Worker，不能把外部文件删除放入用户请求。
+
+Redis `eventing.wakeup` 只减少 Worker 的轮询延迟。Redis wakeup 发布失败不回滚已经提交的 MySQL Outbox，Worker 始终可以通过 MySQL poll 找到任务。
 
 ## 当前跨模块事件
 
@@ -58,7 +62,30 @@ Handler Registry 当前固定注册：
 
 - `social.followed@1` -> `SocialFollowedNotificationHandler`；
 - `message.sent@1` -> `MessageSentNotificationHandler`；
+- `content.liked@1` -> `ContentLikedNotificationHandler`；
+- `library.saved@1` -> `LibrarySavedNotificationHandler`；
+- `content.comment.published@1` -> `ContentCommentPublishedNotificationHandler`；
+- `content.mentions.added@1` -> `ContentMentionsAddedNotificationHandler`；
+- `system.notification.issued@1` -> `SystemNotificationIssuedHandler`；
 - `file.purge.requested@1` -> `PurgeFileHandler`。
+
+互动通知事件与业务写入共用事务。`content.liked` 只在首次点赞时发布，携带
+`actor_id/target_type/target_id/owner_id/card_id/comment_id?`；取消点赞不发布事件。
+`library.saved` 只在首次收藏时发布，卡片收藏额外携带 `owner_id/card_id`。
+两者分别使用 `like:{type}:{target}:actor:{actor}` 与
+`save:card:{card}:actor:{actor}` 作为通知业务幂等键。
+
+评论仅在真正变为可见时发布 `content.comment.published`。一级评论的主接收人是
+卡片作者，回复的主接收人是父评论作者；主接收人同时被提及时只保留更具体的
+评论/回复通知。卡片标题、卡片正文和评论正文中的有效提及先写入
+`content_mentions`，只有新关系才发布 `content.mentions.added`，通知幂等键为
+`mention:{resource_type}:{resource_id}:user:{recipient_id}`。
+
+`system.notification.issued` 只能由可信后端服务发布，类型限于
+`system.notice/system.security/system.moderation`，payload 仅允许
+`message/action_url/severity`，其中 `action_url` 必须是安全的站内路径。
+哪些业务必须发送系统通知、类型选择、前后端边界和验收清单统一以
+[NOTIFICATIONS.md](NOTIFICATIONS.md) 为准。
 
 新增事件/Handler 必须同时完成：事件 schema/version、Registry 注册、Handler 幂等与重试测试、Release Handler Catalog 更新、投递可观测字段和失败处理。不得为了“以后可能需要”给每个 CRUD 都发布事件。
 

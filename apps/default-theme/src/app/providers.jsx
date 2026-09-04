@@ -3,7 +3,7 @@ import { Theme } from '@astryxdesign/core/theme';
 import { LayerProvider } from '@astryxdesign/core/Layer';
 import { InternationalizationProvider } from '@astryxdesign/core/i18n';
 import { neutralTheme } from '@astryxdesign/theme-neutral/built';
-import { checkSession, logout } from '../services/auth-service.js';
+import { checkSession, loadCurrentUser, logout } from '../services/auth-service.js';
 
 const ThemeModeContext = createContext(null);
 const AuthContext = createContext(null);
@@ -83,15 +83,27 @@ export function AppProviders({ children, initialMode }) {
     [mode, preference, reduceMotion],
   );
 
-  const [auth, setAuth] = useState({ status: 'checking', session: null });
+  const [auth, setAuth] = useState({ status: 'checking', session: null, user: null, userStatus: 'idle' });
   useEffect(() => {
     let active = true;
     const refresh = async () => {
       try {
         const session = await checkSession();
-        if (active) setAuth({ status: 'ready', session, error: null });
+        if (!session || session.visitor) {
+          if (active) setAuth({ status: 'ready', session, user: null, userStatus: 'idle', error: null });
+          return;
+        }
+        let user = null;
+        let userStatus = 'error';
+        try {
+          user = await loadCurrentUser();
+          userStatus = user ? 'ready' : 'error';
+        } catch {
+          // Session state remains usable when the profile request is temporarily unavailable.
+        }
+        if (active) setAuth({ status: 'ready', session, user, userStatus, error: null });
       } catch (error) {
-        if (active) setAuth((current) => ({ ...current, status: 'error', error }));
+        if (active) setAuth((current) => ({ ...current, status: 'error', error, user: null, userStatus: 'error' }));
       }
     };
     refresh();
@@ -106,7 +118,7 @@ export function AppProviders({ children, initialMode }) {
     isAuthenticated: Boolean(auth.session && !auth.session.visitor),
     can: (capability) => hasSessionCapability(auth.session, capability),
     refresh: () => window.dispatchEvent(new CustomEvent('lc-auth-changed')),
-    logout: async () => { try { await logout(); } finally { setAuth({ status: 'ready', session: null }); } },
+    logout: async () => { try { await logout(); } finally { setAuth({ status: 'ready', session: null, user: null, userStatus: 'idle' }); } },
   }), [auth]);
 
   return (

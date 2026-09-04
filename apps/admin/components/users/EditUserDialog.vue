@@ -1,214 +1,316 @@
 <template>
-	<!-- 编辑用户对话框 -->
-	<v-dialog v-model="thisDialogState" max-width="600">
-		<v-card prepend-icon="mdi-account" title="修改用户">
-			<v-card-text>
-				<v-row dense>
-					<v-col cols="12" class="d-flex justify-center">
-						<v-btn class="rounded-circle" size="auto" @click="triggerFileInput">
-							<input type="file" ref="fileInput" hidden accept="image/*" @change="handleFileUpload" />
-							<v-avatar color="grey" size="150">
-								<v-img :src="editUserData.edit.avatar" cover></v-img>
-								<v-icon style="
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    color: rgba(255, 255, 255, 0.5);
-                  " class="camera-icon" size="30">mdi-camera</v-icon>
-							</v-avatar>
-						</v-btn>
-					</v-col>
+  <v-dialog v-model="thisDialogState" aria-label="编辑用户" max-width="720" :persistent="saving || avatarUploading">
+    <v-card prepend-icon="mdi-account-edit-outline" title="编辑用户">
+      <v-card-text class="pt-4">
+        <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">
+          {{ formError }}
+        </v-alert>
 
-					<v-col cols="12" sm="3">
-						<v-select label="帐号状态" :items="ACCOUNT_STATUS" item-title="title" item-value="value"
-							v-model="editUserData.edit.status" variant="underlined" color="accent"></v-select>
-					</v-col>
+        <v-row dense>
+          <v-col cols="12" md="4">
+            <v-sheet class="d-flex flex-column align-center pa-4" color="surface-variant" rounded="lg">
+              <v-avatar color="surface" size="112">
+                <v-img v-if="editUserData.edit.avatar" :src="editUserData.edit.avatar" cover />
+                <v-icon v-else color="medium-emphasis" size="48">mdi-account</v-icon>
+              </v-avatar>
+              <p class="mb-0 mt-3 text-body-2 text-medium-emphasis">当前头像</p>
+            </v-sheet>
+          </v-col>
 
-					<v-col cols="12" sm="9">
-						<v-select clearable chips label="权限组" item-title="title" item-value="value" v-model="roles_id"
-							:items="userRolesOptions" variant="underlined" color="accent" multiple
-							:loading="rolesLoading"></v-select>
-					</v-col>
+          <v-col cols="12" md="8">
+            <v-file-input
+              v-if="canUploadFiles"
+              accept="image/*"
+              :disabled="saving"
+              density="comfortable"
+              :error-messages="avatarUploadError ? [avatarUploadError] : []"
+              label="更换头像"
+              :loading="avatarUploading"
+              :model-value="selectedAvatar"
+              prepend-icon="mdi-camera-outline"
+              show-size
+              variant="outlined"
+              @update:model-value="uploadAvatar"
+            />
+            <v-alert v-else class="mb-4" density="compact" type="info" variant="tonal">
+              当前账号没有上传文件权限，用户头像将保持不变。
+            </v-alert>
+            <v-select
+              v-model="editUserData.edit.status"
+              :disabled="saving"
+              density="comfortable"
+              item-title="title"
+              item-value="value"
+              :items="accountStatusOptions"
+              label="账号状态"
+              variant="outlined"
+            />
+            <v-select
+              v-if="canManageRoles"
+              v-model="rolesId"
+              chips
+              clearable
+              :disabled="saving"
+              density="comfortable"
+              :error-messages="rolesError ? [rolesError] : []"
+              item-title="title"
+              item-value="value"
+              :items="userRolesOptions"
+              label="权限组"
+              :loading="rolesLoading"
+              multiple
+              variant="outlined"
+            />
+            <v-alert v-else density="compact" type="info" variant="tonal">
+              当前账号缺少角色读取或分配权限，用户现有角色将保持不变。
+            </v-alert>
+          </v-col>
 
-					<v-col cols="12" sm="6">
-						<v-text-field label="账号" v-model="editUserData.edit.number" variant="underlined" color="accent"
-							required></v-text-field>
-					</v-col>
+          <v-col cols="12" sm="6">
+            <v-text-field
+              :model-value="editUserData.edit.number ?? '—'"
+              density="comfortable"
+              label="账号"
+              readonly
+              variant="plain"
+            />
+          </v-col>
+          <v-col cols="12" sm="6">
+            <v-text-field
+              v-model="editUserData.edit.username"
+              :disabled="saving"
+              density="comfortable"
+              label="用户名"
+              required
+              variant="outlined"
+            />
+          </v-col>
+          <v-col cols="12" sm="6">
+            <v-text-field
+              v-model="editUserData.edit.email"
+              :disabled="saving"
+              density="comfortable"
+              label="邮箱"
+              type="email"
+              variant="outlined"
+            />
+          </v-col>
+          <v-col cols="12" sm="6">
+            <v-text-field
+              v-model="editUserData.edit.phone"
+              :disabled="saving"
+              density="comfortable"
+              label="手机号"
+              type="tel"
+              variant="outlined"
+            />
+          </v-col>
+        </v-row>
 
-					<v-col cols="12" sm="6">
-						<v-text-field label="用户名" v-model="editUserData.edit.username" variant="underlined" color="accent"
-							required></v-text-field>
-					</v-col>
+      </v-card-text>
 
-					<v-col cols="12" sm="6">
-						<v-text-field label="邮箱" v-model="editUserData.edit.email" variant="underlined" color="accent"
-							required></v-text-field>
-					</v-col>
-
-					<v-col cols="12" sm="6">
-						<v-text-field label="手机号" v-model="editUserData.edit.phone" variant="underlined"
-							color="accent"></v-text-field>
-					</v-col>
-
-					<v-col cols="12" sm="6">
-					</v-col>
-				</v-row>
-
-			</v-card-text>
-
-			<v-divider></v-divider>
-
-			<v-card-actions>
-				<v-spacer></v-spacer>
-				<v-btn color="accent" text="取消" variant="text" @click="thisDialogState = false"></v-btn>
-				<v-btn color="accent" text="保存" variant="flat" @click="submitEditUser()"></v-btn>
-			</v-card-actions>
-		</v-card>
-	</v-dialog>
+      <v-divider />
+      <v-card-actions class="pa-4">
+        <v-spacer />
+        <v-btn :disabled="saving || avatarUploading" variant="text" @click="thisDialogState = false">
+          取消
+        </v-btn>
+        <v-btn
+          color="primary"
+          :disabled="avatarUploading || rolesLoading"
+          :loading="saving"
+          variant="flat"
+          @click="submitEditUser"
+        >
+          保存修改
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
-import { useApi } from '~/lib/api';
-import { useAdminNotifier } from '~/composables/useAdminNotifier';
-import CommonUtils from "~/utils/common";
-import type { UploadResult, User } from '@lovecards/sdk';
-const client = useApi();
-const notifier = useAdminNotifier();
+import type { UploadResult, User } from '@lovecards/sdk'
+import { isApiError, useApi } from '~/lib/api'
+import { useAdminNotifier } from '~/composables/useAdminNotifier'
+import { useUserStore } from '~/stores/userStore'
+import CommonUtils from '~/utils/common'
 
-//Props
-const props = defineProps({
-	ACCOUNT_STATUS: Array,
-	getTableData: Function,
-});
-const getTableData = () => {
-	if (props.getTableData) {
-		props.getTableData();
-	}
-};
-const ACCOUNT_STATUS = props.ACCOUNT_STATUS;
+const client = useApi()
+const notifier = useAdminNotifier()
+const userStore = useUserStore()
 
-// 动态加载角色列表
-const userRolesOptions = ref<Array<{ title: string; value: number }>>([]);
-const rolesLoading = ref(false);
-const loadRoles = () => {
-	rolesLoading.value = true;
-	client.roles.list({ list_rows: 100 }).then((result) => {
-		userRolesOptions.value = (result.data || []).map((role) => ({
-			title: `#${role.id} ${role.name}`,
-			value: role.id,
-		}));
-	}).catch(() => {}).finally(() => {
-		rolesLoading.value = false;
-	});
-};
+const props = defineProps<{
+  ACCOUNT_STATUS?: unknown[]
+  getTableData?: () => unknown
+}>()
 
-//Model
-//对话框状态
-const thisDialogState = defineModel<boolean>('thisDialogState');
-//用户数据
 interface EditUserData {
-	edit: Partial<User> & { roles_id?: number[] | string };
-	origin: Partial<User> & { roles_id?: number[] | string };
+  edit: Omit<Partial<User>, 'roles_id'> & { roles_id?: number[] | string }
+  origin: Omit<Partial<User>, 'roles_id'> & { roles_id?: number[] | string }
 }
-const editUserData = defineModel<EditUserData>('editUserData', { default: { edit: {}, origin: {} } });
 
-// 对话框打开时加载角色列表
-watch(thisDialogState, (val) => {
-	if (val) loadRoles();
-});
-//JSON解析计算属性
-const roles_id = computed({
-	get: () => {
-		try {
-			const raw = editUserData.value.edit.roles_id;
-			if (Array.isArray(raw)) return raw;
-			if (typeof raw === 'number') return [raw];
-			if (typeof raw === 'string') {
-				const parsed: unknown = JSON.parse(raw);
-				if (Array.isArray(parsed)) return parsed.filter((item): item is number => typeof item === 'number');
-				if (typeof parsed === 'number') return [parsed];
-			}
-			return [];
-		} catch (error) {
-			return [];
-		}
-	},
-	set: (value) => {
-		editUserData.value.edit.roles_id = value;
-	}
-});
+const thisDialogState = defineModel<boolean>('thisDialogState', { default: false })
+const editUserData = defineModel<EditUserData>('editUserData', {
+  default: { edit: {}, origin: {} },
+})
+const accountStatusOptions = computed(() => props.ACCOUNT_STATUS ?? [])
+const userRolesOptions = ref<Array<{ title: string; value: number }>>([])
+const rolesLoading = ref(false)
+const rolesError = ref('')
+const saving = ref(false)
+const formError = ref('')
+const avatarUploading = ref(false)
+const avatarUploadError = ref('')
+const selectedAvatar = ref<File | File[] | null>(null)
+const canAssignRoles = computed(() => userStore.hasGrant('users.roles.assign', 'global'))
+const canReadRoles = computed(() => userStore.hasGrant('roles.read', 'global'))
+const canManageRoles = computed(() => canAssignRoles.value && canReadRoles.value)
+const canUploadFiles = computed(() => userStore.hasGrant('files.upload', 'global'))
 
-// 触发文件选择
-const fileInput = ref<HTMLInputElement>();
-const triggerFileInput = () => {
-	fileInput.value?.click();
-};
-// 处理文件上传
-const handleFileUpload = (e: Event) => {
-	const input = e.target as HTMLInputElement;
-	if (!input.files?.length) return;
+class RoleSaveError extends Error {
+  constructor(message: string, readonly profileSaved: boolean) {
+    super(message)
+    this.name = 'RoleSaveError'
+  }
+}
 
-	const file = input.files[0];
-	if (!file) return;
+const parseRoleIds = (raw: unknown): number[] => {
+  let value = raw
+  if (typeof value === 'string') {
+    if (value.trim() === '') return []
+    try {
+      value = JSON.parse(value)
+    } catch {
+      return []
+    }
+  }
+  if (typeof value === 'number') value = [value]
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is number => typeof item === 'number' && Number.isSafeInteger(item) && item > 0)
+}
 
-	const data = {
-		file: file,
-		scene: 'avatar',
-	};
+const rolesId = computed<number[]>({
+  get: () => parseRoleIds(editUserData.value.edit.roles_id),
+  set: (value) => {
+    editUserData.value.edit.roles_id = value
+  },
+})
 
-	const fd = new FormData();
-	fd.append('file', file);
-	client.files.upload(fd)
-		.then((result: UploadResult) => {
-			editUserData.value.edit.avatar = result.url;
-		})
-		.finally(() => {
-			// 清空文件选择
-			input.value = "";
-		});
-};
+const errorMessage = (cause: unknown, fallback: string) => {
+  return isApiError(cause) ? cause.message : fallback
+}
 
-//页面操作提交修改用户
-const submitEditUser = () => {
-	patchUser(editUserData.value).then(() => {
-		//退出对话框并刷新列表
-		thisDialogState.value = false;
-		getTableData();
-	});
-};
+const loadRoles = async () => {
+  if (!canManageRoles.value) return
+  rolesLoading.value = true
+  rolesError.value = ''
+  try {
+    const result = await client.roles.list({ list_rows: 100 })
+    userRolesOptions.value = (result.data || []).map((role) => ({
+      title: `#${role.id} ${role.name}`,
+      value: role.id,
+    }))
+  } catch (cause) {
+    rolesError.value = errorMessage(cause, '无法加载权限组，请稍后重试。')
+  } finally {
+    rolesLoading.value = false
+  }
+}
 
-//API
-//修改用户资料
-const patchUser = (data: EditUserData) => {
-	//获取修改参数
-	let params = CommonUtils.removeCommonProperties(data.edit, data.origin);
-	const roleIds = params.roles_id;
-	delete params.roles_id;
-	const requests: Promise<void>[] = [];
-	if (roleIds !== undefined) {
-		const parsed = typeof roleIds === 'string' ? JSON.parse(roleIds) : roleIds;
-		requests.push(client.users.assignRoles(data.origin.id!, { roles_id: parsed }));
-	}
-	if (Object.keys(params).length > 0) {
-		requests.push(client.users.updateManaged(
-			data.origin.id!,
-			params as Parameters<typeof client.users.updateManaged>[1],
-		));
-	}
-	//密码留空默认不修改
-	if (requests.length === 0) {
-		//请修改后再提交
-		notifier.toast({
-			text: "请修改后再提交",
-			type: "warning",
-		});
-		return Promise.reject();
-	}
-	//插入用户ID
-	// console.log(params);
-	//返回原生Promise
-	return Promise.all(requests).then(() => undefined);
-};
+const uploadAvatar = async (value: File | File[] | null) => {
+  if (!canUploadFiles.value) return
+  selectedAvatar.value = value
+  const file = Array.isArray(value) ? value[0] : value
+  if (!file) return
 
+  avatarUploading.value = true
+  avatarUploadError.value = ''
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    const result: UploadResult = await client.files.upload(formData)
+    editUserData.value.edit.avatar = result.url
+    selectedAvatar.value = null
+  } catch (cause) {
+    avatarUploadError.value = errorMessage(cause, '头像上传失败，请重新选择文件。')
+  } finally {
+    avatarUploading.value = false
+  }
+}
+
+const patchUser = async (data: EditUserData) => {
+  const params = CommonUtils.removeCommonProperties(data.edit, data.origin)
+  // 账号编号是服务端归属字段，管理端始终只读且绝不进入通用更新参数。
+  delete params.number
+  const roleIds = params.roles_id
+  delete params.roles_id
+  const profileChanged = Object.keys(params).length > 0
+  const rolesChanged = roleIds !== undefined && canManageRoles.value
+  if (!profileChanged && !rolesChanged) {
+    notifier.warning('请修改后再提交')
+    return false
+  }
+  let profileSaved = false
+  if (profileChanged) {
+    await client.users.updateManaged(
+      data.origin.id!,
+      params as Parameters<typeof client.users.updateManaged>[1],
+    )
+    Object.assign(data.origin, CommonUtils.deepClone(params))
+    profileSaved = true
+  }
+
+  if (rolesChanged) {
+    const parsedRoles = parseRoleIds(roleIds)
+    try {
+      await client.users.assignRoles(data.origin.id!, { roles_id: parsedRoles })
+      data.origin.roles_id = CommonUtils.deepClone(parsedRoles)
+    } catch (cause) {
+      const detail = errorMessage(cause, '请稍后重试。')
+      const message = profileSaved
+        ? `用户资料已保存，但角色未保存：${detail}`
+        : `角色未保存：${detail}`
+      throw new RoleSaveError(message, profileSaved)
+    }
+  }
+
+  return true
+}
+
+const submitEditUser = async () => {
+  if (saving.value) return
+  saving.value = true
+  formError.value = ''
+  try {
+    const changed = await patchUser(editUserData.value)
+    if (!changed) return
+    thisDialogState.value = false
+    await props.getTableData?.()
+  } catch (cause) {
+    if (cause instanceof RoleSaveError) {
+      formError.value = cause.message
+      if (cause.profileSaved) {
+        try {
+          await props.getTableData?.()
+        } catch {
+          formError.value += ' 列表刷新失败，请手动刷新后核对资料。'
+        }
+      }
+    } else {
+      formError.value = errorMessage(cause, '用户保存失败，请检查字段后重试。')
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
+watch(thisDialogState, (open) => {
+  if (open) {
+    formError.value = ''
+    avatarUploadError.value = ''
+    selectedAvatar.value = null
+    if (canManageRoles.value) void loadRoles()
+  }
+})
 </script>

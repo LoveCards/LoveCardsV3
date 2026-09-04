@@ -1,5 +1,5 @@
 {
-  "routeCount": 171,
+  "routeCount": 189,
   "summary": {},
   "routes": [
     {
@@ -77,6 +77,78 @@
         "shape": "paginated",
         "resource": "AdminAuditLogResource",
         "operation": "paginate"
+      }
+    },
+    {
+      "path": "/admin/audit-logs/:id",
+      "method": "GET",
+      "name": "operations.auditLog",
+      "controller": "Platform.Administration",
+      "action": "auditLog",
+      "meta": {
+        "name": "审计日志详情",
+        "group": "审计",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "audit.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminAuditLogResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Administration.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "AdminAuditLogResource::make"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "AdminAuditLogResource",
+        "operation": "make"
       }
     },
     {
@@ -450,7 +522,7 @@
       "method": "DELETE",
       "name": "cards.deleteManaged",
       "controller": "Content.Cards",
-      "action": "delete",
+      "action": "deleteManaged",
       "meta": {
         "name": "管理卡片删除",
         "group": "卡片",
@@ -594,7 +666,7 @@
       "method": "PATCH",
       "name": "cards.updateManaged",
       "controller": "Content.Cards",
-      "action": "update",
+      "action": "updateManaged",
       "meta": {
         "name": "管理卡片编辑",
         "group": "卡片",
@@ -666,6 +738,163 @@
       }
     },
     {
+      "path": "/admin/cards/:id/pinned-comment",
+      "method": "DELETE",
+      "name": "comments.unpinManaged",
+      "controller": "Content.Comments",
+      "action": "unpin",
+      "meta": {
+        "name": "取消置顶卡片评论",
+        "group": "评论",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "comments.pin",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Comments\\Transport\\Api\\Comments",
+          "scene": "unpin"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Content/Comments.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "validators": [
+        "app\\modules\\Content\\Comments\\Transport\\Api\\Comments"
+      ],
+      "validatorScene": "unpin",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [
+          "id"
+        ],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null
+      }
+    },
+    {
+      "path": "/admin/cards/:id/pinned-comment",
+      "method": "PUT",
+      "name": "comments.pinManaged",
+      "controller": "Content.Comments",
+      "action": "pin",
+      "meta": {
+        "name": "置顶卡片评论",
+        "group": "评论",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "comments.pin",
+              "scope": "all"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Comments\\Transport\\Api\\Comments",
+          "scene": "pin"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Content/Comments.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "validators": [
+        "app\\modules\\Content\\Comments\\Transport\\Api\\Comments"
+      ],
+      "validatorScene": "pin",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [
+          "id",
+          "comment_id"
+        ],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null
+      }
+    },
+    {
       "path": "/admin/cards/batch",
       "method": "POST",
       "name": "cards.batchManaged",
@@ -692,7 +921,7 @@
       "contract": {
         "request": {
           "validate": "app\\shared\\Transport\\Validation\\BatchOperationInput",
-          "scene": "BatchOperate"
+          "scene": "AdminBatchOperate"
         },
         "response": {
           "resource": null,
@@ -714,7 +943,7 @@
       "validators": [
         "app\\shared\\Transport\\Validation\\BatchOperationInput"
       ],
-      "validatorScene": "BatchOperate",
+      "validatorScene": "AdminBatchOperate",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
@@ -823,7 +1052,7 @@
       "method": "DELETE",
       "name": "comments.deleteManaged",
       "controller": "Content.Comments",
-      "action": "delete",
+      "action": "deleteManaged",
       "meta": {
         "name": "管理评论删除",
         "group": "评论",
@@ -965,11 +1194,11 @@
     {
       "path": "/admin/comments/:id",
       "method": "PATCH",
-      "name": "comments.updateManaged",
+      "name": "comments.moderateManaged",
       "controller": "Content.Comments",
-      "action": "update",
+      "action": "moderate",
       "meta": {
-        "name": "管理评论编辑",
+        "name": "管理评论编辑与审核",
         "group": "评论",
         "access": {
           "auth": "required",
@@ -977,13 +1206,18 @@
             {
               "capability": "admin.access",
               "scope": "global"
-            },
+            }
+          ],
+          "anyOf": [
             {
               "capability": "comments.update",
               "scope": "all"
+            },
+            {
+              "capability": "comments.moderate",
+              "scope": "all"
             }
-          ],
-          "anyOf": []
+          ]
         }
       },
       "middleware": [
@@ -993,7 +1227,7 @@
       "contract": {
         "request": {
           "validate": "app\\modules\\Content\\Comments\\Transport\\Api\\Comments",
-          "scene": "adminUpdate"
+          "scene": "moderate"
         },
         "response": {
           "resource": null,
@@ -1015,7 +1249,7 @@
       "validators": [
         "app\\modules\\Content\\Comments\\Transport\\Api\\Comments"
       ],
-      "validatorScene": "adminUpdate",
+      "validatorScene": "moderate",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
@@ -1065,7 +1299,7 @@
       "contract": {
         "request": {
           "validate": "app\\shared\\Transport\\Validation\\BatchOperationInput",
-          "scene": "BatchOperate"
+          "scene": "AdminBatchOperate"
         },
         "response": {
           "resource": null,
@@ -1087,7 +1321,7 @@
       "validators": [
         "app\\shared\\Transport\\Validation\\BatchOperationInput"
       ],
-      "validatorScene": "BatchOperate",
+      "validatorScene": "AdminBatchOperate",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
@@ -1950,7 +2184,7 @@
       "method": "DELETE",
       "name": "files.deleteManaged",
       "controller": "Storage.Upload",
-      "action": "delete",
+      "action": "deleteManaged",
       "meta": {
         "name": "管理文件删除",
         "group": "文件",
@@ -2465,6 +2699,78 @@
       }
     },
     {
+      "path": "/admin/operations/deliveries/:id",
+      "method": "GET",
+      "name": "operations.delivery",
+      "controller": "Platform.Administration",
+      "action": "delivery",
+      "meta": {
+        "name": "事件投递详情",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminDeliveryResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Administration.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "AdminDeliveryResource::make"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "AdminDeliveryResource",
+        "operation": "make"
+      }
+    },
+    {
       "path": "/admin/operations/deliveries/:id/retry",
       "method": "POST",
       "name": "operations.retryDelivery",
@@ -2492,10 +2798,7 @@
         "PermissionCheck"
       ],
       "contract": {
-        "request": {
-          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
-          "scene": "reason"
-        },
+        "request": null,
         "response": {
           "resource": null,
           "shape": "void",
@@ -2508,27 +2811,23 @@
       "contractSource": "backend",
       "controllerFile": "apps/backend/app/api/controller/Platform/Administration.php",
       "missingController": false,
-      "validates": true,
+      "validates": false,
       "responses": [
         "createNoContent"
       ],
       "resources": [],
-      "validators": [
-        "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
-      ],
-      "validatorScene": "reason",
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
         "missingAction": false,
-        "usesValidated": true,
+        "usesValidated": false,
         "usesLegacyValidation": false,
         "usesDirectInput": false,
         "directInputKeys": [],
         "fileKeys": [],
-        "accessedFields": [
-          "reason"
-        ],
+        "accessedFields": [],
         "usesContractResponse": true,
         "usesRawResponse": false
       },
@@ -2680,9 +2979,7 @@
         "usesDirectInput": false,
         "directInputKeys": [],
         "fileKeys": [],
-        "accessedFields": [
-          "reason"
-        ],
+        "accessedFields": [],
         "usesContractResponse": true,
         "usesRawResponse": false
       },
@@ -3058,7 +3355,6 @@
           "file"
         ],
         "accessedFields": [
-          "reason",
           "file"
         ],
         "usesContractResponse": true,
@@ -3173,10 +3469,7 @@
         "PermissionCheck"
       ],
       "contract": {
-        "request": {
-          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
-          "scene": "reason"
-        },
+        "request": null,
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminUpgradePlanResource",
           "shape": "item",
@@ -3189,29 +3482,25 @@
       "contractSource": "backend",
       "controllerFile": "apps/backend/app/api/controller/Platform/Administration.php",
       "missingController": false,
-      "validates": true,
+      "validates": false,
       "responses": [
         "createOk"
       ],
       "resources": [
         "AdminUpgradePlanResource::make"
       ],
-      "validators": [
-        "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
-      ],
-      "validatorScene": "reason",
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
         "missingAction": false,
-        "usesValidated": true,
+        "usesValidated": false,
         "usesLegacyValidation": false,
         "usesDirectInput": false,
         "directInputKeys": [],
         "fileKeys": [],
-        "accessedFields": [
-          "reason"
-        ],
+        "accessedFields": [],
         "usesContractResponse": true,
         "usesRawResponse": false
       },
@@ -3252,10 +3541,7 @@
         "PermissionCheck"
       ],
       "contract": {
-        "request": {
-          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
-          "scene": "reason"
-        },
+        "request": null,
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminUpgradePlanResource",
           "shape": "item",
@@ -3268,29 +3554,25 @@
       "contractSource": "backend",
       "controllerFile": "apps/backend/app/api/controller/Platform/Administration.php",
       "missingController": false,
-      "validates": true,
+      "validates": false,
       "responses": [
         "createOk"
       ],
       "resources": [
         "AdminUpgradePlanResource::make"
       ],
-      "validators": [
-        "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
-      ],
-      "validatorScene": "reason",
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
         "missingAction": false,
-        "usesValidated": true,
+        "usesValidated": false,
         "usesLegacyValidation": false,
         "usesDirectInput": false,
         "directInputKeys": [],
         "fileKeys": [],
-        "accessedFields": [
-          "reason"
-        ],
+        "accessedFields": [],
         "usesContractResponse": true,
         "usesRawResponse": false
       },
@@ -3331,10 +3613,7 @@
         "PermissionCheck"
       ],
       "contract": {
-        "request": {
-          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
-          "scene": "reason"
-        },
+        "request": null,
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminUpgradePlanResource",
           "shape": "item",
@@ -3347,29 +3626,25 @@
       "contractSource": "backend",
       "controllerFile": "apps/backend/app/api/controller/Platform/Administration.php",
       "missingController": false,
-      "validates": true,
+      "validates": false,
       "responses": [
         "createOk"
       ],
       "resources": [
         "AdminUpgradePlanResource::make"
       ],
-      "validators": [
-        "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
-      ],
-      "validatorScene": "reason",
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
         "missingAction": false,
-        "usesValidated": true,
+        "usesValidated": false,
         "usesLegacyValidation": false,
         "usesDirectInput": false,
         "directInputKeys": [],
         "fileKeys": [],
-        "accessedFields": [
-          "reason"
-        ],
+        "accessedFields": [],
         "usesContractResponse": true,
         "usesRawResponse": false
       },
@@ -3826,9 +4101,9 @@
         "directInputKeys": [],
         "fileKeys": [],
         "accessedFields": [
+          "status",
           "resolution",
-          "note",
-          "status"
+          "note"
         ],
         "usesContractResponse": true,
         "usesRawResponse": false
@@ -4394,7 +4669,7 @@
       "contract": {
         "request": {
           "validate": "app\\shared\\Transport\\Validation\\BatchOperationInput",
-          "scene": "BatchOperate"
+          "scene": "AdminBatchOperate"
         },
         "response": {
           "resource": null,
@@ -4416,7 +4691,7 @@
       "validators": [
         "app\\shared\\Transport\\Validation\\BatchOperationInput"
       ],
-      "validatorScene": "BatchOperate",
+      "validatorScene": "AdminBatchOperate",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
@@ -5548,7 +5823,7 @@
       "method": "DELETE",
       "name": "tags.deleteManaged",
       "controller": "Content.Tags",
-      "action": "delete",
+      "action": "deleteManaged",
       "meta": {
         "name": "管理标签删除",
         "group": "标签",
@@ -5692,7 +5967,7 @@
       "method": "PATCH",
       "name": "tags.updateManaged",
       "controller": "Content.Tags",
-      "action": "update",
+      "action": "updateManaged",
       "meta": {
         "name": "管理标签编辑",
         "group": "标签",
@@ -5790,7 +6065,7 @@
       "contract": {
         "request": {
           "validate": "app\\shared\\Transport\\Validation\\BatchOperationInput",
-          "scene": "BatchOperate"
+          "scene": "AdminBatchOperate"
         },
         "response": {
           "resource": null,
@@ -5812,7 +6087,7 @@
       "validators": [
         "app\\shared\\Transport\\Validation\\BatchOperationInput"
       ],
-      "validatorScene": "BatchOperate",
+      "validatorScene": "AdminBatchOperate",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
@@ -6777,10 +7052,7 @@
         "PermissionCheck"
       ],
       "contract": {
-        "request": {
-          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
-          "scene": "reason"
-        },
+        "request": null,
         "response": {
           "resource": null,
           "shape": "void",
@@ -6793,27 +7065,23 @@
       "contractSource": "backend",
       "controllerFile": "apps/backend/app/api/controller/Platform/Administration.php",
       "missingController": false,
-      "validates": true,
+      "validates": false,
       "responses": [
         "createNoContent"
       ],
       "resources": [],
-      "validators": [
-        "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
-      ],
-      "validatorScene": "reason",
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
         "missingAction": false,
-        "usesValidated": true,
+        "usesValidated": false,
         "usesLegacyValidation": false,
         "usesDirectInput": false,
         "directInputKeys": [],
         "fileKeys": [],
-        "accessedFields": [
-          "reason"
-        ],
+        "accessedFields": [],
         "usesContractResponse": true,
         "usesRawResponse": false
       },
@@ -6854,10 +7122,7 @@
         "PermissionCheck"
       ],
       "contract": {
-        "request": {
-          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
-          "scene": "reason"
-        },
+        "request": null,
         "response": {
           "resource": null,
           "shape": "void",
@@ -6870,27 +7135,23 @@
       "contractSource": "backend",
       "controllerFile": "apps/backend/app/api/controller/Platform/Administration.php",
       "missingController": false,
-      "validates": true,
+      "validates": false,
       "responses": [
         "createNoContent"
       ],
       "resources": [],
-      "validators": [
-        "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
-      ],
-      "validatorScene": "reason",
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
         "missingAction": false,
-        "usesValidated": true,
+        "usesValidated": false,
         "usesLegacyValidation": false,
         "usesDirectInput": false,
         "directInputKeys": [],
         "fileKeys": [],
-        "accessedFields": [
-          "reason"
-        ],
+        "accessedFields": [],
         "usesContractResponse": true,
         "usesRawResponse": false
       },
@@ -6930,7 +7191,7 @@
       "contract": {
         "request": {
           "validate": "app\\shared\\Transport\\Validation\\BatchOperationInput",
-          "scene": "BatchOperate"
+          "scene": "AdminBatchOperate"
         },
         "response": {
           "resource": null,
@@ -6952,7 +7213,7 @@
       "validators": [
         "app\\shared\\Transport\\Validation\\BatchOperationInput"
       ],
-      "validatorScene": "BatchOperate",
+      "validatorScene": "AdminBatchOperate",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
@@ -7109,7 +7370,9 @@
           "auth": "public"
         }
       },
-      "middleware": [],
+      "middleware": [
+        "OptionalJwtAuth"
+      ],
       "contract": {
         "request": {
           "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
@@ -7173,7 +7436,9 @@
           "auth": "public"
         }
       },
-      "middleware": [],
+      "middleware": [
+        "OptionalJwtAuth"
+      ],
       "contract": {
         "request": null,
         "response": {
@@ -7506,7 +7771,9 @@
           "auth": "public"
         }
       },
-      "middleware": [],
+      "middleware": [
+        "OptionalJwtAuth"
+      ],
       "contract": {
         "request": null,
         "response": {
@@ -7565,7 +7832,9 @@
           "auth": "public"
         }
       },
-      "middleware": [],
+      "middleware": [
+        "OptionalJwtAuth"
+      ],
       "contract": {
         "request": {
           "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
@@ -7676,6 +7945,142 @@
       }
     },
     {
+      "path": "/comments/:id/like",
+      "method": "DELETE",
+      "name": "comments.unlike",
+      "controller": "Content.Comments",
+      "action": "unlike",
+      "meta": {
+        "name": "取消点赞评论",
+        "group": "评论",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "likes.delete",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Content/Comments.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null
+      }
+    },
+    {
+      "path": "/comments/:id/like",
+      "method": "POST",
+      "name": "comments.like",
+      "controller": "Content.Comments",
+      "action": "like",
+      "meta": {
+        "name": "点赞评论",
+        "group": "评论",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "likes.create",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Content\\Likes\\Transport\\Api\\LikeCountResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Content/Comments.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "LikeCountResource::make"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "LikeCountResource",
+        "operation": "make"
+      }
+    },
+    {
       "path": "/me",
       "method": "GET",
       "name": "users.me.get",
@@ -7774,9 +8179,9 @@
           "scene": "update"
         },
         "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
+          "resource": "app\\modules\\Platform\\User\\Transport\\Api\\ProfileResource",
+          "shape": "item",
+          "status": 200
         }
       },
       "source": "apps/backend/app/api/route",
@@ -7787,9 +8192,11 @@
       "missingController": false,
       "validates": true,
       "responses": [
-        "createNoContent"
+        "createOk"
       ],
-      "resources": [],
+      "resources": [
+        "ProfileResource::make"
+      ],
       "validators": [
         "app\\modules\\Platform\\User\\Transport\\Api\\Profile"
       ],
@@ -7810,10 +8217,80 @@
       "usesRawResponse": false,
       "issues": [],
       "response": {
-        "status": 204,
-        "shape": "void",
-        "resource": null,
-        "operation": null
+        "status": 200,
+        "shape": "item",
+        "resource": "ProfileResource",
+        "operation": "make"
+      }
+    },
+    {
+      "path": "/me/blocked-users",
+      "method": "GET",
+      "name": "safety.listBlocked",
+      "controller": "Platform.Community",
+      "action": "blockedUsers",
+      "meta": {
+        "name": "safety.listBlocked",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "blockedUsers"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Safety\\Transport\\Api\\BlockedUserCursorPageResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Community.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "BlockedUserCursorPageResource::make"
+      ],
+      "validators": [
+        "app\\modules\\Platform\\Community\\Transport\\Api\\Community"
+      ],
+      "validatorScene": "blockedUsers",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [
+          "cursor",
+          "limit",
+          "query"
+        ],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "BlockedUserCursorPageResource",
+        "operation": "make"
       }
     },
     {
@@ -8186,6 +8663,150 @@
       }
     },
     {
+      "path": "/me/cards/:id/pinned-comment",
+      "method": "DELETE",
+      "name": "comments.unpin",
+      "controller": "Content.Comments",
+      "action": "unpinOwn",
+      "meta": {
+        "name": "取消置顶我的卡片评论",
+        "group": "评论",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "comments.pin",
+              "scope": "own"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "CaptchaCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Content/Comments.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null
+      }
+    },
+    {
+      "path": "/me/cards/:id/pinned-comment",
+      "method": "PUT",
+      "name": "comments.pin",
+      "controller": "Content.Comments",
+      "action": "pinOwn",
+      "meta": {
+        "name": "置顶我的卡片评论",
+        "group": "评论",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "comments.pin",
+              "scope": "own"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "CaptchaCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Comments\\Transport\\Api\\Comments",
+          "scene": "pinOwn"
+        },
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Content/Comments.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "validators": [
+        "app\\modules\\Content\\Comments\\Transport\\Api\\Comments"
+      ],
+      "validatorScene": "pinOwn",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [
+          "id",
+          "comment_id"
+        ],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null
+      }
+    },
+    {
       "path": "/me/comments",
       "method": "GET",
       "name": "comments.listOwn",
@@ -8313,82 +8934,6 @@
       "requestInspection": {
         "missingAction": false,
         "usesValidated": false,
-        "usesLegacyValidation": false,
-        "usesDirectInput": false,
-        "directInputKeys": [],
-        "fileKeys": [],
-        "accessedFields": [],
-        "usesContractResponse": true,
-        "usesRawResponse": false
-      },
-      "usesRawResponse": false,
-      "issues": [],
-      "response": {
-        "status": 204,
-        "shape": "void",
-        "resource": null,
-        "operation": null
-      }
-    },
-    {
-      "path": "/me/comments/:id",
-      "method": "PATCH",
-      "name": "comments.update",
-      "controller": "Content.Comments",
-      "action": "update",
-      "meta": {
-        "name": "编辑我的评论",
-        "group": "评论",
-        "access": {
-          "auth": "required",
-          "allOf": [],
-          "anyOf": [
-            {
-              "capability": "comments.update",
-              "scope": "own"
-            },
-            {
-              "capability": "comments.update",
-              "scope": "all"
-            }
-          ]
-        }
-      },
-      "middleware": [
-        "JwtAuthCheck",
-        "PermissionCheck"
-      ],
-      "contract": {
-        "request": {
-          "validate": "app\\modules\\Content\\Comments\\Transport\\Api\\Comments",
-          "scene": "selfUpdate"
-        },
-        "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
-        }
-      },
-      "source": "apps/backend/app/api/route",
-      "file": "apps/backend/app/api/route",
-      "hasContract": true,
-      "contractSource": "backend",
-      "controllerFile": "apps/backend/app/api/controller/Content/Comments.php",
-      "missingController": false,
-      "validates": true,
-      "responses": [
-        "createNoContent"
-      ],
-      "resources": [],
-      "validators": [
-        "app\\modules\\Content\\Comments\\Transport\\Api\\Comments"
-      ],
-      "validatorScene": "selfUpdate",
-      "hasApiResponse": true,
-      "multipleSuccessShapes": false,
-      "requestInspection": {
-        "missingAction": false,
-        "usesValidated": true,
         "usesLegacyValidation": false,
         "usesDirectInput": false,
         "directInputKeys": [],
@@ -8895,7 +9440,7 @@
           "scene": "emailCaptcha"
         },
         "response": {
-          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "resource": "app\\modules\\Platform\\User\\Transport\\Api\\EmailCaptchaResource",
           "shape": "item",
           "status": 200
         }
@@ -8911,7 +9456,7 @@
         "createOk"
       ],
       "resources": [
-        "ApiResource::make"
+        "EmailCaptchaResource::make"
       ],
       "validators": [
         "app\\modules\\Platform\\User\\Transport\\Api\\Profile"
@@ -8937,7 +9482,7 @@
       "response": {
         "status": 200,
         "shape": "item",
-        "resource": "ApiResource",
+        "resource": "EmailCaptchaResource",
         "operation": "make"
       }
     },
@@ -9001,6 +9546,7 @@
         "directInputKeys": [],
         "fileKeys": [],
         "accessedFields": [
+          "current_password",
           "email",
           "captcha"
         ],
@@ -9014,6 +9560,72 @@
         "shape": "void",
         "resource": null,
         "operation": null
+      }
+    },
+    {
+      "path": "/me/feed/following",
+      "method": "GET",
+      "name": "cards.listFollowing",
+      "controller": "Content.Cards",
+      "action": "listFollowing",
+      "meta": {
+        "name": "关注卡片流",
+        "group": "卡片",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Cards\\Transport\\Api\\FollowingFeed",
+          "scene": "list"
+        },
+        "response": {
+          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Content/Cards.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CardResource::paginate"
+      ],
+      "validators": [
+        "app\\modules\\Content\\Cards\\Transport\\Api\\FollowingFeed"
+      ],
+      "validatorScene": "list",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "CardResource",
+        "operation": "paginate"
       }
     },
     {
@@ -10052,7 +10664,7 @@
         "directInputKeys": [],
         "fileKeys": [],
         "accessedFields": [
-          "recipient_id",
+          "recipient_uid",
           "body",
           "client_message_id"
         ],
@@ -10090,7 +10702,7 @@
           "scene": "notifications"
         },
         "response": {
-          "resource": "app\\shared\\Transport\\Http\\CursorPageResource",
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\NotificationCursorPageResource",
           "shape": "item",
           "status": 200
         }
@@ -10106,7 +10718,7 @@
         "createOk"
       ],
       "resources": [
-        "CursorPageResource::make"
+        "NotificationCursorPageResource::make"
       ],
       "validators": [
         "app\\modules\\Platform\\Community\\Transport\\Api\\Community"
@@ -10124,7 +10736,9 @@
         "accessedFields": [
           "cursor",
           "limit",
-          "unread_only"
+          "unread_only",
+          "type",
+          "category"
         ],
         "usesContractResponse": true,
         "usesRawResponse": false
@@ -10134,7 +10748,134 @@
       "response": {
         "status": 200,
         "shape": "item",
-        "resource": "CursorPageResource",
+        "resource": "NotificationCursorPageResource",
+        "operation": "make"
+      }
+    },
+    {
+      "path": "/me/notifications/preferences",
+      "method": "GET",
+      "name": "notifications.preferences",
+      "controller": "Platform.Community",
+      "action": "notificationPreferences",
+      "meta": {
+        "name": "notifications.preferences",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\NotificationPreferencesResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Community.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "NotificationPreferencesResource::make"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "NotificationPreferencesResource",
+        "operation": "make"
+      }
+    },
+    {
+      "path": "/me/notifications/preferences",
+      "method": "POST",
+      "name": "notifications.updatePreferences",
+      "controller": "Platform.Community",
+      "action": "updateNotificationPreferences",
+      "meta": {
+        "name": "notifications.updatePreferences",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "notificationPreferences"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\NotificationPreferencesResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Community.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "NotificationPreferencesResource::make"
+      ],
+      "validators": [
+        "app\\modules\\Platform\\Community\\Transport\\Api\\Community"
+      ],
+      "validatorScene": "notificationPreferences",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "NotificationPreferencesResource",
         "operation": "make"
       }
     },
@@ -10155,7 +10896,10 @@
         "JwtAuthCheck"
       ],
       "contract": {
-        "request": null,
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "notificationReadAll"
+        },
         "response": {
           "resource": null,
           "shape": "void",
@@ -10168,23 +10912,27 @@
       "contractSource": "backend",
       "controllerFile": "apps/backend/app/api/controller/Platform/Community.php",
       "missingController": false,
-      "validates": false,
+      "validates": true,
       "responses": [
         "createNoContent"
       ],
       "resources": [],
-      "validators": [],
-      "validatorScene": null,
+      "validators": [
+        "app\\modules\\Platform\\Community\\Transport\\Api\\Community"
+      ],
+      "validatorScene": "notificationReadAll",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
         "missingAction": false,
-        "usesValidated": false,
+        "usesValidated": true,
         "usesLegacyValidation": false,
         "usesDirectInput": false,
         "directInputKeys": [],
         "fileKeys": [],
-        "accessedFields": [],
+        "accessedFields": [
+          "category"
+        ],
         "usesContractResponse": true,
         "usesRawResponse": false
       },
@@ -10350,9 +11098,12 @@
         "JwtAuthCheck"
       ],
       "contract": {
-        "request": null,
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "notificationUnread"
+        },
         "response": {
-          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\NotificationUnreadResource",
           "shape": "item",
           "status": 200
         }
@@ -10363,25 +11114,29 @@
       "contractSource": "backend",
       "controllerFile": "apps/backend/app/api/controller/Platform/Community.php",
       "missingController": false,
-      "validates": false,
+      "validates": true,
       "responses": [
         "createOk"
       ],
       "resources": [
-        "ApiResource::make"
+        "NotificationUnreadResource::make"
       ],
-      "validators": [],
-      "validatorScene": null,
+      "validators": [
+        "app\\modules\\Platform\\Community\\Transport\\Api\\Community"
+      ],
+      "validatorScene": "notificationUnread",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
         "missingAction": false,
-        "usesValidated": false,
+        "usesValidated": true,
         "usesLegacyValidation": false,
         "usesDirectInput": false,
         "directInputKeys": [],
         "fileKeys": [],
-        "accessedFields": [],
+        "accessedFields": [
+          "category"
+        ],
         "usesContractResponse": true,
         "usesRawResponse": false
       },
@@ -10390,7 +11145,7 @@
       "response": {
         "status": 200,
         "shape": "item",
-        "resource": "ApiResource",
+        "resource": "NotificationUnreadResource",
         "operation": "make"
       }
     },
@@ -10454,7 +11209,8 @@
         "directInputKeys": [],
         "fileKeys": [],
         "accessedFields": [
-          "password"
+          "current_password",
+          "new_password"
         ],
         "usesContractResponse": true,
         "usesRawResponse": false
@@ -10487,7 +11243,7 @@
       "contract": {
         "request": null,
         "response": {
-          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "resource": "app\\modules\\Platform\\Safety\\Transport\\Api\\PrivacyPreferencesResource",
           "shape": "item",
           "status": 200
         }
@@ -10503,7 +11259,7 @@
         "createOk"
       ],
       "resources": [
-        "ApiResource::make"
+        "PrivacyPreferencesResource::make"
       ],
       "validators": [],
       "validatorScene": null,
@@ -10525,7 +11281,7 @@
       "response": {
         "status": 200,
         "shape": "item",
-        "resource": "ApiResource",
+        "resource": "PrivacyPreferencesResource",
         "operation": "make"
       }
     },
@@ -10551,9 +11307,9 @@
           "scene": "preferences"
         },
         "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
+          "resource": "app\\modules\\Platform\\Safety\\Transport\\Api\\PrivacyPreferencesResource",
+          "shape": "item",
+          "status": 200
         }
       },
       "source": "apps/backend/app/api/route",
@@ -10564,9 +11320,11 @@
       "missingController": false,
       "validates": true,
       "responses": [
-        "createNoContent"
+        "createOk"
       ],
-      "resources": [],
+      "resources": [
+        "PrivacyPreferencesResource::make"
+      ],
       "validators": [
         "app\\modules\\Platform\\Community\\Transport\\Api\\Community"
       ],
@@ -10580,11 +11338,186 @@
         "usesDirectInput": false,
         "directInputKeys": [],
         "fileKeys": [],
-        "accessedFields": [
-          "profile_visibility",
-          "messages_from",
-          "show_relations"
-        ],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "PrivacyPreferencesResource",
+        "operation": "make"
+      }
+    },
+    {
+      "path": "/me/sessions",
+      "method": "GET",
+      "name": "session.listSessions",
+      "controller": "User.Session",
+      "action": "listSessions",
+      "meta": {
+        "name": "我的登录会话",
+        "group": "认证",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Auth\\Transport\\Api\\CurrentUserSessionResource",
+          "shape": "collection",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/User/Session.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CurrentUserSessionResource::collection"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "CurrentUserSessionResource",
+        "operation": "collection"
+      }
+    },
+    {
+      "path": "/me/sessions/:sessionId",
+      "method": "DELETE",
+      "name": "session.revokeSession",
+      "controller": "User.Session",
+      "action": "revokeSession",
+      "meta": {
+        "name": "撤销我的登录会话",
+        "group": "认证",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/User/Session.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 204,
+        "shape": "void",
+        "resource": null,
+        "operation": null
+      }
+    },
+    {
+      "path": "/me/sessions/revoke-others",
+      "method": "POST",
+      "name": "session.revokeOthers",
+      "controller": "User.Session",
+      "action": "revokeOthers",
+      "meta": {
+        "name": "撤销其他登录会话",
+        "group": "认证",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": null,
+          "shape": "void",
+          "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/User/Session.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createNoContent"
+      ],
+      "resources": [],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
         "usesContractResponse": true,
         "usesRawResponse": false
       },
@@ -10701,9 +11634,9 @@
           "scene": "selfCreate"
         },
         "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
+          "resource": "app\\modules\\Content\\Tags\\Transport\\Api\\TagResource",
+          "shape": "item",
+          "status": 200
         }
       },
       "source": "apps/backend/app/api/route",
@@ -10714,9 +11647,11 @@
       "missingController": false,
       "validates": true,
       "responses": [
-        "createNoContent"
+        "createOk"
       ],
-      "resources": [],
+      "resources": [
+        "TagResource::make"
+      ],
       "validators": [
         "app\\modules\\Content\\Tags\\Transport\\Api\\Tags"
       ],
@@ -10737,10 +11672,10 @@
       "usesRawResponse": false,
       "issues": [],
       "response": {
-        "status": 204,
-        "shape": "void",
-        "resource": null,
-        "operation": null
+        "status": 200,
+        "shape": "item",
+        "resource": "TagResource",
+        "operation": "make"
       }
     },
     {
@@ -11715,7 +12650,7 @@
       }
     },
     {
-      "path": "/users/:id/block",
+      "path": "/users/:uid/block",
       "method": "DELETE",
       "name": "safety.unblock",
       "controller": "Platform.Community",
@@ -11774,7 +12709,7 @@
       }
     },
     {
-      "path": "/users/:id/block",
+      "path": "/users/:uid/block",
       "method": "POST",
       "name": "safety.block",
       "controller": "Platform.Community",
@@ -11833,7 +12768,73 @@
       }
     },
     {
-      "path": "/users/:id/follow",
+      "path": "/users/:uid/cards",
+      "method": "GET",
+      "name": "cards.listPublicByUser",
+      "controller": "Content.Cards",
+      "action": "listPublicByUid",
+      "meta": {
+        "name": "按 UID 读取公开卡片",
+        "group": "卡片",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [
+        "OptionalJwtAuth"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Cards\\Transport\\Api\\PublicUserCards",
+          "scene": "list"
+        },
+        "response": {
+          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Content/Cards.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CardResource::paginate"
+      ],
+      "validators": [
+        "app\\modules\\Content\\Cards\\Transport\\Api\\PublicUserCards"
+      ],
+      "validatorScene": "list",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "CardResource",
+        "operation": "paginate"
+      }
+    },
+    {
+      "path": "/users/:uid/follow",
       "method": "DELETE",
       "name": "social.unfollow",
       "controller": "Platform.Community",
@@ -11892,7 +12893,7 @@
       }
     },
     {
-      "path": "/users/:id/follow",
+      "path": "/users/:uid/follow",
       "method": "POST",
       "name": "social.follow",
       "controller": "Platform.Community",
@@ -11953,7 +12954,7 @@
       }
     },
     {
-      "path": "/users/:id/followers",
+      "path": "/users/:uid/followers",
       "method": "GET",
       "name": "social.followers",
       "controller": "Platform.Community",
@@ -12022,7 +13023,7 @@
       }
     },
     {
-      "path": "/users/:id/following",
+      "path": "/users/:uid/following",
       "method": "GET",
       "name": "social.following",
       "controller": "Platform.Community",
@@ -12091,7 +13092,68 @@
       }
     },
     {
-      "path": "/users/:id/relation",
+      "path": "/users/:uid/profile",
+      "method": "GET",
+      "name": "social.profile",
+      "controller": "Platform.Community",
+      "action": "profileByUid",
+      "meta": {
+        "name": "公开用户主页",
+        "group": "社区",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [
+        "OptionalJwtAuth"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\User\\Transport\\Api\\PublicUserProfileResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Community.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "PublicUserProfileResource::make"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "PublicUserProfileResource",
+        "operation": "make"
+      }
+    },
+    {
+      "path": "/users/:uid/relation",
       "method": "GET",
       "name": "social.relation",
       "controller": "Platform.Community",
@@ -12109,7 +13171,7 @@
       "contract": {
         "request": null,
         "response": {
-          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "resource": "app\\modules\\Platform\\Social\\Transport\\Api\\SocialRelationResource",
           "shape": "item",
           "status": 200
         }
@@ -12125,7 +13187,7 @@
         "createOk"
       ],
       "resources": [
-        "ApiResource::make"
+        "SocialRelationResource::make"
       ],
       "validators": [],
       "validatorScene": null,
@@ -12147,14 +13209,14 @@
       "response": {
         "status": 200,
         "shape": "item",
-        "resource": "ApiResource",
+        "resource": "SocialRelationResource",
         "operation": "make"
       }
     },
     {
       "path": "/users/by-handle/:handle",
       "method": "GET",
-      "name": "social.profile",
+      "name": "social.profileByHandle",
       "controller": "Platform.Community",
       "action": "profile",
       "meta": {
@@ -12164,11 +13226,13 @@
           "auth": "public"
         }
       },
-      "middleware": [],
+      "middleware": [
+        "OptionalJwtAuth"
+      ],
       "contract": {
         "request": null,
         "response": {
-          "resource": "app\\shared\\Transport\\Http\\ApiResource",
+          "resource": "app\\modules\\Platform\\User\\Transport\\Api\\PublicUserProfileResource",
           "shape": "item",
           "status": 200
         }
@@ -12184,7 +13248,7 @@
         "createOk"
       ],
       "resources": [
-        "ApiResource::make"
+        "PublicUserProfileResource::make"
       ],
       "validators": [],
       "validatorScene": null,
@@ -12206,8 +13270,140 @@
       "response": {
         "status": 200,
         "shape": "item",
-        "resource": "ApiResource",
+        "resource": "PublicUserProfileResource",
         "operation": "make"
+      }
+    },
+    {
+      "path": "/users/by-handle/:handle/cards",
+      "method": "GET",
+      "name": "cards.publicByHandle",
+      "controller": "Content.Cards",
+      "action": "listPublicByUser",
+      "meta": {
+        "name": "按用户读取公开卡片",
+        "group": "卡片",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [
+        "OptionalJwtAuth"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Cards\\Transport\\Api\\PublicUserCards",
+          "scene": "list"
+        },
+        "response": {
+          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Content/Cards.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CardResource::paginate"
+      ],
+      "validators": [
+        "app\\modules\\Content\\Cards\\Transport\\Api\\PublicUserCards"
+      ],
+      "validatorScene": "list",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "CardResource",
+        "operation": "paginate"
+      }
+    },
+    {
+      "path": "/users/mention-candidates",
+      "method": "GET",
+      "name": "users.searchMentionCandidates",
+      "controller": "User.Users",
+      "action": "searchMentionCandidates",
+      "meta": {
+        "name": "提及候选用户",
+        "group": "用户",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\User\\Transport\\Api\\MentionCandidates",
+          "scene": "search"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\User\\Transport\\Api\\MentionCandidateResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/User/Users.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "MentionCandidateResource::paginate"
+      ],
+      "validators": [
+        "app\\modules\\Platform\\User\\Transport\\Api\\MentionCandidates"
+      ],
+      "validatorScene": "search",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "MentionCandidateResource",
+        "operation": "paginate"
       }
     }
   ]

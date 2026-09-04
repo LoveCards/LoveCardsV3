@@ -21,7 +21,7 @@ final class FakeMessagingRepository implements MessagingRepository
     public int $readThrough = 0;
     public function conversationsForUser(int $userId): array { return [['id' => 9, 'unread_count' => 2]]; }
     public function messagesForUser(int $userId, int $conversationId, ?string $cursor, int $limit): array { return ['items' => [['id' => 12]], 'next_cursor' => null, 'has_more' => false]; }
-    public function findMessageIdByClientId(int $senderId, int $recipientId, string $clientMessageId): ?int { return $this->messages[$clientMessageId] ?? null; }
+    public function findMessageByClientId(int $senderId, int $recipientId, string $clientMessageId): ?array { return isset($this->messages[$clientMessageId]) ? ['id' => $this->messages[$clientMessageId], 'conversation_id' => 9] : null; }
     public function findOrCreateDirectConversation(int $firstUserId, int $secondUserId, DateTimeImmutable $at): int { return 9; }
     public function createMessage(int $conversationId, int $senderId, string $clientMessageId, string $body, DateTimeImmutable $at): int { return $this->messages[$clientMessageId] = 21; }
     public function touchConversation(int $conversationId, DateTimeImmutable $at): void {}
@@ -64,8 +64,8 @@ $transactions = new FakeMessageTransaction();
 $notifier = new FakeMessageNotifier($transactions);
 $messaging = new Messaging($repository, $permission, $notifier, $transactions);
 
-$assert($messaging->send(1, 2, ' hello ', 'client-1') === 21, 'message should be created');
-$assert($messaging->send(1, 2, 'hello', 'client-1') === 21, 'same client id should be idempotent');
+$assert($messaging->send(1, 2, ' hello ', 'client-1') === ['id' => 21, 'conversation_id' => 9], 'message should return its conversation');
+$assert($messaging->send(1, 2, 'hello', 'client-1') === ['id' => 21, 'conversation_id' => 9], 'same client id should be idempotent');
 $assert($notifier->calls === 1, 'idempotent retry must not duplicate notification');
 $assert($notifier->calledInsideTransaction, 'message notification Outbox write must share the message transaction');
 $messaging->messages(1, 9);
@@ -79,6 +79,9 @@ $assert($denied, 'safety permission must block message send');
 $notifierSource = file_get_contents($root . '/app/modules/Platform/Messaging/Infrastructure/NotificationMessageNotifier.php');
 $assert(str_contains($notifierSource, "'message.sent'"), 'production notifier must publish message.sent');
 $assert(!str_contains($notifierSource, 'Notifications::direct'), 'message send must not write notifications synchronously');
+
+$socialSource = file_get_contents($root . '/app/modules/Platform/Social/Public/Social.php');
+$assert(str_contains($socialSource, 'TransactionManager::class'), 'social follow must share the relationship transaction with its Outbox event');
 
 $repositorySource = file_get_contents($root . '/app/modules/Platform/Messaging/Infrastructure/ThinkDbMessagingRepository.php');
 $insertStart = strpos($repositorySource, "Db::table('conversations')->insertGetId");

@@ -103,16 +103,14 @@ class Cards extends Validate
 
         ],
         'adminUpdate' => [
-            'normal' => ['pictures', 'content', 'data', 'media_file_ids', 'picture_file_ids', 'cover_file_id', 'tags', 'is_top', 'status', 'user_id', 'comments', 'views', 'good'],
+            // 置顶与审核状态仍可由管理端编辑，但 Service 会分别要求
+            // cards.pin / cards.approve；作者、派生统计与互动计数不可直接写入。
+            'normal' => ['pictures', 'content', 'data', 'media_file_ids', 'picture_file_ids', 'cover_file_id', 'tags', 'is_top', 'status'],
             'require' => ['id'], 'nonNull' => false, 'toNull' => ['cover', 'tags'],
         ],
         'create' => [
             'normal' => ['pictures', 'data', 'media_file_ids', 'picture_file_ids', 'cover_file_id', 'tags'],
             'require' => ['content'], 'nonNull' => false, 'toNull' => ['cover', 'tags'],
-        ],
-        'allUpdate' => [
-            'normal' => ['pictures', 'content', 'data', 'media_file_ids', 'picture_file_ids', 'cover_file_id', 'tags', 'is_top', 'status', 'user_id', 'comments', 'views', 'good'],
-            'require' => ['id'], 'nonNull' => false, 'toNull' => ['cover', 'tags'],
         ],
     ];
 
@@ -120,7 +118,9 @@ class Cards extends Validate
 
         'id.require' => 'ID不能为空',
 
-        'content.require' => '内容不能为空'
+        'content.require' => '正文不能为空',
+        'content.notBlank' => '正文不能为空',
+        'content.max' => '正文最多 1000 字。',
 
     ];
 
@@ -130,9 +130,9 @@ class Cards extends Validate
 
         'id' => 'number',
 
-        'is_top' => 'number',
+        'is_top' => 'number|in:0,1',
 
-        'status' => 'number',
+        'status' => 'number|in:0,1,2,3',
 
         'user_id' => 'number',
 
@@ -143,7 +143,9 @@ class Cards extends Validate
 
         'cover' => 'url|max:2083',
 
-        'content' => 'max:5000',
+        // ThinkPHP max uses mb_strlen (Unicode code points). A Chinese
+        // character and a supplementary-plane emoji each count as one.
+        'content' => 'notBlank|max:1000',
 
         'tags' => 'arrayJson|tagsLength',
 
@@ -152,6 +154,7 @@ class Cards extends Validate
         'views' => 'number',
 
         'comments' => 'number',
+
 
         'post_ip' => 'ip|max:39',
 
@@ -183,6 +186,9 @@ class Cards extends Validate
 
         'data.arrayJson' => '自定义字段格式错误',
 
+        'content.notBlank' => '正文不能为空',
+        'content.max' => '正文最多 1000 字。',
+
 
 
         'cover.url' => '封面图片格式不正确',
@@ -206,6 +212,7 @@ class Cards extends Validate
 
 
         'comments.number' => '评论数格式错误',
+
 
 
 

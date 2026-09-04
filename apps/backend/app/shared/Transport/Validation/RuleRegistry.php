@@ -26,6 +26,9 @@ final class RuleRegistry
             $validate->extend('nonNull', function ($value) {
                 return $this->nonNull($value);
             });
+            $validate->extend('notBlank', function ($value) {
+                return $this->notBlank($value);
+            });
         });
     }
 
@@ -85,6 +88,12 @@ final class RuleRegistry
             return true;
         }
         return false;
+    }
+
+    /** A required human-entered explanation cannot consist only of whitespace. */
+    public function notBlank($value): bool
+    {
+        return is_scalar($value) && trim((string) $value) !== '';
     }
 
     // json类型验证方法

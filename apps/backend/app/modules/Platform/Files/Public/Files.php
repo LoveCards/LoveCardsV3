@@ -13,10 +13,10 @@ final class Files
     {
         app(ManageFileReferences::class)->replace($type, $id, $purpose, $fileIds, $ownerId, $isPublic, $allowAll);
     }
-    public static function referenceFileIds(string $type, string $id): array { return app(ManageFileReferences::class)->fileIds($type, $id); }
-    public static function referenceFileIdsForResources(string $type, array $ids): array
+    public static function referenceFileIds(string $type, string $id, ?string $purpose = null): array { return app(ManageFileReferences::class)->fileIds($type, $id, $purpose); }
+    public static function referenceFileIdsForResources(string $type, array $ids, ?string $purpose = null): array
     {
-        return app(ManageFileReferences::class)->fileIdsForResources($type, $ids);
+        return app(ManageFileReferences::class)->fileIdsForResources($type, $ids, $purpose);
     }
     public static function cardMediaFiles(array $fileIds, array $legacyCardIds, bool $publicOnly): array
     {

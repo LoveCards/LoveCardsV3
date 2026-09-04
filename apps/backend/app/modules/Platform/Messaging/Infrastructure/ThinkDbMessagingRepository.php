@@ -11,7 +11,7 @@ final class ThinkDbMessagingRepository implements MessagingRepository
     public function conversationsForUser(int $userId): array
     {
         $rows = Db::query(
-            'SELECT c.id, c.updated_at, peer.user_id AS recipient_id, u.number, u.username, u.avatar, '
+            'SELECT c.id, c.updated_at, u.uid AS recipient_uid, u.username, u.avatar, '
             . 'last_message.id AS last_message_id, last_message.sender_id AS last_sender_id, '
             . 'last_message.body AS last_message_body, last_message.created_at AS last_message_at, '
             . 'SUM(CASE WHEN m.id > COALESCE(self_member.last_read_message_id, 0) AND m.sender_id <> ? THEN 1 ELSE 0 END) AS unread_count '
@@ -22,7 +22,7 @@ final class ThinkDbMessagingRepository implements MessagingRepository
             . 'LEFT JOIN messages m ON m.conversation_id = c.id AND m.deleted_at IS NULL '
             . 'LEFT JOIN messages last_message ON last_message.id = (SELECT lm.id FROM messages lm WHERE lm.conversation_id = c.id AND lm.deleted_at IS NULL ORDER BY lm.id DESC LIMIT 1) '
             . 'WHERE self_member.user_id = ? '
-            . 'GROUP BY c.id, c.updated_at, peer.user_id, u.number, u.username, u.avatar, last_message.id, last_message.sender_id, last_message.body, last_message.created_at '
+            . 'GROUP BY c.id, c.updated_at, u.uid, u.username, u.avatar, last_message.id, last_message.sender_id, last_message.body, last_message.created_at '
             . 'ORDER BY c.updated_at DESC, c.id DESC',
             [$userId, $userId]
         );
@@ -34,12 +34,14 @@ final class ThinkDbMessagingRepository implements MessagingRepository
     public function messagesForUser(int $userId, int $conversationId, ?string $cursor, int $limit): array
     {
         $this->assertMember($userId, $conversationId);
-        $query = Db::table('messages')
-            ->where('conversation_id', $conversationId)
-            ->whereNull('deleted_at')
-            ->order('id', 'desc')
+        $query = Db::table('messages m')
+            ->join('users u', 'u.id = m.sender_id')
+            ->field('m.*,u.uid AS sender_uid')
+            ->where('m.conversation_id', $conversationId)
+            ->whereNull('m.deleted_at')
+            ->order('m.id', 'desc')
             ->limit($limit + 1);
-        if ($cursor !== null && ctype_digit($cursor)) $query->where('id', '<', (int) $cursor);
+        if ($cursor !== null && ctype_digit($cursor)) $query->where('m.id', '<', (int) $cursor);
         $rows = $query->select()->toArray();
         $hasMore = count($rows) > $limit;
         if ($hasMore) array_pop($rows);
@@ -50,15 +52,17 @@ final class ThinkDbMessagingRepository implements MessagingRepository
         ];
     }
 
-    public function findMessageIdByClientId(int $senderId, int $recipientId, string $clientMessageId): ?int
+    public function findMessageByClientId(int $senderId, int $recipientId, string $clientMessageId): ?array
     {
-        $id = Db::table('messages')->alias('m')
+        $message = Db::table('messages')->alias('m')
             ->join('conversation_members member', 'member.conversation_id = m.conversation_id')
             ->where('m.sender_id', $senderId)
             ->where('m.client_message_id', $clientMessageId)
             ->where('member.user_id', $recipientId)
-            ->value('m.id');
-        return $id === null ? null : (int) $id;
+            ->field(['m.id', 'm.conversation_id'])
+            ->find();
+        if ($message === null) return null;
+        return ['id' => (int) $message['id'], 'conversation_id' => (int) $message['conversation_id']];
     }
 
     public function findOrCreateDirectConversation(int $firstUserId, int $secondUserId, \DateTimeImmutable $at): int

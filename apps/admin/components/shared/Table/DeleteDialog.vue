@@ -1,35 +1,51 @@
 <template>
-	<!-- 删除确认对话框 -->
-	<v-dialog v-model="thisDialogState" max-width="400">
-		<v-card>
-			<v-card-title class="text-h5"> 确认删除 </v-card-title>
-			<v-card-text>
-				确定要删除 #{{ deleteData.id }} 吗？此操作不可恢复。
-			</v-card-text>
-			<v-card-actions>
-				<v-spacer></v-spacer>
-				<v-btn color="accent" text="取消" variant="text" @click="thisDialogState = false"></v-btn>
-				<v-btn color="accent" text="删除" variant="flat" @click="submitDeleteUser"></v-btn>
-			</v-card-actions>
-		</v-card>
-	</v-dialog>
+  <AdminDangerActionDialog
+    v-model="thisDialogState"
+    action-label="删除资源"
+    confirm-text="删除"
+    :error="actionError"
+    impact="删除后，该资源将无法继续在管理列表和前台使用；能否恢复取决于该资源的删除策略。"
+    :loading="deleting"
+    :resource-label="resourceLabel"
+    title="确认删除"
+    @confirm="submitDelete"
+  />
 </template>
 
 <script setup lang="ts">
-//Props
-const props = defineProps({
-	deleteFun: Function,
-});
+import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue'
 
-//Model
-const thisDialogState = defineModel<boolean>('thisDialogState');
-const deleteData = defineModel<{ id: number }>('deleteData', { default: { id: 0 } });
+const props = defineProps<{
+  deleteFun?: (id: number) => unknown
+}>()
 
-//操作
-//提交删除用户
-const submitDeleteUser = () => {
-	if (props.deleteFun) {
-		props.deleteFun(deleteData.value.id);
-	}
-};
+const thisDialogState = defineModel<boolean>('thisDialogState', { default: false })
+const deleteData = defineModel<{ id: number; display?: string }>('deleteData', {
+  default: { id: 0 },
+})
+
+const deleting = ref(false)
+const actionError = ref('')
+const resourceLabel = computed(() => {
+  const display = deleteData.value.display?.trim()
+  return display ? `${display}（#${deleteData.value.id}）` : `资源 #${deleteData.value.id}`
+})
+
+watch(thisDialogState, (open) => {
+  if (open) actionError.value = ''
+})
+
+const submitDelete = async () => {
+  if (!props.deleteFun || deleting.value) return
+  deleting.value = true
+  actionError.value = ''
+  try {
+    await props.deleteFun(deleteData.value.id)
+    thisDialogState.value = false
+  } catch (cause) {
+    actionError.value = cause instanceof Error ? cause.message : '删除失败，请稍后重试。'
+  } finally {
+    deleting.value = false
+  }
+}
 </script>

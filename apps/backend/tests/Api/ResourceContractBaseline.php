@@ -10,6 +10,7 @@ require $root . '/app/modules/Content/Cards/Transport/Api/CardResource.php';
 require $root . '/app/modules/Content/Cards/Transport/Api/CardCreatedResource.php';
 require $root . '/app/modules/Content/Likes/Transport/Api/LikeCountResource.php';
 require $root . '/app/modules/Content/Comments/Transport/Api/CommentCreatedResource.php';
+require $root . '/app/modules/Content/Comments/Transport/Api/CommentResource.php';
 require $root . '/app/modules/Platform/Rbac/Transport/Api/RoleResource.php';
 require $root . '/app/modules/Platform/Rbac/Transport/Api/PermissionResource.php';
 require $root . '/app/modules/Platform/Files/Transport/Api/FileResource.php';
@@ -31,11 +32,13 @@ use app\modules\Platform\Auth\Transport\Api\AuthResource;
 use app\modules\Content\Cards\Transport\Api\CardResource;
 use app\modules\Content\Cards\Transport\Api\CardCreatedResource;
 use app\modules\Content\Comments\Transport\Api\CommentCreatedResource;
+use app\modules\Content\Comments\Transport\Api\CommentResource;
 use app\modules\Content\Likes\Transport\Api\LikeCountResource;
 use app\modules\Platform\Config\Transport\Api\ConfigResource;
 use app\modules\Platform\Files\Transport\Api\DirectUploadResource;
 use app\modules\Platform\Files\Transport\Api\FileResource;
 use app\modules\Content\Likes\Transport\Api\LikeResource;
+use app\modules\Operations\Dashboard\Transport\Api\DashboardResource;
 use app\modules\Platform\Rbac\Transport\Api\PermissionResource;
 use app\modules\Platform\Rbac\Transport\Api\RoleResource;
 use app\modules\Theme\Transport\Api\ThemeResource;
@@ -66,8 +69,9 @@ $assertFalse = static function (bool $value, string $message = ''): void {
 $test('card resource decodes json fields and exposes the public card contract', static function () use ($assertSame, $assertFalse): void {
     $result = CardResource::make([
         'id' => 10,
+        'username' => '卡卡旅行记',
         'data' => '{"title":"hello"}',
-        'tags' => '["a","b"]',
+        'tags' => '[13,14]',
         'pictures' => '["/a.jpg"]',
         'media' => '[]',
         'password' => 'secret',
@@ -75,9 +79,10 @@ $test('card resource decodes json fields and exposes the public card contract', 
     ]);
 
     $assertSame(['title' => 'hello'], $result['data']);
-    $assertSame(['a', 'b'], $result['tags']);
+    $assertSame([13, 14], $result['tags']);
     $assertSame(['/a.jpg'], $result['pictures']);
     $assertSame([], $result['media']);
+    $assertSame('卡卡旅行记', $result['username']);
     $assertFalse(array_key_exists('password', $result));
     $assertFalse(array_key_exists('deleted_at', $result));
 });
@@ -134,10 +139,12 @@ $test('direct upload resource exposes credential fields only', static function (
     $assertFalse(array_key_exists('secret', $result));
 });
 
-$test('like resource hides ip addresses', static function () use ($assertSame, $assertFalse): void {
-    $result = LikeResource::make(['id' => 1, 'pid' => 2, 'uid' => 3, 'ip' => '127.0.0.1']);
+$test('like resource exposes the typed target but hides ip addresses', static function () use ($assertSame, $assertFalse): void {
+    $result = LikeResource::make(['id' => 1, 'pid' => 2, 'ref_type' => 'comment', 'ref_id' => 2, 'uid' => 3, 'ip' => '127.0.0.1']);
 
     $assertSame(2, $result['pid']);
+    $assertSame('comment', $result['ref_type']);
+    $assertSame(2, $result['ref_id']);
     $assertFalse(array_key_exists('ip', $result));
 });
 
@@ -150,11 +157,43 @@ $test('api resource preserves simple command result arrays', static function () 
     $assertSame(['cards.read', 'cards.create'], ApiResource::make(['cards.read', 'cards.create']));
 });
 
+$test('comment resource exposes a valid author username and like count', static function () use ($assertSame): void {
+    $result = CommentResource::make(['id' => 4, 'pid' => 9, 'user_id' => 2, 'username' => '评论作者', 'content' => '正文', 'status' => 0, 'goods' => 3]);
+    $assertSame('评论作者', $result['username']);
+    $assertSame(3, $result['goods']);
+});
+
 $test('command resources expose stable fields only', static function () use ($assertSame, $assertFalse): void {
     $assertSame(['id' => 7, 'status' => 1], CardCreatedResource::make(['id' => 7, 'status' => 1, 'secret' => 'x']));
     $assertSame(['likes' => 3], LikeCountResource::make(['likes' => 3, 'ip' => '127.0.0.1']));
     $assertSame(['id' => 8, 'status' => 0], CommentCreatedResource::make(['id' => 8, 'status' => 0, 'password' => 'x']));
     $assertFalse((CardCreatedResource::schema()['additionalProperties'] ?? true));
+});
+
+$test('dashboard resource exposes capability-filtered summaries and typed workbench tasks', static function () use ($assertSame, $assertFalse): void {
+    $result = DashboardResource::make([
+        'count' => ['cards' => 2],
+        'chart' => [],
+        'ver' => ['app_name' => 'LoveCards'],
+        'notice' => [],
+        'workbench' => ['tasks' => [[
+            'key' => 'cards_pending',
+            'label' => '待审核卡片',
+            'description' => '检查等待发布的卡片内容。',
+            'count' => 1,
+            'action_url' => '/apps/content/cards',
+            'severity' => 'warning',
+        ]]],
+        'secret' => 'nope',
+    ]);
+
+    $assertSame(['cards' => 2], $result['count']);
+    $assertSame('cards_pending', $result['workbench']['tasks'][0]['key']);
+    $assertFalse(array_key_exists('secret', $result));
+    $schema = DashboardResource::schema();
+    $assertSame('array', $schema['properties']['chart']['type']);
+    $assertSame('object', $schema['properties']['ver']['type']);
+    $assertSame('array', $schema['properties']['workbench']['properties']['tasks']['type']);
 });
 
 $test('config resource preserves dynamic config groups', static function () use ($assertSame): void {

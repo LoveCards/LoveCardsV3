@@ -4,7 +4,7 @@ import type * as ApiTypes from '../../types'
 /** Generated from contracts/openapi.json. Do not edit manually. */
 export class Storage extends BaseResource {
   meta(type: string): Promise<ApiTypes.StorageMeta> {
-    return this._get<ApiTypes.StorageMeta>(`/admin/storage/${type}/meta`)
+    return this._get<ApiTypes.StorageMeta>(`/admin/storage/${encodeURIComponent(String(type))}/meta`)
   }
   channelStats(): Promise<ApiTypes.ChannelStats> {
     return this._get<ApiTypes.ChannelStats>("/admin/storage/channel-stats")

@@ -334,7 +334,6 @@ try {
 
   const form = new FormData()
   form.set('file', await openAsBlob(releaseZip, { type: 'application/zip' }), 'release.zip')
-  form.set('reason', 'isolated signed Release E2E')
   let plan = (await api('/admin/operations/upgrades', {
     token,
     method: 'POST',
@@ -346,15 +345,11 @@ try {
   console.log(`[upgrade-e2e] durable plan created: ${planId}`)
 
   await expectRejected(`/admin/operations/upgrades/${planId}/approve-contract`, {
-    token, method: 'POST', json: { reason: 'must not approve before waiting contract step' },
+    token, method: 'POST',
   })
   await expectRejected(`/admin/operations/upgrades/${planId}/recover`, {
-    token, method: 'POST', json: { reason: 'must not recover before activation' },
+    token, method: 'POST',
   })
-  await expectRejected(`/admin/operations/upgrades/${planId}/advance`, {
-    token, method: 'POST', json: { reason: '   ' },
-  })
-
   let approved = false
   let sawContractWaiting = false
   let servedRelease = false
@@ -368,7 +363,7 @@ try {
       sawContractWaiting = true
       if (!approved) {
         plan = (await api(`/admin/operations/upgrades/${planId}/approve-contract`, {
-          token, method: 'POST', json: { reason: 'isolated contract approval E2E' },
+          token, method: 'POST',
         })).data
         if (plan?.contract_approved !== true) throw new Error('Contract approval response did not persist approval')
         approved = true
@@ -378,7 +373,7 @@ try {
     }
 
     const result = await api(`/admin/operations/upgrades/${planId}/advance`, {
-      token, method: 'POST', json: { reason: 'isolated one-step advance E2E' },
+      token, method: 'POST',
     })
     plan = result.data
     const headerRelease = result.response.headers.get('x-lovecards-release-id')

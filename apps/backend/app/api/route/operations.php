@@ -50,8 +50,12 @@ Route::group('admin/operations', function () use ($access, $response, $request) 
     Route::get('deliveries', 'Platform.Administration/deliveries')->name('operations.deliveries')
         ->setOption('contract', ['request' => $request('pagination'), 'response' => $response(AdminDeliveryResource::class, 'paginated')])
         ->setOption('meta', ['name' => '事件投递', 'group' => '运维', 'access' => $access('communications.read')]);
+    Route::get('deliveries/:id', 'Platform.Administration/delivery')->name('operations.delivery')
+        ->pattern(['id' => '\\d+'])
+        ->setOption('contract', ['request' => null, 'response' => $response(AdminDeliveryResource::class)])
+        ->setOption('meta', ['name' => '事件投递详情', 'group' => '运维', 'access' => $access('communications.read')]);
     Route::post('deliveries/:id/retry', 'Platform.Administration/retryDelivery')->name('operations.retryDelivery')
-        ->setOption('contract', ['request' => $request('reason'), 'response' => $response(null, 'void', 204)])
+        ->setOption('contract', ['request' => null, 'response' => $response(null, 'void', 204)])
         ->setOption('meta', ['name' => '重试事件投递', 'group' => '运维', 'access' => $access('operations.retry')]);
     Route::get('notifications', 'Platform.Administration/notificationStats')->name('operations.notificationStats')
         ->setOption('contract', ['request' => null, 'response' => $response(AdminNotificationStatsResource::class)])
@@ -68,15 +72,15 @@ Route::group('admin/operations', function () use ($access, $response, $request) 
         ->setOption('meta', ['name' => '创建系统升级计划', 'group' => '运维', 'access' => $access('system.update')]);
     Route::post('upgrades/:planId/advance', 'Platform.Administration/advanceUpgrade')->name('operations.advanceUpgrade')
         ->pattern(['planId' => '[A-Za-z0-9._-]+'])
-        ->setOption('contract', ['request' => $request('reason'), 'response' => $response(AdminUpgradePlanResource::class)])
+        ->setOption('contract', ['request' => null, 'response' => $response(AdminUpgradePlanResource::class)])
         ->setOption('meta', ['name' => '推进系统升级计划', 'group' => '运维', 'access' => $access('system.update')]);
     Route::post('upgrades/:planId/approve-contract', 'Platform.Administration/approveUpgradeContract')->name('operations.approveUpgradeContract')
         ->pattern(['planId' => '[A-Za-z0-9._-]+'])
-        ->setOption('contract', ['request' => $request('reason'), 'response' => $response(AdminUpgradePlanResource::class)])
+        ->setOption('contract', ['request' => null, 'response' => $response(AdminUpgradePlanResource::class)])
         ->setOption('meta', ['name' => '批准系统升级 Contract', 'group' => '运维', 'access' => $access('system.update.contract')]);
     Route::post('upgrades/:planId/recover', 'Platform.Administration/recoverUpgrade')->name('operations.recoverUpgrade')
         ->pattern(['planId' => '[A-Za-z0-9._-]+'])
-        ->setOption('contract', ['request' => $request('reason'), 'response' => $response(AdminUpgradePlanResource::class)])
+        ->setOption('contract', ['request' => null, 'response' => $response(AdminUpgradePlanResource::class)])
         ->setOption('meta', ['name' => '恢复系统 Release', 'group' => '运维', 'access' => $access('system.recover')]);
 })->middleware(JwtAuthCheck::class)->middleware(PermissionCheck::class);
 
@@ -84,6 +88,10 @@ Route::group('admin', function () use ($access, $response, $request) {
     Route::get('audit-logs', 'Platform.Administration/auditLogs')->name('operations.auditLogs')
         ->setOption('contract', ['request' => $request('pagination'), 'response' => $response(AdminAuditLogResource::class, 'paginated')])
         ->setOption('meta', ['name' => '审计日志', 'group' => '审计', 'access' => $access('audit.read')]);
+    Route::get('audit-logs/:id', 'Platform.Administration/auditLog')->name('operations.auditLog')
+        ->pattern(['id' => '\\d+'])
+        ->setOption('contract', ['request' => null, 'response' => $response(AdminAuditLogResource::class)])
+        ->setOption('meta', ['name' => '审计日志详情', 'group' => '审计', 'access' => $access('audit.read')]);
     Route::get('reports', 'Platform.Administration/reports')->name('reports.listManaged')
         ->setOption('contract', ['request' => $request('pagination'), 'response' => $response(AdminReportResource::class, 'paginated')])
         ->setOption('meta', ['name' => '举报列表', 'group' => '治理', 'access' => $access('reports.read')]);
@@ -100,10 +108,10 @@ Route::group('admin', function () use ($access, $response, $request) {
         ->setOption('contract', ['request' => null, 'response' => $response(AdminSessionResource::class, 'collection')])
         ->setOption('meta', ['name' => '用户 Session', 'group' => '安全', 'access' => $access('users.security.read')]);
     Route::post('users/:id/sessions/:sessionId/revoke', 'Platform.Administration/revokeSession')->name('users.revokeSession')
-        ->setOption('contract', ['request' => $request('reason'), 'response' => $response(null, 'void', 204)])
+        ->setOption('contract', ['request' => null, 'response' => $response(null, 'void', 204)])
         ->setOption('meta', ['name' => '撤销 Session', 'group' => '安全', 'access' => $access('users.sessions.revoke')]);
     Route::post('users/:id/sessions/revoke-all', 'Platform.Administration/revokeSessions')->name('users.revokeSessions')
-        ->setOption('contract', ['request' => $request('reason'), 'response' => $response(null, 'void', 204)])
+        ->setOption('contract', ['request' => null, 'response' => $response(null, 'void', 204)])
         ->setOption('meta', ['name' => '撤销全部 Session', 'group' => '安全', 'access' => $access('users.sessions.revoke')]);
     Route::get('recovery', 'Platform.Administration/recovery')->name('users.recovery')
         ->setOption('contract', ['request' => $request('pagination'), 'response' => $response(AdminRecoveryChallengeResource::class, 'paginated')])

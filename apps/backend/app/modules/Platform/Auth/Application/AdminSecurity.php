@@ -6,6 +6,11 @@ namespace app\modules\Platform\Auth\Application;
 use app\api\ApiException;
 use app\modules\Platform\Auth\Contract\AdminSecurityRepository;
 use app\modules\Platform\Auth\Contract\SessionRegistry;
+use app\modules\Platform\Notifications\Contract\SystemNoticeIssuer;
+use app\modules\Platform\Notifications\Domain\SystemNotice;
+use app\modules\Platform\Rbac\Public\AdministrationBoundary;
+use app\shared\Authorization\GrantSet;
+use app\shared\Authorization\Scope;
 use app\shared\Observability\AuditLogger;
 use app\shared\Transaction\TransactionManager;
 
@@ -15,19 +20,31 @@ final class AdminSecurity
         private SessionRegistry $sessions,
         private AdminSecurityRepository $repository,
         private AuditLogger $audit,
-        private TransactionManager $transactions
+        private TransactionManager $transactions,
+        private SystemNoticeIssuer $notices
     ) {}
 
-    public function overview(int $userId): array
+    public function overview(
+        int $actorId,
+        array $actorRoleIds,
+        GrantSet $actorGrants,
+        int $userId
+    ): array
     {
-        $overview = $this->repository->findUserOverview($userId, $this->now());
-        if ($overview === null) throw ApiException::notFound('用户不存在');
+        $overview = $this->loadOverview($userId);
+        $overview['session_mutation_allowed'] = $this->sessionMutationViolation(
+            $actorId,
+            $actorRoleIds,
+            $actorGrants,
+            $userId,
+            false
+        ) === null;
         return $overview;
     }
 
     public function sessions(int $userId): array
     {
-        $this->overview($userId);
+        $this->loadOverview($userId);
         $now = $this->now();
         $rows = $this->sessions->listForUser($userId, true);
         foreach ($rows as &$row) {
@@ -57,21 +74,105 @@ final class AdminSecurity
         return ['data' => $rows, 'total' => $total, 'per_page' => $limit, 'current_page' => $page, 'last_page' => max(1, (int) ceil($total / $limit))];
     }
 
-    public function revoke(int $actorId, int $userId, int $sessionId, string $reason, string $ipAddress): void
+    public function revoke(
+        int $actorId,
+        array $actorRoleIds,
+        GrantSet $actorGrants,
+        int $userId,
+        int $sessionId,
+        string $ipAddress
+    ): void
     {
-        $this->transactions->run(function () use ($actorId, $userId, $sessionId, $reason, $ipAddress): void {
-            if (!$this->sessions->revokeById($userId, $sessionId, $reason, $this->now())) throw ApiException::notFound('Session 不存在或已撤销');
-            $this->audit->record($actorId, 'auth.session.revoke', 'auth_session', (string) $sessionId, ['user_id' => $userId, 'reason' => $reason, '_ip' => $ipAddress]);
+        $this->transactions->run(function () use ($actorId, $actorRoleIds, $actorGrants, $userId, $sessionId, $ipAddress): void {
+            $this->assertMayMutateUser($actorId, $actorRoleIds, $actorGrants, $userId);
+            if (!$this->sessions->revokeById($userId, $sessionId, 'admin_revoked', $this->now())) throw ApiException::notFound('Session 不存在或已撤销');
+            $this->audit->record($actorId, 'auth.session.revoke', 'auth_session', (string) $sessionId, ['user_id' => $userId, '_ip' => $ipAddress]);
+            $this->notices->issue(
+                $userId,
+                'auth.session.revoked:' . $sessionId,
+                SystemNotice::SECURITY,
+                '你的一个登录会话已由管理员撤销。如非预期，请检查账号安全。',
+                '/settings',
+                'warning'
+            );
         });
     }
 
-    public function revokeAll(int $actorId, int $userId, string $reason, string $ipAddress): void
+    public function revokeAll(
+        int $actorId,
+        array $actorRoleIds,
+        GrantSet $actorGrants,
+        int $userId,
+        string $ipAddress
+    ): void
     {
-        $this->transactions->run(function () use ($actorId, $userId, $reason, $ipAddress): void {
-            $this->overview($userId);
-            $count = $this->sessions->revokeAllForUser($userId, $reason, $this->now());
-            $this->audit->record($actorId, 'auth.session.revoke_all', 'user', (string) $userId, ['count' => $count, 'reason' => $reason, '_ip' => $ipAddress]);
+        $this->transactions->run(function () use ($actorId, $actorRoleIds, $actorGrants, $userId, $ipAddress): void {
+            $this->assertMayMutateUser($actorId, $actorRoleIds, $actorGrants, $userId);
+            $now = $this->now();
+            $sessionIds = [];
+            foreach ($this->sessions->listForUser($userId, false) as $session) {
+                if (!empty($session['revoked_at'])) continue;
+                if (new \DateTimeImmutable((string) $session['token_expires_at'], new \DateTimeZone('UTC')) <= $now) continue;
+                $sessionIds[] = (int) $session['id'];
+            }
+            sort($sessionIds);
+            $count = $this->sessions->revokeAllForUser($userId, 'admin_revoked_all', $now);
+            $this->audit->record($actorId, 'auth.session.revoke_all', 'user', (string) $userId, ['count' => $count, '_ip' => $ipAddress]);
+            if ($count > 0) {
+                $this->notices->issue(
+                    $userId,
+                    'auth.sessions.revoked_all:' . hash('sha256', implode(',', $sessionIds)),
+                    SystemNotice::SECURITY,
+                    '你的全部登录会话已由管理员撤销。如非预期，请尽快检查账号安全。',
+                    '/settings',
+                    'critical'
+                );
+            }
         });
+    }
+
+    private function assertMayMutateUser(
+        int $actorId,
+        array $actorRoleIds,
+        GrantSet $actorGrants,
+        int $userId
+    ): void {
+        $this->loadOverview($userId);
+        $violation = $this->sessionMutationViolation(
+            $actorId,
+            $actorRoleIds,
+            $actorGrants,
+            $userId,
+            true
+        );
+        if ($violation !== null) throw ApiException::forbidden($violation);
+    }
+
+    private function sessionMutationViolation(
+        int $actorId,
+        array $actorRoleIds,
+        GrantSet $actorGrants,
+        int $userId,
+        bool $forUpdate
+    ): ?string {
+        if (!$actorGrants->allows('users.sessions.revoke', Scope::GLOBAL)) return '权限不足';
+        return AdministrationBoundary::userMutationViolation(
+            $actorId,
+            $actorRoleIds,
+            $actorGrants,
+            $userId,
+            $this->repository->findUserRoleIds($userId, $forUpdate),
+            proposedRoleIds: null,
+            proposedGrants: null,
+            enforceTargetGrantCeiling: false
+        );
+    }
+
+    private function loadOverview(int $userId): array
+    {
+        $overview = $this->repository->findUserOverview($userId, $this->now());
+        if ($overview === null) throw ApiException::notFound('用户不存在');
+        return $overview;
     }
 
     private function now(): \DateTimeImmutable

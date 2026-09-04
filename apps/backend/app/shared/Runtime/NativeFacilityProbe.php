@@ -22,7 +22,18 @@ final class NativeFacilityProbe implements FacilityProbe
             if (!$socket) return FacilityProbeResult::unreachable('redis_unreachable');
             fclose($socket); return FacilityProbeResult::healthy();
         }
-        if ($provider === 'php-worker') return FacilityProbeResult::healthy();
+        if ($provider === 'php-worker') {
+            try {
+                $worker = \think\facade\Db::table('runtime_workers')
+                    ->where('worker_type', 'eventing')
+                    ->where('state', 'running')
+                    ->where('heartbeat_at', '>=', date('Y-m-d H:i:s', time() - 90))
+                    ->find();
+                return $worker ? FacilityProbeResult::healthy() : FacilityProbeResult::unreachable('worker_heartbeat_stale');
+            } catch (\Throwable $e) {
+                return FacilityProbeResult::unreachable('worker_status_unavailable');
+            }
+        }
         return FacilityProbeResult::unsupported('provider_unknown');
     }
 }

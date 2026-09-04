@@ -11,6 +11,10 @@ interface SessionRegistry
     public function listForUser(int $userId, bool $includeRevoked = true): array;
 
     public function revokeById(int $userId, int $sessionId, string $reason, DateTimeImmutable $at): bool;
+    /** @return array<string,mixed>|null */
+    public function findForUserByPublicId(int $userId, string $publicId): ?array;
+    public function revokeByPublicId(int $userId, string $publicId, string $reason, DateTimeImmutable $at): bool;
+    public function revokeOthers(int $userId, string $currentPublicId, string $reason, DateTimeImmutable $at): int;
 
     public function start(
         int $userId,

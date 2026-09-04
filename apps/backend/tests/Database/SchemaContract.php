@@ -280,7 +280,7 @@ echo "--- 1. Required Tables in data.sql ---\n";
 $requiredTables = [
     'cards', 'comments', 'tags', 'tags_map', 'users',
     'roles', 'role_capabilities', 'configs', 'files', 'likes',
-    'theme_bindings',
+    'theme_bindings', 'content_mentions',
 ];
 $foundTables = getCreateTableNames($dataSql);
 
@@ -326,6 +326,12 @@ $columnChecks = [
     ['theme_bindings', 'hostname', 'VARCHAR'],
     ['theme_bindings', 'theme_id', 'VARCHAR'],
     ['theme_bindings', 'release_key', 'VARCHAR'],
+    ['content_mentions', 'resource_type', 'VARCHAR'],
+    ['content_mentions', 'mentioned_user_id', 'INT'],
+    ['content_mentions', 'mentioned_username', 'VARCHAR'],
+    ['users', 'bio', 'VARCHAR'],
+    ['users', 'location', 'VARCHAR'],
+    ['auth_sessions', 'public_id', 'CHAR'],
     ['auth_sessions', 'token_expires_at', 'DATETIME'],
     ['auth_sessions', 'renewable_until', 'DATETIME'],
     ['auth_sessions', 'security_version', 'INT'],
@@ -350,9 +356,12 @@ echo "\n--- 3. Unique Keys in data.sql ---\n";
 $ukChecks = [
     ['files', 'uk_files_hash'],
     ['configs', 'uk_configs_group_key'],
-    ['likes', 'uk_likes_pid_uid'],
+    ['likes', 'uk_likes_ref_uid'],
     ['role_capabilities', 'uk_role_cap'],
     ['theme_bindings', 'uk_theme_bindings_hostname'],
+    ['users', 'uk_users_username'],
+    ['content_mentions', 'uk_content_mentions_resource_user'],
+    ['auth_sessions', 'uk_auth_sessions_public_id'],
 ];
 
 foreach ($ukChecks as [$table, $key]) {
@@ -586,6 +595,15 @@ if ($migrationCombined !== '') {
         } else {
             fail("ResourceRef migration is missing {$table} identifier widening");
         }
+    }
+
+    $notificationUnreadIndex = $migrationSqls['20260821000005.sql'] ?? '';
+    if (str_contains($notificationUnreadIndex, 'idx_notifications_recipient_read_id')
+        && str_contains($notificationUnreadIndex, '(`recipient_id`,`read_at`,`id`)')
+        && str_contains($notificationUnreadIndex, 'information_schema.STATISTICS')) {
+        pass('Notification unread polling migration adds an idempotent recipient/read/id index');
+    } else {
+        fail('Notification unread polling migration is missing its idempotent composite index');
     }
 
     $codeContractChecks = [
@@ -1426,6 +1444,14 @@ if ($migrationCombined !== '') {
 // ────────────────────────────────────────────────────────────
 //  Summary
 // ────────────────────────────────────────────────────────────
+$selfServiceMigration = $migrationSqls['20260825000001.sql'] ?? '';
+foreach (['notification_preferences', 'idx_safety_blocked_page', 'public_id', '@lc-phase migrate', '@lc-phase contract'] as $needle) {
+    if ($selfServiceMigration !== '' && str_contains($selfServiceMigration, $needle)) pass("Self-service migration contains `{$needle}`");
+    else fail("Self-service migration missing `{$needle}`");
+}
+if (hasNotNull($dataSql, 'auth_sessions', 'public_id')) pass('`auth_sessions.public_id` is NOT NULL');
+else fail('`auth_sessions.public_id` must be NOT NULL');
+
 echo "\n=== Summary ===\n";
 echo "Passed: {$passCount}\n";
 echo "Failed: {$failCount}\n";

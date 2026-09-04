@@ -1,6 +1,6 @@
 # @lovecards/sdk Endpoint Reference
 
-> 生成快照：2026-08-20。覆盖 25 个 SDK Resource、171 条命名路由（19 public、152 authenticated）。
+> 生成快照：2026-08-21。覆盖 25 个 SDK Resource、174 条命名路由（20 public、154 authenticated）。
 
 本文按 `contracts/route-manifest.json` 的 Operation ID 列出当前 HTTP 契约。调用签名、query/body 必填性和 TypeScript 返回类型以 `packages/sdk/src/generated/resources/*.ts` 与构建生成的 `.d.ts` 为准；不要手工编辑本文件替代契约生成。
 
@@ -16,7 +16,9 @@
 
 ```typescript
 client.library.remove({ resource_type, resource_id })
-client.notifications.list({ cursor, limit, unread_only })
+client.notifications.list({ cursor, limit, unread_only, category: 'engagement' })
+client.notifications.unread({ category: 'engagement' })
+client.notifications.readAll({ category: 'engagement' })
 client.messages.list(conversationId, { cursor, limit })
 client.messages.send({ recipient_id, body, client_message_id })
 client.safety.report({ resource_type, resource_id, reason, details })
@@ -51,6 +53,7 @@ client.operations.recoverUpgrade(planId, { reason })
 | `cards.hot` | `GET` | `/cards/hot` | public | `200 / collection` |
 | `cards.like` | `POST` | `/cards/:id/like` | capability | `200 / item` |
 | `cards.list` | `GET` | `/cards` | public | `200 / paginated` |
+| `cards.publicByUser` | `GET` | `/users/by-handle/:handle/cards` | public | `200 / paginated` |
 | `cards.listManaged` | `GET` | `/admin/cards` | capability | `200 / paginated` |
 | `cards.listOwn` | `GET` | `/me/cards` | capability | `200 / paginated` |
 | `cards.search` | `GET` | `/cards/search` | public | `200 / paginated` |
@@ -71,8 +74,7 @@ client.operations.recoverUpgrade(planId, { reason })
 | `comments.getManaged` | `GET` | `/admin/comments/:id` | capability | `200 / item` |
 | `comments.listManaged` | `GET` | `/admin/comments` | capability | `200 / paginated` |
 | `comments.listOwn` | `GET` | `/me/comments` | capability | `200 / paginated` |
-| `comments.update` | `PATCH` | `/me/comments/:id` | capability | `204 / void` |
-| `comments.updateManaged` | `PATCH` | `/admin/comments/:id` | capability | `204 / void` |
+| `comments.moderateManaged` | `PATCH` | `/admin/comments/:id` | capability | `204 / void` |
 
 ## community (1)
 
@@ -321,3 +323,5 @@ client.operations.recoverUpgrade(planId, { reason })
 | `users.security` | `GET` | `/admin/users/:id/security` | capability | `200 / item` |
 | `users.sessions` | `GET` | `/admin/users/:id/sessions` | capability | `200 / collection` |
 | `users.updateManaged` | `PATCH` | `/admin/users/:id` | capability | `204 / void` |
+
+`client.users.me()` 的 `User.stats.received_likes` 由服务端按当前会话用户聚合，仅统计其可见、未删除卡片收到的有效点赞；不包含评论点赞、收藏或当前用户发出的点赞。

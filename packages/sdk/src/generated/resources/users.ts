@@ -27,28 +27,31 @@ export class Users extends BaseResource {
   sessions(id: number): Promise<ApiTypes.UserSession[]> {
     return this._get<ApiTypes.UserSession[]>(`/admin/users/${id}/sessions`)
   }
-  revokeSession(id: number, sessionId: string, data: { reason: string }): Promise<void> {
-    return this._post<void>(`/admin/users/${id}/sessions/${sessionId}/revoke`, data)
+  revokeSession(id: number, sessionId: string): Promise<void> {
+    return this._post<void>(`/admin/users/${id}/sessions/${encodeURIComponent(String(sessionId))}/revoke`)
   }
-  revokeSessions(id: number, data: { reason: string }): Promise<void> {
-    return this._post<void>(`/admin/users/${id}/sessions/revoke-all`, data)
+  revokeSessions(id: number): Promise<void> {
+    return this._post<void>(`/admin/users/${id}/sessions/revoke-all`)
   }
   batchManaged(data: { ids: unknown[]; method: string }): Promise<void> {
     return this._post<void>("/admin/users/batch", data)
   }
-  me(): Promise<ApiTypes.User> {
-    return this._get<ApiTypes.User>("/me")
+  me(): Promise<ApiTypes.CurrentUser> {
+    return this._get<ApiTypes.CurrentUser>("/me")
   }
-  updateMe(data?: { avatar?: string; username?: string; password?: string }): Promise<void> {
-    return this._patch<void>("/me", data)
+  updateMe(data?: ApiTypes.ProfileUpdateParams): Promise<ApiTypes.CurrentUser> {
+    return this._patch<ApiTypes.CurrentUser>("/me", data)
   }
-  emailCaptcha(data: { email: string }): Promise<Record<string, unknown>> {
-    return this._post<Record<string, unknown>>("/me/email-captcha", data)
+  emailCaptcha(data: ApiTypes.EmailCaptchaParams): Promise<ApiTypes.EmailCaptchaResult> {
+    return this._post<ApiTypes.EmailCaptchaResult>("/me/email-captcha", data)
   }
-  updateEmail(data: { email: string; captcha?: string }): Promise<void> {
+  updateEmail(data: ApiTypes.EmailParams): Promise<void> {
     return this._post<void>("/me/email", data)
   }
-  updatePassword(data: { password: string }): Promise<void> {
+  updatePassword(data: ApiTypes.PasswordParams): Promise<void> {
     return this._post<void>("/me/password", data)
+  }
+  searchMentionCandidates(params: { query: string; limit?: number }): Promise<ApiTypes.ListResult<ApiTypes.MentionCandidate>> {
+    return this._get<ApiTypes.ListResult<ApiTypes.MentionCandidate>>("/users/mention-candidates", params)
   }
 }

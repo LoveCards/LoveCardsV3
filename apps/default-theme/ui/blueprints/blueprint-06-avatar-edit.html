@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LoveCards Blueprint 06 · 头像编辑任务</title>
+  <link rel="stylesheet" href="./blueprint-06-avatar-edit.css">
+</head>
+<body>
+  <main class="blueprint-page">
+    <header class="review-header">
+      <div><a href="./index.html">← 返回蓝图总览</a><h1>Blueprint 06A · Avatar upload task</h1><p>头像仍在主页直接触发，但选择、预览、错误和保存进入稳定任务表面；身份头不再被反馈撑开。</p></div>
+      <span>canonical · Feedback / Forms / Profile</span>
+    </header>
+
+    <section class="board">
+      <header class="board-head"><div><h2>默认态与入口</h2><p>本人头像是直接编辑入口；他人头像仍是身份导航。</p></div><b>Desktop 1160 · Mobile 390</b></header>
+      <div class="frames">
+        <article class="frame desktop-frame">
+          <div class="app-page is-dimmed">
+            <header class="topbar"><strong><i>L</i>Love<span>Cards</span></strong><nav>首页　发现　消息　我的</nav><div class="top-avatar">晚</div></header>
+            <section class="profile-hero"><div class="cover"></div><div class="identity"><button class="avatar-trigger" aria-label="更换头像"><span>晚</span><i>⌁</i></button><div><h3>晚风收藏家</h3><p>@wanfeng · 记录城市、书和偶尔吹过窗边的晚风。</p></div><button class="secondary">分享主页</button></div><div class="tabs"><b>内容</b><span>喜欢</span><span>收藏</span><span>历史</span></div></section>
+            <div class="feed-placeholder"><i></i><i></i><i></i></div>
+          </div>
+          <div class="backdrop"></div>
+          <section class="dialog" role="dialog" aria-modal="true" aria-labelledby="avatar-dialog-title">
+            <header><div><h3 id="avatar-dialog-title">更换头像</h3><p>更新后会同步到主页、评论和消息。</p></div><button aria-label="关闭更换头像">×</button></header>
+            <div class="dialog-body">
+              <div class="preview-row"><div class="avatar-preview">晚</div><div><b>当前头像</b><span>选择清晰的正方形图片，系统会生成圆形展示。</span></div></div>
+              <label class="file-label">选择图片</label>
+              <p class="file-description">JPG、PNG、GIF 或 WebP，最大 10MB</p>
+              <button class="file-input"><span aria-hidden="true">↥</span><b>选择一张图片</b><small>也可以拖到这里</small></button>
+            </div>
+            <footer><button class="secondary">取消</button><button class="primary" disabled>保存头像</button></footer>
+          </section>
+        </article>
+
+        <article class="frame phone-frame">
+          <div class="mobile-page is-dimmed"><header><button>←</button><b>我的主页</b><button>•••</button></header><div class="mobile-cover"></div><div class="mobile-identity"><button class="avatar-trigger"><span>晚</span><i>⌁</i></button><div><h3>晚风收藏家</h3><p>@wanfeng</p></div></div><div class="tabs"><b>内容</b><span>喜欢</span><span>收藏</span><span>历史</span></div></div>
+          <div class="backdrop"></div>
+          <section class="mobile-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-avatar-title">
+            <header><button>取消</button><h3 id="mobile-avatar-title">更换头像</h3><button class="save" disabled>保存</button></header>
+            <div class="dialog-body"><div class="avatar-preview">晚</div><p class="center-copy">选择清晰的正方形图片</p><label class="file-label">选择图片</label><p class="file-description">JPG、PNG、GIF 或 WebP，最大 10MB</p><button class="file-input"><span>↥</span><b>从设备选择图片</b></button></div>
+          </section>
+        </article>
+      </div>
+    </section>
+
+    <section class="board">
+      <header class="board-head"><div><h2>反馈层级</h2><p>文件值错误附着在 FileInput；网络、登录和权限错误属于整个上传任务。</p></div><b>FieldStatus ≠ Banner</b></header>
+      <div class="state-grid">
+        <article class="state-card"><span class="state-name">File error</span><div class="mini-dialog"><h3>更换头像</h3><div class="mini-preview">晚</div><label>选择图片</label><button class="file-input invalid"><b>portrait.svg</b><small>重新选择</small></button><div class="field-status" role="alert"><b>图片格式不支持</b><span>请选择 JPG、PNG、GIF 或 WebP。</span></div><div class="mini-actions"><button>取消</button><button class="primary">保存头像</button></div></div><p>不创建 Banner，不把错误写回主页身份头。</p></article>
+        <article class="state-card"><span class="state-name">Task error</span><div class="mini-dialog"><h3>更换头像</h3><div class="banner" role="alert"><span>!</span><div><b>头像还没有上传</b><p>网络连接不稳定，已保留你选择的图片。</p></div><button>重试上传</button></div><div class="selected-preview">新头像预览</div><div class="mini-actions"><button>取消</button><button class="primary">保存头像</button></div></div><p>Banner 只占任务内容轴，不覆盖 Header 或 Footer。</p></article>
+        <article class="state-card"><span class="state-name">Uploading</span><div class="mini-dialog"><h3>更换头像</h3><div class="uploading-preview"><div class="mini-preview">晚</div><div><b>正在上传头像</b><span>请保持页面打开</span><i></i></div></div><div class="mini-actions"><button disabled>取消</button><button class="primary" disabled>上传中</button></div></div><p>保留预览和按钮尺寸，禁止重复提交。</p></article>
+        <article class="state-card success-stage"><span class="state-name">Success</span><div class="profile-result"><div class="mini-preview">晚</div><div><b>晚风收藏家</b><span>@wanfeng</span></div></div><div class="toast" role="status"><span>✓</span><b>头像已更新</b></div><p>任务关闭、头像更新、焦点回到触发器；只显示一次短确认。</p></article>
+      </div>
+    </section>
+
+    <section class="decision-strip" aria-label="头像上传设计决策"><div><b>字段范围</b><span>格式、大小、损坏 → FieldStatus</span></div><div><b>任务范围</b><span>网络、权限、登录 → scoped Banner</span></div><div><b>完成确认</b><span>保存成功 → Toast</span></div><div><b>布局不变量</b><span>主页身份头始终稳定</span></div></section>
+  </main>
+</body>
+</html>

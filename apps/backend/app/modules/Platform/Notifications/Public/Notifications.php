@@ -15,8 +15,10 @@ final class Notifications
     {
         return self::create(new NotificationIntent($recipientId, $dedupeKey, $type, $actorId, $resource, $data));
     }
-    public static function list(int $userId, ?string $cursor = null, int $limit = 20, bool $unreadOnly = false): array { return self::useCase()->list($userId, $cursor, $limit, $unreadOnly); }
+    public static function list(int $userId, ?string $cursor = null, int $limit = 20, bool $unreadOnly = false, ?string $type = null, ?string $category = null): array { return self::useCase()->list($userId, $cursor, $limit, $unreadOnly, $type, $category); }
     public static function markRead(int $userId, array $ids): int { return self::useCase()->markRead($userId, $ids); }
-    public static function markAllRead(int $userId): int { return self::useCase()->markAllRead($userId); }
-    public static function unreadCount(int $userId): int { return self::useCase()->unreadCount($userId); }
+    public static function markAllRead(int $userId, ?string $category = null): int { return self::useCase()->markAllRead($userId, $category); }
+    public static function unreadCount(int $userId, ?string $category = null): int { return self::useCase()->unreadCount($userId, $category); }
+    public static function preferences(int $userId): array { return self::useCase()->preferences($userId); }
+    public static function updatePreferences(int $userId, array $input): array { return self::useCase()->updatePreferences($userId, $input); }
 }

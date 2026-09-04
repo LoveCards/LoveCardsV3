@@ -19,11 +19,16 @@ class Users extends Model
     // 设置字段信息
     protected $schema = [
         'id' => 'int',
+        'uid' => 'string',
         'number' => 'string',
         'avatar' => 'string',
         'email' => 'string',
         'phone' => 'string',
         'username' => 'string',
+        'bio' => 'string',
+        'location' => 'string',
+        'gender' => 'string',
+        'birth_date' => 'date',
         'password' => 'string',
         'status' => 'int',
         'roles_id' => 'json',

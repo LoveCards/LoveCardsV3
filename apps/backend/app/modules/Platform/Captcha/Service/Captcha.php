@@ -27,6 +27,15 @@ class Captcha
         return $driver->verify($params);
     }
 
+    /** @return 'valid'|'expired'|'invalid' */
+    public static function verifyDetailed(string $type, array $params, ?string $driverSlug = null): string
+    {
+        if (!self::isEnabled($type)) return 'expired';
+        $driver = self::resolve($type, $driverSlug);
+        if (method_exists($driver, 'verifyDetailed')) return $driver->verifyDetailed($params);
+        return $driver->verify($params) ? 'valid' : 'invalid';
+    }
+
     public static function driver(string $type, ?string $driverSlug = null): CaptchaInterface
     {
         return self::resolve($type, $driverSlug);

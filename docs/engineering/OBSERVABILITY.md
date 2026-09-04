@@ -28,6 +28,8 @@ LoveCards 在 ThinkPHP 日志能力上提供系统级适配，而不是让每个
 
 异常只保留 class、清洗后的 message 和 code。任何新日志字段如果包含凭证、可恢复秘密或完整个人隐私，必须先扩充脱敏测试，不能依赖调用者“记得不写”。
 
+SDK 的 `debug` 仅允许输出请求方法、URL、request id、重试次数、HTTP 状态和耗时等元数据；不得输出请求 body、query、响应 body 或完整 Axios 配置。生产环境必须关闭 SDK debug，若诊断需要临时开启，也只能使用元数据日志。
+
 ## 审计日志
 
 审计与技术日志用途不同：高风险动作通过 `AuditLogger` 持久化到 `audit_logs`，字段包括 actor、action、resource type/id、request id、correlation id、IP hash、payload 和时间。原始 IP 不入库；`APP_AUDIT_HASH_KEY`/`app.audit_hash_key` 应配置为实例秘密，用于不可逆 HMAC。
@@ -41,6 +43,10 @@ LoveCards 在 ThinkPHP 日志能力上提供系统级适配，而不是让每个
 - Release 上传、升级推进、Contract 批准和恢复。
 
 要求“业务写入与审计同成败”的用例必须在同一数据库事务中调用审计；审计写入失败时 fail closed。只读诊断或普通技术日志仍可 fail open。
+
+管理端普通内容维护（卡片/评论/标签的编辑、审核、置顶与取消置顶）不要求操作者重复填写自然语言原因；服务端必须静默记录操作者、动作、资源、`before`、`after`、`request_id` 与 `correlation_id`。删除、恢复、永久删除、权限或角色分配、系统升级/恢复等高风险或不可逆动作仍必须携带非空 `reason`（最多 255 字符）。服务端只在真实状态发生变化时逐资源写入审计；重复提交或无变化操作不产生伪审计，业务失败时审计随同一事务回滚。请求标识只能来自平台请求上下文，客户端不能在 payload 中伪造。
+
+审计记录面向调查，系统通知面向受影响用户；高风险用例经常需要两者同时存在，不能互相替代。哪些动作必须通知以及通知与运维告警的边界统一见 [NOTIFICATIONS.md](NOTIFICATIONS.md)。
 
 管理端 `/apps/operations/audit` 通过 `client.operations.auditLogs()` 分页查看动作、资源、request/correlation id 和经过白名单的 payload。普通业务角色不能读取审计表，也没有审计删除 API。
 

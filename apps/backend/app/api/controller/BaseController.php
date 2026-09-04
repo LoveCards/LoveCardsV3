@@ -107,6 +107,12 @@ class BaseController
         };
     }
 
+    /** Whether the current route declares a validated request payload/query contract. */
+    protected function hasRequestContract(): bool
+    {
+        return is_array($this->currentContract()['request'] ?? null);
+    }
+
     private function currentContract(): array
     {
         $rule = request()->rule();
@@ -156,7 +162,21 @@ class BaseController
                     ->check($params);
             }
         } catch (ValidateException $e) {
-            throw ApiException::badRequest('参数错误', ApiException::CODE_PARAM_INVALID, $e->getError());
+            $errors = $e->getError();
+            if ($ValidateClass === \app\modules\Content\Cards\Transport\Api\Cards::class
+                && is_array($errors) && array_key_exists('content', $errors)) {
+                throw ApiException::validation($errors);
+            }
+            if ($ValidateClass === \app\modules\Platform\User\Transport\Api\Profile::class && is_array($errors)) {
+                $reasonCode = array_key_exists('email', $errors)
+                    ? 'email_invalid'
+                    : (array_key_exists('captcha', $errors) ? 'captcha_invalid' : null);
+                throw ApiException::validation($errors, '字段校验失败', $reasonCode);
+            }
+            if ($ValidateClass === \app\modules\Platform\Community\Transport\Api\Community::class) {
+                throw ApiException::validation(is_array($errors) ? $errors : ['request' => (string) $errors]);
+            }
+            throw ApiException::badRequest('参数错误', ApiException::CODE_PARAM_INVALID, $errors);
         }
 
         return $params;

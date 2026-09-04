@@ -10,7 +10,9 @@ class Users extends Validate
     {
         return ['assignRoles' => [
             'type' => 'object',
-            'properties' => ['roles_id' => ['type' => 'array', 'items' => ['type' => 'integer']]],
+            'properties' => [
+                'roles_id' => ['type' => 'array', 'items' => ['type' => 'integer']],
+            ],
             'required' => ['roles_id'],
             'additionalProperties' => false,
         ]];
@@ -48,23 +50,6 @@ class Users extends Validate
             'nonNull' => false,
             'toNull' => false,
         ],
-        'allUpdate' => [
-            'normal' => [
-                'avatar',
-                'roles_id',
-                'email',
-                'phone',
-                'username',
-                'status'
-            ],
-            'require' => false,
-            'nonNull' => [
-                'id',
-                'password',
-                'number'
-            ],
-            'toNull' => false,
-        ],
         'adminUpdate' => [
             'normal' => ['avatar', 'email', 'phone', 'username', 'status'],
             'require' => false,
@@ -79,7 +64,7 @@ class Users extends Validate
         ],
     ];
     public static $scene_message = [
-        'number.nonNull' => '账号不得为空'
+        'number.nonNull' => '账号不得为空',
     ];
 
     protected $rule =   [
@@ -93,7 +78,7 @@ class Users extends Validate
         'email' => 'max:320|email|unique:users',
         'phone' => 'max:20|mobile|unique:users',
 
-        'status' => 'number',
+        'status' => 'number|in:0,1,2,3',
 
         'roles_id' => 'arrayJson',
     ];

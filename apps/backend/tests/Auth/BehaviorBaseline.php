@@ -24,6 +24,7 @@ namespace {
     }
 
     require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Contract/TokenService.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/User/Public/UserStatus.php';
     require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Public/AuthUser.php';
     require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Contract/UserRepository.php';
     require dirname(__DIR__, 2) . '/app/shared/Authorization/Scope.php';

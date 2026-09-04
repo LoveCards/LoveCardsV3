@@ -20,24 +20,21 @@ class Comments extends Validate
                 'data'
             ],
         ],
-        'selfUpdate' => [
-            'normal' => ['id', 'content'],
-            'require' => false,
-            'nonNull' => false,
-            'toNull' => [
-                'data'
-            ],
+        'moderate' => [
+            'normal' => ['id', 'content', 'status'],
+            'require' => [], 'nonNull' => false, 'toNull' => ['data'],
         ],
-        'adminUpdate' => [
-            'normal' => ['id', 'aid', 'pid', 'is_top', 'status', 'user_id', 'good', 'content'],
-            'require' => false, 'nonNull' => false, 'toNull' => ['data'],
+        'pin' => [
+            'normal' => ['id'], 'require' => ['comment_id'], 'nonNull' => false, 'toNull' => [],
+        ],
+        'unpin' => [
+            'normal' => ['id'], 'require' => [], 'nonNull' => false, 'toNull' => [],
+        ],
+        'pinOwn' => [
+            'normal' => ['id'], 'require' => ['comment_id'], 'nonNull' => false, 'toNull' => [],
         ],
         'create' => [
             'normal' => ['parent_id'], 'require' => ['id', 'content'], 'nonNull' => false, 'toNull' => ['data'],
-        ],
-        'allUpdate' => [
-            'normal' => ['id', 'aid', 'pid', 'is_top', 'status', 'user_id', 'good', 'content'],
-            'require' => false, 'nonNull' => false, 'toNull' => ['data'],
         ],
     ];
     public static $scene_message = [
@@ -52,8 +49,8 @@ class Comments extends Validate
         'aid' => 'number',
         'pid' => 'number',
         'parent_id' => 'number',
-        'is_top' => 'number',
-        'status' => 'number',
+        'comment_id' => 'number',
+        'status' => 'number|in:0,1,2,3',
         'user_id' => 'number',
         'data' => 'arrayJson',
         'content' => 'max:140',
@@ -71,7 +68,7 @@ class Comments extends Validate
 
         'parent_id.number'     => '父级ID格式错误',
 
-        'is_top.number'     => '置顶格式错误',
+        'comment_id.number'  => '评论ID格式错误',
 
         'status.number'     => '状态格式错误',
 

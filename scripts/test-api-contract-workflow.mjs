@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs/promises'
 import { auditRequestContract, describeRequestContract, extractMethodBody, hasBlockingIssues, inspectControllerAction } from './lib/request-contract-audit.mjs'
-import { generatedResourceMethod } from './lib/sdk-codegen.mjs'
+import { generatedResourceMethod, operationResponseType, qualifyType } from './lib/sdk-codegen.mjs'
 import { loadBackendContractMetadata } from './lib/backend-contract-metadata.mjs'
 
 const validator = 'app\\modules\\Fixture\\Transport\\Api\\Input'
@@ -37,8 +37,11 @@ const deleteMethod = generatedResourceMethod({ method: 'remove', params: 'params
 assert.match(deleteMethod, /_delete<void>\("\/me\/library", params\)/)
 const pathQueryMethod = generatedResourceMethod({ method: 'unlike', params: 'id: number, params?: { type?: string }', httpMethod: 'DELETE', returnType: 'void', path: '/me/likes/:id' })
 assert.match(pathQueryMethod, /`\/me\/likes\/\$\{id\}`, params/)
+const handlePathMethod = generatedResourceMethod({ method: 'profile', params: 'handle: string', httpMethod: 'GET', returnType: 'unknown', path: '/users/by-handle/:handle' })
+assert.match(handlePathMethod, /encodeURIComponent\(String\(handle\)\)/)
 const bodyMethod = generatedResourceMethod({ method: 'send', params: 'data: { body: string }', httpMethod: 'POST', returnType: 'void', path: '/me/messages' })
 assert.match(bodyMethod, /_post<void>\("\/me\/messages", data\)/)
+assert.equal(qualifyType('ApiTypes.NotificationListCategory'), 'ApiTypes.NotificationListCategory')
 
 assert.equal(hasBlockingIssues({ P1: 1 }), true)
 assert.equal(hasBlockingIssues({ P2: 1 }), false)
@@ -95,18 +98,45 @@ assert.match(configDelete.parameters.find((item) => item.in === 'query').schema[
 const libraryRemove = operation('library.remove')
 assert.match(libraryRemove.parameters.find((item) => item.in === 'query').schema['x-typescript-params'], /resource_type: string; resource_id: string/)
 
-const requestless = operation('notifications.unread')
-assert.equal(requestless.requestBody, undefined)
-assert.equal(requestless.parameters.some((item) => item.in === 'query'), false)
+const notificationUnread = operation('notifications.unread')
+assert.equal(notificationUnread.requestBody, undefined)
+assert.equal(
+  notificationUnread.parameters.find((item) => item.in === 'query').schema['x-typescript-params'],
+  'params?: { category?: NotificationListCategory }',
+)
+assert.equal(operationResponseType(notificationUnread), 'NotificationUnread')
+
+const notificationReadAll = operation('notifications.readAll')
+assert.equal(
+  notificationReadAll.requestBody.content['application/json'].schema['x-typescript-params'],
+  'data?: { category?: NotificationListCategory }',
+)
+
+const notificationList = operation('notifications.list')
+const notificationQuery = notificationList.parameters.find((item) => item.in === 'query').schema
+assert.equal(
+  notificationQuery['x-typescript-params'],
+  'params?: { cursor?: string; limit?: number; unread_only?: boolean; type?: "social.followed" | "message" | "content.card_liked" | "content.comment_liked" | "library.saved" | "content.commented" | "content.replied" | "content.mentioned" | "system.notice" | "system.security" | "system.moderation"; category?: NotificationListCategory }',
+)
+const notificationResponse = notificationList.responses['200'].content['application/json'].schema.properties.data
+assert.equal(notificationResponse['x-typescript-type'], 'NotificationCursorPage')
+assert.deepEqual(
+  notificationResponse.properties.data.items.required,
+  ['id', 'type', 'category', 'actor_id', 'actor', 'actor_state', 'resource_type', 'resource_id', 'resource_state', 'action_url', 'payload', 'read_at', 'created_at'],
+)
+assert.equal(operationResponseType(notificationList), 'NotificationCursorPage')
+const notificationListMethod = generatedResourceMethod({ method: 'list', params: notificationQuery['x-typescript-params'], httpMethod: 'GET', returnType: 'NotificationCursorPage', path: '/me/notifications' })
+assert.match(notificationListMethod, /Promise<ApiTypes\.NotificationCursorPage>/)
+assert.match(notificationListMethod, /category\?: ApiTypes\.NotificationListCategory/)
+assert.doesNotMatch(notificationListMethod, /ApiTypes\.ApiTypes/)
 
 const stream = operation('notifications.stream')
 assert.equal(stream['x-response-shape'], 'raw')
 assert.equal(stream.responses['200'].content['text/event-stream'].schema['x-typescript-type'], 'string')
 
 const migrationRun = operation('operations.runMigrations')
-const migrationRunSchema = migrationRun.requestBody.content['application/json'].schema
-assert.deepEqual(Object.keys(migrationRunSchema.properties), ['reason'])
-assert.equal(migrationRunSchema['x-typescript-params'], 'data?: { reason?: string }')
+assert.equal(migrationRun.requestBody.required, false)
+assert.deepEqual(Object.keys(migrationRun.requestBody.content['application/json'].schema.properties ?? {}), [])
 const migrationRunRoute = routeManifest.routes.find((item) => item.name === 'operations.runMigrations')
 assert.equal(
   migrationRunRoute.contract.request.rejectTruthy.allow_contract,
@@ -119,7 +149,7 @@ const adminOperations = [
   ['operations.runMigrations', 'operations.migrate', 'migrationRun', 'collection', 200],
   ['operations.runtime', 'operations.read', null, 'item', 200],
   ['operations.deliveries', 'communications.read', 'pagination', 'paginated', 200],
-  ['operations.retryDelivery', 'operations.retry', 'reason', 'void', 204],
+  ['operations.retryDelivery', 'operations.retry', null, 'void', 204],
   ['operations.notificationStats', 'communications.read', null, 'item', 200],
   ['operations.auditLogs', 'audit.read', 'pagination', 'paginated', 200],
   ['reports.listManaged', 'reports.read', 'pagination', 'paginated', 200],
@@ -127,8 +157,8 @@ const adminOperations = [
   ['reports.transition', 'reports.manage', 'transition', 'item', 200],
   ['users.security', 'users.security.read', null, 'item', 200],
   ['users.sessions', 'users.security.read', null, 'collection', 200],
-  ['users.revokeSession', 'users.sessions.revoke', 'reason', 'void', 204],
-  ['users.revokeSessions', 'users.sessions.revoke', 'reason', 'void', 204],
+  ['users.revokeSession', 'users.sessions.revoke', null, 'void', 204],
+  ['users.revokeSessions', 'users.sessions.revoke', null, 'void', 204],
   ['users.recovery', 'users.recovery.read', 'pagination', 'paginated', 200],
   ['community.insights', 'community.insights.read', null, 'item', 200],
   ['files.usage', 'files.usage.read', null, 'item', 200],

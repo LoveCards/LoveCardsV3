@@ -42,14 +42,16 @@ await client.library.history_clear()
 ### 通知
 
 ```typescript
-await client.notifications.list({ cursor, limit, unread_only })
-await client.notifications.unread()
+await client.notifications.list({ cursor, limit, unread_only, category: 'engagement' })
+await client.notifications.unread({ category: 'engagement' })
 await client.notifications.read({ ids })
-await client.notifications.readAll()
+await client.notifications.readAll({ category: 'engagement' })
 await client.notifications.stream({ after })
 ```
 
-SSE 是增强能力。连接失败或运行时关闭时继续用 list/unread 刷新；已读状态以 HTTP API 为准。默认主题入口为 `/inbox` 与 `/inbox/:type`。
+`engagement` 只属于列表/未读/批量已读查询参数，返回项的 `category` 仍是 `social|message|interaction|system`。游标是不透明字符串，必须原样回传；不得分别请求三类后在前端拼接。省略 category 的 unread/readAll 仍表示全局通知。SSE 是增强能力。连接失败或运行时关闭时继续用 list/unread 刷新；已读状态以 HTTP API 为准。默认主题入口为 `/inbox` 与 `/inbox/system`。
+
+`system.*` 只能由可信后端入口产生。前端只消费 SDK 返回的通知结构与安全 `action_url`，不得创建通知、解析 @提及、逐条查询 actor 或猜测跳转路由；完整边界见 [NOTIFICATIONS.md](NOTIFICATIONS.md)。
 
 ### 私信
 
@@ -112,14 +114,13 @@ await client.session.recovery_reset({ challenge_id, code, password })
 - 运行时/升级：`runtime/migrations/runMigrations/upgrades/upgrade/createUpgrade/advanceUpgrade/approveUpgradeContract/recoverUpgrade`；
 - 社区聚合：`client.community.insights`。
 
-页面、capability 和 UX 边界见 `ADMIN-ARCHITECTURE.md`。所有高风险动作继续使用现有 guard、确认对话框、原因字段和 notifier。
+页面、capability 和 UX 边界见 `ADMIN-ARCHITECTURE.md`。所有高风险动作继续使用现有 guard、确认对话框和 notifier，不提交通用操作原因。
 
-系统升级上传不是 JSON。必须构造 `FormData`，同时附带 `file` 与非空 `reason`：
+系统升级上传不是 JSON。必须构造仅包含 Release 文件的 `FormData`：
 
 ```typescript
 const formData = new FormData()
 formData.append('file', releaseZip)
-formData.append('reason', reason.trim())
 const plan = await client.operations.createUpgrade(formData)
 ```
 

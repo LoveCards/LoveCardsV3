@@ -13,16 +13,16 @@ final class ThinkDbFileReferenceRepository implements FileReferenceRepository
         return Db::table('file_references')->where('file_id', $fileId)->order('id', 'asc')->select()->toArray();
     }
 
-    public function fileIdsForResource(string $resourceType, string $resourceId): array
+    public function fileIdsForResource(string $resourceType, string $resourceId, ?string $purpose = null): array
     {
-        return array_map('intval', Db::table('file_references')
+        $query = Db::table('file_references')
             ->where('resource_type', $resourceType)
-            ->where('resource_id', $resourceId)
-            ->order('id', 'asc')
-            ->column('file_id'));
+            ->where('resource_id', $resourceId);
+        if ($purpose !== null) $query->where('purpose', $purpose);
+        return array_map('intval', $query->order('id', 'asc')->column('file_id'));
     }
 
-    public function fileIdsForResources(string $resourceType, array $resourceIds): array
+    public function fileIdsForResources(string $resourceType, array $resourceIds, ?string $purpose = null): array
     {
         $resourceIds = array_values(array_unique(array_filter(
             array_map('strval', $resourceIds),
@@ -31,13 +31,12 @@ final class ThinkDbFileReferenceRepository implements FileReferenceRepository
         if ($resourceIds === []) return [];
 
         $result = array_fill_keys($resourceIds, []);
-        $rows = Db::table('file_references')
+        $query = Db::table('file_references')
             ->where('resource_type', $resourceType)
             ->whereIn('resource_id', $resourceIds)
-            ->field('resource_id,file_id')
-            ->order('id', 'asc')
-            ->select()
-            ->toArray();
+            ->field('resource_id,file_id');
+        if ($purpose !== null) $query->where('purpose', $purpose);
+        $rows = $query->order('id', 'asc')->select()->toArray();
         foreach ($rows as $row) {
             $resourceId = (string) $row['resource_id'];
             if (isset($result[$resourceId])) $result[$resourceId][] = (int) $row['file_id'];

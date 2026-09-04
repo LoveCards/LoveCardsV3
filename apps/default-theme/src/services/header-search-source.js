@@ -4,6 +4,12 @@ function topicSlug(label) {
   return String(label || '').replace(/^#\s*/, '').trim();
 }
 
+function topicHref(topic) {
+  const id = Number(topic?.id);
+  const name = String(topic?.name || '').trim();
+  return Number.isInteger(id) && id > 0 ? `/topic/${id}-${encodeURIComponent(name)}` : `/topic/${encodeURIComponent(name)}`;
+}
+
 function toSearchItems(data, query) {
   if (data.source === 'configuration-error') {
     return [{ id: 'search-unavailable', label: data.message || '搜索暂不可用', auxiliaryData: { kind: 'status', description: data.detail || '请检查 API 配置。', href: '/search' } }];
@@ -19,7 +25,7 @@ function toSearchItems(data, query) {
       auxiliaryData: {
         kind: 'topic',
         description: trend.count || '查看话题内容',
-        href: `/topic/${encodeURIComponent(topicSlug(trend.label))}`,
+        href: topicHref({ id: trend.tagId, name: trend.name || topicSlug(trend.label) }),
       },
     }));
 

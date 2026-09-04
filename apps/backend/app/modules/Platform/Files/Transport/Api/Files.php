@@ -19,7 +19,9 @@ class Files extends Validate
             'list' => ['type' => 'object', 'properties' => $pagination, 'additionalProperties' => false],
             'listOwn' => ['type' => 'object', 'properties' => $pagination, 'additionalProperties' => false],
             'direct' => ['type' => 'object', 'properties' => ['filename' => ['type' => 'string', 'maxLength' => 255], 'size' => ['type' => 'integer', 'minimum' => 1], 'mime' => ['type' => 'string', 'maxLength' => 128]], 'required' => ['filename', 'size', 'mime'], 'additionalProperties' => false],
-            'cleanup' => ['type' => 'object', 'properties' => ['limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 1000]], 'additionalProperties' => false],
+            'cleanup' => ['type' => 'object', 'properties' => [
+                'limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 1000],
+            ], 'additionalProperties' => false],
         ];
     }
 
@@ -61,7 +63,7 @@ class Files extends Validate
     protected $rule = [
         'ids'       => 'arrayJson',
         'file'      => 'require',
-        'scene'     => 'in:card,comment,avatar,direct',
+        'scene'     => 'in:card,comment,avatar,profile_cover,direct',
         'ref_type'  => 'max:32',
         'ref_id'    => 'integer',
         'is_public' => 'in:0,1',
@@ -82,4 +84,5 @@ class Files extends Validate
         'size' => 'require|number|between:1,10737418240',
         'mime' => 'require|max:128',
     ];
+
 }

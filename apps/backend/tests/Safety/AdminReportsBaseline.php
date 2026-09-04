@@ -6,11 +6,16 @@ $root = dirname(__DIR__, 2);
 require $root . '/app/api/ApiException.php';
 require $root . '/app/shared/Observability/AuditLogger.php';
 require $root . '/app/shared/Transaction/TransactionManager.php';
+require $root . '/app/modules/Platform/Eventing/Public/RecordedEvent.php';
+require $root . '/app/modules/Platform/Notifications/Contract/SystemNoticeIssuer.php';
+require $root . '/app/modules/Platform/Notifications/Domain/SystemNotice.php';
 require $root . '/app/modules/Platform/Safety/Contract/AdminReportRepository.php';
 require $root . '/app/modules/Platform/Safety/Application/AdminReports.php';
 
 use app\modules\Platform\Safety\Application\AdminReports;
 use app\modules\Platform\Safety\Contract\AdminReportRepository;
+use app\modules\Platform\Eventing\Public\RecordedEvent;
+use app\modules\Platform\Notifications\Contract\SystemNoticeIssuer;
 use app\shared\Observability\AuditLogger;
 use app\shared\Transaction\TransactionManager;
 
@@ -48,21 +53,39 @@ final class FakeAdminReportsTransactions implements TransactionManager
     public function run(callable $callback): mixed { $this->calls++; return $callback(); }
 }
 
+final class FakeAdminReportNotices implements SystemNoticeIssuer
+{
+    public array $records = [];
+    public function issue(int $recipientId, string $noticeKey, string $type, string $message, ?string $actionUrl = null, string $severity = 'info', ?int $actorId = null): RecordedEvent
+    {
+        $this->records[] = compact('recipientId', 'noticeKey', 'type', 'message', 'actionUrl', 'severity', 'actorId');
+        return new RecordedEvent(count($this->records), []);
+    }
+}
+
 $assert = static function (bool $condition, string $message): void { if (!$condition) throw new RuntimeException($message); };
 $repository = new FakeAdminReportsRepository();
 $audit = new FakeAdminReportsAudit();
 $transactions = new FakeAdminReportsTransactions();
-$reports = new AdminReports($repository, $audit, $transactions);
+$notices = new FakeAdminReportNotices();
+$reports = new AdminReports($repository, $audit, $transactions, $notices);
 
-$result = $reports->transition(4, 9, 'reviewing', '开始审核', null, 'triage', '127.0.0.1');
+$result = $reports->transition(4, 9, 'reviewing', null, 'triage', '127.0.0.1');
 $assert($result['assignee_id'] === 9, 'first non-open transition must assign the acting reviewer');
 $assert($repository->events[0]['payload']['assignee_id'] === 9, 'assignee must be captured in report history');
 $assert($audit->records[0][1] === 'safety.report.transition', 'report transition must be audited in the transaction');
 $assert($transactions->calls === 1, 'report transition must use the transaction boundary');
 
 $invalid = false;
-try { $reports->transition(4, 9, 'open', 'invalid reverse', null, null, ''); }
+try { $reports->transition(4, 9, 'open', null, 'invalid reverse', ''); }
 catch (\app\api\ApiException) { $invalid = true; }
 $assert(!$invalid, 'reviewing may return to open according to the report state machine');
+
+$reports->transition(4, 9, 'reviewing', null, '重新审核', '127.0.0.1');
+$reports->transition(4, 9, 'resolved', 'resolved', '处理完成', '127.0.0.1');
+$assert(count($notices->records) === 1, 'resolved report must issue one moderation notice');
+$assert($notices->records[0]['noticeKey'] === 'safety.report.outcome:4:resolved', 'report outcome notice must use the terminal state key');
+$reports->transition(4, 9, 'resolved', null, 'note only', '127.0.0.1');
+$assert(count($notices->records) === 1, 'same-state report note must not duplicate the outcome notice');
 
 fwrite(STDOUT, "PASS admin reports baseline\n");

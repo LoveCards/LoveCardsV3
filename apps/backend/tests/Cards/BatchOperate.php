@@ -60,23 +60,43 @@ namespace app\modules\Content\Infrastructure\Persistence\Model
     class CardsQuery
     {
         public array $calls = [];
+        private array $filters = [];
 
         public function whereIn(string $field, array $values): self
         {
             $this->calls[] = [__FUNCTION__, $field, $values];
+            $this->filters[] = ['in', $field, $values];
             return $this;
         }
 
         public function where(string $field, $value): self
         {
             $this->calls[] = [__FUNCTION__, $field, $value];
+            $this->filters[] = ['eq', $field, $value];
             return $this;
+        }
+
+        public function order(string $field, string $direction): self { return $this; }
+        public function lock(bool $lock): self { return $this; }
+        public function select(): object
+        {
+            $rows = array_values(array_filter(Cards::$rows, fn(array $row): bool => $this->matches($row)));
+            return new class($rows) {
+                public function __construct(private array $rows) {}
+                public function toArray(): array { return $this->rows; }
+            };
         }
 
         public function update(array $data): int
         {
             $this->calls[] = [__FUNCTION__, $data];
-            return 1;
+            $changed = 0;
+            foreach (Cards::$rows as $id => $row) {
+                if (!$this->matches($row)) continue;
+                Cards::$rows[$id] = array_merge($row, $data);
+                $changed++;
+            }
+            return $changed ?: 1;
         }
 
         public function column(string $field): array
@@ -84,11 +104,22 @@ namespace app\modules\Content\Infrastructure\Persistence\Model
             $this->calls[] = [__FUNCTION__, $field];
             return [];
         }
+
+        private function matches(array $row): bool
+        {
+            foreach ($this->filters as [$kind, $field, $value]) {
+                $actual = $row[$field] ?? null;
+                if ($kind === 'eq' && $actual !== $value) return false;
+                if ($kind === 'in' && !in_array($actual, $value, true)) return false;
+            }
+            return true;
+        }
     }
 
     class Cards
     {
         public static ?CardsQuery $lastQuery = null;
+        public static array $rows = [];
 
         public static function whereIn(string $field, array $values): CardsQuery
         {
@@ -109,6 +140,7 @@ namespace app\modules\Content\Infrastructure\Persistence\Model
         public static function reset(): void
         {
             self::$lastQuery = null;
+            self::$rows = [];
         }
     }
 
@@ -171,6 +203,21 @@ namespace app\shared\Authorization
     class GrantSet {}
 }
 
+namespace app\modules\Content\Mentions\Service
+{
+    final class Mentions
+    {
+        public static int $captures = 0;
+        public static function capture(...$arguments): array { self::$captures++; return []; }
+        public static function publishAdded(...$arguments): void {}
+    }
+}
+
+namespace app\modules\Platform\Notifications\Domain
+{
+    final class SystemNotice { public const MODERATION = 'system.moderation'; }
+}
+
 namespace app\modules\Platform\Files\Public
 {
     final class Files
@@ -190,6 +237,17 @@ namespace app\modules\Content\Cards\Service\Policy
 }
 
 namespace {
+    final class CardNoticeState
+    {
+        public static object $issuer;
+    }
+
+    function app(string $class): object
+    {
+        if ($class === \app\modules\Platform\Notifications\Contract\SystemNoticeIssuer::class) return CardNoticeState::$issuer;
+        throw new \RuntimeException('Unexpected container lookup: ' . $class);
+    }
+
 require __DIR__ . '/../../app/modules/Content/Cards/Domain/PublicationStatus.php';
     require __DIR__ . '/../../app/modules/Content/Cards/Service/Cards.php';
 }
@@ -227,6 +285,11 @@ namespace {
     $reset = static function (): void {
         \app\modules\Content\Infrastructure\Persistence\Model\Cards::reset();
         \app\shared\Infrastructure\Persistence\BulkFieldToggle::reset();
+        \app\modules\Content\Mentions\Service\Mentions::$captures = 0;
+        CardNoticeState::$issuer = new class {
+            public array $records = [];
+            public function issue(...$arguments): object { $this->records[] = $arguments; return new \stdClass(); }
+        };
     };
 
     $test('unhide builds whereIn → where → update chain', static function () use ($reset, $assertSame): void {
@@ -269,6 +332,20 @@ namespace {
             },
             '不支持的操作'
         );
+    });
+
+    $test('pending card approval issues one moderation notice', static function () use ($reset, $assertSame): void {
+        $reset();
+        \app\modules\Content\Infrastructure\Persistence\Model\Cards::$rows[12] = [
+            'id' => 12, 'user_id' => 42, 'status' => 3, 'data' => [], 'content' => '',
+        ];
+        $approve = new \ReflectionMethod(\app\modules\Content\Cards\Service\Cards::class, 'approveCards');
+        $approve->setAccessible(true);
+        $approve->invoke(null, [12]);
+        $approve->invoke(null, [12]);
+        $assertSame(0, \app\modules\Content\Infrastructure\Persistence\Model\Cards::$rows[12]['status']);
+        $assertSame(1, count(CardNoticeState::$issuer->records), 'approval notice count');
+        $assertSame('moderation.card.12.approved', CardNoticeState::$issuer->records[0][1], 'approval notice key');
     });
 
     $failures = 0;

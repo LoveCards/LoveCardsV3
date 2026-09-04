@@ -9,7 +9,7 @@ export class Messages extends BaseResource {
   list(id: number, params?: { cursor?: string; limit?: number }): Promise<ApiTypes.CursorPage> {
     return this._get<ApiTypes.CursorPage>(`/me/conversations/${id}/messages`, params)
   }
-  send(data: { recipient_id: number; body: string; client_message_id?: string }): Promise<Record<string, unknown>> {
+  send(data: { recipient_uid: string; body: string; client_message_id?: string }): Promise<Record<string, unknown>> {
     return this._post<Record<string, unknown>>("/me/messages", data)
   }
 }

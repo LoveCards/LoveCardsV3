@@ -22,23 +22,23 @@ class Config extends BaseController
         $params = $this->validated();
         $group = $params['group'] ?? '';
         $groups = empty($group) ? [] : explode(',', (string) $group);
-        return ApiResponse::createOk(ConfigResource::make($this->config->get($groups)));
+        return ApiResponse::createOk(ConfigResource::make($this->config->get($groups, request()->auth->grants())));
     }
 
     public function groups()
     {
-        return ApiResponse::createOk(ConfigResource::make($this->config->schemaGroups()));
+        return ApiResponse::createOk(ConfigResource::make($this->config->schemaGroups(request()->auth->grants())));
     }
 
     public function update()
     {
-        $this->config->update($this->validated());
+        $this->config->update($this->validated(), request()->auth->grants());
         return ApiResponse::createNoContent();
     }
 
     public function init()
     {
-        $result = $this->config->init();
+        $result = $this->config->init(request()->auth->grants());
         return ApiResponse::createOk(ConfigResource::make($result));
     }
 
@@ -53,7 +53,7 @@ class Config extends BaseController
             return ApiResponse::createBadRequest('缂哄皯 group 鎴?schema');
         }
 
-        $result = $this->config->register($group, (array) $schema);
+        $result = $this->config->register($group, (array) $schema, request()->auth->grants());
         return ApiResponse::createOk(ConfigResource::make($result));
     }
 
@@ -61,7 +61,7 @@ class Config extends BaseController
     {
         $params = $this->validated();
         $group = $params['group'] ?? null;
-        $this->config->reload($group ?: null);
+        $this->config->reload($group ?: null, request()->auth->grants());
         return ApiResponse::createNoContent();
     }
 
@@ -72,7 +72,7 @@ class Config extends BaseController
         if (empty($group)) {
             return ApiResponse::createBadRequest('缺少 group');
         }
-        $this->config->deleteGroup($group);
+        $this->config->deleteGroup($group, request()->auth->grants());
         return ApiResponse::createNoContent();
     }
 
@@ -84,7 +84,7 @@ class Config extends BaseController
         if (empty($group) || empty($key)) {
             return ApiResponse::createBadRequest('缺少 group 或 key');
         }
-        $this->config->deleteKey($group, $key);
+        $this->config->deleteKey($group, $key, request()->auth->grants());
         return ApiResponse::createNoContent();
     }
 }

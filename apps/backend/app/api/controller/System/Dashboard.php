@@ -11,7 +11,7 @@ class Dashboard extends BaseController
 {
     public function index()
     {
-        $result = DashboardService::index();
+        $result = DashboardService::index(request()->auth->grants());
         return ApiResponse::createOk(DashboardResource::make($result));
     }
 }

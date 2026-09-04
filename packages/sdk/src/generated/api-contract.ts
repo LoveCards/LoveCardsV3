@@ -9,7 +9,7 @@ export interface GeneratedApiContract {
   "captcha.meta": { method: "GET"; path: "/admin/captcha/:slug/meta"; request: void; response: ApiTypes.CaptchaDriver; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "captcha.types": { method: "GET"; path: "/admin/captcha/types"; request: void; response: ApiTypes.CaptchaDriver[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "cards.batchManaged": { method: "POST"; path: "/admin/cards/batch"; request: { ids: unknown[]; method: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "cards.create": { method: "POST"; path: "/me/cards"; request: { pictures?: unknown[]; data?: unknown[]; media_file_ids?: unknown[]; picture_file_ids?: unknown[]; cover_file_id?: number; tags?: unknown[]; content: string; cover?: string }; response: ApiTypes.CreateResult; status: 201; shape: "item"; public: false; capabilities: readonly string[] }
+  "cards.create": { method: "POST"; path: "/me/cards"; request: ApiTypes.CreateCardParams; response: ApiTypes.CreateResult; status: 201; shape: "item"; public: false; capabilities: readonly string[] }
   "cards.delete": { method: "DELETE"; path: "/me/cards/:id"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "cards.deleteManaged": { method: "DELETE"; path: "/admin/cards/:id"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "cards.get": { method: "GET"; path: "/cards/:id"; request: void; response: ApiTypes.Card; status: 200; shape: "item"; public: true; capabilities: readonly string[] }
@@ -18,12 +18,15 @@ export interface GeneratedApiContract {
   "cards.hot": { method: "GET"; path: "/cards/hot"; request: void; response: ApiTypes.Card[]; status: 200; shape: "collection"; public: true; capabilities: readonly string[] }
   "cards.like": { method: "POST"; path: "/cards/:id/like"; request: void; response: { likes: number }; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "cards.list": { method: "GET"; path: "/cards"; request: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }; response: ApiTypes.ListResult<ApiTypes.Card>; status: 200; shape: "paginated"; public: true; capabilities: readonly string[] }
+  "cards.listFollowing": { method: "GET"; path: "/me/feed/following"; request: { page?: number; list_rows?: number }; response: ApiTypes.ListResult<ApiTypes.Card>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "cards.listManaged": { method: "GET"; path: "/admin/cards"; request: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }; response: ApiTypes.ListResult<ApiTypes.Card>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "cards.listOwn": { method: "GET"; path: "/me/cards"; request: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }; response: ApiTypes.ListResult<ApiTypes.Card>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
+  "cards.listPublicByUser": { method: "GET"; path: "/users/:uid/cards"; request: { page?: number; list_rows?: number }; response: ApiTypes.ListResult<ApiTypes.Card>; status: 200; shape: "paginated"; public: true; capabilities: readonly string[] }
+  "cards.publicByHandle": { method: "GET"; path: "/users/by-handle/:handle/cards"; request: { page?: number; list_rows?: number }; response: ApiTypes.ListResult<ApiTypes.Card>; status: 200; shape: "paginated"; public: true; capabilities: readonly string[] }
   "cards.search": { method: "GET"; path: "/cards/search"; request: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }; response: ApiTypes.ListResult<ApiTypes.Card>; status: 200; shape: "paginated"; public: true; capabilities: readonly string[] }
   "cards.unlike": { method: "DELETE"; path: "/cards/:id/like"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "cards.update": { method: "PATCH"; path: "/me/cards/:id"; request: { pictures?: unknown[]; content?: string; data?: unknown[]; media_file_ids?: unknown[]; picture_file_ids?: unknown[]; cover_file_id?: number; tags?: unknown[]; cover?: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "cards.updateManaged": { method: "PATCH"; path: "/admin/cards/:id"; request: { pictures?: unknown[]; content?: string; data?: unknown[]; media_file_ids?: unknown[]; picture_file_ids?: unknown[]; cover_file_id?: number; tags?: unknown[]; is_top?: number; status?: number; user_id?: number; comments?: number; views?: number; good?: number; cover?: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "cards.update": { method: "PATCH"; path: "/me/cards/:id"; request: ApiTypes.UpdateCardParams; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "cards.updateManaged": { method: "PATCH"; path: "/admin/cards/:id"; request: ApiTypes.UpdateCardParams; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "comments.batchManaged": { method: "POST"; path: "/admin/comments/batch"; request: { ids: unknown[]; method: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "comments.cardList": { method: "GET"; path: "/cards/:id/comments"; request: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }; response: ApiTypes.ListResult<ApiTypes.Comment>; status: 200; shape: "paginated"; public: true; capabilities: readonly string[] }
   "comments.create": { method: "POST"; path: "/cards/:id/comments"; request: { parent_id?: number; content: string; data?: unknown[] }; response: ApiTypes.CreateResult; status: 201; shape: "item"; public: false; capabilities: readonly string[] }
@@ -31,10 +34,15 @@ export interface GeneratedApiContract {
   "comments.deleteManaged": { method: "DELETE"; path: "/admin/comments/:id"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "comments.get": { method: "GET"; path: "/comments/:id"; request: void; response: ApiTypes.Comment; status: 200; shape: "item"; public: true; capabilities: readonly string[] }
   "comments.getManaged": { method: "GET"; path: "/admin/comments/:id"; request: void; response: ApiTypes.Comment; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "comments.like": { method: "POST"; path: "/comments/:id/like"; request: void; response: { likes: number }; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "comments.listManaged": { method: "GET"; path: "/admin/comments"; request: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }; response: ApiTypes.ListResult<ApiTypes.Comment>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "comments.listOwn": { method: "GET"; path: "/me/comments"; request: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }; response: ApiTypes.ListResult<ApiTypes.Comment>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
-  "comments.update": { method: "PATCH"; path: "/me/comments/:id"; request: { content?: string; data?: unknown[] }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "comments.updateManaged": { method: "PATCH"; path: "/admin/comments/:id"; request: { aid?: number; pid?: number; is_top?: number; status?: number; user_id?: number; good?: number; content?: string; data?: unknown[] }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "comments.moderateManaged": { method: "PATCH"; path: "/admin/comments/:id"; request: { content?: string; status?: number; data?: unknown[] }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "comments.pin": { method: "PUT"; path: "/me/cards/:id/pinned-comment"; request: { comment_id: number }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "comments.pinManaged": { method: "PUT"; path: "/admin/cards/:id/pinned-comment"; request: { comment_id: number }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "comments.unlike": { method: "DELETE"; path: "/comments/:id/like"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "comments.unpin": { method: "DELETE"; path: "/me/cards/:id/pinned-comment"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "comments.unpinManaged": { method: "DELETE"; path: "/admin/cards/:id/pinned-comment"; request: {  }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "community.insights": { method: "GET"; path: "/admin/community/insights"; request: void; response: ApiTypes.OperationsCommunityInsights; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "config.delete": { method: "DELETE"; path: "/admin/config"; request: { group: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "config.deleteKey": { method: "DELETE"; path: "/admin/config/key"; request: { group: string; key: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
@@ -73,23 +81,27 @@ export interface GeneratedApiContract {
   "likes.unlike": { method: "DELETE"; path: "/me/likes/:id"; request: { type?: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "messages.conversations": { method: "GET"; path: "/me/conversations"; request: void; response: Record<string, unknown>[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "messages.list": { method: "GET"; path: "/me/conversations/:id/messages"; request: { cursor?: string; limit?: number }; response: ApiTypes.CursorPage; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
-  "messages.send": { method: "POST"; path: "/me/messages"; request: { recipient_id: number; body: string; client_message_id?: string }; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
-  "notifications.list": { method: "GET"; path: "/me/notifications"; request: { cursor?: string; limit?: number; unread_only?: boolean }; response: ApiTypes.CursorPage; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "messages.send": { method: "POST"; path: "/me/messages"; request: { recipient_uid: string; body: string; client_message_id?: string }; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "notifications.list": { method: "GET"; path: "/me/notifications"; request: { cursor?: string; limit?: number; unread_only?: boolean; type?: "social.followed" | "message" | "content.card_liked" | "content.comment_liked" | "library.saved" | "content.commented" | "content.replied" | "content.mentioned" | "system.notice" | "system.security" | "system.moderation"; category?: ApiTypes.NotificationListCategory }; response: ApiTypes.NotificationCursorPage; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "notifications.preferences": { method: "GET"; path: "/me/notifications/preferences"; request: void; response: ApiTypes.NotificationPreferences; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "notifications.read": { method: "POST"; path: "/me/notifications/read"; request: { ids: number[] }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "notifications.readAll": { method: "POST"; path: "/me/notifications/read-all"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "notifications.readAll": { method: "POST"; path: "/me/notifications/read-all"; request: { category?: ApiTypes.NotificationListCategory }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "notifications.stream": { method: "GET"; path: "/me/notifications/stream"; request: { after?: number }; response: string; status: 200; shape: "raw"; public: false; capabilities: readonly string[] }
-  "notifications.unread": { method: "GET"; path: "/me/notifications/unread"; request: void; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
-  "operations.advanceUpgrade": { method: "POST"; path: "/admin/operations/upgrades/:planId/advance"; request: { reason: string }; response: ApiTypes.OperationsUpgradePlan; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
-  "operations.approveUpgradeContract": { method: "POST"; path: "/admin/operations/upgrades/:planId/approve-contract"; request: { reason: string }; response: ApiTypes.OperationsUpgradePlan; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "notifications.unread": { method: "GET"; path: "/me/notifications/unread"; request: { category?: ApiTypes.NotificationListCategory }; response: ApiTypes.NotificationUnread; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "notifications.updatePreferences": { method: "POST"; path: "/me/notifications/preferences"; request: ApiTypes.NotificationPreferencesUpdate; response: ApiTypes.NotificationPreferences; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "operations.advanceUpgrade": { method: "POST"; path: "/admin/operations/upgrades/:planId/advance"; request: void; response: ApiTypes.OperationsUpgradePlan; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "operations.approveUpgradeContract": { method: "POST"; path: "/admin/operations/upgrades/:planId/approve-contract"; request: void; response: ApiTypes.OperationsUpgradePlan; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "operations.auditLog": { method: "GET"; path: "/admin/audit-logs/:id"; request: void; response: ApiTypes.OperationsAuditLog; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.auditLogs": { method: "GET"; path: "/admin/audit-logs"; request: { page?: number; list_rows?: number; search_value?: string; search_keys?: string; status?: string; resource_type?: string; actor_id?: number; unread_only?: boolean; worker_type?: string }; response: ApiTypes.ListResult<ApiTypes.OperationsAuditLog>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "operations.createUpgrade": { method: "POST"; path: "/admin/operations/upgrades"; request: FormData; response: ApiTypes.OperationsUpgradePlan; status: 201; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.deliveries": { method: "GET"; path: "/admin/operations/deliveries"; request: { page?: number; list_rows?: number; search_value?: string; search_keys?: string; status?: string; resource_type?: string; actor_id?: number; unread_only?: boolean; worker_type?: string }; response: ApiTypes.ListResult<ApiTypes.OperationsDelivery>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
+  "operations.delivery": { method: "GET"; path: "/admin/operations/deliveries/:id"; request: void; response: ApiTypes.OperationsDelivery; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.migrations": { method: "GET"; path: "/admin/operations/migrations"; request: void; response: ApiTypes.OperationsMigration[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "operations.notificationStats": { method: "GET"; path: "/admin/operations/notifications"; request: void; response: ApiTypes.OperationsNotificationStats; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.overview": { method: "GET"; path: "/admin/operations/overview"; request: void; response: ApiTypes.OperationsOverview; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
-  "operations.recoverUpgrade": { method: "POST"; path: "/admin/operations/upgrades/:planId/recover"; request: { reason: string }; response: ApiTypes.OperationsUpgradePlan; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
-  "operations.retryDelivery": { method: "POST"; path: "/admin/operations/deliveries/:id/retry"; request: { reason: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "operations.runMigrations": { method: "POST"; path: "/admin/operations/migrations/run"; request: { reason?: string }; response: ApiTypes.OperationsMigration[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
+  "operations.recoverUpgrade": { method: "POST"; path: "/admin/operations/upgrades/:planId/recover"; request: void; response: ApiTypes.OperationsUpgradePlan; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "operations.retryDelivery": { method: "POST"; path: "/admin/operations/deliveries/:id/retry"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "operations.runMigrations": { method: "POST"; path: "/admin/operations/migrations/run"; request: Record<string, unknown>; response: ApiTypes.OperationsMigration[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "operations.runtime": { method: "GET"; path: "/admin/operations/runtime"; request: void; response: ApiTypes.OperationsRuntimeStatus; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.upgrade": { method: "GET"; path: "/admin/operations/upgrades/:planId"; request: void; response: ApiTypes.OperationsUpgradePlan; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.upgrades": { method: "GET"; path: "/admin/operations/upgrades"; request: { limit?: number }; response: ApiTypes.OperationsUpgradePlan[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
@@ -107,11 +119,12 @@ export interface GeneratedApiContract {
   "roles.list": { method: "GET"; path: "/admin/roles"; request: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }; response: ApiTypes.ListResult<ApiTypes.Role>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "roles.reseed": { method: "POST"; path: "/admin/roles/reseed"; request: void; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "roles.update": { method: "PATCH"; path: "/admin/roles/:id"; request: { name?: string; slug?: string; description?: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "safety.block": { method: "POST"; path: "/users/:id/block"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "safety.preferences": { method: "GET"; path: "/me/privacy"; request: void; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
-  "safety.preferences.update": { method: "POST"; path: "/me/privacy"; request: { profile_visibility?: string; messages_from?: string; show_relations?: boolean }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "safety.block": { method: "POST"; path: "/users/:uid/block"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "safety.listBlocked": { method: "GET"; path: "/me/blocked-users"; request: { cursor?: string; limit?: number; query?: string }; response: ApiTypes.BlockedUserCursorPage; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "safety.preferences": { method: "GET"; path: "/me/privacy"; request: void; response: ApiTypes.PrivacyPreferences; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "safety.preferences.update": { method: "POST"; path: "/me/privacy"; request: Partial<ApiTypes.PrivacyPreferences>; response: ApiTypes.PrivacyPreferences; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "safety.report": { method: "POST"; path: "/reports"; request: { resource_type: string; resource_id: string; reason: string; details?: string }; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
-  "safety.unblock": { method: "DELETE"; path: "/users/:id/block"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "safety.unblock": { method: "DELETE"; path: "/users/:uid/block"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "sender.channels": { method: "GET"; path: "/admin/sender/channels"; request: void; response: ApiTypes.SenderChannel[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "sender.install": { method: "POST"; path: "/admin/sender/install"; request: void; response: ApiTypes.SenderMeta[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "sender.meta": { method: "GET"; path: "/admin/sender/:type/meta"; request: void; response: ApiTypes.SenderMeta; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
@@ -121,18 +134,22 @@ export interface GeneratedApiContract {
   "session.captcha": { method: "POST"; path: "/session/captcha"; request: { account: string }; response: void; status: 204; shape: "void"; public: true; capabilities: readonly string[] }
   "session.check": { method: "GET"; path: "/session/check"; request: void; response: ApiTypes.SessionState; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "session.guest": { method: "POST"; path: "/session/guest"; request: void; response: ApiTypes.LoginResult; status: 200; shape: "item"; public: true; capabilities: readonly string[] }
+  "session.listSessions": { method: "GET"; path: "/me/sessions"; request: void; response: ApiTypes.CurrentUserSession[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "session.login": { method: "POST"; path: "/session/login"; request: { account: string; password: string }; response: ApiTypes.LoginResult; status: 200; shape: "item"; public: true; capabilities: readonly string[] }
   "session.logout": { method: "POST"; path: "/session/logout"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "session.policy": { method: "GET"; path: "/session/policy"; request: void; response: ApiTypes.AuthPolicy; status: 200; shape: "item"; public: true; capabilities: readonly string[] }
   "session.recovery.request": { method: "POST"; path: "/session/recovery/request"; request: { account: string }; response: Record<string, unknown>; status: 200; shape: "item"; public: true; capabilities: readonly string[] }
   "session.recovery.reset": { method: "POST"; path: "/session/recovery/reset"; request: { challenge_id: number; code: string; password: string }; response: void; status: 204; shape: "void"; public: true; capabilities: readonly string[] }
   "session.register": { method: "POST"; path: "/session/register"; request: { account: string; password: string; code?: string; captcha_id?: string; captcha_code?: string; lot_number?: string; captcha_output?: string; pass_token?: string; gen_time?: string }; response: ApiTypes.LoginResult; status: 200; shape: "item"; public: true; capabilities: readonly string[] }
-  "social.follow": { method: "POST"; path: "/users/:id/follow"; request: void; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
-  "social.followers": { method: "GET"; path: "/users/:id/followers"; request: { cursor?: string; limit?: number }; response: ApiTypes.CursorPage; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
-  "social.following": { method: "GET"; path: "/users/:id/following"; request: { cursor?: string; limit?: number }; response: ApiTypes.CursorPage; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
-  "social.profile": { method: "GET"; path: "/users/by-handle/:handle"; request: void; response: Record<string, unknown>; status: 200; shape: "item"; public: true; capabilities: readonly string[] }
-  "social.relation": { method: "GET"; path: "/users/:id/relation"; request: void; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
-  "social.unfollow": { method: "DELETE"; path: "/users/:id/follow"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "session.revokeOthers": { method: "POST"; path: "/me/sessions/revoke-others"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "session.revokeSession": { method: "DELETE"; path: "/me/sessions/:sessionId"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "social.follow": { method: "POST"; path: "/users/:uid/follow"; request: void; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "social.followers": { method: "GET"; path: "/users/:uid/followers"; request: { cursor?: string; limit?: number }; response: ApiTypes.CursorPage; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "social.following": { method: "GET"; path: "/users/:uid/following"; request: { cursor?: string; limit?: number }; response: ApiTypes.CursorPage; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "social.profile": { method: "GET"; path: "/users/:uid/profile"; request: void; response: ApiTypes.PublicUserProfile; status: 200; shape: "item"; public: true; capabilities: readonly string[] }
+  "social.profileByHandle": { method: "GET"; path: "/users/by-handle/:handle"; request: void; response: ApiTypes.PublicUserProfile; status: 200; shape: "item"; public: true; capabilities: readonly string[] }
+  "social.relation": { method: "GET"; path: "/users/:uid/relation"; request: void; response: ApiTypes.SocialRelation; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "social.unfollow": { method: "DELETE"; path: "/users/:uid/follow"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "storage.channels": { method: "GET"; path: "/admin/storage/channels"; request: void; response: ApiTypes.StorageChannel[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "storage.channelStats": { method: "GET"; path: "/admin/storage/channel-stats"; request: void; response: ApiTypes.ChannelStats; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "storage.install": { method: "POST"; path: "/admin/storage/install"; request: void; response: ApiTypes.StorageMeta[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
@@ -141,7 +158,7 @@ export interface GeneratedApiContract {
   "storage.types": { method: "GET"; path: "/admin/storage/types"; request: void; response: ApiTypes.StorageDriver[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "system.update": { method: "GET"; path: "/admin/system/update"; request: void; response: ApiTypes.SystemUpdateInfo; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "tags.batchManaged": { method: "POST"; path: "/admin/tags/batch"; request: { ids: unknown[]; method: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "tags.create": { method: "POST"; path: "/me/tags"; request: { name: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "tags.create": { method: "POST"; path: "/me/tags"; request: { name: string }; response: ApiTypes.Tag; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "tags.delete": { method: "DELETE"; path: "/me/tags/:id"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "tags.deleteManaged": { method: "DELETE"; path: "/admin/tags/:id"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "tags.get": { method: "GET"; path: "/tags/:id"; request: void; response: ApiTypes.Tag; status: 200; shape: "item"; public: true; capabilities: readonly string[] }
@@ -150,7 +167,7 @@ export interface GeneratedApiContract {
   "tags.listManaged": { method: "GET"; path: "/admin/tags"; request: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }; response: ApiTypes.ListResult<ApiTypes.Tag>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "tags.listOwn": { method: "GET"; path: "/me/tags"; request: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }; response: ApiTypes.ListResult<ApiTypes.Tag>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "tags.update": { method: "PATCH"; path: "/me/tags/:id"; request: { name?: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "tags.updateManaged": { method: "PATCH"; path: "/admin/tags/:id"; request: { aid?: number; user_id?: number; name?: string; status?: number }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "tags.updateManaged": { method: "PATCH"; path: "/admin/tags/:id"; request: { name?: string; status?: number }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "theme.activate": { method: "POST"; path: "/admin/theme/activate"; request: { id: string; release: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "theme.delete": { method: "DELETE"; path: "/admin/theme/delete"; request: { id: string; release: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "theme.list": { method: "GET"; path: "/admin/theme/list"; request: void; response: ApiTypes.ThemeItem[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
@@ -162,14 +179,15 @@ export interface GeneratedApiContract {
   "users.deleteManaged": { method: "DELETE"; path: "/admin/users/:id"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "users.getManaged": { method: "GET"; path: "/admin/users/:id"; request: void; response: ApiTypes.User; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "users.listManaged": { method: "GET"; path: "/admin/users"; request: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }; response: ApiTypes.ListResult<ApiTypes.User>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
-  "users.me.email": { method: "POST"; path: "/me/email"; request: { email: string; captcha?: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "users.me.emailCaptcha": { method: "POST"; path: "/me/email-captcha"; request: { email: string }; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
-  "users.me.get": { method: "GET"; path: "/me"; request: void; response: ApiTypes.User; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
-  "users.me.password": { method: "POST"; path: "/me/password"; request: { password: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "users.me.update": { method: "PATCH"; path: "/me"; request: { avatar?: string; username?: string; password?: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "users.me.email": { method: "POST"; path: "/me/email"; request: ApiTypes.EmailParams; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "users.me.emailCaptcha": { method: "POST"; path: "/me/email-captcha"; request: ApiTypes.EmailCaptchaParams; response: ApiTypes.EmailCaptchaResult; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "users.me.get": { method: "GET"; path: "/me"; request: void; response: ApiTypes.CurrentUser; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "users.me.password": { method: "POST"; path: "/me/password"; request: ApiTypes.PasswordParams; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "users.me.update": { method: "PATCH"; path: "/me"; request: ApiTypes.ProfileUpdateParams; response: ApiTypes.CurrentUser; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "users.recovery": { method: "GET"; path: "/admin/recovery"; request: { page?: number; list_rows?: number; search_value?: string; search_keys?: string; status?: string; resource_type?: string; actor_id?: number; unread_only?: boolean; worker_type?: string }; response: ApiTypes.ListResult<ApiTypes.RecoveryChallenge>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
-  "users.revokeSession": { method: "POST"; path: "/admin/users/:id/sessions/:sessionId/revoke"; request: { reason: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "users.revokeSessions": { method: "POST"; path: "/admin/users/:id/sessions/revoke-all"; request: { reason: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "users.revokeSession": { method: "POST"; path: "/admin/users/:id/sessions/:sessionId/revoke"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "users.revokeSessions": { method: "POST"; path: "/admin/users/:id/sessions/revoke-all"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "users.searchMentionCandidates": { method: "GET"; path: "/users/mention-candidates"; request: { query: string; limit?: number }; response: ApiTypes.ListResult<ApiTypes.MentionCandidate>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "users.security": { method: "GET"; path: "/admin/users/:id/security"; request: void; response: ApiTypes.UserSecurityOverview; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "users.sessions": { method: "GET"; path: "/admin/users/:id/sessions"; request: void; response: ApiTypes.UserSession[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "users.updateManaged": { method: "PATCH"; path: "/admin/users/:id"; request: { avatar?: string; email?: string; phone?: string; username?: string; status?: number }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
@@ -196,8 +214,11 @@ export const generatedApiContract = {
   "cards.hot": { method: "GET", path: "/cards/hot", status: 200, shape: "collection", public: true, capabilities: [] },
   "cards.like": { method: "POST", path: "/cards/:id/like", status: 200, shape: "item", public: false, capabilities: ["likes.create"] },
   "cards.list": { method: "GET", path: "/cards", status: 200, shape: "paginated", public: true, capabilities: [] },
+  "cards.listFollowing": { method: "GET", path: "/me/feed/following", status: 200, shape: "paginated", public: false, capabilities: [] },
   "cards.listManaged": { method: "GET", path: "/admin/cards", status: 200, shape: "paginated", public: false, capabilities: ["admin.access","cards.read"] },
   "cards.listOwn": { method: "GET", path: "/me/cards", status: 200, shape: "paginated", public: false, capabilities: ["cards.read"] },
+  "cards.listPublicByUser": { method: "GET", path: "/users/:uid/cards", status: 200, shape: "paginated", public: true, capabilities: [] },
+  "cards.publicByHandle": { method: "GET", path: "/users/by-handle/:handle/cards", status: 200, shape: "paginated", public: true, capabilities: [] },
   "cards.search": { method: "GET", path: "/cards/search", status: 200, shape: "paginated", public: true, capabilities: [] },
   "cards.unlike": { method: "DELETE", path: "/cards/:id/like", status: 204, shape: "void", public: false, capabilities: ["likes.delete"] },
   "cards.update": { method: "PATCH", path: "/me/cards/:id", status: 204, shape: "void", public: false, capabilities: ["cards.update","cards.update"] },
@@ -209,10 +230,15 @@ export const generatedApiContract = {
   "comments.deleteManaged": { method: "DELETE", path: "/admin/comments/:id", status: 204, shape: "void", public: false, capabilities: ["admin.access","comments.delete"] },
   "comments.get": { method: "GET", path: "/comments/:id", status: 200, shape: "item", public: true, capabilities: [] },
   "comments.getManaged": { method: "GET", path: "/admin/comments/:id", status: 200, shape: "item", public: false, capabilities: ["admin.access","comments.read"] },
+  "comments.like": { method: "POST", path: "/comments/:id/like", status: 200, shape: "item", public: false, capabilities: ["likes.create"] },
   "comments.listManaged": { method: "GET", path: "/admin/comments", status: 200, shape: "paginated", public: false, capabilities: ["admin.access","comments.read"] },
   "comments.listOwn": { method: "GET", path: "/me/comments", status: 200, shape: "paginated", public: false, capabilities: ["comments.read"] },
-  "comments.update": { method: "PATCH", path: "/me/comments/:id", status: 204, shape: "void", public: false, capabilities: ["comments.update","comments.update"] },
-  "comments.updateManaged": { method: "PATCH", path: "/admin/comments/:id", status: 204, shape: "void", public: false, capabilities: ["admin.access","comments.update"] },
+  "comments.moderateManaged": { method: "PATCH", path: "/admin/comments/:id", status: 204, shape: "void", public: false, capabilities: ["admin.access","comments.update","comments.moderate"] },
+  "comments.pin": { method: "PUT", path: "/me/cards/:id/pinned-comment", status: 204, shape: "void", public: false, capabilities: ["comments.pin"] },
+  "comments.pinManaged": { method: "PUT", path: "/admin/cards/:id/pinned-comment", status: 204, shape: "void", public: false, capabilities: ["admin.access","comments.pin"] },
+  "comments.unlike": { method: "DELETE", path: "/comments/:id/like", status: 204, shape: "void", public: false, capabilities: ["likes.delete"] },
+  "comments.unpin": { method: "DELETE", path: "/me/cards/:id/pinned-comment", status: 204, shape: "void", public: false, capabilities: ["comments.pin"] },
+  "comments.unpinManaged": { method: "DELETE", path: "/admin/cards/:id/pinned-comment", status: 204, shape: "void", public: false, capabilities: ["admin.access","comments.pin"] },
   "community.insights": { method: "GET", path: "/admin/community/insights", status: 200, shape: "item", public: false, capabilities: ["admin.access","community.insights.read"] },
   "config.delete": { method: "DELETE", path: "/admin/config", status: 204, shape: "void", public: false, capabilities: ["admin.access","config.deleteKey"] },
   "config.deleteKey": { method: "DELETE", path: "/admin/config/key", status: 204, shape: "void", public: false, capabilities: ["admin.access","config.deleteKey"] },
@@ -253,15 +279,19 @@ export const generatedApiContract = {
   "messages.list": { method: "GET", path: "/me/conversations/:id/messages", status: 200, shape: "item", public: false, capabilities: [] },
   "messages.send": { method: "POST", path: "/me/messages", status: 200, shape: "item", public: false, capabilities: [] },
   "notifications.list": { method: "GET", path: "/me/notifications", status: 200, shape: "item", public: false, capabilities: [] },
+  "notifications.preferences": { method: "GET", path: "/me/notifications/preferences", status: 200, shape: "item", public: false, capabilities: [] },
   "notifications.read": { method: "POST", path: "/me/notifications/read", status: 204, shape: "void", public: false, capabilities: [] },
   "notifications.readAll": { method: "POST", path: "/me/notifications/read-all", status: 204, shape: "void", public: false, capabilities: [] },
   "notifications.stream": { method: "GET", path: "/me/notifications/stream", status: 200, shape: "raw", public: false, capabilities: [] },
   "notifications.unread": { method: "GET", path: "/me/notifications/unread", status: 200, shape: "item", public: false, capabilities: [] },
+  "notifications.updatePreferences": { method: "POST", path: "/me/notifications/preferences", status: 200, shape: "item", public: false, capabilities: [] },
   "operations.advanceUpgrade": { method: "POST", path: "/admin/operations/upgrades/:planId/advance", status: 200, shape: "item", public: false, capabilities: ["admin.access","system.update"] },
   "operations.approveUpgradeContract": { method: "POST", path: "/admin/operations/upgrades/:planId/approve-contract", status: 200, shape: "item", public: false, capabilities: ["admin.access","system.update.contract"] },
+  "operations.auditLog": { method: "GET", path: "/admin/audit-logs/:id", status: 200, shape: "item", public: false, capabilities: ["admin.access","audit.read"] },
   "operations.auditLogs": { method: "GET", path: "/admin/audit-logs", status: 200, shape: "paginated", public: false, capabilities: ["admin.access","audit.read"] },
   "operations.createUpgrade": { method: "POST", path: "/admin/operations/upgrades", status: 201, shape: "item", public: false, capabilities: ["admin.access","system.update"] },
   "operations.deliveries": { method: "GET", path: "/admin/operations/deliveries", status: 200, shape: "paginated", public: false, capabilities: ["admin.access","communications.read"] },
+  "operations.delivery": { method: "GET", path: "/admin/operations/deliveries/:id", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
   "operations.migrations": { method: "GET", path: "/admin/operations/migrations", status: 200, shape: "collection", public: false, capabilities: ["admin.access","operations.read"] },
   "operations.notificationStats": { method: "GET", path: "/admin/operations/notifications", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
   "operations.overview": { method: "GET", path: "/admin/operations/overview", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.read"] },
@@ -285,11 +315,12 @@ export const generatedApiContract = {
   "roles.list": { method: "GET", path: "/admin/roles", status: 200, shape: "paginated", public: false, capabilities: ["admin.access","roles.read"] },
   "roles.reseed": { method: "POST", path: "/admin/roles/reseed", status: 200, shape: "item", public: false, capabilities: ["admin.access","roles.assign"] },
   "roles.update": { method: "PATCH", path: "/admin/roles/:id", status: 204, shape: "void", public: false, capabilities: ["admin.access","roles.update"] },
-  "safety.block": { method: "POST", path: "/users/:id/block", status: 204, shape: "void", public: false, capabilities: [] },
+  "safety.block": { method: "POST", path: "/users/:uid/block", status: 204, shape: "void", public: false, capabilities: [] },
+  "safety.listBlocked": { method: "GET", path: "/me/blocked-users", status: 200, shape: "item", public: false, capabilities: [] },
   "safety.preferences": { method: "GET", path: "/me/privacy", status: 200, shape: "item", public: false, capabilities: [] },
-  "safety.preferences.update": { method: "POST", path: "/me/privacy", status: 204, shape: "void", public: false, capabilities: [] },
+  "safety.preferences.update": { method: "POST", path: "/me/privacy", status: 200, shape: "item", public: false, capabilities: [] },
   "safety.report": { method: "POST", path: "/reports", status: 200, shape: "item", public: false, capabilities: [] },
-  "safety.unblock": { method: "DELETE", path: "/users/:id/block", status: 204, shape: "void", public: false, capabilities: [] },
+  "safety.unblock": { method: "DELETE", path: "/users/:uid/block", status: 204, shape: "void", public: false, capabilities: [] },
   "sender.channels": { method: "GET", path: "/admin/sender/channels", status: 200, shape: "collection", public: false, capabilities: ["admin.access","sender.read"] },
   "sender.install": { method: "POST", path: "/admin/sender/install", status: 200, shape: "collection", public: false, capabilities: ["admin.access","sender.install"] },
   "sender.meta": { method: "GET", path: "/admin/sender/:type/meta", status: 200, shape: "item", public: false, capabilities: ["admin.access","sender.read"] },
@@ -299,18 +330,22 @@ export const generatedApiContract = {
   "session.captcha": { method: "POST", path: "/session/captcha", status: 204, shape: "void", public: true, capabilities: [] },
   "session.check": { method: "GET", path: "/session/check", status: 200, shape: "item", public: false, capabilities: [] },
   "session.guest": { method: "POST", path: "/session/guest", status: 200, shape: "item", public: true, capabilities: [] },
+  "session.listSessions": { method: "GET", path: "/me/sessions", status: 200, shape: "collection", public: false, capabilities: [] },
   "session.login": { method: "POST", path: "/session/login", status: 200, shape: "item", public: true, capabilities: [] },
   "session.logout": { method: "POST", path: "/session/logout", status: 204, shape: "void", public: false, capabilities: [] },
   "session.policy": { method: "GET", path: "/session/policy", status: 200, shape: "item", public: true, capabilities: [] },
   "session.recovery.request": { method: "POST", path: "/session/recovery/request", status: 200, shape: "item", public: true, capabilities: [] },
   "session.recovery.reset": { method: "POST", path: "/session/recovery/reset", status: 204, shape: "void", public: true, capabilities: [] },
   "session.register": { method: "POST", path: "/session/register", status: 200, shape: "item", public: true, capabilities: [] },
-  "social.follow": { method: "POST", path: "/users/:id/follow", status: 200, shape: "item", public: false, capabilities: [] },
-  "social.followers": { method: "GET", path: "/users/:id/followers", status: 200, shape: "item", public: false, capabilities: [] },
-  "social.following": { method: "GET", path: "/users/:id/following", status: 200, shape: "item", public: false, capabilities: [] },
-  "social.profile": { method: "GET", path: "/users/by-handle/:handle", status: 200, shape: "item", public: true, capabilities: [] },
-  "social.relation": { method: "GET", path: "/users/:id/relation", status: 200, shape: "item", public: false, capabilities: [] },
-  "social.unfollow": { method: "DELETE", path: "/users/:id/follow", status: 204, shape: "void", public: false, capabilities: [] },
+  "session.revokeOthers": { method: "POST", path: "/me/sessions/revoke-others", status: 204, shape: "void", public: false, capabilities: [] },
+  "session.revokeSession": { method: "DELETE", path: "/me/sessions/:sessionId", status: 204, shape: "void", public: false, capabilities: [] },
+  "social.follow": { method: "POST", path: "/users/:uid/follow", status: 200, shape: "item", public: false, capabilities: [] },
+  "social.followers": { method: "GET", path: "/users/:uid/followers", status: 200, shape: "item", public: false, capabilities: [] },
+  "social.following": { method: "GET", path: "/users/:uid/following", status: 200, shape: "item", public: false, capabilities: [] },
+  "social.profile": { method: "GET", path: "/users/:uid/profile", status: 200, shape: "item", public: true, capabilities: [] },
+  "social.profileByHandle": { method: "GET", path: "/users/by-handle/:handle", status: 200, shape: "item", public: true, capabilities: [] },
+  "social.relation": { method: "GET", path: "/users/:uid/relation", status: 200, shape: "item", public: false, capabilities: [] },
+  "social.unfollow": { method: "DELETE", path: "/users/:uid/follow", status: 204, shape: "void", public: false, capabilities: [] },
   "storage.channels": { method: "GET", path: "/admin/storage/channels", status: 200, shape: "collection", public: false, capabilities: ["admin.access","storage.read"] },
   "storage.channelStats": { method: "GET", path: "/admin/storage/channel-stats", status: 200, shape: "item", public: false, capabilities: ["admin.access","storage.read"] },
   "storage.install": { method: "POST", path: "/admin/storage/install", status: 200, shape: "collection", public: false, capabilities: ["admin.access","storage.install"] },
@@ -319,7 +354,7 @@ export const generatedApiContract = {
   "storage.types": { method: "GET", path: "/admin/storage/types", status: 200, shape: "collection", public: false, capabilities: ["admin.access","storage.read"] },
   "system.update": { method: "GET", path: "/admin/system/update", status: 200, shape: "item", public: false, capabilities: ["admin.access","system.update"] },
   "tags.batchManaged": { method: "POST", path: "/admin/tags/batch", status: 204, shape: "void", public: false, capabilities: ["admin.access"] },
-  "tags.create": { method: "POST", path: "/me/tags", status: 204, shape: "void", public: false, capabilities: ["tags.create"] },
+  "tags.create": { method: "POST", path: "/me/tags", status: 200, shape: "item", public: false, capabilities: ["tags.create"] },
   "tags.delete": { method: "DELETE", path: "/me/tags/:id", status: 204, shape: "void", public: false, capabilities: ["tags.delete","tags.delete"] },
   "tags.deleteManaged": { method: "DELETE", path: "/admin/tags/:id", status: 204, shape: "void", public: false, capabilities: ["admin.access","tags.delete"] },
   "tags.get": { method: "GET", path: "/tags/:id", status: 200, shape: "item", public: true, capabilities: [] },
@@ -344,10 +379,11 @@ export const generatedApiContract = {
   "users.me.emailCaptcha": { method: "POST", path: "/me/email-captcha", status: 200, shape: "item", public: false, capabilities: ["users.update"] },
   "users.me.get": { method: "GET", path: "/me", status: 200, shape: "item", public: false, capabilities: ["users.read"] },
   "users.me.password": { method: "POST", path: "/me/password", status: 204, shape: "void", public: false, capabilities: ["users.update"] },
-  "users.me.update": { method: "PATCH", path: "/me", status: 204, shape: "void", public: false, capabilities: ["users.update"] },
+  "users.me.update": { method: "PATCH", path: "/me", status: 200, shape: "item", public: false, capabilities: ["users.update"] },
   "users.recovery": { method: "GET", path: "/admin/recovery", status: 200, shape: "paginated", public: false, capabilities: ["admin.access","users.recovery.read"] },
   "users.revokeSession": { method: "POST", path: "/admin/users/:id/sessions/:sessionId/revoke", status: 204, shape: "void", public: false, capabilities: ["admin.access","users.sessions.revoke"] },
   "users.revokeSessions": { method: "POST", path: "/admin/users/:id/sessions/revoke-all", status: 204, shape: "void", public: false, capabilities: ["admin.access","users.sessions.revoke"] },
+  "users.searchMentionCandidates": { method: "GET", path: "/users/mention-candidates", status: 200, shape: "paginated", public: false, capabilities: [] },
   "users.security": { method: "GET", path: "/admin/users/:id/security", status: 200, shape: "item", public: false, capabilities: ["admin.access","users.security.read"] },
   "users.sessions": { method: "GET", path: "/admin/users/:id/sessions", status: 200, shape: "collection", public: false, capabilities: ["admin.access","users.security.read"] },
   "users.updateManaged": { method: "PATCH", path: "/admin/users/:id", status: 204, shape: "void", public: false, capabilities: ["admin.access","users.update"] },

@@ -40,11 +40,23 @@ describe('route smoke', () => {
     expect(html.match(/astryx-text-input/g)).toHaveLength(3);
   });
 
-  it('renders saved items as a real personal asset route', () => {
-    const html = renderRoute('/me/library/saved');
-    expect(html).toContain('我的收藏');
-    expect(html).toContain('个人资产');
+  it('renders saved items inside the personal profile tab shell', () => {
+    const html = renderRoute('/me?tab=saved');
+    expect(html).toContain('profile-page');
+    expect(html).toContain('>收藏</a>');
+    expect(html).toMatch(/>内容(?:\s+[^<]+)?<\/a>/);
     expect(html).not.toContain('没有这个资料分类');
     expect(html).not.toContain('Blueprint');
+  });
+
+  it('renders every available settings category as a real sibling route', () => {
+    expect(renderRoute('/settings')).toContain('设置总览');
+    expect(renderRoute('/settings/appearance')).toContain('外观与无障碍');
+    expect(renderRoute('/settings/security')).toContain('账号与安全');
+    expect(renderRoute('/settings/privacy')).toContain('隐私偏好');
+    expect(renderRoute('/settings/session')).toContain('登录状态');
+    for (const path of ['/settings/appearance', '/settings/security', '/settings/privacy', '/settings/session']) {
+      expect(renderRoute(path)).not.toContain('独立设置分区暂未开放');
+    }
   });
 });

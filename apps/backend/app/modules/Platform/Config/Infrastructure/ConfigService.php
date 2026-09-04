@@ -245,6 +245,12 @@ class ConfigService
         return $rows;
     }
 
+    /** 配置值是否由环境变量覆盖；不返回环境变量内容。 */
+    public static function isEnvironmentManaged(string $group, string $key): bool
+    {
+        return self::getEnvValue($group, $key) !== null;
+    }
+
     // ═══════════════════════════════
     //  写入接口
     // ═══════════════════════════════

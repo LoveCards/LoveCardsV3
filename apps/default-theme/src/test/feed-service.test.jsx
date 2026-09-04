@@ -20,7 +20,15 @@ describe('home feed data boundary', () => {
 
   it('keeps unsupported relationship feeds distinct from empty feeds', () => {
     vi.stubEnv('VITE_DATA_MODE', 'design-preview');
-    expect(getHomeFeedSnapshot('following')).toMatchObject({ source: 'unavailable', message: '关注流暂未开放' });
+    expect(getHomeFeedSnapshot('following')).toMatchObject({ source: 'unavailable', message: '关注流预览暂未开放' });
+  });
+
+  it('derives profile navigation only from a real backend username', () => {
+    const linked = normalizeSdkCard({ id: 8, user_id: 4, username: '卡卡/旅行', content: '正文', data: {}, pictures: [], goods: 0, comments: 0 });
+    const unlinked = normalizeSdkCard({ id: 9, user_id: 4, content: '正文', data: { author: '仅展示昵称' }, pictures: [], goods: 0, comments: 0 });
+
+    expect(linked).toMatchObject({ author: '卡卡/旅行', authorHandle: '卡卡/旅行', authorHref: '/user/%E5%8D%A1%E5%8D%A1%2F%E6%97%85%E8%A1%8C' });
+    expect(unlinked).toMatchObject({ author: '用户 4', authorHandle: null, authorHref: null });
   });
 
   it('activates curated blueprint variants from card data', () => {
@@ -51,13 +59,27 @@ describe('home feed data boundary', () => {
       kind: 'video',
       layout: 'tile-b',
       author: '运动女孩',
-      title: '晨跑五公里',
-      body: '正文',
+      content: '正文',
+      title: '正文',
+      body: '',
       topic: '# 生活方式',
       mediaUrl: expect.any(String),
       mediaLabel: 'MORNING RUN',
       duration: '00:32',
     });
+  });
+
+  it('keeps cards single-body even when legacy curated data contains a title', () => {
+    expect(normalizeSdkCard({
+      id: 120,
+      user_id: 4,
+      is_top: 1,
+      content: '这是卡片唯一的正文。',
+      data: { kind: 'text', title: '旧策展标题', summary: '旧摘要' },
+      pictures: [],
+      goods: 0,
+      comments: 0,
+    })).toMatchObject({ content: '这是卡片唯一的正文。', title: '这是卡片唯一的正文。', body: '' });
   });
 
   it('keeps discussion cards ordinary and downgrades legacy poll data', () => {
@@ -104,6 +126,49 @@ describe('home feed data boundary', () => {
       comments: 0,
     });
     expect(ordinary).toMatchObject({ kind: 'text', layout: null, author: '用户 4', mediaUrl: null });
+  });
+
+  it('uses the hydrated topic name for detail labels instead of legacy topic ids', () => {
+    const card = normalizeSdkCard({
+      id: 16,
+      user_id: 4,
+      content: '正文',
+      data: { kind: 'text', topic: '#12' },
+      topics: [{ id: 12, name: '城市漫游' }],
+      cover: null,
+      pictures: [],
+      goods: 0,
+      comments: 0,
+    });
+    expect(card.topic).toBe('# 城市漫游');
+    expect(card.topicId).toBe(12);
+
+    const legacyIdOnly = normalizeSdkCard({
+      id: 17,
+      user_id: 4,
+      content: '旧卡片',
+      data: { kind: 'text', topic: '#13' },
+      topics: [],
+      cover: null,
+      pictures: [],
+      goods: 0,
+      comments: 0,
+    });
+    expect(legacyIdOnly.topic).toBe('');
+
+    const numericTagOnly = normalizeSdkCard({
+      id: 18,
+      user_id: 4,
+      content: '数字标签旧数据',
+      data: { kind: 'text' },
+      tags: [13],
+      topics: [],
+      cover: null,
+      pictures: [],
+      goods: 0,
+      comments: 0,
+    });
+    expect(numericTagOnly.topic).toBe('');
   });
 
   it('keeps real media order, removes duplicates, and derives the actual media count', () => {

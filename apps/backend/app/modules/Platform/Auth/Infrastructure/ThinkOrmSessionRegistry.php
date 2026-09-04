@@ -15,7 +15,7 @@ final class ThinkOrmSessionRegistry implements SessionRegistry
     {
         $query = Db::table('auth_sessions')->where('user_id', $userId);
         if (!$includeRevoked) $query->whereNull('revoked_at');
-        return $query->field('id,user_id,token_expires_at,renewable_until,security_version,revoked_at,revoked_reason,rotated_to_session_id,created_at')->order('id', 'desc')->select()->toArray();
+        return $query->field('id,public_id,user_id,token_expires_at,renewable_until,security_version,revoked_at,revoked_reason,rotated_to_session_id,created_at')->order('id', 'desc')->select()->toArray();
     }
 
     public function revokeById(int $userId, int $sessionId, string $reason, DateTimeImmutable $at): bool
@@ -23,6 +23,28 @@ final class ThinkOrmSessionRegistry implements SessionRegistry
         return Db::table('auth_sessions')->where('id', $sessionId)->where('user_id', $userId)->whereNull('revoked_at')->update([
             'revoked_at' => $this->utc($at), 'revoked_reason' => $this->reason($reason),
         ]) === 1;
+    }
+
+    public function findForUserByPublicId(int $userId, string $publicId): ?array
+    {
+        $row = Db::table('auth_sessions')->where(['user_id' => $userId, 'public_id' => $publicId])
+            ->field('public_id,user_id,token_expires_at,renewable_until,security_version,revoked_at,revoked_reason,created_at')
+            ->find();
+        return $row ?: null;
+    }
+
+    public function revokeByPublicId(int $userId, string $publicId, string $reason, DateTimeImmutable $at): bool
+    {
+        return Db::table('auth_sessions')->where(['user_id' => $userId, 'public_id' => $publicId])->whereNull('revoked_at')->update([
+            'revoked_at' => $this->utc($at), 'revoked_reason' => $this->reason($reason),
+        ]) === 1;
+    }
+
+    public function revokeOthers(int $userId, string $currentPublicId, string $reason, DateTimeImmutable $at): int
+    {
+        return Db::table('auth_sessions')->where('user_id', $userId)->where('public_id', '<>', $currentPublicId)->whereNull('revoked_at')->update([
+            'revoked_at' => $this->utc($at), 'revoked_reason' => $this->reason($reason),
+        ]);
     }
 
     public function start(
@@ -35,7 +57,9 @@ final class ThinkOrmSessionRegistry implements SessionRegistry
         try {
             $securityVersion = $this->lockedSecurityVersion($userId);
             $createdAt = $this->utc(new DateTimeImmutable('now', new DateTimeZone('UTC')));
+            $publicId = bin2hex(random_bytes(16));
             $id = (int) Db::table('auth_sessions')->insertGetId([
+                'public_id' => $publicId,
                 'jti_hash' => $jtiHash,
                 'user_id' => $userId,
                 'token_expires_at' => $this->utc($tokenExpiresAt),
@@ -54,7 +78,11 @@ final class ThinkOrmSessionRegistry implements SessionRegistry
                 $userId,
                 $tokenExpiresAt,
                 $renewableUntil,
-                $securityVersion
+                $securityVersion,
+                null,
+                null,
+                null,
+                $publicId
             );
         } catch (\Throwable $exception) {
             Db::rollback();
@@ -113,6 +141,7 @@ final class ThinkOrmSessionRegistry implements SessionRegistry
             }
 
             $newId = (int) Db::table('auth_sessions')->insertGetId([
+                'public_id' => $newPublicId = bin2hex(random_bytes(16)),
                 'jti_hash' => $newJtiHash,
                 'user_id' => $userId,
                 'token_expires_at' => $this->utc($tokenExpiresAt),
@@ -145,7 +174,11 @@ final class ThinkOrmSessionRegistry implements SessionRegistry
                 $userId,
                 $tokenExpiresAt,
                 $renewableUntil,
-                $currentSecurityVersion
+                $currentSecurityVersion,
+                null,
+                null,
+                null,
+                $newPublicId
             );
         } catch (\Throwable $exception) {
             Db::rollback();
@@ -202,7 +235,8 @@ final class ThinkOrmSessionRegistry implements SessionRegistry
             (int) $row['security_version'],
             isset($row['revoked_at']) ? $this->date((string) $row['revoked_at']) : null,
             isset($row['revoked_reason']) ? (string) $row['revoked_reason'] : null,
-            isset($row['rotated_to_session_id']) ? (int) $row['rotated_to_session_id'] : null
+            isset($row['rotated_to_session_id']) ? (int) $row['rotated_to_session_id'] : null,
+            isset($row['public_id']) ? (string) $row['public_id'] : null
         );
     }
 

@@ -1,6 +1,6 @@
 # @lovecards/sdk 使用参考
 
-本文件提供调用模式和高风险接口示例。171 条路由的完整清单见 `API_ENDPOINT_REFERENCE.md`，精确类型以生成 `.d.ts` 为准。
+本文件提供调用模式和高风险接口示例。174 条路由的完整清单见 `API_ENDPOINT_REFERENCE.md`，精确类型以生成 `.d.ts` 为准。
 
 ## Client
 
@@ -97,9 +97,10 @@ const conversations = await client.messages.conversations()
 const messages = await client.messages.list(conversationId)
 await client.messages.send({ recipient_id, body, client_message_id })
 
-const notifications = await client.notifications.list({ unread_only: true })
+const notifications = await client.notifications.list({ unread_only: true, category: 'engagement' })
+const engagementUnread = await client.notifications.unread({ category: 'engagement' })
 await client.notifications.read({ ids: [1, 2] })
-await client.notifications.readAll()
+await client.notifications.readAll({ category: 'engagement' })
 ```
 
 消息发送的网络重试应复用同一个 `client_message_id`。SSE 不可用时继续调用 list/unread，数据正确性不依赖实时连接。

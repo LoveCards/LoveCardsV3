@@ -20,7 +20,7 @@ LoveCards 以 MySQL/InnoDB 为唯一事务基线。数据库变更既服务首�
 | 生命周期 | `schema_migrations`、`system_upgrade_steps`、`system_releases`、`system_upgrade_plans`、`system_upgrade_plan_steps`、`system_backups` | checksum、phase/cursor/revision；Release/plan/backup 唯一标识和状态索引 |
 | 审计 | `audit_logs` | actor/time 与 resource/time 索引，payload 白名单 |
 
-这些表不是一个通用 polymorphic “互动大表”。收藏和历史可以共享 `resource_type/resource_id` 语义，但写放大、保留周期、唯一性和查询顺序不同，因此分表；点赞保持 card-only 现状；举报另有状态流、证据快照与审计事件。
+这些表不是一个通用 polymorphic “互动大表”。收藏和历史可以共享 `resource_type/resource_id` 语义，但写放大、保留周期、唯一性和查询顺序不同，因此分表；点赞通过 `ref_type/ref_id` 支持 card 与 comment；举报另有状态流、证据快照与审计事件。
 
 ## 迁移规则
 

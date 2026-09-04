@@ -124,11 +124,11 @@ php think lc:release:build /absolute/out/release.zip \
 client.operations.upgrades({ limit: 50 })
 client.operations.upgrade(planId)
 client.operations.createUpgrade(formData)
-client.operations.advanceUpgrade(planId, { reason })
-client.operations.approveUpgradeContract(planId, { reason })
-client.operations.recoverUpgrade(planId, { reason })
+client.operations.advanceUpgrade(planId)
+client.operations.approveUpgradeContract(planId)
+client.operations.recoverUpgrade(planId)
 client.operations.migrations()
-client.operations.runMigrations({ reason })
+client.operations.runMigrations()
 ```
 
 `runMigrations` 只用于受 `operations.migrate` 授权保护的非-Contract 迁移；请求中的

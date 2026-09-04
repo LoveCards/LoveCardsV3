@@ -22,7 +22,9 @@ export interface UpdateRoleParams {
 
 import type { Grant } from './permissions'
 
-export interface AssignGrantsParams { grants: Grant[] }
+export interface AssignGrantsParams {
+  grants: Grant[]
+}
 
 export interface ReseedResult {
   total: number

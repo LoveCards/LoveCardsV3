@@ -1,0 +1,40 @@
+@layer lovecards-components {
+  /* Astryx portals the trigger list outside the editor. Keep this small row
+     primitive global so compose and comment inputs share one visual language. */
+  .lc-mention-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-width: 0;
+    padding: 4px 6px;
+    border-radius: var(--lc-radius-control);
+    transition: background-color 140ms ease;
+  }
+  .lc-mention-menu-copy { display: grid; min-width: 0; gap: 1px; }
+  .lc-mention-menu-copy strong,
+  .lc-mention-menu-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lc-mention-menu-copy strong { font-size: 0.75rem; font-weight: 680; }
+  .lc-mention-menu-copy small {
+    color: var(--lc-rose-deep);
+    font-size: 0.64rem;
+    font-weight: 620;
+  }
+
+  /* Mention identity is an interactive accent, not an error state. Keep the
+     default row quiet, then give pointer and keyboard selection one shared
+     low-chroma cue without introducing a second component language. */
+  .lc-mention-menu-item:hover,
+  [role="option"][aria-selected="true"] .lc-mention-menu-item,
+  [data-highlighted="true"] .lc-mention-menu-item {
+    background: color-mix(in srgb, var(--lc-rose) 10%, transparent);
+  }
+
+  [role="option"][aria-selected="true"] .lc-mention-menu-copy strong,
+  [data-highlighted="true"] .lc-mention-menu-copy strong {
+    color: var(--lc-rose-deep);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lc-mention-menu-item { transition: none; }
+  }
+}

@@ -10,6 +10,7 @@ use app\modules\Platform\Auth\Public\VisitorPolicy;
 use app\modules\Platform\Auth\Public\AuthContext;
 use app\modules\Platform\Auth\Public\AuthUser;
 use app\modules\Platform\Auth\Public\MissingCredentials;
+use app\modules\Platform\User\Public\UserStatus;
 
 final class AuthenticateRequest
 {
@@ -50,7 +51,7 @@ final class AuthenticateRequest
             );
         }
 
-        if ($user->status() !== 0 && $user->status() !== 2) {
+        if (!UserStatus::canAuthenticate($user->status())) {
             throw ApiException::forbidden(
                 '您的账户已被封禁或未激活',
                 ApiException::CODE_USER_BANNED
@@ -64,7 +65,8 @@ final class AuthenticateRequest
             $user,
             $roleIds,
             $this->capabilities->forRoles($roleIds),
-            $data['_new_token'] ?? null
+            $data['_new_token'] ?? null,
+            $data['_session_public_id'] ?? null
         );
     }
 

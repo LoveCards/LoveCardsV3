@@ -1,13 +1,12 @@
 <template>
   <header class="admin-page-header">
     <div class="admin-page-header__copy">
-      <v-breadcrumbs
+      <AdminBreadcrumbs
         v-if="breadcrumbs.length"
         :items="breadcrumbs"
-        class="admin-page-header__breadcrumbs pa-0 mb-2"
-        density="compact"
+        class="admin-page-header__breadcrumbs"
       />
-      <h1 class="admin-page-header__title text-primary">{{ title }}</h1>
+      <h1 class="admin-page-header__title text-on-surface">{{ title }}</h1>
       <p v-if="description" class="admin-page-header__description text-medium-emphasis">
         {{ description }}
       </p>
@@ -19,6 +18,8 @@
 </template>
 
 <script setup lang="ts">
+import AdminBreadcrumbs from './AdminBreadcrumbs.vue'
+
 export interface AdminBreadcrumb {
   title: string
   to?: string
@@ -41,7 +42,7 @@ withDefaults(defineProps<{
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  padding-block: 16px 24px;
+  padding-block: 0 24px;
 }
 
 .admin-page-header__copy {
@@ -49,7 +50,7 @@ withDefaults(defineProps<{
 }
 
 .admin-page-header__breadcrumbs {
-  min-height: 32px;
+  min-height: 44px;
 }
 
 .admin-page-header__title {
@@ -73,6 +74,10 @@ withDefaults(defineProps<{
   justify-content: flex-end;
   gap: 8px;
   padding-top: 4px;
+}
+
+.admin-page-header__actions :deep(.v-btn) {
+  min-height: 44px;
 }
 
 @media (max-width: 700px) {

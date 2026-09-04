@@ -1,5 +1,7 @@
 <template>
-	<Line id="my-chart-id" :options="chartOptions" :data="chartData" style="margin: 0px 16px 16px;" />
+	<v-sheet class="ma-4" color="transparent">
+		<Line id="my-chart-id" :options="chartOptions" :data="chartData" />
+	</v-sheet>
 </template>
 
 <script setup lang="ts">
@@ -8,6 +10,7 @@ import { Chart as ChartJS, Title, Tooltip, Legend, LineElement, CategoryScale, L
 import { useDashboardStore } from '~/stores/dashboardStore';
 import type { ChartDataset } from '@lovecards/sdk';
 const dashboardStore = useDashboardStore();
+const theme = useTheme();
 
 //图表
 ChartJS.register(Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement, Filler)
@@ -37,7 +40,11 @@ let chartOptions = {
 
 //处理数据
 const getDatasets = (jsonData: ChartDataset[]): LineDataset[] => {
-	let ColorArray = ['33,150,243', '253,216,53', '229,57,35']
+	const colors = [
+		theme.current.value.colors.info,
+		theme.current.value.colors.warning,
+		theme.current.value.colors.error,
+	]
 	const datasets: LineDataset[] = []
 
 	for (let i = 0; i < jsonData.length; i++) {
@@ -46,9 +53,9 @@ const getDatasets = (jsonData: ChartDataset[]): LineDataset[] => {
 		datasets.push({
 			label: dataset.label,
 			data: dataset.data.y,
-			borderColor: 'rgba(' + (ColorArray[i] ?? ColorArray[0]) + ',1)',
-			backgroundColor: 'rgba(' + (ColorArray[i] ?? ColorArray[0]) + ',0.5)',
-			fill: true,
+			borderColor: colors[i] ?? theme.current.value.colors.primary,
+			backgroundColor: 'transparent',
+			fill: false,
 			tension: 0.4,
 			pointRadius: 5,
 			pointHoverRadius: 10,

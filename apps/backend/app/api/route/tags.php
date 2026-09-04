@@ -26,7 +26,7 @@ Route::group('me/tags', function () use ($required, $grant) {
         ->setOption('contract', ['request' => ['validate' => PaginationInput::class, 'scene' => 'Defult'], 'response' => ['resource' => TagResource::class, 'shape' => 'paginated', 'status' => 200]])
         ->setOption('meta', ['name' => '我的标签', 'group' => '标签', 'access' => $required([$grant('tags.read', Scope::OWN)])]);
     Route::post('', 'Content.Tags/create')->name('tags.create')
-        ->setOption('contract', ['request' => ['validate' => TagsValidate::class, 'scene' => 'selfCreate'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
+        ->setOption('contract', ['request' => ['validate' => TagsValidate::class, 'scene' => 'selfCreate'], 'response' => ['resource' => TagResource::class, 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => '创建标签', 'group' => '标签', 'access' => $required([$grant('tags.create', Scope::GLOBAL)])]);
     Route::patch(':id', 'Content.Tags/update')->name('tags.update')
         ->setOption('contract', ['request' => ['validate' => TagsValidate::class, 'scene' => 'selfUpdate'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
@@ -44,13 +44,13 @@ Route::group('admin/tags', function () use ($required, $grant) {
     Route::get(':id', 'Content.Tags/get')->name('tags.getManaged')
         ->setOption('contract', ['request' => null, 'response' => ['resource' => TagResource::class, 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => '管理标签详情', 'group' => '标签', 'access' => $required([$admin, $grant('tags.read', Scope::ALL)])]);
-    Route::patch(':id', 'Content.Tags/update')->name('tags.updateManaged')
+    Route::patch(':id', 'Content.Tags/updateManaged')->name('tags.updateManaged')
         ->setOption('contract', ['request' => ['validate' => TagsValidate::class, 'scene' => 'adminUpdate'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
         ->setOption('meta', ['name' => '管理标签编辑', 'group' => '标签', 'access' => $required([$admin, $grant('tags.update', Scope::ALL)])]);
-    Route::delete(':id', 'Content.Tags/delete')->name('tags.deleteManaged')
+    Route::delete(':id', 'Content.Tags/deleteManaged')->name('tags.deleteManaged')
         ->setOption('contract', ['request' => null, 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
         ->setOption('meta', ['name' => '管理标签删除', 'group' => '标签', 'access' => $required([$admin, $grant('tags.delete', Scope::ALL)])]);
     Route::post('batch', 'Content.Tags/batch')->name('tags.batchManaged')
-        ->setOption('contract', ['request' => ['validate' => BatchOperationInput::class, 'scene' => 'BatchOperate'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
+        ->setOption('contract', ['request' => ['validate' => BatchOperationInput::class, 'scene' => 'AdminBatchOperate'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
         ->setOption('meta', ['name' => '管理标签批量操作', 'group' => '标签', 'access' => $required([$admin])]);
 })->middleware(JwtAuthCheck::class)->middleware(PermissionCheck::class);

@@ -61,6 +61,9 @@
     font-size: 0.82rem;
   }
 
+  .lc-status-banner { width: 100%; }
+  .lc-status-banner .astryx-button { min-height: 40px; }
+
   .lc-alert-dialog,
   .lc-form-dialog {
     max-height: min(75dvh, 620px);
@@ -157,6 +160,7 @@
 
   @media (max-width: 760px) {
     .astryx-dropdown-menu-item { min-height: 44px; }
+    .lc-status-banner .astryx-button { min-height: 44px; }
     .lc-dialog-actions > * { min-height: 44px; }
     .lc-form-dialog {
       width: 100% !important;

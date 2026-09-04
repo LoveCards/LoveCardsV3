@@ -23,7 +23,7 @@ final class SystemLifecycleCoordinator
     ) {}
 
     /** 每次调用全局最多推进一个 phase 或一个 backfill batch。 */
-    public function run(string $directory, bool $allowContract = false): array
+    public function run(string $directory, bool $allowContract = false, bool $retryFailed = false): array
     {
         $holder = $this->lease->acquire(
             LifecycleLease::NAME,
@@ -36,7 +36,7 @@ final class SystemLifecycleCoordinator
 
         try {
             $this->assertNoUnsettledUpgradePlan();
-            return $this->advanceOne($directory, $allowContract, $holder, null);
+            return $this->advanceOne($directory, $allowContract, $holder, null, $retryFailed);
         } finally {
             $this->lease->release(LifecycleLease::NAME, $holder);
         }
@@ -62,6 +62,7 @@ final class SystemLifecycleCoordinator
         }
 
         try {
+            $this->assertNoUnsettledUpgradePlan();
             return $this->advanceOne($directory, $allowContract, $holder, $phase);
         } finally {
             $this->lease->release(LifecycleLease::NAME, $holder);
@@ -126,7 +127,8 @@ final class SystemLifecycleCoordinator
         string $directory,
         bool $allowContract,
         string $holder,
-        ?string $requiredPhase
+        ?string $requiredPhase,
+        bool $retryFailed = false
     ): array
     {
         if (!$this->lease->renew(LifecycleLease::NAME, $holder, $this->now(), LifecycleLease::TTL_SECONDS)) {
@@ -141,7 +143,7 @@ final class SystemLifecycleCoordinator
             if ($step->state() === MigrationPlanStep::WAITING && !$allowContract) continue;
             foreach ($migrations as $migration) {
                 if ($migration->descriptor()->id() === $step->descriptor()->id()) {
-                    $progress = $this->runner->runNext($migration, $allowContract);
+                    $progress = $this->runner->runNext($migration, $allowContract, $retryFailed);
                     if (!$this->lease->renew(LifecycleLease::NAME, $holder, $this->now(), LifecycleLease::TTL_SECONDS)) {
                         throw new UpgradeLeaseUnavailableException('系统迁移 Lease 已丢失');
                     }

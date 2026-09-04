@@ -14,6 +14,7 @@ final class FileConstants
     const SCENE_CARD = 'card';
     const SCENE_COMMENT = 'comment';
     const SCENE_AVATAR = 'avatar';
+    const SCENE_PROFILE_COVER = 'profile_cover';
     const SCENE_DIRECT = 'direct';
 
     // 审核状态

@@ -9,7 +9,20 @@ final class ThinkOrmSocialGraphRepository implements SocialGraphRepository
 {
     public function profileByHandle(string $handle): ?array
     {
-        $row = Db::table('users')->where('username', trim($handle))->where('status', 0)->whereNull('deleted_at')->field('id,number,username,avatar')->find();
+        $handle = trim($handle);
+        $query = Db::table('users')->where('status', 0)->whereNull('deleted_at');
+        $query->where(function ($lookup) use ($handle): void {
+            $lookup->where('username', $handle);
+        });
+        $row = $query->field('id,uid,username,avatar,bio,location,gender,birth_date')->find();
+        return $row ? array_merge($row, $this->counts((int) $row['id'])) : null;
+    }
+
+    public function profileByUid(string $uid): ?array
+    {
+        if (!preg_match('/^[0-9]{12}$/', $uid)) return null;
+        $row = Db::table('users')->where('uid', $uid)->where('status', 0)->whereNull('deleted_at')
+            ->field('id,uid,username,avatar,bio,location,gender,birth_date')->find();
         return $row ? array_merge($row, $this->counts((int) $row['id'])) : null;
     }
     public function userExists(int $userId): bool
@@ -49,14 +62,14 @@ final class ThinkOrmSocialGraphRepository implements SocialGraphRepository
             ->find() !== null;
     }
 
-    public function listFollowers(int $userId, ?string $cursor, int $limit): array
+    public function listFollowers(int $userId, ?string $cursor, int $limit, array $excludedUserIds = []): array
     {
-        return $this->listRelation('followee_id', 'follower_id', $userId, $cursor, $limit);
+        return $this->listRelation('followee_id', 'follower_id', $userId, $cursor, $limit, $excludedUserIds);
     }
 
-    public function listFollowing(int $userId, ?string $cursor, int $limit): array
+    public function listFollowing(int $userId, ?string $cursor, int $limit, array $excludedUserIds = []): array
     {
-        return $this->listRelation('follower_id', 'followee_id', $userId, $cursor, $limit);
+        return $this->listRelation('follower_id', 'followee_id', $userId, $cursor, $limit, $excludedUserIds);
     }
 
     public function counts(int $userId): array
@@ -70,25 +83,31 @@ final class ThinkOrmSocialGraphRepository implements SocialGraphRepository
     /**
      * @return array{items: array<int, array<string, mixed>>, next_cursor: ?string, has_more: bool}
      */
-    private function listRelation(string $ownerColumn, string $relatedColumn, int $userId, ?string $cursor, int $limit): array
+    private function listRelation(string $ownerColumn, string $relatedColumn, int $userId, ?string $cursor, int $limit, array $excludedUserIds): array
     {
         $query = Db::table('user_follows')->alias('f')
             ->join('users u', "u.id = f.{$relatedColumn}")
             ->where("f.{$ownerColumn}", $userId)
             ->where('u.status', 0)
             ->whereNull('u.deleted_at')
-            ->field('u.id,u.number,u.username,u.avatar')
+            ->field('u.id,u.uid,u.number,u.username,u.avatar')
             ->order("f.{$relatedColumn}", 'desc')
             ->limit($limit + 1);
 
-        if ($cursor !== null && ctype_digit($cursor)) {
-            $query->where("f.{$relatedColumn}", '<', (int) $cursor);
+        $excludedUserIds = array_values(array_unique(array_filter(array_map('intval', $excludedUserIds), static fn(int $id): bool => $id > 0)));
+        if ($excludedUserIds !== []) $query->whereNotIn("f.{$relatedColumn}", $excludedUserIds);
+
+        if ($cursor !== null) {
+            $decodedCursor = base64_decode($cursor, true);
+            if ($decodedCursor !== false && ctype_digit($decodedCursor)) $query->where("f.{$relatedColumn}", '<', (int) $decodedCursor);
         }
 
         $rows = $query->select()->toArray();
         $hasMore = count($rows) > $limit;
         if ($hasMore) array_pop($rows);
-        $next = $hasMore && $rows !== [] ? (string) end($rows)['id'] : null;
+        $next = $hasMore && $rows !== [] ? base64_encode((string) end($rows)['id']) : null;
+        foreach ($rows as &$row) unset($row['id'], $row['number']);
+        unset($row);
         return ['items' => $rows, 'next_cursor' => $next, 'has_more' => $hasMore];
     }
 }

@@ -55,10 +55,12 @@ final class RequestFilePurge implements FilePurgeRequester
             if ($pending === []) return;
             $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
             $this->files->markRequested($pending, $now);
+            $after = $this->files->lockForRequest($pending);
             foreach ($pending as $fileId) {
                 $this->events->requested($fileId, $actorId);
                 $this->audit->record($actorId, 'files.purge.requested', 'file', (string) $fileId, [
-                    'purge_status' => FileConstants::PURGE_PENDING,
+                    'before' => $rows[$fileId] ?? null,
+                    'after' => $after[$fileId] ?? null,
                     '_ip' => $ipAddress,
                 ]);
             }

@@ -6,6 +6,9 @@ $root = dirname(__DIR__, 2);
 require $root . '/app/api/ApiException.php';
 require $root . '/app/shared/Observability/AuditLogger.php';
 require $root . '/app/shared/Transaction/TransactionManager.php';
+require $root . '/app/modules/Platform/Eventing/Public/RecordedEvent.php';
+require $root . '/app/modules/Platform/Notifications/Contract/SystemNoticeIssuer.php';
+require $root . '/app/modules/Platform/Notifications/Domain/SystemNotice.php';
 require $root . '/app/modules/Platform/Auth/Domain/SessionRecord.php';
 require $root . '/app/modules/Platform/Auth/Contract/RecoveryRepository.php';
 require $root . '/app/modules/Platform/Auth/Contract/SessionRegistry.php';
@@ -15,6 +18,8 @@ use app\modules\Platform\Auth\Application\AccountRecovery;
 use app\modules\Platform\Auth\Contract\RecoveryRepository;
 use app\modules\Platform\Auth\Contract\SessionRegistry;
 use app\modules\Platform\Auth\Domain\SessionRecord;
+use app\modules\Platform\Eventing\Public\RecordedEvent;
+use app\modules\Platform\Notifications\Contract\SystemNoticeIssuer;
 use app\shared\Observability\AuditLogger;
 use app\shared\Transaction\TransactionManager;
 
@@ -73,6 +78,9 @@ final class FakeRecoverySessions implements SessionRegistry
     public array $revoked = [];
     public function listForUser(int $userId, bool $includeRevoked = true): array { return []; }
     public function revokeById(int $userId, int $sessionId, string $reason, DateTimeImmutable $at): bool { return false; }
+    public function findForUserByPublicId(int $userId, string $publicId): ?array { return null; }
+    public function revokeByPublicId(int $userId, string $publicId, string $reason, DateTimeImmutable $at): bool { return false; }
+    public function revokeOthers(int $userId, string $currentPublicId, string $reason, DateTimeImmutable $at): int { return 0; }
     public function start(int $userId, string $jtiHash, DateTimeImmutable $tokenExpiresAt, DateTimeImmutable $renewableUntil): SessionRecord { throw new LogicException('not used'); }
     public function findActive(string $jtiHash, DateTimeImmutable $at): ?SessionRecord { return null; }
     public function rotate(string $oldJtiHash, string $newJtiHash, int $userId, int $expectedSecurityVersion, int $expectedTokenExpiresAt, DateTimeImmutable $tokenExpiresAt, DateTimeImmutable $renewableUntil, DateTimeImmutable $at): ?SessionRecord { return null; }
@@ -103,6 +111,18 @@ final class FakeRecoveryAudit implements AuditLogger
     }
 }
 
+final class FakeRecoveryNotices implements SystemNoticeIssuer
+{
+    public array $records = [];
+    public function __construct(private FakeRecoveryTransactions $transactions) {}
+    public function issue(int $recipientId, string $noticeKey, string $type, string $message, ?string $actionUrl = null, string $severity = 'info', ?int $actorId = null): RecordedEvent
+    {
+        $active = $this->transactions->active;
+        $this->records[] = compact('recipientId', 'noticeKey', 'type', 'message', 'actionUrl', 'severity', 'actorId', 'active');
+        return new RecordedEvent(count($this->records), []);
+    }
+}
+
 $assert = static function (bool $condition, string $message): void {
     if (!$condition) throw new RuntimeException($message);
 };
@@ -111,7 +131,8 @@ $repository = new FakeRecoveryRepository();
 $sessions = new FakeRecoverySessions();
 $transactions = new FakeRecoveryTransactions();
 $audit = new FakeRecoveryAudit($transactions);
-$recovery = new AccountRecovery($repository, $sessions, $audit, $transactions);
+$notices = new FakeRecoveryNotices($transactions);
+$recovery = new AccountRecovery($repository, $sessions, $audit, $transactions, $notices);
 
 $issued = $recovery->issue(' User@Example.com ', '127.0.0.1');
 $assert($issued['challenge_id'] === 7 && $issued['expires_in'] === 600, 'recovery issue must use the repository contract');
@@ -131,6 +152,9 @@ $assert($repository->consumed && password_verify('new-password', (string) $repos
 $assert($sessions->revoked === [[42, 'password_recovery']], 'valid recovery must revoke every prior user session');
 $lastAudit = end($audit->records);
 $assert($lastAudit[0] === null && $lastAudit[1] === 'auth.recovery.reset' && $lastAudit[3] === '42' && $lastAudit[5] === true, 'successful anonymous recovery must be transactionally audited against the user');
+$assert(count($notices->records) === 1, 'successful recovery must issue one security notice');
+$assert($notices->records[0]['noticeKey'] === 'auth.recovery.reset:7' && $notices->records[0]['severity'] === 'critical', 'recovery notice must use the challenge id and critical severity');
+$assert($notices->records[0]['active'] === true, 'recovery notice must be issued inside the credential transaction');
 
 $shortPasswordRejected = false;
 try { $recovery->reset(7, '123456', 'short'); }

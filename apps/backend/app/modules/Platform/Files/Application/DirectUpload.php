@@ -7,6 +7,8 @@ use app\modules\Platform\Files\Contract\ChannelConfig;
 use app\modules\Platform\Files\Contract\FileRepository;
 use app\modules\Platform\Files\Contract\RateLimiter;
 use app\modules\Platform\Files\Contract\StorageDriver;
+use app\shared\Observability\AdminMutationAudit;
+use app\shared\Transaction\TransactionManager;
 
 /**
  * 直传文件用例
@@ -124,8 +126,36 @@ final class DirectUpload
     /**
      * 清理过期 pending 记录
      */
-    public function cleanup(int $limit = 100): array
+    public function cleanup(
+        int $limit = 100,
+        ?int $actorId = null,
+        string $ipAddress = ''
+    ): array
     {
-        return $this->files->cleanupExpired($limit);
+        if ($actorId === null) return $this->files->cleanupExpired($limit);
+        return app(TransactionManager::class)->run(function () use ($limit, $actorId, $ipAddress): array {
+            $cleaned = $this->files->cleanupExpired($limit);
+            $before = [];
+            $after = [];
+            foreach ($cleaned as $item) {
+                $id = (int) ($item['id'] ?? 0);
+                if ($id < 1) continue;
+                $before[$id] = [
+                    'id' => $id,
+                    'upload_status' => 0,
+                    'expire_at' => $item['expired_at'] ?? null,
+                ];
+                $after[$id] = $this->files->findByIdWithTrashed($id);
+            }
+            app(AdminMutationAudit::class)->recordChanges(
+                $actorId,
+                'admin.file.cleanup_expired',
+                'file',
+                $before,
+                $after,
+                $ipAddress
+            );
+            return $cleaned;
+        });
     }
 }

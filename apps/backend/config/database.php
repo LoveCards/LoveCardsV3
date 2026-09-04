@@ -2,6 +2,9 @@
 
 $backendRoot = dirname(__DIR__);
 $persistent = \app\shared\SystemPaths\PersistentConfiguration::database($backendRoot);
+$pdoParams = defined('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY')
+    ? [constant('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY') => true]
+    : [];
 
 return [
     // 默认使用的数据库连接配置
@@ -37,7 +40,7 @@ return [
             // 端口
             'hostport'        => env('database.hostport', $persistent['hostport'] ?? '3306'),
             // 数据库连接参数
-            'params'          => [\PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true],
+            'params'          => $pdoParams,
             // 数据库编码默认采用utf8
             'charset'         => env('database.charset', $persistent['charset'] ?? 'utf8mb4'),
             // 数据库表前缀

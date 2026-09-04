@@ -1,12 +1,12 @@
 # LoveCards Component Foundation Decision
 
-> 状态：Astryx 继续作为行为与 Primitive 基底；Blueprint 01 正式 React 施工已开始。调研日期：2026-08-12，施工状态更新：2026-08-15。
+> 状态：Astryx 继续作为行为与 Primitive 基底；默认主题锁定 `@astryxdesign/core@0.3.0`，完整用途与采用状态见组件注册表。调研日期：2026-08-12，设计系统状态更新：2026-08-22。
 
 ## Decision
 
 首选：**Astryx Core + LoveCards Theme + LoveCards Community Patterns**。
 
-- Astryx 负责可访问行为、通用 Primitive、Overlay、表单和升级。
+- Astryx 负责可访问行为、通用 Primitive、Overlay 和表单；LoveCards 按 [`../registries/ASTRYX-COMPONENTS.md`](../registries/ASTRYX-COMPONENTS.md) 管理采用状态与升级。
 - LoveCards Theme 负责颜色、字体、圆角、间距、明暗模式和公开组件 override。
 - LoveCards Patterns 负责 Feed Card、Thread、Creator、Community 和匹配展开。
 - 默认不改 `node_modules`、不复制 Core 源码、不 swizzle。

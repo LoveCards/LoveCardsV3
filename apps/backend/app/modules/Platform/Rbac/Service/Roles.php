@@ -13,50 +13,66 @@ use app\modules\Platform\Rbac\Domain\SystemRolePolicy;
 use app\modules\Platform\Rbac\Domain\CapabilityCatalog;
 use app\shared\Authorization\Scope;
 use app\shared\Authorization\GrantSet;
+use app\shared\Observability\AdminMutationAudit;
 
 class Roles
 {
-    public static function batchOperate(string $method, array $ids, int $uid, GrantSet $grants): void
+    public static function batchOperate(
+        string $method,
+        array $ids,
+        int $uid,
+        GrantSet $grants,
+        array $actorRoleIds,
+        string $ipAddress = ''
+    ): void
     {
         if (!$grants->allows('roles.delete', Scope::GLOBAL)) {
-            throw ApiException::forbidden('鏉冮檺涓嶈冻');
+            throw ApiException::forbidden('权限不足');
         }
         $ids = array_values(array_unique(array_map('intval', $ids)));
         if ($ids === []) {
             throw ApiException::badRequest('no role ids supplied');
         }
         if (!in_array($method, ['delete', 'trash', 'restore', 'hard_delete'], true)) {
-            throw ApiException::badRequest('涓嶆敮鎸佺殑鎿嶄綔');
-        }
-
-        $roles = RolesModel::withTrashed()->whereIn('id', $ids)->select();
-        if ($roles->count() !== count($ids)) {
-            throw ApiException::notFound('role not found');
-        }
-        foreach ($roles as $role) {
-            if ($role->is_system && in_array($method, ['delete', 'trash', 'hard_delete'], true)) {
-                throw ApiException::badRequest('绯荤粺瑙掕壊涓嶅彲鍒犻櫎');
-            }
-        }
-
-        if (in_array($method, ['delete', 'trash'], true)) {
-            RolesModel::whereIn('id', $ids)->delete();
-            return;
-        }
-        if ($method === 'restore') {
-            RolesModel::withTrashed()->onlyTrashed()->whereIn('id', $ids)->update(['deleted_at' => null]);
-            return;
+            throw ApiException::badRequest('不支持的操作');
         }
 
         Db::startTrans();
         try {
-            RoleGrants::whereIn('role_id', $ids)->delete();
-            Db::table('roles')->whereIn('id', $ids)->delete();
+            $beforeAudit = self::auditRows($ids, true, true);
+            $roles = RolesModel::withTrashed()->whereIn('id', $ids)->lock(true)->select();
+            if ($roles->count() !== count($ids)) {
+                throw ApiException::notFound('role not found');
+            }
+            foreach ($roles as $role) {
+                self::assertRoleMutationAllowed($uid, $actorRoleIds, $grants, (int) $role->id);
+                if ($role->is_system && in_array($method, ['delete', 'trash', 'hard_delete'], true)) {
+                    throw ApiException::badRequest('系统角色不可删除');
+                }
+            }
+
+            if (in_array($method, ['delete', 'trash'], true)) {
+                RolesModel::whereIn('id', $ids)->delete();
+            } elseif ($method === 'restore') {
+                RolesModel::withTrashed()->onlyTrashed()->whereIn('id', $ids)->update(['deleted_at' => null]);
+            } else {
+                RoleGrants::whereIn('role_id', $ids)->delete();
+                Db::table('roles')->whereIn('id', $ids)->delete();
+            }
+            app(AdminMutationAudit::class)->recordChanges(
+                $uid,
+                'admin.role.batch.' . $method,
+                'role',
+                $beforeAudit,
+                self::auditRows($ids, true),
+                $ipAddress
+            );
             Db::commit();
             foreach ($ids as $roleId) RBAC::clearCache($roleId);
         } catch (\Throwable $e) {
             Db::rollback();
-            throw ApiException::error('鍒犻櫎瑙掕壊澶辫触', ApiException::CODE_SYSTEM_ERROR, null, $e);
+            if ($e instanceof ApiException) throw $e;
+            throw ApiException::error('删除角色失败', ApiException::CODE_SYSTEM_ERROR, null, $e);
         }
     }
 
@@ -70,7 +86,7 @@ class Roles
         return $result->toArray();
     }
 
-    public static function createRole(array $data): string
+    public static function createRole(array $data, int $actorId, string $ipAddress = ''): string
     {
         Db::startTrans();
         try {
@@ -82,8 +98,17 @@ class Roles
             }
 
             $result = RolesModel::create($data);
+            $roleId = (int) $result->id;
+            app(AdminMutationAudit::class)->recordChanges(
+                $actorId,
+                'admin.role.create',
+                'role',
+                [],
+                self::auditRows([$roleId]),
+                $ipAddress
+            );
             Db::commit();
-            return $result->id;
+            return (string) $roleId;
         } catch (\Throwable $th) {
             Db::rollback();
             if ($th instanceof ApiException) {
@@ -93,14 +118,27 @@ class Roles
         }
     }
 
-    public static function updateRole(int $id, array $data): void
+    public static function updateRole(
+        int $id,
+        array $data,
+        int $actorId,
+        array $actorRoleIds,
+        GrantSet $actorGrants,
+        string $ipAddress = ''
+    ): void
     {
+        if (!$actorGrants->allows('roles.update', Scope::GLOBAL)) {
+            throw ApiException::forbidden('权限不足');
+        }
         Db::startTrans();
         try {
-            $role = RolesModel::find($id);
+            $beforeAudit = self::auditRows([$id], false, true);
+            $role = RolesModel::where('id', $id)->lock(true)->find();
             if (!$role) {
                 throw ApiException::notFound('角色不存在');
             }
+
+            self::assertRoleMutationAllowed($actorId, $actorRoleIds, $actorGrants, $id);
 
             if ($role->is_system && isset($data['slug']) && $data['slug'] !== $role->slug) {
                 throw ApiException::badRequest('系统角色不可修改标识');
@@ -116,6 +154,14 @@ class Roles
             }
 
             RolesModel::update($data, ['id' => $id]);
+            app(AdminMutationAudit::class)->recordChanges(
+                $actorId,
+                'admin.role.update',
+                'role',
+                $beforeAudit,
+                self::auditRows([$id]),
+                $ipAddress
+            );
             Db::commit();
         } catch (\Throwable $th) {
             Db::rollback();
@@ -135,22 +181,39 @@ class Roles
         return $role;
     }
 
-    public static function deleteRoles(int $id): void
+    public static function deleteRoles(
+        int $id,
+        int $actorId,
+        array $actorRoleIds,
+        GrantSet $actorGrants,
+        string $ipAddress = ''
+    ): void
     {
-        $data = [$id];
-
-        $systemRoles = RolesModel::whereIn('id', $data)
-            ->where('is_system', 1)
-            ->select();
-        if (!$systemRoles->isEmpty()) {
-            $names = $systemRoles->column('name');
-            throw ApiException::badRequest('系统角色不可删除：' . implode(', ', $names));
+        if (!$actorGrants->allows('roles.delete', Scope::GLOBAL)) {
+            throw ApiException::forbidden('权限不足');
         }
+        $data = [$id];
 
         Db::startTrans();
         try {
+            $beforeAudit = self::auditRows([$id], false, true);
+            $role = RolesModel::where('id', $id)->lock(true)->find();
+            if (!$role) throw ApiException::notFound('角色不存在');
+            self::assertRoleMutationAllowed($actorId, $actorRoleIds, $actorGrants, $id);
+            if ($role->is_system) {
+                throw ApiException::badRequest('系统角色不可删除：' . $role->name);
+            }
+
             RoleGrants::where('role_id', 'in', $data)->delete();
             RolesModel::destroy($data);
+            app(AdminMutationAudit::class)->recordChanges(
+                $actorId,
+                'admin.role.delete',
+                'role',
+                $beforeAudit,
+                self::auditRows([$id], true),
+                $ipAddress
+            );
             Db::commit();
 
             foreach ($data as $roleId) {
@@ -171,11 +234,22 @@ class Roles
      * @param int      $roleId 角色 ID
      * @param string[] $caps   能力字符串数组
      */
-    public static function assignCapabilities(int $roleId, array $caps): void
+    public static function assignCapabilities(
+        int $roleId,
+        array $caps,
+        int $actorId,
+        array $actorRoleIds,
+        GrantSet $actorGrants,
+        string $ipAddress = ''
+    ): void
     {
+        if (!$actorGrants->allows('roles.assign', Scope::GLOBAL)) {
+            throw ApiException::forbidden('权限不足');
+        }
         Db::startTrans();
         try {
-            $role = RolesModel::find($roleId);
+            $beforeAudit = self::auditRows([$roleId], false, true);
+            $role = RolesModel::where('id', $roleId)->lock(true)->find();
             if (!$role) {
                 throw ApiException::notFound('角色不存在');
             }
@@ -192,6 +266,13 @@ class Roles
             }
 
             $grants = self::normalizeGrants($caps);
+            self::assertRoleMutationAllowed(
+                $actorId,
+                $actorRoleIds,
+                $actorGrants,
+                $roleId,
+                GrantSet::fromRows($grants)
+            );
             RoleGrants::where('role_id', $roleId)->delete();
 
             foreach ($grants as $grant) {
@@ -202,6 +283,15 @@ class Roles
                     'created_at' => date('Y-m-d H:i:s'),
                 ]);
             }
+
+            app(AdminMutationAudit::class)->recordChanges(
+                $actorId,
+                'admin.role.assign_grants',
+                'role',
+                $beforeAudit,
+                self::auditRows([$roleId]),
+                $ipAddress
+            );
 
             Db::commit();
             RBAC::clearCache($roleId);
@@ -230,6 +320,48 @@ class Roles
         return RBAC::getRoleGrants($roleId)->toArray();
     }
 
+    /** @return array<int,array<string,mixed>> */
+    private static function auditRows(array $ids, bool $includeDeleted = false, bool $lock = false): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0)));
+        sort($ids, SORT_NUMERIC);
+        if ($ids === []) return [];
+        $query = Db::table('roles')->whereIn('id', $ids)->order('id', 'asc');
+        if (!$includeDeleted) $query->whereNull('deleted_at');
+        if ($lock) $query->lock(true);
+        $rows = $query->select()->toArray();
+        $grants = Db::table('role_grants')->whereIn('role_id', $ids)
+            ->field('role_id,capability,scope')
+            ->order('role_id', 'asc')->order('capability', 'asc')->order('scope', 'asc')
+            ->select()->toArray();
+        $byRole = [];
+        foreach ($grants as $grant) {
+            $byRole[(int) $grant['role_id']][] = [
+                'capability' => (string) $grant['capability'],
+                'scope' => (string) $grant['scope'],
+            ];
+        }
+        $result = [];
+        foreach ($rows as $row) {
+            $roleId = (int) $row['id'];
+            $row['grants'] = $byRole[$roleId] ?? [];
+            $result[$roleId] = $row;
+        }
+        return $result;
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    private static function allAuditRows(bool $lock = false): array
+    {
+        $query = Db::table('roles')->field('id')->order('id', 'asc');
+        if ($lock) $query->lock(true);
+        $ids = array_map(
+            static fn(array $row): int => (int) $row['id'],
+            $query->select()->toArray()
+        );
+        return self::auditRows($ids, true);
+    }
+
     /**
      * 获取系统角色能力分配矩阵
      *
@@ -252,19 +384,28 @@ class Roles
      *
      * @return array 统计信息
      */
-    public static function reseed(): array
+    public static function reseed(
+        int $actorId,
+        array $actorRoleIds,
+        GrantSet $actorGrants,
+        string $ipAddress = ''
+    ): array
     {
+        if ($actorId < 1
+            || !$actorGrants->allows('roles.assign', Scope::GLOBAL)
+            || !SystemRolePolicy::isRootActor($actorRoleIds, config('system.system_roles'))) {
+            throw ApiException::forbidden('只有超级管理员才能重新 seed 角色能力');
+        }
         CacheManager::clearDomain('rbac');
 
-        $roleCaps = self::getSystemRoleCapabilityMatrix();
-
-        // Root 填充所有能力
         $roles = config('system.system_roles');
-        $roleCaps[$roles['root']] = array_keys(RBAC::getAllCapabilities());
 
         Db::startTrans();
         try {
+            $beforeAudit = self::allAuditRows(true);
             self::syncCapabilityCatalog();
+            $templateRoleIds = self::ensureAdministrationTemplates();
+            $roleCaps = self::seedCapabilityMatrix($roles, $templateRoleIds);
             Db::table('role_grants')->delete(true);
 
             $rows = [];
@@ -280,6 +421,15 @@ class Roles
             }
             RoleGrants::insertAll($rows);
 
+            app(AdminMutationAudit::class)->recordChanges(
+                $actorId,
+                'admin.role.reseed',
+                'role',
+                $beforeAudit,
+                self::allAuditRows(),
+                $ipAddress
+            );
+
             Db::commit();
             CacheManager::clearDomain('rbac');
 
@@ -289,6 +439,10 @@ class Roles
                 'user'  => count($roleCaps[$roles['user']]),
                 'admin' => count($roleCaps[$roles['admin']]),
                 'root'  => count($roleCaps[$roles['root']]),
+                'templates' => array_map(
+                    static fn (int $roleId): int => count($roleCaps[$roleId] ?? []),
+                    $templateRoleIds
+                ),
             ];
         } catch (\Throwable $e) {
             Db::rollback();
@@ -339,14 +493,12 @@ class Roles
         }
         // 全部验证通过才继续。任何验证失败则零写入。
 
-        // 5. 准备角色→能力矩阵
-        $roleCaps = self::getSystemRoleCapabilityMatrix();
-        $roleCaps[$roles['root']] = array_keys(RBAC::getAllCapabilities());
-
-        // 6. 事务性写入 — commit 后清理 cache
+        // 5. 事务性写入 — commit 后清理 cache
         Db::startTrans();
         try {
             self::syncCapabilityCatalog();
+            $templateRoleIds = self::ensureAdministrationTemplates();
+            $roleCaps = self::seedCapabilityMatrix($roles, $templateRoleIds);
             $results = [];
             foreach ($roleCaps as $roleId => $caps) {
                 $inserted = 0;
@@ -395,10 +547,98 @@ class Roles
             if (!array_key_exists($capability, CapabilityCatalog::canonical())) {
                 throw ApiException::badRequest('Unknown capability: ' . $capability);
             }
-            Scope::assertValid($scope);
+            if (!in_array($scope, Scope::all(), true)) {
+                throw ApiException::badRequest("Unsupported authorization scope: {$scope}");
+            }
+            if (!in_array($scope, CapabilityCatalog::scopesFor($capability), true)) {
+                throw ApiException::badRequest("Unsupported scope '{$scope}' for capability '{$capability}'");
+            }
             $result[$capability . ':' . $scope] = ['capability' => $capability, 'scope' => $scope];
         }
         return array_values($result);
+    }
+
+    private static function assertRoleMutationAllowed(
+        int $actorId,
+        array $actorRoleIds,
+        GrantSet $actorGrants,
+        int $roleId,
+        ?GrantSet $proposedGrants = null
+    ): void {
+        $role = RolesModel::withTrashed()->where('id', $roleId)->field('id,is_system')->find();
+        if ($role && (int) $role->is_system === 1
+            && !SystemRolePolicy::isRootActor($actorRoleIds, config('system.system_roles'))) {
+            throw ApiException::forbidden('只有超级管理员才能修改系统角色');
+        }
+        $violation = SystemRolePolicy::roleMutationViolation(
+            $actorId,
+            $actorRoleIds,
+            $actorGrants,
+            $roleId,
+            RBAC::getFreshRoleGrants($roleId),
+            $proposedGrants,
+            config('system.system_roles')
+        );
+        if ($violation !== null) throw ApiException::forbidden($violation);
+    }
+
+    /**
+     * @param array<string,int> $anchorRoles
+     * @param array<string,int> $templateRoleIds
+     * @return array<int,array>
+     */
+    private static function seedCapabilityMatrix(array $anchorRoles, array $templateRoleIds): array
+    {
+        $matrix = self::getSystemRoleCapabilityMatrix();
+        $matrix[$anchorRoles['root']] = array_keys(RBAC::getAllCapabilities());
+        foreach (SystemRolePolicy::administrationTemplates() as $slug => $template) {
+            $matrix[$templateRoleIds[$slug]] = $template['grants'];
+        }
+        return $matrix;
+    }
+
+    /**
+     * 在当前事务中创建缺失的内置管理角色，并拒绝占用保留 slug 的自定义或已删除角色。
+     *
+     * @return array<string,int> slug => role id
+     */
+    private static function ensureAdministrationTemplates(): array
+    {
+        $templates = SystemRolePolicy::administrationTemplates();
+        $slugs = array_keys($templates);
+        $existing = RolesModel::withTrashed()->whereIn('slug', $slugs)->select();
+        $bySlug = [];
+        foreach ($existing as $role) {
+            if ((int) $role->is_system !== 1 || $role->deleted_at !== null) {
+                throw ApiException::error(
+                    "保留角色标识 '{$role->slug}' 已被非系统角色占用或处于删除状态",
+                    ApiException::CODE_SYSTEM_ERROR
+                );
+            }
+            $slug = (string) $role->slug;
+            $template = $templates[$slug];
+            if ((string) $role->name !== $template['name']
+                || (string) $role->description !== $template['description']) {
+                RolesModel::update([
+                    'name' => $template['name'],
+                    'description' => $template['description'],
+                ], ['id' => (int) $role->id]);
+            }
+            $bySlug[$slug] = (int) $role->id;
+        }
+
+        foreach ($templates as $slug => $template) {
+            if (isset($bySlug[$slug])) continue;
+            $role = RolesModel::create([
+                'name' => $template['name'],
+                'slug' => $slug,
+                'description' => $template['description'],
+                'is_system' => 1,
+            ]);
+            $bySlug[$slug] = (int) $role->id;
+        }
+
+        return $bySlug;
     }
 
     private static function syncCapabilityCatalog(): void

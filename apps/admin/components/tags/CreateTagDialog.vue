@@ -1,85 +1,64 @@
 <template>
-	<!-- 创建对话框 -->
-	<v-dialog v-model="thisDialogState" max-width="800">
-		<v-card prepend-icon="mdi-file-edit" title="创建标签">
-			<v-card-text>
-				<v-row dense>
-					<v-col cols="6" sm="6">
-						<v-text-field label="应用ID" v-model="CreateTagData.aid" variant="underlined" color="accent"
-							readonly></v-text-field>
-					</v-col>
-
-					<v-col cols="6" sm="6">
-						<v-text-field label="用户ID" v-model="CreateTagData.user_id" variant="underlined" color="accent"
-							readonly></v-text-field>
-					</v-col>
-
-					<v-col cols="12" sm="12">
-						<v-text-field label="标签名" v-model="CreateTagData.name" variant="underlined" color="accent"></v-text-field>
-					</v-col>
-
-				</v-row>
-				<!-- <small class="text-caption text-medium-emphasis"> * 为必填字段</small> -->
-			</v-card-text>
-
-			<v-divider></v-divider>
-
-			<v-card-actions>
-				<v-spacer></v-spacer>
-				<v-btn color="accent" text="取消" variant="text" @click="thisDialogState = false"></v-btn>
-				<v-btn color="accent" text="保存" variant="flat" @click="viewSubmitEditComment()"></v-btn>
-			</v-card-actions>
-		</v-card>
-	</v-dialog>
+  <v-dialog v-model="thisDialogState" aria-label="创建标签" max-width="560" :persistent="saving">
+    <v-card prepend-icon="mdi-tag-plus-outline" title="创建标签">
+      <v-card-text class="pt-4">
+        <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">
+          {{ formError }}
+        </v-alert>
+        <v-text-field
+          v-model="tagName"
+          autofocus
+          :disabled="saving"
+          density="comfortable"
+          hint="标签会创建在当前应用中，名称应简短且能准确概括内容。"
+          label="标签名称"
+          maxlength="50"
+          persistent-hint
+          required
+          variant="outlined"
+          @keyup.enter="submit"
+        />
+      </v-card-text>
+      <v-divider />
+      <v-card-actions class="pa-4">
+        <v-spacer />
+        <v-btn :disabled="saving" variant="text" @click="thisDialogState = false">取消</v-btn>
+        <v-btn color="primary" :disabled="!canSubmit" :loading="saving" variant="flat" @click="submit">
+          创建标签
+        </v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
-import { useApi } from '~/lib/api';
-import { useAdminNotifier } from '~/composables/useAdminNotifier';
-const client = useApi();
-const notifier = useAdminNotifier();
+import { isApiError, useApi } from '~/lib/api'
 
-//Props
-const props = defineProps({
-	getTableData: Function
-});
-const getTableData = () => {
-	if (props.getTableData) {
-		props.getTableData();
-	}
-};
+const client = useApi()
+const props = defineProps<{ getTableData?: () => unknown }>()
+const thisDialogState = defineModel<boolean>('thisDialogState', { default: false })
+const tagName = ref('')
+const saving = ref(false)
+const formError = ref('')
+const canSubmit = computed(() => !saving.value && Boolean(tagName.value.trim()))
 
-//Model
-//对话框状态
-const thisDialogState = defineModel<boolean>('thisDialogState');
-type CreateTagInput = { name: string; user_id?: string; aid?: number };
-const CreateTagData = ref<CreateTagInput>({ aid: 1, name: '' });
-
-//页面操作提交修改
-const viewSubmitEditComment = () => {
-	createComment().then((response) => {
-		thisDialogState.value = false;
-		getTableData();
-	}).catch((error) => {
-		if (error.notifier) {
-			notifier.toast(error.notifier);
-		}
-	});
-};
-
-//API
-//数据
-const createComment = () => {
-	// if (Object.keys(params).length === 0) {
-	// 	return Promise.reject({
-	// 		notifier: {
-	// 			text: "请修改后再提交",
-	// 			type: "warning",
-	// 		}
-	// 	});
-	// }
-	const params = CreateTagData.value;
-	//返回原生Promise
-  return client.tags.create(params);
+const submit = async () => {
+  if (!canSubmit.value) return
+  saving.value = true
+  formError.value = ''
+  try {
+    await client.tags.create({ name: tagName.value.trim() })
+    thisDialogState.value = false
+    tagName.value = ''
+    await props.getTableData?.()
+  } catch (cause) {
+    formError.value = isApiError(cause) ? cause.message : '标签创建失败，请检查名称后重试。'
+  } finally {
+    saving.value = false
+  }
 }
+
+watch(thisDialogState, (open) => {
+  if (open) formError.value = ''
+})
 </script>

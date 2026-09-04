@@ -4,7 +4,7 @@ description: 可信、克制且可追溯的社区治理与系统运维后台
 colors:
   primary-indigo: "#3F51B5"
   secondary-amber: "#FFC107"
-  accent-rose: "#FF4081"
+  accent-indigo: "#3F51B5"
   success-green: "#43A047"
   warning-orange: "#FF9800"
   error-red: "#F44336"
@@ -79,6 +79,12 @@ LoveCards Admin 是在桌面工作环境中长时间使用的任务型界面。�
 - 关键状态同时使用文字、图标和颜色。
 - 高风险操作始终显示影响范围、原因输入和审计提示。
 - 150–250ms 状态过渡；减少动态效果时立即切换。
+
+## Style lock v1（2026-08-23）
+
+图 1 工作台参考图是当前管理端唯一的视觉外壳基线：白色顶部应用栏、白色/冷灰侧栏、Indigo 当前项和主动作、平面白色内容表面、细分隔线、紧凑表格密度。其他参考图只补充列表、详情、审计和配置的结构，不覆盖图 1 的外壳配色或导航语义。
+
+完整 token、尺寸、组件语法和偏离禁止项见 [ADMIN-UI-STYLE-LOCK.md](../../docs/engineering/ADMIN-UI-STYLE-LOCK.md)。施工阶段如需改变颜色、字体、圆角、密度或外壳布局，必须先更新该风格锁定文件。
 
 ## Colors
 
@@ -159,6 +165,18 @@ LoveCards Admin 是在桌面工作环境中长时间使用的任务型界面。�
 ### Operational Timeline
 
 举报、升级、投递和审计使用统一时间线：事件名称、操作者、时间、状态变化与必要备注按时间排序，敏感 payload 默认折叠并脱敏。
+
+### Data Tables and Saved Views
+
+资源列表统一由 `AdminResourceTableShell` 组合 Vuetify 数据表、结果栏和 `AdminTableViewControls`。默认保留 5–8 个任务核心列，资源身份与操作列固定不可隐藏。搜索、筛选、排序、分页进入 URL；列设置和最多 12 个命名视图按当前管理员 ID 存入浏览器，不允许不同账号共享同一个持久化键。
+
+### Configuration Sections
+
+配置页使用 `AdminConfigSection` 按“基础、业务、高级”建立层级；Secret 由 `AdminSecretConfigField` 遮罩并遵循服务端受控写入语义。任何修改进入 dirty 状态后，站内导航、刷新或关闭页面都必须通过 `useAdminUnsavedChanges` 提示；保存成功恢复干净状态。
+
+### Audit Reasons
+
+管理端不收集通用“操作原因”。普通编辑与高风险动作均由后端自动记录操作者、动作、资源、变更前后快照和请求链路；危险操作仅通过影响说明与明确确认文案防误触。举报理由、审核结论等真实业务字段仍由各自业务模型负责，不得复用通用原因字段。
 
 ## Do's and Don'ts
 

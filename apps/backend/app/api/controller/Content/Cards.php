@@ -23,8 +23,14 @@ class Cards extends BaseController
     {
         $params = $this->validated();
         $auth = request()->auth ?? null;
-        $result = CardsService::list($params, $auth ? $auth->capabilities() : []);
+        $result = CardsService::list($params, $auth ? $auth->capabilities() : [], $auth ? (int) $auth->uid() : 0);
         return $this->respond($result);
+    }
+
+    public function listFollowing()
+    {
+        $params = $this->validated();
+        return $this->respond(CardsService::listFollowing($params, (int) request()->auth->uid()));
     }
 
     public function listAll()
@@ -38,20 +44,35 @@ class Cards extends BaseController
     {
         $params = $this->validated();
         $auth = request()->auth ?? null;
-        $result = CardsService::list($params, $auth ? $auth->capabilities() : []);
+        $result = CardsService::list($params, $auth ? $auth->capabilities() : [], $auth ? (int) $auth->uid() : 0);
         return $this->respond($result);
+    }
+
+    public function listPublicByUser(string $handle)
+    {
+        $params = $this->validated();
+        $auth = request()->auth ?? null;
+        return $this->respond(CardsService::listPublicByUser($handle, $params, $auth ? (int) $auth->uid() : 0));
+    }
+
+    public function listPublicByUid(string $uid)
+    {
+        $params = $this->validated();
+        $auth = request()->auth ?? null;
+        return $this->respond(CardsService::listPublicByUid($uid, $params, $auth ? (int) $auth->uid() : 0));
     }
 
     public function hotList()
     {
-        $result = CardsService::hotList();
+        $auth = request()->auth ?? null;
+        $result = CardsService::hotList($auth ? (int) $auth->uid() : 0);
         return $this->respond($result);
     }
 
     public function get($id)
     {
         $auth = request()->auth ?? null;
-        $result = CardsService::get((int) $id, $auth ? $auth->capabilities() : []);
+        $result = CardsService::get((int) $id, $auth ? $auth->capabilities() : [], $auth ? (int) $auth->uid() : 0);
         return $this->respond($result);
     }
 
@@ -82,9 +103,17 @@ class Cards extends BaseController
     public function update($id)
     {
         $params = $this->validated(null, ['id' => (int) $id]);
-
         $auth = request()->auth;
         CardsService::updateCard($params, $auth->uid(), $auth->grants());
+
+        return $this->respond();
+    }
+
+    public function updateManaged($id)
+    {
+        $params = $this->validated(null, ['id' => (int) $id]);
+        $auth = request()->auth;
+        CardsService::updateCard($params, $auth->uid(), $auth->grants(), (string) request()->ip(), true);
 
         return $this->respond();
     }
@@ -93,6 +122,19 @@ class Cards extends BaseController
     {
         $auth = request()->auth;
         CardsService::deleteCards([(int) $id], $auth->uid(), $auth->grants());
+        return $this->respond();
+    }
+
+    public function deleteManaged($id)
+    {
+        $auth = request()->auth;
+        CardsService::deleteCards(
+            [(int) $id],
+            $auth->uid(),
+            $auth->grants(),
+            (string) request()->ip(),
+            true
+        );
         return $this->respond();
     }
 

@@ -22,6 +22,12 @@ class BatchOperationInput extends Validate
             'nonNull' => false,
             'toNull' => false,
         ],
+        'AdminBatchOperate' => [
+            'normal' => false,
+            'require' => ['ids', 'method'],
+            'nonNull' => false,
+            'toNull' => false,
+        ],
     ];
 
     static public $scene_message = [

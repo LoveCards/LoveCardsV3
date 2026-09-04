@@ -24,7 +24,14 @@ trait BatchOperateTrait
         }
 
         $auth = request()->auth;
-        $service->batchOperate($params['method'], $params['ids'], $auth->uid(), $auth->grants());
+        $service->batchOperate(
+            $params['method'],
+            $params['ids'],
+            $auth->uid(),
+            $auth->grants(),
+            (string) request()->ip(),
+            true
+        );
         return $this->respond();
     }
 }

@@ -1,121 +1,156 @@
 <template>
-	<v-dialog v-model="thisDialogState" max-width="600">
-		<v-card prepend-icon="mdi-file-edit" title="修改文件">
-			<v-card-text>
-				<v-row dense>
-					<v-col cols="12" sm="6">
-						<v-text-field label="文件名" :model-value="FileData.edit.original_name"
-							variant="underlined" color="accent" readonly></v-text-field>
-					</v-col>
-					<v-col cols="12" sm="6">
-						<v-text-field label="大小" :model-value="formatSize(FileData.edit.file_size)"
-							variant="underlined" color="accent" readonly></v-text-field>
-					</v-col>
-					<v-col cols="12" sm="6">
-						<v-text-field label="场景" :model-value="FileData.edit.scene"
-							variant="underlined" color="accent" readonly></v-text-field>
-					</v-col>
-					<v-col cols="12" sm="6">
-						<v-text-field label="渠道" :model-value="FileData.edit.channel_slug"
-							variant="underlined" color="accent" readonly></v-text-field>
-					</v-col>
-					<v-col cols="12" sm="6">
-						<v-text-field label="上传者" :model-value="FileData.edit.user_id ? '#' + FileData.edit.user_id : '-'"
-							variant="underlined" color="accent" readonly></v-text-field>
-					</v-col>
-					<v-col cols="12" sm="6">
-						<v-text-field label="创建时间" :model-value="FileData.edit.created_at"
-							variant="underlined" color="accent" readonly></v-text-field>
-					</v-col>
+  <v-dialog v-model="thisDialogState" aria-label="管理文件" max-width="720" :persistent="saving">
+    <v-card prepend-icon="mdi-file-cog-outline" title="管理文件">
+      <v-card-text class="pt-4">
+        <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">
+          {{ formError }}
+        </v-alert>
 
-					<v-col cols="12">
-						<v-divider class="my-2"></v-divider>
-					</v-col>
+        <v-list bg-color="surface-variant" class="mb-4" density="compact" rounded="lg">
+          <v-list-item prepend-icon="mdi-file-outline" subtitle="文件名" :title="displayValue(FileData.edit.original_name)" />
+          <v-divider />
+          <v-row dense>
+            <v-col cols="12" sm="6">
+              <v-list-item prepend-icon="mdi-database-outline" subtitle="文件大小" :title="formatSize(FileData.edit.file_size)" />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-list-item prepend-icon="mdi-folder-outline" subtitle="使用场景" :title="displayValue(FileData.edit.scene)" />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-list-item prepend-icon="mdi-cloud-outline" subtitle="存储渠道" :title="displayValue(FileData.edit.channel_slug)" />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-list-item prepend-icon="mdi-account-outline" subtitle="上传者" :title="FileData.edit.user_id ? `#${FileData.edit.user_id}` : '—'" />
+            </v-col>
+            <v-col cols="12">
+              <v-list-item prepend-icon="mdi-clock-outline" subtitle="创建时间" :title="displayValue(FileData.edit.created_at)" />
+            </v-col>
+          </v-row>
+        </v-list>
 
-					<v-col cols="12" sm="6">
-						<v-select label="审核状态" item-title="title" item-value="value"
-							v-model="editStatus" :items="SelectUtils.Files.status"
-							variant="underlined" color="accent"></v-select>
-					</v-col>
-					<v-col cols="12" sm="6">
-						<v-select label="公开状态" item-title="title" item-value="value"
-							v-model="editIsPublic" :items="publicOptions"
-							variant="underlined" color="accent"></v-select>
-					</v-col>
-				</v-row>
-			</v-card-text>
+        <v-alert class="mb-4" type="info" variant="tonal">
+          状态变更会影响文件能否在前台访问，请在保存前确认可见性影响。
+        </v-alert>
 
-			<v-divider></v-divider>
+        <v-row dense>
+          <v-col cols="12" sm="6">
+            <v-select
+              v-model="editStatus"
+              :disabled="saving"
+              density="comfortable"
+              item-title="title"
+              item-value="value"
+              :items="SelectUtils.Files.status"
+              label="审核状态"
+              variant="outlined"
+            />
+          </v-col>
+          <v-col cols="12" sm="6">
+            <v-select
+              v-model="editIsPublic"
+              :disabled="saving"
+              density="comfortable"
+              item-title="title"
+              item-value="value"
+              :items="publicOptions"
+              label="公开状态"
+              variant="outlined"
+            />
+          </v-col>
+        </v-row>
 
-			<v-card-actions>
-				<v-spacer></v-spacer>
-				<v-btn color="accent" text="取消" variant="text" @click="thisDialogState = false"></v-btn>
-				<v-btn color="accent" text="保存" variant="flat" @click="submit()"></v-btn>
-			</v-card-actions>
-		</v-card>
-	</v-dialog>
+      </v-card-text>
+
+      <v-divider />
+      <v-card-actions class="pa-4">
+        <v-spacer />
+        <v-btn :disabled="saving" variant="text" @click="thisDialogState = false">取消</v-btn>
+        <v-btn color="primary" :loading="saving" variant="flat" @click="submit">保存状态</v-btn>
+      </v-card-actions>
+    </v-card>
+  </v-dialog>
 </template>
 
 <script setup lang="ts">
-import { useApi } from '~/lib/api';
-import SelectUtils from "~/utils/select";
-import type { LCFile } from '@lovecards/sdk';
-const client = useApi();
+import type { LCFile } from '@lovecards/sdk'
+import { isApiError, useApi } from '~/lib/api'
+import { useAdminNotifier } from '~/composables/useAdminNotifier'
+import SelectUtils from '~/utils/select'
 
-const props = defineProps({
-	getTableData: Function
-});
-const getTableData = () => {
-	if (props.getTableData) props.getTableData();
-};
-
-const thisDialogState = defineModel<boolean>('thisDialogState');
-const FileData = defineModel<{ edit: LCFile; origin: LCFile }>('FileData', { default: { edit: {} as LCFile, origin: {} as LCFile } });
-
-const editStatus = ref(0);
-const editIsPublic = ref(0);
+const client = useApi()
+const notifier = useAdminNotifier()
+const props = defineProps<{ getTableData?: () => unknown }>()
+const thisDialogState = defineModel<boolean>('thisDialogState', { default: false })
+const FileData = defineModel<{ edit: LCFile; origin: LCFile }>('FileData', {
+  default: { edit: {} as LCFile, origin: {} as LCFile },
+})
+const editStatus = ref(0)
+const editIsPublic = ref(0)
+const saving = ref(false)
+const formError = ref('')
 
 const publicOptions = [
-	{ title: '私有', value: 0 },
-	{ title: '公开', value: 1 },
-];
-
+  { title: '私有', value: 0 },
+  { title: '公开', value: 1 },
+]
+const displayValue = (value: unknown) => value === undefined || value === null || value === '' ? '—' : String(value)
 const formatSize = (bytes: number) => {
-	if (!bytes) return '0 B';
-	if (bytes < 1024) return bytes + ' B';
-	if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-	return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-};
+  if (!bytes) return '0 B'
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+const errorMessage = (cause: unknown, fallback: string) => {
+  return isApiError(cause) ? cause.message : fallback
+}
 
-const submit = () => {
-	const ids = [FileData.value.edit.id];
-	const ops: Promise<void>[] = [];
+const submit = async () => {
+  if (saving.value) return
+  const ids = [FileData.value.edit.id]
+  const statusChanged = editStatus.value !== FileData.value.origin.status
+  const publicChanged = editIsPublic.value !== FileData.value.origin.is_public
+  if (!statusChanged && !publicChanged) {
+    notifier.warning('请修改后再提交')
+    return
+  }
+  saving.value = true
+  formError.value = ''
+  const completed: string[] = []
+  try {
+    // The API exposes these as two independent commands. Run them in a stable
+    // order and report partial success truthfully instead of presenting the
+    // pair as an atomic save.
+    if (statusChanged) {
+      await client.files.batchManaged({
+        ids,
+        method: editStatus.value === 1 ? 'ban' : 'approve',
+      })
+      FileData.value.origin.status = editStatus.value
+      completed.push('审核状态')
+    }
+    if (publicChanged) {
+      await client.files.batchManaged({ ids, method: 'toggle_public' })
+      FileData.value.origin.is_public = editIsPublic.value
+      completed.push('公开状态')
+    }
+    thisDialogState.value = false
+    await props.getTableData?.()
+    notifier.success('文件状态已保存')
+  } catch (cause) {
+    const detail = errorMessage(cause, '请求失败，请稍后重试。')
+    formError.value = completed.length
+      ? `${completed.join('、')}已保存，剩余修改未保存：${detail}`
+      : `文件状态保存失败：${detail}`
+    try { await props.getTableData?.() } catch { /* preserve the mutation error */ }
+  } finally {
+    saving.value = false
+  }
+}
 
-	// 审核状态变更
-	if (editStatus.value !== FileData.value.origin.status) {
-		ops.push(client.files.batchManaged({ ids, method: editStatus.value === 1 ? 'ban' : 'approve' }));
-	}
-
-	// 公开状态变更
-	if (editIsPublic.value !== FileData.value.origin.is_public) {
-		ops.push(client.files.batchManaged({ ids, method: 'toggle_public' }));
-	}
-
-	if (ops.length === 0) {
-		thisDialogState.value = false;
-		return;
-	}
-
-	Promise.all(ops).then(() => {
-		thisDialogState.value = false;
-		getTableData();
-	});
-};
-
-watch(thisDialogState, (val) => {
-	if (val && FileData.value?.edit) {
-		editStatus.value = FileData.value.edit.status;
-		editIsPublic.value = FileData.value.edit.is_public;
-	}
-});
+watch(thisDialogState, (open) => {
+  if (!open || !FileData.value?.edit) return
+  formError.value = ''
+  editStatus.value = FileData.value.edit.status
+  editIsPublic.value = FileData.value.edit.is_public
+})
 </script>

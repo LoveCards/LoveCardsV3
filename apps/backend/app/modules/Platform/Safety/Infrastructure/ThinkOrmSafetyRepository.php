@@ -7,6 +7,7 @@ use app\modules\Platform\Safety\Domain\PrivacyPreferences;
 use app\modules\Platform\Safety\Domain\ReportSubmission;
 use app\modules\Platform\Social\Public\Social;
 use think\facade\Db;
+use app\api\ApiException;
 
 final class ThinkOrmSafetyRepository implements SafetyRepository
 {
@@ -30,7 +31,9 @@ final class ThinkOrmSafetyRepository implements SafetyRepository
         return new PrivacyPreferences(
             (string) $row['profile_visibility'],
             (string) $row['messages_from'],
-            (bool) $row['show_relations']
+            (bool) $row['show_relations'],
+            (string) ($row['gender_visibility'] ?? 'private'),
+            (string) ($row['birth_date_visibility'] ?? 'private')
         );
     }
 
@@ -68,15 +71,98 @@ final class ThinkOrmSafetyRepository implements SafetyRepository
         ])->find() !== null;
     }
 
+    public function isBlockedEitherDirection(int $firstUserId, int $secondUserId): bool
+    {
+        return Db::table('user_safety_relations')
+            ->where('relation', 'block')
+            ->where(function ($query) use ($firstUserId, $secondUserId): void {
+                $query->where(['actor_id' => $firstUserId, 'subject_id' => $secondUserId])
+                    ->whereOr(['actor_id' => $secondUserId, 'subject_id' => $firstUserId]);
+            })->value('actor_id') !== null;
+    }
+
+    public function blockedUserIds(int $userId): array
+    {
+        $outgoing = Db::table('user_safety_relations')->where(['actor_id' => $userId, 'relation' => 'block'])->column('subject_id');
+        $incoming = Db::table('user_safety_relations')->where(['subject_id' => $userId, 'relation' => 'block'])->column('actor_id');
+        return array_values(array_unique(array_map('intval', array_merge($outgoing, $incoming))));
+    }
+
+    public function userExists(int $userId): bool
+    {
+        return Db::table('users')->where('id', $userId)->whereNull('deleted_at')->value('id') !== null;
+    }
+
+    public function listBlocked(int $userId, ?string $cursor, int $limit, ?string $query): array
+    {
+        $builder = Db::table('user_safety_relations')->alias('r')
+            ->join('users u', 'u.id = r.subject_id')
+            ->where(['r.actor_id' => $userId, 'r.relation' => 'block'])
+            ->field('u.id,u.uid,u.username,u.avatar,r.created_at AS blocked_at')
+            ->order('r.created_at', 'desc')->order('r.subject_id', 'desc')
+            ->limit($limit + 1);
+
+        $anchor = $this->decodeCursor($cursor);
+        if ($anchor !== null) {
+            $builder->where(function ($where) use ($anchor): void {
+                $where->where('r.created_at', '<', $anchor['blocked_at'])
+                    ->whereOr(function ($same) use ($anchor): void {
+                        $same->where('r.created_at', '=', $anchor['blocked_at'])
+                            ->where('r.subject_id', '<', $anchor['subject_id']);
+                    });
+            });
+        }
+        $query = trim((string) ($query ?? ''));
+        if ($query !== '') $builder->whereLike('u.username', '%' . addcslashes($query, '%_\\') . '%');
+
+        $rows = $builder->select()->toArray();
+        $hasMore = count($rows) > $limit;
+        if ($hasMore) array_pop($rows);
+        $items = array_map(static fn(array $row): array => [
+            'user' => [
+                'id' => (int) $row['id'],
+                'username' => (string) $row['username'],
+                'avatar' => trim((string) ($row['avatar'] ?? '')) === '' ? null : (string) $row['avatar'],
+            ],
+            'blocked_at' => (string) $row['blocked_at'],
+        ], $rows);
+        $last = $rows === [] ? null : end($rows);
+        return [
+            'items' => $items,
+            'next_cursor' => $hasMore && is_array($last)
+                ? $this->encodeCursor((string) $last['blocked_at'], (int) $last['id'])
+                : null,
+            'has_more' => $hasMore,
+        ];
+    }
+
+    /** @return array{blocked_at:string,subject_id:int}|null */
+    private function decodeCursor(?string $cursor): ?array
+    {
+        if ($cursor === null || $cursor === '') return null;
+        $padding = strlen($cursor) % 4;
+        if ($padding > 0) $cursor .= str_repeat('=', 4 - $padding);
+        $decoded = base64_decode(strtr($cursor, '-_', '+/'), true);
+        $payload = is_string($decoded) ? json_decode($decoded, true) : null;
+        if (!is_array($payload)
+            || !isset($payload['blocked_at'], $payload['subject_id'])
+            || !is_string($payload['blocked_at'])
+            || (int) $payload['subject_id'] < 1) {
+            throw ApiException::validation(['cursor' => ['游标无效。']]);
+        }
+        return ['blocked_at' => $payload['blocked_at'], 'subject_id' => (int) $payload['subject_id']];
+    }
+
+    private function encodeCursor(string $blockedAt, int $subjectId): string
+    {
+        return rtrim(strtr(base64_encode((string) json_encode([
+            'blocked_at' => $blockedAt, 'subject_id' => $subjectId,
+        ], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)), '+/', '-_'), '=');
+    }
+
     public function canMessage(int $senderId, int $recipientId): bool
     {
-        $blocked = Db::table('user_safety_relations')
-            ->where('relation', 'block')
-            ->where(function ($query) use ($senderId, $recipientId): void {
-                $query->where(['actor_id' => $senderId, 'subject_id' => $recipientId])
-                    ->whereOr(['actor_id' => $recipientId, 'subject_id' => $senderId]);
-            })->find();
-        if ($blocked !== null) return false;
+        if ($this->isBlockedEitherDirection($senderId, $recipientId)) return false;
 
         $preference = $this->preferences($recipientId)->toArray()['messages_from'];
         if ($preference === 'none') return false;

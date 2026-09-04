@@ -8,6 +8,9 @@ interface AdminSecurityRepository
     /** @return array<string,mixed>|null */
     public function findUserOverview(int $userId, \DateTimeImmutable $now): ?array;
 
+    /** @return int[] */
+    public function findUserRoleIds(int $userId, bool $forUpdate = false): array;
+
     /**
      * @return array{items:array<int,array<string,mixed>>,total:int}
      */

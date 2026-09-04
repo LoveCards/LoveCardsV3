@@ -8,6 +8,8 @@ use app\modules\Platform\Files\Contract\FileReferenceRepository;
 use app\modules\Platform\Files\Contract\FilePurgeRequester;
 use app\modules\Platform\Files\Domain\FileConstants;
 use app\shared\Authorization\GrantSet;
+use app\shared\Observability\AdminMutationAudit;
+use app\shared\Transaction\TransactionManager;
 
 /**
  * 批量操作文件用例
@@ -36,7 +38,14 @@ final class BatchOperateFiles
      * @param int    $userId 当前用户 ID
      * @param array  $caps   当前用户 capability 列表
      */
-    public function execute(string $method, array $ids, int $userId, GrantSet $grants, string $ipAddress = ''): void
+    public function execute(
+        string $method,
+        array $ids,
+        int $userId,
+        GrantSet $grants,
+        string $ipAddress = '',
+        bool $auditAdminMutation = false
+    ): void
     {
         $caps = $grants->capabilityNames();
         $ids = array_values(array_unique(array_map('intval', $ids)));
@@ -85,7 +94,33 @@ final class BatchOperateFiles
             }
         }
 
-        // 执行操作
+        if ($method === 'hard_delete') {
+            foreach ($ids as $id) $this->assertNotReferenced($id);
+            $this->purges->requestMany($ids, $userId, $ipAddress);
+            return;
+        }
+
+        if ($auditAdminMutation) {
+            app(TransactionManager::class)->run(function () use ($method, $ids, $userId, $ipAddress): void {
+                $before = $this->auditRows($ids);
+                $this->apply($method, $ids);
+                app(AdminMutationAudit::class)->recordChanges(
+                    $userId,
+                    'admin.file.batch.' . $method,
+                    'file',
+                    $before,
+                    $this->auditRows($ids),
+                    $ipAddress
+                );
+            });
+            return;
+        }
+
+        $this->apply($method, $ids);
+    }
+
+    private function apply(string $method, array $ids): void
+    {
         switch ($method) {
             case 'approve':
                 $this->files->batchUpdateStatus($ids, 'status', FileConstants::STATUS_NORMAL);
@@ -106,13 +141,20 @@ final class BatchOperateFiles
                     $this->files->restore($id);
                 }
                 break;
-            case 'hard_delete':
-                foreach ($ids as $id) $this->assertNotReferenced($id);
-                $this->purges->requestMany($ids, $userId, $ipAddress);
-                break;
             default:
                 throw ApiException::badRequest('不支持的操作');
         }
+    }
+
+    /** @return array<int,array<string,mixed>> */
+    private function auditRows(array $ids): array
+    {
+        $result = [];
+        foreach ($ids as $id) {
+            $row = $this->files->findByIdWithTrashed((int) $id);
+            if ($row !== null) $result[(int) $id] = $row;
+        }
+        return $result;
     }
 
     private function assertNotReferenced(int $fileId): void

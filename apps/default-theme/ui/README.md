@@ -6,10 +6,11 @@
 
 1. 产品目标与反例：[`PRODUCT.md`](./PRODUCT.md)
 2. 视觉 Token 与总原则：[`DESIGN.md`](./DESIGN.md)
-3. 规范导航：[`docs/README.md`](./docs/README.md)
-4. Dialog / Modal 弹窗规范：[`docs/specifications/DIALOGS.md`](./docs/specifications/DIALOGS.md)
-5. 蓝图状态与正式入口：[`docs/registries/BLUEPRINTS.md`](./docs/registries/BLUEPRINTS.md)
-6. 可视化总览：[`blueprints/index.html`](./blueprints/index.html)
+3. 设计系统架构与权威顺序：[`standards/SYSTEM-ARCHITECTURE.md`](./standards/SYSTEM-ARCHITECTURE.md)
+4. 组件用途与采用状态：[`docs/registries/ASTRYX-COMPONENTS.md`](./docs/registries/ASTRYX-COMPONENTS.md)
+5. 规范导航：[`docs/README.md`](./docs/README.md)
+6. 蓝图状态与正式入口：[`docs/registries/BLUEPRINTS.md`](./docs/registries/BLUEPRINTS.md)
+7. 可视化总览：[`blueprints/index.html`](./blueprints/index.html)
 
 ## 目录职责
 
@@ -18,7 +19,7 @@ ui/
 ├─ README.md                 # 唯一人工入口
 ├─ PRODUCT.md                # 产品与品牌策略
 ├─ DESIGN.md                 # 视觉系统总规范
-├─ standards/                # 基础、组件、卡片、内容与无障碍
+├─ standards/                # 系统架构、基础、组件、卡片、内容与无障碍
 ├─ docs/
 │  ├─ README.md              # 文档导航
 │  ├─ registries/            # 页面、蓝图、卡片、SDK 能力注册表
@@ -42,6 +43,7 @@ ui/
 - 规范文件名不携带日期、`final`、`set` 或阶段编号；版本与状态写在文件正文。
 - `archive/` 只用于追溯，不得被正式蓝图或生产代码引用。
 - 同一规则只在一个文件定义，其他文件使用链接引用。
+- 组件选型先查 `ASTRYX-COMPONENTS.md`；反馈先查 `FEEDBACK-AND-STATUS.md`，不得按页面临时选择。
 - SDK 能力以生成契约为准；设计资料只记录 UI 如何响应能力，不复制接口定义。
 
 ## 本地审阅

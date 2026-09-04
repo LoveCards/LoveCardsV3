@@ -1,11 +1,14 @@
 import { defineStore } from 'pinia';
 
 interface ViewData {
-    message: String | null
+    message: string | null
+    code?: number | string | null
+    kind?: 'forbidden' | 'unauthorized' | 'not-found' | 'error'
+    details?: string | null
     jumpBtn?: {
-        text?: String | null
-        url?: String | null
-        clickFun?: Function | null
+        text?: string | null
+        url?: string | null
+        clickFun?: (() => void) | null
     }
 }
 
@@ -13,6 +16,9 @@ export const useErrorStore = defineStore('error', {
     state: () => ({
         viewData: {
             message: null,
+            code: null,
+            kind: 'error',
+            details: null,
             jumpBtn: {
                 text: null,
                 url: null,
