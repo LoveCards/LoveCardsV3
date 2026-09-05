@@ -6,6 +6,7 @@ import { FeedCollection } from '../../features/feed/FeedCollection.jsx';
 import { useResource } from '../../app/use-resource.js';
 import { previewCreators, previewTrends } from '../../fixtures/feed-preview.js';
 import { getHomeFeedSnapshot, HOME_CHANNELS, loadHomeFeed } from '../../services/feed-service.js';
+import { ScopedBanner } from '../../ui/index.js';
 
 function selectedChannel(params) {
   if (params.get('feed') === 'following') return 'following';
@@ -103,13 +104,19 @@ export function HomePage() {
         <header className="home-heading">
           <div>
             <h1 id="home-title">{channelLabel}</h1>
-            <p>{data.strategy === 'hot' ? '当前按社区热度展示内容。' : data.strategy === 'following' ? '只显示你关注的人公开发布的内容。' : '发现值得停留的内容，也遇见值得关注的人。'}</p>
+            <p>{data.strategy === 'hot' ? '当前按社区热度展示内容。' : data.strategy === 'latest-fallback' ? '推荐暂时不可用，当前显示最新发布的内容。' : data.strategy === 'following' ? '只显示你关注的人公开发布的内容。' : '发现值得停留的内容，也遇见值得关注的人。'}</p>
           </div>
           <div className="home-heading-actions">
             {isPreview && <span className="preview-label">设计预览 · 演示数据 · 操作不会保存</span>}
             <span className="capability-note">推荐调整暂未开放</span>
           </div>
         </header>
+        {data.strategy === 'latest-fallback' && <ScopedBanner
+          className="home-feed-degraded"
+          status="warning"
+          title="推荐暂时不可用"
+          description="已为你显示最新发布的公开内容，稍后重新进入推荐页时会再次尝试。"
+        />}
         <div className="home-layout">
           <ResourceState status={resource.status} error={resource.error} empty={!isBoundary && !data.items?.length} onRetry={resource.reload} loadingVariant="feed" loadingClassName="home-feed" loadingLabel="首页内容加载中">
             {isBoundary ? <UnavailableFeed data={data} /> : (

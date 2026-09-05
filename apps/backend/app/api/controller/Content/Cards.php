@@ -97,6 +97,7 @@ class Cards extends BaseController
         return $this->respond([
             'id' => (int) $cardId,
             'status' => (int) $params['status'],
+            'visibility' => (string) ($params['visibility'] ?? 'public'),
         ]);
     }
 

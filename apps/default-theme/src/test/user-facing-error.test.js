@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getAvatarUploadError, getAvatarUploadFeedback, getErrorDetail, getUserFacingError } from '../app/user-facing-error.js';
+import { getAvatarUploadError, getAvatarUploadFeedback, getErrorDetail, getResourceErrorPresentation, getUserFacingError } from '../app/user-facing-error.js';
 
 describe('user-facing errors', () => {
   it('prefers a concrete validation detail over a generic parameter message', () => {
@@ -49,5 +49,27 @@ describe('user-facing errors', () => {
     expect(getUserFacingError({ status: 403, message: '权限不足' })).toBe('当前账号没有执行此操作的权限。');
     expect(getUserFacingError({ status: 429, message: '请求过于频繁' })).toBe('操作太频繁，请稍等一会再试。');
     expect(getUserFacingError({ status: 500, message: '服务器内部错误' }, { fallback: '头像暂时没有保存，请稍后重试。' })).toBe('头像暂时没有保存，请稍后重试。');
+  });
+
+  it('gives resource failures stable cross-page presentations', () => {
+    expect(getResourceErrorPresentation({ code: -3, status: 0, message: '网络连接失败' })).toMatchObject({
+      kind: 'offline',
+      title: '无法连接到服务',
+      retryable: true,
+    });
+    expect(getResourceErrorPresentation({ status: 503, message: '服务不可用' })).toMatchObject({
+      kind: 'service-error',
+      title: '服务暂时不可用',
+      retryable: true,
+    });
+    expect(getResourceErrorPresentation(new Error('SDK 契约错误：cards.list() 应返回 ListResult。'))).toMatchObject({
+      kind: 'compatibility',
+      title: '页面暂时无法读取数据',
+      retryable: true,
+    });
+    expect(getResourceErrorPresentation({ status: 403, message: '权限不足' })).toMatchObject({
+      kind: 'forbidden',
+      retryable: false,
+    });
   });
 });

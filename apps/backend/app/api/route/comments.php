@@ -2,6 +2,7 @@
 
 use think\facade\Route;
 use app\api\middleware\JwtAuthCheck;
+use app\api\middleware\OptionalJwtAuth;
 use app\api\middleware\PermissionCheck;
 use app\modules\Content\Comments\Transport\Api\Comments as CommentsValidate;
 use app\modules\Content\Comments\Transport\Api\CommentResource;
@@ -17,7 +18,8 @@ $grant = static fn (string $capability, string $scope): array => compact('capabi
 
 Route::get('comments/:id', 'Content.Comments/get')->name('comments.get')
     ->setOption('contract', ['request' => null, 'response' => ['resource' => CommentResource::class, 'shape' => 'item', 'status' => 200]])
-    ->setOption('meta', ['name' => '评论详情', 'group' => '评论', 'access' => ['auth' => 'public']]);
+    ->setOption('meta', ['name' => '评论详情', 'group' => '评论', 'access' => ['auth' => 'public']])
+    ->middleware(OptionalJwtAuth::class);
 
 Route::post('comments/:id/like', 'Content.Comments/like')->name('comments.like')
     ->setOption('contract', ['request' => null, 'response' => ['resource' => LikeCountResource::class, 'shape' => 'item', 'status' => 200]])

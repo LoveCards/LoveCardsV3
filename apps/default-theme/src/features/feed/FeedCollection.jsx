@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../app/providers.jsx';
-import { useToast } from '../../ui/index.js';
+import { AuthPromptDialog, useToast } from '../../ui/index.js';
 import { FeedStory } from './FeedStory.jsx';
 import { useFeedMasonry } from './use-feed-masonry.js';
 import { listSavedItems } from '../../services/community-service.js';
@@ -13,6 +13,7 @@ export function FeedCollection({ items, source, className, ariaLabel }) {
   const location = useLocation();
   const { isAuthenticated, session } = useAuth();
   const [savedIds, setSavedIds] = useState(() => new Set());
+  const [authPromptAction, setAuthPromptAction] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -29,9 +30,8 @@ export function FeedCollection({ items, source, className, ariaLabel }) {
   }, [toast]);
 
   const requestLogin = useCallback((action) => {
-    toast({ body: action === 'report' ? '登录后即可举报内容' : '登录后即可收藏内容', uniqueID: 'feed-login-required', collisionBehavior: 'overwrite' });
-    navigate('/auth/login', { state: { from: `${location.pathname}${location.search}` } });
-  }, [location.pathname, location.search, navigate, toast]);
+    setAuthPromptAction(action === 'report' ? '举报内容' : '收藏内容');
+  }, []);
   const updateSavedState = useCallback((cardId, saved) => {
     setSavedIds((current) => {
       const next = new Set(current);
@@ -61,6 +61,7 @@ export function FeedCollection({ items, source, className, ariaLabel }) {
           key={card.id}
         />
       ))}
+      <AuthPromptDialog isOpen={Boolean(authPromptAction)} action={authPromptAction} onOpenChange={(open) => { if (!open) setAuthPromptAction(''); }} onLogin={() => { setAuthPromptAction(''); navigate('/auth/login', { state: { from: `${location.pathname}${location.search}` } }); }} />
     </section>
   );
 }

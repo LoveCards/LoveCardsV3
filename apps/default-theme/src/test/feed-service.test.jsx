@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getHomeFeedSnapshot, normalizeSdkCard, stabilizeFeedLayouts, updateCardLike } from '../services/feed-service.js';
+import { getHomeFeedSnapshot, loadRecommendedCards, normalizeSdkCard, stabilizeFeedLayouts, updateCardLike } from '../services/feed-service.js';
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -23,12 +23,35 @@ describe('home feed data boundary', () => {
     expect(getHomeFeedSnapshot('following')).toMatchObject({ source: 'unavailable', message: '关注流预览暂未开放' });
   });
 
+  it('falls back to the latest public feed when the recommended endpoint fails', async () => {
+    const failure = Object.assign(new Error('服务器繁忙'), { status: 500, code: 9001 });
+    const client = {
+      cards: {
+        hot: vi.fn().mockRejectedValue(failure),
+        list: vi.fn().mockResolvedValue({ data: [{ id: 1 }], total: 1 }),
+      },
+    };
+
+    await expect(loadRecommendedCards(client)).resolves.toEqual({
+      rawItems: [{ id: 1 }],
+      strategy: 'latest-fallback',
+      degradedError: failure,
+    });
+    expect(client.cards.list).toHaveBeenCalledWith({ page: 1, list_rows: 30, order_key: 'created_at', order_desc: true });
+  });
+
   it('derives profile navigation only from a real backend username', () => {
     const linked = normalizeSdkCard({ id: 8, user_id: 4, username: '卡卡/旅行', content: '正文', data: {}, pictures: [], goods: 0, comments: 0 });
     const unlinked = normalizeSdkCard({ id: 9, user_id: 4, content: '正文', data: { author: '仅展示昵称' }, pictures: [], goods: 0, comments: 0 });
 
     expect(linked).toMatchObject({ author: '卡卡/旅行', authorHandle: '卡卡/旅行', authorHref: '/user/%E5%8D%A1%E5%8D%A1%2F%E6%97%85%E8%A1%8C' });
     expect(unlinked).toMatchObject({ author: '用户 4', authorHandle: null, authorHref: null });
+  });
+
+  it('preserves the backend card visibility without deriving audience access', () => {
+    const card = normalizeSdkCard({ id: 10, user_id: 4, visibility: 'followers', content: '关注者内容', data: {}, pictures: [], goods: 0, comments: 0 });
+
+    expect(card.visibility).toBe('followers');
   });
 
   it('activates curated blueprint variants from card data', () => {

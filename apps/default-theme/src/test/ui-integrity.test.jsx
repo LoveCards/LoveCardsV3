@@ -4,6 +4,7 @@ import { extname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { renderRoute } from './renderRoute.jsx';
 import { settingsPathFromLegacyHash } from '../pages/settings/SettingsPage.jsx';
+import { currentLocationPath, safeReturnPath } from '../app/auth-routing.jsx';
 
 function filesBelow(directory, extension) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -13,8 +14,26 @@ function filesBelow(directory, extension) {
 }
 
 describe('UI integrity', () => {
+  it('provides an explicit home escape on the auth page', () => {
+    const html = renderRoute('/auth/login');
+    const css = readFileSync(fileURLToPath(new URL('../pages/auth/auth.css', import.meta.url)), 'utf8');
+    expect(html).toContain('class="auth-panel-topbar"');
+    expect(html).toContain('class="auth-home-link"');
+    expect(html).toContain('href="/"');
+    expect(html).toContain('返回首页');
+    expect(css).toContain('.auth-home-link');
+    expect(css).toContain('.auth-home-link .icon');
+    expect(css).toContain('focus-visible');
+  });
   beforeEach(() => vi.stubEnv('VITE_DATA_MODE', 'design-preview'));
   afterEach(() => vi.unstubAllEnvs());
+
+  it('keeps login return paths safe and preserves the full source location', () => {
+    expect(safeReturnPath('/messages?tab=unread#latest')).toBe('/messages?tab=unread#latest');
+    expect(safeReturnPath('//evil.example/login')).toBeNull();
+    expect(safeReturnPath('https://evil.example/login')).toBeNull();
+    expect(currentLocationPath({ pathname: '/me', search: '?tab=saved', hash: '#cards' })).toBe('/me?tab=saved#cards');
+  });
 
   it('keeps search scopes semantically distinct', () => {
     const posts = renderRoute('/search/posts?q=人类简史');
@@ -46,7 +65,11 @@ describe('UI integrity', () => {
     expect(compose).not.toContain('compose-live-card');
     expect(compose).not.toContain('发布检查');
     expect(compose).toContain('确认发布');
-    expect(compose).toContain('所有人可见');
+    expect(compose).toContain('谁可以查看');
+    expect(compose).toContain('data-value="public"');
+    expect(compose).toContain('data-value="followers"');
+    expect(compose).toContain('data-value="private"');
+    expect(compose).toContain('卡片范围会与账号隐私设置共同生效');
     expect(compose).toContain('纯文字，不包含媒体');
     expect(composeSource).toContain('<ComposeSkeleton />');
     expect(composeSource).toContain('<ScopedBanner');
@@ -55,6 +78,8 @@ describe('UI integrity', () => {
     expect(composeSource.indexOf('className="compose-media-workspace"')).toBeLessThan(composeSource.indexOf('className="compose-content-field"'));
     expect(composeSource).toContain('再填写必填正文');
     expect(composeSource).toContain('CARD_CONTENT_MAX_LENGTH');
+    expect(composeSource).toContain('payload = { publishType, kind: resolveKind(publishType, nextMedia.length), tags: nextTags, media: nextMedia, visibility }');
+    expect(composeSource).toContain("visibility !== loadedEditVisibilityRef.current ? { visibility } : {}");
     expect(composeSource).not.toContain('普通卡片不设置标题');
     expect(composeSource).toContain('content.length >= 800');
     expect(composeSource).toContain('<ChatComposerInput');
@@ -71,10 +96,13 @@ describe('UI integrity', () => {
     expect(composeSpec).toContain('一条连续编辑轴');
     expect(composeSpec).toContain('正文最多 1000 字');
     expect(composeSpec).toContain('正文紧随其后且必填');
+    expect(composeSpec).toContain('PATCH 不提交 `visibility`');
+    expect(composeSpec).toContain('旧草稿缺失或值无效时按 `public` 恢复');
     expect(composeSpec).toContain('不提供标题');
     expect(composeSpec).toContain('不重复展示当前账号身份');
     expect(composeSpec).not.toContain('作者与未保存状态');
     expect(composeBlueprint).toContain('已发布内容继续使用同一编辑轴');
+    expect(composeBlueprint).toContain('卡片范围会与账号隐私设置共同生效');
     expect(composeBlueprint).not.toContain('composer-author-row');
     expect(readFileSync(fileURLToPath(new URL('../app/router.jsx', import.meta.url)), 'utf8')).toContain('<Navigate to="/me" replace />');
   });
@@ -99,6 +127,8 @@ describe('UI integrity', () => {
     expect(source).not.toContain('云端同步正常');
     expect(source).not.toContain('创作空间');
     expect(css).toContain('.community-page.drafts-page { width: min(860px');
+    expect(css).toContain('grid-template-columns: 44px minmax(0, 1fr) 44px;');
+    expect(css).toContain('.drafts-new { width: 44px; min-width: 44px;');
     expect(css).toContain('.drafts-list { border-right: 0; border-left: 0; border-radius: 0; }');
     expect(spec).toContain('不展示没有服务端依据的“云端同步正常”');
     expect(blueprint).toContain('Drafts · Continuous List');
@@ -169,10 +199,14 @@ describe('UI integrity', () => {
     expect(profileService).toContain("birth_date: user.birth_date || ''");
     expect(owner).toContain('metadata={buildProfileMetadata(profileUser)}');
     expect(owner).toContain('contextLabel="我的"');
+    expect(owner).toContain('const canUseProfileActions = designPreview || (isAuthenticated && canViewProfile);');
+    expect(owner).toContain('const mobileActions = canUseProfileActions');
     expect(owner).toContain('menu={mobileActions}');
     expect(publicProfile).toContain('metadata={buildProfileMetadata(profile)}');
     expect(publicProfile).toContain('contextLabel="用户主页"');
     expect(publicProfile).toContain('menu={profileMenu}');
+    expect(publicProfile).toContain('const profileMenu = auth.isAuthenticated');
+    expect(publicProfile).toContain(': null;');
     expect(publicProfile).toContain("return <Navigate to={ownPath} replace />");
     expect(publicProfile).not.toContain('actions={ownProfile ?');
     expect(publicProfile).toContain('label="发私信"');
@@ -193,6 +227,55 @@ describe('UI integrity', () => {
     expect(identity).toContain('!hasCustomBio && !normalizedBio');
     expect(identity).toContain('!normalizedLocation && normalizedMetadata.length === 0');
     expect(decision).toContain('公开身份元信息不展示 IP 地址');
+    const responsive = readFileSync(fileURLToPath(new URL('../../ui/docs/specifications/LAYOUT-RESPONSIVE.md', import.meta.url)), 'utf8');
+    expect(responsive).toContain('桌面与手机必须共用同一登录/能力门禁');
+    expect(responsive).toContain('隐藏“完整资料 / 分享主页 / 设置”');
+  });
+
+  it('keeps private controls behind the same auth gate on every responsive surface', () => {
+    const profileSettings = readFileSync(fileURLToPath(new URL('../pages/settings/ProfileSettingsPage.jsx', import.meta.url)), 'utf8');
+    const notificationSettings = readFileSync(fileURLToPath(new URL('../pages/settings/NotificationSettingsPage.jsx', import.meta.url)), 'utf8');
+    const privacy = readFileSync(fileURLToPath(new URL('../pages/community/PrivacyPage.jsx', import.meta.url)), 'utf8');
+    const blocked = readFileSync(fileURLToPath(new URL('../pages/settings/BlockedUsersPage.jsx', import.meta.url)), 'utf8');
+    const drafts = readFileSync(fileURLToPath(new URL('../pages/community/DraftsPage.jsx', import.meta.url)), 'utf8');
+    const messages = readFileSync(fileURLToPath(new URL('../pages/community/MessagesPage.jsx', import.meta.url)), 'utf8');
+    const inbox = readFileSync(fileURLToPath(new URL('../pages/community/InboxPage.jsx', import.meta.url)), 'utf8');
+    const newMessage = readFileSync(fileURLToPath(new URL('../pages/community/NewMessagePage.jsx', import.meta.url)), 'utf8');
+    const library = readFileSync(fileURLToPath(new URL('../pages/community/LibraryAssetsPage.jsx', import.meta.url)), 'utf8');
+    const conversation = readFileSync(fileURLToPath(new URL('../pages/community/ConversationPanel.jsx', import.meta.url)), 'utf8');
+    const relations = readFileSync(fileURLToPath(new URL('../pages/profile/ProfileSecondaryPage.jsx', import.meta.url)), 'utf8');
+    const profile = readFileSync(fileURLToPath(new URL('../pages/profile/ProfilePage.jsx', import.meta.url)), 'utf8');
+    const router = readFileSync(fileURLToPath(new URL('../app/router.jsx', import.meta.url)), 'utf8');
+    const navigationSpec = readFileSync(fileURLToPath(new URL('../../ui/docs/specifications/NAVIGATION.md', import.meta.url)), 'utf8');
+    const feedbackSpec = readFileSync(fileURLToPath(new URL('../../ui/docs/specifications/ERROR-FEEDBACK.md', import.meta.url)), 'utf8');
+
+    expect(profileSettings).toContain("authStatus === 'error' ? <ResourceErrorBanner error={authError}");
+    expect(profileSettings).toContain('登录后管理个人资料');
+    expect(notificationSettings).toContain('const canEdit = auth.status === \'ready\' && auth.isAuthenticated;');
+    expect(notificationSettings).toContain('action={canEdit ?');
+    expect(privacy).toContain('action={auth.status === \'ready\' && auth.isAuthenticated ?');
+    expect(privacy).toContain("auth.status === 'error' ? <ResourceErrorBanner error={auth.error}");
+    expect(blocked).toContain("auth.status === 'error' ? <ResourceErrorBanner error={auth.error}");
+    expect(drafts).toContain('{auth.isAuthenticated && <Link className="drafts-new"');
+    expect(messages).toContain('const canSearchMessages = designPreview || (auth.status === \'ready\' && auth.isAuthenticated);');
+    expect(messages).toContain('className="message-search-page-field"');
+    expect(messages).toContain('className="message-search-page-title"');
+    expect(messages).toContain("auth.status === 'error'");
+    expect(messages).toContain('error={auth.error} onRetry={auth.refresh}');
+    expect(inbox).toContain("const canRead = designPreview || (auth.status === 'ready' && auth.isAuthenticated);");
+    expect(inbox).toContain('{canRead && <nav className="notification-filters"');
+    expect(newMessage).toContain("auth.status === 'error' ? <ResourceState status=\"error\" error={auth.error}");
+    expect(library).toContain("auth.status === 'error' ? <ResourceState status=\"error\" error={auth.error}");
+    expect(conversation).toContain("if (auth.status === 'error') return <ConversationStateBoundary");
+    expect(relations).toContain("!designPreview && auth.status === 'error'");
+    expect(relations).toContain("(auth.isAuthenticated || designPreview) && <RelationSwitcher");
+    expect(profile).toContain("!designPreview && authStatus === 'error' ? <ResourceState status=\"error\" error={authError}");
+    expect(router).toContain("import { ProtectedRoute } from './auth-routing.jsx';");
+    expect(router).toContain('<Route path="/me" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />');
+    expect(navigationSpec).toContain('登录边界');
+    expect(navigationSpec).toContain('`from` 只接受单斜杠开头');
+    expect(feedbackSpec).toContain('认证边界');
+    expect(feedbackSpec).toContain('未登录不是业务空状态');
   });
 
   it('keeps journal card copy visible in the mobile home feed', () => {
@@ -206,9 +289,9 @@ describe('UI integrity', () => {
     const service = readFileSync(fileURLToPath(new URL('../services/community-service.js', import.meta.url)), 'utf8');
     expect(source).toContain('listPublicCardsByUser(handle');
     expect(source).toContain('公开内容加载中');
-    expect(source).toContain('公开内容不可见');
+    expect(source).toContain('<ResourceState status="error" error={error}');
     expect(source).toContain('还没有公开内容');
-    expect(source).toContain('这个用户不存在');
+    expect(source).not.toContain('这个用户不存在');
     expect(source).toContain('ProfileContentTabs mode="public"');
     expect(source).toContain('ProfileCardFeed');
     expect(source).toContain('PublicProfileSkeleton');
@@ -388,6 +471,7 @@ describe('UI integrity', () => {
     expect(composeCss).toContain('border-radius: var(--lc-radius-panel);');
     expect(composeCss).toContain('.app-shell.is-compose-route > .product-header { display: none; }');
     expect(composeCss).toContain('.compose-editor-surface { padding: 0 16px; }');
+    expect(composeCss).toMatch(/\.compose-drafts-link\s*\{[\s\S]*?width: 60px;[\s\S]*?justify-content: center;/);
     expect(composeCss).toContain('.compose-content-control {');
     expect(composeCss).toContain('background: var(--lc-surface-subtle);');
     expect(composeCss).toContain('padding: 0 0 calc(96px + env(safe-area-inset-bottom));');
@@ -441,6 +525,7 @@ describe('UI integrity', () => {
     const session = renderRoute('/settings/session');
     const privacy = renderRoute('/settings/privacy');
     const layoutSource = readFileSync(fileURLToPath(new URL('../pages/settings/SettingsLayout.jsx', import.meta.url)), 'utf8');
+    const profileSource = readFileSync(fileURLToPath(new URL('../pages/settings/ProfileSettingsPage.jsx', import.meta.url)), 'utf8');
     const settingsSource = readFileSync(fileURLToPath(new URL('../pages/settings/SettingsPage.jsx', import.meta.url)), 'utf8');
     const routerSource = readFileSync(fileURLToPath(new URL('../app/router.jsx', import.meta.url)), 'utf8');
     const css = readFileSync(fileURLToPath(new URL('../pages/settings/settings.css', import.meta.url)), 'utf8');
@@ -453,6 +538,9 @@ describe('UI integrity', () => {
       expect(html.match(/aria-current="page"/g)).toHaveLength(1);
       expect(html).not.toContain('class="mobile-bottom-nav"');
     }
+    expect(profileSource).toContain('gender: form.gender || null');
+    expect(profileSource).toContain('birth_date: form.birth_date || null');
+    expect(profileSource).not.toContain('当前生成 SDK 尚未提供这两项的保存接口');
     expect(overview).toContain('aria-current="page" href="/settings"');
     expect(overview).toContain('class="settings-overview-list"');
     expect(appearance).toContain('aria-current="page" href="/settings/appearance"');

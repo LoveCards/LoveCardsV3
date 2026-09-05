@@ -20,6 +20,20 @@ export function ConfirmActionDialog({ isOpen, onOpenChange, title, description, 
   return <AlertDialog className="lc-alert-dialog" isOpen={isOpen} onOpenChange={onOpenChange} title={title} description={description} cancelLabel="取消" actionLabel={actionLabel} isActionLoading={isLoading} onAction={onAction} width="min(420px, calc(100vw - 32px))" />;
 }
 
+export function AuthPromptDialog({ isOpen, onOpenChange, action = '继续', onLogin }) {
+  return <AlertDialog
+    className="lc-auth-prompt-dialog"
+    isOpen={isOpen}
+    onOpenChange={onOpenChange}
+    title="登录后继续"
+    description={`登录后可以${action}，完成登录后会回到当前页面。`}
+    cancelLabel="暂不"
+    actionLabel="去登录"
+    onAction={onLogin}
+    width="min(420px, calc(100vw - 32px))"
+  />;
+}
+
 export function ScopedBanner({ status = 'error', title, description, actionLabel, onAction, className = '' }) {
   const endContent = actionLabel
     ? <Button type="button" label={actionLabel} variant="ghost" size="lg" onClick={onAction} />

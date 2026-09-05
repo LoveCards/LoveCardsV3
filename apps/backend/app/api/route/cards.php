@@ -50,7 +50,8 @@ Route::get('users/:uid/cards', 'Content.Cards/listPublicByUid')
 Route::get('cards/:id/comments', 'Content.Comments/cardList')
     ->name('comments.cardList')
     ->setOption('contract', ['request' => ['validate' => PaginationInput::class, 'scene' => 'Defult'], 'response' => ['resource' => CommentResource::class, 'shape' => 'paginated', 'status' => 200]])
-    ->setOption('meta', ['name' => '卡片评论列表', 'group' => '评论', 'access' => ['auth' => 'public']]);
+    ->setOption('meta', ['name' => '卡片评论列表', 'group' => '评论', 'access' => ['auth' => 'public']])
+    ->middleware(OptionalJwtAuth::class);
 
 Route::get('cards/:id', 'Content.Cards/get')
     ->name('cards.get')

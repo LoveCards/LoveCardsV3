@@ -8,6 +8,7 @@ use think\facade\Db;
 
 use app\modules\Content\Infrastructure\Persistence\Model\Comments as CommentsModel;
 use app\modules\Content\Infrastructure\Persistence\Model\Cards as CardsModel;
+use app\modules\Content\Cards\Service\CardVisibilityPolicy;
 use app\modules\Content\Mentions\Service\Mentions;
 use app\modules\Platform\Eventing\Public\DomainEventBus;
 use app\modules\Platform\Notifications\Contract\SystemNoticeIssuer;
@@ -19,6 +20,10 @@ use app\shared\Authorization\GrantSet;
 use app\shared\Authorization\Scope;
 use app\modules\Content\Comments\Service\Policy\CommentPolicy;
 use app\shared\Observability\AdminMutationAudit;
+
+if (!class_exists(CardVisibilityPolicy::class)) {
+    require_once dirname(__DIR__, 2) . '/Cards/Service/CardVisibilityPolicy.php';
+}
 
 class Comments
 {
@@ -181,15 +186,12 @@ class Comments
     }
 
     /** Public card-scoped list with the single pinned top-level comment first. */
-    public static function listCard(int $cardId, array $params): array
+    public static function listCard(int $cardId, array $params, int $viewerId = 0): array
     {
         // Public comment reads must follow the card visibility contract. The
         // comment table is not the source of truth for whether its parent
         // resource is still publicly available.
-        $card = CardsModel::where('id', $cardId)->where('status', 0)->findOrEmpty();
-        if ($card->isEmpty()) {
-            throw \app\api\ApiException::notFound('卡片不存在或不可用');
-        }
+        $card = CardVisibilityPolicy::assertReadable($cardId, $viewerId);
         $page = max(1, (int) ($params['page'] ?? 1));
         $listRows = max(1, min(100, (int) ($params['list_rows'] ?? 15)));
         $pinnedId = (int) ($card->pinned_comment_id ?? 0);
@@ -221,7 +223,7 @@ class Comments
         return $result;
     }
 
-    public static function get(int $id, bool $includeHidden = false): array
+    public static function get(int $id, bool $includeHidden = false, int $viewerId = 0): array
     {
         $query = CommentsModel::where('id', $id);
         if (!$includeHidden) $query->where('status', 0);
@@ -230,10 +232,7 @@ class Comments
             throw \app\api\ApiException::notFound('评论不存在');
         }
         if (!$includeHidden) {
-            $card = CardsModel::where('id', (int) $result->pid)->where('status', 0)->findOrEmpty();
-            if ($card->isEmpty()) {
-                throw \app\api\ApiException::notFound('评论所属卡片不存在或不可用');
-            }
+            CardVisibilityPolicy::assertReadable((int) $result->pid, $viewerId);
         }
         return self::withUsername($result->toArray());
     }
@@ -252,6 +251,7 @@ class Comments
         try {
             $card = CardsModel::where('id', $id)->where('status', 0)->lock(true)->findOrEmpty();
             if ($card->isEmpty()) throw \app\api\ApiException::notFound('卡片不存在');
+            CardVisibilityPolicy::assertReadable($id, (int) ($params['user_id'] ?? 0));
             $parent = null;
             if ($parentId > 0) {
                 $parent = CommentsModel::where('id', $parentId)

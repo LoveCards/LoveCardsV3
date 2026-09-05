@@ -20,12 +20,15 @@ export interface CardTopic {
   name: string
 }
 
+export type CardVisibility = 'public' | 'followers' | 'private'
+
 export interface Card {
   id: number
   user_id: number
   uid: string
   username?: string
   status: number
+  visibility: CardVisibility
   is_top: number
   content: string
   /** 原始卡片扩展数据；新写入不使用 title/summary 作为正文层级。 */
@@ -60,6 +63,7 @@ export interface CardsListParams {
 
 export interface CreateCardParams {
   content: string
+  visibility?: CardVisibility
   data?: JsonObject
   tags?: string[] | number[]
   cover?: string
@@ -70,6 +74,7 @@ export interface CreateCardParams {
 
 export interface UpdateCardParams {
   content?: string
+  visibility?: CardVisibility
   data?: JsonObject
   tags?: string[] | number[]
   cover?: string

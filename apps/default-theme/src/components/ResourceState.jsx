@@ -1,6 +1,7 @@
 import { Button, EmptyState } from '../ui/index.js';
+import { ScopedBanner } from '../ui/interaction.jsx';
 import { FeedSkeleton } from '../features/feed/FeedSkeleton.jsx';
-import { getUserFacingError } from '../app/user-facing-error.js';
+import { getResourceErrorPresentation } from '../app/user-facing-error.js';
 
 const resourceCopy = {
   forbidden: ['当前内容不可访问', '当前账号没有查看这部分内容的权限。'],
@@ -13,6 +14,17 @@ const resourceCopy = {
 
 function stateClassName(status, className) {
   return `resource-state is-${status} ${className}`.trim();
+}
+
+export function ResourceErrorBanner({ error, onRetry, className = '' }) {
+  const presentation = getResourceErrorPresentation(error);
+  return <ScopedBanner
+    className={`resource-error-banner is-${presentation.kind} ${className}`.trim()}
+    title={presentation.title}
+    description={presentation.description}
+    actionLabel={onRetry && presentation.retryable ? presentation.actionLabel : undefined}
+    onAction={onRetry}
+  />;
 }
 
 export function ResourceState({
@@ -36,18 +48,20 @@ export function ResourceState({
   if (status === 'loading') return loadingVariant === 'feed'
     ? <FeedSkeleton className={loadingClassName} label={loadingLabel} />
     : <div className={stateClassName('loading', className)} role="status" aria-live="polite"><span className="sr-only">{loadingLabel}</span><div className="resource-skeleton" aria-hidden="true"><i /><i /><i /></div></div>;
-  // Accept both the explicit `empty` flag and the status vocabulary used by
-  // page resources. This keeps empty results visible instead of falling
-  // through to `children` and rendering a blank data region.
-  if (empty || status === 'empty') return <EmptyState className={stateClassName('empty', className)} title={emptyTitle} description={emptyDescription} actions={emptyAction} headingLevel={headingLevel} isCompact />;
   if (status === 'error') {
-    const detail = description || getUserFacingError(error, { fallback: '内容暂时无法加载，请稍后重试。', validationFallback: '加载条件不符合要求，请返回后重新进入。' });
-    return <div className={stateClassName('error', className)} role="alert"><strong>{title || '暂时无法加载'}</strong><span>{detail}</span>{onRetry && <Button type="button" className="secondary-action" label={actionLabel} variant="secondary" size="lg" onClick={onRetry} />}</div>;
+    const presentation = getResourceErrorPresentation(error);
+    const hasConcreteError = Boolean(error);
+    const resolvedActionLabel = hasConcreteError ? presentation.actionLabel : actionLabel;
+    const showAction = Boolean(onRetry) && (hasConcreteError ? presentation.retryable : Boolean(actionLabel));
+    return <div className={stateClassName(presentation.kind, className)} role="alert" data-error-kind={presentation.kind}><strong>{hasConcreteError ? presentation.title : title || presentation.title}</strong><span>{hasConcreteError ? presentation.description : description || presentation.description}</span>{showAction && <Button type="button" className="secondary-action" label={resolvedActionLabel} variant="secondary" size="lg" onClick={onRetry} />}</div>;
   }
   if (resourceCopy[status]) {
     const [defaultTitle, defaultDescription] = resourceCopy[status];
     const role = status === 'offline' ? 'alert' : 'status';
     return <div className={stateClassName(status, className)} role={role}><strong>{title || defaultTitle}</strong><span>{description || defaultDescription}</span>{onRetry && <Button type="button" className="secondary-action" label={actionLabel} variant="secondary" size="lg" onClick={onRetry} />}</div>;
   }
+  // Empty is only evaluated after request and access failures. A failed
+  // collection starts with no items too, but that is not a valid empty result.
+  if (empty || status === 'empty') return <EmptyState className={stateClassName('empty', className)} title={emptyTitle} description={emptyDescription} actions={emptyAction} headingLevel={headingLevel} isCompact />;
   return children;
 }

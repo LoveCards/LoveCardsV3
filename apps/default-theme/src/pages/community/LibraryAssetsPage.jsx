@@ -80,7 +80,7 @@ export function LibraryAssetsPage({ section }) {
     <Link className="detail-back" to="/me">← 返回个人主页</Link>
     <header className="library-header library-header-row"><div><p className="profile-kicker">个人资产</p><h1 id="library-assets-title">{history ? '浏览历史' : '我的收藏'}</h1><p>{history ? '只在当前账号中保留最近浏览的内容。' : '收藏只对你可见，不会改变原内容。'}</p></div>{history && <Button type="button" label="清空历史" variant="secondary" size="lg" isDisabled={!state.items.length || clearing} onClick={() => setClearOpen(true)} />}</header>
     <ProfileContentTabs />
-    {auth.status === 'checking' ? <ResourceState status="loading" /> : !auth.isAuthenticated ? <ResourceState status="empty" emptyTitle="登录后查看个人资产" emptyDescription="收藏和历史不会显示给其他用户。" emptyAction={<Link className="action-link action-link-primary" to="/auth/login">去登录</Link>} /> : <ResourceState status={state.status} error={state.error} onRetry={load}>
+    {auth.status === 'checking' ? <ResourceState status="loading" /> : auth.status === 'error' ? <ResourceState status="error" error={auth.error} onRetry={auth.refresh} /> : !auth.isAuthenticated ? <ResourceState status="empty" emptyTitle="登录后查看个人资产" emptyDescription="收藏和历史不会显示给其他用户。" emptyAction={<Link className="action-link action-link-primary" to="/auth/login">去登录</Link>} /> : <ResourceState status={state.status} error={state.error} onRetry={load}>
       {state.items.length ? <>
         {cards.length > 0 && <ProfileCardFeed items={cards} ariaLabel={history ? '浏览历史内容' : '收藏内容'} renderAction={(card) => {
           const item = card.libraryRecord;

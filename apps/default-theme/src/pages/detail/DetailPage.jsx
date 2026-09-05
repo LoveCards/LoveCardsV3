@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
 import { ResourceState } from '../../components/ResourceState.jsx';
 import { Icon } from '../../ui/icons.jsx';
@@ -11,7 +11,7 @@ import { createDetailComment, getDetailSnapshot, loadDetail, supportsUserComment
 import { deleteCard, deleteComment } from '../../services/content-service.js';
 import { useAuth } from '../../app/providers.jsx';
 import { loadViewerLikeIds, updateCardLike } from '../../services/feed-service.js';
-import { ActionMenu, Button, ConfirmActionDialog, ToggleButton, useToast } from '../../ui/index.js';
+import { ActionMenu, AuthPromptDialog, Button, ConfirmActionDialog, ToggleButton, useToast } from '../../ui/index.js';
 import { MediaGallery } from '../../features/media/MediaGallery.jsx';
 import { CommentThread } from '../../features/comments/CommentThread.jsx';
 import { SaveCardButton } from '../../features/library/SaveCardButton.jsx';
@@ -51,6 +51,7 @@ function detailTopics(card) {
 
 export function DetailPage() {
   const { id, commentId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
   const { isAuthenticated, session, can } = useAuth();
@@ -69,6 +70,9 @@ export function DetailPage() {
   const [commentLikeBusyIds, setCommentLikeBusyIds] = useState(() => new Set());
   const [commentPinBusy, setCommentPinBusy] = useState(false);
   const [replacePinCommentItem, setReplacePinCommentItem] = useState(null);
+  const [authPromptAction, setAuthPromptAction] = useState('');
+  const requestLogin = (action) => setAuthPromptAction(action);
+  const loginFrom = `${location.pathname}${location.search}${location.hash}`;
 
   useEffect(() => {
     let active = true;
@@ -238,9 +242,9 @@ export function DetailPage() {
         <MediaGallery items={detailMediaItems(data.card)} title={data.card.title} />
         {data.source === 'preview' && <p className="preview-disclosure">设计预览 · 演示数据 · 操作不会保存</p>}
         <footer className="detail-actions">
-          {data.source === 'live' && isAuthenticated && can('likes.create') && can('likes.delete') ? <span className={`detail-like-control${detailLiked ? ' is-active' : ''}`}><ToggleButton label={detailLiked ? '取消喜欢' : '喜欢'} isPressed={detailLiked} icon={<Icon name="heart" size={18} />} pressedIcon={<Icon name="heart" size={18} />} size="lg" pressedChangeAction={toggleDetailLike}>{detailLikeCount}</ToggleButton></span> : data.source === 'live' && !isAuthenticated ? <span className="detail-like-control"><ToggleButton label="登录后喜欢" isPressed={false} icon={<Icon name="heart" size={18} />} size="lg" onPressedChange={(_next, event) => { event.preventDefault(); navigate('/auth/login', { state: { from: `/post/${id}` } }); }}>{detailLikeCount}</ToggleButton></span> : <span className="detail-metric" aria-label={`${detailLikeCount} 个喜欢`}><Icon name="heart" size={18} /> {detailLikeCount}</span>}
+          {data.source === 'live' && isAuthenticated && can('likes.create') && can('likes.delete') ? <span className={`detail-like-control${detailLiked ? ' is-active' : ''}`}><ToggleButton label={detailLiked ? '取消喜欢' : '喜欢'} isPressed={detailLiked} icon={<Icon name="heart" size={18} />} pressedIcon={<Icon name="heart" size={18} />} size="lg" pressedChangeAction={toggleDetailLike}>{detailLikeCount}</ToggleButton></span> : data.source === 'live' && !isAuthenticated ? <span className="detail-like-control"><ToggleButton label="登录后喜欢" isPressed={false} icon={<Icon name="heart" size={18} />} size="lg" onPressedChange={(_next, event) => { event.preventDefault(); requestLogin('喜欢内容'); }}>{detailLikeCount}</ToggleButton></span> : <span className="detail-metric" aria-label={`${detailLikeCount} 个喜欢`}><Icon name="heart" size={18} /> {detailLikeCount}</span>}
           <span className="detail-metric" aria-label={`${data.card.replies} 条回复`}>回复 {data.card.replies}</span>
-          <SaveCardButton cardId={data.card.id} source={data.source} isAuthenticated={isAuthenticated} isSaved={detailSaved} onRequireLogin={() => navigate('/auth/login', { state: { from: `/post/${id}` } })} onFeedback={(body, type) => toast({ body, type: type === 'error' ? 'error' : undefined, uniqueID: 'detail-save', collisionBehavior: 'overwrite' })} />
+          <SaveCardButton cardId={data.card.id} source={data.source} isAuthenticated={isAuthenticated} isSaved={detailSaved} onRequireLogin={() => requestLogin('收藏内容')} onFeedback={(body, type) => toast({ body, type: type === 'error' ? 'error' : undefined, uniqueID: 'detail-save', collisionBehavior: 'overwrite' })} />
           <Button className="detail-share" type="button" label="分享" variant="ghost" size="lg" clickAction={share} />
         </footer>
         <CommentThread
@@ -255,8 +259,9 @@ export function DetailPage() {
            pinBusy={commentPinBusy}
            viewerId={session?.uid}
            commentsUnavailable={data.commentsError}
+           onRetryComments={resource.reload}
            onSubmitComment={submitComment}
-           onLogin={() => navigate('/auth/login', { state: { from: `/post/${id}` } })}
+           onLogin={() => requestLogin('参与评论和回复')}
           onToggleLike={toggleCommentLike}
           likeBusyIds={commentLikeBusyIds}
           onRequestDelete={setDeleteCommentItem}
@@ -275,6 +280,7 @@ export function DetailPage() {
         <ConfirmActionDialog isOpen={deleteCardOpen} onOpenChange={setDeleteCardOpen} title="删除这条内容？" description="内容和相关讨论将不再显示，此操作无法撤销。" actionLabel="删除内容" isLoading={dialogBusy} onAction={removeCard} />
         <ConfirmActionDialog isOpen={Boolean(deleteCommentItem)} onOpenChange={(open) => { if (!open) setDeleteCommentItem(null); }} title="删除这条评论？" description="评论删除后无法恢复。" actionLabel="删除评论" isLoading={dialogBusy} onAction={removeSelectedComment} />
         <ConfirmActionDialog isOpen={Boolean(replacePinCommentItem)} onOpenChange={(open) => { if (!open && !commentPinBusy) setReplacePinCommentItem(null); }} title="替换置顶评论？" description="当前置顶评论将取消置顶，并把这条评论放到讨论顶部。" actionLabel="替换置顶" isLoading={commentPinBusy} onAction={() => { if (replacePinCommentItem) void changePinnedComment(replacePinCommentItem, true); }} />
+        <AuthPromptDialog isOpen={Boolean(authPromptAction)} action={authPromptAction} onOpenChange={(open) => { if (!open) setAuthPromptAction(''); }} onLogin={() => { setAuthPromptAction(''); navigate('/auth/login', { state: { from: loginFrom } }); }} />
       </main>
     </AppShell>
   );

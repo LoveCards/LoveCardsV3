@@ -24,6 +24,7 @@ class Cards extends Model
         'id' => 'INT',
         'is_top' => 'INT',
         'status' => 'INT',
+        'visibility' => 'VARCHAR',
         'user_id' => 'INT',
         'data' => 'JSON',
         'cover' => 'VARCHAR',   // 存储 file_hash（指向 files.hash）

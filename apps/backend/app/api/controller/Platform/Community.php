@@ -13,6 +13,7 @@ use app\modules\Platform\Drafts\Public\Drafts;
 use app\modules\Platform\Messaging\Public\Messaging;
 use app\modules\Platform\User\Public\UidResolver;
 use app\modules\Platform\Safety\Domain\ReportSubmission;
+use app\modules\Content\Cards\Service\CardVisibilityPolicy;
 use app\shared\Transport\Http\CursorPage;
 
 final class Community extends BaseController
@@ -39,10 +40,10 @@ final class Community extends BaseController
     public function following(string $uid) { $p=$this->validated(); return $this->respond(Social::following(UidResolver::id($uid), $this->uid(), $p['cursor'] ?? null, (int)($p['limit'] ?? 20))); }
     public function relation(string $uid) { return $this->respond(Social::relation($this->uid(), UidResolver::id($uid))); }
 
-    public function save() { $p=$this->validated(); Library::save($this->uid(), $this->ref($p)); return $this->respond(); }
+    public function save() { $p=$this->validated(); $ref=$this->ref($p); if ($ref->type() === 'card') CardVisibilityPolicy::assertReadable((int) $ref->id(), $this->uid()); Library::save($this->uid(), $ref); return $this->respond(); }
     public function remove() { $p=$this->validated(); Library::remove($this->uid(), $this->ref($p)); return $this->respond(); }
     public function library() { $p=$this->validated(); return $this->respond(Library::saved($this->uid(), $p['cursor'] ?? null, (int)($p['limit'] ?? 20))); }
-    public function recordHistory() { $p=$this->validated(); Library::recordView($this->uid(), $this->ref($p)); return $this->respond(); }
+    public function recordHistory() { $p=$this->validated(); $ref=$this->ref($p); if ($ref->type() === 'card') CardVisibilityPolicy::assertReadable((int) $ref->id(), $this->uid()); Library::recordView($this->uid(), $ref); return $this->respond(); }
     public function history() { $p=$this->validated(); return $this->respond(Library::history($this->uid(), $p['cursor'] ?? null, (int)($p['limit'] ?? 20))); }
     public function clearHistory() { Library::clearHistory($this->uid()); return $this->respond(); }
 

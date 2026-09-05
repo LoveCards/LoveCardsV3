@@ -24,14 +24,23 @@ const desktopNav = [
   { to: '/messages', label: '消息', inbox: true },
 ];
 
+const protectedNavigationPrefixes = ['/me', '/messages', '/inbox', '/compose', '/drafts', '/settings/profile', '/settings/security', '/settings/session', '/settings/privacy', '/settings/blocked', '/settings/notifications'];
+
+function isProtectedNavigationTarget(target) {
+  return protectedNavigationPrefixes.some((prefix) => target === prefix || target.startsWith(`${prefix}/`) || target.startsWith(`${prefix}?`));
+}
+
 export function AppShell({ children, mobileMode = 'standard' }) {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const hasMobileBottomNav = mobileMode === 'standard';
   const messageCenterActive = pathname === '/messages' || pathname.startsWith('/messages/') || pathname === '/inbox' || pathname.startsWith('/inbox/');
   const composeActive = pathname === '/compose' || pathname.startsWith('/compose/');
-  const { isAuthenticated, isVisitor, user, logout } = useAuth();
+  const { isAuthenticated, isVisitor, user, logout, status: authStatus } = useAuth();
   const designPreview = getRuntimeDataMode() === 'design-preview';
+  const requiresLogin = !designPreview && authStatus === 'ready' && !isAuthenticated;
+  const navigationTarget = (target) => requiresLogin && isProtectedNavigationTarget(target) ? '/auth/login' : target;
+  const navigationState = (target) => requiresLogin && isProtectedNavigationTarget(target) ? { from: target } : undefined;
   const [authExpired, setAuthExpired] = useState(false);
   const [sessionError, setSessionError] = useState(false);
   const [notificationUnread, setNotificationUnread] = useState(0);
@@ -105,14 +114,14 @@ export function AppShell({ children, mobileMode = 'standard' }) {
               if (item.unavailable) return <span className="nav-unavailable" aria-disabled="true" key={item.label}>{item.label}<small>未开放</small></span>;
               const content = <>{item.label}{item.inbox && notificationUnread > 0 && <span className="nav-unread" aria-label={`${notificationUnread} 条未读通知`}>{notificationUnread > 99 ? '99+' : notificationUnread}</span>}</>;
               return item.inbox
-                ? <Link aria-current={messageCenterActive ? 'page' : undefined} key={item.to} to={item.to}>{content}</Link>
-                : <NavLink end={item.end} key={item.to} to={item.to}>{content}</NavLink>;
+                ? <Link aria-current={messageCenterActive ? 'page' : undefined} key={item.to} to={navigationTarget(item.to)} state={navigationState(item.to)}>{content}</Link>
+                : <NavLink end={item.end} key={item.to} to={navigationTarget(item.to)} state={navigationState(item.to)}>{content}</NavLink>;
             })}
           </nav>
           <HeaderSearch />
           <div className="header-actions">
             <IconButton className="mobile-search-trigger" type="button" label="打开搜索" tooltip="搜索" variant="ghost" size="lg" icon={<Icon name="search" size={20} />} onClick={() => window.dispatchEvent(new CustomEvent('lc-open-mobile-search'))} />
-            <Link className="header-compose" to="/compose">发布</Link>
+            <Link className="header-compose" to={navigationTarget('/compose')} state={navigationState('/compose')}>发布</Link>
             <ThemeToggle />
             <div className="header-profile"><ActionMenu items={accountItems} label={isAuthenticated ? `${user?.username || '账号'}菜单` : designPreview ? '设计预览菜单' : isVisitor ? '游客菜单' : '登录与设置'} icon={<Avatar label={isAuthenticated ? (user?.username || '我') : designPreview ? '预' : isVisitor ? '访' : '登'} src={isAuthenticated ? user?.avatar : undefined} tone="sand" size="sm" />} /></div>
           </div>
@@ -133,12 +142,13 @@ export function AppShell({ children, mobileMode = 'standard' }) {
             {item.inbox && notificationUnread > 0 && <span className="mobile-nav-unread" aria-label={`${notificationUnread} 条未读通知`}>{notificationUnread > 99 ? '99+' : notificationUnread}</span>}
             {item.compose && <span className="sr-only">{item.label}</span>}
           </>;
-          if (item.inbox) return <Link className={messageCenterActive ? 'is-active' : undefined} aria-current={messageCenterActive ? 'page' : undefined} key={item.to} to={item.to}>{content}</Link>;
+          if (item.inbox) return <Link className={messageCenterActive ? 'is-active' : undefined} aria-current={messageCenterActive ? 'page' : undefined} key={item.to} to={navigationTarget(item.to)} state={navigationState(item.to)}>{content}</Link>;
           return <NavLink
             className={({ isActive }) => `${item.compose ? 'is-compose ' : ''}${isActive ? 'is-active' : ''}`.trim()}
             end={item.end}
             key={item.to}
-            to={item.to}
+            to={navigationTarget(item.to)}
+            state={navigationState(item.to)}
           >{content}</NavLink>;
         })}
       </nav>}

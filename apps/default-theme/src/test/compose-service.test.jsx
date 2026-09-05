@@ -7,7 +7,7 @@ const sdk = vi.hoisted(() => ({
 
 vi.mock('../app/sdk-client.js', () => sdk);
 
-import { loadPublishedCardForEdit, publishCard, updatePublishedCard } from '../services/compose-service.js';
+import { loadPublishedCardForEdit, normalizeCardVisibility, publishCard, updatePublishedCard } from '../services/compose-service.js';
 
 beforeEach(() => {
   vi.stubEnv('VITE_DATA_MODE', 'api');
@@ -21,6 +21,12 @@ afterEach(() => {
 });
 
 describe('compose media publishing', () => {
+  it('restores legacy or invalid draft visibility as public', () => {
+    expect(normalizeCardVisibility(undefined)).toBe('public');
+    expect(normalizeCardVisibility('legacy')).toBe('public');
+    expect(normalizeCardVisibility('followers')).toBe('followers');
+  });
+
   it('creates an explicit text card without uploading media', async () => {
     const create = vi.fn().mockResolvedValue({ id: 7, status: 0 });
     const client = { getToken: vi.fn().mockReturnValue('token'), files: { upload: vi.fn(), delete: vi.fn() }, cards: { create } };
@@ -29,7 +35,7 @@ describe('compose media publishing', () => {
     await publishCard({ content: '  今天的随笔  ', tags: [], kind: 'text' });
 
     expect(client.files.upload).not.toHaveBeenCalled();
-    expect(create).toHaveBeenCalledWith({ content: '今天的随笔', tags: [], data: { kind: 'text' } });
+    expect(create).toHaveBeenCalledWith({ content: '今天的随笔', tags: [], visibility: 'public', data: { kind: 'text' } });
   });
 
   it('rejects card content longer than 1000 characters before creating it', async () => {
@@ -49,7 +55,7 @@ describe('compose media publishing', () => {
     await publishCard({ content: '单图正文', tags: [], kind: 'image', files: [new Blob(['one'], { type: 'image/jpeg' })] });
 
     expect(create).toHaveBeenCalledWith({
-      content: '单图正文', tags: [], data: { kind: 'image' }, media_file_ids: [10], cover_file_id: 10,
+      content: '单图正文', tags: [], visibility: 'public', data: { kind: 'image' }, media_file_ids: [10], cover_file_id: 10,
     });
   });
 
@@ -70,6 +76,7 @@ describe('compose media publishing', () => {
     expect(create).toHaveBeenCalledWith({
       content: '多图正文',
       tags: ['城市'],
+      visibility: 'public',
       data: { kind: 'gallery' },
       cover_file_id: 11,
       media_file_ids: [11, 12],
@@ -84,7 +91,7 @@ describe('compose media publishing', () => {
     await publishCard({ content: '视频正文', tags: ['晨跑'], kind: 'video', files: [new Blob(['clip'], { type: 'video/mp4' })] });
 
     expect(create).toHaveBeenCalledWith({
-      content: '视频正文', tags: ['晨跑'], data: { kind: 'video' }, media_file_ids: [31],
+      content: '视频正文', tags: ['晨跑'], visibility: 'public', data: { kind: 'video' }, media_file_ids: [31],
     });
   });
 
@@ -103,9 +110,26 @@ describe('compose media publishing', () => {
 
     expect(upload).not.toHaveBeenCalled();
     expect(create).toHaveBeenCalledWith({
-      content: '恢复的图集', tags: ['旅行'], data: { kind: 'gallery' },
+      content: '恢复的图集', tags: ['旅行'], visibility: 'public', data: { kind: 'gallery' },
       media_file_ids: [41, 42], cover_file_id: 41,
     });
+  });
+
+  it.each(['followers', 'private'])('publishes the selected %s visibility through the generated SDK', async (visibility) => {
+    const create = vi.fn().mockResolvedValue({ id: 91, status: 0 });
+    sdk.getSdkClient.mockReturnValue({ getToken: vi.fn().mockReturnValue('token'), files: { upload: vi.fn(), delete: vi.fn() }, cards: { create } });
+
+    await publishCard({ content: '范围测试', tags: [], kind: 'text', visibility });
+
+    expect(create).toHaveBeenCalledWith({ content: '范围测试', tags: [], visibility, data: { kind: 'text' } });
+  });
+
+  it('rejects an invalid visibility before creating a card', async () => {
+    const create = vi.fn();
+    sdk.getSdkClient.mockReturnValue({ getToken: vi.fn().mockReturnValue('token'), files: { upload: vi.fn(), delete: vi.fn() }, cards: { create } });
+
+    await expect(publishCard({ content: '范围测试', tags: [], kind: 'text', visibility: 'friends' })).rejects.toThrow('请选择有效的内容可见范围');
+    expect(create).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -152,6 +176,7 @@ describe('published card editing', () => {
     const getOwn = vi.fn().mockResolvedValue({
       id: 42,
       content: '原正文',
+      visibility: 'followers',
       data: { kind: 'gallery', accent: 'rose' },
       tags: [13, 5, 4],
       topics: [{ id: 13, name: '牛的' }, { id: 5, name: '纪念日' }, { id: 4, name: '生日' }],
@@ -170,6 +195,7 @@ describe('published card editing', () => {
       tags: ['牛的', '纪念日', '生日'],
       data: { kind: 'gallery', accent: 'rose' },
       publishType: 'image',
+      visibility: 'followers',
       media: [{ id: 11, url: '/one.jpg' }, { id: 12, url: '/two.jpg' }],
     });
     expect(getOwn).toHaveBeenCalledWith(42);
@@ -213,6 +239,33 @@ describe('published card editing', () => {
     expect(update).toHaveBeenCalledWith(42, {
       content: '纯文字', tags: [], data: { kind: 'text' }, media_file_ids: [], cover_file_id: 0,
     });
+  });
+
+  it('omits unchanged visibility and can explicitly change it back to public', async () => {
+    const update = vi.fn().mockResolvedValue(undefined);
+    sdk.getSdkClient.mockReturnValue({
+      getToken: vi.fn().mockReturnValue('token'),
+      cards: { update },
+      files: { upload: vi.fn(), delete: vi.fn() },
+    });
+
+    await updatePublishedCard({ id: 42, content: '不改范围', tags: [], kind: 'text' });
+    expect(update.mock.calls[0][1]).not.toHaveProperty('visibility');
+
+    await updatePublishedCard({ id: 42, content: '改回公开', tags: [], kind: 'text', visibility: 'public' });
+    expect(update.mock.calls[1][1]).toMatchObject({ visibility: 'public' });
+  });
+
+  it('rejects an invalid visibility before updating a card', async () => {
+    const update = vi.fn();
+    sdk.getSdkClient.mockReturnValue({
+      getToken: vi.fn().mockReturnValue('token'),
+      cards: { update },
+      files: { upload: vi.fn(), delete: vi.fn() },
+    });
+
+    await expect(updatePublishedCard({ id: 42, content: '范围测试', tags: [], kind: 'text', visibility: 'friends' })).rejects.toThrow('请选择有效的内容可见范围');
+    expect(update).not.toHaveBeenCalled();
   });
 
   it('rejects an overlong edit before calling the SDK', async () => {

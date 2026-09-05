@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
-import { deleteComposeMedia, getComposeState, loadComposeTopics, loadPublishedCardForEdit, normalizeDraftMedia, publishCard, updatePublishedCard, uploadComposeMedia } from '../../services/compose-service.js';
+import { deleteComposeMedia, getComposeState, loadComposeTopics, loadPublishedCardForEdit, normalizeCardVisibility, normalizeDraftMedia, publishCard, updatePublishedCard, uploadComposeMedia } from '../../services/compose-service.js';
 import { createDraft, deleteDraft, draftSummary, getDraft, normalizeDraftPayload, updateDraft } from '../../services/community-service.js';
 import { useAuth } from '../../app/providers.jsx';
-import { ResourceState } from '../../components/ResourceState.jsx';
+import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
 import { useUnsavedChanges } from '../../app/use-unsaved-changes.js';
 import { getUserFacingError } from '../../app/user-facing-error.js';
 import { getSdkClient } from '../../app/sdk-client.js';
@@ -19,6 +19,12 @@ const publishTypes = {
   image: { label: '图文', description: '先添加 1–9 张图片或 GIF，再填写必填正文。' },
   video: { label: '视频', description: '先添加一个视频，再填写必填正文。' },
 };
+
+const visibilityOptions = [
+  { value: 'public', label: '公开', description: '按账号当前隐私设置公开展示。' },
+  { value: 'followers', label: '仅关注者', description: '限制为你和关注你的人查看。' },
+  { value: 'private', label: '仅自己', description: '只有你自己可以查看。' },
+];
 
 function topicsFrom(value) {
   const seen = new Set();
@@ -58,11 +64,12 @@ function resolveKind(publishType, mediaCount) {
   return publishType === 'image' && mediaCount > 1 ? 'gallery' : publishType;
 }
 
-function composeSignature({ content, tags, publishType, media, files }) {
+function composeSignature({ content, tags, publishType, media, files, visibility = 'public' }) {
   return JSON.stringify({
     content,
     tags,
     publishType,
+    visibility,
     media: media.map((item) => item.id),
     files: files.map((item) => [item.name, item.size, item.type, item.lastModified]),
   });
@@ -84,19 +91,22 @@ export function ComposePage() {
   const hasConflictingQuery = editMode && draftQuery !== null;
   const loadedDraftRef = useRef(null);
   const loadedEditRef = useRef(null);
+  const loadedEditVisibilityRef = useRef('public');
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
   const [topicOptions, setTopicOptions] = useState([]);
-  const [topicOptionsError, setTopicOptionsError] = useState('');
+  const [topicOptionsError, setTopicOptionsError] = useState(null);
   const [files, setFiles] = useState([]);
   const [mediaPreviews, setMediaPreviews] = useState([]);
   const [persistedMedia, setPersistedMedia] = useState([]);
   const [removedMediaIds, setRemovedMediaIds] = useState([]);
   const [publishType, setPublishType] = useState('text');
+  const [visibility, setVisibility] = useState('public');
   const [draftId, setDraftId] = useState(null);
   const [publishedCardId, setPublishedCardId] = useState(null);
   const [publishedData, setPublishedData] = useState({});
   const [loadState, setLoadState] = useState('ready');
+  const [loadError, setLoadError] = useState(null);
   const [savedSignature, setSavedSignature] = useState(composeSignature({ content: '', tags: '', publishType: 'text', media: [], files: [] }));
   const [pendingPublishType, setPendingPublishType] = useState(null);
   const [typeSwitchOpen, setTypeSwitchOpen] = useState(false);
@@ -143,7 +153,7 @@ export function ComposePage() {
   useEffect(() => {
     if (designPreview || !isAuthenticated) return undefined;
     let active = true;
-    loadComposeTopics().then((items) => { if (active) setTopicOptions(items); }).catch((error) => { if (active) setTopicOptionsError(getUserFacingError(error, { fallback: '话题建议暂时无法加载，你仍可直接发布内容。' })); });
+    loadComposeTopics().then((items) => { if (active) { setTopicOptions(items); setTopicOptionsError(null); } }).catch((error) => { if (active) setTopicOptionsError(error); });
     return () => { active = false; };
   }, [designPreview, isAuthenticated]);
 
@@ -160,6 +170,7 @@ export function ComposePage() {
       if (loadedDraftRef.current !== null || loadedEditRef.current !== null) {
         loadedDraftRef.current = null;
         loadedEditRef.current = null;
+        loadedEditVisibilityRef.current = 'public';
         setDraftId(null);
         setPublishedCardId(null);
         setPublishedData({});
@@ -169,21 +180,25 @@ export function ComposePage() {
         setPersistedMedia([]);
         setRemovedMediaIds([]);
         setPublishType('text');
+        setVisibility('public');
         setSavedSignature(composeSignature({ content: '', tags: '', publishType: 'text', media: [], files: [] }));
         setStatus('idle');
         setMessage('');
       }
       setLoadState('ready');
+      setLoadError(null);
       return undefined;
     }
     if (!requestedDraftId) {
       setLoadState('error');
+      setLoadError(null);
       setMessage('草稿链接无效，请从草稿箱重新选择。');
       return undefined;
     }
     if (loadedDraftRef.current === requestedDraftId) return undefined;
     let active = true;
     setLoadState('loading');
+    setLoadError(null);
     setMessage('');
     getDraft(requestedDraftId).then((draft) => {
       if (!active) return;
@@ -205,14 +220,17 @@ export function ComposePage() {
       setPersistedMedia(media);
       setRemovedMediaIds([]);
       setPublishType(nextType);
-      setSavedSignature(composeSignature({ content: nextContent, tags: nextTags, publishType: nextType, media, files: [] }));
+      const nextVisibility = normalizeCardVisibility(payload.visibility);
+      setVisibility(nextVisibility);
+      setSavedSignature(composeSignature({ content: nextContent, tags: nextTags, publishType: nextType, media, files: [], visibility: nextVisibility }));
       setLoadState('ready');
+      setLoadError(null);
       setStatus('success');
       setMessage('草稿已恢复，可以继续完成发布。');
     }).catch((error) => {
       if (!active) return;
-      setLoadState(error?.status === 404 ? 'not-found' : error?.status === 403 ? 'forbidden' : 'error');
-      setMessage(getUserFacingError(error, { fallback: '草稿暂时无法加载，请稍后重试。' }));
+      setLoadState('error');
+      setLoadError(error);
     });
     return () => { active = false; };
   }, [authStatus, designPreview, draftQuery, editMode, isAuthenticated, requestedDraftId]);
@@ -221,17 +239,20 @@ export function ComposePage() {
     if (designPreview || authStatus !== 'ready' || !isAuthenticated || !editMode) return undefined;
     if (hasConflictingQuery) {
       setLoadState('error');
+      setLoadError(null);
       setMessage('编辑链接不能同时包含草稿和已发布内容，请重新进入。');
       return undefined;
     }
     if (!requestedEditId) {
       setLoadState('error');
+      setLoadError(null);
       setMessage('编辑链接无效，请从自己的内容重新进入。');
       return undefined;
     }
     if (loadedEditRef.current === requestedEditId) return undefined;
     let active = true;
     setLoadState('loading');
+    setLoadError(null);
     setMessage('');
     loadPublishedCardForEdit(requestedEditId).then((card) => {
       if (!active) return;
@@ -247,14 +268,17 @@ export function ComposePage() {
       setPersistedMedia(card.media);
       setRemovedMediaIds([]);
       setPublishType(card.publishType);
-      setSavedSignature(composeSignature({ content: card.content, tags: nextTags, publishType: card.publishType, media: card.media, files: [] }));
+      loadedEditVisibilityRef.current = card.visibility;
+      setVisibility(card.visibility);
+      setSavedSignature(composeSignature({ content: card.content, tags: nextTags, publishType: card.publishType, media: card.media, files: [], visibility: card.visibility }));
       setLoadState('ready');
+      setLoadError(null);
       setStatus('success');
       setMessage('已载入当前内容。');
     }).catch((error) => {
       if (!active) return;
-      setLoadState(error?.status === 404 ? 'not-found' : error?.status === 403 ? 'forbidden' : 'error');
-      setMessage(getUserFacingError(error, { fallback: '内容暂时无法加载，请稍后重试。' }));
+      setLoadState('error');
+      setLoadError(error);
     });
     return () => { active = false; };
   }, [authStatus, designPreview, editMode, hasConflictingQuery, isAuthenticated, requestedEditId]);
@@ -264,9 +288,10 @@ export function ComposePage() {
     ...mediaPreviews.map((item) => ({ ...item, name: item.file.name, type: item.file.type, source: 'local' })),
   ], [mediaPreviews, persistedMedia]);
   const mediaCount = persistedMedia.length + files.length;
-  const currentSignature = composeSignature({ content, tags, publishType, media: persistedMedia, files });
+  const currentSignature = composeSignature({ content, tags, publishType, media: persistedMedia, files, visibility });
   const dirty = currentSignature !== savedSignature;
   const topicList = topicsFrom(tags);
+  const activeVisibility = visibilityOptions.find((option) => option.value === visibility) || visibilityOptions[0];
   const contentError = validationAttempted && (!content.trim() || content.length > CARD_CONTENT_MAX_LENGTH);
   const contentErrorMessage = !content.trim()
     ? publishType === 'text' ? '请先写下要分享的内容。' : `${publishTypes[publishType].label}必须填写正文，请补充后再发布。`
@@ -344,7 +369,7 @@ export function ComposePage() {
       uploadedMedia = await uploadComposeMedia(files);
       const nextMedia = [...persistedMedia, ...uploadedMedia];
       const nextTags = topicsFrom(tags);
-      const payload = { publishType, kind: resolveKind(publishType, nextMedia.length), tags: nextTags, media: nextMedia };
+      const payload = { publishType, kind: resolveKind(publishType, nextMedia.length), tags: nextTags, media: nextMedia, visibility };
       const data = { title: draftSummary({ content, payload }), content, payload };
       let nextId = draftId;
       if (nextId) {
@@ -362,7 +387,7 @@ export function ComposePage() {
       setFiles([]);
       setRemovedMediaIds([]);
       setTags(normalizedTags);
-      setSavedSignature(composeSignature({ content, tags: normalizedTags, publishType, media: nextMedia, files: [] }));
+      setSavedSignature(composeSignature({ content, tags: normalizedTags, publishType, media: nextMedia, files: [], visibility }));
       const nextSearchParams = new URLSearchParams(searchParams);
       nextSearchParams.set('draft', String(nextId));
       setSearchParams(nextSearchParams, { replace: true });
@@ -416,6 +441,7 @@ export function ComposePage() {
           media: persistedMedia,
           data: publishedData,
           mediaChanged: files.length > 0 || removedMediaIds.length > 0,
+          ...(visibility !== loadedEditVisibilityRef.current ? { visibility } : {}),
         });
         await deleteComposeMedia(removedMediaIds);
         setRemovedMediaIds([]);
@@ -425,7 +451,7 @@ export function ComposePage() {
         navigate(`/post/${result.id}`);
         return;
       }
-      const result = await publishCard({ content, tags: topicsFrom(tags), kind: resolveKind(publishType, mediaCount), files, media: persistedMedia });
+      const result = await publishCard({ content, tags: topicsFrom(tags), kind: resolveKind(publishType, mediaCount), files, media: persistedMedia, visibility });
       let draftCleanupFailed = false;
       if (draftId) {
         try {
@@ -489,7 +515,7 @@ export function ComposePage() {
           </div>}
         </header>
 
-        {!designPreview && authStatus === 'checking' ? <ComposeSkeleton /> : !designPreview && authStatus === 'error' ? <ResourceState status="error" error={authError} onRetry={refreshAuth} /> : !designPreview && !isAuthenticated ? <section className="profile-boundary"><h2>登录后{editMode ? '编辑' : '发布'}内容</h2><p>游客可以浏览公开内容；发布、评论和管理个人内容需要正式账号。</p><Link className="action-link action-link-primary" to="/auth/login">去登录</Link></section> : !designPreview && !canWriteCard ? <section className="profile-boundary"><h2>当前账号不能{editMode ? '编辑' : '发布'}</h2><p>你的账号暂时没有{editMode ? '修改这张卡片' : '发布内容'}的权限。</p><Link className="action-link" to={returnDestination}>返回</Link></section> : loadState === 'loading' ? <ComposeSkeleton /> : loadState === 'error' ? <section className="profile-boundary"><h2>{editMode ? '内容加载失败' : '草稿加载失败'}</h2><p>{message}</p><Link className="action-link action-link-primary" to={editMode ? returnDestination : '/drafts'}>返回</Link></section> : loadState === 'forbidden' ? <section className="profile-boundary"><h2>不能编辑这张卡片</h2><p>它不属于当前账号，或当前账号没有修改权限。</p><Link className="action-link" to="/me">返回我的主页</Link></section> : loadState === 'not-found' ? <section className="profile-boundary"><h2>{editMode ? '这张卡片不存在' : '这份草稿不存在'}</h2><p>它可能已被删除，或不属于当前账号。</p><Link className="action-link" to={editMode ? '/me' : '/drafts'}>返回</Link></section> : <form className="compose-form" onSubmit={submit}>
+        {!designPreview && authStatus === 'checking' ? <ComposeSkeleton /> : !designPreview && authStatus === 'error' ? <ResourceState status="error" error={authError} onRetry={refreshAuth} /> : !designPreview && !isAuthenticated ? <section className="profile-boundary"><h2>登录后{editMode ? '编辑' : '发布'}内容</h2><p>游客可以浏览公开内容；发布、评论和管理个人内容需要正式账号。</p><Link className="action-link action-link-primary" to="/auth/login">去登录</Link></section> : !designPreview && !canWriteCard ? <section className="profile-boundary"><h2>当前账号不能{editMode ? '编辑' : '发布'}</h2><p>你的账号暂时没有{editMode ? '修改这张卡片' : '发布内容'}的权限。</p><Link className="action-link" to={returnDestination}>返回</Link></section> : loadState === 'loading' ? <ComposeSkeleton /> : loadState === 'error' ? <ResourceState className="profile-boundary" status="error" error={loadError} title={editMode ? '编辑链接无效' : '草稿链接无效'} description={message} actionLabel="返回" onRetry={loadError ? () => window.location.reload() : () => navigate(editMode ? returnDestination : '/drafts')} /> : loadState === 'forbidden' ? <section className="profile-boundary"><h2>不能编辑这张卡片</h2><p>它不属于当前账号，或当前账号没有修改权限。</p><Link className="action-link" to="/me">返回我的主页</Link></section> : loadState === 'not-found' ? <section className="profile-boundary"><h2>{editMode ? '这张卡片不存在' : '这份草稿不存在'}</h2><p>它可能已被删除，或不属于当前账号。</p><Link className="action-link" to={editMode ? '/me' : '/drafts'}>返回</Link></section> : <form className="compose-form" onSubmit={submit}>
           <section className="compose-editor-surface" id="compose-content">
               <section className="compose-type-selector" aria-labelledby="compose-type-title">
                 <header><div><h3 id="compose-type-title">发布类型</h3><p>{publishTypes[publishType].description}</p></div></header>
@@ -554,8 +580,13 @@ export function ComposePage() {
                 <TextInput className="compose-tags-field" label="话题" description="可选，最多 3 个；用空格或逗号分隔。" value={tags} onChange={(value) => { setTags(value); setTopicLimitHit(false); }} size="lg" width="100%" placeholder="城市漫游  周末记录" isDisabled={busy} status={topicError ? { type: 'error', message: '最多添加 3 个话题，请移除多余话题。' } : undefined} statusVariant="detached" />
                 {topicList.length > 0 && <div className="compose-topic-chips" aria-label="已选话题">{topicList.map((topic) => <button key={topic} type="button" className="compose-topic-chip" onClick={() => removeTopic(topic)} disabled={busy}>#{topic}<span aria-hidden="true">×</span></button>)}</div>}
                 {topicSuggestions.length > 0 && <div className="compose-topic-suggestions" aria-label="话题建议"><span>已有话题</span>{topicSuggestions.map((topic) => <button key={topic.id} type="button" onClick={() => addTopic(topic.name)} disabled={busy}>#{topic.name}</button>)}</div>}
-                {topicOptionsError && <p className="compose-topic-hint" role="status">{topicOptionsError}</p>}
-                <div className="compose-visibility"><span><Icon name="check" size={16} /></span><div><strong>所有人可见</strong><small>发布后会进入公开内容流与个人主页。</small></div></div>
+                {topicOptionsError && <ResourceErrorBanner className="compose-topic-hint" error={topicOptionsError} />}
+                <section className="compose-visibility" aria-labelledby="compose-visibility-title">
+                  <header><h3 id="compose-visibility-title">谁可以查看</h3><p>{activeVisibility.description} 卡片范围会与账号隐私设置共同生效。</p></header>
+                  <SegmentedControl className="compose-visibility-control" value={visibility} onChange={setVisibility} label="卡片可见范围" layout="fill" size="lg" isDisabled={busy}>
+                    {visibilityOptions.map((option) => <SegmentedControlItem key={option.value} value={option.value} label={option.label} />)}
+                  </SegmentedControl>
+                </section>
               </section>
 
               {status === 'error' && message && <ScopedBanner className="compose-task-feedback" title={editMode ? '修改没有保存' : message.includes('草稿') ? '草稿没有保存' : '内容没有发布'} description={message} />}

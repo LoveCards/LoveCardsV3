@@ -47,8 +47,8 @@ describe('message center navigation', () => {
   it('keeps only engagement and system as canonical notification URLs', () => {
     const source = readFileSync(fileURLToPath(new URL('../app/router.jsx', import.meta.url)), 'utf8');
 
-    expect(source).toContain('<Route path="/inbox" element={<InboxPage />} />');
-    expect(source).toContain('<Route path="/inbox/system" element={<InboxPage />} />');
+    expect(source).toContain('<Route path="/inbox" element={<ProtectedRoute><InboxPage /></ProtectedRoute>} />');
+    expect(source).toContain('<Route path="/inbox/system" element={<ProtectedRoute><InboxPage /></ProtectedRoute>} />');
     for (const legacyType of ['all', 'engagement', 'message', 'social', 'interaction']) {
       expect(source).toContain(`<Route path="/inbox/${legacyType}" element={<Navigate to="/inbox" replace />} />`);
     }

@@ -31,7 +31,7 @@ function collectionTotal(collection, fallback) {
 function normalizeProfileUser(user, relation) {
   return {
     id: user.id,
-    uid: user.uid,
+    uid: String(user.uid),
     username: user.username || `用户 ${user.id}`,
     // A profile URL is an identity route, so only a server-provided handle
     // or the real username may be used. Numeric account numbers and ids are
@@ -68,18 +68,26 @@ export async function loadProfile({ signal } = {}) {
   if (snapshot.source !== 'loading') return snapshot;
   if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
   const client = getSdkClient();
-  const [user, cards] = await Promise.all([
-    client.users.me(),
-    client.cards.listOwn({ page: 1, list_rows: 30, order_key: 'created_at', order_desc: true }),
-  ]);
+  // The identity surface is primary; a temporary failure in the card feed
+  // must not blank the whole /me page.
+  const user = await client.users.me();
+  let cards;
+  let cardsError = null;
+  try {
+    cards = await client.cards.listOwn({ page: 1, list_rows: 30, order_key: 'created_at', order_desc: true });
+  } catch (error) {
+    cardsError = error;
+    cards = { data: [] };
+  }
   if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
-  if (!user || typeof user.uid !== 'string' || !/^\d{12}$/.test(user.uid)) throw new Error('SDK 契约错误：users.me() 未返回有效 UID。');
+  if (!user || !/^\d{12}$/.test(String(user.uid || ''))) throw new Error('SDK 契约错误：users.me() 未返回有效 UID。');
   if (!cards || !Array.isArray(cards.data)) throw new Error('SDK 契约错误：cards.listOwn() 应返回 ListResult。');
   const relation = client.social?.relation ? await client.social.relation(user.uid).catch(() => null) : null;
   return {
     source: 'live',
     user: normalizeProfileUser(user, relation),
     items: cards.data.map(normalizeSdkCard),
+    cardsError,
     // A page length is not a content total. If the SDK omits pagination
     // metadata, leave the count unknown instead of presenting a false number.
     contentCount: collectionTotal(cards, null),
@@ -96,7 +104,7 @@ export async function loadProfileIdentity({ signal } = {}) {
   const client = getSdkClient();
   const user = await client.users.me();
   if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
-  if (!user || typeof user.uid !== 'string' || !/^\d{12}$/.test(user.uid)) throw new Error('SDK 契约错误：users.me() 未返回有效 UID。');
+  if (!user || !/^\d{12}$/.test(String(user.uid || ''))) throw new Error('SDK 契约错误：users.me() 未返回有效 UID。');
   const relation = client.social?.relation ? await client.social.relation(user.uid).catch(() => null) : null;
   return { source: 'live', user: normalizeProfileUser(user, relation) };
 }

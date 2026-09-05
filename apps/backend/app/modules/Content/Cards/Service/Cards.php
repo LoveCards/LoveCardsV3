@@ -24,6 +24,7 @@ use app\modules\Content\Cards\Domain\PublicationStatus;
 use app\modules\Content\Cards\Service\Policy\CardPolicy;
 use app\shared\Authorization\GrantSet;
 use app\shared\Observability\AdminMutationAudit;
+use app\modules\Content\Cards\Service\CardVisibilityPolicy;
 
 class Cards
 {
@@ -45,6 +46,7 @@ class Cards
             ->where('is_top', 1)
             ->order('id', 'desc')
             ->limit(self::TOP_LISTS_MAX);
+        CardVisibilityPolicy::apply($topQuery, $viewerId);
         if ($excluded !== []) $topQuery->whereNotIn('user_id', $excluded);
         $top = $topQuery->select()->toArray();
 
@@ -53,6 +55,7 @@ class Cards
             ->where('is_top', 0)
             ->order('hot_score', 'desc')
             ->limit(self::HOT_LISTS_MAX);
+        CardVisibilityPolicy::apply($hotQuery, $viewerId);
         if ($excluded !== []) $hotQuery->whereNotIn('user_id', $excluded);
         $hot = $hotQuery->select()->toArray();
 
@@ -75,8 +78,9 @@ class Cards
         // 无 cards.read.all 能力 → 只看已发布
         if (!in_array('cards.read.all', $caps)) {
             $params['where']['status'] = PublicationStatus::visible();
-            $excluded = $viewerId > 0 ? Safety::blockedUserIds($viewerId) : [];
-            if ($excluded !== []) $params['where'][] = ['user_id', 'not in', $excluded];
+            $params['where'][] = static function ($query) use ($viewerId): void {
+                CardVisibilityPolicy::apply($query, $viewerId);
+            };
         }
 
         $result = ModelQuery::make(CardsModel::class)->getPaginate($params);
@@ -100,6 +104,7 @@ class Cards
             ->whereNull('deleted_at')
             ->order('created_at', 'desc')
             ->order('id', 'desc');
+        CardVisibilityPolicy::apply($query, $uid);
 
         return self::hydratePaginated($query->paginate([
             'list_rows' => $listRows,
@@ -169,18 +174,13 @@ class Cards
 
         $page = max(1, (int) ($params['page'] ?? 1));
         $listRows = min(100, max(1, (int) ($params['list_rows'] ?? 30)));
+        // The profile check above is not a substitute for card-level access.
+        // Re-apply the shared policy so followers/private cards cannot leak.
         $result = CardsModel::where('user_id', (int) $profile['id'])
             ->where('status', PublicationStatus::visible())
-            // Keep the public projection explicit even though Cards uses the
-            // SoftDelete global scope. This protects the contract if the
-            // query is later converted to a join/raw builder.
-            ->whereNull('deleted_at')
-            ->order('created_at', 'desc')
-            ->order('id', 'desc')
-            ->paginate([
-                'list_rows' => $listRows,
-                'page' => $page,
-            ]);
+            ->whereNull('deleted_at');
+        CardVisibilityPolicy::apply($result, $viewerId);
+        $result = $result->order('created_at', 'desc')->order('id', 'desc')->paginate(['list_rows' => $listRows, 'page' => $page]);
 
         return self::hydratePaginated($result->toArray(), true);
     }
@@ -192,8 +192,9 @@ class Cards
         $page = max(1, (int) ($params['page'] ?? 1));
         $listRows = min(100, max(1, (int) ($params['list_rows'] ?? 30)));
         $result = CardsModel::where('user_id', (int) $profile['id'])
-            ->where('status', PublicationStatus::visible())->whereNull('deleted_at')
-            ->order('created_at', 'desc')->order('id', 'desc')
+            ->where('status', PublicationStatus::visible())->whereNull('deleted_at');
+        CardVisibilityPolicy::apply($result, $viewerId);
+        $result = $result->order('created_at', 'desc')->order('id', 'desc')
             ->paginate(['list_rows' => $listRows, 'page' => $page]);
         return self::hydratePaginated($result->toArray(), true);
     }
@@ -229,9 +230,8 @@ class Cards
             throw \app\api\ApiException::notFound('卡片不存在');
         }
         if (!in_array('cards.read.all', $caps, true)
-            && $viewerId > 0
-            && Safety::isBlockedEitherDirection($viewerId, (int) $result->user_id)) {
-            throw \app\api\ApiException::forbidden('当前无法访问该卡片', \app\api\ApiException::CODE_PROFILE_RESTRICTED, ['reason_code' => 'blocked_relationship']);
+            && !CardVisibilityPolicy::canRead($result->toArray(), $viewerId)) {
+            throw \app\api\ApiException::notFound('卡片不存在');
         }
 
         return self::hydrateCard(self::decodeJsonFields($result->toArray()), !in_array('cards.read.all', $caps, true));
@@ -341,6 +341,7 @@ class Cards
             $pictureIds = self::mediaIds($data['media_file_ids'] ?? $data['picture_file_ids'] ?? null);
             $coverId = array_key_exists('cover_file_id', $data) ? (int) $data['cover_file_id'] : null;
             $uid = (int) ($data['user_id'] ?? 0);
+            $data['visibility'] = CardVisibilityPolicy::normalize($data['visibility'] ?? CardVisibilityPolicy::PUBLIC);
             $data = self::normalizeCardMetadata($data);
             if (array_key_exists('tags', $data) && $data['tags'] !== null) {
                 $data['tags'] = self::resolveTagIds($data['tags'], $uid);
@@ -386,6 +387,12 @@ class Cards
         Db::startTrans();
         try {
             $cardId = (int) $data['id'];
+            if (array_key_exists('visibility', $data)) {
+                $data['visibility'] = CardVisibilityPolicy::normalize($data['visibility']);
+            }
+            if (isset($data['data']) && is_array($data['data']) && array_key_exists('visibility', $data['data'])) {
+                throw \app\api\ApiException::validation(['data.visibility' => ['请使用卡片顶层 visibility 字段。']]);
+            }
             $beforeAudit = $shouldAudit ? self::auditRows([$cardId], false, true) : [];
             // 验证能力 + 归属
             CardPolicy::assertCan($grants, 'update', $cardId, $uid);

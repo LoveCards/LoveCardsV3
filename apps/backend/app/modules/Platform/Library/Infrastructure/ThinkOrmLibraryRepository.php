@@ -5,6 +5,7 @@ namespace app\modules\Platform\Library\Infrastructure;
 use app\modules\Platform\Library\Contract\LibraryRepository;
 use app\shared\Resource\ResourceRef;
 use think\facade\Db;
+use app\modules\Content\Cards\Service\CardVisibilityPolicy;
 
 final class ThinkOrmLibraryRepository implements LibraryRepository
 {
@@ -99,6 +100,20 @@ final class ThinkOrmLibraryRepository implements LibraryRepository
         if ($cursor !== null && ctype_digit($cursor)) $query->where('id', '<', (int) $cursor);
 
         $rows = $query->select()->toArray();
+        $cardIds = array_values(array_unique(array_map('intval', array_filter(array_map(
+            static fn(array $row): int => ($row['resource_type'] ?? '') === 'card' ? (int) ($row['resource_id'] ?? 0) : 0,
+            $rows
+        )))));
+        if ($cardIds !== []) {
+            $cards = Db::table('cards')->whereIn('id', $cardIds)->select()->toArray();
+            $cardsById = [];
+            foreach ($cards as $card) $cardsById[(int) $card['id']] = (array) $card;
+            $rows = array_values(array_filter($rows, static function (array $row) use ($cardsById, $userId): bool {
+                if (($row['resource_type'] ?? '') !== 'card') return true;
+                $card = $cardsById[(int) ($row['resource_id'] ?? 0)] ?? null;
+                return $card !== null && CardVisibilityPolicy::canRead($card, $userId);
+            }));
+        }
         $hasMore = count($rows) > $limit;
         if ($hasMore) array_pop($rows);
         $next = $hasMore && $rows !== [] ? (string) end($rows)['id'] : null;

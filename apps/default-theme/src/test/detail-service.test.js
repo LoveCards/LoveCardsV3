@@ -86,4 +86,22 @@ describe('detail comment service', () => {
     expect(result.comments[1]).toMatchObject({ author: '用户 2', authorHandle: null });
     expect(result.commentCoverage.complete).toBe(false);
   });
+
+  it('keeps the card visible when the comments endpoint fails', async () => {
+    const error = Object.assign(new Error('服务器繁忙'), { status: 500 });
+    const client = {
+      getToken: vi.fn(() => 'token'),
+      cards: { get: vi.fn().mockResolvedValue({ id: 50, user_id: 1, data: {}, content: '卡片正文', pictures: [], tags: [] }) },
+      comments: { cardList: vi.fn().mockRejectedValue(error) },
+      library: { history_record: vi.fn().mockResolvedValue(undefined) },
+    };
+    sdk.getSdkClient.mockReturnValue(client);
+
+    const result = await loadDetail({ id: '50' });
+
+    expect(result.source).toBe('live');
+    expect(result.card).toMatchObject({ id: '50' });
+    expect(result.comments).toEqual([]);
+    expect(result.commentsError).toBe(error);
+  });
 });

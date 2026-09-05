@@ -165,6 +165,7 @@ export function normalizeSdkCard(card) {
     authorHref: authorUid
       ? `/user/${encodeURIComponent(authorUid)}`
       : (authorHandle ? `/user/${encodeURIComponent(authorHandle)}` : null),
+    visibility: card.visibility,
     meta: (isCurated ? readString(data.meta) : '') || card?.created_at || '',
     content: title,
     title,
@@ -257,6 +258,27 @@ export function getHomeFeedSnapshot(channel = 'recommended') {
   return { source: 'loading', items: [] };
 }
 
+export async function loadRecommendedCards(client, signal) {
+  let response;
+  try {
+    response = await client.cards.hot();
+  } catch (error) {
+    if (error?.name === 'AbortError') throw error;
+    const fallback = await client.cards.list({
+      page: 1,
+      list_rows: 30,
+      order_key: 'created_at',
+      order_desc: true,
+    });
+    abortIfNeeded(signal);
+    if (!fallback || !Array.isArray(fallback.data)) throw new Error('SDK 契约错误：cards.list() 应返回 ListResult。', { cause: error });
+    return { rawItems: fallback.data, strategy: 'latest-fallback', degradedError: error };
+  }
+  abortIfNeeded(signal);
+  if (!Array.isArray(response)) throw new Error('SDK 契约错误：cards.hot() 应返回数组。');
+  return { rawItems: response, strategy: 'hot', degradedError: null };
+}
+
 export async function loadHomeFeed({ channel = 'recommended', signal } = {}) {
   abortIfNeeded(signal);
   const snapshot = getHomeFeedSnapshot(channel);
@@ -265,29 +287,30 @@ export async function loadHomeFeed({ channel = 'recommended', signal } = {}) {
   const client = getSdkClient();
   if (!client) return getHomeFeedSnapshot(channel);
 
-  const response = channel === 'recommended'
-    ? await client.cards.hot()
-    : channel === 'following'
+  const recommended = channel === 'recommended'
+    ? await loadRecommendedCards(client, signal)
+    : null;
+  const response = channel === 'following'
       ? await client.cards.listFollowing({ page: 1, list_rows: 30 })
-    : await client.cards.list({
+    : channel === 'latest' ? await client.cards.list({
       page: 1,
       list_rows: 30,
-      order_key: channel === 'latest' ? 'created_at' : undefined,
+      order_key: 'created_at',
       order_desc: true,
-    });
+    }) : null;
   abortIfNeeded(signal);
 
   let rawItems;
   if (channel === 'recommended') {
-    if (!Array.isArray(response)) throw new Error('SDK 契约错误：cards.hot() 应返回数组。');
-    rawItems = response;
+    rawItems = recommended.rawItems;
   } else {
     if (!response || !Array.isArray(response.data)) throw new Error(`SDK 契约错误：cards.${channel === 'following' ? 'listFollowing' : 'list'}() 应返回 ListResult。`);
     rawItems = response.data;
   }
   return {
     source: 'live',
-    strategy: channel === 'recommended' ? 'hot' : channel === 'following' ? 'following' : 'latest',
+    strategy: channel === 'recommended' ? recommended.strategy : channel === 'following' ? 'following' : 'latest',
+    degradedError: recommended?.degradedError || null,
     items: stabilizeFeedLayouts(filterCards(rawItems.map(normalizeSdkCard), channel)),
   };
 }

@@ -4,6 +4,7 @@ namespace app\api\controller\Content;
 
 use app\modules\Content\Comments\Service\Comments as CommentsService;
 use app\modules\Content\Likes\Service\Likes as LikesService;
+use app\modules\Content\Cards\Service\CardVisibilityPolicy;
 
 use app\api\controller\BaseController;
 use app\api\controller\BatchOperateTrait;
@@ -20,7 +21,8 @@ class Comments extends BaseController
     public function cardList($id)
     {
         $params = $this->validated();
-        $result = CommentsService::listCard((int) $id, $params);
+        $viewerId = isset(request()->auth) ? (int) request()->auth->uid() : 0;
+        $result = CommentsService::listCard((int) $id, $params, $viewerId);
         return $this->respond($result);
     }
 
@@ -38,6 +40,7 @@ class Comments extends BaseController
         $params['user_id'] = request()->auth->uid();
         $params['post_ip'] = request()->ip();
         $params['status'] = CommentsService::requiresApproval() ? 3 : 0;
+        CardVisibilityPolicy::assertReadable((int) $id, request()->auth->uid());
 
         $result = CommentsService::createComment($params);
 
@@ -49,7 +52,8 @@ class Comments extends BaseController
 
     public function get($id)
     {
-        $result = CommentsService::get((int) $id);
+        $viewerId = isset(request()->auth) ? (int) request()->auth->uid() : 0;
+        $result = CommentsService::get((int) $id, false, $viewerId);
         return $this->respond($result);
     }
 

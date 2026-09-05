@@ -95,6 +95,10 @@
 
   .home-preview-disclosure { display: none; }
 
+  .home-feed-degraded {
+    margin: 0 0 18px;
+  }
+
   .home-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 260px;

@@ -12,10 +12,11 @@ final class CardCreatedResource extends Resource
         return [
             'type' => 'object',
             'additionalProperties' => false,
-            'required' => ['id', 'status'],
+            'required' => ['id', 'status', 'visibility'],
             'properties' => [
                 'id' => ['type' => 'integer'],
                 'status' => ['type' => 'integer'],
+                'visibility' => ['type' => 'string', 'enum' => ['public', 'followers', 'private']],
             ],
         ];
     }
@@ -25,9 +26,13 @@ final class CardCreatedResource extends Resource
         $data = self::normalize($value);
         $data = is_array($data) ? $data : (array) $data;
 
-        return [
+        $result = [
             'id' => (int) ($data['id'] ?? 0),
             'status' => (int) ($data['status'] ?? 0),
         ];
+        if (array_key_exists('visibility', $data)) {
+            $result['visibility'] = (string) $data['visibility'];
+        }
+        return $result;
     }
 }

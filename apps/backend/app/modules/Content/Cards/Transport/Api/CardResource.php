@@ -12,7 +12,7 @@ final class CardResource extends Resource
         return [
             'type' => 'object',
             'properties' => [
-                'id' => ['type' => 'integer'], 'is_top' => ['type' => 'integer'], 'status' => ['type' => 'integer'],
+                'id' => ['type' => 'integer'], 'is_top' => ['type' => 'integer'], 'status' => ['type' => 'integer'], 'visibility' => ['type' => 'string', 'enum' => ['public', 'followers', 'private']],
                 'user_id' => ['type' => 'integer'], 'uid' => ['type' => 'string', 'nullable' => true], 'username' => ['type' => 'string'],
                 'data' => ['type' => 'object', 'additionalProperties' => true],
                 'cover' => ['type' => 'string', 'nullable' => true], 'pictures' => ['type' => 'array', 'items' => ['type' => 'string']],
@@ -55,13 +55,15 @@ final class CardResource extends Resource
             }
         }
         $rawTags = $card['tags'] ?? [];
+        $visibility = (string) ($card['visibility'] ?? 'public');
+        $card['visibility'] = in_array($visibility, ['public', 'followers', 'private'], true) ? $visibility : 'public';
         $card['tags'] = is_array($rawTags)
             ? array_values(array_filter(array_map('intval', $rawTags), static fn(int $id): bool => $id > 0))
             : [];
         $card['topics'] = is_array($card['topics'] ?? null) ? array_values($card['topics']) : [];
         $card['mentions'] = is_array($card['mentions'] ?? null) ? array_values($card['mentions']) : [];
         $fields = [
-            'id', 'is_top', 'status', 'user_id', 'uid', 'username', 'data', 'cover', 'pictures', 'media',
+            'id', 'is_top', 'status', 'visibility', 'user_id', 'uid', 'username', 'data', 'cover', 'pictures', 'media',
             'content', 'tags', 'topics', 'mentions', 'goods', 'views', 'comments', 'created_at', 'updated_at',
         ];
         $result = [];

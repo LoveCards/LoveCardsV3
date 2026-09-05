@@ -74,6 +74,100 @@ function isTechnicalMessage(message) {
   return /SDK\s*契约|接口没有返回|VITE_|\b(?:axios|fetch|contract|ECONN|ERR_[A-Z_]+)\b|\.(?:php|js|ts)\b|[\\/]/i.test(message);
 }
 
+function isContractFailure(error) {
+  const message = cleanText(error?.message);
+  return /SDK\s*契约|接口没有返回|未返回有效|数据格式|contract/i.test(message);
+}
+
+/**
+ * Translate a failed resource request into one stable page-level state.
+ * Empty results are intentionally absent here: only a successful request may
+ * decide that a collection is empty.
+ */
+export function getResourceErrorPresentation(error) {
+  const status = errorNumber(error, 'status');
+
+  if (isContractFailure(error)) {
+    return {
+      kind: 'compatibility',
+      title: '页面暂时无法读取数据',
+      description: '返回的数据与当前页面不一致，请刷新或稍后再试。',
+      actionLabel: '重新加载',
+      retryable: true,
+    };
+  }
+  if (isNetworkFailure(error)) {
+    return {
+      kind: 'offline',
+      title: '无法连接到服务',
+      description: '请检查网络连接后重试，已经显示的内容不会丢失。',
+      actionLabel: '重新连接',
+      retryable: true,
+    };
+  }
+  if (status === 401) {
+    return {
+      kind: 'unauthorized',
+      title: '登录状态已失效',
+      description: '请重新登录后继续。',
+      actionLabel: '重新检查',
+      retryable: false,
+    };
+  }
+  if (status === 403) {
+    return {
+      kind: 'forbidden',
+      title: '当前内容不可访问',
+      description: '当前账号没有查看这部分内容的权限。',
+      actionLabel: '',
+      retryable: false,
+    };
+  }
+  if (status === 404) {
+    return {
+      kind: 'not-found',
+      title: '没有找到相关内容',
+      description: '内容可能已删除，或链接已经失效。',
+      actionLabel: '',
+      retryable: false,
+    };
+  }
+  if (status === 429) {
+    return {
+      kind: 'rate-limited',
+      title: '请求过于频繁',
+      description: getUserFacingError(error),
+      actionLabel: '稍后重试',
+      retryable: true,
+    };
+  }
+  if (status >= 500) {
+    return {
+      kind: 'service-error',
+      title: '服务暂时不可用',
+      description: '服务端暂时没有完成请求，请稍后重试。',
+      actionLabel: '重新加载',
+      retryable: true,
+    };
+  }
+  if (isValidationFailure(error)) {
+    return {
+      kind: 'invalid-request',
+      title: '当前请求无法完成',
+      description: getUserFacingError(error, { validationFallback: '加载条件不符合要求，请返回后重新进入。' }),
+      actionLabel: '重新加载',
+      retryable: true,
+    };
+  }
+  return {
+    kind: 'error',
+    title: '内容暂时无法加载',
+    description: getUserFacingError(error, { fallback: '请稍后重试。' }),
+    actionLabel: '重试加载',
+    retryable: true,
+  };
+}
+
 export function getUserFacingError(error, {
   fallback = '暂时没有完成，请稍后重试。',
   validationFallback = '输入内容不符合要求，请检查后重试。',

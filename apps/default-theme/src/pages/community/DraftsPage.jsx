@@ -134,7 +134,7 @@ export function DraftsPage() {
       <header className="drafts-page-head">
         <Link className="drafts-back" to="/compose"><span aria-hidden="true">←</span><span>返回发布</span></Link>
         <div className="drafts-page-head-copy"><h1 id="drafts-title">草稿箱</h1><p>选择一份草稿，继续在发布页完成内容。</p></div>
-        <Link className="drafts-new" to="/compose"><span className="drafts-new-desktop">发布新内容</span><span className="drafts-new-mobile">发布</span></Link>
+        {auth.isAuthenticated && <Link className="drafts-new" to="/compose"><span className="drafts-new-desktop">发布新内容</span><span className="drafts-new-mobile">发布</span></Link>}
       </header>
       <div className="drafts-content">{content}</div>
       <ConfirmActionDialog isOpen={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open && !deleting) setDeleteTarget(null); }} title="删除这份草稿？" description="删除后无法恢复，已发布的内容不会受影响。" actionLabel="删除草稿" isLoading={deleting} onAction={remove} />

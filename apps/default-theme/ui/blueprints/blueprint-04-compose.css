@@ -413,29 +413,17 @@
 #blueprint-compose .topic-input i{margin-inline-start:3px;color:var(--compose-muted);font-style:normal}
 #blueprint-compose .topic-input>b{padding:5px;color:var(--compose-muted);font-size:8px;font-weight:560}
 #blueprint-compose .compose-visibility{
-  min-height:58px;
-  padding:9px 10px;
-  display:flex;
-  align-items:center;
-  gap:9px;
-  border-radius:var(--lc-radius-media);
-  background:var(--compose-subtle);
-}
-#blueprint-compose .compose-visibility>i{
-  width:28px;
-  height:28px;
+  min-width:0;
   display:grid;
-  place-items:center;
-  flex:0 0 auto;
-  border-radius:50%;
-  color:var(--lc-success);
-  background:color-mix(in srgb,var(--lc-success) 10%,var(--compose-surface));
-  font-size:10px;
-  font-style:normal;
+  align-content:end;
+  gap:7px;
 }
 #blueprint-compose .compose-visibility>div{display:grid;gap:2px}
 #blueprint-compose .compose-visibility b{font-size:9px}
 #blueprint-compose .compose-visibility small{color:var(--compose-muted);font-size:7px;line-height:1.4}
+#blueprint-compose .compose-visibility>.compose-visibility-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px;padding:3px;border-radius:var(--lc-radius-control);background:var(--compose-subtle)}
+#blueprint-compose .compose-visibility-options button{min-width:0;min-height:30px;padding:4px 3px;border:0;border-radius:7px;color:var(--compose-muted);background:transparent;font-size:7px}
+#blueprint-compose .compose-visibility-options button.is-current{color:var(--compose-rose-deep);background:var(--compose-surface);box-shadow:0 1px 3px rgba(26,28,34,.08)}
 
 #blueprint-compose .composer-actions{
   min-height:68px;
@@ -496,7 +484,7 @@
 #blueprint-compose .mobile-composer>.compose-section:first-of-type{border-top:0}
 #blueprint-compose .mobile-composer .compose-copy-field textarea{height:128px;margin-top:4px}
 #blueprint-compose .mobile-composer .compose-media-queue{grid-template-columns:repeat(2,minmax(0,1fr))}
-#blueprint-compose .mobile-composer>.compose-visibility{margin:0;padding:12px 0;border-top:1px solid var(--compose-line);border-radius:0;background:transparent}
+#blueprint-compose .mobile-composer>.compose-visibility{margin:0;padding:12px 0;border-top:1px solid var(--compose-line)}
 #blueprint-compose .mobile-compose-actions{
   position:absolute;
   right:0;

@@ -111,6 +111,7 @@ export function ConversationPanel({ conversationId, initialRecipientId = null, s
 
   if (!validId) return <ConversationStateBoundary standalone={standalone}><ResourceState status="error" title="会话地址无效" description="请返回私信列表后重新选择会话。" actionLabel="返回私信" onRetry={() => { window.location.href = '/messages'; }} /></ConversationStateBoundary>;
   if (auth.status === 'checking') return <ConversationThreadSkeleton standalone={standalone} />;
+  if (auth.status === 'error') return <ConversationStateBoundary standalone={standalone}><ResourceState status="error" error={auth.error} onRetry={auth.refresh} /></ConversationStateBoundary>;
   if (!auth.isAuthenticated) return <ConversationStateBoundary standalone={standalone}><ResourceState status="empty" emptyTitle="登录后查看会话" emptyDescription="游客会话不能读取私人对话。" emptyAction={<Link className="action-link action-link-primary" to="/auth/login">去登录</Link>} /></ConversationStateBoundary>;
 
   if (state.status === 'loading') return <ConversationThreadSkeleton standalone={standalone} />;

@@ -2861,7 +2861,9 @@
           "auth": "public"
         }
       },
-      "middleware": [],
+      "middleware": [
+        "app\\api\\middleware\\OptionalJwtAuth"
+      ],
       "contract": {
         "request": {
           "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
@@ -2943,7 +2945,9 @@
           "auth": "public"
         }
       },
-      "middleware": [],
+      "middleware": [
+        "app\\api\\middleware\\OptionalJwtAuth"
+      ],
       "contract": {
         "request": null,
         "response": {

@@ -7,6 +7,7 @@ import { getSdkClient } from '../../app/sdk-client.js';
 import { createMentionTrigger, createPreviewMentionAdapter, createSdkMentionAdapter, normalizeMentionCaret } from '../../services/mentions-service.js';
 import { renderMentionCandidateItem } from '../mentions/MentionCandidateItem.jsx';
 import { MentionText } from '../../components/MentionText.jsx';
+import { ResourceErrorBanner } from '../../components/ResourceState.jsx';
 
 function rootIdFor(comment, commentById) {
   let current = comment;
@@ -73,7 +74,7 @@ function CommentRow({ item, replies, depth, source, isAuthenticated, canComment,
   );
 }
 
-export function CommentThread({ comments = [], focusedCommentId, source, isAuthenticated, canComment, canLike, canDeleteComment, canPinComment = false, pinBusy = false, viewerId, commentsUnavailable, onSubmitComment, onLogin, onToggleLike, likeBusyIds, onRequestDelete, onRequestPinChange, onCopy }) {
+export function CommentThread({ comments = [], focusedCommentId, source, isAuthenticated, canComment, canLike, canDeleteComment, canPinComment = false, pinBusy = false, viewerId, commentsUnavailable, onRetryComments, onSubmitComment, onLogin, onToggleLike, likeBusyIds, onRequestDelete, onRequestPinChange, onCopy }) {
   const [replyTarget, setReplyTarget] = useState(null);
   const [draft, setDraft] = useState('');
   const [status, setStatus] = useState('idle');
@@ -171,7 +172,7 @@ export function CommentThread({ comments = [], focusedCommentId, source, isAuthe
   return (
     <section className="comment-thread" aria-labelledby="comments-title">
       <header className="comment-thread-heading"><div><h2 id="comments-title">讨论</h2><span>{commentItems.length} 条</span></div><span className="comment-thread-sort">置顶优先</span></header>
-      {commentsUnavailable ? <p className="comment-thread-boundary" role="status">{commentsUnavailable}</p> : <>
+      {commentsUnavailable ? <ResourceErrorBanner className="comment-thread-boundary" error={commentsUnavailable} onRetry={onRetryComments} /> : <>
         {Number.isInteger(focusedId) && !focusedComment && <p className="comment-thread-boundary" role="status">这条评论当前不可见，可能已被删除或尚未通过审核。</p>}
         {roots.length > 0 ? <div className="comment-thread-list">{roots.map((item) => <CommentRow key={item.id} item={item} replies={repliesByRoot.get(item.id)} depth={0} source={source} isAuthenticated={isAuthenticated} canComment={isAuthenticated && canComment} canLike={isAuthenticated && canLike} canDeleteComment={isAuthenticated && canDeleteComment} canPinComment={isAuthenticated && canPinComment} pinBusy={pinBusy} viewerId={viewerId} focusedCommentId={focusedId} onReply={setReplyTarget} onLogin={isAuthenticated ? undefined : onLogin} onToggleLike={onToggleLike} likeBusyIds={likeBusyIds} onRequestDelete={onRequestDelete} onRequestPinChange={onRequestPinChange} onCopy={onCopy} isRepliesExpanded={expandedRoots.has(item.id)} onToggleReplies={() => setExpandedRoots((current) => { const next = new Set(current); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} />)}</div> : <p className="comment-thread-empty">还没有讨论，成为第一个回复的人。</p>}
       </>}

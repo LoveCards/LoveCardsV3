@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../app/providers.jsx';
 import { getUserFacingError } from '../../app/user-facing-error.js';
 import { getRuntimeDataMode } from '../../app/runtime-context.js';
-import { ResourceState } from '../../components/ResourceState.jsx';
+import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
 import { notificationPreview } from '../../fixtures/notification-preview.js';
 import { AppShell } from '../../layouts/AppShell.jsx';
 import {
@@ -60,7 +60,8 @@ export function InboxPage() {
   const [unreadByCategory, setUnreadByCategory] = useState(() => designPreview ? previewUnreadByCategory() : emptyUnreadByCategory);
   const [busy, setBusy] = useState('');
   const [syncMessage, setSyncMessage] = useState('');
-  const [loadMoreError, setLoadMoreError] = useState('');
+  const [syncError, setSyncError] = useState(null);
+  const [loadMoreError, setLoadMoreError] = useState(null);
   const activeFilterRef = useRef(activeFilter);
   activeFilterRef.current = activeFilter;
 
@@ -84,12 +85,13 @@ export function InboxPage() {
       setState({ status: 'success', filter: requestedFilter, ...page, error: null });
       setUnreadByCategory(previewUnreadByCategory());
       setSyncMessage('');
+      setSyncError(null);
       return;
     }
     if (!auth.isAuthenticated) return;
     if (!silent && !append) {
       setState((current) => ({ ...current, status: 'loading', filter: requestedFilter, error: null }));
-      setLoadMoreError('');
+      setLoadMoreError(null);
     }
     try {
       const [page] = await Promise.all([
@@ -106,12 +108,13 @@ export function InboxPage() {
         error: null,
       }));
       setSyncMessage('');
-      if (!append) setLoadMoreError('');
+      setSyncError(null);
+      if (!append) setLoadMoreError(null);
     } catch (error) {
       if (activeFilterRef.current !== requestedFilter) return;
       if (append) throw error;
       if (!silent) setState((current) => ({ ...current, status: 'error', error }));
-      else setSyncMessage(getUserFacingError(error, { fallback: '通知自动同步暂时不可用，你仍可手动刷新。' }));
+      else setSyncError(error);
     }
   }, [activeFilter, auth.isAuthenticated, designPreview, syncUnreadByCategory]);
 
@@ -128,9 +131,9 @@ export function InboxPage() {
   const loadMore = async () => {
     if (!state.hasMore || !state.nextCursor || busy) return;
     setBusy('load-more');
-    setLoadMoreError('');
+    setLoadMoreError(null);
     try { await load({ cursor: state.nextCursor, append: true }); }
-    catch (error) { setLoadMoreError(getUserFacingError(error, { fallback: '更多通知暂时无法加载，请重试。' })); }
+    catch (error) { setLoadMoreError(error); }
     finally { setBusy(''); }
   };
 
@@ -165,9 +168,11 @@ export function InboxPage() {
   const filterLabel = NOTIFICATION_CATEGORIES.find((item) => item.value === activeFilter)?.label || '互动消息';
   const unread = unreadByCategory[activeFilter] || 0;
   const notificationUnread = NOTIFICATION_CATEGORIES.reduce((total, item) => total + (unreadByCategory[item.value] || 0), 0);
-  const canRead = designPreview || auth.isAuthenticated;
+  const canRead = designPreview || (auth.status === 'ready' && auth.isAuthenticated);
   const notificationContent = state.filter !== activeFilter || !designPreview && auth.status === 'checking'
     ? <NotificationListSkeleton />
+    : auth.status === 'error'
+      ? <ResourceState status="error" error={auth.error} onRetry={auth.refresh} />
     : !canRead
       ? <ResourceState status="empty" emptyTitle="登录后查看通知" emptyDescription="通知只属于你的正式账号。" emptyAction={<Link className="action-link action-link-primary" to="/auth/login">去登录</Link>} />
       : state.status === 'loading'
@@ -195,7 +200,7 @@ export function InboxPage() {
       <MessageCenterTabs notificationUnread={notificationUnread} />
     </div>
     <div className="notification-workspace">
-      <nav className="notification-filters" aria-label="通知范围">{NOTIFICATION_CATEGORIES.map((item) => {
+      {canRead && <nav className="notification-filters" aria-label="通知范围">{NOTIFICATION_CATEGORIES.map((item) => {
         const categoryUnread = unreadByCategory[item.value] || 0;
         const active = activeFilter === item.value;
         return <Link
@@ -208,12 +213,13 @@ export function InboxPage() {
           <span>{item.label}</span>
           {categoryUnread > 0 && <span className="notification-filter-unread" aria-hidden="true">{categoryUnread > 99 ? '99+' : categoryUnread}</span>}
         </Link>;
-      })}</nav>
-      <div className="notification-range-heading"><div><h2>{filterLabel}</h2><p>{unread ? `${unread} 条未读` : '暂无未读'}</p></div><Button type="button" label="全部已读" variant="secondary" size="lg" isDisabled={!unread || Boolean(busy)} isLoading={busy === 'read-all'} onClick={markAll} /></div>
+      })}</nav>}
+      {canRead && <div className="notification-range-heading"><div><h2>{filterLabel}</h2><p>{unread ? `${unread} 条未读` : '暂无未读'}</p></div><Button type="button" label="全部已读" variant="secondary" size="lg" isDisabled={!unread || Boolean(busy)} isLoading={busy === 'read-all'} onClick={markAll} /></div>}
       <div className="notification-content">
+        {syncError && <ResourceErrorBanner className="notification-sync-error" error={syncError} onRetry={() => void load({ silent: true })} />}
         {syncMessage && <ScopedBanner status="warning" title="同步状态" description={syncMessage} />}
         {notificationContent}
-        {loadMoreError && <ScopedBanner className="notification-load-error" title="更多通知加载失败" description={loadMoreError} actionLabel="重试" onAction={loadMore} />}
+        {loadMoreError && <ResourceErrorBanner className="notification-load-error" error={loadMoreError} onRetry={loadMore} />}
         {state.status === 'success' && state.hasMore && !loadMoreError && <div className="notification-load-more"><Button type="button" label="加载更多" variant="secondary" size="lg" isDisabled={Boolean(busy)} isLoading={busy === 'load-more'} onClick={loadMore} /></div>}
       </div>
     </div>

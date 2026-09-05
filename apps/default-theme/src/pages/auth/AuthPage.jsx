@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Brand } from '../../components/Brand.jsx';
 import { getLoginState, loadAuthPolicy, login, register, startGuestSession } from '../../services/auth-service.js';
 import { useAuth } from '../../app/providers.jsx';
 import { getUserFacingError } from '../../app/user-facing-error.js';
-import { Button, FormLayout, TextInput } from '../../ui/index.js';
+import { Button, FormLayout, Icon, TextInput } from '../../ui/index.js';
+import { safeReturnPath } from '../../app/auth-routing.jsx';
 
 export function AuthPage({ mode = 'login' }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isAuthenticated, status: authStatus } = useAuth();
   const isRegister = mode === 'register';
   const capability = useMemo(() => getLoginState(), []);
@@ -21,6 +23,7 @@ export function AuthPage({ mode = 'login' }) {
   const [policyRetry, setPolicyRetry] = useState(0);
   const [pendingAction, setPendingAction] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const returnTo = safeReturnPath(location.state?.from) || '/me';
 
   useEffect(() => {
     let active = true;
@@ -64,7 +67,7 @@ export function AuthPage({ mode = 'login' }) {
       else await login({ account, password });
       setStatus('success');
       setMessage(isRegister ? '账号已创建，正在进入你的主页。' : '登录成功，正在进入你的主页。');
-      navigate('/me', { replace: true });
+      navigate(returnTo, { replace: true });
     } catch (error) {
       setStatus('error');
       setMessage(getUserFacingError(error, { fallback: isRegister ? '账号暂时没有创建，请稍后重试。' : '登录没有完成，请检查账号和密码后重试。', validationFallback: isRegister ? '注册信息不符合要求，请检查后重试。' : '账号或密码格式不符合要求，请检查后重试。' }));
@@ -88,12 +91,18 @@ export function AuthPage({ mode = 'login' }) {
     }
   };
 
-  if (authStatus === 'ready' && isAuthenticated) return <Navigate to="/me" replace />;
+  if (authStatus === 'ready' && isAuthenticated) return <Navigate to={returnTo} replace />;
 
   return (
     <main className="auth-page" aria-labelledby="auth-title">
       <section className="auth-panel">
-        <Brand />
+        <div className="auth-panel-topbar">
+          <Brand />
+          <Link className="auth-home-link" to="/" aria-label="返回首页">
+            <Icon name="arrow" size={16} />
+            <span>返回首页</span>
+          </Link>
+        </div>
         <header className="auth-heading">
           <h1 id="auth-title">{isRegister ? '创建你的空间。' : '欢迎回来。'}</h1>
           <p>{isRegister ? '加入 LoveCards，分享你愿意留下的每个瞬间。' : '登录后继续收藏、分享和与你在意的人保持联系。'}</p>

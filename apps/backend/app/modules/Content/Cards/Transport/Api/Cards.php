@@ -50,6 +50,7 @@ class Cards extends Validate
                 'picture_file_ids',
                 'cover_file_id',
                 'tags'
+                ,'visibility'
 
             ],
 
@@ -82,6 +83,7 @@ class Cards extends Validate
                 'picture_file_ids',
                 'cover_file_id',
                 'tags'
+                ,'visibility'
 
             ],
 
@@ -109,7 +111,7 @@ class Cards extends Validate
             'require' => ['id'], 'nonNull' => false, 'toNull' => ['cover', 'tags'],
         ],
         'create' => [
-            'normal' => ['pictures', 'data', 'media_file_ids', 'picture_file_ids', 'cover_file_id', 'tags'],
+            'normal' => ['pictures', 'data', 'media_file_ids', 'picture_file_ids', 'cover_file_id', 'tags', 'visibility'],
             'require' => ['content'], 'nonNull' => false, 'toNull' => ['cover', 'tags'],
         ],
     ];
@@ -148,6 +150,8 @@ class Cards extends Validate
         'content' => 'notBlank|max:1000',
 
         'tags' => 'arrayJson|tagsLength',
+
+        'visibility' => 'in:public,followers,private',
 
         'good' => 'number',
 
@@ -198,6 +202,8 @@ class Cards extends Validate
 
 
         'tags.arrayJson' => '标签格式错误',
+
+        'visibility.in' => '可见范围必须是 public、followers 或 private。',
 
         'tags.tagsLength' => '标签个数超出上限',
 

@@ -4,6 +4,7 @@ import { useAuth } from '../../app/providers.jsx';
 import { ResourceState } from '../../components/ResourceState.jsx';
 import { AuthorIdentity } from '../../components/AuthorIdentity.jsx';
 import { AppShell } from '../../layouts/AppShell.jsx';
+import { getRuntimeDataMode } from '../../app/runtime-context.js';
 import { listConversations } from '../../services/community-service.js';
 import { Icon } from '../../ui/icons.jsx';
 import { MessageCenterHeader } from './MessageCenterHeader.jsx';
@@ -45,7 +46,9 @@ export function MessagesPage() {
   const auth = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const designPreview = getRuntimeDataMode() === 'design-preview';
   const searchMode = pathname === '/messages/search';
+  const canSearchMessages = designPreview || (auth.status === 'ready' && auth.isAuthenticated);
   const compactViewport = isCompactViewport();
   const [state, setState] = useState({ status: 'loading', items: [], error: null });
   const [selectedId, setSelectedId] = useState(null);
@@ -85,6 +88,8 @@ export function MessagesPage() {
   };
   const content = auth.status === 'checking'
     ? <MessageWorkspaceSkeleton />
+    : auth.status === 'error'
+      ? <ResourceState status="error" error={auth.error} onRetry={auth.refresh} />
     : !auth.isAuthenticated
       ? <ResourceState status="empty" emptyTitle="登录后查看私信" emptyDescription="游客会话不能读取私人对话。" emptyAction={<Link className="action-link action-link-primary" to="/auth/login">去登录</Link>} />
       : state.status === 'loading'
@@ -124,8 +129,8 @@ export function MessagesPage() {
 
   return <AppShell mobileMode={searchMode ? 'task' : 'standard'}><main className={`community-page message-center-page messages-page${searchMode ? ' is-search-page' : ''}`} aria-labelledby="message-center-title">
     {searchMode
-      ? <header className="message-search-page-header"><Link to="/messages" aria-label="返回私信列表">←</Link><label htmlFor="message-search-page">搜索会话</label><input id="message-search-page" type="search" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索用户名或消息" /></header>
-      : <div className="message-center-chrome"><MessageCenterHeader description="私信按最近活动排列。" actions={<Link className="message-search-trigger" to="/messages/search" aria-label="搜索会话"><Icon name="search" size={20} /></Link>} /><MessageCenterTabs messageUnread={messageUnread} /></div>}
+      ? <header className="message-search-page-header"><Link to="/messages" aria-label="返回私信列表">←</Link>{canSearchMessages ? <div className="message-search-page-field"><label htmlFor="message-search-page">搜索会话</label><input id="message-search-page" type="search" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索用户名或消息" /></div> : <strong className="message-search-page-title">搜索会话</strong>}</header>
+      : <div className="message-center-chrome"><MessageCenterHeader description="私信按最近活动排列。" actions={canSearchMessages ? <Link className="message-search-trigger" to="/messages/search" aria-label="搜索会话"><Icon name="search" size={20} /></Link> : null} /><MessageCenterTabs messageUnread={messageUnread} /></div>}
     {content}
   </main></AppShell>;
 }

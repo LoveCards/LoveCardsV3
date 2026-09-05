@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
-import { ResourceState } from '../../components/ResourceState.jsx';
+import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
 import { useResource } from '../../app/use-resource.js';
 import { useAuth } from '../../app/providers.jsx';
 import { getProfileSnapshot, getProfileTabSnapshot, loadProfile, loadProfileTab, updateProfile } from '../../services/profile-service.js';
@@ -376,11 +376,14 @@ function tabCopy(section) {
 function ProfileTabContent({ section, state, profile, onRetry, onRemoveSaved }) {
   const copy = tabCopy(section);
   if (!state || state.status === 'loading') return <ProfileCardFeedSkeleton count={4} ariaLabel={copy.loading} />;
-  if (state.status === 'error') return <ResourceState className="profile-boundary profile-tab-error" status="error" title={copy.loading.replace('加载中', '暂时无法加载')} description={getUserFacingError(state.error, { fallback: `${copy.loading.replace('加载中', '')}暂时无法加载，请稍后重试。` })} onRetry={onRetry} />;
+  if (state.status === 'error') return <ResourceState className="profile-boundary profile-tab-error" status="error" error={state.error} onRetry={onRetry} />;
   const unavailableCards = (state.unavailable || []).map((item, index) => unavailableRecordCard(item, section, index));
   const feedItems = [...(state.items || []), ...unavailableCards];
-  if (!feedItems.length) return <ResourceState className="profile-boundary profile-tab-empty" status="success" empty emptyTitle={copy.emptyTitle} emptyDescription={copy.emptyBody} emptyAction={section === 'content' ? <Link className="action-link action-link-primary" to="/compose">开始发布</Link> : undefined} />;
-  return <ProfileCardFeed items={feedItems} profile={profile} ariaLabel={`${copy.emptyTitle.replace('还没有', '')}内容`} renderAction={section === 'saved' ? onRemoveSaved : undefined} />;
+  if (state.contentError && !feedItems.length) return <ResourceState className="profile-boundary profile-tab-error" status="error" error={state.contentError} onRetry={onRetry} />;
+  const content = feedItems.length
+    ? <ProfileCardFeed items={feedItems} profile={profile} ariaLabel={`${copy.emptyTitle.replace('还没有', '')}内容`} renderAction={section === 'saved' ? onRemoveSaved : undefined} />
+    : <ResourceState className="profile-boundary profile-tab-empty" status="success" empty emptyTitle={copy.emptyTitle} emptyDescription={copy.emptyBody} emptyAction={section === 'content' ? <Link className="action-link action-link-primary" to="/compose">开始发布</Link> : undefined} />;
+  return <>{state.contentError && <ResourceErrorBanner className="profile-content-load-error" error={state.contentError} onRetry={onRetry} />}{content}</>;
 }
 
 function resolveProfileTab(search, initialSection) {
@@ -452,7 +455,7 @@ export function ProfilePage({ initialSection = 'content' }) {
   }, [activeTab, canViewProfile, data.user, designPreview, isAuthenticated, tabRetry]);
 
   const currentTabState = activeTab === 'content'
-    ? { status: resource.status, items: data.items, unavailable: [], error: resource.error }
+    ? { status: resource.status, items: data.items, unavailable: [], error: resource.error, contentError: data.cardsError }
     : tabStates[activeTab];
 
   const retryTab = () => setTabRetry((value) => value + 1);
@@ -492,7 +495,10 @@ export function ProfilePage({ initialSection = 'content' }) {
 
   if (!designPreview && authStatus === 'checking') return <AppShell><ProfileShell title="我的" ariaLabel="个人主页加载中"><ProfileSkeleton /></ProfileShell></AppShell>;
 
-  const mobileActions = <ActionMenu items={[{ label: '完整资料', icon: <Icon name="edit" size={17} />, onClick: () => navigate('/settings/profile') }, { label: '分享主页', icon: <Icon name="share" size={17} />, onClick: () => { void shareProfile(); } }, { label: '设置', icon: <Icon name="settings" size={17} />, onClick: () => navigate('/settings/appearance') }]} label="更多个人操作" icon={<Icon name="more" size={19} />} />;
+  const canUseProfileActions = designPreview || (isAuthenticated && canViewProfile);
+  const mobileActions = canUseProfileActions
+    ? <ActionMenu items={[{ label: '完整资料', icon: <Icon name="edit" size={17} />, onClick: () => navigate('/settings/profile') }, { label: '分享主页', icon: <Icon name="share" size={17} />, onClick: () => { void shareProfile(); } }, { label: '设置', icon: <Icon name="settings" size={17} />, onClick: () => navigate('/settings/appearance') }]} label="更多个人操作" icon={<Icon name="more" size={19} />} />
+    : null;
 
   return <AppShell>
     <ProfileShell title="我的" ariaLabel={profileUser?.username || '个人主页'} mobileActions={mobileActions}>

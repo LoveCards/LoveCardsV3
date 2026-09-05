@@ -101,14 +101,22 @@ export async function loadDetail({ id, commentId, signal }) {
   try {
     rawComments = await client.comments.cardList(numericId, { page: 1, list_rows: 50 });
   } catch (error) {
-    if (error?.status === 403) {
-      await historyWrite;
-      return { source: 'live', card: normalizeSdkCard(rawCard), comments: [], commentsError: '评论暂不可见，内容本身仍可查看。', commentCoverage: { loaded: 0, total: 0, complete: false } };
-    }
-    throw error;
+    // Comments are a secondary resource. A failure here must not blank a
+    // successfully loaded card; keep the detail visible and explain the
+    // unavailable section in the discussion area.
+    await historyWrite;
+    return { source: 'live', card: normalizeSdkCard(rawCard), comments: [], commentsError: error, commentCoverage: { loaded: 0, total: 0, complete: false } };
   }
-  if (!rawComments || !Array.isArray(rawComments.data)) throw new Error('SDK 契约错误：comments.cardList() 应返回 ListResult。');
-  rawComments = await includeFocusedComment(client, numericId, rawComments, commentId);
+  if (!rawComments || !Array.isArray(rawComments.data)) {
+    await historyWrite;
+    return { source: 'live', card: normalizeSdkCard(rawCard), comments: [], commentsError: new Error('SDK 契约错误：comments.cardList() 应返回 ListResult。'), commentCoverage: { loaded: 0, total: 0, complete: false } };
+  }
+  try {
+    rawComments = await includeFocusedComment(client, numericId, rawComments, commentId);
+  } catch (error) {
+    await historyWrite;
+    return { source: 'live', card: normalizeSdkCard(rawCard), comments: rawComments.data.map(normalizeComment), commentsError: error, commentCoverage: normalizeCommentCoverage(rawComments) };
+  }
   if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
   await historyWrite;
   const commentCoverage = normalizeCommentCoverage(rawComments);

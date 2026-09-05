@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../app/providers.jsx';
-import { getUserFacingError } from '../../app/user-facing-error.js';
 import { ProfileRelationList, ProfileRelationSkeleton } from '../../components/ProfileRelationList.jsx';
-import { ResourceState } from '../../components/ResourceState.jsx';
+import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
 import { AppShell } from '../../layouts/AppShell.jsx';
 import { getProfileSnapshot, loadProfileIdentity } from '../../services/profile-service.js';
 import { listFollowers, listFollowing } from '../../services/community-service.js';
 import { Button, Icon } from '../../ui/index.js';
-import { ScopedBanner } from '../../ui/interaction.jsx';
 import { normalizeProfileUid } from '../../components/ProfileIdentitySurface.jsx';
 
 const relationConfig = {
@@ -84,25 +82,27 @@ export function ProfileRelationPage({ relation }) {
   const count = profileCount(profile?.[config.countKey]);
   const content = !designPreview && auth.status === 'checking'
     ? <ProfileRelationSkeleton title={config.title} />
+    : !designPreview && auth.status === 'error'
+      ? <ResourceState status="error" error={auth.error} onRetry={auth.refresh} />
     : !designPreview && !auth.isAuthenticated
       ? <ResourceState status="empty" emptyTitle="登录后查看关系列表" emptyDescription="登录后才能查看你的关注与粉丝。" emptyAction={<Link className="action-link action-link-primary" to="/auth/login">去登录</Link>} />
       : state.status === 'loading'
         ? <ProfileRelationSkeleton title={config.title} />
         : state.status === 'error'
-          ? <ResourceState status="error" error={state.error} title={`${config.title}暂时无法加载`} description={getUserFacingError(state.error, { fallback: `${config.title}暂时无法加载，请稍后重试。` })} onRetry={() => void load()} />
+          ? <ResourceState status="error" error={state.error} onRetry={() => void load()} />
           : !state.items.length
             ? <ResourceState status="success" empty emptyTitle={`还没有${config.title}`} emptyDescription={config.description} />
             : <>
               <ProfileRelationList items={state.items} emptyLabel="用户" />
-              {state.loadMoreError && <ScopedBanner className="profile-secondary-load-more-error" title={`更多${config.title}加载失败`} description={getUserFacingError(state.loadMoreError, { fallback: `更多${config.title}暂时无法加载，请稍后重试。` })} actionLabel="重试" onAction={() => void load(state.nextCursor, true)} />}
+              {state.loadMoreError && <ResourceErrorBanner className="profile-secondary-load-more-error" error={state.loadMoreError} onRetry={() => void load(state.nextCursor, true)} />}
               {state.hasMore && !state.loadMoreError && <div className="profile-secondary-load-more"><Button type="button" label="加载更多" variant="secondary" size="lg" isDisabled={state.loadingMore} isLoading={state.loadingMore} onClick={() => void load(state.nextCursor, true)} /></div>}
             </>;
 
   return <AppShell mobileMode="task">
     <main className="profile-secondary-page" aria-labelledby="profile-secondary-title">
       <SecondaryTop title={config.title} />
-      <header className="profile-secondary-header"><p>我的关系</p><h1 id="profile-secondary-title">{config.title}</h1><span>{count} 人 · {config.description}</span></header>
-      <RelationSwitcher relation={relation} />
+      <header className="profile-secondary-header"><p>{auth.isAuthenticated || designPreview ? '我的关系' : '个人关系'}</p><h1 id="profile-secondary-title">{config.title}</h1>{(auth.isAuthenticated || designPreview) && <span>{count} 人 · {config.description}</span>}</header>
+      {(auth.isAuthenticated || designPreview) && <RelationSwitcher relation={relation} />}
       <section className="profile-secondary-content" aria-label={`${config.title}列表`}>{content}</section>
     </main>
   </AppShell>;

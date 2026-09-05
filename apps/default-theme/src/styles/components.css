@@ -446,6 +446,31 @@
   .resource-state h6 { color: var(--lc-ink); font-size: 0.96rem; }
   .resource-state span { max-width: 52ch; line-height: 1.6; }
 
+  .resource-state:is(.is-offline, .is-service-error, .is-compatibility, .is-invalid-request, .is-error) {
+    border: 1px solid color-mix(in srgb, var(--lc-danger) 16%, var(--lc-separator));
+    background: color-mix(in srgb, var(--lc-danger) 3%, var(--lc-surface));
+  }
+
+  .resource-state:is(.is-forbidden, .is-unauthorized, .is-not-found) {
+    border: 1px solid var(--lc-separator);
+    background: var(--lc-surface-subtle);
+  }
+
+  .resource-state.is-rate-limited {
+    border: 1px solid color-mix(in srgb, var(--lc-rose) 18%, var(--lc-separator));
+    background: color-mix(in srgb, var(--lc-rose-soft) 38%, var(--lc-surface));
+  }
+
+  .auth-route-state {
+    min-height: 100vh;
+    padding: 24px;
+    display: grid;
+    place-items: center;
+    background: var(--lc-canvas);
+  }
+
+  .auth-route-state > .resource-state { width: min(520px, 100%); }
+
   .resource-skeleton {
     width: min(100%, 520px);
     display: grid;

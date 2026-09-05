@@ -3,16 +3,16 @@ import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../../app/providers.jsx';
 import { getUserFacingError } from '../../app/user-facing-error.js';
 import { ProfileRelationList, ProfileRelationSkeleton } from '../../components/ProfileRelationList.jsx';
-import { ResourceState } from '../../components/ResourceState.jsx';
+import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
 import { ProfileCardFeed, ProfileCardFeedSkeleton } from '../../components/ProfileCardFeed.jsx';
 import { ProfileShell } from '../../components/ProfileShell.jsx';
 import { buildProfileMetadata, formatProfileCount, normalizeProfileUid, ProfileIdentitySkeleton, ProfileIdentitySurface } from '../../components/ProfileIdentitySurface.jsx';
 import { ReportResourceDialog } from '../../features/moderation/ReportResourceDialog.jsx';
 import { AppShell } from '../../layouts/AppShell.jsx';
 import { blockUser, followUser, getPublicProfile, getUserRelation, listFollowers, listFollowing, listPublicCardsByUser, unblockUser, unfollowUser } from '../../services/community-service.js';
-import { Avatar, Button, ConfirmActionDialog, Icon, useToast } from '../../ui/index.js';
+import { AuthPromptDialog, Avatar, Button, ConfirmActionDialog, Icon, useToast } from '../../ui/index.js';
 import { ProfileContentTabs } from '../profile/ProfileContentTabs.jsx';
-import { ActionMenu, ScopedBanner } from '../../ui/interaction.jsx';
+import { ActionMenu } from '../../ui/interaction.jsx';
 
 function PublicProfileAvatar({ profile }) {
   return <Avatar label={profile?.username || '用户'} src={profile?.avatar} tone="rose" size="md" className="profile-identity-avatar-node" />;
@@ -45,36 +45,12 @@ function paginationHasMore(result, fallbackPage, pageSize = 30) {
   return Array.isArray(result?.data) && result.data.length >= pageSize;
 }
 
-function errorStatus(error) {
-  return Number(error?.status ?? error?.response?.status ?? 0);
-}
-
-function isNetworkError(error) {
-  return Number(error?.code) === -2 || Number(error?.code) === -3 || error?.reason === 'network' || error?.reason === 'timeout';
-}
-
 function PublicProfileError({ error, onRetry, className = 'public-profile-error' }) {
-  const status = errorStatus(error);
-  const title = status === 404 ? '这个用户不存在' : status === 403 ? '这个主页暂不可见' : isNetworkError(error) ? '主页暂时无法加载' : '主页加载失败';
-  const detail = status === 404
-    ? '用户可能已注销，或主页地址已经失效。'
-    : status === 403
-      ? '该用户限制了主页访问，请稍后再试。'
-      : isNetworkError(error)
-        ? '请检查网络连接后重试。'
-        : getUserFacingError(error, { fallback: '用户主页暂时无法加载，请稍后重试。' });
-  return <ResourceState status="error" className={className} title={title} description={detail} onRetry={onRetry} actionLabel="重试" />;
+  return <ResourceState status="error" error={error} className={className} onRetry={onRetry} />;
 }
 
-function PublicRelationError({ error, title, onRetry }) {
-  const status = errorStatus(error);
-  const heading = status === 404 ? '这个用户不存在' : status === 403 ? `${title}列表不可见` : `${title}暂时无法加载`;
-  const detail = status === 404
-    ? '用户可能已注销，或主页地址已经失效。'
-    : status === 403
-      ? '该用户限制了关系列表访问。'
-      : getUserFacingError(error, { fallback: `${title}暂时无法加载，请稍后重试。` });
-  return <ResourceState status="error" title={heading} description={detail} onRetry={onRetry} actionLabel="重试" />;
+function PublicRelationError({ error, onRetry }) {
+  return <ResourceState status="error" error={error} onRetry={onRetry} />;
 }
 
 function PublicProfileSkeleton({ handle, relationPage = false }) {
@@ -88,18 +64,12 @@ function PublicProfileSkeleton({ handle, relationPage = false }) {
 function PublicProfileCards({ status, error, items, profile, hasMore, loadingMore, loadMoreError, onRetry, onLoadMore, onRetryMore }) {
   if (status === 'loading') return <ProfileCardFeedSkeleton count={4} className="public-profile-post-list" ariaLabel="公开内容加载中" />;
   if (status === 'error') {
-    const code = errorStatus(error);
-    const title = code === 404 ? '这个用户不存在' : code === 403 ? '公开内容不可见' : isNetworkError(error) ? '公开内容加载失败' : '公开内容暂不可用';
-    const detail = code === 404 ? '用户可能已注销，或主页地址已经失效。' : code === 403 ? '该用户限制了公开内容访问。' : getUserFacingError(error, { fallback: '公开内容暂时无法加载，请稍后重试。' });
-    return <ResourceState status="error" className="public-profile-card-state" title={title} description={detail} onRetry={onRetry} actionLabel="重试" />;
+    return <ResourceState status="error" error={error} className="public-profile-card-state" onRetry={onRetry} />;
   }
   if (!items.length) return <ResourceState status="empty" className="public-profile-content-boundary is-empty" emptyTitle="还没有公开内容" emptyDescription="当这个用户发布公开内容后，会显示在这里。" />;
-  const loadMoreCode = errorStatus(loadMoreError);
-  const loadMoreTitle = loadMoreCode === 404 ? '这个用户不存在' : loadMoreCode === 403 ? '公开内容不可见' : isNetworkError(loadMoreError) ? '更多内容加载失败' : '更多内容暂不可用';
-  const loadMoreDetail = loadMoreCode === 404 ? '用户可能已注销，或主页地址已经失效。' : loadMoreCode === 403 ? '该用户限制了公开内容访问。' : getUserFacingError(loadMoreError, { fallback: '更多公开内容暂时无法加载，请稍后重试。' });
   return <>
     <ProfileCardFeed items={items} profile={profile} className="public-profile-post-list" ariaLabel="公开内容" />
-    {loadMoreError && <ScopedBanner className="public-profile-load-more-error" title={loadMoreTitle} description={loadMoreDetail} actionLabel="重试" onAction={onRetryMore} />}
+    {loadMoreError && <ResourceErrorBanner className="public-profile-load-more-error" error={loadMoreError} onRetry={onRetryMore} />}
     {hasMore && <div className="public-profile-load-more"><Button type="button" label="加载更多" variant="secondary" size="lg" isDisabled={loadingMore} isLoading={loadingMore} onClick={onLoadMore} /></div>}
   </>;
 }
@@ -117,6 +87,7 @@ export function PublicProfileView({ relation: relationProp }) {
   const [blocked, setBlocked] = useState(false);
   const [blockOpen, setBlockOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [authPromptAction, setAuthPromptAction] = useState('');
   const requestRef = useRef(0);
 
   const shareProfile = useCallback(async () => {
@@ -189,7 +160,7 @@ export function PublicProfileView({ relation: relationProp }) {
   const toggleFollow = async () => {
     const profile = state.profile;
     if (!profile || busy) return;
-    if (!auth.isAuthenticated) { toast({ body: '登录后才能关注用户。', uniqueID: 'follow-login' }); navigate('/auth/login', { state: { from: profilePath(profile, '', handle) || `/user/${handle}` } }); return; }
+    if (!auth.isAuthenticated) { setAuthPromptAction('关注用户'); return; }
     const previous = following;
     const previousCount = Number(profile.followers ?? profile.counts?.followers ?? 0);
     setBusy('follow'); setFollowing(!previous);
@@ -202,8 +173,7 @@ export function PublicProfileView({ relation: relationProp }) {
     if (blocked) { toast({ body: '你与该用户的关系受到限制，暂时无法发送私信。', type: 'error', uniqueID: 'message-blocked' }); return; }
     const targetHandle = canonicalHandle(state.profile, handle);
     if (!auth.isAuthenticated) {
-      toast({ body: '登录后才能发送私信。', uniqueID: 'message-login' });
-      navigate('/auth/login', { state: { from: profilePath(state.profile, '', handle) || `/user/${handle}` } });
+      setAuthPromptAction('发送私信');
       return;
     }
     if (!targetHandle) {
@@ -225,7 +195,12 @@ export function PublicProfileView({ relation: relationProp }) {
   const ownProfile = Boolean(profile && normalizeProfileUid(auth.session?.uid) === normalizeProfileUid(profile.uid));
   const followers = Number(profile?.followers ?? profile?.counts?.followers ?? 0);
   const followingCount = Number(profile?.following ?? profile?.counts?.following ?? 0);
-  const profileMenu = <ActionMenu items={[{ label: '分享主页', icon: <Icon name="share" size={17} />, onClick: () => { void shareProfile(); } }, ...(!ownProfile && auth.isAuthenticated ? [{ label: '举报', icon: <Icon name="flag" size={17} />, onClick: () => { if (!busy) setReportOpen(true); } }, { label: blocked ? '解除拉黑' : '拉黑', icon: <Icon name="close" size={17} />, onClick: () => { if (!busy) setBlockOpen(true); } }] : [])]} label="更多主页操作" icon={<Icon name="more" size={19} />} />;
+  // The overflow menu is an authenticated action surface. Anonymous visitors
+  // should see the public profile and its login affordances, not a menu whose
+  // only useful action (sharing/reporting) is unavailable or misleading.
+  const profileMenu = auth.isAuthenticated
+    ? <ActionMenu items={[{ label: '分享主页', icon: <Icon name="share" size={17} />, onClick: () => { void shareProfile(); } }, ...(!ownProfile ? [{ label: '举报', icon: <Icon name="flag" size={17} />, onClick: () => { if (!busy) setReportOpen(true); } }, { label: blocked ? '解除拉黑' : '拉黑', icon: <Icon name="close" size={17} />, onClick: () => { if (!busy) setBlockOpen(true); } }] : [])]} label="更多主页操作" icon={<Icon name="more" size={19} />} />
+    : null;
   if (ownProfile) {
     const ownPath = relation === 'followers' ? '/me/followers' : relation === 'following' ? '/me/following' : '/me';
     return <Navigate to={ownPath} replace />;
@@ -241,7 +216,7 @@ export function PublicProfileView({ relation: relationProp }) {
     const relationContent = state.status === 'loading'
       ? <ProfileRelationSkeleton title={title} />
       : state.status === 'error'
-        ? <PublicRelationError error={state.error} title={title} onRetry={load} />
+        ? <PublicRelationError error={state.error} onRetry={load} />
         : !auth.isAuthenticated
           ? <ResourceState status="empty" emptyTitle="登录后查看关系列表" emptyDescription="登录后才能查看完整的关系列表。" emptyAction={<Link className="action-link action-link-primary" to="/auth/login">去登录</Link>} />
           : state.rows.length
@@ -281,6 +256,7 @@ export function PublicProfileView({ relation: relationProp }) {
       <PublicProfileCards status={state.cardsStatus} error={state.cardsError} items={state.cards} profile={profile} hasMore={state.cardsHasMore} loadingMore={state.cardsLoadingMore} loadMoreError={state.cardsLoadMoreError} onRetry={load} onLoadMore={loadMoreCards} onRetryMore={loadMoreCards} />
     </>}
     <ConfirmActionDialog isOpen={blockOpen} onOpenChange={(open) => { if (!busy) setBlockOpen(open); }} title={blocked ? '解除拉黑这个用户？' : '拉黑这个用户？'} description={blocked ? '解除后仍受隐私设置控制。' : '拉黑后，对方的私信和部分互动会被服务器阻止。'} actionLabel={blocked ? '解除拉黑' : '确认拉黑'} isLoading={busy === 'block'} onAction={toggleBlock} />
+    <AuthPromptDialog isOpen={Boolean(authPromptAction)} action={authPromptAction} onOpenChange={(open) => { if (!open) setAuthPromptAction(''); }} onLogin={() => { const from = profilePath(state.profile, '', handle) || `/user/${handle}`; setAuthPromptAction(''); navigate('/auth/login', { state: { from } }); }} />
     <ReportResourceDialog isOpen={reportOpen} onOpenChange={setReportOpen} resourceType="user" resourceId={profile?.uid} title="举报用户" onFeedback={(body, type) => toast({ body, type: type === 'error' ? 'error' : undefined, uniqueID: type === 'error' ? 'report-error' : 'report-sent', collisionBehavior: 'overwrite' })} />
   </ProfileShell></AppShell>;
 }

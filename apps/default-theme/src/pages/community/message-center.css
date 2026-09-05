@@ -267,6 +267,8 @@
     align-items: center;
     gap: 8px;
   }
+  .message-search-page-field { min-width: 0; }
+  .message-search-page-title { color: var(--lc-ink); font-size: .88rem; }
   .message-search-page-header > a {
     width: 44px;
     height: 44px;

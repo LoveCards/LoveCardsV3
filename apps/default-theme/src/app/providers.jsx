@@ -4,6 +4,7 @@ import { LayerProvider } from '@astryxdesign/core/Layer';
 import { InternationalizationProvider } from '@astryxdesign/core/i18n';
 import { neutralTheme } from '@astryxdesign/theme-neutral/built';
 import { checkSession, loadCurrentUser, logout } from '../services/auth-service.js';
+import { getSdkClient } from './sdk-client.js';
 
 const ThemeModeContext = createContext(null);
 const AuthContext = createContext(null);
@@ -98,7 +99,15 @@ export function AppProviders({ children, initialMode }) {
         try {
           user = await loadCurrentUser();
           userStatus = user ? 'ready' : 'error';
-        } catch {
+        } catch (error) {
+          // A rejected current-user request with 401 means the cached session
+          // is no longer authenticated. Clear it so private pages render their
+          // login boundary instead of a misleading network-error state.
+          if (error?.status === 401) getSdkClient()?.clearToken();
+          if (error?.status === 401) {
+            if (active) setAuth({ status: 'ready', session: null, user: null, userStatus: 'idle', error: null });
+            return;
+          }
           // Session state remains usable when the profile request is temporarily unavailable.
         }
         if (active) setAuth({ status: 'ready', session, user, userStatus, error: null });

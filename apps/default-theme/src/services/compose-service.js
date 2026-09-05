@@ -5,6 +5,11 @@ import { CARD_CONTENT_MAX_LENGTH } from '../features/feed/card-constraints.js';
 export const COMPOSE_IMAGE_MIME_TYPES = Object.freeze(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 export const COMPOSE_VIDEO_MIME_TYPES = Object.freeze(['video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v']);
 export const COMPOSE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
+const CARD_VISIBILITIES = Object.freeze(['public', 'followers', 'private']);
+
+export function normalizeCardVisibility(value) {
+  return CARD_VISIBILITIES.includes(value) ? value : 'public';
+}
 
 function mediaType(value) {
   return String(value?.type || value?.mime_type || '').trim().toLowerCase();
@@ -48,6 +53,12 @@ function emptyContentMessage(kind) {
   if (kind === 'video') return '视频必须先填写正文。';
   if (kind === 'image' || kind === 'gallery') return '图文必须先填写正文。';
   return '请先写下要分享的内容。';
+}
+
+function visibilityPayload(visibility) {
+  if (visibility === undefined) return {};
+  if (!CARD_VISIBILITIES.includes(visibility)) throw new Error('请选择有效的内容可见范围。');
+  return { visibility };
 }
 
 function normalizeMediaReference(value) {
@@ -169,10 +180,11 @@ export async function loadPublishedCardForEdit(id) {
     data,
     media,
     publishType,
+    visibility: normalizeCardVisibility(card.visibility),
   };
 }
 
-export async function updatePublishedCard({ id, content, tags = [], kind, files = [], media = [], data = {}, mediaChanged = false }) {
+export async function updatePublishedCard({ id, content, tags = [], kind, files = [], media = [], data = {}, mediaChanged = false, visibility }) {
   const state = getComposeState();
   if (!state.canPublish) throw new Error(state.message);
   const client = getSdkClient();
@@ -186,6 +198,7 @@ export async function updatePublishedCard({ id, content, tags = [], kind, files 
   if (normalizedContent.length > CARD_CONTENT_MAX_LENGTH) throw new Error(`正文最多 ${CARD_CONTENT_MAX_LENGTH} 字，请精简后再保存。`);
   const normalizedTags = [...new Set(tags.map((tag) => String(tag || '').trim().replace(/^#/, '')).filter(Boolean))];
   if (normalizedTags.length > 3) throw new Error('最多添加 3 个话题，请移除多余话题。');
+  const cardVisibilityPayload = visibilityPayload(visibility);
   validatePublishMedia(publishKind, [...existingMedia, ...files]);
   let uploads = [];
   try {
@@ -198,6 +211,7 @@ export async function updatePublishedCard({ id, content, tags = [], kind, files 
     await client.cards.update(numericId, {
       content: normalizedContent,
       tags: normalizedTags,
+      ...cardVisibilityPayload,
       data: { ...readCardData(data), kind: publishKind },
       ...mediaPayload,
     });
@@ -208,7 +222,7 @@ export async function updatePublishedCard({ id, content, tags = [], kind, files 
   }
 }
 
-export async function publishCard({ content, tags = [], kind, files = [], file = null, media = [] }) {
+export async function publishCard({ content, tags = [], kind, files = [], file = null, media = [], visibility = 'public' }) {
   const state = getComposeState();
   if (!state.canPublish) throw new Error(state.message);
   const client = getSdkClient();
@@ -219,6 +233,7 @@ export async function publishCard({ content, tags = [], kind, files = [], file =
   const normalizedContent = String(content || '').trim();
   if (!normalizedContent) throw new Error(emptyContentMessage(publishKind));
   if (normalizedContent.length > CARD_CONTENT_MAX_LENGTH) throw new Error(`正文最多 ${CARD_CONTENT_MAX_LENGTH} 字，请精简后再发布。`);
+  const cardVisibilityPayload = visibilityPayload(visibility);
   validatePublishMedia(publishKind, [...existingMedia.map((item) => ({ type: item.type })), ...selectedFiles]);
   const uploads = [];
   try {
@@ -236,6 +251,7 @@ export async function publishCard({ content, tags = [], kind, files = [], file =
     return await client.cards.create({
       content: normalizedContent,
       tags,
+      ...cardVisibilityPayload,
       data: { kind: publishKind },
       ...mediaPayload,
     });

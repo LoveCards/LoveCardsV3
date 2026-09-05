@@ -43,7 +43,7 @@ export default defineNuxtConfig({
     nitro: {
         devProxy: {
             "/api": {
-                target: process.env.NUXT_API_PROXY_TARGET || "http://127.0.0.1:6001/api",
+                target: process.env.NUXT_API_PROXY_TARGET || "http://localhost:6001/api",
                 changeOrigin: true,
                 prependPath: true,
             },

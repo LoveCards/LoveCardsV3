@@ -800,6 +800,14 @@
                           "status": {
                             "type": "integer"
                           },
+                          "visibility": {
+                            "type": "string",
+                            "enum": [
+                              "public",
+                              "followers",
+                              "private"
+                            ]
+                          },
                           "user_id": {
                             "type": "integer"
                           },
@@ -1178,6 +1186,14 @@
                         "status": {
                           "type": "integer"
                         },
+                        "visibility": {
+                          "type": "string",
+                          "enum": [
+                            "public",
+                            "followers",
+                            "private"
+                          ]
+                        },
                         "user_id": {
                           "type": "integer"
                         },
@@ -1430,6 +1446,7 @@
             "cover": "url|max:2083",
             "content": "notBlank|max:1000",
             "tags": "arrayJson|tagsLength",
+            "visibility": "in:public,followers,private",
             "good": "number",
             "views": "number",
             "comments": "number",
@@ -13038,6 +13055,14 @@
                           "status": {
                             "type": "integer"
                           },
+                          "visibility": {
+                            "type": "string",
+                            "enum": [
+                              "public",
+                              "followers",
+                              "private"
+                            ]
+                          },
                           "user_id": {
                             "type": "integer"
                           },
@@ -13329,6 +13354,14 @@
                         "status": {
                           "type": "integer"
                         },
+                        "visibility": {
+                          "type": "string",
+                          "enum": [
+                            "public",
+                            "followers",
+                            "private"
+                          ]
+                        },
                         "user_id": {
                           "type": "integer"
                         },
@@ -13541,7 +13574,9 @@
         },
         "x-capabilities": [],
         "x-public": true,
-        "x-middleware": [],
+        "x-middleware": [
+          "OptionalJwtAuth"
+        ],
         "x-resource": "CommentResource",
         "x-response-shape": "paginated",
         "x-validators": [
@@ -14139,6 +14174,14 @@
                           "status": {
                             "type": "integer"
                           },
+                          "visibility": {
+                            "type": "string",
+                            "enum": [
+                              "public",
+                              "followers",
+                              "private"
+                            ]
+                          },
                           "user_id": {
                             "type": "integer"
                           },
@@ -14398,6 +14441,14 @@
                           "status": {
                             "type": "integer"
                           },
+                          "visibility": {
+                            "type": "string",
+                            "enum": [
+                              "public",
+                              "followers",
+                              "private"
+                            ]
+                          },
                           "user_id": {
                             "type": "integer"
                           },
@@ -14650,7 +14701,9 @@
         },
         "x-capabilities": [],
         "x-public": true,
-        "x-middleware": [],
+        "x-middleware": [
+          "OptionalJwtAuth"
+        ],
         "x-resource": "CommentResource",
         "x-response-shape": "item",
         "x-validators": [],
@@ -15481,6 +15534,14 @@
                           "status": {
                             "type": "integer"
                           },
+                          "visibility": {
+                            "type": "string",
+                            "enum": [
+                              "public",
+                              "followers",
+                              "private"
+                            ]
+                          },
                           "user_id": {
                             "type": "integer"
                           },
@@ -15769,6 +15830,7 @@
             "cover": "url|max:2083",
             "content": "notBlank|max:1000",
             "tags": "arrayJson|tagsLength",
+            "visibility": "in:public,followers,private",
             "good": "number",
             "views": "number",
             "comments": "number",
@@ -15799,7 +15861,8 @@
                       "additionalProperties": false,
                       "required": [
                         "id",
-                        "status"
+                        "status",
+                        "visibility"
                       ],
                       "properties": {
                         "id": {
@@ -15807,6 +15870,14 @@
                         },
                         "status": {
                           "type": "integer"
+                        },
+                        "visibility": {
+                          "type": "string",
+                          "enum": [
+                            "public",
+                            "followers",
+                            "private"
+                          ]
                         }
                       },
                       "x-typescript-type": "CreateResult"
@@ -15862,6 +15933,14 @@
                   },
                   "tags": {
                     "type": "array"
+                  },
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "followers",
+                      "private"
+                    ]
                   },
                   "content": {
                     "type": "string",
@@ -16021,6 +16100,14 @@
                         },
                         "status": {
                           "type": "integer"
+                        },
+                        "visibility": {
+                          "type": "string",
+                          "enum": [
+                            "public",
+                            "followers",
+                            "private"
+                          ]
                         },
                         "user_id": {
                           "type": "integer"
@@ -16275,6 +16362,7 @@
             "cover": "url|max:2083",
             "content": "notBlank|max:1000",
             "tags": "arrayJson|tagsLength",
+            "visibility": "in:public,followers,private",
             "good": "number",
             "views": "number",
             "comments": "number",
@@ -16340,6 +16428,14 @@
                   },
                   "tags": {
                     "type": "array"
+                  },
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "public",
+                      "followers",
+                      "private"
+                    ]
                   },
                   "cover": {
                     "type": "string",
@@ -17956,6 +18052,14 @@
                           },
                           "status": {
                             "type": "integer"
+                          },
+                          "visibility": {
+                            "type": "string",
+                            "enum": [
+                              "public",
+                              "followers",
+                              "private"
+                            ]
                           },
                           "user_id": {
                             "type": "integer"
@@ -23760,6 +23864,14 @@
                           "status": {
                             "type": "integer"
                           },
+                          "visibility": {
+                            "type": "string",
+                            "enum": [
+                              "public",
+                              "followers",
+                              "private"
+                            ]
+                          },
                           "user_id": {
                             "type": "integer"
                           },
@@ -24937,6 +25049,14 @@
                           },
                           "status": {
                             "type": "integer"
+                          },
+                          "visibility": {
+                            "type": "string",
+                            "enum": [
+                              "public",
+                              "followers",
+                              "private"
+                            ]
                           },
                           "user_id": {
                             "type": "integer"

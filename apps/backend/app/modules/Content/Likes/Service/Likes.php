@@ -6,8 +6,13 @@ use think\facade\Db;
 use app\modules\Content\Infrastructure\Persistence\Model\Likes as LikesModel;
 use app\modules\Content\Infrastructure\Persistence\Model\Cards as CardsModel;
 use app\modules\Content\Infrastructure\Persistence\Model\Comments as CommentsModel;
+use app\modules\Content\Cards\Service\CardVisibilityPolicy;
 use app\modules\Platform\Eventing\Public\DomainEventBus;
 use app\api\ApiException;
+
+if (!class_exists(CardVisibilityPolicy::class)) {
+    require_once dirname(__DIR__, 2) . '/Cards/Service/CardVisibilityPolicy.php';
+}
 
 class Likes
 {
@@ -19,7 +24,7 @@ class Likes
 
         Db::startTrans();
         try {
-            $target = self::likeTarget($refType, $refId);
+            $target = self::likeTarget($refType, $refId, $uid);
 
             $exists = LikesModel::where('ref_type', $refType)
                 ->where('ref_id', $refId)
@@ -121,7 +126,7 @@ class Likes
     }
 
     /** @return array{owner_id:int,card_id:int,comment_id:?int} */
-    private static function likeTarget(string $refType, int $refId): array
+    private static function likeTarget(string $refType, int $refId, int $viewerId = 0): array
     {
         $resource = match ($refType) {
             'card' => CardsModel::where('id', $refId)->where('status', 0)->lock(true)->findOrEmpty(),
@@ -134,6 +139,7 @@ class Likes
         if ($ownerId < 1 || $cardId < 1) {
             throw new \UnexpectedValueException('点赞目标缺少作者或卡片标识');
         }
+        CardVisibilityPolicy::assertReadable($cardId, $viewerId);
 
         return [
             'owner_id' => $ownerId,

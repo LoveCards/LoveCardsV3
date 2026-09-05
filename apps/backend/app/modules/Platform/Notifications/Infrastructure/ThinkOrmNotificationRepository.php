@@ -6,6 +6,7 @@ use app\modules\Platform\Notifications\Contract\NotificationRepository;
 use app\modules\Platform\Notifications\Contract\NotificationTypeCatalog;
 use app\modules\Platform\Notifications\Domain\NotificationIntent;
 use think\facade\Db;
+use app\modules\Content\Cards\Service\CardVisibilityPolicy;
 use app\modules\Platform\User\Public\UserStatus;
 
 final class ThinkOrmNotificationRepository implements NotificationRepository
@@ -184,7 +185,8 @@ final class ThinkOrmNotificationRepository implements NotificationRepository
                 $cards,
                 $comments,
                 $messages,
-                $messageMembership
+                $messageMembership,
+                $userId
             );
             $row['category'] = NotificationTypeCatalog::categoryFor($type);
             $row['resource_state'] = $resourceState;
@@ -353,7 +355,8 @@ final class ThinkOrmNotificationRepository implements NotificationRepository
         array $cards,
         array $comments,
         array $messages,
-        array $messageMembership
+        array $messageMembership,
+        int $viewerId = 0
     ): array {
         $notificationType = strtolower((string) ($notification['type'] ?? ''));
         $resourceType = $notification['resource_type'] ?? null;
@@ -375,6 +378,7 @@ final class ThinkOrmNotificationRepository implements NotificationRepository
 
         if ($resourceType === 'card') {
             $state = $this->publicationState($cards[$id] ?? null);
+            if ($state === 'available' && !CardVisibilityPolicy::canRead($cards[$id] ?? [], $viewerId)) $state = 'restricted';
             return [$state, $state === 'available' ? '/post/' . $id : null];
         }
 
@@ -385,6 +389,7 @@ final class ThinkOrmNotificationRepository implements NotificationRepository
             if ($state === 'available') {
                 $cardState = $this->publicationState($cards[$cardId] ?? null);
                 if ($cardState !== 'available') $state = $cardState;
+                elseif (!CardVisibilityPolicy::canRead($cards[$cardId] ?? [], $viewerId)) $state = 'restricted';
             }
             return [
                 $state,

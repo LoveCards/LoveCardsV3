@@ -7497,7 +7497,9 @@
           "auth": "public"
         }
       },
-      "middleware": [],
+      "middleware": [
+        "OptionalJwtAuth"
+      ],
       "contract": {
         "request": {
           "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
@@ -7898,7 +7900,9 @@
           "auth": "public"
         }
       },
-      "middleware": [],
+      "middleware": [
+        "OptionalJwtAuth"
+      ],
       "contract": {
         "request": null,
         "response": {
@@ -8430,7 +8434,9 @@
         "usesDirectInput": false,
         "directInputKeys": [],
         "fileKeys": [],
-        "accessedFields": [],
+        "accessedFields": [
+          "visibility"
+        ],
         "usesContractResponse": true,
         "usesRawResponse": false
       },
