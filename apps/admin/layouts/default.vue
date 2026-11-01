@@ -159,26 +159,6 @@
       :width="264"
       border="e"
     >
-      <v-list density="compact">
-        <v-list-item
-          class="admin-drawer__profile"
-          :title="userInfo.username || '管理员'"
-          :subtitle="roleLabel"
-        >
-          <template #prepend>
-            <v-avatar size="40" color="primary">
-              <v-img
-                v-if="userInfo.avatar"
-                :src="userInfo.avatar"
-                :alt="userInfo.username || '管理员头像'"
-              />
-              <span v-else class="text-on-primary">{{ initials }}</span>
-            </v-avatar>
-          </template>
-        </v-list-item>
-      </v-list>
-      <v-divider />
-
       <v-list
         :opened="openedGroups"
         class="admin-navigation-list"
@@ -186,6 +166,26 @@
         nav
         @click:open="updateOpenedGroup"
       >
+        <v-tooltip
+          v-if="visibleDashboard"
+          :disabled="!rail || mdAndDown"
+          text="工作台"
+          location="end"
+        >
+          <template #activator="{ props }">
+            <v-list-item
+              v-bind="props"
+              :active="activeNavigationItem?.path === visibleDashboard.path"
+              :prepend-icon="visibleDashboard.icon"
+              :title="visibleDashboard.title"
+              :to="visibleDashboard.path"
+              color="primary"
+              @click="closeMobileDrawer"
+            />
+          </template>
+        </v-tooltip>
+        <v-divider v-if="visibleDashboard && visibleNavigationGroups.length" class="my-2" />
+
         <v-list-group
           v-for="group in visibleNavigationGroups"
           :key="group.key"
@@ -207,13 +207,7 @@
             </v-tooltip>
           </template>
 
-          <template v-for="(item, index) in group.items" :key="item.path">
-            <v-list-subheader
-              v-if="shouldShowSection(group, item, index)"
-              class="admin-navigation-section"
-            >
-              {{ item.section }}
-            </v-list-subheader>
+          <template v-for="item in group.items" :key="item.path">
             <v-list-item
               :active="activeNavigationItem?.path === item.path"
               :prepend-icon="item.icon || 'mdi-chevron-right'"
@@ -221,22 +215,7 @@
               :to="item.path"
               color="primary"
               @click="closeMobileDrawer"
-            >
-              <template v-if="item.riskLevel === 'high'" #append>
-                <v-tooltip text="高风险页面" location="end">
-                  <template #activator="{ props }">
-                    <v-icon
-                      v-bind="props"
-                      color="warning"
-                      icon="mdi-alert-outline"
-                      size="18"
-                      role="img"
-                      aria-label="高风险页面"
-                    />
-                  </template>
-                </v-tooltip>
-              </template>
-            </v-list-item>
+            />
           </template>
         </v-list-group>
       </v-list>
@@ -296,10 +275,7 @@ import {
   adminNavigation,
   canAccessNavigationItem,
 } from '~/config/navigation'
-import type {
-  AdminNavigationGroup,
-  AdminNavigationItem,
-} from '~/config/navigation'
+import type { AdminNavigationItem } from '~/config/navigation'
 import type { User } from '@lovecards/sdk'
 
 const theme = useTheme()
@@ -310,7 +286,7 @@ const runtimeConfig = useRuntimeConfig()
 const client = useApi()
 const drawer = ref(!mdAndDown.value)
 const rail = ref(false)
-const collapsedGroups = ref<string[]>([])
+const openedGroups = ref<string[]>([])
 const searchOpen = ref(false)
 const searchInput = ref<{ focus: () => void } | null>(null)
 const searchQuery = ref('')
@@ -352,53 +328,43 @@ const visibleNavigationGroups = computed(() => adminNavigation.groups
     items: group.items.filter((item) => canAccessNavigationItem(item, userStore.grants)),
   }))
   .filter((group) => group.items.length > 0))
-const openedGroups = computed(() => visibleNavigationGroups.value
-  .map((group) => group.key)
-  .filter((key) => !collapsedGroups.value.includes(key)))
-const allVisibleItems = computed(() => visibleNavigationGroups.value.flatMap((group) => group.items))
+const visibleDashboard = computed(() => canAccessNavigationItem(adminNavigation.dashboard, userStore.grants)
+  ? adminNavigation.dashboard
+  : undefined)
+const allVisibleItems = computed(() => [
+  ...(visibleDashboard.value ? [visibleDashboard.value] : []),
+  ...visibleNavigationGroups.value.flatMap((group) => group.items),
+])
 const activeNavigationItem = computed(() => activeNavigationItemForPath(route.path, allVisibleItems.value))
 const searchResults = computed(() => {
   const query = searchQuery.value.trim().toLocaleLowerCase()
   if (!query) return [] as Array<AdminNavigationItem & { groupTitle: string }>
 
   return allVisibleItems.value
-    .filter((item) => item.title.toLocaleLowerCase().includes(query) || item.path.includes(query))
+    .filter((item) => [item.title, ...(item.searchAliases ?? []), item.path]
+      .some((value) => value.toLocaleLowerCase().includes(query)))
     .slice(0, 8)
     .map((item) => ({
       ...item,
-      groupTitle: visibleNavigationGroups.value.find((group) => group.items.some((candidate) => candidate.path === item.path))?.title ?? '',
+      groupTitle: item.path === visibleDashboard.value?.path
+        ? '工作台'
+        : visibleNavigationGroups.value.find((group) => group.items.some((candidate) => candidate.path === item.path))?.title ?? '',
     }))
 })
-
-function shouldShowSection(
-  group: AdminNavigationGroup,
-  item: AdminNavigationItem,
-  index: number,
-): boolean {
-  return Boolean(
-    item.section
-    && item.section !== item.title
-    && item.section !== group.title
-    && item.section !== group.items[index - 1]?.section,
-  )
-}
 
 function expandActiveGroup(): void {
   const active = visibleNavigationGroups.value.find((group) => group.items.some((item) => (
     item.path === activeNavigationItem.value?.path
   )))
-  if (active && collapsedGroups.value.includes(active.key)) {
-    collapsedGroups.value = collapsedGroups.value.filter((key) => key !== active.key)
+  if (active && !openedGroups.value.includes(active.key)) {
+    openedGroups.value = [...openedGroups.value, active.key]
   }
 }
 
 function updateOpenedGroup(event: { id: unknown; value: boolean }): void {
   const key = String(event.id)
-  if (event.value) {
-    collapsedGroups.value = collapsedGroups.value.filter((item) => item !== key)
-  } else if (!collapsedGroups.value.includes(key)) {
-    collapsedGroups.value = [...collapsedGroups.value, key]
-  }
+  if (event.value && !openedGroups.value.includes(key)) openedGroups.value = [...openedGroups.value, key]
+  else if (!event.value) openedGroups.value = openedGroups.value.filter((item) => item !== key)
 }
 
 function closeMobileDrawer(): void {
@@ -494,10 +460,6 @@ async function logout(): Promise<void> {
   font-size: 0.875rem;
 }
 
-.admin-drawer__profile {
-  min-height: 76px;
-}
-
 .admin-navigation-list,
 .admin-drawer__actions {
   padding: 8px;
@@ -516,14 +478,6 @@ async function logout(): Promise<void> {
 
 .admin-navigation-list :deep(.v-list-group__items .v-list-item) {
   padding-inline-start: 48px !important;
-}
-
-.admin-navigation-section {
-  min-height: 32px;
-  padding-inline-start: 48px;
-  color: rgb(var(--v-theme-on-surface-variant));
-  font-size: 0.75rem;
-  font-weight: 600;
 }
 
 .admin-main {

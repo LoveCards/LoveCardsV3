@@ -1,7 +1,19 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { renderRoute } from './renderRoute.jsx';
 
 describe('route smoke', () => {
+  it('keeps lazy production routes aligned with the eager component-test route map', () => {
+    const readRoutes = (file) => readFileSync(fileURLToPath(new URL(file, import.meta.url)), 'utf8');
+    const paths = (source) => [...source.matchAll(/<Route\s+path="([^"]+)"/g)].map((match) => match[1]);
+    const production = readRoutes('../app/router.jsx');
+    const eager = readRoutes('../app/router-eager.test.jsx');
+    expect(paths(production)).toEqual(paths(eager));
+    expect(production.match(/path: '\/compose\/:type'/)?.[0]).toBe("path: '/compose/:type'");
+    expect(eager.match(/path: '\/compose\/:type'/)?.[0]).toBe("path: '/compose/:type'");
+  });
+
   it('renders Blueprint 01 as the product entry without engineering copy', () => {
     const html = renderRoute('/');
     expect(html).toContain('推荐');

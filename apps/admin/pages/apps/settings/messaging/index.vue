@@ -3,7 +3,7 @@
     <AdminPageHeader
       title="消息渠道"
       description="管理通知使用的发信渠道。密钥仅在详情页编辑，扫描和默认渠道切换均由服务端校验权限。"
-      :breadcrumbs="[{ title: '系统配置' }, { title: '消息渠道' }]"
+      :breadcrumbs="[{ title: '站点设置' }]"
     >
       <template #actions>
         <AdminActionGuard capability="sender.install" scope="global">
@@ -11,7 +11,6 @@
             color="primary"
             :loading="scanning"
             prepend-icon="mdi-refresh"
-            size="small"
             variant="outlined"
             @click="scanChannels"
           >
@@ -46,16 +45,10 @@
         </div>
         <v-row>
           <v-col v-for="channel in group.channels" :key="channel.slug" cols="12" md="6" lg="4">
-            <v-card
-              border
-              class="d-flex h-100 flex-column"
-              :color="channel.slug === group.defaultSlug ? 'primary' : undefined"
-              flat
-              :variant="channel.slug === group.defaultSlug ? 'tonal' : 'outlined'"
-            >
+            <v-card class="d-flex h-100 flex-column">
               <v-card-item>
                 <template #prepend>
-                  <v-avatar :color="channel.slug === group.defaultSlug ? 'primary' : 'surface-variant'" variant="tonal">
+                  <v-avatar color="primary" variant="tonal">
                     <v-icon>{{ channel.icon || 'mdi-email-outline' }}</v-icon>
                   </v-avatar>
                 </template>
@@ -66,7 +59,7 @@
                 </template>
               </v-card-item>
 
-              <v-card-text class="flex-grow-1 pt-0">
+              <v-card-text class="flex-grow-1">
                 <p class="mb-2 text-body-2 text-medium-emphasis">{{ channel.fields.length }} 个配置项</p>
                 <div v-if="channel.supportedTypes?.length" class="d-flex flex-wrap ga-1">
                   <v-chip v-for="supportedType in channel.supportedTypes" :key="supportedType" size="small" variant="outlined">
@@ -76,13 +69,12 @@
               </v-card-text>
 
               <v-divider />
-              <v-card-actions class="pa-3">
+              <v-card-actions>
                 <AdminActionGuard capability="config.update" scope="global">
                   <v-btn
                     color="primary"
                     :disabled="channel.slug === group.defaultSlug"
                     :loading="changingDefault === `${group.channelType}:${channel.slug}`"
-                    size="small"
                     variant="text"
                     @click="setDefault(group.channelType, channel.slug)"
                   >
@@ -93,8 +85,7 @@
                 <v-btn
                   append-icon="mdi-arrow-right"
                   color="primary"
-                  size="small"
-                  variant="tonal"
+                  variant="text"
                   @click="openConfig(channel.slug)"
                 >
                   配置

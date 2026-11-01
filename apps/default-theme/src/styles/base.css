@@ -18,6 +18,14 @@
     min-height: 100vh;
   }
 
+  .route-loading-state {
+    display: grid;
+    min-height: 45vh;
+    place-items: center;
+    color: var(--lc-muted);
+    font-size: 0.875rem;
+  }
+
   *,
   *::before,
   *::after {

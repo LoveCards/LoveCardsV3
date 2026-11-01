@@ -32,7 +32,7 @@ final class SensitiveDataSanitizer
         if (preg_match('//u', $text) !== 1) return '[BINARY DATA]';
         $text = (string) preg_replace('/\bBearer\s+[A-Za-z0-9._~+\/=:-]+/i', 'Bearer ' . self::REDACTED, $text);
         $text = (string) preg_replace(
-            '/((?:password|passwd|secret|token|authorization|api[_-]?key|access[_-]?key|private[_-]?key)\s*["\']?\s*[:=]\s*["\']?)[^\s,"\']+/i',
+            '/((?:password|passwd|secret|token|grant|authorization|api[_-]?key|access[_-]?key|private[_-]?key)\s*["\']?\s*[:=]\s*["\']?)[^\s,"\']+/i',
             '$1' . self::REDACTED,
             $text
         );
@@ -71,6 +71,6 @@ final class SensitiveDataSanitizer
     private function isSensitiveKey(string $key): bool
     {
         $normalized = strtolower((string) preg_replace('/[^a-z0-9]+/i', '', $key));
-        return preg_match('/(?:password|passwd|pwd|secret|token|authorization|cookie|privatekey|apikey|accesskey|recoverycode|verificationcode|otp)/', $normalized) === 1;
+        return $normalized === 'grant' || preg_match('/(?:password|passwd|pwd|secret|token|authorization|cookie|privatekey|apikey|accesskey|recoverycode|verificationcode|otp)/', $normalized) === 1;
     }
 }

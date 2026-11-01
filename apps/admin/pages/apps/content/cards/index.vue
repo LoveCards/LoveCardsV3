@@ -1,81 +1,36 @@
 <template>
   <AdminPageHeader
-    title="卡片管理"
-    description="查看、筛选和治理站内卡片。编辑仅对当前账号拥有对应能力的字段开放。"
-    :breadcrumbs="[{ title: '内容与社区' }, { title: '内容管理' }, { title: '卡片' }]"
-  >
-    <template #actions>
-      <v-chip size="small" variant="tonal" color="primary">内容资源</v-chip>
-    </template>
-  </AdminPageHeader>
+    title="卡片"
+    description="查看卡片内容，处理待审核或异常内容。"
+    :breadcrumbs="[{ title: '内容与社区' }]"
+  />
 
   <AdminPageContainer fluid>
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
       :columns="columnOptions"
       :default-columns="defaultColumns"
-      :result-count="tableTotalItems"
       preference-key="content-cards"
       @reset-view="resetTableView"
     >
-      <template #toolbar>
-        <v-row dense align="center">
-          <v-col cols="12" lg="7">
-            <v-row dense align="center">
-              <v-col cols="12" sm="5" md="4">
-                <v-select
-                  v-model="BatchOperate"
-                  :items="TableBatchOptions"
-                  :disabled="tableLoading"
-                  density="compact"
-                  hide-details
-                  item-title="title"
-                  item-value="value"
-                  label="批量操作"
-                  variant="outlined"
-                />
-              </v-col>
-              <v-col cols="auto">
-                <AdminActionGuard :capability="batchCapability" scope="all">
-                  <v-btn
-                    color="primary"
-                    prepend-icon="mdi-playlist-edit"
-                    variant="flat"
-                    :disabled="tableSelected.length === 0 || BatchOperate === ''"
-                    @click="openBatchCardDialog"
-                  >
-                    应用操作
-                  </v-btn>
-                </AdminActionGuard>
-              </v-col>
-              <v-col v-if="tableSelected.length" cols="auto">
-                <v-chip size="small" variant="tonal">已选择 {{ tableSelected.length }} 项</v-chip>
-              </v-col>
-            </v-row>
+      <template #search>
+        <v-text-field v-model="tableSearchValue" clearable label="搜索卡片内容" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+      </template>
+      <template #actions>
+        <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">搜索与排序</v-btn>
+      </template>
+      <template v-if="tableSelected.length" #selection>
+        <v-row dense align="center" aria-live="polite">
+          <v-col cols="12" sm="auto"><span class="text-body-2">已选择 {{ tableSelected.length }} 项</span></v-col>
+          <v-col cols="12" sm="4" md="3">
+            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="tableLoading" item-title="title" item-value="value" label="批量操作" />
           </v-col>
-
-          <v-col cols="12" lg="5">
-            <v-row dense align="center" justify="end">
-              <v-col cols="12" sm="auto">
-                <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">
-                  高级筛选
-                </v-btn>
-              </v-col>
-              <v-col cols="12" sm="8">
-                <v-text-field
-                  v-model="tableSearchValue"
-                  append-inner-icon="mdi-magnify"
-                  clearable
-                  density="compact"
-                  hide-details
-                  label="搜索卡片内容"
-                  single-line
-                  variant="outlined"
-                  @update:model-value="searchTableData"
-                />
-              </v-col>
-            </v-row>
+          <v-col cols="auto">
+            <AdminActionGuard :capability="batchCapability" scope="all">
+              <v-btn variant="outlined" :disabled="BatchOperate === ''" @click="openBatchCardDialog">应用操作</v-btn>
+            </AdminActionGuard>
           </v-col>
+          <v-col cols="auto"><v-btn variant="text" @click="tableSelected = []">取消选择</v-btn></v-col>
         </v-row>
       </template>
 
@@ -97,7 +52,7 @@
         v-model:items-per-page="tableListRows"
         v-model:page="tableCurrentPage"
         v-model:sort-by="tableSortBy"
-        class="text-no-wrap"
+        class="admin-resource-table"
         density="comfortable"
         hover
         item-value="id"
@@ -134,7 +89,7 @@
         </template>
 
         <template #[`item.content`]="{ item }">
-          <div class="card-content-excerpt text-high-emphasis">{{ cardExcerpt(item.content) }}</div>
+          <AdminContentSummary :content="item.content" :author="item.username" :user-id="item.user_id" />
         </template>
 
         <template #[`item.cover`]="{ item }">
@@ -151,49 +106,31 @@
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <div class="d-flex ga-1">
+          <div class="d-flex align-center ga-1">
             <AdminActionGuard capability="cards.read" scope="all">
-              <v-tooltip :text="cardPanelActionLabel" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    :aria-label="cardPanelActionLabel"
-                    :icon="cardPanelActionIcon"
-                    size="small"
-                    variant="text"
-                    @click="openCardPanel(item.id)"
-                  />
-                </template>
-              </v-tooltip>
+              <v-btn variant="text" @click="openCardPanel(item.id)">{{ cardPanelActionLabel }}</v-btn>
             </AdminActionGuard>
-            <AdminActionGuard capability="cards.delete" scope="all">
-              <v-tooltip text="删除卡片" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    aria-label="删除卡片"
-                    color="error"
-                    icon="mdi-delete"
-                    size="small"
-                    variant="text"
-                    @click="openDeleteCardDialog(item)"
-                  />
-                </template>
-              </v-tooltip>
-            </AdminActionGuard>
+            <v-menu v-if="canDeleteCard" location="bottom end">
+              <template #activator="{ props }">
+                <v-btn v-bind="props" aria-label="更多卡片操作" icon="mdi-dots-horizontal" variant="text" />
+              </template>
+              <v-list density="compact">
+                <v-list-item v-if="canDeleteCard" prepend-icon="mdi-delete-outline" title="删除卡片" @click="openDeleteCardDialog(item)" />
+              </v-list>
+            </v-menu>
           </div>
         </template>
 
         <template #[`item.is_top`]="{ item }">
-          <v-chip size="small" :variant="Number(item.is_top) === 1 ? 'tonal' : 'outlined'" :color="Number(item.is_top) === 1 ? 'primary' : undefined">
-            {{ renderTop(item.is_top) }}
-          </v-chip>
+          <span class="text-body-2 text-medium-emphasis">{{ Number(item.is_top) === 1 ? '置顶' : '—' }}</span>
+        </template>
+
+        <template #[`item.created_at`]="{ item }">
+          <span class="text-body-2 text-medium-emphasis">{{ item.created_at }}</span>
         </template>
 
         <template #[`item.status`]="{ item }">
-          <v-chip size="small" variant="tonal" :color="SelectUtils.getSelect(SelectUtils.Cards.status, item.status).color">
-            {{ SelectUtils.getSelect(SelectUtils.Cards.status, item.status).title }}
-          </v-chip>
+          <AdminContentStatus :status="item.status" :pinned="Number(item.is_top) === 1 && !visibleColumns.includes('is_top')" />
         </template>
 
         <template #no-data>
@@ -227,17 +164,21 @@
     v-model:batchData="tableSelected"
     v-model:batchOptions="BatchCardDialog_operate"
     :batchFun="BatchCardFun"
+    :impact-description="cardBatchImpact"
   />
   <PublicSearchDialog
     v-model:thisDialogState="SearchCardsDialog_state"
     :KEYS="SearchKeys"
     :setFilter="setTableSearchFilter"
     :getTableData="getTableData"
+    :initial-filter="searchDialogFilter"
     KeysMessages="默认[内容]"
   />
 </template>
 
 <script setup lang="ts">
+import AdminContentSummary from '~/components/content/AdminContentSummary.vue';
+import AdminContentStatus from '~/components/content/AdminContentStatus.vue';
 import type { Card, CardsBatchMethod } from '@lovecards/sdk';
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue';
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue';
@@ -274,35 +215,36 @@ const queryFilters = (value: unknown): Record<string, unknown> => {
 };
 
 const AllTableHeaders = [
+  { title: '内容', value: 'content', sortable: false, minWidth: 320, width: '55%' },
   { title: 'ID', value: 'id', sortable: true },
   { title: '用户ID', value: 'user_id', sortable: true },
   { title: '封面', value: 'cover', sortable: false },
-  { title: '内容', value: 'content', sortable: false },
   { title: '自定义字段', value: 'data', sortable: false },
   { title: '点赞数', value: 'goods', sortable: true },
   { title: '评论数', value: 'comments', sortable: true },
   { title: '浏览量', value: 'views', sortable: true },
   { title: '标签', value: 'tags', sortable: false },
-  { title: '发布时间', value: 'created_at', sortable: true },
+  { title: '发布时间', value: 'created_at', sortable: true, width: 180 },
   { title: 'IP', value: 'post_ip', sortable: true },
   { title: '置顶', value: 'is_top', sortable: true },
-  { title: '状态', value: 'status', sortable: true },
-  { title: '操作', value: 'operate', sortable: false },
+  { title: '状态', value: 'status', sortable: true, width: 120 },
+  { title: '操作', value: 'operate', sortable: false, width: 160 },
 ];
-const defaultColumns = ['id', 'cover', 'content', 'goods', 'comments', 'created_at', 'status', 'operate'];
+const defaultColumns = ['content', 'created_at', 'status', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: ['content', 'operate'].includes(header.value) }));
 const SearchKeys = AllTableHeaders.slice(0, -1);
 const BaseTableBatchOptions = [
-  { title: '置顶/取消', value: 'top' },
-  { title: '封禁/取消', value: 'ban' },
-  { title: '隐藏/取消', value: 'hide' },
-  { title: '审核/取消', value: 'approve' },
+  { title: '切换置顶状态', value: 'top' },
+  { title: '切换封禁状态', value: 'ban' },
+  { title: '切换隐藏状态', value: 'hide' },
+  { title: '通过审核', value: 'approve' },
   { title: '删除', value: 'delete' },
 ] satisfies Array<{ title: string; value: CardsBatchMethod }>;
 const TableListRowsOptions = SelectUtils.Common.Table.ListRowsOptions;
 const userStore = useUserStore();
+const canDeleteCard = computed(() => userStore.hasGrant('cards.delete', 'all'));
 const batchCapabilityFor = (method: CardsBatchMethod | '') => {
   if (method === 'delete') return 'cards.delete';
   if (method === 'top' || method === 'unset_top') return 'cards.pin';
@@ -328,17 +270,9 @@ const renderTags = (tags: unknown) => normalizeTagIds(tags).flatMap((item) => {
   const tag = Tags.value.find((tagItem) => Number(tagItem.id) === Number(item));
   return tag ? [`#${tag.id} ${tag.name}`] : [];
 });
-const renderTop = (data: unknown) => SelectUtils.Cards.top.find((item) => item.value === Number(data))?.title ?? '—';
-const cardExcerpt = (content: unknown) => {
-  const normalized = String(content ?? '').replace(/\s+/gu, ' ').trim();
-  if (!normalized) return '—';
-  const characters = Array.from(normalized);
-  return characters.length > 72 ? `${characters.slice(0, 72).join('')}…` : normalized;
-};
 const canUpdateCard = computed(() => userStore.hasGrant('cards.update', 'all'));
 const canApproveCard = computed(() => userStore.hasGrant('cards.approve', 'all'));
 const cardPanelActionLabel = computed(() => canUpdateCard.value ? '编辑卡片' : canApproveCard.value ? '审核卡片' : '查看卡片');
-const cardPanelActionIcon = computed(() => canUpdateCard.value ? 'mdi-pencil' : canApproveCard.value ? 'mdi-gavel' : 'mdi-eye-outline');
 
 const tableItems = ref<Card[]>([]);
 const tableSelected = ref<number[]>([]);
@@ -352,6 +286,7 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
   : []);
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
 const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
+const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
 let latestRequest = 0;
@@ -475,6 +410,16 @@ const openDeleteCardDialog = (data: { id: number }) => {
 };
 
 const BatchOperate = ref<CardsBatchMethod | ''>('');
+const cardBatchImpact = computed(() => {
+  const descriptions: Record<string, string> = {
+    top: '已置顶卡片将取消置顶；未置顶卡片将置顶。',
+    ban: '已封禁卡片将恢复正常；其余所选卡片将设为封禁。',
+    hide: '已隐藏卡片将恢复正常；其余所选卡片将设为隐藏。',
+    approve: '仅待审核卡片会通过审核；其他状态保持不变。',
+    delete: '所选卡片将被删除并停止展示。',
+  };
+  return `将处理 ${tableSelected.value.length} 张卡片。${descriptions[BatchOperate.value] || ''}`;
+});
 const BatchCardDialog_state = ref(false);
 const BatchCardDialog_operate = ref('');
 const BatchCardFun = () => {
@@ -497,7 +442,7 @@ const openBatchCardDialog = () => {
 
 const SearchCardsDialog_state = ref(false);
 const setTableSearchFilter = (data: Record<string, unknown>) => {
-  tableSearchFilter.value = data;
+  applySearchDialog(data);
   tableCurrentPage.value = 1;
   syncRouteQuery();
 };
@@ -510,15 +455,3 @@ watch([tableCurrentPage, tableListRows, tableSortBy], () => {
   void getTableData();
 }, { deep: true, immediate: true });
 </script>
-
-<style scoped>
-.card-content-excerpt {
-  display: -webkit-box;
-  max-width: 360px;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-  line-height: 1.4;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-</style>

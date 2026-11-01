@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="thisDialogState" aria-label="高级筛选" max-width="600">
+  <v-dialog v-model="thisDialogState" aria-label="搜索与排序" max-width="600">
     <v-card prepend-icon="mdi-filter-outline" title="搜索与排序">
       <v-card-text class="pt-4">
         <v-alert v-if="applyError" class="mb-4" role="alert" type="error" variant="tonal">
@@ -69,6 +69,7 @@ const props = defineProps<{
   getTableData?: () => unknown
   setFilter?: (data: Record<string, unknown>) => unknown
   KeysMessages?: string
+  initialFilter?: Record<string, unknown>
 }>()
 
 const KEYS = computed(() => props.KEYS ?? [])
@@ -81,8 +82,20 @@ const filter = ref({
   order_desc: true,
 })
 
+const syncInitialFilter = () => {
+  const current = props.initialFilter ?? {}
+  filter.value = {
+    search_keys: Array.isArray(current.search_keys) ? [...current.search_keys] : [],
+    order_key: typeof current.order_key === 'string' ? current.order_key : undefined,
+    order_desc: current.order_desc !== false,
+  }
+}
+
 watch(thisDialogState, (open) => {
-  if (open) applyError.value = ''
+  if (open) {
+    applyError.value = ''
+    syncInitialFilter()
+  }
 })
 
 const reset = () => {
@@ -91,7 +104,7 @@ const reset = () => {
 
 const submit = async () => {
   if (applying.value) return
-  const nextFilter: Record<string, unknown> = { ...filter.value }
+  const nextFilter: Record<string, unknown> = { ...props.initialFilter, ...filter.value }
   if (!nextFilter.order_key) delete nextFilter.order_key
   if (Array.isArray(nextFilter.search_keys) && nextFilter.search_keys.length === 0) {
     delete nextFilter.search_keys

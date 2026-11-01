@@ -4,8 +4,8 @@
       :title="permission ? `权限 · ${permission.capability}` : '权限详情'"
       description="查看由服务端维护的能力含义与作用域；能力目录在管理端保持只读。"
       :breadcrumbs="[
-        { title: '访问控制' },
-        { title: '权限', to: '/apps/access/permissions' },
+        { title: '用户与权限' },
+        { title: '权限目录', to: '/apps/access/permissions' },
         { title: permission?.capability || capability },
       ]"
     >

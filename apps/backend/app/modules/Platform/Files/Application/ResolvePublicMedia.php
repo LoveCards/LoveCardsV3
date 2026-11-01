@@ -18,6 +18,20 @@ final class ResolvePublicMedia
         if (!preg_match('/^[a-f0-9]{16,64}$/', $hash)) return null;
         $file = $this->files->findByHash($hash, 0, false);
         if ($file === null) return null;
+        return $this->resolveFile($file);
+    }
+
+    /** 调用方必须先验证业务归属与可见性；受限资源禁止重定向到永久公开地址。 */
+    public function authorizedLocal(int $fileId): ?array
+    {
+        $file = $this->files->findById($fileId);
+        if ($file === null || (int) ($file['status'] ?? -1) !== 0 || (int) ($file['upload_status'] ?? -1) !== 1) return null;
+        return $this->resolveFile($file, true);
+    }
+
+    private function resolveFile(array $file, bool $localOnly = false): ?array
+    {
+        $hash = (string) ($file['hash'] ?? '');
         $channel = trim((string) ($file['channel_slug'] ?? ''));
         $path = trim((string) ($file['driver_path'] ?? $file['file_path'] ?? ''));
         if ($channel === '' || $path === '') return null;
@@ -35,6 +49,7 @@ final class ResolvePublicMedia
             }
         }
 
+        if ($localOnly) return null;
         $url = trim((string) ($file['file_url'] ?? ''));
         if ($url === '' || preg_match('#^/media/[a-f0-9]{16,64}$#', $url) === 1) {
             $url = $this->storage->getUrl($channel, $path);

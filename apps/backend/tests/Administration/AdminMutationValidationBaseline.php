@@ -48,3 +48,15 @@ $controller->validateScene(Comments::class, 'moderate', ['id' => 1, 'status' => 
 $controller->validateScene(Tags::class, 'adminUpdate', ['id' => 1, 'status' => 0]);
 
 fwrite(STDOUT, "Admin mutation validation baseline passed.\n");
+
+$pagination = \app\shared\Transport\Validation\PaginationInput::class;
+$filters = $controller->validateScene($pagination, 'AdminUsers', ['status' => '0', 'role_id' => '2']);
+$assert((int) $filters['status'] === 0 && (int) $filters['role_id'] === 2, 'managed user filters must be retained');
+foreach ([['status' => '4'], ['role_id' => '0'], ['role_id' => 'abc']] as $invalid) {
+    $rejected = false;
+    try { $controller->validateScene($pagination, 'AdminUsers', $invalid); }
+    catch (\app\api\ApiException $error) { $rejected = true; }
+    $assert($rejected, 'invalid managed user filters must fail validation');
+}
+$public = $controller->validateScene($pagination, 'Defult', ['status' => '0', 'role_id' => '2']);
+$assert(!isset($public['status']) && !isset($public['role_id']), 'managed filters must not leak to other pagination scenes');

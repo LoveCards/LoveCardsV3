@@ -127,7 +127,8 @@ try {
         if ($expectedMigrations < 1) {
             throw new RuntimeException('No database migrations found for E2E bootstrap');
         }
-        for ($attempt = 0; $attempt < 128 && !$complete; $attempt++) {
+        // 单次命令只推进一个阶段；按迁移数量给出有界预算，不能在仓库增长后固定卡在 128 次。
+        for ($attempt = 0; $attempt < $expectedMigrations * 8 + 1 && !$complete; $attempt++) {
             $lines = [];
             // This database is disposable and isolated. Complete the full
             // schema, including contract phases, so the subsequent E2E suite
@@ -157,6 +158,8 @@ try {
         // runner. This fixture is created only in the disposable database.
         $e2eAccount = trim((string) (getenv('LOVECARDS_E2E_ADMIN_ACCOUNT') ?: ''));
         $e2ePassword = (string) (getenv('LOVECARDS_E2E_ADMIN_PASSWORD') ?: '');
+        // SDK 全量套件覆盖 root 专属能力；仅为新建的隔离夹具选择 root，普通 UI 验收仍用 admin。
+        $e2eRoleId = getenv('LOVECARDS_E2E_RUN_SDK_INTEGRATION') === '1' ? 1 : 2;
         if ($e2eAccount !== '' && $e2ePassword !== '') {
             $e2eEmail = filter_var($e2eAccount, FILTER_VALIDATE_EMAIL) ? $e2eAccount : 'e2e-admin@example.test';
             $e2eUsername = filter_var($e2eAccount, FILTER_VALIDATE_EMAIL) ? 'e2e_admin' : $e2eAccount;
@@ -166,12 +169,15 @@ try {
             $e2eUserId = (int) ($existing->fetchColumn() ?: 0);
             if ($e2eUserId === 0) {
                 $e2eNumber = 'e2e' . bin2hex(random_bytes(12));
-                $insert = $databasePdo->prepare('INSERT INTO `users` (`number`,`avatar`,`email`,`phone`,`username`,`password`,`status`,`roles_id`,`security_version`,`created_at`,`updated_at`) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+                $e2eUid = (string) random_int(100000000000, 999999999999);
+                $insert = $databasePdo->prepare('INSERT INTO `users` (`uid`,`number`,`avatar`,`email`,`phone`,`username`,`password`,`status`,`roles_id`,`security_version`,`created_at`,`updated_at`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
                 $now = date('Y-m-d H:i:s');
-                $insert->execute([$e2eNumber, '', $e2eEmail, '', $e2eUsername, password_hash($e2ePassword, PASSWORD_DEFAULT), 0, '[2]', 1, $now, $now]);
+                $insert->execute([$e2eUid, $e2eNumber, '', $e2eEmail, '', $e2eUsername, password_hash($e2ePassword, PASSWORD_DEFAULT), 0, json_encode([$e2eRoleId]), 1, $now, $now]);
                 $e2eUserId = (int) $databasePdo->lastInsertId();
+                $registry = $databasePdo->prepare('INSERT INTO `user_uid_registry` (`uid`,`user_id`,`issued_at`) VALUES (?,?,?)');
+                $registry->execute([$e2eUid, $e2eUserId, $now]);
                 $role = $databasePdo->prepare('INSERT INTO `user_roles` (`user_id`,`role_id`,`created_at`) VALUES (?,?,?)');
-                $role->execute([$e2eUserId, 2, $now]);
+                $role->execute([$e2eUserId, $e2eRoleId, $now]);
             }
         }
     } finally {

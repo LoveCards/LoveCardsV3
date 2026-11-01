@@ -1,6 +1,6 @@
 <template>
   <section :aria-labelledby="headingId" class="admin-config-section">
-    <v-sheet border rounded="lg" overflow-hidden>
+    <v-card>
       <div class="admin-config-section__header">
         <div class="d-flex align-start ga-3 min-w-0">
           <v-icon v-if="icon" :color="risk === 'high' ? 'warning' : 'primary'" :icon="icon" class="mt-1" />
@@ -20,16 +20,16 @@
         </div>
       </div>
       <v-divider />
-      <div class="admin-config-section__body">
+      <v-card-text>
         <slot />
-      </div>
+      </v-card-text>
       <template v-if="$slots.footer">
         <v-divider />
         <div class="admin-config-section__footer">
           <slot name="footer" />
         </div>
       </template>
-    </v-sheet>
+    </v-card>
   </section>
 </template>
 
@@ -56,12 +56,8 @@ const headingId = computed(() => `admin-config-${props.title.toLocaleLowerCase()
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
-  padding: 20px;
-}
-
-.admin-config-section__body {
-  padding: 20px;
+  gap: 16px;
+  padding: 16px;
 }
 
 .admin-config-section__actions {
@@ -69,11 +65,6 @@ const headingId = computed(() => `admin-config-${props.title.toLocaleLowerCase()
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
-}
-
-.admin-config-section__actions :deep(.v-btn),
-.admin-config-section__footer :deep(.v-btn) {
-  min-height: 44px;
 }
 
 @media (max-width: 700px) {

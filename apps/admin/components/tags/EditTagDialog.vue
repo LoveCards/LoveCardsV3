@@ -47,7 +47,7 @@
               density="comfortable"
               item-title="title"
               item-value="value"
-              :items="SelectUtils.Common.Status"
+              :items="tagStatusItems"
               label="标签状态"
               variant="outlined"
             />
@@ -81,6 +81,10 @@ const client = useApi()
 const notifier = useAdminNotifier()
 const userStore = useUserStore()
 const canUpdateTag = computed(() => userStore.hasGrant('tags.update', 'all'))
+const tagStatusItems = SelectUtils.Common.Status.map((option) => ({
+  ...option,
+  title: option.title.replace(/^#\d+\s*/, ''),
+}))
 const panelTitle = computed(() => canUpdateTag.value ? '编辑标签' : '查看标签')
 const props = defineProps<{ getTableData?: () => unknown }>()
 const thisDialogState = defineModel<boolean>('thisDialogState', { default: false })

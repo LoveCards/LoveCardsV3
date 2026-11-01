@@ -3,7 +3,7 @@
     <AdminPageHeader
       :title="`${driverName} 配置`"
       description="配置验证码驱动。修改后应确认登录、注册和敏感操作仍能正常校验。"
-      :breadcrumbs="[{ title: '系统配置' }, { title: '验证配置', to: '/apps/settings/verification' }, { title: driverName }]"
+      :breadcrumbs="[{ title: '站点设置' }, { title: '验证配置', to: '/apps/settings/verification' }, { title: driverName }]"
     />
 
     <v-row>
@@ -12,7 +12,6 @@
           title="驱动参数"
           description="配置变更会影响登录、注册与敏感操作校验。"
           icon="mdi-shield-check-outline"
-          :dirty="configChanged"
         >
           <template #actions><v-chip size="small" variant="outlined">{{ slug }}</v-chip></template>
             <AdminAsyncState
@@ -90,7 +89,7 @@
                   </v-col>
                 </v-row>
                 <v-divider class="mb-4" />
-                <div class="d-flex justify-end">
+                <AdminConfigSaveBar :dirty="configChanged" label="驱动配置">
                   <AdminActionGuard
                     :all-of="[
                       { capability: 'config.update', scope: 'global' },
@@ -108,7 +107,7 @@
                       保存驱动配置
                     </v-btn>
                   </AdminActionGuard>
-                </div>
+                </AdminConfigSaveBar>
               </v-form>
             </AdminAsyncState>
         </AdminConfigSection>

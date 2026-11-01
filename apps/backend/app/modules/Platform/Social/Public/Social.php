@@ -39,7 +39,7 @@ final class Social
         }
         $profile['can_view_relations'] = $isSelf || (bool) $preferences['show_relations'];
         $profile['cover_url'] = ProfileCover::url($targetId, true);
-        $profile['stats'] = ['received_likes' => UserProfileStats::receivedLikes($targetId)];
+        $profile['stats'] = ['received_likes' => UserProfileStats::receivedLikes($targetId, true)];
         return $profile;
     }
 
@@ -64,7 +64,7 @@ final class Social
         }
         $profile['can_view_relations'] = $isSelf || (bool) $preferences['show_relations'];
         $profile['cover_url'] = ProfileCover::url($targetId, true);
-        $profile['stats'] = ['received_likes' => UserProfileStats::receivedLikes($targetId)];
+        $profile['stats'] = ['received_likes' => UserProfileStats::receivedLikes($targetId, true)];
         return $profile;
     }
     public static function follow(int $actorId, int $targetId): bool

@@ -4,7 +4,7 @@
       :title="`审计记录 #${route.params.id}`"
       description="核对一次管理操作的操作者、目标资源、状态前后值和请求链路。"
       :breadcrumbs="[
-        { title: '运维与审计' },
+        { title: '系统运维' },
         { title: '审计日志', to: '/apps/operations/audit' },
         { title: `#${route.params.id}` },
       ]"
@@ -200,6 +200,11 @@ watch(() => route.params.id, () => { void load() }, { immediate: true })
 </script>
 
 <style scoped>
+:deep(.v-list-item-title) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .audit-detail__snapshot {
   min-width: 0;
 }

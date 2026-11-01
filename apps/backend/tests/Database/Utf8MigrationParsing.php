@@ -35,4 +35,10 @@ $phases = $splitPhases->invoke(
 expectSame("SELECT '运行状态';", trim($phases['expand']), 'phase splitter preserves UTF-8 expand SQL');
 expectSame("SELECT '迁移完成';", trim($phases['verify']), 'phase splitter preserves UTF-8 verify SQL');
 
+$phases = $splitPhases->invoke($migration, "-- 历史迁移\n-- @lc-phase migrate\nSELECT 2;\n-- @lc-phase contract\nSELECT 1;\n");
+expectSame('SELECT 2;', trim($phases['backfill']), 'historical migrate marker maps to backfill');
+expectSame('', $phases['expand'], 'backfill must not execute during expand');
+foreach (glob(dirname(__DIR__, 2) . '/database/migrations/*.sql') as $path) {
+    new SqlFileMigration(pathinfo($path, PATHINFO_FILENAME), $path, '解析回归');
+}
 echo "PASS UTF-8 migration parsing baseline\n";

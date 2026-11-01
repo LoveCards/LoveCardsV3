@@ -55,9 +55,9 @@ withDefaults(defineProps<{
 
 .admin-page-header__title {
   margin: 0;
-  font-size: 2rem;
-  font-weight: 700;
-  line-height: 1.25;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
   text-wrap: balance;
 }
 
@@ -74,10 +74,6 @@ withDefaults(defineProps<{
   justify-content: flex-end;
   gap: 8px;
   padding-top: 4px;
-}
-
-.admin-page-header__actions :deep(.v-btn) {
-  min-height: 44px;
 }
 
 @media (max-width: 700px) {

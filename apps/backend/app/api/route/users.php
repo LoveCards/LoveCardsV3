@@ -47,7 +47,7 @@ Route::get('users/mention-candidates', 'User.Users/searchMentionCandidates')->na
 Route::group('admin/users', function () use ($required, $grant) {
     $admin = $grant('admin.access', Scope::GLOBAL);
     Route::get('', 'User.Users/list')->name('users.listManaged')
-        ->setOption('contract', ['request' => ['validate' => PaginationInput::class, 'scene' => 'Defult'], 'response' => ['resource' => UserResource::class, 'shape' => 'paginated', 'status' => 200]])
+        ->setOption('contract', ['request' => ['validate' => PaginationInput::class, 'scene' => 'AdminUsers'], 'response' => ['resource' => UserResource::class, 'shape' => 'paginated', 'status' => 200]])
         ->setOption('meta', ['name' => '管理用户列表', 'group' => '用户', 'access' => $required([$admin, $grant('users.read', Scope::ALL)])]);
     Route::get(':id', 'User.Users/get')->name('users.getManaged')
         ->setOption('contract', ['request' => null, 'response' => ['resource' => UserResource::class, 'shape' => 'item', 'status' => 200]])

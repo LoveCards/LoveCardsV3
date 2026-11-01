@@ -1,6 +1,6 @@
 <template>
   <AdminPageContainer>
-    <AdminPageHeader title="运行状态" description="核对当前部署实际启用的设施、降级路径和 Worker 心跳。" :breadcrumbs="[{ title: '运维与审计' }, { title: '运行状态' }]">
+    <AdminPageHeader title="运行状态" description="核对当前部署实际启用的设施、降级路径和 Worker 心跳。" :breadcrumbs="[{ title: '系统运维' }]">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn></template>
     </AdminPageHeader>
     <AdminAsyncState :loading="loading" :error="error" :empty="!runtime" @retry="load">
@@ -8,36 +8,37 @@
         <v-alert v-if="degradedCount" class="mb-4" type="warning" variant="tonal">
           当前有 {{ degradedCount }} 项设施处于降级或不可用状态，业务契约保持一致，但实时性或吞吐可能降低。
         </v-alert>
-        <v-sheet border rounded="lg">
+        <AdminResourceTableShell>
           <v-data-table :headers="facilityHeaders" :items="runtime.facilities" item-value="name" items-per-page-text="每页行数">
             <template #item.name="{ item }"><strong>{{ item.name }}</strong><div class="text-caption text-medium-emphasis">{{ item.effective_provider || '未选择 Provider' }}</div></template>
             <template #item.mode="{ item }">{{ item.desired_mode }}</template>
             <template #item.status="{ item }"><AdminStatusChip :status="item.ready ? 'available' : item.enabled ? 'degraded' : 'disabled'" /></template>
-            <template #item.reason="{ item }">{{ item.reason_code || '-' }}</template>
+            <template #item.reason="{ item }">{{ facilityReason(item.reason_code, item.ready) }}</template>
             <template #item.checked="{ item }">{{ item.checked_at }}</template>
           </v-data-table>
-        </v-sheet>
+        </AdminResourceTableShell>
 
         <h2 class="text-h6 mt-8 mb-3">Worker 心跳</h2>
-        <v-sheet border rounded="lg">
+        <AdminResourceTableShell>
           <v-data-table :headers="workerHeaders" :items="runtime.workers" item-value="worker_id" items-per-page-text="每页行数">
             <template #item.state="{ item }"><AdminStatusChip :status="item.online ? 'active' : item.state" /></template>
           </v-data-table>
-        </v-sheet>
+        </AdminResourceTableShell>
         <v-alert class="mt-4" type="info" variant="tonal">
           Outbox：待处理 {{ runtime.eventing.pending }}，处理中 {{ runtime.eventing.processing }}，死信 {{ runtime.eventing.dead }}；最早待处理 {{ runtime.eventing.oldest_pending_at || '-' }}，过期租约 {{ runtime.eventing.expired_processing ?? 0 }}。
         </v-alert>
-        <v-sheet v-if="runtime.eventing.queues?.length" class="mt-4" border rounded="lg">
+        <AdminResourceTableShell v-if="runtime.eventing.queues?.length" class="mt-4">
           <v-data-table :headers="queueHeaders" :items="runtime.eventing.queues" item-value="queue_name" items-per-page-text="每页行数">
             <template #item.execution_mode="{ item }"><AdminStatusChip :status="item.execution_mode" /></template>
           </v-data-table>
-        </v-sheet>
+        </AdminResourceTableShell>
       </template>
     </AdminAsyncState>
   </AdminPageContainer>
 </template>
 
 <script setup lang="ts">
+import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue'
 import type { OperationsRuntimeStatus } from '@lovecards/sdk'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
@@ -62,6 +63,14 @@ const queueHeaders = [
   { title: '队列', key: 'queue_name' }, { title: '执行模式', key: 'execution_mode' },
   { title: '待处理', key: 'pending' }, { title: '处理中', key: 'processing' }, { title: '死信', key: 'dead' },
 ]
+
+function facilityReason(reason: string | null | undefined, ready: boolean) {
+  if (ready) return '运行正常'
+  return ({
+    primary_not_configured: '主通道未配置',
+    provider_unknown: '服务提供方未知',
+  } as Record<string, string>)[reason || ''] ?? '需要关注'
+}
 
 async function load() {
   loading.value = true

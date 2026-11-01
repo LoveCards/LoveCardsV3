@@ -3,7 +3,7 @@
     <AdminPageHeader
       title="存储配置"
       description="管理存储渠道与上传策略。切换默认渠道只影响后续上传，不会自动迁移已有文件。"
-      :breadcrumbs="[{ title: '系统配置' }, { title: '存储' }, { title: '配置' }]"
+      :breadcrumbs="[{ title: '站点设置' }]"
     >
       <template #actions>
         <AdminActionGuard capability="storage.install" scope="global">
@@ -11,7 +11,6 @@
             color="primary"
             :loading="scanning"
             prepend-icon="mdi-refresh"
-            size="small"
             variant="outlined"
             @click="scanChannels"
           >
@@ -28,14 +27,14 @@
       {{ actionMessage.text }}
     </v-alert>
 
-    <v-sheet border rounded="lg">
+    <div>
       <v-tabs v-model="tab" color="primary">
         <v-tab prepend-icon="mdi-cloud-outline" value="channels">渠道管理</v-tab>
         <v-tab prepend-icon="mdi-tune-variant" value="settings">基础设置</v-tab>
       </v-tabs>
       <v-divider />
 
-      <div class="pa-4 pa-md-6">
+      <div class="pt-6">
         <AdminAsyncState
           :error="loadError"
           error-title="存储配置加载失败"
@@ -54,16 +53,10 @@
               >
                 <v-row>
                   <v-col v-for="channel in channelList" :key="channel.slug" cols="12" md="6" lg="4">
-                    <v-card
-                      border
-                      class="d-flex h-100 flex-column"
-                      :color="channel.slug === settings.default ? 'primary' : undefined"
-                      flat
-                      :variant="channel.slug === settings.default ? 'tonal' : 'outlined'"
-                    >
+                    <v-card class="d-flex h-100 flex-column">
                       <v-card-item>
                         <template #prepend>
-                          <v-avatar :color="channel.slug === settings.default ? 'primary' : 'surface-variant'" variant="tonal">
+                          <v-avatar color="primary" variant="tonal">
                             <v-icon>{{ channel.icon || 'mdi-cloud-outline' }}</v-icon>
                           </v-avatar>
                         </template>
@@ -74,7 +67,7 @@
                         </template>
                       </v-card-item>
 
-                      <v-card-text class="flex-grow-1 pt-0">
+                      <v-card-text class="flex-grow-1">
                         <div class="mb-2 d-flex flex-wrap ga-2">
                           <v-chip v-if="channel.configured === false" color="warning" size="small" variant="tonal">
                             未初始化
@@ -91,13 +84,12 @@
                       </v-card-text>
 
                       <v-divider />
-                      <v-card-actions class="pa-3">
+                      <v-card-actions>
                         <AdminActionGuard capability="config.update" scope="global">
                           <v-btn
                             color="primary"
                             :disabled="channel.slug === settings.default || channel.available === false"
                             :loading="changingDefault === channel.slug"
-                            size="small"
                             variant="text"
                             @click="setDefault(channel.slug)"
                           >
@@ -109,8 +101,7 @@
                           append-icon="mdi-arrow-right"
                           color="primary"
                           :disabled="channel.configured === false"
-                          size="small"
-                          variant="tonal"
+                          variant="text"
                           @click="openConfig(channel.slug)"
                         >
                           配置
@@ -123,99 +114,103 @@
             </v-window-item>
 
             <v-window-item value="settings">
-              <v-alert v-if="!canUpdateConfig" class="mb-4" type="info" variant="tonal">
-                当前账号只有查看权限，不能修改存储设置。
-              </v-alert>
-              <v-alert v-if="settingsMessage" class="mb-4" :type="settingsMessage.type" variant="tonal">
-                {{ settingsMessage.text }}
-              </v-alert>
-              <v-alert class="mb-4" type="info" variant="tonal">
-                默认渠道只用于新文件；速率限制和直传凭证有效期会影响所有上传客户端。
-              </v-alert>
+              <v-card>
+                <v-card-text>
+                  <v-alert v-if="!canUpdateConfig" class="mb-4" type="info" variant="tonal">
+                    当前账号只有查看权限，不能修改存储设置。
+                  </v-alert>
+                  <v-alert v-if="settingsMessage" class="mb-4" :type="settingsMessage.type" variant="tonal">
+                    {{ settingsMessage.text }}
+                  </v-alert>
+                  <v-alert class="mb-4" type="info" variant="tonal">
+                    默认渠道只用于新文件；速率限制和直传凭证有效期会影响所有上传客户端。
+                  </v-alert>
 
-              <v-form @submit.prevent="saveSettings">
-                <v-row>
-                  <v-col cols="12" md="6">
-                    <v-sheet class="pa-4" color="surface-variant" rounded="lg">
-                      <h2 class="mb-3 text-subtitle-1 font-weight-bold">默认渠道</h2>
-                      <v-select
-                        v-model="settings.default"
-                        :disabled="!canUpdateConfig || settingsSaving"
-                        density="comfortable"
-                        item-title="title"
-                        item-value="value"
-                        :items="channelOptions"
-                        label="新上传文件使用的渠道"
-                        prepend-inner-icon="mdi-cloud-outline"
-                        variant="outlined"
-                      />
-                    </v-sheet>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <v-sheet class="pa-4" color="surface-variant" rounded="lg">
-                      <h2 class="mb-3 text-subtitle-1 font-weight-bold">速率限制</h2>
-                      <v-row dense>
-                        <v-col cols="12" sm="6">
+                  <v-form @submit.prevent="saveSettings">
+                    <v-row>
+                      <v-col cols="12" md="6">
+                        <section>
+                          <h2 class="mb-3 text-subtitle-1 font-weight-bold">默认渠道</h2>
+                          <v-select
+                            v-model="settings.default"
+                            :disabled="!canUpdateConfig || settingsSaving"
+                            density="comfortable"
+                            item-title="title"
+                            item-value="value"
+                            :items="channelOptions"
+                            label="新上传文件使用的渠道"
+                            prepend-inner-icon="mdi-cloud-outline"
+                            variant="outlined"
+                          />
+                        </section>
+                      </v-col>
+                      <v-col cols="12" md="6">
+                        <section>
+                          <h2 class="mb-3 text-subtitle-1 font-weight-bold">速率限制</h2>
+                          <v-row dense>
+                            <v-col cols="12" sm="6">
+                              <v-number-input
+                                v-model="settings.rate_limit_max"
+                                control-variant="split"
+                                :disabled="!canUpdateConfig || settingsSaving"
+                                density="comfortable"
+                                label="最大请求数"
+                                :min="1"
+                                variant="outlined"
+                              />
+                            </v-col>
+                            <v-col cols="12" sm="6">
+                              <v-number-input
+                                v-model="settings.rate_limit_window"
+                                control-variant="split"
+                                :disabled="!canUpdateConfig || settingsSaving"
+                                density="comfortable"
+                                label="时间窗口（秒）"
+                                :min="1"
+                                variant="outlined"
+                              />
+                            </v-col>
+                          </v-row>
+                        </section>
+                      </v-col>
+                      <v-col cols="12" md="6">
+                        <section>
+                          <h2 class="mb-3 text-subtitle-1 font-weight-bold">直传配置</h2>
                           <v-number-input
-                            v-model="settings.rate_limit_max"
+                            v-model="settings.direct_upload_expire"
                             control-variant="split"
                             :disabled="!canUpdateConfig || settingsSaving"
                             density="comfortable"
-                            label="最大请求数"
-                            :min="1"
+                            label="凭证有效期（秒）"
+                            :min="60"
                             variant="outlined"
                           />
-                        </v-col>
-                        <v-col cols="12" sm="6">
-                          <v-number-input
-                            v-model="settings.rate_limit_window"
-                            control-variant="split"
-                            :disabled="!canUpdateConfig || settingsSaving"
-                            density="comfortable"
-                            label="时间窗口（秒）"
-                            :min="1"
-                            variant="outlined"
-                          />
-                        </v-col>
-                      </v-row>
-                    </v-sheet>
-                  </v-col>
-                  <v-col cols="12" md="6">
-                    <v-sheet class="pa-4" color="surface-variant" rounded="lg">
-                      <h2 class="mb-3 text-subtitle-1 font-weight-bold">直传配置</h2>
-                      <v-number-input
-                        v-model="settings.direct_upload_expire"
-                        control-variant="split"
-                        :disabled="!canUpdateConfig || settingsSaving"
-                        density="comfortable"
-                        label="凭证有效期（秒）"
-                        :min="60"
-                        variant="outlined"
-                      />
-                    </v-sheet>
-                  </v-col>
-                </v-row>
-                <v-divider class="mb-4" />
-                <div class="d-flex justify-end">
-                  <AdminActionGuard capability="config.update" scope="global">
-                    <v-btn
-                      color="primary"
-                      :disabled="!settingsChanged"
-                      :loading="settingsSaving"
-                      prepend-icon="mdi-content-save-outline"
-                      type="submit"
-                      variant="flat"
-                    >
-                      保存存储设置
-                    </v-btn>
-                  </AdminActionGuard>
-                </div>
-              </v-form>
+                        </section>
+                      </v-col>
+                    </v-row>
+                    <v-divider class="mb-4" />
+                    <div class="d-flex justify-end">
+                      <AdminActionGuard capability="config.update" scope="global">
+                        <v-btn
+                          color="primary"
+                          :disabled="!settingsChanged"
+                          :loading="settingsSaving"
+                          prepend-icon="mdi-content-save-outline"
+                          type="submit"
+                          variant="flat"
+                        >
+                          保存存储设置
+                        </v-btn>
+                      </AdminActionGuard>
+                    </div>
+                  </v-form>
+                </v-card-text>
+              </v-card>
             </v-window-item>
           </v-window>
         </AdminAsyncState>
       </div>
-    </v-sheet>
+    </div>
   </AdminPageContainer>
 </template>
 

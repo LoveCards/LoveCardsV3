@@ -1,6 +1,13 @@
 import type { JsonObject } from './json'
 import type { ContentMention } from './mentions'
 
+/** 卡片专用短期媒体地址，不可持久化为文件地址。 */
+export interface CardMediaAccess {
+  media: Array<{ file_id: number; url: string }>
+  cover_url: string | null
+  expires_in: number
+}
+
 export interface CardMedia {
   file_id: number | null
   type: 'image' | 'video'

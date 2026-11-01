@@ -6,7 +6,7 @@ use app\modules\Platform\Notifications\Contract\NotificationRepository;
 use app\modules\Platform\Notifications\Contract\NotificationTypeCatalog;
 use app\modules\Platform\Notifications\Domain\NotificationIntent;
 use think\facade\Db;
-use app\modules\Content\Cards\Service\CardVisibilityPolicy;
+use app\modules\Content\Cards\Public\CardAccess as CardVisibilityPolicy;
 use app\modules\Platform\User\Public\UserStatus;
 
 final class ThinkOrmNotificationRepository implements NotificationRepository

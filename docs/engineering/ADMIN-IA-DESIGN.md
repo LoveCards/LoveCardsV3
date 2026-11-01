@@ -1,6 +1,6 @@
 # 管理端信息架构与 UX 设计基线
 
-> 状态：设计基线已冻结；施工 Phase 0–4 已落地，进入持续维护
+> 状态：2026-09-14 信息架构收敛已确认；应用壳与标签样板进入施工
 >
 > 日期：2026-08-23
 >
@@ -12,16 +12,15 @@
 
 LoveCards 管理端应从“按技术模块堆放的页面集合”改成“按角色和任务组织的工作台”。技术保持 Nuxt + Vuetify；优先重做信息架构和统一页面壳，再逐域迁移旧页面。
 
-本次锁定的六个一级域：
+本次锁定为一个一级直达入口和四个任务组：
 
 1. 工作台
 2. 内容与社区
-3. 用户与安全
-4. 系统配置
-5. 运维与审计
-6. 访问控制
+3. 用户与权限
+4. 站点设置
+5. 系统运维
 
-一级域只表达工作上下文；具体资源、驱动、测试、迁移和高风险动作下沉到二级或三级页面。
+工作台直接进入个人任务上下文；四个任务组只负责发现页面。具体资源、驱动、测试、迁移和高风险动作下沉到详情或子流程。
 
 视觉参考图已放在 [admin-ui-reference](assets/admin-ui-reference/README.md)。它们用于统一页面层级、密度和状态表达；最终导航、文案和权限仍以本文件与角色矩阵为准。
 
@@ -68,47 +67,44 @@ LoveCards 管理端应从“按技术模块堆放的页面集合”改成“按�
 └─ 最近变更
 
 内容与社区
-├─ 内容管理
-│  ├─ 卡片
-│  ├─ 评论
-│  └─ 标签
-└─ 社区治理
-   ├─ 举报处理
-   └─ 社区洞察
+├─ 卡片
+├─ 评论
+├─ 标签
+├─ 文件管理
+├─ 举报处理
+└─ 社区洞察
 
-用户与安全
+用户与权限
 ├─ 用户管理
-├─ 账号恢复
+├─ 账号恢复记录
+├─ 角色
+├─ 权限目录
 └─ 用户详情
    ├─ 概览
    ├─ 安全会话
    └─ 审计记录
 
-系统配置
+站点设置
 ├─ 站点与社区规则
-├─ 外观
-│  ├─ 主题列表
-│  └─ 当前主题配置
-├─ 存储
+├─ 主题外观
+├─ 存储配置
 ├─ 消息渠道
 └─ 验证
 
-运维与审计
+系统运维
 ├─ 运行状态
 ├─ 通知投递
 ├─ 升级与迁移
 └─ 审计日志
 
-访问控制
-├─ 角色
-└─ 权限
 ```
 
 ### 4.1 页面层级规则
 
-- 一级：工作域入口，只保留高频任务。
-- 二级：资源列表或配置入口，例如“内容管理 → 卡片”。
+- 一级：工作台直达和四个任务组。
+- 二级：资源列表或配置入口，例如“内容与社区 → 卡片”。
 - 三级：资源详情、驱动详情、主题 schema、迁移步骤、投递详情和测试工具。
+- 侧栏不渲染无独立页面的中间分区标题；初次进入只展开当前任务组。
 - 详情页不在侧栏重复出现，统一由面包屑和父页面返回。
 - 旧地址继续保留兼容跳转；新导航不暴露旧拼写或技术路径。
 
@@ -121,10 +117,9 @@ LoveCards 管理端应从“按技术模块堆放的页面集合”改成“按�
 | 工作台 | `/apps/dashboard` | 待办和健康区块通过 query 或局部链接进入域页面 |
 | 内容与社区 | `/apps/content/cards`、`/apps/content/comments`、`/apps/content/tags` | `/apps/content/*/:id` |
 | 社区治理 | `/apps/community/reports`、`/apps/community/insights` | `/apps/community/reports/:id` |
-| 用户与安全 | `/apps/users` | `/apps/users/:id`、`/apps/users/:id/security`、`/apps/security/recovery` |
-| 系统配置 | `/apps/settings/site`、`/apps/settings/appearance` | `/apps/settings/appearance/themes/:slug`、渠道详情/测试 |
-| 运维与审计 | `/apps/operations/runtime`、`/apps/operations/deliveries`、`/apps/operations/audit` | `/apps/operations/upgrade`、投递/审计详情 |
-| 访问控制 | `/apps/access/roles`、`/apps/access/permissions` | 角色详情、权限详情 |
+| 用户与权限 | `/apps/users`、`/apps/security/recovery`、`/apps/access/roles`、`/apps/access/permissions` | 用户、角色和权限详情 |
+| 站点设置 | `/apps/settings/site`、`/apps/settings/appearance`、`/apps/settings/storage`、`/apps/settings/messaging`、`/apps/settings/verification` | 主题与渠道详情/测试 |
+| 系统运维 | `/apps/operations/runtime`、`/apps/operations/deliveries`、`/apps/operations/audit` | `/apps/operations/upgrade`、投递/审计详情 |
 
 施工时必须先建立旧地址到规范地址的映射表，不能直接删除现有链接。
 
@@ -259,25 +254,25 @@ risk_level
 - 清理过期能力展示，并确保评论编辑、审核、置顶能力分别展示。
 - 确定两个现有角色的兼容矩阵和未来角色模板。
 
-### Phase 1：应用壳与工作台
+### Phase 1：应用壳与工作台（已完成）
 
 - 侧栏二级分组、当前域展开和权限过滤。
 - 顶部环境/角色上下文、全局面包屑和统一页面容器。
 - 角色化工作台和真实 loading/error/empty 状态。
 
-### Phase 2：共享页面模板
+### Phase 2：共享页面模板（已完成）
 
 - `AdminPageHeader`、`AdminAsyncState`、`AdminResourceTable`、`AdminFilterToolbar`、`AdminConfigSection`、`AdminDangerActionDialog`、`AdminAuditTimeline`。
 - 统一通知、错误、分页、列设置和 URL 状态同步。
 
-### Phase 3：按域迁移页面
+### Phase 3：按域迁移页面（已完成）
 
 1. 用户与安全、举报和通知投递。
 2. 系统配置、存储、发信和验证。
 3. 评论、标签、角色、权限。
 4. 卡片页面只做壳层对齐，保留已经直观的内容管理行为。
 
-### Phase 4：验证
+### Phase 4：验证（已完成）
 
 - 每个角色的导航和页面 E2E。
 - 每个高风险动作的 403、前置状态、审计和失败恢复测试。

@@ -124,6 +124,16 @@ namespace think\facade
         public static function table(string $table): object
         {
             return new class {
+                private int $id = 0;
+                public function where(string $field, mixed $value): self { if ($field === 'cards.id') $this->id = (int) $value; return $this; }
+                public function whereNull(string $field): self { return $this; }
+                public function whereRaw(string $sql): self { return $this; }
+                public function find(): ?array {
+                    foreach (\app\modules\Content\Infrastructure\Persistence\Model\Cards::$rows as $row) {
+                        if ((int) $row['id'] === $this->id && (int) $row['status'] === 0) return $row;
+                    }
+                    return null;
+                }
                 public function whereIn(string $field, array $values): self { return $this; }
                 public function field(string $fields): self { return $this; }
                 public function select(): object
@@ -178,6 +188,8 @@ namespace app\shared\Infrastructure\Persistence
 // ════════════════════════════════════════════════════════════
 namespace
 {
+require __DIR__ . '/../../app/modules/Content/Cards/Service/CardVisibilityPolicy.php';
+require __DIR__ . '/../../app/modules/Content/Cards/Public/CardAccess.php';
 require __DIR__ . '/../../app/modules/Content/Comments/Service/Comments.php';
 }
 

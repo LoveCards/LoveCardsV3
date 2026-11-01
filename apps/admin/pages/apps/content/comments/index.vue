@@ -1,81 +1,36 @@
 <template>
   <AdminPageHeader
-    title="评论管理"
-    description="编辑、审核、置顶或删除评论；评论置顶按所属卡片唯一管理。"
-    :breadcrumbs="[{ title: '内容与社区' }, { title: '内容管理' }, { title: '评论' }]"
-  >
-    <template #actions>
-      <v-chip size="small" variant="tonal" color="info">按能力执行操作</v-chip>
-    </template>
-  </AdminPageHeader>
+    title="评论"
+    description="查看评论内容与状态，按需审核和管理。"
+    :breadcrumbs="[{ title: '内容与社区' }]"
+  />
 
   <AdminPageContainer fluid>
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
       :columns="columnOptions"
       :default-columns="defaultColumns"
-      :result-count="tableTotalItems"
       preference-key="content-comments"
       @reset-view="resetTableView"
     >
-      <template #toolbar>
-        <v-row dense align="center">
-          <v-col cols="12" lg="7">
-            <v-row dense align="center">
-              <v-col cols="12" sm="5" md="4">
-                <v-select
-                  v-model="BatchOperate"
-                  :items="TableBatchOptions"
-                  :disabled="tableLoading"
-                  density="compact"
-                  hide-details
-                  item-title="title"
-                  item-value="value"
-                  label="批量操作"
-                  variant="outlined"
-                />
-              </v-col>
-              <v-col cols="auto">
-                <AdminActionGuard :capability="batchCapability" scope="all">
-                  <v-btn
-                    color="primary"
-                    prepend-icon="mdi-playlist-edit"
-                    variant="flat"
-                    :disabled="tableSelected.length === 0 || BatchOperate === ''"
-                    @click="openBatchCommentDialog"
-                  >
-                    应用操作
-                  </v-btn>
-                </AdminActionGuard>
-              </v-col>
-              <v-col v-if="tableSelected.length" cols="auto">
-                <v-chip size="small" variant="tonal">已选择 {{ tableSelected.length }} 项</v-chip>
-              </v-col>
-            </v-row>
+      <template #search>
+        <v-text-field v-model="tableSearchValue" clearable label="搜索评论正文" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+      </template>
+      <template #actions>
+        <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">搜索与排序</v-btn>
+      </template>
+      <template v-if="tableSelected.length" #selection>
+        <v-row dense align="center" aria-live="polite">
+          <v-col cols="12" sm="auto"><span class="text-body-2">已选择 {{ tableSelected.length }} 项</span></v-col>
+          <v-col cols="12" sm="4" md="3">
+            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="tableLoading" item-title="title" item-value="value" label="批量操作" />
           </v-col>
-
-          <v-col cols="12" lg="5">
-            <v-row dense align="center" justify="end">
-              <v-col cols="12" sm="auto">
-                <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">
-                  高级筛选
-                </v-btn>
-              </v-col>
-              <v-col cols="12" sm="8">
-                <v-text-field
-                  v-model="tableSearchValue"
-                  append-inner-icon="mdi-magnify"
-                  clearable
-                  density="compact"
-                  hide-details
-                  label="搜索评论正文"
-                  single-line
-                  variant="outlined"
-                  @update:model-value="searchTableData"
-                />
-              </v-col>
-            </v-row>
+          <v-col cols="auto">
+            <AdminActionGuard :capability="batchCapability" scope="all">
+              <v-btn variant="outlined" :disabled="BatchOperate === ''" @click="openBatchCommentDialog">应用操作</v-btn>
+            </AdminActionGuard>
           </v-col>
+          <v-col cols="auto"><v-btn variant="text" @click="tableSelected = []">取消选择</v-btn></v-col>
         </v-row>
       </template>
 
@@ -97,7 +52,7 @@
         v-model:items-per-page="tableListRows"
         v-model:page="tableCurrentPage"
         v-model:sort-by="tableSortBy"
-        class="text-no-wrap"
+        class="admin-resource-table"
         density="comfortable"
         hover
         item-value="id"
@@ -120,68 +75,36 @@
         </template>
 
         <template #[`item.content`]="{ item }">
-          <div class="comment-content-excerpt text-high-emphasis">{{ commentExcerpt(item.content) }}</div>
+          <AdminContentSummary :content="item.content" :author="item.username" :user-id="item.user_id" />
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <div class="d-flex ga-1">
-            <template v-if="canPin && Number(item.status) === 0 && !item.parent_id">
-              <v-tooltip :text="item.is_pinned ? '取消置顶' : '置顶到所属卡片'" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    :aria-label="item.is_pinned ? '取消置顶评论' : '置顶评论'"
-                    :color="item.is_pinned ? 'primary' : undefined"
-                    :icon="item.is_pinned ? 'mdi-pin-off-outline' : 'mdi-pin-outline'"
-                    size="small"
-                    variant="text"
-                    @click="openPinCommentDialog(item)"
-                  />
-                </template>
-              </v-tooltip>
-            </template>
+          <div class="d-flex align-center ga-1">
             <AdminActionGuard capability="comments.read" scope="all">
-              <v-tooltip :text="commentPanelActionLabel" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    :aria-label="commentPanelActionLabel"
-                    :icon="commentPanelActionIcon"
-                    size="small"
-                    variant="text"
-                    @click="openCommentPanel(item.id)"
-                  />
-                </template>
-              </v-tooltip>
+              <v-btn variant="text" @click="openCommentPanel(item.id)">{{ commentPanelActionLabel }}</v-btn>
             </AdminActionGuard>
-            <AdminActionGuard capability="comments.delete" scope="all">
-              <v-tooltip text="删除评论" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    aria-label="删除评论"
-                    color="error"
-                    icon="mdi-delete"
-                    size="small"
-                    variant="text"
-                    @click="openDeleteCommentDialog(item)"
-                  />
-                </template>
-              </v-tooltip>
-            </AdminActionGuard>
+            <v-menu v-if="canDeleteComment || (canPin && Number(item.status) === 0 && !item.parent_id)" location="bottom end">
+              <template #activator="{ props }">
+                <v-btn v-bind="props" aria-label="更多评论操作" icon="mdi-dots-horizontal" variant="text" />
+              </template>
+              <v-list density="compact">
+                <v-list-item v-if="canPin && Number(item.status) === 0 && !item.parent_id" :prepend-icon="item.is_pinned ? 'mdi-pin-off-outline' : 'mdi-pin-outline'" :title="item.is_pinned ? '取消置顶评论' : '置顶评论'" @click="openPinCommentDialog(item)" />
+                <v-list-item v-if="canDeleteComment" prepend-icon="mdi-delete-outline" title="删除评论" @click="openDeleteCommentDialog(item)" />
+              </v-list>
+            </v-menu>
           </div>
         </template>
 
         <template #[`item.is_pinned`]="{ item }">
-          <v-chip size="small" :variant="item.is_pinned ? 'tonal' : 'outlined'" :color="item.is_pinned ? 'primary' : undefined">
-            {{ item.is_pinned ? '当前置顶' : '—' }}
-          </v-chip>
+          <span class="text-body-2 text-medium-emphasis">{{ item.is_pinned ? '置顶' : '—' }}</span>
+        </template>
+
+        <template #[`item.created_at`]="{ item }">
+          <span class="text-body-2 text-medium-emphasis">{{ item.created_at }}</span>
         </template>
 
         <template #[`item.status`]="{ item }">
-          <v-chip size="small" variant="tonal" :color="SelectUtils.getSelect(SelectUtils.Common.Status, item.status).color">
-            {{ SelectUtils.getSelect(SelectUtils.Common.Status, item.status).title }}
-          </v-chip>
+          <AdminContentStatus :status="item.status" :pinned="item.is_pinned && !visibleColumns.includes('is_pinned')" />
         </template>
 
         <template #no-data>
@@ -226,17 +149,21 @@
     v-model:batchData="tableSelected"
     v-model:batchOptions="BatchCommentDialog_operate"
     :batchFun="BatchCommentFun"
+    :impact-description="commentBatchImpact"
   />
   <PublicSearchDialog
     v-model:thisDialogState="SearchCommentsDialog_state"
     :KEYS="SearchKeys"
     :setFilter="setTableSearchFilter"
     :getTableData="getTableData"
+    :initial-filter="searchDialogFilter"
     KeysMessages="默认[内容]"
   />
 </template>
 
 <script setup lang="ts">
+import AdminContentSummary from '~/components/content/AdminContentSummary.vue';
+import AdminContentStatus from '~/components/content/AdminContentStatus.vue';
 import type { Comment, CommentsBatchMethod } from '@lovecards/sdk';
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue';
 import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue';
@@ -273,44 +200,36 @@ const queryFilters = (value: unknown): Record<string, unknown> => {
 };
 
 const AllTableHeaders = [
+  { title: '内容', value: 'content', sortable: false, minWidth: 320, width: '55%' },
   { title: 'ID', value: 'id', sortable: true },
   { title: '用户ID', value: 'user_id', sortable: true },
   { title: '应用ID', value: 'aid', sortable: true },
-  { title: '内容', value: 'content', sortable: false },
   { title: '自定义字段', value: 'data', sortable: false },
   { title: '点赞数', value: 'goods', sortable: true },
-  { title: '发布时间', value: 'created_at', sortable: true },
+  { title: '发布时间', value: 'created_at', sortable: true, width: 180 },
   { title: 'IP', value: 'post_ip', sortable: true },
   { title: '卡片置顶', value: 'is_pinned', sortable: false },
-  { title: '状态', value: 'status', sortable: true },
-  { title: '操作', value: 'operate', sortable: false },
+  { title: '状态', value: 'status', sortable: true, width: 120 },
+  { title: '操作', value: 'operate', sortable: false, width: 160 },
 ];
-const defaultColumns = ['id', 'user_id', 'content', 'goods', 'created_at', 'is_pinned', 'status', 'operate'];
+const defaultColumns = ['content', 'created_at', 'status', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: ['content', 'operate'].includes(header.value) }));
 const SearchKeys = AllTableHeaders.filter((header) => !['is_pinned', 'operate'].includes(header.value));
 const BaseTableBatchOptions = [
-  { title: '封禁/取消', value: 'ban' },
-  { title: '隐藏/取消', value: 'hide' },
-  { title: '审核/取消', value: 'approve' },
+  { title: '切换封禁状态', value: 'ban' },
+  { title: '切换隐藏状态', value: 'hide' },
+  { title: '通过审核', value: 'approve' },
   { title: '删除', value: 'delete' },
 ] satisfies Array<{ title: string; value: CommentsBatchMethod }>;
 const TableListRowsOptions = SelectUtils.Common.Table.ListRowsOptions;
 const userStore = useUserStore();
+const canDeleteComment = computed(() => userStore.hasGrant('comments.delete', 'all'));
 const canPin = computed(() => userStore.hasGrant('comments.pin', 'all'));
 const commentPanelActionLabel = computed(() => userStore.hasGrant('comments.update', 'all')
   ? '编辑评论'
   : userStore.hasGrant('comments.moderate', 'all') ? '审核评论' : '查看评论');
-const commentPanelActionIcon = computed(() => userStore.hasGrant('comments.update', 'all')
-  ? 'mdi-pencil-outline'
-  : userStore.hasGrant('comments.moderate', 'all') ? 'mdi-gavel' : 'mdi-eye-outline');
-const commentExcerpt = (content: unknown) => {
-  const normalized = String(content ?? '').replace(/\s+/gu, ' ').trim();
-  if (!normalized) return '—';
-  const characters = Array.from(normalized);
-  return characters.length > 72 ? `${characters.slice(0, 72).join('')}…` : normalized;
-};
 const batchCapabilityFor = (method: CommentsBatchMethod | '') => method === 'delete' ? 'comments.delete' : 'comments.moderate';
 const TableBatchOptions = computed(() => BaseTableBatchOptions.filter((option) => userStore.hasGrant(batchCapabilityFor(option.value), 'all')));
 const batchCapability = computed(() => batchCapabilityFor(BatchOperate.value));
@@ -327,6 +246,7 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
   : []);
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
 const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
+const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
 let latestRequest = 0;
@@ -479,6 +399,15 @@ const submitPinComment = async () => {
 };
 
 const BatchOperate = ref<CommentsBatchMethod | ''>('');
+const commentBatchImpact = computed(() => {
+  const descriptions: Record<string, string> = {
+    ban: '已封禁评论将恢复正常；其余所选评论将设为封禁。',
+    hide: '已隐藏评论将恢复正常；其余所选评论将设为隐藏。',
+    approve: '仅待审核评论会通过审核；已正常、封禁或隐藏的评论不会被这项操作改为正常。',
+    delete: '所选评论将被删除并停止展示。',
+  };
+  return `将处理 ${tableSelected.value.length} 条评论。${descriptions[BatchOperate.value] || ''}`;
+});
 const BatchCommentDialog_state = ref(false);
 const BatchCommentDialog_operate = ref('');
 const BatchCommentFun = () => {
@@ -501,7 +430,7 @@ const openBatchCommentDialog = () => {
 
 const SearchCommentsDialog_state = ref(false);
 const setTableSearchFilter = (data: Record<string, unknown>) => {
-  tableSearchFilter.value = data;
+  applySearchDialog(data);
   tableCurrentPage.value = 1;
   syncRouteQuery();
 };
@@ -514,15 +443,3 @@ watch([tableCurrentPage, tableListRows, tableSortBy], () => {
   void getTableData();
 }, { deep: true, immediate: true });
 </script>
-
-<style scoped>
-.comment-content-excerpt {
-  display: -webkit-box;
-  max-width: 360px;
-  overflow: hidden;
-  overflow-wrap: anywhere;
-  line-height: 1.4;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-</style>

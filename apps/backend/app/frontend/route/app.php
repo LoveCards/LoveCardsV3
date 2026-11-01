@@ -1,6 +1,9 @@
 <?php
 use think\facade\Route;
 
+Route::get('card/:cardId/:fileId', 'Media/card')->pattern(['cardId' => '\d+', 'fileId' => '\d+']);
+Route::head('card/:cardId/:fileId', 'Media/card')->pattern(['cardId' => '\d+', 'fileId' => '\d+']);
+
 // Theme engine catch-all — 必须最后注册，确保 API 路由优先
 // 这些路由会在所有应用路由之后执行
 // Multi-app dispatch maps the public `/media` prefix to this frontend app and

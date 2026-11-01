@@ -1,5 +1,6 @@
 import { createClient } from '@lovecards/sdk';
 import { getThemeRuntimeContext } from './runtime-context.js';
+import { installCardMediaAccess } from '../services/card-media-access.js';
 
 let client;
 export function resolveApiUrl() {
@@ -9,7 +10,8 @@ export function resolveApiUrl() {
 export function getSdkClient() {
   const apiUrl = resolveApiUrl();
   if (!apiUrl) return null;
-  if (!client) client = createClient({
+  if (!client) {
+    client = createClient({
     apiUrl,
     onAuthError: () => {
       client?.clearToken();
@@ -17,6 +19,8 @@ export function getSdkClient() {
       window.dispatchEvent(new CustomEvent('lc-auth-changed'));
     },
   });
+    installCardMediaAccess(client, apiUrl);
+  }
   return client;
 }
 export function sdkConfigured() { return Boolean(resolveApiUrl()); }

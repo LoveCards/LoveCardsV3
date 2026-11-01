@@ -53,6 +53,12 @@ Route::get('cards/:id/comments', 'Content.Comments/cardList')
     ->setOption('meta', ['name' => '卡片评论列表', 'group' => '评论', 'access' => ['auth' => 'public']])
     ->middleware(OptionalJwtAuth::class);
 
+Route::post('cards/:id/media-access', 'Content.Cards/mediaAccess')
+    ->name('cards.mediaAccess')
+    ->setOption('contract', ['request' => null, 'response' => ['resource' => \app\modules\Content\Cards\Transport\Api\CardMediaAccessResource::class, 'shape' => 'item', 'status' => 200]])
+    ->setOption('meta', ['name' => '获取卡片媒体访问地址', 'group' => '卡片', 'access' => ['auth' => 'required']])
+    ->middleware(JwtAuthCheck::class);
+
 Route::get('cards/:id', 'Content.Cards/get')
     ->name('cards.get')
     ->setOption('contract', ['request' => null, 'response' => ['resource' => CardResource::class, 'shape' => 'item', 'status' => 200]])

@@ -1,9 +1,17 @@
 <template>
   <AdminPageHeader
-    title="标签管理"
-    description="维护内容分类与标签状态；删除前请确认受影响的卡片范围。"
-    :breadcrumbs="[{ title: '内容与社区' }, { title: '内容管理' }, { title: '标签' }]"
-  />
+    title="标签"
+    description="维护内容分类与标签状态。"
+    :breadcrumbs="[{ title: '内容与社区' }]"
+  >
+    <template #actions>
+      <AdminActionGuard capability="tags.create" scope="global">
+        <v-btn color="primary" prepend-icon="mdi-tag-plus-outline" variant="flat" @click="openCreateTagDialog">
+          创建标签
+        </v-btn>
+      </AdminActionGuard>
+    </template>
+  </AdminPageHeader>
 
   <AdminPageContainer fluid>
     <AdminResourceTableShell
@@ -14,70 +22,25 @@
       preference-key="content-tags"
       @reset-view="resetTableView"
     >
-      <template #toolbar>
-        <v-row dense align="center">
-          <v-col cols="12" lg="7">
-            <v-row dense align="center">
-              <v-col cols="auto">
-                <AdminActionGuard capability="tags.create" scope="global">
-                  <v-btn color="primary" prepend-icon="mdi-tag-plus-outline" variant="flat" @click="openCreateTagDialog">
-                    创建标签
-                  </v-btn>
-                </AdminActionGuard>
-              </v-col>
-              <v-col cols="12" sm="5" md="4">
-                <v-select
-                  v-model="BatchOperate"
-                  :items="TableBatchOptions"
-                  :disabled="tableLoading"
-                  density="compact"
-                  hide-details
-                  item-title="title"
-                  item-value="value"
-                  label="批量操作"
-                  variant="outlined"
-                />
-              </v-col>
-              <v-col cols="auto">
-                <AdminActionGuard :capability="batchCapability" scope="all">
-                  <v-btn
-                    prepend-icon="mdi-playlist-edit"
-                    variant="outlined"
-                    :disabled="tableSelected.length === 0 || BatchOperate === ''"
-                    @click="openBatchTagDialog"
-                  >
-                    应用
-                  </v-btn>
-                </AdminActionGuard>
-              </v-col>
-              <v-col v-if="tableSelected.length" cols="auto">
-                <v-chip size="small" variant="tonal">已选择 {{ tableSelected.length }} 项</v-chip>
-              </v-col>
-            </v-row>
-          </v-col>
+      <template #search>
+        <v-text-field v-model="tableSearchValue" clearable label="搜索标签名称" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+      </template>
+      <template #actions>
 
-          <v-col cols="12" lg="5">
-            <v-row dense align="center" justify="end">
-              <v-col cols="12" sm="auto">
-                <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">
-                  高级筛选
-                </v-btn>
-              </v-col>
-              <v-col cols="12" sm="8">
-                <v-text-field
-                  v-model="tableSearchValue"
-                  append-inner-icon="mdi-magnify"
-                  clearable
-                  density="compact"
-                  hide-details
-                  label="搜索标签名称"
-                  single-line
-                  variant="outlined"
-                  @update:model-value="searchTableData"
-                />
-              </v-col>
-            </v-row>
+        <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">搜索与排序</v-btn>
+      </template>
+      <template v-if="tableSelected.length" #selection>
+        <v-row dense align="center" aria-live="polite">
+          <v-col cols="12" sm="auto"><span class="text-body-2">已选择 {{ tableSelected.length }} 项</span></v-col>
+          <v-col cols="12" sm="4" md="3">
+            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="tableLoading" item-title="title" item-value="value" label="批量操作" />
           </v-col>
+          <v-col cols="auto">
+            <AdminActionGuard :capability="batchCapability" scope="all">
+              <v-btn variant="outlined" :disabled="BatchOperate === ''" @click="openBatchTagDialog">应用操作</v-btn>
+            </AdminActionGuard>
+          </v-col>
+          <v-col cols="auto"><v-btn variant="text" @click="clearSelection">取消选择</v-btn></v-col>
         </v-row>
       </template>
 
@@ -99,7 +62,7 @@
         v-model:items-per-page="tableListRows"
         v-model:page="tableCurrentPage"
         v-model:sort-by="tableSortBy"
-        class="text-no-wrap"
+        class="admin-tags-table"
         density="comfortable"
         hover
         item-value="id"
@@ -116,65 +79,53 @@
         </template>
 
         <template #[`item.id`]="{ item }">
-          <v-btn class="text-none px-2" min-height="40" variant="text" @click="openTagPanel(item.id)">
-            #{{ item.id }}
-          </v-btn>
+          <span class="text-body-2 text-medium-emphasis">#{{ item.id }}</span>
         </template>
 
         <template #[`item.name`]="{ item }">
-          <v-chip prepend-icon="mdi-tag-outline" size="small" variant="tonal">
+          <v-btn
+            class="admin-tag-name text-none"
+            prepend-icon="mdi-tag-outline"
+            variant="text"
+            @click="openTagPanel(item.id)"
+          >
             {{ item.name }}
-          </v-chip>
+          </v-btn>
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <div class="d-flex ga-1">
+          <div class="d-flex align-center ga-1">
             <AdminActionGuard capability="tags.read" scope="all">
-              <v-tooltip :text="tagPanelActionLabel" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    :aria-label="tagPanelActionLabel"
-                    :icon="tagPanelActionIcon"
-                    size="small"
-                    variant="text"
-                    @click="openTagPanel(item.id)"
-                  />
-                </template>
-              </v-tooltip>
+              <v-btn size="small" variant="text" @click="openTagPanel(item.id)">
+                {{ tagPanelActionLabel }}
+              </v-btn>
             </AdminActionGuard>
-            <AdminActionGuard capability="tags.delete" scope="all">
-              <v-tooltip text="删除标签" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    aria-label="删除标签"
-                    color="error"
-                    icon="mdi-delete"
-                    size="small"
-                    variant="text"
-                    @click="openDeleteTagDialog(item)"
-                  />
-                </template>
-              </v-tooltip>
-            </AdminActionGuard>
+            <v-menu v-if="canDeleteTag" location="bottom end">
+              <template #activator="{ props }">
+                <v-btn v-bind="props" aria-label="更多标签操作" icon="mdi-dots-horizontal" size="small" variant="text" />
+              </template>
+              <v-list density="compact">
+                <v-list-item prepend-icon="mdi-delete-outline" title="删除标签" @click="openDeleteTagDialog(item)" />
+              </v-list>
+            </v-menu>
           </div>
         </template>
 
         <template #[`item.status`]="{ item }">
-          <v-chip size="small" variant="tonal" :color="SelectUtils.getSelect(SelectUtils.Common.Status, item.status).color">
-            {{ SelectUtils.getSelect(SelectUtils.Common.Status, item.status).title }}
+          <v-chip size="small" variant="tonal" :color="tagStatus(item.status).color">
+            {{ tagStatus(item.status).title }}
           </v-chip>
         </template>
 
         <template #no-data>
           <v-empty-state
             :icon="tableError ? 'mdi-cloud-alert-outline' : 'mdi-tag-off-outline'"
-            :title="tableError ? '无法加载标签' : '暂无标签'"
-            :text="tableError || '当前筛选条件下没有可显示的标签。可以创建标签或调整筛选条件。'"
+            :title="tableError ? '无法加载标签' : hasActiveFilters ? '没有匹配的标签' : '暂无标签'"
+            :text="tableError || (hasActiveFilters ? '没有标签符合当前搜索与排序条件。' : '创建标签后，可在这里维护名称与状态。')"
           >
             <template #actions>
               <v-btn v-if="tableError" color="primary" variant="outlined" @click="getTableData">重试</v-btn>
+              <v-btn v-else-if="hasActiveFilters" color="primary" variant="outlined" @click="resetTableView">清除条件</v-btn>
               <AdminActionGuard v-else capability="tags.create" scope="global">
                 <v-btn color="primary" prepend-icon="mdi-tag-plus-outline" variant="flat" @click="openCreateTagDialog">创建标签</v-btn>
               </AdminActionGuard>
@@ -205,6 +156,7 @@
   <PublicSearchDialog
     v-model:thisDialogState="SearchTagsDialog_state"
     :KEYS="SearchKeys"
+    :initial-filter="searchDialogFilter"
     :setFilter="setTableSearchFilter"
     :getTableData="getTableData"
     KeysMessages="默认[标签名]"
@@ -248,15 +200,15 @@ const queryFilters = (value: unknown): Record<string, unknown> => {
 };
 
 const AllTableHeaders = [
-  { title: 'ID', value: 'id', sortable: true },
-  { title: '应用ID', value: 'aid', sortable: true },
-  { title: '用户ID', value: 'user_id', sortable: true },
   { title: '标签名', value: 'name', sortable: true },
-  { title: '发布时间', value: 'created_at', sortable: true },
   { title: '状态', value: 'status', sortable: true },
+  { title: '创建时间', value: 'created_at', sortable: true },
+  { title: 'ID', value: 'id', sortable: true },
+  { title: '应用 ID', value: 'aid', sortable: true },
+  { title: '创建用户 ID', value: 'user_id', sortable: true },
   { title: '操作', value: 'operate', sortable: false },
 ];
-const defaultColumns = ['id', 'aid', 'user_id', 'name', 'created_at', 'status', 'operate'];
+const defaultColumns = ['name', 'status', 'created_at', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: ['name', 'operate'].includes(header.value) }));
@@ -269,9 +221,13 @@ const BaseTableBatchOptions = [
 ] satisfies Array<{ title: string; value: TagsBatchMethod }>;
 const TableListRowsOptions = SelectUtils.Common.Table.ListRowsOptions;
 const userStore = useUserStore();
+const tagStatus = (status: number) => {
+  const option = SelectUtils.getSelect(SelectUtils.Common.Status, status);
+  return { ...option, title: option.title.replace(/^#\d+\s*/, '') || '未知状态' };
+};
 const canUpdateTag = computed(() => userStore.hasGrant('tags.update', 'all'));
-const tagPanelActionLabel = computed(() => canUpdateTag.value ? '编辑标签' : '查看标签');
-const tagPanelActionIcon = computed(() => canUpdateTag.value ? 'mdi-pencil-outline' : 'mdi-eye-outline');
+const canDeleteTag = computed(() => userStore.hasGrant('tags.delete', 'all'));
+const tagPanelActionLabel = computed(() => canUpdateTag.value ? '编辑' : '查看');
 const batchCapabilityFor = (method: TagsBatchMethod | '') => method === 'delete' ? 'tags.delete' : 'tags.update';
 const TableBatchOptions = computed(() => BaseTableBatchOptions.filter((option) => userStore.hasGrant(batchCapabilityFor(option.value), 'all')));
 const batchCapability = computed(() => batchCapabilityFor(BatchOperate.value));
@@ -288,8 +244,14 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
   : []);
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
 const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
+const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
+const hasActiveFilters = computed(() => Boolean(
+  tableSearchValue.value?.trim()
+  || Object.keys(tableSearchFilter.value).length
+  || tableSortBy.value.length,
+));
 let latestRequest = 0;
 
 const errorMessage = (error: unknown) => {
@@ -410,7 +372,7 @@ const BatchTagFun = () => {
   }
   return client.tags.batchManaged({ method, ids: tableSelected.value }).then(() => {
     BatchTagDialog_state.value = false;
-    tableSelected.value = [];
+    clearSelection();
     return getTableData();
   });
 };
@@ -419,10 +381,14 @@ const openBatchTagDialog = () => {
   BatchTagDialog_operate.value = TableBatchOptions.value.find((option) => option.value === method)?.title || '';
   if (tableSelected.value.length) BatchTagDialog_state.value = true;
 };
+const clearSelection = () => {
+  tableSelected.value = [];
+  BatchOperate.value = '';
+};
 
 const SearchTagsDialog_state = ref(false);
 const setTableSearchFilter = (data: Record<string, unknown>) => {
-  tableSearchFilter.value = data;
+  applySearchDialog(data);
   tableCurrentPage.value = 1;
   syncRouteQuery();
 };
@@ -443,3 +409,11 @@ watch([tableCurrentPage, tableListRows, tableSortBy], () => {
   void getTableData();
 }, { deep: true, immediate: true });
 </script>
+
+<style scoped>
+.admin-tag-name { max-width: 360px; justify-content: flex-start; }
+.admin-tag-name :deep(.v-btn__content) { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 700px) {
+  .admin-tag-name { max-width: 220px; }
+}
+</style>

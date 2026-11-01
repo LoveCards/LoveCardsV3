@@ -1,5 +1,5 @@
 {
-  "routeCount": 189,
+  "routeCount": 190,
   "summary": {},
   "routes": [
     {
@@ -6533,7 +6533,7 @@
       "contract": {
         "request": {
           "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
-          "scene": "Defult"
+          "scene": "AdminUsers"
         },
         "response": {
           "resource": "app\\modules\\Platform\\User\\Transport\\Api\\UserResource",
@@ -6557,7 +6557,7 @@
       "validators": [
         "app\\shared\\Transport\\Validation\\PaginationInput"
       ],
-      "validatorScene": "Defult",
+      "validatorScene": "AdminUsers",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
@@ -7757,6 +7757,67 @@
         "status": 200,
         "shape": "item",
         "resource": "LikeCountResource",
+        "operation": "make"
+      }
+    },
+    {
+      "path": "/cards/:id/media-access",
+      "method": "POST",
+      "name": "cards.mediaAccess",
+      "controller": "Content.Cards",
+      "action": "mediaAccess",
+      "meta": {
+        "name": "获取卡片媒体访问地址",
+        "group": "卡片",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardMediaAccessResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Content/Cards.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CardMediaAccessResource::make"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "CardMediaAccessResource",
         "operation": "make"
       }
     },

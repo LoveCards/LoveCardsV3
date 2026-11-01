@@ -6,7 +6,7 @@ export class Users extends BaseResource {
   recovery(params?: { page?: number; list_rows?: number; search_value?: string; search_keys?: string; status?: string; resource_type?: string; actor_id?: number; unread_only?: boolean; worker_type?: string }): Promise<ApiTypes.ListResult<ApiTypes.RecoveryChallenge>> {
     return this._get<ApiTypes.ListResult<ApiTypes.RecoveryChallenge>>("/admin/recovery", params)
   }
-  listManaged(params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }): Promise<ApiTypes.ListResult<ApiTypes.User>> {
+  listManaged(params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; status?: number; role_id?: number; search_value?: string }): Promise<ApiTypes.ListResult<ApiTypes.User>> {
     return this._get<ApiTypes.ListResult<ApiTypes.User>>("/admin/users", params)
   }
   deleteManaged(id: number): Promise<void> {

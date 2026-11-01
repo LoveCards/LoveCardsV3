@@ -1,81 +1,48 @@
 <template>
   <AdminPageHeader
     title="用户管理"
-    description="按账号状态和角色查找用户；安全会话与恢复流程从用户详情进入。"
-    :breadcrumbs="[{ title: '用户与安全' }, { title: '用户管理' }]"
-  >
-    <template #actions>
-      <v-chip size="small" variant="tonal" color="primary">账号目录</v-chip>
-    </template>
-  </AdminPageHeader>
+    description="查找用户，查看账号状态与角色。"
+    :breadcrumbs="[{ title: '用户与权限' }]"
+  />
 
   <AdminPageContainer fluid>
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
       :columns="columnOptions"
       :default-columns="defaultColumns"
-      :result-count="tableTotalItems"
       preference-key="users"
       @reset-view="resetTableView"
     >
       <template #toolbar>
-        <v-row dense align="center">
-          <v-col cols="12" lg="7">
-            <v-row dense align="center">
-              <v-col cols="12" sm="5" md="4">
-                <v-select
-                  v-model="BatchOperate"
-                  :items="TableBatchOptions"
-                  :disabled="tableLoading"
-                  density="compact"
-                  hide-details
-                  item-title="title"
-                  item-value="value"
-                  label="批量操作"
-                  variant="outlined"
-                />
-              </v-col>
-              <v-col cols="auto">
-                <AdminActionGuard :capability="batchCapability" scope="all">
-                  <v-btn
-                    color="primary"
-                    prepend-icon="mdi-account-multiple-check-outline"
-                    variant="flat"
-                    :disabled="tableSelected.length === 0 || BatchOperate === ''"
-                    @click="openBatchUserDialog"
-                  >
-                    应用操作
-                  </v-btn>
-                </AdminActionGuard>
-              </v-col>
-              <v-col v-if="tableSelected.length" cols="auto">
-                <v-chip size="small" variant="tonal">已选择 {{ tableSelected.length }} 项</v-chip>
-              </v-col>
-            </v-row>
+        <v-row dense>
+          <v-col cols="12" sm="4">
+            <v-select :model-value="tableSearchFilter.status" :items="SelectUtils.User.status" label="账号状态" clearable @update:model-value="updateUserFilter('status', $event)" />
           </v-col>
+          <v-col v-if="canHydrateRoles" cols="12" sm="4">
+            <v-select :model-value="tableSearchFilter.role_id" :items="UserRoles" item-title="name" item-value="id" label="角色" :loading="rolesLoading" clearable @update:model-value="updateUserFilter('role_id', $event)" />
+          </v-col>
+          <v-col cols="auto"><v-btn variant="text" @click="clearFilters">清除筛选</v-btn></v-col>
+        </v-row>
+      </template>
+      <template #search>
+        <v-text-field v-model="tableSearchValue" clearable label="搜索用户名" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+      </template>
+      <template #actions>
 
-          <v-col cols="12" lg="5">
-            <v-row dense align="center" justify="end">
-              <v-col cols="12" sm="auto">
-                <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">
-                  高级筛选
-                </v-btn>
-              </v-col>
-              <v-col cols="12" sm="8">
-                <v-text-field
-                  v-model="tableSearchValue"
-                  append-inner-icon="mdi-magnify"
-                  clearable
-                  density="compact"
-                  hide-details
-                  label="搜索用户名或账号"
-                  single-line
-                  variant="outlined"
-                  @update:model-value="searchTableData"
-                />
-              </v-col>
-            </v-row>
+        <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">搜索与排序</v-btn>
+      </template>
+      <template v-if="tableSelected.length" #selection>
+        <v-row dense align="center" aria-live="polite">
+          <v-col cols="12" sm="auto"><span class="text-body-2">已选择 {{ tableSelected.length }} 项</span></v-col>
+          <v-col cols="12" sm="4" md="3">
+            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="tableLoading" item-title="title" item-value="value" label="批量操作" />
           </v-col>
+          <v-col cols="auto">
+            <AdminActionGuard :capability="batchCapability" scope="all">
+              <v-btn variant="outlined" :disabled="BatchOperate === ''" @click="openBatchUserDialog">应用操作</v-btn>
+            </AdminActionGuard>
+          </v-col>
+          <v-col cols="auto"><v-btn variant="text" @click="tableSelected = []">取消选择</v-btn></v-col>
         </v-row>
       </template>
 
@@ -110,7 +77,7 @@
         v-model:items-per-page="tableListRows"
         v-model:page="tableCurrentPage"
         v-model:sort-by="tableSortBy"
-        class="text-no-wrap"
+        class="admin-resource-table"
         density="comfortable"
         hover
         item-value="id"
@@ -152,54 +119,33 @@
         </template>
 
         <template #[`item.username`]="{ item }">
-          <AdminResourceLink resource-type="user" :resource-id="item.id" :label="item.username" />
+          <div class="d-flex align-center ga-3 py-3">
+            <v-avatar v-if="!visibleColumns.includes('avatar')" size="36" color="surface-variant">
+              <v-img v-if="item.avatar" :alt="`${item.username}的头像`" :src="item.avatar" />
+              <v-icon v-else icon="mdi-account" aria-label="默认头像" />
+            </v-avatar>
+            <div>
+              <v-btn :to="`/apps/users/${item.id}`" variant="text" class="px-0 text-none justify-start">{{ item.username }}</v-btn>
+              <div v-if="!visibleColumns.includes('number')" class="text-caption text-medium-emphasis">账号 {{ item.number || '—' }}</div>
+            </div>
+          </div>
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <div class="d-flex ga-1">
-            <AdminActionGuard capability="users.security.read">
-              <v-tooltip text="查看账号安全" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    :to="`/apps/users/${item.id}/security`"
-                    aria-label="查看账号安全"
-                    icon="mdi-shield-account-outline"
-                    size="small"
-                    variant="text"
-                  />
-                </template>
-              </v-tooltip>
-            </AdminActionGuard>
+          <div class="d-flex align-center ga-1">
             <AdminActionGuard v-if="canEditUser(item)" capability="users.update" scope="all">
-              <v-tooltip text="编辑用户" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    aria-label="编辑用户"
-                    icon="mdi-pencil"
-                    size="small"
-                    variant="text"
-                    @click="openEditUserDialog(item)"
-                  />
-                </template>
-              </v-tooltip>
+              <v-btn variant="text" @click="openEditUserDialog(item)">编辑用户</v-btn>
             </AdminActionGuard>
-            <AdminActionGuard v-if="canDeleteUser(item)" capability="users.delete" scope="all">
-              <v-tooltip text="删除用户" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    aria-label="删除用户"
-                    color="error"
-                    icon="mdi-delete"
-                    size="small"
-                    variant="text"
-                    @click="openDeleteUserDialog(item)"
-                  />
-                </template>
-              </v-tooltip>
-            </AdminActionGuard>
+            <v-btn v-else :to="`/apps/users/${item.id}`" variant="text">查看用户</v-btn>
+            <v-menu v-if="userStore.hasGrant('users.security.read', 'global') || canDeleteUser(item)" location="bottom end">
+              <template #activator="{ props }">
+                <v-btn v-bind="props" aria-label="更多用户操作" icon="mdi-dots-horizontal" variant="text" />
+              </template>
+              <v-list density="compact">
+                <v-list-item v-if="userStore.hasGrant('users.security.read', 'global')" :to="`/apps/users/${item.id}/security`" title="查看账号安全" prepend-icon="mdi-shield-account-outline" />
+                <v-list-item v-if="canDeleteUser(item)" title="删除用户" prepend-icon="mdi-delete-outline" @click="openDeleteUserDialog(item)" />
+              </v-list>
+            </v-menu>
             <v-tooltip
               v-if="shouldShowTargetLock(item)"
               :text="targetProtectionMessage(item)"
@@ -219,10 +165,13 @@
         </template>
 
         <template #[`item.status`]="{ item }">
-          <v-chip size="small" variant="tonal" :color="statusColor(item.status)">
-            {{ SelectUtils.getSelect(SelectUtils.User.status, item.status).title }}
+          <span v-if="Number(item.status) === 0" class="text-body-2 text-medium-emphasis">正常</span>
+          <v-chip v-else size="small" variant="tonal" :color="statusColor(item.status)">
+            {{ SelectUtils.getSelect(SelectUtils.User.status, item.status).title.replace(/^#\d+\s*/, '') }}
           </v-chip>
         </template>
+
+        <template #[`item.created_at`]="{ value }"><span class="text-body-2 text-medium-emphasis">{{ value }}</span></template>
 
         <template #no-data>
           <v-empty-state
@@ -250,19 +199,22 @@
     v-model:thisDialogState="DeleteUserDialog_state"
     v-model:deleteData="DeleteUserDialog_data"
     :deleteFun="DeleteUserFun"
+    impact="删除后账号将停用，所有设备的登录会话会被撤销。账号记录为软删除，当前用户列表不提供恢复入口。"
   />
   <PublicBatchDialog
     v-model:thisDialogState="BatchUserDialog_state"
     v-model:batchData="tableSelected"
     v-model:batchOptions="BatchUserDialog_operate"
     :batchFun="BatchUserFun"
+    :impact-description="userBatchImpact"
   />
   <PublicSearchDialog
     v-model:thisDialogState="SearchUserDialog_state"
     :KEYS="SearchKeys"
     :setFilter="setTableSearchFilter"
     :getTableData="getTableData"
-    KeysMessages="默认[用户名]"
+    :initial-filter="searchDialogFilter"
+    KeysMessages="默认按用户名；可选择其他字段"
   />
 </template>
 
@@ -271,7 +223,6 @@ import type { Role, RoleInfo, User, UsersBatchMethod } from '@lovecards/sdk';
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue';
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue';
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
-import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
 import EditUserDialog from '~/components/users/EditUserDialog.vue';
 import PublicBatchDialog from '@/components/shared/Table/BatchDialog.vue';
@@ -308,18 +259,18 @@ const queryFilters = (value: unknown): Record<string, unknown> => {
 };
 
 const AllTableHeaders = [
+  { title: '用户', value: 'username', sortable: true, minWidth: 240 },
   { title: 'ID', value: 'id', sortable: true },
-  { title: '权限组', value: 'roles_id', sortable: false },
+  { title: '角色', value: 'roles_id', sortable: false },
   { title: '头像', value: 'avatar', sortable: false },
   { title: '账号', value: 'number', sortable: true },
-  { title: '用户名', value: 'username', sortable: true },
   { title: '邮箱', value: 'email', sortable: true },
   { title: '手机号', value: 'phone', sortable: true },
   { title: '注册时间', value: 'created_at', sortable: true },
   { title: '状态', value: 'status', sortable: true },
-  { title: '操作', value: 'operate', sortable: false },
+  { title: '操作', value: 'operate', sortable: false, width: 200 },
 ];
-const defaultColumns = ['id', 'roles_id', 'avatar', 'number', 'username', 'created_at', 'status', 'operate'];
+const defaultColumns = ['username', 'roles_id', 'created_at', 'status', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({
@@ -327,11 +278,11 @@ const columnOptions = AllTableHeaders.map((header) => ({
   key: header.value,
   required: header.value === 'username' || header.value === 'operate',
 }));
-const SearchKeys = AllTableHeaders.slice(0, -1);
+const SearchKeys = AllTableHeaders.slice(0, -1).map((header) => header.value === 'username' ? { ...header, title: '用户名' } : header);
 const BaseTableBatchOptions = [
-  { title: '封禁/取消', value: 'ban' },
-  { title: '冻结/取消', value: 'hide' },
-  { title: '审核/取消', value: 'approve' },
+  { title: '切换封禁状态', value: 'ban' },
+  { title: '切换冻结状态', value: 'hide' },
+  { title: '切换审核状态', value: 'approve' },
 ] satisfies Array<{ title: string; value: UsersBatchMethod }>;
 const TableListRowsOptions = SelectUtils.Common.Table.ListRowsOptions;
 const userStore = useUserStore();
@@ -461,6 +412,7 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
   : []);
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
 const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
+const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
 let latestRequest = 0;
@@ -537,6 +489,13 @@ const clearFilters = () => {
   tableSearchFilter.value = {};
   refreshFromFirstPage();
 };
+const updateUserFilter = (key: 'status' | 'role_id', value: unknown) => {
+  const next = { ...tableSearchFilter.value };
+  if (typeof value !== 'number') delete next[key];
+  else next[key] = value;
+  tableSearchFilter.value = next;
+  refreshFromFirstPage();
+};
 const resetTableView = () => {
   tableSearchValue.value = undefined;
   tableSearchFilter.value = {};
@@ -565,7 +524,7 @@ const openEditUserDialog = (data: User) => {
 };
 
 const DeleteUserDialog_state = ref(false);
-const DeleteUserDialog_data = ref<{ id: number }>({ id: 0 });
+const DeleteUserDialog_data = ref<{ id: number; display?: string }>({ id: 0 });
 const DeleteUserFun = (id: number) => {
   const user = tableItems.value.find((item) => item.id === id);
   if (!user) return Promise.reject(new Error('无法确认目标用户身份，请刷新列表后重试。'));
@@ -581,11 +540,19 @@ const openDeleteUserDialog = (data: User) => {
     notifier.warning(targetMutationAllowed(data) ? '当前账号无权删除用户。' : targetProtectionMessage(data));
     return;
   }
-  DeleteUserDialog_data.value = { id: data.id };
+  DeleteUserDialog_data.value = { id: data.id, display: `${data.username} · 账号 ${data.number}` };
   DeleteUserDialog_state.value = true;
 };
 
 const BatchOperate = ref<UsersBatchMethod | ''>('');
+const userBatchImpact = computed(() => {
+  const descriptions: Record<string, string> = {
+    ban: '已封禁账号将恢复正常；其余所选账号将设为封禁。',
+    hide: '已冻结账号将恢复正常；其余所选账号将设为冻结。',
+    approve: '待审核账号将恢复正常；其余所选账号将设为待审核。',
+  };
+  return `将处理 ${tableSelected.value.length} 个账号。${descriptions[BatchOperate.value] || ''} 混合状态会产生不同结果，请逐一核对选择范围。`;
+});
 const BatchUserDialog_state = ref(false);
 const BatchUserDialog_operate = ref('');
 const BatchUserFun = () => {
@@ -629,7 +596,7 @@ const openBatchUserDialog = () => {
 
 const SearchUserDialog_state = ref(false);
 const setTableSearchFilter = (data: Record<string, unknown>) => {
-  tableSearchFilter.value = data;
+  applySearchDialog(data);
   tableCurrentPage.value = 1;
   syncRouteQuery();
 };

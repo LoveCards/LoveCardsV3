@@ -1,6 +1,6 @@
 {
   "source": "thinkphp-runtime-route-registry",
-  "routeCount": 189,
+  "routeCount": 190,
   "routes": [
     {
       "path": "/admin/cards/:id",
@@ -2623,7 +2623,7 @@
       "contract": {
         "request": {
           "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
-          "scene": "Defult"
+          "scene": "AdminUsers"
         },
         "response": {
           "resource": "app\\modules\\Platform\\User\\Transport\\Api\\UserResource",
@@ -5603,6 +5603,32 @@
         "request": null,
         "response": {
           "resource": "app\\modules\\Content\\Likes\\Transport\\Api\\LikeCountResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/cards/:id/media-access",
+      "method": "POST",
+      "name": "cards.mediaAccess",
+      "controller": "Content.Cards",
+      "action": "mediaAccess",
+      "meta": {
+        "name": "获取卡片媒体访问地址",
+        "group": "卡片",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardMediaAccessResource",
           "shape": "item",
           "status": 200
         }

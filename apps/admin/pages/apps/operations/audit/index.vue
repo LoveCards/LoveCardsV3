@@ -1,6 +1,6 @@
 <template>
   <AdminPageContainer>
-    <AdminPageHeader title="审计日志" description="按时间核对高风险操作、目标资源和端到端请求标识。" :breadcrumbs="[{ title: '运维与审计' }, { title: '审计日志' }]">
+    <AdminPageHeader title="审计日志" description="按时间核对高风险操作、目标资源和端到端请求标识。" :breadcrumbs="[{ title: '系统运维' }]">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn></template>
     </AdminPageHeader>
     <AdminAsyncState :loading="loading && !logs.length" :error="error && !logs.length ? error : null" :empty="!logs.length" @retry="load">

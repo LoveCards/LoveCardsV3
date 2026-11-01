@@ -7,7 +7,6 @@ use app\shared\Infrastructure\Cache\CacheManager;
 use app\modules\Operations\Version\Public\Version;
 
 use app\modules\Content\Cards\Public\Cards;
-use app\modules\Content\Cards\Domain\PublicationStatus;
 use app\modules\Content\Comments\Public\Comments;
 use app\modules\Content\Likes\Public\Likes;
 use app\modules\Operations\Dashboard\Domain\WorkbenchPolicy;
@@ -71,7 +70,7 @@ class Dashboard
                 'cards_pending',
                 '待审核卡片',
                 '检查等待发布的卡片内容。',
-                self::countWhere('cards', static fn ($query) => $query->where('status', PublicationStatus::PENDING)->whereNull('deleted_at')),
+                self::countWhere('cards', static fn ($query) => $query->where('status', Cards::pendingStatus())->whereNull('deleted_at')),
                 '/apps/content/cards?filters=%7B%22status%22%3A3%7D',
                 'warning'
             );

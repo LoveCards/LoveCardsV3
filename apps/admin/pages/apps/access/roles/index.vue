@@ -1,9 +1,17 @@
 <template>
   <AdminPageHeader
-    title="角色管理"
+    title="角色"
     description="定义管理端职责模板与授权范围。提交前请确认角色用途和授权边界。"
-    :breadcrumbs="[{ title: '访问控制' }, { title: '角色' }]"
-  />
+    :breadcrumbs="[{ title: '用户与权限' }]"
+  >
+    <template #actions>
+      <AdminActionGuard capability="roles.create" scope="global">
+        <v-btn color="primary" prepend-icon="mdi-shield-plus-outline" variant="flat" @click="CreateDialog_state = true">
+          创建角色
+        </v-btn>
+      </AdminActionGuard>
+    </template>
+  </AdminPageHeader>
 
   <AdminPageContainer fluid>
     <AdminResourceTableShell
@@ -14,89 +22,41 @@
       preference-key="access-roles"
       @reset-view="resetTableView"
     >
-      <template #toolbar>
-        <v-row dense align="center">
-          <v-col cols="12" lg="7">
-            <v-row dense align="center">
-              <v-col cols="auto">
-                <AdminActionGuard capability="roles.create" scope="global">
-                  <v-btn color="primary" prepend-icon="mdi-shield-plus-outline" variant="flat" @click="CreateDialog_state = true">
-                    创建角色
-                  </v-btn>
-                </AdminActionGuard>
-              </v-col>
-              <v-col v-if="isRootActor" cols="auto">
-                <AdminActionGuard capability="roles.assign" scope="global">
-                  <v-menu location="bottom start">
-                    <template #activator="{ props }">
-                      <v-btn v-bind="props" append-icon="mdi-chevron-down" prepend-icon="mdi-tools" variant="text">
-                        高级维护
-                      </v-btn>
-                    </template>
-                    <v-list density="compact" lines="two" min-width="320">
-                      <v-list-item
-                        prepend-icon="mdi-shield-sync-outline"
-                        title="重建角色授权"
-                        subtitle="按系统策略重新生成授权矩阵"
-                        @click="ReseedDialog_state = true"
-                      />
-                    </v-list>
-                  </v-menu>
-                </AdminActionGuard>
-              </v-col>
-              <v-col cols="12" sm="5" md="4">
-                <v-select
-                  v-model="BatchOperate"
-                  :items="TableBatchOptions"
-                  :disabled="tableLoading"
-                  density="compact"
-                  hide-details
-                  item-title="title"
-                  item-value="value"
-                  label="批量操作"
-                  variant="outlined"
-                />
-              </v-col>
-              <v-col cols="auto">
-                <AdminActionGuard capability="roles.delete" scope="global">
-                  <v-btn
-                    prepend-icon="mdi-playlist-edit"
-                    variant="outlined"
-                    :disabled="tableSelected.length === 0 || BatchOperate === ''"
-                    @click="openBatchDialog"
-                  >
-                    应用
-                  </v-btn>
-                </AdminActionGuard>
-              </v-col>
-              <v-col v-if="tableSelected.length" cols="auto">
-                <v-chip size="small" variant="tonal">已选择 {{ tableSelected.length }} 项</v-chip>
-              </v-col>
-            </v-row>
+      <template #search>
+        <v-text-field v-model="tableSearchValue" clearable label="搜索角色名称" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+      </template>
+      <template #actions>
+        <AdminActionGuard v-if="isRootActor" capability="roles.assign" scope="global">
+          <v-menu location="bottom start">
+            <template #activator="{ props }">
+              <v-btn v-bind="props" append-icon="mdi-chevron-down" prepend-icon="mdi-tools" variant="text">
+                高级维护
+              </v-btn>
+            </template>
+            <v-list density="compact" lines="two" min-width="320">
+              <v-list-item
+                prepend-icon="mdi-shield-sync-outline"
+                title="重建角色授权"
+                subtitle="按系统策略重新生成授权矩阵"
+                @click="ReseedDialog_state = true"
+              />
+            </v-list>
+          </v-menu>
+        </AdminActionGuard>
+        <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="SearchDialog_state = true">搜索与排序</v-btn>
+      </template>
+      <template v-if="tableSelected.length" #selection>
+        <v-row dense align="center" aria-live="polite">
+          <v-col cols="12" sm="auto"><span class="text-body-2">已选择 {{ tableSelected.length }} 项</span></v-col>
+          <v-col cols="12" sm="4" md="3">
+            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="tableLoading" item-title="title" item-value="value" label="批量操作" />
           </v-col>
-
-          <v-col cols="12" lg="5">
-            <v-row dense align="center" justify="end">
-              <v-col cols="12" sm="auto">
-                <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="SearchDialog_state = true">
-                  高级筛选
-                </v-btn>
-              </v-col>
-              <v-col cols="12" sm="8">
-                <v-text-field
-                  v-model="tableSearchValue"
-                  append-inner-icon="mdi-magnify"
-                  clearable
-                  density="compact"
-                  hide-details
-                  label="搜索角色名称"
-                  single-line
-                  variant="outlined"
-                  @update:model-value="searchTableData"
-                />
-              </v-col>
-            </v-row>
+          <v-col cols="auto">
+            <AdminActionGuard capability="roles.delete" scope="global">
+              <v-btn variant="outlined" :disabled="BatchOperate === ''" @click="openBatchDialog">应用操作</v-btn>
+            </AdminActionGuard>
           </v-col>
+          <v-col cols="auto"><v-btn variant="text" @click="tableSelected = []">取消选择</v-btn></v-col>
         </v-row>
       </template>
 
@@ -118,7 +78,7 @@
         v-model:items-per-page="tableListRows"
         v-model:page="tableCurrentPage"
         v-model:sort-by="tableSortBy"
-        class="text-no-wrap"
+        class="admin-resource-table"
         density="comfortable"
         hover
         item-value="id"
@@ -267,6 +227,7 @@
   <PublicSearchDialog
     v-model:thisDialogState="SearchDialog_state"
     :KEYS="SearchKeys"
+    :initial-filter="searchDialogFilter"
     :setFilter="setTableSearchFilter"
     :getTableData="getTableData"
     KeysMessages="默认[名称]"
@@ -384,6 +345,7 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
   : []);
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
 const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
+const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
 let latestRequest = 0;
@@ -568,7 +530,7 @@ const BatchFun = () => {
 
 const SearchDialog_state = ref(false);
 const setTableSearchFilter = (data: Record<string, unknown>) => {
-  tableSearchFilter.value = data;
+  applySearchDialog(data);
   tableCurrentPage.value = 1;
   syncRouteQuery();
 };

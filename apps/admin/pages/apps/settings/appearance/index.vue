@@ -1,9 +1,9 @@
 <template>
   <AdminPageContainer>
     <AdminPageHeader
-      title="主题列表"
+      title="主题外观"
       description="查看已安装主题、切换当前主题，并进入当前主题的配置页面。"
-      :breadcrumbs="[{ title: '系统配置' }, { title: '外观' }, { title: '主题列表' }]"
+      :breadcrumbs="[{ title: '站点设置' }]"
     />
 
     <v-alert v-if="activationError" class="mb-4" role="alert" type="error" variant="tonal">
@@ -22,8 +22,8 @@
       @retry="loadThemes"
     >
       <v-row>
-        <v-col v-for="theme in themes" :key="themeKey(theme)" cols="12" md="6" xl="4">
-          <v-card border class="d-flex h-100 flex-column" flat>
+        <v-col v-for="theme in themes" :key="themeKey(theme)" cols="12" md="6" lg="4">
+          <v-card class="d-flex h-100 flex-column">
             <v-card-item>
               <template #prepend>
                 <v-avatar color="primary" variant="tonal">
@@ -49,12 +49,12 @@
             </v-card-text>
 
             <v-divider />
-            <v-card-actions class="pa-4">
+            <v-card-actions>
               <v-btn
                 v-if="theme.active"
                 color="primary"
                 prepend-icon="mdi-tune-variant"
-                variant="tonal"
+                variant="text"
                 @click="openThemeConfig(theme.id, theme.release)"
               >
                 配置主题
@@ -64,7 +64,7 @@
                   color="primary"
                   :loading="activatingTheme === themeKey(theme)"
                   prepend-icon="mdi-check"
-                  variant="flat"
+                  variant="text"
                   @click="activateTheme(theme.id, theme.release)"
                 >
                   设为当前主题

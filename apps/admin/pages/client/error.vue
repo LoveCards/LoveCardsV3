@@ -12,7 +12,7 @@
         <v-btn color="primary" :prepend-icon="homePath ? 'mdi-arrow-right-circle-outline' : 'mdi-login'" @click="goHome">
           {{ homePath ? '前往可访问页面' : '返回登录' }}
         </v-btn>
-        <v-btn v-if="viewData.jumpBtn?.text && viewData.jumpBtn.url" variant="outlined" @click="jump">
+        <v-btn v-if="viewData.jumpBtn?.text && viewData.jumpBtn.url && (viewData.jumpBtn.clickFun || viewData.jumpBtn.url !== (homePath ?? '/login'))" variant="outlined" @click="jump">
           {{ viewData.jumpBtn.text }}
         </v-btn>
       </div>

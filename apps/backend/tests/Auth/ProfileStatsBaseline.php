@@ -3,20 +3,19 @@
 namespace think\facade {
     final class ProfileLikesQuery
     {
+        private array $filters = [];
         public function __construct(private array $rows) {}
         public function alias(string $alias): self { return $this; }
         public function join(string $table, string $condition): self { return $this; }
-        public function where(string $field, mixed $operator, mixed $value = null): self { return $this; }
-        public function whereNull(string $field): self { return $this; }
+        public function where(string $field, mixed $operator, mixed $value = null): self { $this->filters[$field] = $operator; return $this; }
+        public function whereNull(string $field): self { $this->filters[$field] = null; return $this; }
         public function count(): int
         {
-            return count(array_filter($this->rows, static fn(array $row): bool =>
-                $row['aid'] === 1
-                && $row['ref_type'] === 'card'
-                && $row['card_user_id'] === $row['target_user_id']
-                && $row['card_status'] === 0
-                && $row['card_deleted_at'] === null
-            ));
+            $map = ['l.aid'=>'aid', 'l.ref_type'=>'ref_type', 'c.user_id'=>'card_user_id', 'c.status'=>'card_status', 'c.deleted_at'=>'card_deleted_at', 'c.visibility'=>'visibility'];
+            return count(array_filter($this->rows, function (array $row) use ($map): bool {
+                foreach ($this->filters as $field => $value) if (($row[$map[$field]] ?? null) !== $value) return false;
+                return true;
+            }));
         }
     }
 
@@ -63,6 +62,13 @@ Db::$rows = [
     ['aid' => 1, 'ref_type' => 'card', 'card_user_id' => 8, 'target_user_id' => 7, 'card_status' => 0, 'card_deleted_at' => null],
 ];
 $assert(Profile::receivedLikes(7) === 3, 'received likes must aggregate visible cards only');
+Db::$rows[0]['visibility'] = 'public';
+Db::$rows[1]['visibility'] = 'private';
+Db::$rows[2]['visibility'] = 'followers';
+$assert(Profile::receivedLikes(7) === 3, 'own likes include restricted cards');
+$assert(\app\modules\Platform\User\Public\UserProfileStats::receivedLikes(7, true) === 1, 'public likes exclude restricted cards');
+Db::$rows[0]['visibility'] = 'private';
+$assert(\app\modules\Platform\User\Public\UserProfileStats::receivedLikes(7, true) === 0, 'visibility change removes public likes');
 Db::$rows = [];
 $assert(Profile::receivedLikes(7) === 0, 'users without content must return zero');
 

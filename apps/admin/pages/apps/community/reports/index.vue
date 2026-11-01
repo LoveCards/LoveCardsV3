@@ -1,6 +1,6 @@
 <template>
   <AdminPageContainer>
-    <AdminPageHeader title="举报处理" description="按状态审阅举报，处理动作会记录原因与操作者。" :breadcrumbs="[{ title: '内容与社区' }, { title: '社区治理' }, { title: '举报处理' }]">
+    <AdminPageHeader title="举报处理" description="按状态审阅举报，处理动作会记录原因与操作者。" :breadcrumbs="[{ title: '内容与社区' }]">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn></template>
     </AdminPageHeader>
     <div class="d-flex flex-wrap ga-3 mb-4">

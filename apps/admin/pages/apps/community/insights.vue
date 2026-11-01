@@ -1,6 +1,6 @@
 <template>
   <AdminPageContainer>
-    <AdminPageHeader title="社区洞察" description="观察草稿、收藏与浏览历史的总体规模，不暴露成员私密内容。" :breadcrumbs="[{ title: '内容与社区' }, { title: '社区治理' }, { title: '社区洞察' }]">
+  <AdminPageHeader title="社区洞察" description="观察草稿、收藏与浏览历史的总体规模，不暴露成员私密内容。" :breadcrumbs="[{ title: '内容与社区' }]">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn></template>
     </AdminPageHeader>
     <v-alert class="mb-5" type="info" variant="tonal">隐私模式：仅聚合。后台不会返回草稿正文、个人收藏明细或浏览轨迹。</v-alert>

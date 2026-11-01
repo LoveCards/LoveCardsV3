@@ -1,7 +1,7 @@
 /**
  * 管理端导航契约。
  *
- * `path` 与 `canonicalPath` 始终指向六域 IA 约定的规范路径；旧版书签只通过
+ * `path` 与 `canonicalPath` 始终指向任务型 IA 约定的规范路径；旧版书签只通过
  * `legacyAliases` 对应的轻量重定向页面继续工作，不得重新成为导航主入口。
  *
  * 新增字段全部为可选字段（除 group 的 domain 外），这样旧的调用方只读取
@@ -33,8 +33,10 @@ export interface AdminNavigationItem {
   title: string
   icon?: string
   grants: readonly AdminGrantRequirement[]
+  /** 页面搜索使用的旧名称或同义词，不作为菜单标签显示。 */
+  searchAliases?: readonly string[]
 
-  /** 六域及二级任务元数据，供新版 shell、面包屑和工作台使用。 */
+  /** 任务域及页面上下文元数据，供 shell、面包屑和工作台使用。 */
   domain?: AdminNavigationDomain
   section?: string
   parentRoute?: string
@@ -75,14 +77,12 @@ function item(
 }
 
 /**
- * The dashboard is kept as a first-class item for old layouts. New layouts should
- * render it under the `workbench` domain and apply canAccessNavigationItem to it
- * just like every other item.
+ * 工作台是侧栏唯一的一级直达入口，其余页面按任务组展开。
  */
 const dashboard = item({
   path: '/apps/dashboard',
   canonicalPath: '/apps/dashboard',
-  title: '总览',
+  title: '工作台',
   icon: 'mdi-view-dashboard',
   domain: 'workbench',
   section: '工作台',
@@ -130,6 +130,19 @@ const contentItems: readonly AdminNavigationItem[] = [
     actionCapabilities: ['tags.create', 'tags.update', 'tags.update.all', 'tags.delete', 'tags.delete.all'],
   }),
   item({
+    path: '/apps/settings/storage/files',
+    canonicalPath: '/apps/settings/storage/files',
+    legacyAliases: ['/apps/storage/files'],
+    title: '文件管理',
+    icon: 'mdi-file-multiple-outline',
+    domain: 'content-community',
+    section: '内容管理',
+    parentRoute: '/apps/settings/storage/files',
+    grants: [{ capability: 'files.read', scope: 'all' }],
+    dataScope: 'global',
+    actionCapabilities: ['files.update', 'files.update.all', 'files.delete', 'files.delete.all', 'files.restore', 'files.restore.all', 'files.purge', 'files.purge.all', 'files.cleanup', 'files.usage.read'],
+  }),
+  item({
     path: '/apps/community/reports',
     canonicalPath: '/apps/community/reports',
     legacyAliases: ['/apps/governance/reports'],
@@ -171,7 +184,8 @@ const userSecurityItems: readonly AdminNavigationItem[] = [
   item({
     path: '/apps/security/recovery',
     canonicalPath: '/apps/security/recovery',
-    title: '账号恢复',
+    title: '账号恢复记录',
+    searchAliases: ['账号恢复', '密码恢复'],
     icon: 'mdi-account-lock-outline',
     domain: 'user-security',
     section: '账号安全',
@@ -200,26 +214,14 @@ const systemConfigItems: readonly AdminNavigationItem[] = [
     path: '/apps/settings/appearance',
     canonicalPath: '/apps/settings/appearance',
     legacyAliases: ['/apps/view'],
-    title: '主题列表',
+    title: '主题外观',
+    searchAliases: ['主题列表', '外观'],
     icon: 'mdi-palette-outline',
     domain: 'system-config',
     section: '外观',
     parentRoute: '/apps/settings/appearance',
     grants: [{ capability: 'theme.read', scope: 'global' }],
     actionCapabilities: ['theme.activate'],
-  }),
-  item({
-    path: '/apps/settings/storage/files',
-    canonicalPath: '/apps/settings/storage/files',
-    legacyAliases: ['/apps/storage/files'],
-    title: '文件管理',
-    icon: 'mdi-file-multiple-outline',
-    domain: 'system-config',
-    section: '存储',
-    parentRoute: '/apps/settings/storage',
-    grants: [{ capability: 'files.read', scope: 'all' }],
-    dataScope: 'global',
-    actionCapabilities: ['files.update', 'files.update.all', 'files.delete', 'files.delete.all', 'files.restore', 'files.restore.all', 'files.purge', 'files.purge.all', 'files.cleanup', 'files.usage.read'],
   }),
   item({
     path: '/apps/settings/storage',
@@ -340,7 +342,8 @@ const accessControlItems: readonly AdminNavigationItem[] = [
     path: '/apps/access/permissions',
     canonicalPath: '/apps/access/permissions',
     legacyAliases: ['/apps/permissions'],
-    title: '权限管理',
+    title: '权限目录',
+    searchAliases: ['权限管理'],
     icon: 'mdi-key-chain-variant',
     domain: 'access-control',
     section: '权限',
@@ -352,9 +355,8 @@ const accessControlItems: readonly AdminNavigationItem[] = [
 ]
 
 /**
- * Six top-level work domains. The workbench item is intentionally duplicated
- * from `dashboard` for compatibility with the current drawer, which renders
- * dashboard separately. The new shell can de-duplicate by `path`/`canonicalPath`.
+ * 工作台单独直达，其余入口收敛为四个任务组。页面 capability、规范路径与
+ * 兼容别名保持不变，分组只改变发现路径，不扩大任何访问范围。
  */
 export const adminNavigation: {
   dashboard: AdminNavigationItem
@@ -363,13 +365,6 @@ export const adminNavigation: {
   dashboard,
   groups: [
     {
-      key: 'workbench',
-      title: '工作台',
-      icon: 'mdi-view-dashboard-outline',
-      domain: 'workbench',
-      items: [dashboard],
-    },
-    {
       key: 'content-community',
       title: '内容与社区',
       icon: 'mdi-forum-outline',
@@ -377,32 +372,25 @@ export const adminNavigation: {
       items: contentItems,
     },
     {
-      key: 'user-security',
-      title: '用户与安全',
+      key: 'user-access',
+      title: '用户与权限',
       icon: 'mdi-account-shield-outline',
       domain: 'user-security',
-      items: userSecurityItems,
+      items: [...userSecurityItems, ...accessControlItems],
     },
     {
       key: 'system-config',
-      title: '系统配置',
+      title: '站点设置',
       icon: 'mdi-cog-outline',
       domain: 'system-config',
       items: systemConfigItems,
     },
     {
       key: 'operations-audit',
-      title: '运维与审计',
+      title: '系统运维',
       icon: 'mdi-console-line',
       domain: 'operations-audit',
       items: operationsItems,
-    },
-    {
-      key: 'access-control',
-      title: '访问控制',
-      icon: 'mdi-shield-lock-outline',
-      domain: 'access-control',
-      items: accessControlItems,
     },
   ],
 }
@@ -410,7 +398,7 @@ export const adminNavigation: {
 /** Flat list retained for route permission lookup and existing consumers. */
 export const adminNavigationItems: readonly AdminNavigationItem[] = [
   adminNavigation.dashboard,
-  ...adminNavigation.groups.flatMap((group) => group.items.filter((entry) => entry.path !== adminNavigation.dashboard.path)),
+  ...adminNavigation.groups.flatMap((group) => group.items),
 ]
 
 const routeGrantOverrides: readonly AdminNavigationItem[] = [
@@ -442,8 +430,8 @@ const routeGrantOverrides: readonly AdminNavigationItem[] = [
     canonicalPath: '/apps/settings/storage/files/:id/usage',
     legacyAliases: ['/apps/storage/files/:id/usage'],
     title: '文件使用关系',
-    domain: 'system-config',
-    section: '存储',
+    domain: 'content-community',
+    section: '内容管理',
     parentRoute: '/apps/settings/storage/files',
     grants: [{ capability: 'files.usage.read', scope: 'global' }],
     riskLevel: 'sensitive',

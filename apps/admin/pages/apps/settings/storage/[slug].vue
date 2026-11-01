@@ -3,7 +3,7 @@
     <AdminPageHeader
       :title="`${channelName} 配置`"
       description="编辑存储渠道参数。保存后可使用服务端已保存的配置测试连接。"
-      :breadcrumbs="[{ title: '系统配置' }, { title: '存储配置', to: '/apps/settings/storage' }, { title: channelName }]"
+      :breadcrumbs="[{ title: '站点设置' }, { title: '存储配置', to: '/apps/settings/storage' }, { title: channelName }]"
     />
 
     <v-row>
@@ -12,7 +12,6 @@
           title="渠道参数"
           description="连接测试只读取已保存配置；密钥字段留空表示保留服务端现值。"
           icon="mdi-database-cog-outline"
-          :dirty="configChanged"
           risk="high"
         >
           <template #actions><v-chip size="small" variant="outlined">{{ slug }}</v-chip></template>
@@ -39,9 +38,6 @@
               </v-alert>
               <v-alert v-if="testMessage" class="mb-4" :type="testMessage.type" variant="tonal">
                 {{ testMessage.text }}
-              </v-alert>
-              <v-alert v-if="configChanged" class="mb-4" type="warning" variant="tonal">
-                当前有未保存修改。连接测试只使用服务端已保存的配置，请先保存。
               </v-alert>
 
               <v-form @submit.prevent="save">
@@ -97,11 +93,11 @@
                   </v-col>
                 </v-row>
                 <v-divider class="mb-4" />
-                <div class="d-flex flex-wrap justify-end ga-2">
+                <AdminConfigSaveBar :dirty="configChanged" label="渠道配置">
                   <AdminActionGuard capability="storage.test" scope="global">
                     <v-btn
                       color="primary"
-                      :disabled="configChanged"
+                      :disabled="configChanged || saveLoading"
                       :loading="testLoading"
                       prepend-icon="mdi-connection"
                       variant="tonal"
@@ -127,7 +123,7 @@
                       保存渠道配置
                     </v-btn>
                   </AdminActionGuard>
-                </div>
+                </AdminConfigSaveBar>
               </v-form>
             </AdminAsyncState>
         </AdminConfigSection>
@@ -257,7 +253,7 @@ const save = async () => {
   }
 }
 const testConnection = async () => {
-  if (!canTestStorage.value || configChanged.value || testLoading.value) return
+  if (!canTestStorage.value || configChanged.value || saveLoading.value || testLoading.value) return
   testLoading.value = true
   testMessage.value = null
   try {

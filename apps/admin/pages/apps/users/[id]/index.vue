@@ -4,7 +4,7 @@
       :title="user ? `用户 · ${user.username}` : `用户 #${route.params.id}`"
       description="查看账号身份、状态与角色归属；安全会话和恢复能力保持在独立的受限页面。"
       :breadcrumbs="[
-        { title: '用户与安全' },
+        { title: '用户与权限' },
         { title: '用户管理', to: '/apps/users' },
         { title: user?.username || `#${route.params.id}` },
       ]"
@@ -117,7 +117,7 @@ const accountStatus = computed(() => {
   const states: Record<number, { status: string; label: string }> = {
     0: { status: 'active', label: '正常' },
     1: { status: 'disabled', label: '已封禁' },
-    2: { status: 'degraded', label: '已隐藏' },
+    2: { status: 'degraded', label: '已冻结' },
     3: { status: 'pending', label: '待审核' },
   }
   return states[user.value?.status ?? -1] ?? { status: 'unknown', label: '未知状态' }

@@ -46,36 +46,27 @@ final class CardVisibilityPolicy
         $public = self::PUBLIC;
         $followers = self::FOLLOWERS;
         $query->whereRaw("NOT EXISTS (SELECT 1 FROM user_safety_relations vis_b WHERE vis_b.relation = 'block' AND ((vis_b.actor_id = {$viewer} AND vis_b.subject_id = cards.user_id) OR (vis_b.actor_id = cards.user_id AND vis_b.subject_id = {$viewer})))");
+        // Card audience is independent from profile privacy. A public card is
+        // readable by any viewer; a followers card only by the author or a
+        // real follower. Profile privacy is enforced by profile endpoints.
         $query->whereRaw("(
                 cards.user_id = {$viewer}
-                OR (
-                    (cards.visibility = '{$public}' AND COALESCE((SELECT pp.profile_visibility FROM privacy_preferences pp WHERE pp.user_id = cards.user_id LIMIT 1), '{$public}') IN ('{$public}', '{$followers}')
-                     OR cards.visibility = '{$followers}' AND EXISTS (SELECT 1 FROM user_follows vf WHERE vf.follower_id = {$viewer} AND vf.followee_id = cards.user_id)
-                    )
-                    AND (
-                        COALESCE((SELECT pp2.profile_visibility FROM privacy_preferences pp2 WHERE pp2.user_id = cards.user_id LIMIT 1), '{$public}') = '{$public}'
-                        OR (COALESCE((SELECT pp3.profile_visibility FROM privacy_preferences pp3 WHERE pp3.user_id = cards.user_id LIMIT 1), '{$public}') = '{$followers}' AND EXISTS (SELECT 1 FROM user_follows vf2 WHERE vf2.follower_id = {$viewer} AND vf2.followee_id = cards.user_id))
-                    )
-                )
+                OR cards.visibility = '{$public}'
+                OR (cards.visibility = '{$followers}' AND EXISTS (
+                    SELECT 1 FROM user_follows vf
+                    WHERE vf.follower_id = {$viewer} AND vf.followee_id = cards.user_id
+                ))
             )");
     }
 
     public static function assertReadable(int $cardId, int $viewerId): array
     {
-        if (!method_exists(Db::class, 'table')) {
-            return ['id' => $cardId, 'status' => 0, 'visibility' => self::PUBLIC, 'user_id' => 0];
-        }
         $base = Db::table('cards');
-        // Lightweight contract tests provide a minimal DB double; retain the
-        // legacy status check performed by the caller when no query API exists.
-        if (!method_exists($base, 'where')) {
-            return ['id' => $cardId, 'status' => 0, 'visibility' => self::PUBLIC, 'user_id' => 0];
-        }
         $query = $base->where('cards.id', $cardId)->where('cards.status', 0)->whereNull('cards.deleted_at');
         self::apply($query, $viewerId);
         $row = $query->find();
         if (!$row) throw ApiException::notFound('卡片不存在');
-        return $row;
+        return is_object($row) && method_exists($row, 'toArray') ? $row->toArray() : (array) $row;
     }
 
     public static function canRead(array $card, int $viewerId): bool
@@ -88,12 +79,9 @@ final class CardVisibilityPolicy
         if ($viewerId === $ownerId) return true;
         if ($viewerId > 0 && Safety::isBlockedEitherDirection($viewerId, $ownerId)) return false;
         if ($viewerId < 1) return (string) ($card['visibility'] ?? self::PUBLIC) === self::PUBLIC;
-        $profile = (array) Safety::preferences($ownerId)->toArray();
         $following = (bool) Db::table('user_follows')->where(['follower_id' => $viewerId, 'followee_id' => $ownerId])->find();
-        $profileVisible = ($profile['profile_visibility'] ?? self::PUBLIC) === self::PUBLIC
-            || (($profile['profile_visibility'] ?? self::PUBLIC) === self::FOLLOWERS && $following);
         $visibility = (string) ($card['visibility'] ?? self::PUBLIC);
         $cardVisible = $visibility === self::PUBLIC || ($visibility === self::FOLLOWERS && $following);
-        return $profileVisible && $cardVisible;
+        return $cardVisible;
     }
 }

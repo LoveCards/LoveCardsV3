@@ -60,15 +60,17 @@ final class SqlFileMigration implements Migration
     private function splitPhases(string $source): array
     {
         $empty = ['preflight'=>'', 'expand'=>'', 'backfill'=>'', 'verify'=>'', 'contract'=>''];
-        if (!preg_match('/^\s*--\s*@lc-phase\s+(preflight|expand|backfill|verify|contract)\s*$/mi', $source)) {
+        if (!preg_match('/^\s*--\s*@lc-phase\s+(preflight|expand|migrate|backfill|verify|contract)\s*$/mi', $source)) {
             $empty['expand'] = $source;
             return $empty;
         }
 
         $current = null;
         foreach (preg_split('/\R/u', $source) ?: [] as $line) {
-            if (preg_match('/^\s*--\s*@lc-phase\s+(preflight|expand|backfill|verify|contract)\s*$/i', $line, $match)) {
+            if (preg_match('/^\s*--\s*@lc-phase\s+(preflight|expand|migrate|backfill|verify|contract)\s*$/i', $line, $match)) {
                 $current = strtolower($match[1]);
+                // 已发布 SQL 使用 migrate 标记；运行器统一推进到 backfill，不改写历史文件校验和。
+                if ($current === 'migrate') $current = 'backfill';
                 continue;
             }
             if ($current === null) {

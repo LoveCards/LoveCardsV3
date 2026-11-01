@@ -13,6 +13,10 @@ if (appEnvironment === 'production') {
 }
 
 export default defineNuxtConfig({
+    // 隔离 E2E 的生成目录，避免与用户正在运行的实时预览争用开发锁。
+    buildDir: process.env.LOVECARDS_E2E_ISOLATED === '1'
+        ? process.env.LOVECARDS_E2E_NUXT_BUILD_DIR
+        : undefined,
     app: {
         baseURL: '/admin/',
         head: {
@@ -100,6 +104,23 @@ export default defineNuxtConfig({
             /* 模块选项 */
         },
         vuetifyOptions: { // Vuetify 初始化配置
+            // 同类组件只在这里选择原生外观；页面仅覆盖业务上确有区别的状态。
+            defaults: {
+                VCard: { variant: 'flat', border: true },
+                VDialog: { VCard: { variant: 'elevated', border: false } },
+                VMenu: { VCard: { variant: 'elevated', border: false } },
+                VTextField: { variant: 'outlined', density: 'comfortable' },
+                VTextarea: { variant: 'outlined', density: 'comfortable' },
+                VSelect: { variant: 'outlined', density: 'comfortable' },
+                VAutocomplete: { variant: 'outlined', density: 'comfortable' },
+                VCombobox: { variant: 'outlined', density: 'comfortable' },
+                VFileInput: { variant: 'outlined', density: 'comfortable' },
+                VNumberInput: { variant: 'outlined', density: 'comfortable' },
+                VDataTable: { density: 'comfortable', itemsPerPageText: '每页行数' },
+                VDataTableServer: { density: 'comfortable', itemsPerPageText: '每页行数' },
+                VChip: { size: 'small', variant: 'tonal' },
+                VAlert: { variant: 'tonal' },
+            },
             theme: {
                 defaultTheme: 'indigoTheme',
                 themes: {

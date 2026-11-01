@@ -30,6 +30,9 @@ export class Cards extends BaseResource {
   like(id: number): Promise<{ likes: number }> {
     return this._post<{ likes: number }>(`/cards/${id}/like`)
   }
+  mediaAccess(id: number): Promise<ApiTypes.CardMediaAccess> {
+    return this._post<ApiTypes.CardMediaAccess>(`/cards/${id}/media-access`)
+  }
   hot(): Promise<ApiTypes.Card[]> {
     return this._get<ApiTypes.Card[]>("/cards/hot")
   }

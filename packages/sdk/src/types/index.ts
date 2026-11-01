@@ -1,5 +1,5 @@
 export type { LCClientConfig, TokenStore, RetryConfig, ListResult, CursorPage, CreateResult, PaginationInfo, PaginationParams, ListParams, BatchOperateParams, BatchMethod, CardsBatchMethod, CommentsBatchMethod, UsersBatchMethod, TagsBatchMethod, FilesBatchMethod, FilesBatchOperateParams, RequestContext, ResponseContext, ErrorContext, BeforeRequestHook, AfterResponseHook, OnErrorHook, HookRegistration } from './api'
-export type { Card, CardVisibility, CardsListParams, CreateCardParams, UpdateCardParams } from './cards'
+export type { Card, CardMediaAccess, CardVisibility, CardsListParams, CreateCardParams, UpdateCardParams } from './cards'
 export type { ContentMention } from './mentions'
 export type { User, CurrentUser, PublicUserProfile, SocialRelation, CurrentUserSession, UserStats, MentionCandidate, RoleInfo, LoginParams, RegisterParams, LoginResult, CheckResult, ProfileUpdateParams, AdminUserUpdateParams, PasswordParams, EmailParams, EmailCaptchaParams, EmailCaptchaResult, CaptchaSendParams } from './users'
 export type { ProfileVisibility, MessagesFrom, PrivacyPreferences, BlockedUserItem, BlockedUserCursorPage } from './safety'

@@ -14,6 +14,12 @@ class Cards extends BaseController
 {
     use BatchOperateTrait;
 
+    public function mediaAccess($id)
+    {
+        $auth = request()->auth;
+        return $this->respond(\app\modules\Content\Cards\Service\CardMedia::access((int) $id, $auth->uid(), (string) $auth->sessionPublicId()))->header(['Cache-Control' => 'private, no-store']);
+    }
+
     protected function getBatchService(): string
     {
         return CardsService::class;

@@ -3,17 +3,17 @@
     <AdminPageHeader
       title="站点与社区规则"
       description="维护站点基础信息和社区行为规则。保存后会影响前台展示与内容发布流程。"
-      :breadcrumbs="[{ title: '系统配置' }, { title: '站点与社区规则' }]"
+      :breadcrumbs="[{ title: '站点设置' }]"
     />
 
-    <v-sheet border rounded="lg">
+    <v-card>
       <v-tabs v-model="viewTab" color="primary">
-        <v-tab prepend-icon="mdi-web" value="site">基本信息</v-tab>
-        <v-tab prepend-icon="mdi-tune-variant" value="rules">社区规则</v-tab>
+        <v-tab prepend-icon="mdi-web" value="site">基本信息{{ siteChanged ? ' · 未保存' : '' }}</v-tab>
+        <v-tab prepend-icon="mdi-tune-variant" value="rules">社区规则{{ rulesChanged ? ' · 未保存' : '' }}</v-tab>
       </v-tabs>
       <v-divider />
 
-      <div class="pa-4 pa-md-6">
+      <v-card-text>
         <AdminAsyncState
           :error="loadError"
           error-title="配置加载失败"
@@ -106,7 +106,7 @@
                   </v-col>
                 </v-row>
                 <v-divider class="mb-4" />
-                <div class="d-flex justify-end">
+                <AdminConfigSaveBar :dirty="siteChanged" label="基本信息">
                   <AdminActionGuard capability="config.update" scope="global">
                     <v-btn
                       color="primary"
@@ -119,7 +119,7 @@
                       保存基本信息
                     </v-btn>
                   </AdminActionGuard>
-                </div>
+                </AdminConfigSaveBar>
               </v-form>
             </v-window-item>
 
@@ -227,7 +227,7 @@
                   </v-col>
                 </v-row>
                 <v-divider class="mb-4" />
-                <div class="d-flex justify-end">
+                <AdminConfigSaveBar :dirty="rulesChanged" label="社区规则">
                   <AdminActionGuard capability="config.update" scope="global">
                     <v-btn
                       color="primary"
@@ -240,13 +240,13 @@
                       保存社区规则
                     </v-btn>
                   </AdminActionGuard>
-                </div>
+                </AdminConfigSaveBar>
               </v-form>
             </v-window-item>
           </v-window>
         </AdminAsyncState>
-      </div>
-    </v-sheet>
+      </v-card-text>
+    </v-card>
     <AdminUnsavedChangesDialog
       :model-value="unsavedChangesDialog"
       @stay="continueEditing"

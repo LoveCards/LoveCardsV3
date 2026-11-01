@@ -3,20 +3,14 @@
     <AdminPageHeader
       :title="configTheme.id ? `主题配置 · ${configTheme.id}` : '主题配置'"
       description="按当前主题提供的配置定义调整外观。保存后将影响所有访问该主题的用户。"
-      :breadcrumbs="[{ title: '系统配置' }, { title: '外观', to: '/apps/settings/appearance' }, { title: requestedSlug }]"
+      :breadcrumbs="[{ title: '站点设置' }, { title: '主题外观', to: '/apps/settings/appearance' }, { title: requestedSlug }]"
     />
 
-    <v-sheet border rounded="lg">
-      <v-toolbar color="surface" density="comfortable">
-        <v-toolbar-title class="text-subtitle-1">当前主题</v-toolbar-title>
-        <template v-if="configTheme.id">
-          <v-chip class="mr-2" size="small" variant="outlined">{{ configTheme.id }}</v-chip>
-          <v-chip class="mr-4" size="small" variant="outlined">发布 {{ configTheme.release }}</v-chip>
-        </template>
-      </v-toolbar>
-      <v-divider />
-
-      <div class="pa-4 pa-md-6">
+    <AdminConfigSection title="主题参数" description="保存后对当前主题生效；校验失败时保留本次输入。" icon="mdi-palette-outline">
+      <template v-if="configTheme.id" #actions>
+        <v-chip size="small" variant="outlined">{{ configTheme.id }}</v-chip>
+        <v-chip size="small" variant="outlined">发布 {{ configTheme.release }}</v-chip>
+      </template>
         <AdminAsyncState
           :empty="noActiveTheme || fieldEntries.length === 0"
           :empty-description="noActiveTheme ? '请先从主题列表启用一个主题。' : '当前主题没有提供可编辑的配置项。'"
@@ -39,9 +33,6 @@
           </v-alert>
           <v-alert v-if="!canUpdateTheme" class="mb-4" type="info" variant="tonal">
             当前账号只有查看权限，不能修改主题配置。
-          </v-alert>
-          <v-alert class="mb-4" type="info" variant="tonal">
-            配置保存后立即对当前主题生效。若字段校验失败，服务端不会应用本次修改。
           </v-alert>
 
           <v-form @submit.prevent="saveConfig">
@@ -92,7 +83,7 @@
               </v-col>
             </v-row>
             <v-divider class="mb-4" />
-            <div class="d-flex justify-end">
+            <AdminConfigSaveBar :dirty="configChanged" label="主题配置">
               <AdminActionGuard capability="theme.update" scope="global">
                 <v-btn
                   color="primary"
@@ -105,11 +96,10 @@
                   保存主题配置
                 </v-btn>
               </AdminActionGuard>
-            </div>
+            </AdminConfigSaveBar>
           </v-form>
         </AdminAsyncState>
-      </div>
-    </v-sheet>
+    </AdminConfigSection>
     <AdminUnsavedChangesDialog
       :model-value="unsavedChangesDialog"
       @stay="continueEditing"

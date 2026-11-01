@@ -3,7 +3,7 @@
     <AdminPageHeader
       title="验证配置"
       description="管理登录与敏感操作使用的验证器。扫描、切换和保存均由服务端再次校验权限。"
-      :breadcrumbs="[{ title: '系统配置' }, { title: '验证' }]"
+      :breadcrumbs="[{ title: '站点设置' }]"
     >
       <template #actions>
         <AdminActionGuard capability="captcha.install" scope="global">
@@ -11,7 +11,6 @@
             color="primary"
             :loading="scanning"
             prepend-icon="mdi-refresh"
-            size="small"
             variant="outlined"
             @click="scanDrivers"
           >
@@ -28,14 +27,14 @@
       {{ actionMessage.text }}
     </v-alert>
 
-    <v-sheet border rounded="lg">
+    <div>
       <v-tabs v-model="tab" color="primary">
         <v-tab prepend-icon="mdi-puzzle-outline" value="drivers">驱动管理</v-tab>
         <v-tab prepend-icon="mdi-tune-variant" value="settings">基础设置</v-tab>
       </v-tabs>
       <v-divider />
 
-      <div class="pa-4 pa-md-6">
+      <div class="pt-6">
         <AdminAsyncState
           :error="loadError"
           error-title="验证配置加载失败"
@@ -59,16 +58,10 @@
                   </div>
                   <v-row>
                     <v-col v-for="driver in group.drivers" :key="driver.slug" cols="12" md="6" lg="4">
-                      <v-card
-                        border
-                        class="d-flex h-100 flex-column"
-                        :color="driver.slug === group.defaultSlug ? 'primary' : undefined"
-                        flat
-                        :variant="driver.slug === group.defaultSlug ? 'tonal' : 'outlined'"
-                      >
+                      <v-card class="d-flex h-100 flex-column">
                         <v-card-item>
                           <template #prepend>
-                            <v-avatar :color="driver.slug === group.defaultSlug ? 'primary' : 'surface-variant'" variant="tonal">
+                            <v-avatar color="primary" variant="tonal">
                               <v-icon>{{ driver.icon || 'mdi-shield-check-outline' }}</v-icon>
                             </v-avatar>
                           </template>
@@ -78,17 +71,16 @@
                             <v-chip v-if="driver.slug === group.defaultSlug" color="primary" size="small">默认</v-chip>
                           </template>
                         </v-card-item>
-                        <v-card-text class="flex-grow-1 pt-0 text-body-2 text-medium-emphasis">
+                        <v-card-text class="flex-grow-1 text-body-2 text-medium-emphasis">
                           {{ driver.fields?.length ?? 0 }} 个配置项
                         </v-card-text>
                         <v-divider />
-                        <v-card-actions class="pa-3">
+                        <v-card-actions>
                           <AdminActionGuard capability="config.update" scope="global">
                             <v-btn
                               color="primary"
                               :disabled="driver.slug === group.defaultSlug"
                               :loading="changingDefault === `${group.type}:${driver.slug}`"
-                              size="small"
                               variant="text"
                               @click="setDefault(group.type, driver.slug)"
                             >
@@ -100,8 +92,7 @@
                             color="primary"
                             :disabled="!driver.fields?.length"
                             append-icon="mdi-arrow-right"
-                            size="small"
-                            variant="tonal"
+                            variant="text"
                             @click="openConfig(driver.slug)"
                           >
                             配置
@@ -115,84 +106,88 @@
             </v-window-item>
 
             <v-window-item value="settings">
-              <v-alert v-if="!canUpdateConfig" class="mb-4" type="info" variant="tonal">
-                当前账号只有查看权限，不能修改验证设置。
-              </v-alert>
-              <v-alert v-if="settingsMessage" class="mb-4" :type="settingsMessage.type" variant="tonal">
-                {{ settingsMessage.text }}
-              </v-alert>
-              <v-form @submit.prevent="saveSettings">
-                <v-row dense>
-                  <v-col cols="12" sm="6">
-                    <v-select
-                      v-model="settings.code_enabled"
-                      :disabled="!canUpdateConfig || settingsSaving"
-                      density="comfortable"
-                      item-title="title"
-                      item-value="value"
-                      :items="switchItems"
-                      label="验证码功能"
-                      variant="outlined"
-                    />
-                  </v-col>
-                  <v-col cols="12" sm="6">
-                    <v-select
-                      v-model="settings.captcha_enabled"
-                      :disabled="!canUpdateConfig || settingsSaving"
-                      density="comfortable"
-                      item-title="title"
-                      item-value="value"
-                      :items="switchItems"
-                      label="人机验证功能"
-                      variant="outlined"
-                    />
-                  </v-col>
-                  <v-col cols="12" sm="6">
-                    <v-select
-                      v-model="settings.code_channel"
-                      :disabled="!canUpdateConfig || settingsSaving"
-                      density="comfortable"
-                      item-title="title"
-                      item-value="value"
-                      :items="channelItems"
-                      label="验证码发送渠道"
-                      variant="outlined"
-                    />
-                  </v-col>
-                  <v-col cols="12" sm="6">
-                    <v-select
-                      v-model="settings.user_captcha"
-                      :disabled="!canUpdateConfig || settingsSaving"
-                      density="comfortable"
-                      item-title="title"
-                      item-value="value"
-                      :items="switchItems"
-                      label="注册验证码"
-                      variant="outlined"
-                    />
-                  </v-col>
-                </v-row>
-                <v-divider class="mb-4" />
-                <div class="d-flex justify-end">
-                  <AdminActionGuard capability="config.update" scope="global">
-                    <v-btn
-                      color="primary"
-                      :disabled="!settingsChanged"
-                      :loading="settingsSaving"
-                      prepend-icon="mdi-content-save-outline"
-                      type="submit"
-                      variant="flat"
-                    >
-                      保存验证设置
-                    </v-btn>
-                  </AdminActionGuard>
-                </div>
-              </v-form>
+              <v-card>
+                <v-card-text>
+                  <v-alert v-if="!canUpdateConfig" class="mb-4" type="info" variant="tonal">
+                    当前账号只有查看权限，不能修改验证设置。
+                  </v-alert>
+                  <v-alert v-if="settingsMessage" class="mb-4" :type="settingsMessage.type" variant="tonal">
+                    {{ settingsMessage.text }}
+                  </v-alert>
+                  <v-form @submit.prevent="saveSettings">
+                    <v-row dense>
+                      <v-col cols="12" sm="6">
+                        <v-select
+                          v-model="settings.code_enabled"
+                          :disabled="!canUpdateConfig || settingsSaving"
+                          density="comfortable"
+                          item-title="title"
+                          item-value="value"
+                          :items="switchItems"
+                          label="验证码功能"
+                          variant="outlined"
+                        />
+                      </v-col>
+                      <v-col cols="12" sm="6">
+                        <v-select
+                          v-model="settings.captcha_enabled"
+                          :disabled="!canUpdateConfig || settingsSaving"
+                          density="comfortable"
+                          item-title="title"
+                          item-value="value"
+                          :items="switchItems"
+                          label="人机验证功能"
+                          variant="outlined"
+                        />
+                      </v-col>
+                      <v-col cols="12" sm="6">
+                        <v-select
+                          v-model="settings.code_channel"
+                          :disabled="!canUpdateConfig || settingsSaving"
+                          density="comfortable"
+                          item-title="title"
+                          item-value="value"
+                          :items="channelItems"
+                          label="验证码发送渠道"
+                          variant="outlined"
+                        />
+                      </v-col>
+                      <v-col cols="12" sm="6">
+                        <v-select
+                          v-model="settings.user_captcha"
+                          :disabled="!canUpdateConfig || settingsSaving"
+                          density="comfortable"
+                          item-title="title"
+                          item-value="value"
+                          :items="switchItems"
+                          label="注册验证码"
+                          variant="outlined"
+                        />
+                      </v-col>
+                    </v-row>
+                    <v-divider class="mb-4" />
+                    <div class="d-flex justify-end">
+                      <AdminActionGuard capability="config.update" scope="global">
+                        <v-btn
+                          color="primary"
+                          :disabled="!settingsChanged"
+                          :loading="settingsSaving"
+                          prepend-icon="mdi-content-save-outline"
+                          type="submit"
+                          variant="flat"
+                        >
+                          保存验证设置
+                        </v-btn>
+                      </AdminActionGuard>
+                    </div>
+                  </v-form>
+                </v-card-text>
+              </v-card>
             </v-window-item>
           </v-window>
         </AdminAsyncState>
       </div>
-    </v-sheet>
+    </div>
   </AdminPageContainer>
 </template>
 

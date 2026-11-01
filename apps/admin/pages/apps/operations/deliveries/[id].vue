@@ -4,7 +4,7 @@
       :title="`投递 #${route.params.id}`"
       description="核对单次事件投递的处理器、执行状态、重试次数与端到端关联标识。"
       :breadcrumbs="[
-        { title: '运维与审计' },
+        { title: '系统运维' },
         { title: '通知投递', to: '/apps/operations/deliveries' },
         { title: `#${route.params.id}` },
       ]"

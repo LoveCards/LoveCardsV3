@@ -4,7 +4,7 @@
       :title="role ? `角色 · ${role.name}` : `角色 #${route.params.id}`"
       description="核对角色用途和实际能力范围。角色授权修改仍通过受保护的角色管理流程完成。"
       :breadcrumbs="[
-        { title: '访问控制' },
+        { title: '用户与权限' },
         { title: '角色', to: '/apps/access/roles' },
         { title: role?.name || `#${route.params.id}` },
       ]"

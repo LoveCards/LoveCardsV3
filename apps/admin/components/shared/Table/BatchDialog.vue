@@ -17,6 +17,7 @@ import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerAction
 
 const props = defineProps<{
   batchFun?: () => unknown
+  impactDescription?: string
 }>()
 
 const thisDialogState = defineModel<boolean>('thisDialogState', { default: false })
@@ -31,6 +32,7 @@ const actionLabel = computed(() => `确认${actionName.value}`)
 const confirmText = computed(() => `${actionName.value}${batchData.value.length}`)
 const resourceLabel = computed(() => `已选择 ${batchData.value.length} 个资源`)
 const impact = computed(() => {
+  if (props.impactDescription) return props.impactDescription
   return `即将对 ${batchData.value.length} 个资源执行“${actionName.value}”。批量操作可能改变内容可见性、账号状态或资源可用性，请确认选择范围无误。`
 })
 

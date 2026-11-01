@@ -1,6 +1,6 @@
 # API Contract Audit
 
-- Routes inspected: 189
+- Routes inspected: 190
 - P0: 0
 - P1: 0
 - P2: 0
@@ -114,6 +114,7 @@
 | POST | `/cards/:id/comments` | `comments.create` | grants:comments.create:global | yes | CommentCreatedResource::make | — |
 | DELETE | `/cards/:id/like` | `cards.unlike` | grants:likes.delete:global | no | createNoContent | — |
 | POST | `/cards/:id/like` | `cards.like` | grants:likes.create:global | no | LikeCountResource::make | — |
+| POST | `/cards/:id/media-access` | `cards.mediaAccess` | grants:authenticated | no | CardMediaAccessResource::make | — |
 | GET | `/cards/hot` | `cards.hot` | public | no | CardResource::collection | — |
 | GET | `/cards/search` | `cards.search` | public | yes | CardResource::paginate | — |
 | GET | `/comments/:id` | `comments.get` | public | no | CommentResource::make | — |

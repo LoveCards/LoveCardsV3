@@ -1,6 +1,6 @@
 <template>
   <AdminPageContainer>
-    <AdminPageHeader title="通知投递" description="查看 Outbox 投递状态与失败原因，并对可恢复的失败执行人工重试。" :breadcrumbs="[{ title: '运维与审计' }, { title: '通知投递' }]">
+    <AdminPageHeader title="通知投递" description="查看 Outbox 投递状态与失败原因，并对可恢复的失败执行人工重试。" :breadcrumbs="[{ title: '系统运维' }]">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="loadAll">刷新</v-btn></template>
     </AdminPageHeader>
     <v-sheet v-if="stats" class="mb-4" border rounded="lg" overflow-hidden>

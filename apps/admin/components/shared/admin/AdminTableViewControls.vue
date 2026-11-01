@@ -3,31 +3,28 @@
     <span v-if="resultCount !== null" class="text-body-2 text-medium-emphasis" aria-live="polite">
       共 {{ resultCount }} 条结果
     </span>
-    <v-spacer />
-
     <v-menu v-model="viewsMenuOpen" :close-on-content-click="false" location="bottom end">
       <template #activator="{ props: activatorProps }">
-        <v-btn v-bind="activatorProps" min-height="44" prepend-icon="mdi-bookmark-multiple-outline" variant="text">
-          保存视图
+        <v-btn v-bind="activatorProps" prepend-icon="mdi-tune-variant" variant="text">
+          视图设置
           <v-chip v-if="savedViews.length" class="ml-2" size="x-small" variant="tonal">{{ savedViews.length }}</v-chip>
         </v-btn>
       </template>
-      <v-card min-width="320" max-width="420">
-        <v-card-title class="text-subtitle-1">已保存视图</v-card-title>
+      <v-card min-width="320" max-width="400">
+        <v-card-title class="text-subtitle-1">视图设置</v-card-title>
         <v-divider />
-        <v-list v-if="savedViews.length" density="compact" lines="two">
+        <v-list density="compact">
+          <v-list-subheader>已保存视图</v-list-subheader>
           <v-list-item
             v-for="view in savedViews"
             :key="view.id"
             prepend-icon="mdi-bookmark-outline"
             :title="view.name"
-            subtitle="恢复筛选、排序和列设置"
             @click="applyView(view)"
           >
             <template #append>
               <v-btn
                 :aria-label="`删除视图 ${view.name}`"
-                color="error"
                 icon="mdi-delete-outline"
                 size="small"
                 variant="text"
@@ -35,33 +32,17 @@
               />
             </template>
           </v-list-item>
+          <v-list-item
+            v-if="!savedViews.length"
+            prepend-icon="mdi-bookmark-off-outline"
+            subtitle="保存当前筛选、排序和列设置后可快速恢复"
+            title="还没有保存视图"
+          />
+          <v-list-item prepend-icon="mdi-content-save-outline" title="保存当前视图" @click="openSaveDialog" />
         </v-list>
-        <v-empty-state
-          v-else
-          class="py-5"
-          icon="mdi-bookmark-off-outline"
-          title="还没有保存视图"
-          text="保存当前筛选与列设置，之后可一键恢复。"
-        />
-        <v-divider />
-        <v-card-actions>
-          <v-btn prepend-icon="mdi-content-save-outline" variant="text" @click="openSaveDialog">
-            保存当前视图
-          </v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-menu>
-
-    <v-menu v-model="columnsMenuOpen" :close-on-content-click="false" location="bottom end">
-      <template #activator="{ props: activatorProps }">
-        <v-btn v-bind="activatorProps" min-height="44" prepend-icon="mdi-view-column-outline" variant="text">
-          列设置
-        </v-btn>
-      </template>
-      <v-card min-width="280" max-width="360">
-        <v-card-title class="text-subtitle-1">显示列</v-card-title>
         <v-divider />
         <v-list density="compact">
+          <v-list-subheader>显示列</v-list-subheader>
           <v-list-item v-for="column in columns" :key="column.key" @click="toggleColumn(column)">
             <template #prepend>
               <v-checkbox-btn
@@ -78,12 +59,12 @@
             </template>
           </v-list-item>
         </v-list>
+        <v-divider />
+        <v-card-actions>
+          <v-btn prepend-icon="mdi-restore" variant="text" @click="resetView">恢复默认视图</v-btn>
+        </v-card-actions>
       </v-card>
     </v-menu>
-
-    <v-btn min-height="44" prepend-icon="mdi-filter-remove-outline" variant="text" @click="resetView">
-      重置视图
-    </v-btn>
   </div>
 
   <v-dialog v-model="saveDialogOpen" aria-label="保存当前视图" max-width="480">
@@ -94,6 +75,8 @@
         <v-text-field
           v-model="viewName"
           autofocus
+          density="comfortable"
+          :hide-details="false"
           counter="30"
           label="视图名称"
           maxlength="30"
@@ -150,7 +133,6 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const viewsMenuOpen = ref(false)
-const columnsMenuOpen = ref(false)
 const saveDialogOpen = ref(false)
 const viewName = ref('')
 const viewNameError = ref('')
@@ -246,12 +228,12 @@ function saveView() {
   persist()
 }
 
-async function applyView(view: SavedAdminView) {
+function applyView(view: SavedAdminView) {
   visibleColumnKeys.value = normalizedVisibleColumns(view.columns)
   viewsMenuOpen.value = false
   persist()
   const query: LocationQueryRaw = { ...view.query, page: '1' }
-  await router.replace({ query, hash: route.hash })
+  window.location.replace(router.resolve({ path: route.path, query, hash: route.hash }).href)
 }
 
 function removeView(id: string) {
@@ -278,6 +260,7 @@ function toggleColumn(column: AdminTableColumnOption) {
 
 async function resetView() {
   visibleColumnKeys.value = [...defaultColumns.value]
+  viewsMenuOpen.value = false
   emit('reset')
   persist()
   await router.replace({ query: {}, hash: route.hash })
@@ -292,21 +275,9 @@ watch(() => props.columns, () => {
 <style scoped>
 .admin-table-view-controls {
   display: flex;
-  min-height: 52px;
+  min-height: 40px;
   align-items: center;
   flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px 12px;
-}
-
-@media (max-width: 599.98px) {
-  .admin-table-view-controls :deep(.v-spacer) {
-    display: none;
-  }
-
-  .admin-table-view-controls > span {
-    width: 100%;
-    padding-inline: 4px;
-  }
+  gap: 8px;
 }
 </style>

@@ -292,7 +292,7 @@ test('legacy theme config query resolves to its canonical theme slug', async ({ 
   await page.goto('./apps/view/theme-config?id=default-theme&release=1.0.0&source=legacy#theme', {
     waitUntil: 'domcontentloaded',
   })
-  await expect(page).toHaveURL(/\/admin\/apps\/settings\/appearance\/themes\/default-theme\?/)
+  await expect(page).toHaveURL(/\/admin\/apps\/settings\/appearance\/themes\/default-theme\?/, { timeout: 20_000 })
 
   const url = new URL(page.url())
   expect(url.pathname).toBe('/admin/apps/settings/appearance/themes/default-theme')
@@ -312,7 +312,7 @@ test('content resource routes resolve to unified list handling panels while comp
   expect(url.pathname).toBe('/admin/apps/content/cards')
   expect(url.searchParams.get('inspect')).toBe(String(ids.card))
   await expect(page.getByRole('dialog')).toContainText(/(?:查看|审核|编辑)卡片/)
-  await expect(page.getByRole('heading', { name: '卡片管理', exact: true, level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '卡片', exact: true, level: 1 })).toBeVisible()
   await expect(page.locator('body')).not.toContainText('卡片不存在')
 
   await page.goto(`./apps/content/comments/${ids.comment}`, { waitUntil: 'domcontentloaded' })
@@ -321,7 +321,7 @@ test('content resource routes resolve to unified list handling panels while comp
   expect(url.pathname).toBe('/admin/apps/content/comments')
   expect(url.searchParams.get('inspect')).toBe(String(ids.comment))
   await expect(page.getByRole('dialog')).toContainText(/(?:查看|审核|编辑)评论/)
-  await expect(page.getByRole('heading', { name: '评论管理', exact: true, level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '评论', exact: true, level: 1 })).toBeVisible()
   await expect(page.locator('body')).not.toContainText('评论不存在')
 
   await page.goto(`./apps/content/tags/${ids.tag}`, { waitUntil: 'domcontentloaded' })
@@ -330,7 +330,7 @@ test('content resource routes resolve to unified list handling panels while comp
   expect(url.pathname).toBe('/admin/apps/content/tags')
   expect(url.searchParams.get('inspect')).toBe(String(ids.tag))
   await expect(page.getByRole('dialog')).toContainText(/(?:查看|编辑)标签/)
-  await expect(page.getByRole('heading', { name: '标签管理', exact: true, level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '标签', exact: true, level: 1 })).toBeVisible()
 
   await expectDetailHeading(page, `/apps/users/${ids.user}/security`, /^账号安全 · .+$/)
   await expect(page.getByRole('heading', { name: 'Session', exact: true })).toBeVisible()

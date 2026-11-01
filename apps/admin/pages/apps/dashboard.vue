@@ -24,8 +24,106 @@
       @retry="loadWorkbench"
     >
       <div class="d-flex flex-column ga-6">
-        <section aria-labelledby="responsibility-title">
-          <v-sheet border rounded="lg" class="pa-4">
+        <section v-if="dashboard" class="workbench-tasks" aria-labelledby="tasks-title">
+          <div class="mb-3">
+            <h2 id="tasks-title" class="text-subtitle-1 font-weight-bold">我的待办</h2>
+            <p class="text-body-2 text-medium-emphasis mt-1">只显示当前 grants 允许处理的待办，不按角色名称推断权限。</p>
+          </div>
+          <v-card v-if="pendingTasks.length">
+            <v-list lines="two">
+              <template v-for="(task, index) in pendingTasks" :key="task.key">
+                <v-list-item :to="task.action_url" :value="`workbench-task-${task.key}`">
+                  <template #prepend>
+                    <v-icon :icon="taskIcon(task.key)" :color="taskColor(task.severity)" class="mr-3" />
+                  </template>
+                  <v-list-item-title>{{ task.label }}</v-list-item-title>
+                  <v-list-item-subtitle>{{ task.description }}</v-list-item-subtitle>
+                  <template #append>
+                    <div class="d-flex align-center ga-2">
+                      <v-chip :color="taskColor(task.severity)" variant="tonal" size="small">{{ task.count }}</v-chip>
+                      <v-icon icon="mdi-chevron-right" size="18" />
+                    </div>
+                  </template>
+                </v-list-item>
+                <v-divider v-if="index < pendingTasks.length - 1" />
+              </template>
+            </v-list>
+          </v-card>
+          <v-alert v-else-if="workbenchTasks.length" type="success" variant="tonal">
+            当前没有待处理事项。系统仍会按当前权限持续汇总新的任务。
+          </v-alert>
+          <v-alert v-else type="info" variant="tonal">
+            当前权限没有可量化待办；你仍可从“当前职责”中的入口开展日常工作。
+          </v-alert>
+        </section>
+
+        <section v-if="overviewMetrics.length" class="workbench-overview" aria-labelledby="overview-title">
+          <div class="d-flex flex-wrap align-start justify-space-between ga-3 mb-3">
+            <div>
+              <h2 id="overview-title" class="text-subtitle-1 font-weight-bold">内容概览</h2>
+              <p class="text-body-2 text-medium-emphasis mt-1">来自服务端仪表盘的实时汇总。</p>
+            </div>
+            <v-chip v-if="dashboard" size="small" variant="tonal" color="primary">已同步</v-chip>
+          </div>
+
+          <v-card v-if="dashboard">
+            <v-list lines="two">
+              <template v-for="(metric, index) in overviewMetrics" :key="metric.key">
+                <v-list-item :prepend-icon="metric.icon" :to="metric.to" :value="`overview-${metric.key}`">
+                  <v-list-item-title>{{ metric.label }}</v-list-item-title>
+                  <v-list-item-subtitle>{{ metric.detail }}</v-list-item-subtitle>
+                  <template #append>
+                    <div class="d-flex align-center ga-3">
+                      <span class="text-h6 font-weight-bold">{{ metric.value }}</span>
+                      <v-icon icon="mdi-chevron-right" size="18" />
+                    </div>
+                  </template>
+                </v-list-item>
+                <v-divider v-if="index < overviewMetrics.length - 1" />
+              </template>
+            </v-list>
+          </v-card>
+        </section>
+
+        <section v-if="canReadOperations" class="workbench-runtime" aria-labelledby="runtime-title">
+          <div class="d-flex flex-wrap align-start justify-space-between ga-3 mb-3">
+            <div>
+              <h2 id="runtime-title" class="text-subtitle-1 font-weight-bold">运行状态</h2>
+              <p class="text-body-2 text-medium-emphasis mt-1">基础设施和事件队列健康度。</p>
+            </div>
+            <v-chip v-if="runtimeStatus" size="small" variant="tonal" :color="runtimeHealthy ? 'success' : 'warning'">
+              {{ runtimeHealthy ? '运行正常' : '需要关注' }}
+            </v-chip>
+          </div>
+          <v-alert v-if="runtimeError" type="error" variant="tonal">{{ runtimeError }}</v-alert>
+          <v-card v-else-if="runtimeStatus">
+            <v-list lines="two">
+              <template v-for="(facility, index) in runtimeStatus.facilities" :key="facility.name">
+                <v-list-item
+                  :prepend-icon="facility.healthy ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'"
+                  :title="facility.name"
+                  :subtitle="facilityReason(facility.reason_code, facility.healthy)"
+                  :base-color="facility.healthy ? 'success' : 'warning'"
+                  :to="`/apps/operations/runtime?source=dashboard&facility=${encodeURIComponent(facility.name)}`"
+                  :value="`runtime-${facility.name}`"
+                />
+                <v-divider v-if="index < runtimeStatus.facilities.length - 1" />
+              </template>
+              <v-divider v-if="runtimeStatus.facilities.length" />
+              <v-list-item
+                prepend-icon="mdi-inbox-arrow-down-outline"
+                title="事件队列"
+                :subtitle="`${runtimeStatus.eventing.pending} 待处理 · ${runtimeStatus.eventing.dead} 死信`"
+                to="/apps/operations/runtime?source=dashboard&section=eventing"
+                value="runtime-eventing"
+              />
+            </v-list>
+          </v-card>
+          <v-card v-else class="pa-5 text-body-2 text-medium-emphasis">正在读取运行状态…</v-card>
+        </section>
+
+        <section class="workbench-responsibility" aria-labelledby="responsibility-title">
+          <v-card class="pa-4">
             <div class="d-flex flex-wrap align-start justify-space-between ga-4">
               <div>
                 <h2 id="responsibility-title" class="text-subtitle-1 font-weight-bold">当前职责</h2>
@@ -58,71 +156,10 @@
             <v-alert v-else type="info" variant="tonal">
               当前角色尚未获得业务模块入口，请联系超级管理员核对 grants。
             </v-alert>
-          </v-sheet>
+          </v-card>
         </section>
 
-        <section v-if="dashboard" aria-labelledby="tasks-title">
-          <div class="mb-3">
-            <h2 id="tasks-title" class="text-subtitle-1 font-weight-bold">我的待办</h2>
-            <p class="text-body-2 text-medium-emphasis mt-1">只显示当前 grants 允许处理的待办，不按角色名称推断权限。</p>
-          </div>
-          <v-sheet v-if="pendingTasks.length" border rounded="lg" overflow-hidden>
-            <v-list lines="two">
-              <template v-for="(task, index) in pendingTasks" :key="task.key">
-                <v-list-item :to="task.action_url" :value="`workbench-task-${task.key}`">
-                  <template #prepend>
-                    <v-icon :icon="taskIcon(task.key)" :color="taskColor(task.severity)" class="mr-3" />
-                  </template>
-                  <v-list-item-title>{{ task.label }}</v-list-item-title>
-                  <v-list-item-subtitle>{{ task.description }}</v-list-item-subtitle>
-                  <template #append>
-                    <div class="d-flex align-center ga-2">
-                      <v-chip :color="taskColor(task.severity)" variant="tonal" size="small">{{ task.count }}</v-chip>
-                      <v-icon icon="mdi-chevron-right" size="18" />
-                    </div>
-                  </template>
-                </v-list-item>
-                <v-divider v-if="index < pendingTasks.length - 1" />
-              </template>
-            </v-list>
-          </v-sheet>
-          <v-alert v-else-if="workbenchTasks.length" type="success" variant="tonal">
-            当前没有待处理事项。系统仍会按当前权限持续汇总新的任务。
-          </v-alert>
-          <v-alert v-else type="info" variant="tonal">
-            当前权限没有可量化待办；你仍可从“当前职责”中的入口开展日常工作。
-          </v-alert>
-        </section>
-
-        <section v-if="overviewMetrics.length" aria-labelledby="overview-title">
-          <div class="d-flex flex-wrap align-start justify-space-between ga-3 mb-3">
-            <div>
-              <h2 id="overview-title" class="text-subtitle-1 font-weight-bold">内容概览</h2>
-              <p class="text-body-2 text-medium-emphasis mt-1">来自服务端仪表盘的实时汇总。</p>
-            </div>
-            <v-chip v-if="dashboard" size="small" variant="tonal" color="primary">已同步</v-chip>
-          </div>
-
-          <v-sheet v-if="dashboard" border rounded="lg" overflow-hidden>
-            <v-list lines="two">
-              <template v-for="(metric, index) in overviewMetrics" :key="metric.key">
-                <v-list-item :prepend-icon="metric.icon" :to="metric.to" :value="`overview-${metric.key}`">
-                  <v-list-item-title>{{ metric.label }}</v-list-item-title>
-                  <v-list-item-subtitle>{{ metric.detail }}</v-list-item-subtitle>
-                  <template #append>
-                    <div class="d-flex align-center ga-3">
-                      <span class="text-h6 font-weight-bold">{{ metric.value }}</span>
-                      <v-icon icon="mdi-chevron-right" size="18" />
-                    </div>
-                  </template>
-                </v-list-item>
-                <v-divider v-if="index < overviewMetrics.length - 1" />
-              </template>
-            </v-list>
-          </v-sheet>
-        </section>
-
-        <section v-if="canReadCommunications" aria-labelledby="notifications-title">
+        <section v-if="canReadCommunications" class="workbench-notifications" aria-labelledby="notifications-title">
           <div class="d-flex flex-wrap align-start justify-space-between ga-3 mb-3">
             <div>
               <h2 id="notifications-title" class="text-subtitle-1 font-weight-bold">通知投递</h2>
@@ -130,7 +167,7 @@
             </div>
             <v-btn to="/apps/operations/deliveries" variant="text" color="primary" append-icon="mdi-arrow-right">打开投递</v-btn>
           </div>
-          <v-sheet v-if="notificationStats" border rounded="lg" overflow-hidden>
+          <v-card v-if="notificationStats">
             <v-list>
               <v-list-item prepend-icon="mdi-bell-outline" title="通知总量" to="/apps/operations/deliveries?source=dashboard&metric=total" value="notification-total">
                 <template #append><div class="d-flex align-center ga-3"><strong class="text-h6">{{ notificationStats.total }}</strong><v-icon icon="mdi-chevron-right" size="18" /></div></template>
@@ -144,56 +181,19 @@
                 <template #append><div class="d-flex align-center ga-3"><strong class="text-h6">{{ notificationStats.recipients }}</strong><v-icon icon="mdi-chevron-right" size="18" /></div></template>
               </v-list-item>
             </v-list>
-          </v-sheet>
+          </v-card>
           <v-alert v-else-if="notificationsError" type="error" variant="tonal">{{ notificationsError }}</v-alert>
-          <v-sheet v-else class="pa-5 text-body-2 text-medium-emphasis" border rounded="lg">正在读取通知统计…</v-sheet>
+          <v-card v-else class="pa-5 text-body-2 text-medium-emphasis">正在读取通知统计…</v-card>
         </section>
 
-        <section v-if="canReadOperations" aria-labelledby="runtime-title">
-          <div class="d-flex flex-wrap align-start justify-space-between ga-3 mb-3">
-            <div>
-              <h2 id="runtime-title" class="text-subtitle-1 font-weight-bold">运行状态</h2>
-              <p class="text-body-2 text-medium-emphasis mt-1">基础设施和事件队列健康度。</p>
-            </div>
-            <v-chip v-if="runtimeStatus" size="small" variant="tonal" :color="runtimeHealthy ? 'success' : 'warning'">
-              {{ runtimeHealthy ? '运行正常' : '需要关注' }}
-            </v-chip>
-          </div>
-          <v-alert v-if="runtimeError" type="error" variant="tonal">{{ runtimeError }}</v-alert>
-          <v-sheet v-else-if="runtimeStatus" border rounded="lg" overflow-hidden>
-            <v-list lines="two">
-              <template v-for="(facility, index) in runtimeStatus.facilities" :key="facility.name">
-                <v-list-item
-                  :prepend-icon="facility.healthy ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'"
-                  :title="facility.name"
-                  :subtitle="facility.reason_code || (facility.healthy ? 'healthy' : 'degraded')"
-                  :base-color="facility.healthy ? 'success' : 'warning'"
-                  :to="`/apps/operations/runtime?source=dashboard&facility=${encodeURIComponent(facility.name)}`"
-                  :value="`runtime-${facility.name}`"
-                />
-                <v-divider v-if="index < runtimeStatus.facilities.length - 1" />
-              </template>
-              <v-divider v-if="runtimeStatus.facilities.length" />
-              <v-list-item
-                prepend-icon="mdi-inbox-arrow-down-outline"
-                title="事件队列"
-                :subtitle="`${runtimeStatus.eventing.pending} 待处理 · ${runtimeStatus.eventing.dead} 死信`"
-                to="/apps/operations/runtime?source=dashboard&section=eventing"
-                value="runtime-eventing"
-              />
-            </v-list>
-          </v-sheet>
-          <v-sheet v-else class="pa-5 text-body-2 text-medium-emphasis" border rounded="lg">正在读取运行状态…</v-sheet>
-        </section>
-
-        <section v-if="dashboard && dashboard.notice.length" aria-labelledby="notice-title">
+        <section v-if="dashboard && dashboard.notice.length" class="workbench-notice" aria-labelledby="notice-title">
           <div class="mb-3">
             <div>
               <h2 id="notice-title" class="text-subtitle-1 font-weight-bold">产品公告</h2>
               <p class="text-body-2 text-medium-emphasis mt-1">来自 LoveCards 服务端的公告。</p>
             </div>
           </div>
-          <v-sheet border rounded="lg">
+          <v-card>
             <v-list lines="two" density="compact">
               <v-list-item v-for="notice in dashboard.notice" :key="`${notice.date}-${notice.title}`" :href="notice.url || undefined" target="_blank" :value="`notice-${notice.date}-${notice.title}`">
                 <template #prepend><v-icon color="primary" class="mr-3">mdi-information-outline</v-icon></template>
@@ -201,7 +201,7 @@
                 <v-list-item-subtitle>{{ notice.content }} · {{ notice.date }}</v-list-item-subtitle>
               </v-list-item>
             </v-list>
-          </v-sheet>
+          </v-card>
         </section>
       </div>
     </AdminAsyncState>
@@ -260,14 +260,14 @@ const responsibilityLinks = computed(() => [
   { key: 'tags', label: '标签治理', description: '维护内容分类和标签状态。', icon: 'mdi-tag-multiple-outline', to: '/apps/content/tags' },
   { key: 'reports', label: '举报处理', description: '核对证据、状态和处理历史。', icon: 'mdi-flag-outline', to: '/apps/community/reports' },
   { key: 'insights', label: '社区洞察', description: '查看隐私安全的聚合指标。', icon: 'mdi-chart-line', to: '/apps/community/insights' },
-  { key: 'users', label: '用户与安全', description: '查看获授权的用户和账号安全状态。', icon: 'mdi-account-shield-outline', to: '/apps/users' },
+  { key: 'users', label: '用户与权限', description: '查看获授权的用户和账号安全状态。', icon: 'mdi-account-shield-outline', to: '/apps/users' },
   { key: 'recovery', label: '账号恢复', description: '核对恢复挑战，不展示恢复凭证。', icon: 'mdi-account-lock-outline', to: '/apps/security/recovery' },
   { key: 'runtime', label: '运行健康', description: '检查设施、事件队列和降级状态。', icon: 'mdi-heart-pulse', to: '/apps/operations/runtime' },
   { key: 'deliveries', label: '通知投递', description: '检查投递状态和失败原因。', icon: 'mdi-send-check-outline', to: '/apps/operations/deliveries' },
   { key: 'storage', label: '存储配置', description: '维护文件渠道和基础设施配置。', icon: 'mdi-database-cog-outline', to: '/apps/settings/storage' },
   { key: 'upgrade', label: '升级与迁移', description: '检查升级计划和迁移状态。', icon: 'mdi-package-up', to: '/apps/operations/upgrade' },
   { key: 'audit', label: '审计记录', description: '追溯管理动作、资源变化和请求链路。', icon: 'mdi-clipboard-text-clock-outline', to: '/apps/operations/audit' },
-  { key: 'roles', label: '访问控制', description: '管理角色和 capability grants。', icon: 'mdi-shield-lock-outline', to: '/apps/access/roles' },
+  { key: 'roles', label: '角色与权限', description: '管理角色和 capability grants。', icon: 'mdi-shield-lock-outline', to: '/apps/access/roles' },
 ].filter((link) => userStore.canAccessPath(link.to)))
 
 const workbenchTasks = computed<DashboardTask[]>(() => dashboard.value?.workbench?.tasks ?? [])
@@ -286,6 +286,14 @@ function taskIcon(key: string) {
     deliveries_dead: 'mdi-send-alert-outline',
     files_pending: 'mdi-file-clock-outline',
   } as Record<string, string>)[key] ?? 'mdi-clipboard-check-outline'
+}
+
+function facilityReason(reason: string | null | undefined, healthy: boolean) {
+  if (healthy) return '运行正常'
+  return ({
+    primary_not_configured: '主通道未配置',
+    provider_unknown: '服务提供方未知',
+  } as Record<string, string>)[reason || ''] ?? '需要关注'
 }
 
 const overviewMetrics = computed(() => {

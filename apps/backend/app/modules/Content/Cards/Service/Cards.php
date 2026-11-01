@@ -36,6 +36,10 @@ class Cards
     {
         return (bool) ConfigService::get('cards.approve');
     }
+    public static function pendingStatus(): int
+    {
+        return PublicationStatus::pendingApproval();
+    }
     const TOP_LISTS_MAX = 32;
     const HOT_LISTS_MAX = 8;
 
@@ -349,13 +353,20 @@ class Cards
             $data = self::encodeJsonFields(self::normalizeMedia($data, $uid, false));
             $result = CardsModel::create($data);
             $data['id'] = $result->id;
-            self::bindMedia($pictureIds, $uid, (int) $result->id, (int) ($data['status'] ?? 0) === PublicationStatus::visible(), false);
+            self::bindMedia($pictureIds, $uid, (int) $result->id,
+                (int) ($data['status'] ?? 0) === PublicationStatus::visible()
+                && ($data['visibility'] ?? CardVisibilityPolicy::PUBLIC) === CardVisibilityPolicy::PUBLIC,
+                false);
             if ($coverId !== null) {
-                PublicFiles::replaceReferences('card', (string) $result->id, 'cover', $coverId > 0 ? [$coverId] : [], $uid, (int) ($data['status'] ?? 0) === PublicationStatus::visible(), false);
+                PublicFiles::replaceReferences('card', (string) $result->id, 'cover', $coverId > 0 ? [$coverId] : [], $uid,
+                    (int) ($data['status'] ?? 0) === PublicationStatus::visible()
+                    && ($data['visibility'] ?? CardVisibilityPolicy::PUBLIC) === CardVisibilityPolicy::PUBLIC,
+                    false);
             }
             if (isset($data['tags'])) {
                 self::updateCardTags($data, true);
             }
+            if ($data['visibility'] !== CardVisibilityPolicy::PUBLIC) CardMedia::assertRestrictedStorage((int) $result->id);
             if ((int) ($data['status'] ?? 0) === PublicationStatus::visible()) {
                 self::captureCardMentions(self::decodeJsonFields($result->toArray()));
             }
@@ -436,24 +447,31 @@ class Cards
 
             CardsModel::update($data);
             if ($pictureIds !== null) {
-                $effectiveStatus = array_key_exists('status', $data)
-                    ? (int) $data['status']
-                    : (int) CardsModel::where('id', (int) $data['id'])->value('status');
+                $currentCard = CardsModel::where('id', (int) $data['id'])->field('status,visibility')->find();
+                $effectiveStatus = array_key_exists('status', $data) ? (int) $data['status'] : (int) ($currentCard->status ?? -1);
+                $effectiveVisibility = array_key_exists('visibility', $data) ? (string) $data['visibility'] : (string) ($currentCard->visibility ?? CardVisibilityPolicy::PUBLIC);
                 self::bindMedia(
                     $pictureIds,
                     $uid,
                     (int) $data['id'],
-                    $effectiveStatus === PublicationStatus::visible(),
+                    $effectiveStatus === PublicationStatus::visible() && $effectiveVisibility === CardVisibilityPolicy::PUBLIC,
                     $grants->allows('cards.update', \app\shared\Authorization\Scope::ALL)
                 );
-            } elseif (array_key_exists('status', $data)) {
-                self::syncMediaVisibility([(int) $data['id']]);
             }
             if ($coverId !== null) {
-                $effectiveStatus = array_key_exists('status', $data)
-                    ? (int) $data['status']
-                    : (int) CardsModel::where('id', (int) $data['id'])->value('status');
-                PublicFiles::replaceReferences('card', (string) $data['id'], 'cover', $coverId > 0 ? [$coverId] : [], $uid, $effectiveStatus === PublicationStatus::visible(), $grants->allows('cards.update', \app\shared\Authorization\Scope::ALL));
+                $currentCard = CardsModel::where('id', (int) $data['id'])->field('status,visibility')->find();
+                $effectiveStatus = array_key_exists('status', $data) ? (int) $data['status'] : (int) ($currentCard->status ?? -1);
+                $effectiveVisibility = array_key_exists('visibility', $data) ? (string) $data['visibility'] : (string) ($currentCard->visibility ?? CardVisibilityPolicy::PUBLIC);
+                PublicFiles::replaceReferences('card', (string) $data['id'], 'cover', $coverId > 0 ? [$coverId] : [], $uid,
+                    $effectiveStatus === PublicationStatus::visible() && $effectiveVisibility === CardVisibilityPolicy::PUBLIC,
+                    $grants->allows('cards.update', \app\shared\Authorization\Scope::ALL));
+            }
+            if (array_key_exists('status', $data) || array_key_exists('visibility', $data)) {
+                self::syncMediaVisibility([(int) $data['id']]);
+            }
+            if (array_key_exists('visibility', $data) || $hasMediaIds || $coverId !== null) {
+                $current = CardsModel::where('id', $cardId)->find();
+                if ($current && (string) $current->visibility !== CardVisibilityPolicy::PUBLIC) CardMedia::assertRestrictedStorage($cardId);
             }
 
             $card = CardsModel::where('id', (int) $data['id'])
@@ -621,8 +639,7 @@ class Cards
             CardPolicy::assertCanBatch($grants, 'delete', $ids, $uid);
 
             CardsModel::destroy($ids);
-            Db::table('card_comment_pins')->whereIn('card_id', $ids)->delete();
-            CardsModel::whereIn('id', $ids)->update(['pinned_comment_id' => null]);
+            Db::table('cards')->whereIn('id', $ids)->update(['pinned_comment_id' => null]);
             self::syncMediaVisibility($ids);
 
             if ($auditAdminMutation) {
@@ -674,8 +691,7 @@ class Cards
     private static function trashCards(array $ids): void
     {
         CardsModel::whereIn('id', $ids)->delete();
-        Db::table('card_comment_pins')->whereIn('card_id', $ids)->delete();
-        CardsModel::whereIn('id', $ids)->update(['pinned_comment_id' => null]);
+        Db::table('cards')->whereIn('id', $ids)->update(['pinned_comment_id' => null]);
     }
 
     private static function restoreCards(array $ids): void
@@ -685,7 +701,6 @@ class Cards
 
     private static function hardDeleteCards(array $ids): void
     {
-        Db::table('card_comment_pins')->whereIn('card_id', $ids)->delete();
         CardsModel::whereIn('id', $ids)->update(['pinned_comment_id' => null]);
         Db::table('tags_map')->where('aid', 1)->whereIn('pid', $ids)->delete();
         Db::table('comments')->where('aid', 1)->whereIn('pid', $ids)->delete();
@@ -749,7 +764,10 @@ class Cards
             static fn($card): int => is_array($card) ? (int) ($card['id'] ?? 0) : 0,
             $decoded
         ), static fn(int $id): bool => $id > 0)));
-        $mediaFiles = self::mediaFilesForCards($cardIds, $publicOnly);
+        // 卡片已在查询入口完成授权；受限媒体地址仍需独立凭据。
+        $restrictedIds = array_values(array_map(static fn(array $card): int => (int) $card['id'], array_filter($decoded, static fn($card): bool => is_array($card) && ($card['visibility'] ?? 'public') !== 'public')));
+        $publicIds = array_values(array_diff($cardIds, $restrictedIds));
+        $mediaFiles = self::mediaFilesForCards($publicIds, $publicOnly) + self::mediaFilesForCards($restrictedIds, false);
         // Keep the pure hydration baseline usable when the persistence model is not bootstrapped.
         $topics = class_exists(TagsMapModel::class) ? self::topicsForCards($cardIds) : [];
         $usernames = self::usernamesForCards($decoded);
@@ -804,10 +822,14 @@ class Cards
             }
         }
         if ($cardId > 0) {
-            $files = $preloadedFiles ?? (self::mediaFilesForCards([$cardId], $publicOnly)[$cardId] ?? []);
+            $files = $preloadedFiles ?? (self::mediaFilesForCards([$cardId], $publicOnly && ($card['visibility'] ?? 'public') === 'public')[$cardId] ?? []);
             $media = [];
             foreach ($files as $position => $file) {
-                $item = self::mediaResource($file, $position + 1, $publicOnly);
+                $item = self::mediaResource($file, $position + 1, true);
+                if ($item !== null && ($card['visibility'] ?? 'public') !== 'public') {
+                    $item['url'] = '/media/card/' . $cardId . '/' . (int) $file['id'];
+                    $item['poster_url'] = null;
+                }
                 if ($item !== null) $media[] = $item;
             }
             if ($media !== []) {
@@ -1114,10 +1136,11 @@ class Cards
     {
         foreach (array_values(array_unique(array_map('intval', $cardIds))) as $cardId) {
             if ($cardId <= 0) continue;
-              $card = $clear ? null : Db::table('cards')->where('id', $cardId)->field('status,deleted_at')->find();
+              $card = $clear ? null : Db::table('cards')->where('id', $cardId)->field('status,deleted_at,visibility')->find();
               $isPublic = $card !== null
                   && (int) ($card['status'] ?? -1) === PublicationStatus::visible()
-                  && empty($card['deleted_at']);
+                  && empty($card['deleted_at'])
+                  && (string) ($card['visibility'] ?? 'public') === 'public';
               // A card's cover is also a public media reference. Keep both
               // purposes in sync when publication visibility changes.
               foreach (['attachment', 'cover'] as $purpose) {

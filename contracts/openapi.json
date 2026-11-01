@@ -765,7 +765,9 @@
             "order_desc": "stringBool",
             "order_key": "alphaDash",
             "show_deleted": "number|between:0,2",
-            "tag_id": "number"
+            "tag_id": "number",
+            "status": "integer|in:0,1,2,3",
+            "role_id": "integer|gt:0"
           }
         },
         "responses": {
@@ -1908,7 +1910,9 @@
             "order_desc": "stringBool",
             "order_key": "alphaDash",
             "show_deleted": "number|between:0,2",
-            "tag_id": "number"
+            "tag_id": "number",
+            "status": "integer|in:0,1,2,3",
+            "role_id": "integer|gt:0"
           }
         },
         "responses": {
@@ -7058,7 +7062,9 @@
             "order_desc": "stringBool",
             "order_key": "alphaDash",
             "show_deleted": "number|between:0,2",
-            "tag_id": "number"
+            "tag_id": "number",
+            "status": "integer|in:0,1,2,3",
+            "role_id": "integer|gt:0"
           }
         },
         "responses": {
@@ -8286,7 +8292,9 @@
             "order_desc": "stringBool",
             "order_key": "alphaDash",
             "show_deleted": "number|between:0,2",
-            "tag_id": "number"
+            "tag_id": "number",
+            "status": "integer|in:0,1,2,3",
+            "role_id": "integer|gt:0"
           }
         },
         "responses": {
@@ -10633,7 +10641,9 @@
             "order_desc": "stringBool",
             "order_key": "alphaDash",
             "show_deleted": "number|between:0,2",
-            "tag_id": "number"
+            "tag_id": "number",
+            "status": "integer|in:0,1,2,3",
+            "role_id": "integer|gt:0"
           }
         },
         "responses": {
@@ -11798,7 +11808,7 @@
         "x-validators": [
           "app\\shared\\Transport\\Validation\\PaginationInput"
         ],
-        "x-validator-scene": "Defult",
+        "x-validator-scene": "AdminUsers",
         "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\shared\\Transport\\Validation\\PaginationInput": {
@@ -11810,7 +11820,9 @@
             "order_desc": "stringBool",
             "order_key": "alphaDash",
             "show_deleted": "number|between:0,2",
-            "tag_id": "number"
+            "tag_id": "number",
+            "status": "integer|in:0,1,2,3",
+            "role_id": "integer|gt:0"
           }
         },
         "responses": {
@@ -11897,7 +11909,16 @@
                 "show_deleted": {
                   "type": "number"
                 },
-                "tag_id": {
+                "status": {
+                  "type": "number",
+                  "enum": [
+                    0,
+                    1,
+                    2,
+                    3
+                  ]
+                },
+                "role_id": {
                   "type": "number"
                 },
                 "search_value": {
@@ -11906,11 +11927,11 @@
                 }
               },
               "additionalProperties": true,
-              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }",
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; status?: number; role_id?: number; search_value?: string }",
               "x-validators": [
                 "app\\shared\\Transport\\Validation\\PaginationInput"
               ],
-              "x-validator-scene": "Defult"
+              "x-validator-scene": "AdminUsers"
             }
           }
         ]
@@ -13020,7 +13041,9 @@
             "order_desc": "stringBool",
             "order_key": "alphaDash",
             "show_deleted": "number|between:0,2",
-            "tag_id": "number"
+            "tag_id": "number",
+            "status": "integer|in:0,1,2,3",
+            "role_id": "integer|gt:0"
           }
         },
         "responses": {
@@ -13594,7 +13617,9 @@
             "order_desc": "stringBool",
             "order_key": "alphaDash",
             "show_deleted": "number|between:0,2",
-            "tag_id": "number"
+            "tag_id": "number",
+            "status": "integer|in:0,1,2,3",
+            "role_id": "integer|gt:0"
           }
         },
         "responses": {
@@ -14119,6 +14144,123 @@
         ]
       }
     },
+    "/cards/:id/media-access": {
+      "post": {
+        "operationId": "cards.mediaAccess",
+        "tags": [
+          "卡片"
+        ],
+        "summary": "获取卡片媒体访问地址",
+        "description": "获取卡片媒体访问地址",
+        "x-controller": "Content.Cards/mediaAccess",
+        "x-access": {
+          "auth": "required"
+        },
+        "x-capabilities": [],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck"
+        ],
+        "x-resource": "CardMediaAccessResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "media",
+                        "cover_url",
+                        "expires_in"
+                      ],
+                      "properties": {
+                        "cover_url": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "media": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "file_id",
+                              "url"
+                            ],
+                            "properties": {
+                              "file_id": {
+                                "type": "integer"
+                              },
+                              "url": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "expires_in": {
+                          "type": "integer"
+                        }
+                      },
+                      "x-typescript-type": "CardMediaAccess"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
     "/cards/hot": {
       "get": {
         "operationId": "cards.hot",
@@ -14406,7 +14548,9 @@
             "order_desc": "stringBool",
             "order_key": "alphaDash",
             "show_deleted": "number|between:0,2",
-            "tag_id": "number"
+            "tag_id": "number",
+            "status": "integer|in:0,1,2,3",
+            "role_id": "integer|gt:0"
           }
         },
         "responses": {
@@ -15499,7 +15643,9 @@
             "order_desc": "stringBool",
             "order_key": "alphaDash",
             "show_deleted": "number|between:0,2",
-            "tag_id": "number"
+            "tag_id": "number",
+            "status": "integer|in:0,1,2,3",
+            "role_id": "integer|gt:0"
           }
         },
         "responses": {
@@ -16677,7 +16823,9 @@
             "order_desc": "stringBool",
             "order_key": "alphaDash",
             "show_deleted": "number|between:0,2",
-            "tag_id": "number"
+            "tag_id": "number",
+            "status": "integer|in:0,1,2,3",
+            "role_id": "integer|gt:0"
           }
         },
         "responses": {
@@ -21910,7 +22058,9 @@
             "order_desc": "stringBool",
             "order_key": "alphaDash",
             "show_deleted": "number|between:0,2",
-            "tag_id": "number"
+            "tag_id": "number",
+            "status": "integer|in:0,1,2,3",
+            "role_id": "integer|gt:0"
           }
         },
         "responses": {

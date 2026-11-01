@@ -3,7 +3,7 @@
     <AdminPageHeader
       :title="`${channelName} 配置`"
       description="管理消息渠道参数，并使用已保存的配置发送测试消息。"
-      :breadcrumbs="[{ title: '系统配置' }, { title: '消息渠道', to: '/apps/settings/messaging' }, { title: channelName }]"
+      :breadcrumbs="[{ title: '站点设置' }, { title: '消息渠道', to: '/apps/settings/messaging' }, { title: channelName }]"
     />
 
     <v-row>
@@ -12,7 +12,6 @@
           title="渠道参数"
           description="测试发信只读取已保存配置；密钥字段留空表示保留服务端现值。"
           icon="mdi-email-cog-outline"
-          :dirty="configChanged"
           risk="high"
         >
           <template #actions><v-chip size="small" variant="outlined">{{ slug }}</v-chip></template>
@@ -36,9 +35,6 @@
               </v-alert>
               <v-alert v-if="saveMessage" class="mb-4" :type="saveMessage.type" variant="tonal">
                 {{ saveMessage.text }}
-              </v-alert>
-              <v-alert v-if="configChanged" class="mb-4" type="warning" variant="tonal">
-                当前有未保存修改。测试消息只使用服务端已保存的配置，请先保存。
               </v-alert>
 
               <v-form @submit.prevent="save">
@@ -94,11 +90,11 @@
                   </v-col>
                 </v-row>
                 <v-divider class="mb-4" />
-                <div class="d-flex flex-wrap justify-end ga-2">
+                <AdminConfigSaveBar :dirty="configChanged" label="渠道配置">
                   <AdminActionGuard capability="sender.test" scope="global">
                     <v-btn
                       color="primary"
-                      :disabled="configChanged"
+                      :disabled="configChanged || saveLoading"
                       prepend-icon="mdi-email-fast-outline"
                       variant="tonal"
                       @click="testDialog = true"
@@ -123,7 +119,7 @@
                       保存渠道配置
                     </v-btn>
                   </AdminActionGuard>
-                </div>
+                </AdminConfigSaveBar>
               </v-form>
             </AdminAsyncState>
         </AdminConfigSection>
@@ -281,7 +277,7 @@ const save = async () => {
   }
 }
 const sendTest = async () => {
-  if (!canTestChannel.value || testLoading.value) return
+  if (!canTestChannel.value || testLoading.value || configChanged.value || saveLoading.value) return
   if (!testTo.value.trim()) {
     testMessage.value = { type: 'error', text: '请输入收件邮箱。' }
     return

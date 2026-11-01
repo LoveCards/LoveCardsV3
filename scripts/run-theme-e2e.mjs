@@ -97,11 +97,11 @@ try {
       page.waitForURL((url) => url.pathname === '/me'),
       page.locator('.auth-form button[type="submit"]').click(),
     ])
-    await page.locator('.profile-hero').waitFor()
+    await page.locator('.profile-identity-surface-owner').waitFor()
 
     const marker = `theme-e2e-${Date.now()}`
     await page.goto(`${origin}/compose`, { waitUntil: 'networkidle' })
-    await page.getByLabel('正文').fill(marker)
+    await page.getByRole('combobox', { name: '正文' }).fill(marker)
     await Promise.all([
       page.waitForURL((url) => /^\/post\/\d+$/.test(url.pathname)),
       page.locator('.compose-actions button[type="submit"]').click(),

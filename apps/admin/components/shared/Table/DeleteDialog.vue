@@ -4,7 +4,7 @@
     action-label="删除资源"
     confirm-text="删除"
     :error="actionError"
-    impact="删除后，该资源将无法继续在管理列表和前台使用；能否恢复取决于该资源的删除策略。"
+    :impact="impact"
     :loading="deleting"
     :resource-label="resourceLabel"
     title="确认删除"
@@ -15,9 +15,10 @@
 <script setup lang="ts">
 import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   deleteFun?: (id: number) => unknown
-}>()
+  impact?: string
+}>(), { impact: '删除后，该资源将无法继续在管理列表和前台使用；能否恢复取决于该资源的删除策略。' })
 
 const thisDialogState = defineModel<boolean>('thisDialogState', { default: false })
 const deleteData = defineModel<{ id: number; display?: string }>('deleteData', {

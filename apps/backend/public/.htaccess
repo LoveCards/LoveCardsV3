@@ -1,6 +1,8 @@
 <IfModule mod_rewrite.c>
   Options +FollowSymlinks -Multiviews
   RewriteEngine On
+  # 存储源文件仅允许授权媒体入口读取。
+  RewriteRule ^storage(?:/|$) - [R=404,L,NC]
 
   # Apache/FastCGI may drop Authorization before PHP receives the request.
   # Preserve it for clients that use the standard Bearer header.

@@ -9,6 +9,12 @@ class PaginationInput extends Validate
 {
     //参数过滤场景
     static $all_scene = [
+        'AdminUsers' => [
+            'normal' => ['page', 'list_rows', 'search_keys', 'search_like', 'order_desc', 'order_key', 'show_deleted', 'status', 'role_id'],
+            'require' => false,
+            'nonNull' => false,
+            'toNull' => ['search_value'],
+        ],
         'Defult' => [
             'normal' => [
                 'page',
@@ -46,6 +52,8 @@ class PaginationInput extends Validate
         // 0=active, 1=with trashed, 2=only trashed
         'show_deleted' => 'number|between:0,2',
         'tag_id' => 'number',
+        'status' => 'integer|in:0,1,2,3',
+        'role_id' => 'integer|gt:0',
     ];
     //定义错误信息
     protected $message  =   [

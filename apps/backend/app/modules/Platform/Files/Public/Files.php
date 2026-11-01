@@ -28,5 +28,26 @@ final class Files
             $publicOnly
         );
     }
-    public static function publicMedia(string $hash): ?array { return app(ResolvePublicMedia::class)->execute($hash); }
+    public static function publicMedia(string $hash): ?array
+    {
+        $file = self::repository()->findByHash(strtolower(trim($hash)), 0, false);
+        if ($file === null) return null;
+        // is_public 是引用的派生值；读取时仍核对卡片现状，避免历史脏标记绕过审核或可见范围。
+        $references = app(\app\modules\Platform\Files\Contract\FileReferenceRepository::class)->forFile((int) $file['id']);
+        if ($references === [] && ($file['ref_type'] ?? '') === 'card') {
+            $references = [['resource_type' => 'card', 'resource_id' => $file['ref_id'] ?? 0, 'is_public' => 1]];
+        }
+        if ($references !== []) {
+            $allowed = false;
+            $cardIds = [];
+            foreach ($references as $reference) {
+                if (!(bool) $reference['is_public']) continue;
+                if ($reference['resource_type'] === 'card') $cardIds[] = (int) $reference['resource_id'];
+                else $allowed = true;
+            }
+            if (!$allowed && \app\modules\Content\Cards\Public\CardAccess::readableIds($cardIds, 0) === []) return null;
+        }
+        return app(ResolvePublicMedia::class)->execute($hash);
+    }
+    public static function authorizedLocalMedia(int $fileId): ?array { return app(ResolvePublicMedia::class)->authorizedLocal($fileId); }
 }

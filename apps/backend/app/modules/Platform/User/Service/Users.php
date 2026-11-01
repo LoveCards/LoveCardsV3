@@ -245,9 +245,18 @@ class Users
     public static function listAll($params, array $caps = []): array
     {
         $canReadAll = in_array('users.read.all', $caps, true);
+        $where = [];
+        if (isset($params['status'])) $where[] = ['status', '=', (int) $params['status']];
+        if (isset($params['role_id'])) {
+            $roleId = (int) $params['role_id'];
+            $where[] = ['id', 'in', function ($query) use ($roleId) {
+                $query->table('user_roles')->where('role_id', $roleId)->field('user_id');
+            }];
+        }
         $result = ModelQuery::make(UsersModel::class)
             ->trashScope((int) ($params['show_deleted'] ?? 0), $canReadAll)
             ->getPaginate(array_merge($params, [
+                'where' => $where,
                 'search_default_key' => 'username',
                 'withoutField' => ['password'],
             ]))

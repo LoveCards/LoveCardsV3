@@ -1,8 +1,8 @@
 <template>
   <AdminPageHeader
-    title="权限管理"
+    title="权限目录"
     description="查看服务端能力目录与作用域。权限定义由后端维护，管理端仅提供只读检索。"
-    :breadcrumbs="[{ title: '访问控制' }, { title: '权限' }]"
+    :breadcrumbs="[{ title: '用户与权限' }]"
   >
     <template #actions>
       <v-chip color="info" variant="tonal" size="small">只读目录</v-chip>
@@ -18,28 +18,8 @@
       preference-key="access-permissions"
       @reset-view="resetTableView"
     >
-      <template #toolbar>
-        <v-row dense align="center">
-          <v-col cols="12" sm="auto">
-            <v-chip prepend-icon="mdi-shield-key-outline" size="small" variant="tonal">
-              {{ tableTotalItems }} 条能力授权
-            </v-chip>
-          </v-col>
-          <v-spacer />
-          <v-col cols="12" sm="6" md="4">
-            <v-text-field
-              v-model="tableSearchValue"
-              append-inner-icon="mdi-magnify"
-              clearable
-              density="compact"
-              hide-details
-              label="搜索能力标识或描述"
-              single-line
-              variant="outlined"
-              @update:model-value="searchTableData"
-            />
-          </v-col>
-        </v-row>
+      <template #search>
+        <v-text-field v-model="tableSearchValue" clearable label="搜索能力标识或描述" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
       </template>
 
       <v-alert

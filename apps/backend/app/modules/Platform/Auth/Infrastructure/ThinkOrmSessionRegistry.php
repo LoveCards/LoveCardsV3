@@ -28,7 +28,7 @@ final class ThinkOrmSessionRegistry implements SessionRegistry
     public function findForUserByPublicId(int $userId, string $publicId): ?array
     {
         $row = Db::table('auth_sessions')->where(['user_id' => $userId, 'public_id' => $publicId])
-            ->field('public_id,user_id,token_expires_at,renewable_until,security_version,revoked_at,revoked_reason,created_at')
+            ->field('public_id,user_id,jti_hash,token_expires_at,renewable_until,security_version,revoked_at,revoked_reason,created_at')
             ->find();
         return $row ?: null;
     }

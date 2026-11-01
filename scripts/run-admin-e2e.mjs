@@ -141,6 +141,18 @@ async function installDefaultTheme(origin, token) {
   if (activate.status !== 204) throw new Error(`Theme E2E activation failed: ${activate.status} ${await activate.text()}`)
 }
 
+async function installDefaultThemeForTest(origin) {
+  const login = await fetch(`${origin}/api/session/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ account: adminAccount, password: adminPassword }),
+  })
+  const payload = await login.json().catch(() => null)
+  const token = payload?.data?.token
+  if (!login.ok || typeof token !== 'string' || token === '') throw new Error('Theme E2E login failed')
+  await installDefaultTheme(origin, token)
+}
+
 if (await listening(backendPort) || await listening(adminPort)) {
   throw new Error(`Refusing E2E tests while ports ${backendPort} or ${adminPort} are already in use`)
 }
@@ -168,6 +180,11 @@ const dbEnv = {
   PHP_DATABASE_DATABASE: database,
   PHP_DATABASE_USERNAME: process.env.LOVECARDS_E2E_DB_USER || 'root',
   PHP_DATABASE_PASSWORD: process.env.LOVECARDS_E2E_DB_PASSWORD || '',
+  // Guest permission tests require a visitor token. Keep the policy scoped to
+  // this disposable backend process instead of relying on a persistent write.
+  CORE_VISITOR_MODE: 'true',
+  USER_CAPTCHA: 'false',
+  CAPTCHA_CAPTCHA_ENABLED: 'false',
   APP_DEBUG: 'true',
   PHP_APP_DEBUG: 'true',
   LC_INSTANCE_ROOT: instanceRoot,
@@ -205,6 +222,13 @@ try {
   console.log(`[e2e] starting backend :${backendPort}`)
   await waitFor(`http://127.0.0.1:${backendPort}/api/cards?list_rows=1`)
 
+  let themeInstalled = false
+  // SDK 套件也会验证主题配置接口，因此即使不跑主题浏览器测试，也需要安装隔离主题夹具。
+  if (process.env.LOVECARDS_E2E_RUN_SDK_INTEGRATION === '1') {
+    await installDefaultThemeForTest(`http://127.0.0.1:${backendPort}`)
+    themeInstalled = true
+  }
+
   if (process.env.LOVECARDS_E2E_RUN_SDK_INTEGRATION === '1') {
     const sdk = start(npmCommand, ['run', 'test:sdk:integration'], {
       ...dbEnv,
@@ -221,6 +245,7 @@ try {
   // E2E terminal open after every assertion has passed.
   admin = start(process.execPath, [nuxtCli, 'dev', '--host', '127.0.0.1', '--port', String(adminPort)], {
     LOVECARDS_E2E_ISOLATED: '1',
+    LOVECARDS_E2E_NUXT_BUILD_DIR: path.join(temporaryRoot, 'nuxt'),
     LOVECARDS_DEV_BACKEND_ORIGIN: `http://127.0.0.1:${backendPort}`,
     NUXT_PUBLIC_API_BASE: '/api',
     NUXT_API_PROXY_TARGET: `http://127.0.0.1:${backendPort}/api`,
@@ -237,15 +262,7 @@ try {
   })
   exitCode = await waitForExit(test)
   if (exitCode === 0 && process.env.LOVECARDS_E2E_RUN_THEME === '1') {
-    const login = await fetch(`http://127.0.0.1:${backendPort}/api/session/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ account: adminAccount, password: adminPassword }),
-    })
-    const loginPayload = await login.json().catch(() => null)
-    const token = loginPayload?.data?.token
-    if (!login.ok || typeof token !== 'string' || token === '') throw new Error('Theme E2E login failed')
-    await installDefaultTheme(`http://127.0.0.1:${backendPort}`, token)
+    if (!themeInstalled) await installDefaultThemeForTest(`http://127.0.0.1:${backendPort}`)
     const theme = start(process.execPath, ['scripts/run-theme-e2e.mjs'], {
       LOVECARDS_THEME_ORIGIN: `http://127.0.0.1:${backendPort}`,
       LOVECARDS_THEME_TEST_ACCOUNT: adminAccount,

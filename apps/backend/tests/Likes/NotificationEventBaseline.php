@@ -9,6 +9,22 @@ namespace think\facade
         public static int $commits = 0;
         public static int $rollbacks = 0;
 
+        public static function table(string $table): object {
+            if ($table !== 'cards') throw new \RuntimeException('unexpected table');
+            return new class {
+                private int $id = 0;
+                public function where(string $field, mixed $value): self { if ($field === 'cards.id') $this->id = (int) $value; return $this; }
+                public function whereNull(string $field): self { return $this; }
+                public function whereRaw(string $sql): self { return $this; }
+                public function find(): ?array {
+                    foreach (\app\modules\Content\Infrastructure\Persistence\Model\Cards::$rows as $row) {
+                        if ((int) $row['id'] === $this->id && (int) $row['status'] === 0) return $row;
+                    }
+                    return null;
+                }
+            };
+        }
+
         public static function startTrans(): void { self::$active = true; }
         public static function commit(): void { self::$commits++; self::$active = false; }
         public static function rollback(): void { self::$rollbacks++; self::$active = false; }
@@ -208,6 +224,8 @@ namespace app\modules\Content\Infrastructure\Persistence\Model
 namespace
 {
     $root = dirname(__DIR__, 2);
+    require $root . '/app/modules/Content/Cards/Service/CardVisibilityPolicy.php';
+    require $root . '/app/modules/Content/Cards/Public/CardAccess.php';
     require $root . '/app/modules/Content/Likes/Service/Likes.php';
 
     use app\api\ApiException;

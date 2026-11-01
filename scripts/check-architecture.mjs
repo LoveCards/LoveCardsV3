@@ -275,10 +275,14 @@ const moduleFiles = await walk(moduleRoot, (file) => file.endsWith('.php'))
 for (const file of moduleFiles) {
   const source = await readFile(file, 'utf8')
   const rel = relative(file)
+  const sourceModule = rel.split('/').slice(4, 6).join('/')
   const layer = rel.split('/').find((part) => ['Application', 'Domain', 'Contract', 'Infrastructure'].includes(part))
   for (const match of source.matchAll(/^\s*use\s+(app\\[^;]+|think\\[^;]+);/gmi)) {
     const dependency = match[1].replace(/\s+as\s+.+$/i, '')
     const key = `${rel}:${dependency}`
+    if (sourceModule !== 'Content/Cards' && /^app\\modules\\Content\\Cards\\(?!Public\\|Contract\\)/i.test(dependency)) {
+      fail(`Cross-module Cards dependencies must use Public or Contract: ${key}`)
+    }
     if (layer === 'Application' && /^app\\modules\\.+\\Infrastructure\\/i.test(dependency)) {
       fail(`Application must not depend on module Infrastructure: ${key}`)
     }

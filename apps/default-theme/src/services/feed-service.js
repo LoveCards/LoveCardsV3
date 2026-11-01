@@ -82,6 +82,7 @@ function normalizeMediaItems(card, data, isCurated, fallbackAlt) {
         fit: normalizeMediaFit(item.fit || item.media_fit || item.content_mode || mediaFits[index], cardMediaFit),
       };
       if (Number.isInteger(item.file_id)) media.fileId = item.file_id;
+      if (typeof item.renewUrl === 'function') media.renewUrl = item.renewUrl;
       if (Number.isFinite(Number(item.width))) media.width = Number(item.width);
       if (Number.isFinite(Number(item.height))) media.height = Number(item.height);
       if (Number.isFinite(Number(item.duration_ms))) media.durationMs = Number(item.duration_ms);

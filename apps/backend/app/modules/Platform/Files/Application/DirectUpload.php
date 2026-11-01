@@ -50,7 +50,7 @@ final class DirectUpload
         $path = $this->channels->generatePath($filename);
 
         if (!$this->driver->supportsDirectUpload($channelSlug)) {
-            throw new ApiException('该渠道不支持直传');
+            throw ApiException::badRequest('该渠道不支持直传');
         }
 
         $expire = $this->channels->getDirectUploadExpire();

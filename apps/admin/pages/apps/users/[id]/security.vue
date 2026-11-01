@@ -94,12 +94,13 @@ const accountStatus = computed(() => {
   const states: Record<number, { status: string; label: string }> = {
     0: { status: 'active', label: '正常' },
     1: { status: 'disabled', label: '已封禁' },
-    2: { status: 'degraded', label: '已隐藏' },
+    2: { status: 'degraded', label: '已冻结' },
     3: { status: 'pending', label: '待审核' },
   }
   return states[security.value?.user.status ?? -1] ?? { status: 'unknown', label: '未知' }
 })
 const breadcrumbs = [
+  { title: '用户与权限' },
   { title: '用户管理', to: '/apps/users' },
   { title: `用户 #${route.params.id}`, to: `/apps/users/${route.params.id}` },
   { title: '账号安全', disabled: true },

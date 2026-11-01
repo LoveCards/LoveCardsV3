@@ -54,7 +54,8 @@ $assert(!str_contains($commentValidator, "'is_top' => 'number|in:0,1'"), 'legacy
 $assert(str_contains($commentPinMigration, 'PRIMARY KEY (`card_id`)'), 'one card must have at most one pinned comment');
 $assert(str_contains($commentPinMigration, 'UNIQUE KEY `uq_card_comment_pins_comment` (`comment_id`)'), 'one comment must not be pinned into multiple cards');
 $assert(str_contains($commentService, "->where('parent_id', 0)") && str_contains($commentService, "->where('status', 0)"), 'pin command must accept only visible top-level comments');
-$assert(str_contains($commentService, "Db::table('card_comment_pins')->where('card_id', \$cardId)->value('comment_id')"), 'card comment list must resolve its card-scoped pin on the server');
+$assert(str_contains($commentService, "\$card['pinned_comment_id']"), 'card comment list must resolve the card pointer');
+$assert(!str_contains($commentService, "Db::table('card_comment_pins')"), 'runtime must not query the retired pin table');
 $assert(str_contains($commentService, "->orderRaw('(`id` = ' . \$pinnedId . ') DESC')"), 'card comment list must place its resolved pin first');
 $assert(str_contains($commentService, "self::clearPinsForComments(\$ids)"), 'comment lifecycle mutations must clear invalid pins');
 $assert(!str_contains($userValidator, "'allUpdate'"), 'legacy user allUpdate scene must not mix profile and role writes');

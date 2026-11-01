@@ -8,7 +8,7 @@ use think\facade\Db;
 
 use app\modules\Content\Infrastructure\Persistence\Model\Comments as CommentsModel;
 use app\modules\Content\Infrastructure\Persistence\Model\Cards as CardsModel;
-use app\modules\Content\Cards\Service\CardVisibilityPolicy;
+use app\modules\Content\Cards\Public\CardAccess;
 use app\modules\Content\Mentions\Service\Mentions;
 use app\modules\Platform\Eventing\Public\DomainEventBus;
 use app\modules\Platform\Notifications\Contract\SystemNoticeIssuer;
@@ -20,10 +20,6 @@ use app\shared\Authorization\GrantSet;
 use app\shared\Authorization\Scope;
 use app\modules\Content\Comments\Service\Policy\CommentPolicy;
 use app\shared\Observability\AdminMutationAudit;
-
-if (!class_exists(CardVisibilityPolicy::class)) {
-    require_once dirname(__DIR__, 2) . '/Cards/Service/CardVisibilityPolicy.php';
-}
 
 class Comments
 {
@@ -191,19 +187,17 @@ class Comments
         // Public comment reads must follow the card visibility contract. The
         // comment table is not the source of truth for whether its parent
         // resource is still publicly available.
-        $card = CardVisibilityPolicy::assertReadable($cardId, $viewerId);
+        $card = CardAccess::assertReadable($cardId, $viewerId);
         $page = max(1, (int) ($params['page'] ?? 1));
         $listRows = max(1, min(100, (int) ($params['list_rows'] ?? 15)));
-        $pinnedId = (int) ($card->pinned_comment_id ?? 0);
-        if ($pinnedId < 1) {
-            $pinnedId = (int) (Db::table('card_comment_pins')->where('card_id', $cardId)->value('comment_id') ?? 0);
-        }
+        // 置顶只从卡片字段读取，旧关系表仅用于历史迁移。
+        $pinnedId = (int) ($card['pinned_comment_id'] ?? 0);
         // A stale pin must never promote a reply, hidden comment, or comment
         // belonging to another card. The card-level pointer is authoritative
         // only after this visibility/top-level check.
         if ($pinnedId > 0) {
             $pinned = CommentsModel::where('id', $pinnedId)
-                ->where('aid', 1)->where('pid', $cardId)->where('status', 0)
+                ->where('aid', 1)->where('pid', $cardId)->where('status', 0)->whereNull('deleted_at')
                 ->findOrEmpty();
             if ($pinned->isEmpty() || (int) $pinned->parent_id !== 0) $pinnedId = 0;
         }
@@ -232,7 +226,7 @@ class Comments
             throw \app\api\ApiException::notFound('评论不存在');
         }
         if (!$includeHidden) {
-            CardVisibilityPolicy::assertReadable((int) $result->pid, $viewerId);
+            CardAccess::assertReadable((int) $result->pid, $viewerId);
         }
         return self::withUsername($result->toArray());
     }
@@ -251,7 +245,7 @@ class Comments
         try {
             $card = CardsModel::where('id', $id)->where('status', 0)->lock(true)->findOrEmpty();
             if ($card->isEmpty()) throw \app\api\ApiException::notFound('卡片不存在');
-            CardVisibilityPolicy::assertReadable($id, (int) ($params['user_id'] ?? 0));
+            CardAccess::assertReadable($id, (int) ($params['user_id'] ?? 0));
             $parent = null;
             if ($parentId > 0) {
                 $parent = CommentsModel::where('id', $parentId)
@@ -321,21 +315,6 @@ class Comments
             }
 
             $before = self::pinAuditRow($cardId, true);
-            $now = date('Y-m-d H:i:s');
-            if ($before === []) {
-                Db::table('card_comment_pins')->insert([
-                    'card_id' => $cardId,
-                    'comment_id' => $commentId,
-                    'pinned_by' => $actorId,
-                    'pinned_at' => $now,
-                ]);
-            } else {
-                Db::table('card_comment_pins')->where('card_id', $cardId)->update([
-                    'comment_id' => $commentId,
-                    'pinned_by' => $actorId,
-                    'pinned_at' => $now,
-                ]);
-            }
             CardsModel::where('id', $cardId)->update(['pinned_comment_id' => $commentId]);
             app(AdminMutationAudit::class)->recordChanges(
                 $actorId,
@@ -370,17 +349,6 @@ class Comments
                 throw \app\api\ApiException::badRequest('只能置顶当前卡片下可见的一级评论');
             }
 
-            $now = date('Y-m-d H:i:s');
-            $pin = Db::table('card_comment_pins')->where('card_id', $cardId)->find();
-            if ($pin) {
-                Db::table('card_comment_pins')->where('card_id', $cardId)->update([
-                    'comment_id' => $commentId, 'pinned_by' => $actorId, 'pinned_at' => $now,
-                ]);
-            } else {
-                Db::table('card_comment_pins')->insert([
-                    'card_id' => $cardId, 'comment_id' => $commentId, 'pinned_by' => $actorId, 'pinned_at' => $now,
-                ]);
-            }
             CardsModel::where('id', $cardId)->update(['pinned_comment_id' => $commentId]);
             Db::commit();
         } catch (\Throwable $exception) {
@@ -400,7 +368,6 @@ class Comments
             $card = CardsModel::where('id', $cardId)->where('status', 0)->lock(true)->findOrEmpty();
             if ($card->isEmpty()) throw \app\api\ApiException::notFound('卡片不存在或不可用');
             if ((int) $card->user_id !== $actorId) throw \app\api\ApiException::forbidden('只有卡片作者可以取消置顶评论');
-            Db::table('card_comment_pins')->where('card_id', $cardId)->delete();
             CardsModel::where('id', $cardId)->update(['pinned_comment_id' => null]);
             Db::commit();
         } catch (\Throwable $exception) {
@@ -425,7 +392,6 @@ class Comments
             if ($card->isEmpty()) throw \app\api\ApiException::notFound('卡片不存在');
             $before = self::pinAuditRow($cardId, true);
             if ($before !== []) {
-                Db::table('card_comment_pins')->where('card_id', $cardId)->delete();
                 CardsModel::where('id', $cardId)->update(['pinned_comment_id' => null]);
                 app(AdminMutationAudit::class)->recordChanges(
                     $actorId,
@@ -493,18 +459,21 @@ class Comments
     {
         if (!isset($result['data']) || !is_array($result['data'])) return $result;
         $rows = array_map(static fn($row): array => is_object($row) && method_exists($row, 'toArray') ? $row->toArray() : (array) $row, $result['data']);
-        $commentIds = array_values(array_unique(array_filter(array_map(
-            static fn(array $row): int => (int) ($row['id'] ?? 0),
+        $cardIds = array_values(array_unique(array_filter(array_map(
+            static fn(array $row): int => (int) ($row['pid'] ?? 0),
             $rows
         ), static fn(int $id): bool => $id > 0)));
         $pinned = [];
-        if ($commentIds !== []) {
-            foreach (Db::table('card_comment_pins')->whereIn('comment_id', $commentIds)->field('comment_id')->select()->toArray() as $pin) {
-                $pinned[(int) $pin['comment_id']] = true;
+        if ($cardIds !== []) {
+            foreach (Db::table('cards')->whereIn('id', $cardIds)->field('id,pinned_comment_id')->select()->toArray() as $card) {
+                $pinId = (int) ($card['pinned_comment_id'] ?? 0);
+                if ($pinId > 0) $pinned[$pinId] = (int) $card['id'];
             }
         }
         $rows = array_map(static function (array $row) use ($pinned): array {
-            $row['is_pinned'] = isset($pinned[(int) ($row['id'] ?? 0)]);
+            $row['is_pinned'] = ($pinned[(int) ($row['id'] ?? 0)] ?? 0) === (int) ($row['pid'] ?? -1)
+                && (int) ($row['aid'] ?? 0) === 1 && (int) ($row['parent_id'] ?? 0) === 0
+                && (int) ($row['status'] ?? -1) === 0 && empty($row['deleted_at']);
             return $row;
         }, $rows);
         $mentions = class_exists(Mentions::class) ? Mentions::projectionsForResources('comment', $rows) : [];
@@ -812,18 +781,17 @@ class Comments
     {
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0)));
         if ($ids !== []) {
-            Db::table('card_comment_pins')->whereIn('comment_id', $ids)->delete();
             CardsModel::whereIn('pinned_comment_id', $ids)->update(['pinned_comment_id' => null]);
         }
     }
 
     private static function pinAuditRow(int $cardId, bool $lock = false): array
     {
-        $query = Db::table('card_comment_pins')->where('card_id', $cardId);
+        $query = CardsModel::where('id', $cardId)->field('id,pinned_comment_id');
         if ($lock) $query->lock(true);
         $row = $query->find();
-        if ($row === null) return [];
-        return is_object($row) && method_exists($row, 'toArray') ? $row->toArray() : (array) $row;
+        if ($row === null || (int) ($row->pinned_comment_id ?? 0) < 1) return [];
+        return ['card_id' => $cardId, 'comment_id' => (int) $row->pinned_comment_id];
     }
 
     private static function publishComment(

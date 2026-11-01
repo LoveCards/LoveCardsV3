@@ -1,4 +1,4 @@
-import { onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import type { MaybeRefOrGetter } from 'vue'
 
 export function useAdminUnsavedChanges(dirty: MaybeRefOrGetter<boolean>) {
@@ -14,7 +14,7 @@ export function useAdminUnsavedChanges(dirty: MaybeRefOrGetter<boolean>) {
     resolve?.(allow)
   }
 
-  onBeforeRouteLeave(() => {
+  const confirmNavigation = () => {
     if (!hasUnsavedChanges()) return true
 
     resolveNavigation?.(false)
@@ -22,6 +22,11 @@ export function useAdminUnsavedChanges(dirty: MaybeRefOrGetter<boolean>) {
     return new Promise<boolean>((resolve) => {
       resolveNavigation = resolve
     })
+  }
+  onBeforeRouteLeave(confirmNavigation)
+  onBeforeRouteUpdate((to, from) => {
+    if (JSON.stringify(to.params) !== JSON.stringify(from.params)) return confirmNavigation()
+    return true
   })
 
   const handleBeforeUnload = (event: BeforeUnloadEvent) => {
