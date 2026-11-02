@@ -11,5 +11,6 @@ return [
         'lc:scheduler:run-once' => app\command\SchedulerRunOnce::class,
         'lc:system:upgrade' => app\command\SystemUpgrade::class,
         'lc:release:build' => app\command\BuildRelease::class,
+        'lc:guest:prune' => app\command\GuestPrune::class,
     ],
 ];

@@ -8,6 +8,7 @@ use app\modules\Platform\Auth\Contract\UserRepository;
 use app\modules\Platform\Auth\Contract\TokenService;
 use app\modules\Platform\Captcha\Public\Captcha;
 use app\modules\Platform\Config\Public\Config as ConfigService;
+use app\modules\Platform\User\Public\UserStatus;
 
 class Session
 {
@@ -84,32 +85,38 @@ class Session
         return ['user' => $user, 'token' => $token];
     }
 
-    public function guest(string $ip): array
+    /**
+     * 访客登录（一次性服务端身份）：账号凭据完全随机，Token 本身承载连续性
+     * （客户端 tokenStore 持久化）。历史方案从 IP 派生邮箱并使用静态口令，
+     * 既可被知道出口 IP 者接管，也会让共享出口 IP 的不同访客串号。
+     * $clientIp 仅保留调用点签名（审计与后续风控用），绝不作为身份材料。
+     */
+    public function guest(string $clientIp): array
     {
-        $timekey = date('YmdH');
-        $account = strtoupper(substr(md5($ip . $timekey), 0, 9)) . '@g.com';
-        $password = '123456';
-        $username = 'GUEST' . strtoupper(substr(md5($account . $password . time()), 0, 5));
-        $number = $this->generateNumber();
+        $guestRoleId = (int) config('system.system_roles.guest');
 
-        $accountMap = $this->resolveAccountType($account);
+        for ($attempt = 0; $attempt < 2; $attempt++) {
+            try {
+                $user = $this->users->create(
+                    $this->generateNumber(),
+                    'GUEST' . strtoupper(substr(bin2hex(random_bytes(8)), 0, 5)),
+                    'g' . bin2hex(random_bytes(8)) . '@g.com',
+                    '',
+                    password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT),
+                    [$guestRoleId],
+                    UserStatus::ACTIVE
+                );
 
-        try {
-            return $this->loginUser->execute($account, $password);
-        } catch (ApiException $e) {
-            if ($e->getCode() !== ApiException::CODE_USER_NOT_FOUND) {
-                throw $e;
+                return ['user' => $user, 'token' => $this->tokens->sign(['uid' => $user->id()])];
+            } catch (Throwable $exception) {
+                // 随机用户名/编号撞唯一键的概率极低，重试一次后原样上抛。
+                if ($attempt === 1) {
+                    throw $exception;
+                }
             }
-            return $this->createUser(
-                $number,
-                $username,
-                $accountMap['email'],
-                $accountMap['phone'],
-                $password,
-                [config('system.system_roles.guest')],
-                0
-            );
         }
+
+        throw new RuntimeException('guest mint is unreachable');
     }
 
     public function sendCaptcha(string $email): array

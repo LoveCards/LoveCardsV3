@@ -416,13 +416,22 @@ namespace {
         $assertSame(0, UserRepository::$created['status']);
     });
 
-    $test('guest login reuses the hourly guest account', static function () use ($reset, $assertSame): void {
+    // 新 AUTH-BASELINE 基线：访客登录是独立的一次性身份，不复用小时账号；
+    // 访客角色账号的口令登录一律拒绝（HTTP 403，业务码 1101）。
+    $test('guest login mints a fresh identity instead of reusing an account', static function () use ($reset, $assertSame, $assertThrows): void {
         $reset();
         UserRepository::$byAccount = new AuthUser(12, 0, password_hash('123456', PASSWORD_DEFAULT), [3]);
         $login = new LoginUser(new TokenService(), new UserRepository());
         $result = (new Session(new TokenService(), new UserRepository(), $login))->guest('127.0.0.1');
-        $assertSame('signed-token-12', $result['token']);
-        $assertSame([], UserRepository::$created);
+        $assertSame('signed-token-20', $result['token']);
+        $assertSame([3], UserRepository::$created['roles_id']);
+        $assertThrows(
+            static function () use ($login): void {
+                $login->execute('guest@example.com', '123456');
+            },
+            ApiException::CODE_PERMISSION_DENIED,
+            '访客账号不支持密码登录'
+        );
     });
 
     $test('guest login creates the guest role when absent', static function () use ($reset, $assertSame): void {
