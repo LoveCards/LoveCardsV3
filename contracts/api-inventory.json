@@ -12101,7 +12101,9 @@
           "auth": "public"
         }
       },
-      "middleware": [],
+      "middleware": [
+        "LoginThrottle"
+      ],
       "contract": {
         "request": null,
         "response": {
@@ -12160,7 +12162,9 @@
           "auth": "public"
         }
       },
-      "middleware": [],
+      "middleware": [
+        "LoginThrottle"
+      ],
       "contract": {
         "request": {
           "validate": "app\\modules\\Platform\\Auth\\Transport\\Api\\Session",
