@@ -13,8 +13,10 @@ use app\modules\Operations\SystemLifecycle\Infrastructure\ReleaseArchiveLimits;
 use app\modules\Operations\SystemLifecycle\Infrastructure\SecureReleaseImporter;
 use app\shared\SystemPaths\SystemPaths;
 
+// 同 ReleaseBuilderBaseline：local-tools 覆盖存在才注入 config，缺失时回退系统默认配置。
 $opensslConfig = dirname(__DIR__, 5) . DIRECTORY_SEPARATOR . 'local-tools' . DIRECTORY_SEPARATOR . 'php82' . DIRECTORY_SEPARATOR . 'extras' . DIRECTORY_SEPARATOR . 'ssl' . DIRECTORY_SEPARATOR . 'openssl.cnf';
-if (is_file($opensslConfig)) putenv('OPENSSL_CONF=' . $opensslConfig);
+$opensslOptions = is_file($opensslConfig) ? ['config' => $opensslConfig] : [];
+if ($opensslOptions !== []) putenv('OPENSSL_CONF=' . $opensslConfig);
 
 $tests = [];
 $test = static function (string $name, callable $callback) use (&$tests): void { $tests[$name] = $callback; };
@@ -41,9 +43,9 @@ $cleanup = static function (string $directory) use (&$cleanup): void {
     @rmdir($directory);
 };
 
-$keys = openssl_pkey_new(['config' => $opensslConfig, 'private_key_type' => OPENSSL_KEYTYPE_RSA, 'private_key_bits' => 2048]);
+$keys = openssl_pkey_new($opensslOptions + ['private_key_type' => OPENSSL_KEYTYPE_RSA, 'private_key_bits' => 2048]);
 if ($keys === false) throw new RuntimeException('failed to generate RSA fixture');
-if (!openssl_pkey_export($keys, $privatePem, null, ['config' => $opensslConfig])) throw new RuntimeException('failed to export RSA fixture');
+if (!openssl_pkey_export($keys, $privatePem, null, $opensslOptions)) throw new RuntimeException('failed to export RSA fixture');
 $details = openssl_pkey_get_details($keys);
 $publicPem = (string) ($details['key'] ?? '');
 if ($publicPem === '') throw new RuntimeException('failed to export public RSA fixture');

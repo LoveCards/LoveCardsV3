@@ -13,9 +13,13 @@ use app\modules\Operations\SystemLifecycle\Infrastructure\SignedReleaseBuilder;
 use app\modules\Platform\Eventing\Public\HandlerRegistry;
 use app\shared\SystemPaths\SystemPaths;
 
+// 本地机器（宝塔等自编译 PHP）可放 local-tools/php82/extras/ssl/openssl.cnf 覆盖；
+// 不存在时必须回退系统默认配置——openssl 参数里带不存在的 config 路径会直接让
+// 密钥生成失败（CI 上此前因此必红），绝不能把无效路径塞进调用参数。
 $opensslConfig = dirname(__DIR__, 5) . DIRECTORY_SEPARATOR . 'local-tools' . DIRECTORY_SEPARATOR . 'php82'
     . DIRECTORY_SEPARATOR . 'extras' . DIRECTORY_SEPARATOR . 'ssl' . DIRECTORY_SEPARATOR . 'openssl.cnf';
-if (is_file($opensslConfig)) putenv('OPENSSL_CONF=' . $opensslConfig);
+$opensslOptions = is_file($opensslConfig) ? ['config' => $opensslConfig] : [];
+if ($opensslOptions !== []) putenv('OPENSSL_CONF=' . $opensslConfig);
 
 $tmp = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'lc-release-builder-' . bin2hex(random_bytes(6));
 $source = $tmp . DIRECTORY_SEPARATOR . 'source';
@@ -54,8 +58,8 @@ try {
     $write($source . '/public/storage/private.txt', "must-not-ship\n");
     $write($source . '/runtime/log/app.log', "must-not-ship\n");
 
-    $keys = openssl_pkey_new(['config' => $opensslConfig, 'private_key_type' => OPENSSL_KEYTYPE_RSA, 'private_key_bits' => 2048]);
-    if ($keys === false || !openssl_pkey_export($keys, $privatePem, null, ['config' => $opensslConfig])) {
+    $keys = openssl_pkey_new($opensslOptions + ['private_key_type' => OPENSSL_KEYTYPE_RSA, 'private_key_bits' => 2048]);
+    if ($keys === false || !openssl_pkey_export($keys, $privatePem, null, $opensslOptions)) {
         throw new RuntimeException('fixture key generation failed');
     }
     $details = openssl_pkey_get_details($keys);
