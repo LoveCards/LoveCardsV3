@@ -6,17 +6,18 @@ use think\facade\Request;
 use think\facade\Http;
 use think\facade\Cache;
 
-use app\system\utils\Export;
+use app\modules\Operations\Installer\Transport\System\Export;
 
-use app\api\service\System\VersionService;
-use app\common\service\Config as ConfigService;
-use app\api\service\Rbac\Roles;
-use app\system\utils\Common;
-use app\system\utils\Database;
-use app\system\utils\Environment;
-use app\system\utils\Rsa;
+use app\modules\Operations\Version\Service\VersionService;
+use app\modules\Platform\Config\Public\Config as ConfigService;
+use app\modules\Platform\Rbac\Service\Roles;
+use app\modules\Operations\Installer\Infrastructure\Common;
+use app\modules\Operations\Installer\Infrastructure\Database;
+use app\modules\Operations\Installer\Infrastructure\Environment;
+use app\modules\Operations\Installer\Infrastructure\Rsa;
 
-use app\common\infra\Jwt;
+use app\modules\Platform\Auth\Infrastructure\Jwt;
+use app\modules\Operations\SystemLifecycle\Application\SystemLifecycleCoordinator;
 
 class Install
 {
@@ -106,7 +107,11 @@ class Install
             }
             //导入数据库文件
             try {
-                Database::ImportSQLFile('../data.sql');
+                Database::ImportSQLFile(app()->getRootPath() . 'data.sql');
+                // 全新安装必须完成全部增量迁移；contract 阶段仍由运维流程显式审批。
+                app(SystemLifecycleCoordinator::class)->runUntilSettled(
+                    dirname(__DIR__, 3) . '/database/migrations'
+                );
                 return Export::Create(null, 200);
             } catch (\Throwable $e) {
                 $msg = $e->getMessage();

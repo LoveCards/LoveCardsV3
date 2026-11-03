@@ -1,5 +1,23 @@
 <?php
 
+$backendRoot = dirname(__DIR__);
+$persistent = \app\shared\SystemPaths\PersistentConfiguration::database($backendRoot);
+$pdoParams = defined('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY')
+    ? [constant('PDO::MYSQL_ATTR_USE_BUFFERED_QUERY') => true]
+    : [];
+
+// MySQL 8 兼容性：mysqlnd 只按 charset=utf8mb4 握手时，连接 collation 会被钉在
+// utf8mb4_general_ci，而 8.0 上以 DEFAULT CHARSET=utf8mb4 建的表实际是
+// utf8mb4_0900_ai_ci；UNION/派生表列与表列对比会抛 Illegal mix of collations。
+// 用 PHP_DATABASE_COLLATION 显式对齐连接 collation（MySQL 8 → utf8mb4_0900_ai_ci；
+// env('database.collation') 按 ThinkPHP 约定只读 PHP_ 前缀）；
+// MySQL 5.7 没有 0900 系列，留空保持默认，行为不变。
+$connectionCollation = (string) env('database.collation', $persistent['collation'] ?? '');
+if ($connectionCollation !== '' && preg_match('/^[A-Za-z0-9_]+$/', $connectionCollation)
+    && defined('PDO::MYSQL_ATTR_INIT_COMMAND')) {
+    $pdoParams[constant('PDO::MYSQL_ATTR_INIT_COMMAND')] = 'SET collation_connection = ' . $connectionCollation;
+}
+
 return [
     // 默认使用的数据库连接配置
     'default'         => env('database.driver', 'mysql'),
@@ -24,19 +42,19 @@ return [
             // 数据库类型
             'type'            => env('database.type', 'mysql'),
             // 服务器地址
-            'hostname'        => env('database.hostname', 'localhost'),
+            'hostname'        => env('database.hostname', $persistent['hostname'] ?? 'localhost'),
             // 数据库名
-            'database'        => env('database.database', 'testtest'),
+            'database'        => env('database.database', $persistent['database'] ?? 'testtest'),
             // 用户名
-            'username'        => env('database.username', 'testtest'),
+            'username'        => env('database.username', $persistent['username'] ?? 'testtest'),
             // 密码
-            'password'        => env('database.password', 'testtest'),
+            'password'        => env('database.password', $persistent['password'] ?? ''),
             // 端口
-            'hostport'        => env('database.hostport', '3306'),
+            'hostport'        => env('database.hostport', $persistent['hostport'] ?? '3306'),
             // 数据库连接参数
-            'params'          => [],
+            'params'          => $pdoParams,
             // 数据库编码默认采用utf8
-            'charset'         => env('database.charset', 'utf8mb4'),
+            'charset'         => env('database.charset', $persistent['charset'] ?? 'utf8mb4'),
             // 数据库表前缀
             'prefix'          => env('database.prefix', ''),
 

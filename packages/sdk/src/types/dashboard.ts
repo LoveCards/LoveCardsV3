@@ -1,12 +1,31 @@
+export interface DashboardNotice {
+  title: string
+  url: string
+  content: string
+  date: string
+}
+
 export interface DashboardData {
   count: {
-    cards: number
-    comments: number
-    good: number
+    cards?: number
+    comments?: number
+    good?: number
   }
   chart: ChartDataset[]
   ver: VersionInfo
-  notice: any[]
+  notice: DashboardNotice[]
+  workbench: {
+    tasks: DashboardTask[]
+  }
+}
+
+export interface DashboardTask {
+  key: string
+  label: string
+  description: string
+  count: number
+  action_url: string
+  severity: 'info' | 'warning' | 'error'
 }
 
 export interface ChartDataset {

@@ -1,9 +1,10 @@
 import { defineStore } from 'pinia';
 import { useApi } from '~/lib/api';
+import type { Tag } from '@lovecards/sdk';
 
 export const useTagsStore = defineStore('tags', {
     state: () => ({
-        tags: null as any[] | null,
+        tags: null as Tag[] | null,
         loading: false,
         error: null as string | null,
     }),

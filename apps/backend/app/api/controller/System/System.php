@@ -3,23 +3,23 @@
 namespace app\api\controller\System;
 
 use think\facade\Request;
-use app\common\infra\CacheManager;
+use app\shared\Infrastructure\Cache\CacheManager;
 
-use app\api\service\System\VersionService;
-use app\common\service\Config as ConfigService;
+use app\modules\Operations\Version\Service\VersionService;
 
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
+use app\modules\Operations\Version\Transport\Api\SystemResource;
 
 class System extends BaseController
 {
     public function update()
     {
-        return ApiResponse::createOk([
+        return ApiResponse::createOk(SystemResource::make([
             'ver' => VersionService::public(),
             'latest' => $this->getLatestVer(),
             'verlog' => $this->getUpdata()
-        ]);
+        ]));
     }
 
     private function getUpdata()
@@ -33,13 +33,13 @@ class System extends BaseController
                     'header' => "User-Agent: PHP\r\n",
                 ],
                 'ssl' => [
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
+                    'verify_peer' => true,
+                    'verify_peer_name' => true,
                 ],
             ]);
 
             $result = @file_get_contents($url, false, $ctx);
-            return $result === false ? [] : $result;
+            return $result === false ? '' : $result;
         }, CacheManager::TTL_LONG * 3);
     }
 
@@ -54,13 +54,15 @@ class System extends BaseController
                     'header' => "User-Agent: PHP\r\n",
                 ],
                 'ssl' => [
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
+                    'verify_peer' => true,
+                    'verify_peer_name' => true,
                 ],
             ]);
 
             $result = @file_get_contents($url, false, $ctx);
-            return $result === false ? [] : json_decode($result, true);
+            if ($result === false) return [];
+            $decoded = json_decode($result, true);
+            return is_array($decoded) ? $decoded : [];
         }, CacheManager::TTL_LONG * 3);
     }
 }

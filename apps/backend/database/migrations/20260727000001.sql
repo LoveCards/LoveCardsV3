@@ -1570,7 +1570,8 @@ DROP PROCEDURE IF EXISTS `mig_migrate_likes`;
 -- Root (id=1): all capabilities from getAllCapabilities()
 INSERT INTO `role_capabilities` (`role_id`, `capability`)
 SELECT 1, c.capability FROM (
-  SELECT 'cards.read' AS capability UNION SELECT 'cards.read.all' UNION SELECT 'cards.create' UNION SELECT 'cards.update' UNION SELECT 'cards.update.all' UNION SELECT 'cards.delete' UNION SELECT 'cards.delete.all' UNION SELECT 'cards.approve' UNION SELECT 'cards.approve.all' UNION SELECT 'cards.pin' UNION SELECT 'cards.pin.all'
+  SELECT 'admin.access' AS capability
+  UNION SELECT 'cards.read' UNION SELECT 'cards.read.all' UNION SELECT 'cards.create' UNION SELECT 'cards.update' UNION SELECT 'cards.update.all' UNION SELECT 'cards.delete' UNION SELECT 'cards.delete.all' UNION SELECT 'cards.approve' UNION SELECT 'cards.approve.all' UNION SELECT 'cards.pin' UNION SELECT 'cards.pin.all'
   UNION SELECT 'comments.read' UNION SELECT 'comments.read.all' UNION SELECT 'comments.create' UNION SELECT 'comments.update' UNION SELECT 'comments.update.all' UNION SELECT 'comments.delete' UNION SELECT 'comments.delete.all'
   UNION SELECT 'tags.read' UNION SELECT 'tags.read.all' UNION SELECT 'tags.create' UNION SELECT 'tags.update' UNION SELECT 'tags.update.all' UNION SELECT 'tags.delete' UNION SELECT 'tags.delete.all'
   UNION SELECT 'users.read' UNION SELECT 'users.read.all' UNION SELECT 'users.update' UNION SELECT 'users.update.all' UNION SELECT 'users.delete' UNION SELECT 'users.delete.all'
@@ -1582,7 +1583,7 @@ SELECT 1, c.capability FROM (
   UNION SELECT 'storage.read' UNION SELECT 'storage.install' UNION SELECT 'storage.test'
   UNION SELECT 'sender.read' UNION SELECT 'sender.install' UNION SELECT 'sender.test'
   UNION SELECT 'captcha.read' UNION SELECT 'captcha.install'
-  UNION SELECT 'theme.read' UNION SELECT 'theme.update' UNION SELECT 'theme.upload' UNION SELECT 'theme.delete' UNION SELECT 'theme.freeze' UNION SELECT 'theme.activate'
+  UNION SELECT 'theme.read' UNION SELECT 'theme.update' UNION SELECT 'theme.upload' UNION SELECT 'theme.delete' UNION SELECT 'theme.activate'
   UNION SELECT 'dashboard.read'
   UNION SELECT 'system.update'
   UNION SELECT 'session.login' UNION SELECT 'session.register' UNION SELECT 'session.guest' UNION SELECT 'session.logout' UNION SELECT 'session.check' UNION SELECT 'session.captcha'
@@ -1593,7 +1594,8 @@ SELECT CONCAT('Root capabilities seeded: ', ROW_COUNT(), ' rows inserted') AS st
 -- Admin (id=2): subset of capabilities
 INSERT INTO `role_capabilities` (`role_id`, `capability`)
 SELECT 2, c.capability FROM (
-  SELECT 'cards.read' AS capability UNION SELECT 'cards.read.all' UNION SELECT 'cards.create' UNION SELECT 'cards.update.all' UNION SELECT 'cards.delete.all' UNION SELECT 'cards.approve' UNION SELECT 'cards.approve.all' UNION SELECT 'cards.pin.all'
+  SELECT 'admin.access' AS capability
+  UNION SELECT 'cards.read' UNION SELECT 'cards.read.all' UNION SELECT 'cards.create' UNION SELECT 'cards.update.all' UNION SELECT 'cards.delete.all' UNION SELECT 'cards.approve' UNION SELECT 'cards.approve.all' UNION SELECT 'cards.pin.all'
   UNION SELECT 'comments.read' UNION SELECT 'comments.read.all' UNION SELECT 'comments.update.all' UNION SELECT 'comments.delete.all'
   UNION SELECT 'tags.read' UNION SELECT 'tags.read.all' UNION SELECT 'tags.create' UNION SELECT 'tags.update.all' UNION SELECT 'tags.delete.all'
   UNION SELECT 'users.read' UNION SELECT 'users.read.all' UNION SELECT 'users.update.all' UNION SELECT 'users.delete.all'
@@ -1604,7 +1606,7 @@ SELECT 2, c.capability FROM (
   UNION SELECT 'storage.read' UNION SELECT 'storage.install' UNION SELECT 'storage.test'
   UNION SELECT 'sender.read' UNION SELECT 'sender.install' UNION SELECT 'sender.test'
   UNION SELECT 'captcha.read' UNION SELECT 'captcha.install'
-  UNION SELECT 'theme.read' UNION SELECT 'theme.update' UNION SELECT 'theme.upload' UNION SELECT 'theme.delete' UNION SELECT 'theme.freeze' UNION SELECT 'theme.activate'
+  UNION SELECT 'theme.read' UNION SELECT 'theme.update' UNION SELECT 'theme.upload' UNION SELECT 'theme.delete' UNION SELECT 'theme.activate'
   UNION SELECT 'permissions.read'
   UNION SELECT 'roles.read' UNION SELECT 'roles.create' UNION SELECT 'roles.update' UNION SELECT 'roles.delete' UNION SELECT 'roles.assign'
 ) c

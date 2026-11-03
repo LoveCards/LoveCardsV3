@@ -1,0 +1,93 @@
+<?php
+
+namespace app\modules\Platform\Captcha\Infrastructure\Driver;
+
+use app\modules\Platform\Captcha\Infrastructure\Driver\AbstractDriver;
+use app\modules\Platform\Sender\Public\Sender;
+use app\shared\Infrastructure\Cache\CacheManager;
+use app\modules\Platform\Captcha\Service\ChannelManager;
+
+class CodeDriver extends AbstractDriver
+{
+    public static function type(): string
+    {
+        return 'code';
+    }
+
+    public static function meta(): array
+    {
+        return [
+            'slug'   => 'smtp_code',
+            'type'   => 'code',
+            'name'   => '邮箱/短信验证码',
+            'icon'   => 'mdi-email-check-outline',
+            'fields' => [],
+        ];
+    }
+
+    public function generate(array $params): array
+    {
+        $to    = $params['to'];
+        $scene = $params['scene'] ?? 'default';
+        $ttl   = $params['ttl'] ?? 300;
+
+        $code = $this->createCode(6);
+        $key  = 'Captcha_' . $scene . '_' . $to;
+
+        if (CacheManager::has($key)) {
+            return ['status' => false, 'msg' => '验证码未过期'];
+        }
+
+        CacheManager::set('captcha', $key, $code, $ttl);
+
+        $channelType = ChannelManager::getCodeChannel();
+        $result = Sender::code($channelType, $to, $code, (int) ceil($ttl / 60));
+        if (!$result->success) {
+            CacheManager::delete($key);
+            return ['status' => false, 'msg' => $result->error ?: '验证码发送失败'];
+        }
+
+        return ['status' => true, 'msg' => '验证码已发送'];
+    }
+
+    public function verify(array $params): bool
+    {
+        return $this->verifyDetailed($params) === 'valid';
+    }
+
+    /** @return 'valid'|'expired'|'invalid' */
+    public function verifyDetailed(array $params): string
+    {
+        $key   = $params['key'];
+        $code  = $params['code'];
+        $scene = $params['scene'] ?? 'default';
+
+        $cacheKey = 'Captcha_' . $scene . '_' . $key;
+        $cached   = CacheManager::get('captcha', $cacheKey);
+
+        if ($cached === null || $cached === false || $cached === '') return 'expired';
+
+        if (hash_equals(strtoupper((string) $cached), strtoupper((string) $code))) {
+            CacheManager::delete($cacheKey);
+            return 'valid';
+        }
+
+        return 'invalid';
+    }
+
+    public function delete(string $key, string $scene = 'default'): bool
+    {
+        CacheManager::delete('Captcha_' . $scene . '_' . $key);
+        return true;
+    }
+
+    private function createCode(int $length): string
+    {
+        $chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+        $code  = '';
+        for ($i = 0; $i < $length; $i++) {
+            $code .= $chars[random_int(0, strlen($chars) - 1)];
+        }
+        return $code;
+    }
+}

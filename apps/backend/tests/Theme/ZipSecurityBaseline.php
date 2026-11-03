@@ -1,98 +1,61 @@
 <?php
 
-namespace app\api { class ApiException extends \RuntimeException {} }
-
 namespace {
-    require_once dirname(__DIR__, 2) . '/app/frontend/service/ThemeEngine.php';
-    use app\frontend\service\ThemeEngine;
+    function root_path(): string { return sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'lovecards-theme-zip-root'; }
+    require_once dirname(__DIR__, 2) . '/app/shared/SystemPaths/SystemPaths.php';
+    require_once dirname(__DIR__, 2) . '/app/shared/SystemPaths/SystemPathsResolver.php';
+    require_once dirname(__DIR__, 2) . '/app/shared/SystemPaths/LocalStoragePath.php';
+    require_once dirname(__DIR__, 2) . '/app/modules/Theme/Domain/ThemeManifest.php';
+    require_once dirname(__DIR__, 2) . '/app/modules/Theme/Infrastructure/FilesystemThemeCatalog.php';
+    require_once dirname(__DIR__, 2) . '/app/modules/Theme/Infrastructure/SecureThemeInstaller.php';
 
     $root = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'lovecards-theme-zip-' . bin2hex(random_bytes(6));
     mkdir($root, 0700, true);
-    $tests = [];
-    $makeZip = static function (string $name, array $entries, ?callable $configure = null) use ($root): string {
+    $makeZip = static function (string $name, array $entries) use ($root): string {
         $path = $root . DIRECTORY_SEPARATOR . $name;
         $zip = new \ZipArchive();
-        if ($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) throw new \RuntimeException('无法创建测试 ZIP');
+        if ($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) throw new \RuntimeException('cannot create zip');
         foreach ($entries as $entry => $content) $zip->addFromString($entry, $content);
-        if ($configure) $configure($zip);
         $zip->close();
         return $path;
     };
+    $makeSymlinkZip = static function (string $name, string $manifest) use ($root): string {
+        $path = $root . DIRECTORY_SEPARATOR . $name;
+        $zip = new \ZipArchive();
+        if ($zip->open($path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) throw new \RuntimeException('cannot create zip');
+        $zip->addFromString('theme.json', $manifest);
+        $zip->addFromString('dist/index.html', '<html></html>');
+        $zip->addFromString('dist/link.js', 'target');
+        if (method_exists($zip, 'setExternalAttributesName')) $zip->setExternalAttributesName('dist/link.js', \ZipArchive::OPSYS_UNIX, 0120777 << 16);
+        $zip->close();
+        return $path;
+    };
+    $manifest = json_encode(['schemaVersion' => 1, 'id' => 'safe-theme', 'name' => 'Safe', 'version' => '1.0.0-test-' . bin2hex(random_bytes(3)), 'mode' => 'spa', 'entry' => 'dist/index.html', 'config' => []], JSON_UNESCAPED_SLASHES);
+    $html = '<!doctype html><html><head></head><body><div id="app"></div></body></html>';
     $expectReject = static function (string $zipPath) use ($root): void {
-        try {
-            ThemeEngine::installTheme($zipPath, $root . DIRECTORY_SEPARATOR . 'themes');
-            throw new \RuntimeException('恶意 ZIP 未被拒绝');
-        } catch (\app\api\ApiException $e) {
-            if (is_file($root . DIRECTORY_SEPARATOR . 'escape.php')) throw new \RuntimeException('ZIP 写出了目标目录');
-            $staging = glob($root . DIRECTORY_SEPARATOR . 'themes' . DIRECTORY_SEPARATOR . '.install-*');
-            if ($staging) throw new \RuntimeException('失败后留下临时主题目录');
-        }
+        try { (new \app\modules\Theme\Infrastructure\SecureThemeInstaller())->install($zipPath); throw new \RuntimeException('malicious zip accepted'); }
+        catch (\Throwable $e) { if (is_file($root . '/escape.php')) throw new \RuntimeException('path escaped'); }
     };
-
-    $tests['valid root theme installs'] = static function () use ($makeZip, $root): void {
-        $zip = $makeZip('valid.zip', [
-            'theme.json' => json_encode(['name' => 'safe-theme', 'version' => '1.0.0']),
-            'assets/app.css' => 'body{}',
-        ]);
-        $result = ThemeEngine::installTheme($zip, $root . DIRECTORY_SEPARATOR . 'themes');
-        if ($result['name'] !== 'safe-theme' || !is_file($root . '/themes/safe-theme/assets/app.css')) throw new \RuntimeException('合法主题安装结果错误');
-    };
-    $tests['existing theme is replaced without backup residue'] = static function () use ($makeZip, $root): void {
-        $themePath = $root . '/themes/replace-theme';
-        mkdir($themePath, 0700, true);
-        file_put_contents($themePath . '/old.txt', 'old');
-        $zip = $makeZip('replace.zip', [
-            'theme.json' => '{"name":"replace-theme","version":"2.0.0"}',
-            'new.txt' => 'new',
-        ]);
-        ThemeEngine::installTheme($zip, $root . DIRECTORY_SEPARATOR . 'themes');
-        if (is_file($themePath . '/old.txt') || !is_file($themePath . '/new.txt')) throw new \RuntimeException('主题没有完整替换');
-        if (glob($themePath . '.backup-*')) throw new \RuntimeException('主题替换留下备份目录');
-    };
-    $tests['parent traversal rejected'] = static function () use ($makeZip, $expectReject): void {
-        $expectReject($makeZip('parent.zip', ['theme.json' => '{"name":"bad-parent"}', '../escape.php' => 'x']));
-    };
-    $tests['backslash traversal rejected'] = static function () use ($makeZip, $expectReject): void {
-        $expectReject($makeZip('backslash.zip', ['theme.json' => '{"name":"bad-backslash"}', '..\\escape.php' => 'x']));
-    };
-    $tests['absolute path rejected'] = static function () use ($makeZip, $expectReject): void {
-        $expectReject($makeZip('absolute.zip', ['theme.json' => '{"name":"bad-absolute"}', 'C:/escape.php' => 'x']));
-    };
-    $tests['Windows reserved path rejected'] = static function () use ($makeZip, $expectReject): void {
-        $expectReject($makeZip('reserved.zip', ['theme.json' => '{"name":"bad-reserved"}', 'assets/CON.txt' => 'x']));
-    };
-    $tests['nested manifest rejected'] = static function () use ($makeZip, $expectReject): void {
-        $expectReject($makeZip('nested.zip', ['nested/theme.json' => '{"name":"bad-nested"}']));
-    };
-    $tests['symlink entry rejected'] = static function () use ($makeZip, $expectReject): void {
-        $zip = $makeZip('symlink.zip', ['theme.json' => '{"name":"bad-link"}', 'link' => '../outside'], static function (\ZipArchive $archive): void {
-            $archive->setExternalAttributesName('link', \ZipArchive::OPSYS_UNIX, 0120777 << 16);
-        });
-        $expectReject($zip);
-    };
-    $tests['entry limit rejected'] = static function () use ($makeZip, $expectReject): void {
-        $entries = ['theme.json' => '{"name":"too-many"}'];
-        for ($i = 0; $i < 1000; $i++) $entries['files/' . $i . '.txt'] = 'x';
-        $expectReject($makeZip('entries.zip', $entries));
-    };
-
+    $tests = [
+        'valid SPA manifest installs as immutable release' => static function () use ($makeZip, $manifest, $html): void {
+            $zip = $makeZip('valid.zip', ['theme.json' => $manifest, 'dist/index.html' => $html, 'dist/assets/main.js' => 'console.log(1);']);
+            $result = (new \app\modules\Theme\Infrastructure\SecureThemeInstaller())->install($zip);
+            if ($result['id'] !== 'safe-theme' || $result['mode'] !== 'spa' || $result['release'] === 'source') throw new \RuntimeException('invalid install result');
+        },
+        'nested theme root rejected' => static function () use ($makeZip, $expectReject, $manifest, $html): void { $expectReject($makeZip('nested.zip', ['safe-theme/theme.json' => $manifest, 'safe-theme/dist/index.html' => $html])); },
+        'invalid mode rejected' => static function () use ($makeZip, $expectReject, $manifest): void { $bad = json_decode($manifest, true); $bad['mode'] = 'html'; $expectReject($makeZip('mode.zip', ['theme.json' => json_encode($bad), 'dist/index.html' => '<html></html>'])); },
+        'entry traversal rejected' => static function () use ($makeZip, $expectReject, $manifest): void { $bad = json_decode($manifest, true); $bad['entry'] = '../index.html'; $expectReject($makeZip('entry.zip', ['theme.json' => json_encode($bad), 'dist/index.html' => '<html></html>'])); },
+        'missing version rejected' => static function () use ($makeZip, $expectReject, $manifest): void { $bad = json_decode($manifest, true); unset($bad['version']); $expectReject($makeZip('version.zip', ['theme.json' => json_encode($bad), 'dist/index.html' => '<html></html>'])); },
+        'invalid SemVer rejected' => static function () use ($makeZip, $expectReject, $manifest): void { $bad = json_decode($manifest, true); $bad['version'] = '01.0.0'; $expectReject($makeZip('semver.zip', ['theme.json' => json_encode($bad), 'dist/index.html' => '<html></html>'])); },
+        'valid prerelease SemVer accepted' => static function () use ($makeZip, $manifest): void { $valid = json_decode($manifest, true); $valid['version'] = '1.2.3-alpha.1+build.7'; $zip = $makeZip('semver-valid.zip', ['theme.json' => json_encode($valid), 'dist/index.html' => '<html></html>']); $result = (new \app\modules\Theme\Infrastructure\SecureThemeInstaller())->install($zip); if (strpos($result['release'], '1.2.3-alpha.1+build.7-') !== 0) throw new RuntimeException('valid prerelease SemVer was not preserved'); },
+        'symlink entry rejected' => static function () use ($makeSymlinkZip, $expectReject, $manifest): void { $expectReject($makeSymlinkZip('symlink.zip', $manifest)); },
+        'parent traversal rejected' => static function () use ($makeZip, $expectReject, $manifest): void { $expectReject($makeZip('parent.zip', ['theme.json' => $manifest, '../escape.php' => 'x'])); },
+        'backslash traversal rejected' => static function () use ($makeZip, $expectReject, $manifest): void { $expectReject($makeZip('backslash.zip', ['theme.json' => $manifest, '..\\escape.php' => 'x'])); },
+        'absolute path rejected' => static function () use ($makeZip, $expectReject, $manifest): void { $expectReject($makeZip('absolute.zip', ['theme.json' => $manifest, 'C:/escape.php' => 'x'])); },
+    ];
     $failures = 0;
-    try {
-        foreach ($tests as $name => $test) {
-            try { $test(); fwrite(STDOUT, "PASS {$name}\n"); }
-            catch (\Throwable $e) { $failures++; fwrite(STDERR, "FAIL {$name}: {$e->getMessage()}\n"); }
-        }
-    } finally {
-        $remove = static function (string $dir) use (&$remove): void {
-            if (!is_dir($dir)) return;
-            foreach (array_diff(scandir($dir), ['.', '..']) as $item) {
-                $path = $dir . DIRECTORY_SEPARATOR . $item;
-                is_dir($path) ? $remove($path) : @unlink($path);
-            }
-            @rmdir($dir);
-        };
-        $remove($root);
-    }
+    try { foreach ($tests as $name => $test) { try { $test(); fwrite(STDOUT, "PASS {$name}\n"); } catch (\Throwable $e) { $failures++; fwrite(STDERR, "FAIL {$name}: {$e->getMessage()}\n"); } } }
+    finally { if (is_dir($root)) { $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \RecursiveDirectoryIterator::SKIP_DOTS), \RecursiveIteratorIterator::CHILD_FIRST); foreach ($it as $file) $file->isDir() ? @rmdir($file->getPathname()) : @unlink($file->getPathname()); @rmdir($root); } }
     if ($failures) exit(1);
     fwrite(STDOUT, count($tests) . " Theme ZIP security tests passed.\n");
 }

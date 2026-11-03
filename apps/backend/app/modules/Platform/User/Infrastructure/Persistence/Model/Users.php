@@ -1,0 +1,54 @@
+<?php
+
+namespace app\modules\Platform\User\Infrastructure\Persistence\Model;
+
+use think\Model;
+use think\model\concern\SoftDelete;
+
+class Users extends Model
+{
+    //开启软删除
+    use SoftDelete;
+    protected $deleteTime = 'deleted_at';
+
+    //自动时间戳
+    protected $autoWriteTimestamp = 'timestamp';
+    protected $createTime = 'created_at';
+    protected $updateTime = 'updated_at';
+
+    // 设置字段信息
+    protected $schema = [
+        'id' => 'int',
+        'uid' => 'string',
+        'number' => 'string',
+        'avatar' => 'string',
+        'email' => 'string',
+        'phone' => 'string',
+        'username' => 'string',
+        'bio' => 'string',
+        'location' => 'string',
+        'gender' => 'string',
+        'birth_date' => 'date',
+        'password' => 'string',
+        'status' => 'int',
+        'roles_id' => 'json',
+        'security_version' => 'int',
+        'credentials_changed_at' => 'timestamp',
+        'created_at' => 'timestamp',
+        'updated_at' => 'timestamp',
+        'deleted_at' => 'timestamp',
+    ];
+
+    // 默认排除字段
+    protected static $withoutField = [
+        'deleted_at',
+        'created_at',
+        'updated_at'
+    ];
+
+    // 获取$withoutField
+    public static function getWithoutField()
+    {
+        return self::$withoutField;
+    }
+}

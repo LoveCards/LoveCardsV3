@@ -1,19 +1,27 @@
 import { defineStore } from 'pinia';
 import { useApi, isApiError } from '~/lib/api';
+import { canAccessPath } from '~/utils/access';
+import type { Grant, RoleInfo, User } from '@lovecards/sdk';
+
+let userLoadPromise: Promise<User> | null = null;
 
 export const useUserStore = defineStore('user', {
     state: () => ({
-        userInfo: null as any,
-        permissions: [] as string[],
-        roles: [] as { id: number; name: string; slug: string }[],
+        userInfo: null as User | null,
+        grants: [] as Grant[],
+        roles: [] as RoleInfo[],
         loading: false,
         error: null as string | null,
     }),
     actions: {
         async init() {
-            if (this.userInfo === null && !this.loading) {
-                await this.getUserInfo();
+            if (this.userInfo) return this.userInfo;
+            if (!userLoadPromise) {
+                userLoadPromise = this.getUserInfo().finally(() => {
+                    userLoadPromise = null;
+                });
             }
+            return userLoadPromise;
         },
         async getUserInfo() {
             this.loading = true;
@@ -22,7 +30,7 @@ export const useUserStore = defineStore('user', {
                 const client = useApi();
                 const user = await client.users.me();
                 this.userInfo = user;
-                this.permissions = user?.capabilities || [];
+                this.grants = user.grants ?? [];
                 this.roles = user?.roles || [];
                 return user;
             } catch (error) {
@@ -34,14 +42,22 @@ export const useUserStore = defineStore('user', {
                 this.loading = false;
             }
         },
-        hasPermission(routeName: string): boolean {
-            return this.permissions.includes(routeName);
+        hasGrant(capability: string, scope: Grant['scope']): boolean {
+            return this.grants.some((grant) => grant.capability === capability && grant.scope === scope);
+        },
+        canAccessPath(path: string): boolean {
+            return canAccessPath(path, this.grants);
         },
         hasAdminAccess(): boolean {
-            return this.roles.some(r => r.slug === 'root' || r.slug === 'admin');
+            return this.hasGrant('admin.access', 'global');
         },
-        isRoot(): boolean {
-            return this.roles.some(r => r.slug === 'root');
+        reset(): void {
+            userLoadPromise = null;
+            this.userInfo = null;
+            this.grants = [];
+            this.roles = [];
+            this.error = null;
+            this.loading = false;
         }
     },
 });

@@ -36,10 +36,11 @@ export async function test(name, fn) {
     console.log(`  ✅ ${name}`)
     return result
   } catch (e) {
-    if (e === 'SKIP') {
+    if (e === 'SKIP' || (e && typeof e === 'object' && e.status === 'SKIP')) {
       skipped++
-      results.push({ phase: currentPhase, name, status: 'SKIP', detail: '', result: null })
-      console.log(`  ⏭️  ${name} (skipped)`)
+      const detail = e === 'SKIP' ? '未提供跳过原因' : String(e.detail || '未提供跳过原因')
+      results.push({ phase: currentPhase, name, status: 'SKIP', detail, result: null })
+      console.log(`  ⏭️  ${name} (skipped: ${detail})`)
       return null
     }
     failed++

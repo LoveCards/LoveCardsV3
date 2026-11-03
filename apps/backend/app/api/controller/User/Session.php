@@ -2,17 +2,12 @@
 
 namespace app\api\controller\User;
 
-use think\facade\Request;
-use think\exception\ValidateException;
-
-use app\api\application\Auth\LoginUser;
-use app\api\application\Auth\RegisterUser;
-use app\api\service\User\Session as SessionService;
-use app\common\service\Config as ConfigService;
-use app\api\validate\Users as UsersValidate;
-
-use app\api\ApiResponse;
+use app\api\ApiException;
 use app\api\controller\BaseController;
+use app\modules\Platform\Auth\Application\LoginUser;
+use app\modules\Platform\Auth\Application\RegisterUser;
+use app\modules\Platform\Auth\Application\Session as SessionService;
+use app\modules\Platform\Auth\Application\UserSessions;
 
 class Session extends BaseController
 {
@@ -20,11 +15,7 @@ class Session extends BaseController
     private $loginUser;
     private $registerUser;
 
-    public function __construct(
-        SessionService $session,
-        LoginUser $loginUser,
-        RegisterUser $registerUser
-    )
+    public function __construct(SessionService $session, LoginUser $loginUser, RegisterUser $registerUser)
     {
         parent::__construct();
         $this->session = $session;
@@ -34,122 +25,95 @@ class Session extends BaseController
 
     public function check()
     {
-        return ApiResponse::createOk([]);
+        return $this->respond(request()->auth);
+    }
+
+    public function policy()
+    {
+        return $this->respond($this->session->policy());
     }
 
     public function login()
     {
-        $account = Request::param('account');
-        $password = Request::param('password');
-
-        if (empty($account) || empty($password)) {
-            return ApiResponse::createBadRequest('参数错误', [
-                'account' => empty($account) ? '账号不能为空' : null,
-                'password' => empty($password) ? '密码不能为空' : null,
-            ]);
-        }
-
-        $accountMap = $this->session->resolveAccountType($account);
-
-        try {
-            validate(UsersValidate::class)
-                ->scene('login')
-                ->remove(['email', 'number'])
-                ->check([
-                    'phone' => $accountMap['phone'],
-                    'email' => $accountMap['email'],
-                    'password' => $password,
-                ]);
-        } catch (ValidateException $e) {
-            return ApiResponse::createUnauthorized('登录失败', [$e->getError()]);
-        }
-
-        $result = $this->loginUser->execute($account, $password);
-
-        return ApiResponse::createOk(['token' => $result['token']]);
+        $params = $this->validated();
+        $result = $this->loginUser->execute($params['account'], $params['password']);
+        return $this->respond($result);
     }
 
     public function register()
     {
-        $account = Request::param('account');
-        $password = Request::param('password');
-        $code = Request::param('code');
-
-        if (empty($account) || empty($password)) {
-            return ApiResponse::createBadRequest('参数错误', [
-                'account' => empty($account) ? '账号不能为空' : null,
-                'password' => empty($password) ? '密码不能为空' : null,
-            ]);
+        $params = $this->validated();
+        if ($this->session->humanVerificationEnabled() && !$this->session->verifyHumanVerification($params)) {
+            throw ApiException::unauthorized('人机验证失败');
+        }
+        $account = $params['account'];
+        if ($this->session->registrationEmailVerificationRequired() && !$this->session->captchaEnabled()) {
+            throw ApiException::badRequest('注册验证码服务未启用', ApiException::CODE_PARAM_INVALID);
+        }
+        if ($this->session->registrationEmailVerificationRequired() && !$this->session->verifyCaptcha($account, $params['code'] ?? '')) {
+            throw ApiException::unauthorized('注册失败', ['验证码错误']);
         }
 
-        if (ConfigService::get('user.captcha')) {
-            if (!$this->session->verifyCaptcha($account, $code)) {
-                return ApiResponse::createUnauthorized('注册失败', ['验证码错误']);
-            }
-        }
-
-        $username = 'USER' . strtoupper(substr(md5($account . $password . time()), 0, 5));
-        $number = $this->session->generateNumber();
         $accountMap = $this->session->resolveAccountType($account);
-
-        try {
-            validate(UsersValidate::class)
-                ->scene('register')
-                ->check([
-                    'phone' => $accountMap['phone'],
-                    'email' => $accountMap['email'],
-                    'username' => $username,
-                    'password' => $password,
-                ]);
-        } catch (ValidateException $e) {
-            return ApiResponse::createUnauthorized('注册失败', [$e->getError()]);
-        }
-
+        $number = $accountMap['number'] !== '' ? $accountMap['number'] : $this->session->generateNumber();
+        $username = $accountMap['number'] !== ''
+            ? $account
+            : 'USER' . strtoupper(substr(md5($account . $params['password'] . time()), 0, 5));
         $result = $this->registerUser->execute(
             $number,
             $username,
             $accountMap['email'],
             $accountMap['phone'],
-            $password
+            $params['password']
         );
-
         $this->session->deleteCaptcha($account);
-
-        return ApiResponse::createOk(['token' => $result['token']]);
+        return $this->respond($result);
     }
 
     public function guest()
     {
-        if (!ConfigService::get('core.visitor_mode')) {
-            return ApiResponse::createUnauthorized('该站点未开启访客模式');
+        if (!$this->session->visitorModeEnabled()) {
+            throw ApiException::unauthorized('该站点未开启访客模式');
         }
-
-        $result = $this->session->guest(request()->ip());
-
-        return ApiResponse::createOk(['token' => $result['token']]);
+        return $this->respond($this->session->guest(request()->ip()));
     }
 
     public function captcha()
     {
-        $params = $this->param(
-            UsersValidate::class,
-            UsersValidate::$all_scene['captcha'],
-            request()->param()
-        );
-
+        $params = $this->validated();
         try {
             $this->session->sendCaptcha($params['account']);
         } catch (\RuntimeException $e) {
-            return ApiResponse::createBadRequest($e->getMessage());
-        } catch (\app\api\ApiException $e) {
-            return ApiResponse::createBadRequest($e->getMessage());
+            throw ApiException::badRequest($e->getMessage());
         }
-
-        return ApiResponse::createNoContent();
+        return $this->respond();
     }
 
     public function logout()
     {
-        return ApiResponse::createNoContent();
+        $token = request()->header('authorization') ?: request()->header('x-token', '');
+        $token = preg_replace('/^Bearer\s+/', '', (string) $token);
+        $this->session->logout($token);
+        return $this->respond();
+    }
+
+    public function listSessions()
+    {
+        $auth = request()->auth;
+        return $this->respond(app(UserSessions::class)->list((int) $auth->uid(), (string) $auth->sessionPublicId()));
+    }
+
+    public function revokeSession(string $sessionId)
+    {
+        $auth = request()->auth;
+        app(UserSessions::class)->revoke((int) $auth->uid(), (string) $auth->sessionPublicId(), $sessionId, request()->ip());
+        return $this->respond();
+    }
+
+    public function revokeOthers()
+    {
+        $auth = request()->auth;
+        app(UserSessions::class)->revokeOthers((int) $auth->uid(), (string) $auth->sessionPublicId(), request()->ip());
+        return $this->respond();
     }
 }

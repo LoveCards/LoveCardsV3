@@ -1,14 +1,9 @@
 <?php
 
 return [
-    'active_theme' => [
+    'public_origin' => [
         'type'        => 'string',
-        'default'     => 'default-ssr',
-        'description' => '当前活跃主题',
-    ],
-    'theme_config' => [
-        'type'        => 'json',
-        'default'     => '{}',
-        'description' => '当前主题配置值',
+        'default'     => '',
+        'description' => '站点公开访问地址',
     ],
 ];

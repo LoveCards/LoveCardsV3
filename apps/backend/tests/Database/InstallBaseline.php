@@ -48,7 +48,7 @@ echo "=== Install Baseline Test ===\n\n";
 // ────────────────────────────────────────────────────────────
 echo "--- 1. Database::Connect() ---\n";
 
-$dbPath = $baseDir . '/app/system/utils/Database.php';
+$dbPath = $baseDir . '/app/modules/Operations/Installer/Infrastructure/Database.php';
 if (!file_exists($dbPath)) {
     fail("Database.php not found at {$dbPath}");
     exit(1);
@@ -72,6 +72,12 @@ if (preg_match('/SELECT\s+1/i', $dbCode) || preg_match('/query\(\s*\'SELECT\b/',
     pass("Database::Connect() uses a generic connection check (SELECT 1 or similar)");
 } else {
     fail("Database::Connect() may not use a generic connection check");
+}
+
+if (preg_match("/'charset'\\s*=>\\s*'utf8mb4'/", $dbCode)) {
+    pass("Database::Connect() uses utf8mb4 for multilingual data");
+} else {
+    fail("Database::Connect() must use utf8mb4, not the legacy three-byte utf8 charset");
 }
 
 // ────────────────────────────────────────────────────────────
@@ -129,8 +135,8 @@ if ($installCode === false) {
     fail("Failed to read Install.php");
     exit(1);
 }
-$exportCode = (string) file_get_contents($baseDir . '/app/system/utils/Export.php');
-$jwtCode = (string) file_get_contents($baseDir . '/app/common/infra/Jwt.php');
+$exportCode = (string) file_get_contents($baseDir . '/app/modules/Operations/Installer/Transport/System/Export.php');
+$jwtCode = (string) file_get_contents($baseDir . '/app/modules/Platform/Auth/Infrastructure/Jwt.php');
 
 // Extract PostInstallLock() method body first to check lock order
 $postInstallLockBody = '';
@@ -252,10 +258,10 @@ if (file_exists($baseDir . '/lock.txt')) {
 } else {
     pass("Release source does not ship an install lock");
 }
-if (strpos($installCode, 'use app\\common\\infra\\Jwt;') !== false) {
+if (strpos($installCode, 'use app\\modules\\Platform\\Auth\\Infrastructure\\Jwt;') !== false) {
     pass("Installer uses the current JWT implementation");
 } else {
-    fail("Installer references a missing legacy JWT class");
+    fail("Installer does not reference the current JWT implementation");
 }
 if (strpos($jwtCode, '[$jwt_config[\'alg\']]') === false) {
     pass("JWT decode calls match the JWT 7 method signature");
@@ -266,8 +272,8 @@ if (strpos($jwtCode, '[$jwt_config[\'alg\']]') === false) {
 $composer = json_decode((string) file_get_contents($baseDir . '/composer.json'), true);
 $systemConfig = (string) file_get_contents($baseDir . '/config/system.php');
 $installCode = (string) file_get_contents($baseDir . '/app/system/controller/Install.php');
-$versionCode = (string) file_get_contents($baseDir . '/app/api/service/System/VersionService.php');
-$environmentCode = (string) file_get_contents($baseDir . '/app/system/utils/Environment.php');
+$versionCode = (string) file_get_contents($baseDir . '/app/modules/Operations/Version/Service/VersionService.php');
+$environmentCode = (string) file_get_contents($baseDir . '/app/modules/Operations/Installer/Infrastructure/Environment.php');
 
 if (($composer['require']['php'] ?? null) === '>=8.1 <9.0') {
     pass('Composer requires PHP >=8.1 <9.0');
@@ -284,6 +290,24 @@ if (strpos($environmentCode, 'version_compare') !== false) {
     pass('Installer compares PHP versions with version_compare');
 } else {
     fail('Installer does not use version_compare');
+}
+
+// ────────────────────────────────────────────────────────────
+//  9. Passwordless local MySQL fallback matches .env.example
+// ────────────────────────────────────────────────────────────
+echo "\n--- 9. Database environment fallback ---\n";
+
+$databaseConfig = (string) file_get_contents($baseDir . '/config/database.php');
+$envExample = (string) file_get_contents($baseDir . '/.env.example');
+if (preg_match('/\'password\'\s*=>\s*env\(\'database\.password\',\s*\$persistent\[\'password\'\]\s*\?\?\s*\'\'\)/', $databaseConfig)) {
+    pass('Database config prefers environment, then persistent state, while permitting passwordless local MySQL');
+} else {
+    fail('Database config must preserve environment > persistent > passwordless fallback precedence');
+}
+if (preg_match('/^PASSWORD\\s*=\\s*$/m', $envExample)) {
+    pass('.env.example documents the passwordless local MySQL fallback');
+} else {
+    fail('.env.example database password contract changed unexpectedly');
 }
 
 // ────────────────────────────────────────────────────────────

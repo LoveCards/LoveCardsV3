@@ -1,0 +1,84 @@
+<?php
+
+namespace app\modules\Content\Comments\Transport\Api;
+
+use think\Validate;
+
+class Comments extends Validate
+{
+    public static $all_scene = [
+        'selfCreate' => [
+            'normal' => [
+                'parent_id'
+            ],
+            'require' => [
+                'id',
+                'content',
+            ],
+            'nonNull' => false,
+            'toNull' => [
+                'data'
+            ],
+        ],
+        'moderate' => [
+            'normal' => ['id', 'content', 'status'],
+            'require' => [], 'nonNull' => false, 'toNull' => ['data'],
+        ],
+        'pin' => [
+            'normal' => ['id'], 'require' => ['comment_id'], 'nonNull' => false, 'toNull' => [],
+        ],
+        'unpin' => [
+            'normal' => ['id'], 'require' => [], 'nonNull' => false, 'toNull' => [],
+        ],
+        'pinOwn' => [
+            'normal' => ['id'], 'require' => ['comment_id'], 'nonNull' => false, 'toNull' => [],
+        ],
+        'create' => [
+            'normal' => ['parent_id'], 'require' => ['id', 'content'], 'nonNull' => false, 'toNull' => ['data'],
+        ],
+    ];
+    public static $scene_message = [
+        'id.require' => '项目ID不能为空',
+        'aid.require' => '应用ID不能为空',
+        'user_id.require' => '用户ID不能为空',
+        'content.require' => '评论不能为空',
+    ];
+
+    protected $rule =   [
+        'id' => 'number',
+        'aid' => 'number',
+        'pid' => 'number',
+        'parent_id' => 'number',
+        'comment_id' => 'number',
+        'status' => 'number|in:0,1,2,3',
+        'user_id' => 'number',
+        'data' => 'arrayJson',
+        'content' => 'max:140',
+        'good' => 'number',
+        'post_ip' => 'ip|max:39',
+    ];
+
+    protected $message  =   [
+
+        'id.number'     => 'ID格式错误',
+
+        'aid.number'     => '应用ID格式错误',
+
+        'pid.number'     => '项目ID格式错误',
+
+        'parent_id.number'     => '父级ID格式错误',
+
+        'comment_id.number'  => '评论ID格式错误',
+
+        'status.number'     => '状态格式错误',
+
+        'user_id.number'     => '用户ID格式错误',
+
+        'data.arrayJson' => '自定义字段格式错误',
+
+        'good.number'     => '喜欢数格式错误',
+
+        'post_ip.ip' => 'IP地址格式不正确',
+        'post_ip.max' => 'IP地址过长',
+    ];
+}

@@ -2,10 +2,10 @@
 
 namespace app\api\controller\Rbac;
 
-use app\api\service\Rbac\RBAC;
+use app\modules\Platform\Rbac\Service\RBAC;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
-use think\facade\Request;
+use app\modules\Platform\Rbac\Transport\Api\PermissionResource;
 
 class Permissions extends BaseController
 {
@@ -14,12 +14,18 @@ class Permissions extends BaseController
      */
     public function all()
     {
-        $allCaps = RBAC::getAllCapabilities();
+        $allCaps = \app\modules\Platform\Rbac\Domain\CapabilityCatalog::canonical();
         $result = [];
-        foreach ($allCaps as $cap => $desc) {
-            $result[] = ['capability' => $cap, 'description' => $desc];
+        foreach ($allCaps as $cap => $_desc) {
+            foreach (\app\modules\Platform\Rbac\Domain\CapabilityCatalog::scopesFor($cap) as $scope) {
+                $result[] = [
+                    'capability' => $cap,
+                    'scope' => $scope,
+                    'description' => \app\modules\Platform\Rbac\Domain\CapabilityCatalog::descriptionFor($cap, $scope),
+                ];
+            }
         }
-        return ApiResponse::createOk($result);
+        return ApiResponse::createOk(PermissionResource::collection($result));
     }
 
     /**
@@ -27,13 +33,19 @@ class Permissions extends BaseController
      */
     public function list()
     {
-        $allCaps = RBAC::getAllCapabilities();
+        $allCaps = \app\modules\Platform\Rbac\Domain\CapabilityCatalog::canonical();
         $items = [];
-        foreach ($allCaps as $cap => $desc) {
-            $items[] = ['capability' => $cap, 'description' => $desc];
+        foreach ($allCaps as $cap => $_desc) {
+            foreach (\app\modules\Platform\Rbac\Domain\CapabilityCatalog::scopesFor($cap) as $scope) {
+                $items[] = [
+                    'capability' => $cap,
+                    'scope' => $scope,
+                    'description' => \app\modules\Platform\Rbac\Domain\CapabilityCatalog::descriptionFor($cap, $scope),
+                ];
+            }
         }
 
-        $params = $this->paramIndex(Request::param());
+        $params = $this->validated();
         $search = $params['search_value'] ?? '';
         $page = $params['page'] ?? 1;
         $listRows = $params['list_rows'] ?? 15;
@@ -51,11 +63,11 @@ class Permissions extends BaseController
         $page = min($page, $lastPage);
         $data = array_slice($items, ($page - 1) * $listRows, $listRows);
 
-        return ApiResponse::createOk([
+        return ApiResponse::createOk(PermissionResource::paginate([
             'current_page' => $page,
             'last_page'    => $lastPage,
             'data'         => $data,
             'total'        => $total,
-        ]);
+        ]));
     }
 }

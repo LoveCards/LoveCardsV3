@@ -1,0 +1,34 @@
+{
+  "name": "@lovecards/default-theme",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "package:theme": "npm run build && node scripts/package-theme.mjs",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:routes": "vitest run src/test/routes.smoke.test.jsx",
+    "test:a11y": "vitest run src/test/a11y.smoke.test.jsx",
+    "check": "npm run lint && npm run test && npm run build"
+  },
+  "dependencies": {
+    "@astryxdesign/core": "0.3.0",
+    "@astryxdesign/theme-neutral": "0.3.0",
+    "@lovecards/sdk": "2.0.0",
+    "masonry-layout": "^4.2.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-router-dom": "7.18.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "archiver": "7.0.1",
+    "eslint": "10.8.1",
+    "globals": "17.11.0",
+    "vite": "8.2.1",
+    "vitest": "4.1.10"
+  }
+}

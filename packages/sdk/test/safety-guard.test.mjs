@@ -19,4 +19,22 @@ const remoteRun = run({
 })
 assert.notEqual(remoteRun.status, 0)
 assert.match(remoteRun.stderr, /localhost or 127\.0\.0\.1/)
+
+const deceptiveHostRun = run({
+  LOVECARDS_SDK_TEST_ISOLATED: '1',
+  LOVECARDS_SDK_TEST_BASE_URL: 'https://127.0.0.1.example.com/api',
+  LOVECARDS_SDK_TEST_ADMIN_ACCOUNT: 'test@example.com',
+  LOVECARDS_SDK_TEST_ADMIN_PASSWORD: 'secret',
+})
+assert.notEqual(deceptiveHostRun.status, 0)
+assert.match(deceptiveHostRun.stderr, /localhost or 127\.0\.0\.1/)
+
+const wrongPathRun = run({
+  LOVECARDS_SDK_TEST_ISOLATED: '1',
+  LOVECARDS_SDK_TEST_BASE_URL: 'http://127.0.0.1:6001/not-api',
+  LOVECARDS_SDK_TEST_ADMIN_ACCOUNT: 'test@example.com',
+  LOVECARDS_SDK_TEST_ADMIN_PASSWORD: 'secret',
+})
+assert.notEqual(wrongPathRun.status, 0)
+assert.match(wrongPathRun.stderr, /must end with \/api/)
 console.log('SDK integration safety guard tests passed.')

@@ -2,12 +2,7 @@
 
 namespace app\api\controller\Content;
 
-use think\facade\Request;
-
-use app\api\service\Content\Tags as TagsService;
-use app\api\validate\Tags as TagsValidate;
-
-use app\api\ApiResponse;
+use app\modules\Content\Tags\Service\Tags as TagsService;
 use app\api\controller\BaseController;
 use app\api\controller\BatchOperateTrait;
 
@@ -17,15 +12,22 @@ class Tags extends BaseController
 
     protected function getBatchService(): string
     {
-        return \app\api\service\Content\Tags::class;
+        return TagsService::class;
     }
 
     public function listAll()
     {
-        $params = $this->paramIndex(Request::param());
+        $params = $this->validated();
         $caps = request()->auth->capabilities();
         $result = TagsService::listAll($params, $caps);
-        return ApiResponse::createOk($result);
+        return $this->respond($result);
+    }
+
+    public function listOwn()
+    {
+        $params = $this->validated();
+        $result = TagsService::listOwn($params, request()->auth->uid());
+        return $this->respond($result);
     }
 
     public function list()
@@ -34,38 +36,57 @@ class Tags extends BaseController
             'where' => ['status' => 0]
         ];
         $result = TagsService::noPaginateIndex($params);
-        return ApiResponse::createOk($result);
+        return $this->respond($result);
     }
 
     public function get($id)
     {
         $result = TagsService::get((int) $id);
-        return ApiResponse::createOk($result);
+        return $this->respond($result);
     }
 
     public function create()
     {
-        $params = $this->param(TagsValidate::class, TagsValidate::$all_scene['create'], Request::param());
+        $params = $this->validated();
         $params['user_id'] = request()->auth->uid();
-        TagsService::createTag($params);
-        return ApiResponse::createNoContent();
+        return $this->respond(TagsService::createTag($params));
     }
 
     public function update($id)
     {
-        $params = $this->param(TagsValidate::class, TagsValidate::$all_scene['allUpdate'], Request::param());
-        $params['id'] = (int) $id;
-
+        $params = $this->validated(null, ['id' => (int) $id]);
         $auth = request()->auth;
-        TagsService::updateTag($params, $auth->uid(), $auth->capabilities());
+        TagsService::updateTag($params, $auth->uid(), $auth->grants());
 
-        return ApiResponse::createNoContent();
+        return $this->respond();
+    }
+
+    public function updateManaged($id)
+    {
+        $params = $this->validated(null, ['id' => (int) $id]);
+        $auth = request()->auth;
+        TagsService::updateTag($params, $auth->uid(), $auth->grants(), (string) request()->ip(), true);
+
+        return $this->respond();
     }
 
     public function delete($id)
     {
         $auth = request()->auth;
-        TagsService::deleteTags([(int) $id], $auth->uid(), $auth->capabilities());
-        return ApiResponse::createNoContent();
+        TagsService::deleteTags([(int) $id], $auth->uid(), $auth->grants());
+        return $this->respond();
+    }
+
+    public function deleteManaged($id)
+    {
+        $auth = request()->auth;
+        TagsService::deleteTags(
+            [(int) $id],
+            $auth->uid(),
+            $auth->grants(),
+            (string) request()->ip(),
+            true
+        );
+        return $this->respond();
     }
 }

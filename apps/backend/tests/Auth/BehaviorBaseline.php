@@ -23,20 +23,24 @@ namespace {
         return $testRequest;
     }
 
-    require dirname(__DIR__, 2) . '/app/common/contract/TokenService.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/AuthUser.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/UserRepository.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/AuthContext.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/VisitorPolicy.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/CapabilityProvider.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/MissingCredentials.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/AuthenticateRequest.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/LoginUser.php';
-    require dirname(__DIR__, 2) . '/app/api/application/Auth/RegisterUser.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Contract/TokenService.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/User/Public/UserStatus.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Public/AuthUser.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Contract/UserRepository.php';
+    require dirname(__DIR__, 2) . '/app/shared/Authorization/Scope.php';
+    require dirname(__DIR__, 2) . '/app/shared/Authorization/Grant.php';
+    require dirname(__DIR__, 2) . '/app/shared/Authorization/GrantSet.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Public/AuthContext.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Public/VisitorPolicy.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Contract/CapabilityProvider.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Public/MissingCredentials.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Application/AuthenticateRequest.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Application/LoginUser.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Application/RegisterUser.php';
 }
 
 namespace Tests\Auth {
-    final class VisitorPolicy implements \app\api\application\Auth\VisitorPolicy
+    final class VisitorPolicy implements \app\modules\Platform\Auth\Public\VisitorPolicy
     {
         public static $enabled = false;
 
@@ -51,29 +55,29 @@ namespace Tests\Auth {
         }
     }
 
-    final class CapabilityProvider implements \app\api\application\Auth\CapabilityProvider
+    final class CapabilityProvider implements \app\modules\Platform\Auth\Contract\CapabilityProvider
     {
         public static $byRoles = [];
 
-        public function forRoles(array $roleIds): array
+        public function forRoles(array $roleIds): \app\shared\Authorization\GrantSet
         {
-            return self::$byRoles[implode(',', $roleIds)] ?? [];
+            return \app\shared\Authorization\GrantSet::fromRows(self::$byRoles[implode(',', $roleIds)] ?? []);
         }
     }
 
-    final class UserRepository implements \app\api\application\Auth\UserRepository
+    final class UserRepository implements \app\modules\Platform\Auth\Contract\UserRepository
     {
         public static $byId = null;
         public static $byAccount = null;
         public static $contactExists = false;
         public static $created = [];
 
-        public function findById(int $id): ?\app\api\application\Auth\AuthUser
+        public function findById(int $id): ?\app\modules\Platform\Auth\Public\AuthUser
         {
             return self::$byId;
         }
 
-        public function findByAccount(string $account): ?\app\api\application\Auth\AuthUser
+        public function findByAccount(string $account): ?\app\modules\Platform\Auth\Public\AuthUser
         {
             return self::$byAccount;
         }
@@ -91,7 +95,7 @@ namespace Tests\Auth {
             string $passwordHash,
             array $roleIds,
             int $status
-        ): \app\api\application\Auth\AuthUser {
+        ): \app\modules\Platform\Auth\Public\AuthUser {
             self::$created = [
                 'number' => $number,
                 'username' => $username,
@@ -102,15 +106,16 @@ namespace Tests\Auth {
                 'status' => $status,
             ];
 
-            return new \app\api\application\Auth\AuthUser(20, $status, $passwordHash, $roleIds);
+            return new \app\modules\Platform\Auth\Public\AuthUser(20, $status, $passwordHash, $roleIds);
         }
     }
 
-    final class TokenService implements \app\common\contract\TokenService
+    final class TokenService implements \app\modules\Platform\Auth\Contract\TokenService
     {
         public static $verified = ['uid' => 10];
         public static $failure = null;
         public static $signed = [];
+        public static $invalidated = [];
 
         public function sign(array $data): string
         {
@@ -130,6 +135,7 @@ namespace Tests\Auth {
 
         public function invalidate(string $token): void
         {
+            self::$invalidated[] = $token;
         }
     }
 
@@ -255,7 +261,7 @@ namespace app\api {
     }
 }
 
-namespace app\api\service\Captcha {
+namespace app\modules\Platform\Captcha\Service {
     final class Captcha
     {
     }
@@ -263,14 +269,14 @@ namespace app\api\service\Captcha {
 
 namespace {
     use app\api\ApiException;
-    use app\api\application\Auth\AuthContext;
-    use app\api\application\Auth\AuthUser;
-    use app\api\application\Auth\AuthenticateRequest;
-    use app\api\application\Auth\LoginUser;
-    use app\api\application\Auth\RegisterUser;
+    use app\modules\Platform\Auth\Public\AuthContext;
+    use app\modules\Platform\Auth\Public\AuthUser;
+    use app\modules\Platform\Auth\Application\AuthenticateRequest;
+    use app\modules\Platform\Auth\Application\LoginUser;
+    use app\modules\Platform\Auth\Application\RegisterUser;
     use app\api\middleware\JwtAuthCheck;
     use app\api\middleware\PermissionCheck;
-    use app\api\service\User\Session;
+    use app\modules\Platform\Auth\Application\Session;
     use Tests\Auth\CapabilityProvider;
     use Tests\Auth\Request;
     use Tests\Auth\Response;
@@ -279,7 +285,7 @@ namespace {
     use Tests\Auth\UserRepository;
     use Tests\Auth\VisitorPolicy;
 
-    require dirname(__DIR__, 2) . '/app/api/service/User/Session.php';
+    require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Application/Session.php';
     require dirname(__DIR__, 2) . '/app/api/middleware/JwtAuthCheck.php';
     require dirname(__DIR__, 2) . '/app/api/middleware/PermissionCheck.php';
 
@@ -326,6 +332,7 @@ namespace {
         TokenService::$verified = ['uid' => 10];
         TokenService::$failure = null;
         TokenService::$signed = [];
+        TokenService::$invalidated = [];
         CapabilityProvider::$byRoles = [];
         UserRepository::$byId = null;
         UserRepository::$byAccount = null;
@@ -409,13 +416,22 @@ namespace {
         $assertSame(0, UserRepository::$created['status']);
     });
 
-    $test('guest login reuses the hourly guest account', static function () use ($reset, $assertSame): void {
+    // 新 AUTH-BASELINE 基线：访客登录是独立的一次性身份，不复用小时账号；
+    // 访客角色账号的口令登录一律拒绝（HTTP 403，业务码 1101）。
+    $test('guest login mints a fresh identity instead of reusing an account', static function () use ($reset, $assertSame, $assertThrows): void {
         $reset();
         UserRepository::$byAccount = new AuthUser(12, 0, password_hash('123456', PASSWORD_DEFAULT), [3]);
         $login = new LoginUser(new TokenService(), new UserRepository());
         $result = (new Session(new TokenService(), new UserRepository(), $login))->guest('127.0.0.1');
-        $assertSame('signed-token-12', $result['token']);
-        $assertSame([], UserRepository::$created);
+        $assertSame('signed-token-20', $result['token']);
+        $assertSame([3], UserRepository::$created['roles_id']);
+        $assertThrows(
+            static function () use ($login): void {
+                $login->execute('guest@example.com', '123456');
+            },
+            ApiException::CODE_PERMISSION_DENIED,
+            '访客账号不支持密码登录'
+        );
     });
 
     $test('guest login creates the guest role when absent', static function () use ($reset, $assertSame): void {
@@ -424,6 +440,14 @@ namespace {
         (new Session(new TokenService(), new UserRepository(), $login))->guest('127.0.0.1');
         $assertSame([3], UserRepository::$created['roles_id']);
         $assertSame(0, UserRepository::$created['status']);
+    });
+
+    $test('logout invalidates the presented token', static function () use ($reset, $assertSame): void {
+        $reset();
+        $login = new LoginUser(new TokenService(), new UserRepository());
+        $session = new Session(new TokenService(), new UserRepository(), $login);
+        $session->logout('token-to-revoke');
+        $assertSame(['token-to-revoke'], TokenService::$invalidated);
     });
 
     $test('missing token is unauthorized when visitor mode is off', static function () use ($reset, $assertSame, $authenticate): void {
@@ -436,19 +460,16 @@ namespace {
         $assertSame('请先登入', $response->message);
     });
 
-    $test('missing token becomes a guest context when visitor mode is on', static function () use ($reset, $assertSame, $authenticate): void {
+    $test('required middleware rejects visitor context', static function () use ($reset, $assertSame, $authenticate): void {
         $reset();
         VisitorPolicy::$enabled = true;
-        CapabilityProvider::$byRoles['3'] = ['cards.read'];
+        CapabilityProvider::$byRoles['3'] = [['capability' => 'cards.read', 'scope' => 'own']];
         $request = new Request();
         $response = (new JwtAuthCheck($authenticate()))->handle($request, static function (): Response {
             return new Response();
         });
-        $assertSame(200, $response->status);
-        $assertSame(0, $request->auth->uid());
-        $assertSame([3], $request->auth->roleIds());
-        $assertSame(['cards.read'], $request->auth->capabilities());
-        $assertSame(true, $request->auth->isVisitor());
+        $assertSame(401, $response->status);
+        $assertSame('请先登入', $response->message);
     });
 
     $test('invalid token is unauthorized when visitor mode is off', static function () use ($reset, $assertSame, $authenticate): void {
@@ -462,25 +483,35 @@ namespace {
         $assertSame('签名不正确', $response->message);
     });
 
-    $test('invalid token becomes a guest context when visitor mode is on', static function () use ($reset, $assertSame, $authenticate): void {
+    $test('invalid token stays unauthorized when visitor mode is on', static function () use ($reset, $assertSame, $authenticate): void {
         $reset();
         VisitorPolicy::$enabled = true;
-        CapabilityProvider::$byRoles['3'] = ['cards.read'];
+        CapabilityProvider::$byRoles['3'] = [['capability' => 'cards.read', 'scope' => 'own']];
         TokenService::$failure = new \RuntimeException('签名不正确');
         $request = new Request('Bearer invalid');
         $response = (new JwtAuthCheck($authenticate()))->handle($request, static function (): Response {
             return new Response();
         });
-        $assertSame(200, $response->status);
-        $assertSame(true, $request->auth->isVisitor());
-        $assertSame(['cards.read'], $request->auth->capabilities());
+        $assertSame(401, $response->status);
+        $assertSame('签名不正确', $response->message);
+    });
+
+    $test('existing token is rejected after user is disabled', static function () use ($reset, $assertSame, $authenticate): void {
+        $reset();
+        UserRepository::$byId = new AuthUser(10, 1, 'hash', [2]);
+        $request = new Request('Bearer valid');
+        $response = (new JwtAuthCheck($authenticate()))->handle($request, static function (): Response {
+            return new Response();
+        });
+        $assertSame(403, $response->status);
+        $assertSame('您的账户已被封禁或未激活', $response->message);
     });
 
     $test('valid token creates an authenticated context and emits renewal', static function () use ($reset, $assertSame, $authenticate): void {
         $reset();
         TokenService::$verified = ['uid' => 10, '_new_token' => 'renewed-token'];
         UserRepository::$byId = new AuthUser(10, 0, 'hash', [2]);
-        CapabilityProvider::$byRoles['2'] = ['users.read'];
+        CapabilityProvider::$byRoles['2'] = [['capability' => 'users.read', 'scope' => 'own']];
         $request = new Request('Bearer valid');
         $response = (new JwtAuthCheck($authenticate()))->handle($request, static function (): Response {
             return new Response();
@@ -505,8 +536,13 @@ namespace {
     $test('permission accepts any matching capability', static function () use ($reset, $assertSame): void {
         $reset();
         global $testRequest;
-        $testRequest = new Request(null, new Rule(['caps' => ['users.read', 'users.read.all']], 'users.list'));
-        $testRequest->auth = AuthContext::authenticated(10, null, [2], ['users.read']);
+        $testRequest = new Request(null, new Rule(['access' => ['auth' => 'required', 'anyOf' => [
+            ['capability' => 'users.read', 'scope' => 'own'],
+            ['capability' => 'users.read', 'scope' => 'all'],
+        ]]], 'users.list'));
+        $testRequest->auth = AuthContext::authenticated(10, null, [2], new \app\shared\Authorization\GrantSet([
+            new \app\shared\Authorization\Grant('users.read', \app\shared\Authorization\Scope::OWN),
+        ]));
         $response = (new PermissionCheck())->handle($testRequest, static function (): Response {
             return new Response(204);
         });
@@ -516,14 +552,43 @@ namespace {
     $test('permission rejects a context without required capability', static function () use ($reset, $assertSame): void {
         $reset();
         global $testRequest;
-        $testRequest = new Request(null, new Rule(['caps' => ['users.read']], 'users.list'));
-        $testRequest->auth = AuthContext::authenticated(10, null, [2], ['cards.read']);
+        $testRequest = new Request(null, new Rule(['access' => ['auth' => 'required', 'allOf' => [
+            ['capability' => 'users.read', 'scope' => 'own'],
+        ]]], 'users.list'));
+        $testRequest->auth = AuthContext::authenticated(10, null, [2], new \app\shared\Authorization\GrantSet([
+            new \app\shared\Authorization\Grant('cards.read', \app\shared\Authorization\Scope::OWN),
+        ]));
         $response = (new PermissionCheck())->handle($testRequest, static function (): Response {
             return new Response();
         });
         $assertSame(403, $response->status);
         $assertSame('权限不足', $response->message);
         $assertSame(ApiException::CODE_PERMISSION_DENIED, $response->code);
+    });
+
+    $test('structured access requires every scoped grant', static function () use ($reset, $assertSame): void {
+        $reset();
+        global $testRequest;
+        $meta = ['access' => [
+            'auth' => 'required',
+            'allOf' => [
+                ['capability' => 'admin.access', 'scope' => 'global'],
+                ['capability' => 'cards.read', 'scope' => 'all'],
+            ],
+        ]];
+        $testRequest = new Request(null, new Rule($meta, 'cards.getManaged'));
+        $testRequest->auth = AuthContext::authenticated(10, null, [2], new \app\shared\Authorization\GrantSet([
+            new \app\shared\Authorization\Grant('admin.access', \app\shared\Authorization\Scope::GLOBAL),
+            new \app\shared\Authorization\Grant('cards.read', \app\shared\Authorization\Scope::ALL),
+        ]));
+        $response = (new PermissionCheck())->handle($testRequest, static fn(): Response => new Response(204));
+        $assertSame(204, $response->status);
+
+        $testRequest->auth = AuthContext::authenticated(10, null, [2], new \app\shared\Authorization\GrantSet([
+            new \app\shared\Authorization\Grant('cards.read', \app\shared\Authorization\Scope::ALL),
+        ]));
+        $response = (new PermissionCheck())->handle($testRequest, static fn(): Response => new Response(204));
+        $assertSame(403, $response->status);
     });
 
     $failures = 0;

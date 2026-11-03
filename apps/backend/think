@@ -2,9 +2,31 @@
 <?php
 namespace think;
 
+$releaseRoot = __DIR__;
+$bootstrap = $releaseRoot . '/bootstrap/ReleaseBootstrap.php';
+if (!class_exists(\LoveCards\Bootstrap\ReleaseBootstrap::class, false)) {
+    require $bootstrap;
+}
+
+try {
+    $targetEntry = \LoveCards\Bootstrap\ReleaseBootstrap::cliEntry($releaseRoot);
+    if ($targetEntry !== null) {
+        require $targetEntry;
+        return;
+    }
+} catch (\Throwable $exception) {
+    fwrite(STDERR, '[LoveCards bootstrap] ' . $exception->getMessage() . PHP_EOL);
+    exit(78);
+}
+
 // 命令行入口文件
 // 加载基础文件
-require __DIR__ . '/vendor/autoload.php';
+require $releaseRoot . '/vendor/autoload.php';
 
 // 应用初始化
-(new App())->console->run();
+$app = new App($releaseRoot);
+$runtimeRoot = \LoveCards\Bootstrap\ReleaseBootstrap::sharedRuntimeRoot();
+if ($runtimeRoot !== null) {
+    $app->setRuntimePath(rtrim($runtimeRoot, '/\\') . DIRECTORY_SEPARATOR);
+}
+$app->console->run();

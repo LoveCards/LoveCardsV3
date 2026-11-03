@@ -1,16 +1,20 @@
+import type { JsonObject } from './json'
+
 export interface ConfigData {
-  [group: string]: {
-    [key: string]: any
-  }
+    [group: string]: JsonObject
 }
 
 export interface ConfigUpdateParams {
-  [group: string]: {
-    [key: string]: any
-  }
+    [group: string]: JsonObject
 }
 
 export interface ConfigRegisterParams {
   group: string
-  schema: Record<string, any>
+  schema: JsonObject
+}
+
+export interface ConfigRegisterResult {
+  group: string
+  seeded: string[]
+  skipped: string[]
 }

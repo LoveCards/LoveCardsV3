@@ -1,21 +1,59 @@
+import type { JsonObject } from './json'
+import type { ContentMention } from './mentions'
+
+/** 卡片专用短期媒体地址，不可持久化为文件地址。 */
+export interface CardMediaAccess {
+  media: Array<{ file_id: number; url: string }>
+  cover_url: string | null
+  expires_in: number
+}
+
+export interface CardMedia {
+  file_id: number | null
+  type: 'image' | 'video'
+  url: string
+  mime_type: string | null
+  size: number | null
+  width: number | null
+  height: number | null
+  duration_ms: number | null
+  poster_url: string | null
+  is_animated: boolean
+  position: number
+}
+
+export interface CardTopic {
+  id: number
+  name: string
+}
+
+export type CardVisibility = 'public' | 'followers' | 'private'
+
 export interface Card {
   id: number
   user_id: number
+  uid: string
+  username?: string
   status: number
+  visibility: CardVisibility
   is_top: number
   content: string
-  /** 卡片自定义数据（如 title 等扩展字段） */
-  data: Record<string, any>
+  /** 原始卡片扩展数据；新写入不使用 title/summary 作为正文层级。 */
+  data: JsonObject
   cover: string | null
-  pictures: string[] | null
-  tags: string[] | null
+  pictures: string[]
+  media: CardMedia[]
+  tags: number[]
+  topics: CardTopic[]
+  mentions: ContentMention[]
   goods: number
   views: number
   comments: number
-  post_ip: string
-  created_at: string | null
-  updated_at: string | null
-  deleted_at: string | null
+  created_at: string
+  updated_at: string
+  /** Legacy moderation fields are not present on public card responses. */
+  post_ip?: string
+  deleted_at?: string | null
 }
 
 export interface CardsListParams {
@@ -25,21 +63,28 @@ export interface CardsListParams {
   status?: number
   search_value?: string
   search_keys?: string[]
+  search_like?: number
   order_key?: string
   order_desc?: boolean
 }
 
 export interface CreateCardParams {
   content: string
-  data?: Record<string, any>
-  tags?: string
+  visibility?: CardVisibility
+  data?: JsonObject
+  tags?: string[] | number[]
   cover?: string
   pictures?: string[]
+  media_file_ids?: number[]
+  cover_file_id?: number
 }
 
 export interface UpdateCardParams {
   content?: string
-  data?: Record<string, any>
-  tags?: string
+  visibility?: CardVisibility
+  data?: JsonObject
+  tags?: string[] | number[]
   cover?: string
+  media_file_ids?: number[]
+  cover_file_id?: number
 }

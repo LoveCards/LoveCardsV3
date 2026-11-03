@@ -2,121 +2,65 @@
 
 namespace app\api\controller\Theme;
 
-use think\facade\Request;
 use app\api\ApiException;
 use app\api\ApiResponse;
 use app\api\controller\BaseController;
-use app\frontend\service\ThemeEngine;
+use app\modules\Theme\Transport\Api\ThemeResource;
+use app\modules\Theme\Transport\Api\ThemeConfigResource;
+use app\modules\Theme\Service\ThemeManager as ThemeService;
 
 class ThemeManager extends BaseController
 {
-    /**
-     * 列出已安装主题
-     */
     public function list()
     {
-        return ApiResponse::createOk(ThemeEngine::listThemes());
+        return ApiResponse::createOk(ThemeResource::collection(ThemeService::list()));
     }
 
-    /**
-     * 上传主题 ZIP
-     */
     public function upload()
     {
         $file = request()->file('file');
-
-        if (!$file) {
-            throw ApiException::badRequest('请上传 ZIP 文件');
-        }
-
-        if ($file->getSize() > ThemeEngine::MAX_THEME_ZIP_BYTES) {
-            throw ApiException::badRequest('ZIP 文件过大');
-        }
-
+        $params = $this->validated(null, ['file' => $file]);
+        $file = $params['file'];
+        if ($file->getSize() > ThemeService::maxZipBytes()) throw ApiException::badRequest('Theme archive is too large');
         $info = $file->move(runtime_path() . 'theme_upload');
-        if (!$info) {
-            throw ApiException::badRequest('文件上传失败');
-        }
-
+        if (!$info) throw ApiException::badRequest('Theme upload failed');
         $zipPath = $info->getRealPath();
         try {
-            return ApiResponse::createOk(ThemeEngine::installTheme($zipPath));
+            return ApiResponse::createOk(ThemeResource::make(ThemeService::install($zipPath)));
+        } catch (\Throwable $e) {
+            throw ApiException::badRequest($e->getMessage());
         } finally {
-            if (is_file($zipPath)) {
-                @unlink($zipPath);
-            }
+            if (is_file($zipPath)) @unlink($zipPath);
         }
     }
 
-    /**
-     * 切换活跃主题
-     */
     public function activate()
     {
-        $name = Request::param('name', '');
-        if (empty($name)) {
-            throw ApiException::badRequest('缺少主题名称');
-        }
-
-        ThemeEngine::activateTheme($name);
+        $params = $this->validated();
+        try { ThemeService::activate((string)$params['id'], (string)$params['release']); } catch (\Throwable $e) { throw ApiException::badRequest($e->getMessage()); }
         return ApiResponse::createNoContent();
     }
 
-    /**
-     * 获取当前主题配置
-     */
     public function config()
     {
-        $theme = ThemeEngine::getActive();
-        if (empty($theme)) {
-            throw ApiException::badRequest('未找到活跃主题');
-        }
-
-        $schema = $theme['config'] ?? [];
-        $values = ThemeEngine::getThemeConfig($theme['name']);
-
-        return ApiResponse::createOk([
-            'name'          => $theme['name'],
-            'mode'          => $theme['mode'] ?? 'spa',
-            'config_schema' => $schema,
-            'config_values' => $values,
-        ]);
+        $theme = ThemeService::active();
+        if (empty($theme['theme'])) throw ApiException::badRequest('Active theme not found');
+        return ApiResponse::createOk(ThemeConfigResource::make($theme));
     }
 
-    /**
-     * 更新主题配置
-     */
     public function updateConfig()
     {
-        $params = Request::param();
-        if (empty($params)) {
-            throw ApiException::badRequest('缺少配置参数');
-        }
-
-        ThemeEngine::updateThemeConfig($params);
+        $params = $this->validated();
+        $values = is_string($params['values']) ? json_decode($params['values'], true) : $params['values'];
+        if (!is_array($values)) throw ApiException::badRequest('Theme values must be an object');
+        try { ThemeService::updateConfig((string)$params['id'], (string)$params['release'], $values); } catch (\Throwable $e) { throw ApiException::badRequest($e->getMessage()); }
         return ApiResponse::createNoContent();
     }
 
-    /**
-     * 固化配置到 theme.json
-     */
-    public function freezeConfig()
-    {
-        ThemeEngine::freezeConfig();
-        return ApiResponse::createNoContent();
-    }
-
-    /**
-     * 删除主题
-     */
     public function delete()
     {
-        $name = Request::param('name', '');
-        if (empty($name)) {
-            throw ApiException::badRequest('缺少主题名称');
-        }
-
-        ThemeEngine::deleteTheme($name);
+        $params = $this->validated();
+        try { ThemeService::delete((string)$params['id'], (string)$params['release']); } catch (\Throwable $e) { throw ApiException::badRequest($e->getMessage()); }
         return ApiResponse::createNoContent();
     }
 }

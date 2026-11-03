@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LoveCards · 全页面视觉审阅</title>
+  <style>
+    :root{font-family:"SF Pro Text","Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;color:#f5f5f7;background:#17191d}
+    *{box-sizing:border-box}
+    body{margin:0;background:#17191d}
+    button,a{font:inherit}
+    .top{position:sticky;z-index:5;top:0;border-bottom:1px solid #343842;background:rgba(23,25,29,.94)}
+    .top-inner{display:flex;align-items:center;gap:28px;max-width:1460px;min-height:76px;margin:auto;padding:0 26px}
+    .brand{display:flex;align-items:center;gap:10px;min-width:260px;font-weight:800;letter-spacing:-.02em}
+    .brand i{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;color:#fff;background:#c92c60;font-style:normal}
+    .brand em{color:#eb5b87;font-style:normal}
+    .summary{display:flex;gap:20px;margin-left:auto;color:#a7adb7;font-size:12px}
+    .summary b{margin-right:4px;color:#fff;font-size:14px}
+    .top a{min-height:36px;padding:0 13px;border-radius:9px;color:#fff;background:#c92c60;text-decoration:none;font-size:12px;font-weight:700;line-height:36px}
+    main{max-width:1460px;margin:auto;padding:42px 26px 80px}
+    .intro{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,520px);gap:56px;align-items:end;margin-bottom:34px}
+    h1{margin:0;font-size:34px;letter-spacing:-.035em}
+    .intro p{margin:10px 0 0;max-width:62ch;color:#a7adb7;font-size:14px;line-height:1.7}
+    .principles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .principles span{min-height:52px;padding:11px 12px;border-radius:11px;color:#d7dae0;background:#23262d;font-size:11px;line-height:1.45}
+    .principles b{display:block;margin-bottom:3px;color:#fff;font-size:12px}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    .card{overflow:hidden;border-radius:14px;background:#22252c;box-shadow:inset 0 0 0 1px #353942}
+    .card-head{display:flex;align-items:center;gap:12px;min-height:64px;padding:0 16px}
+    .number{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;color:#ffdce7;background:#482333;font-size:11px;font-weight:800}
+    .copy{min-width:0}
+    .copy h2{margin:0;font-size:15px;letter-spacing:-.01em}
+    .copy p{overflow:hidden;margin:4px 0 0;color:#9ea5b0;font-size:10px;text-overflow:ellipsis;white-space:nowrap}
+    .card-head a{flex:0 0 auto;margin-left:auto;min-height:32px;padding:0 10px;border-radius:8px;color:#fff;background:#c92c60;text-decoration:none;font-size:10px;font-weight:700;line-height:32px;white-space:nowrap}
+    .preview{position:relative;height:420px;overflow:hidden;background:#111318}
+    iframe{position:absolute;top:0;left:0;width:1654px;height:960px;border:0;background:#17191d;transform:scale(.435);transform-origin:top left;pointer-events:none}
+    .preview::after{content:"";position:absolute;inset:0;box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);pointer-events:none}
+    .card.wide{grid-column:1/-1}
+    .card.wide .preview{height:510px}
+    .card.wide iframe{transform:scale(.57)}
+    footer{margin-top:28px;padding:20px;border-radius:14px;color:#a7adb7;background:#22252c;font-size:12px;line-height:1.7;box-shadow:inset 0 0 0 1px #353942}
+    footer b{color:#fff}
+    @media(max-width:980px){.intro{grid-template-columns:1fr;gap:22px}.grid{grid-template-columns:1fr}.card.wide{grid-column:auto}.summary{display:none}.preview,.card.wide .preview{height:310px}iframe,.card.wide iframe{transform:scale(.34)}.principles{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:620px){.top-inner{padding:0 16px}.brand{min-width:0}.top a{margin-left:auto}main{padding:28px 14px 60px}h1{font-size:27px}.principles{grid-template-columns:1fr 1fr}.preview,.card.wide .preview{height:240px}iframe,.card.wide iframe{transform:scale(.265)}}
+  </style>
+</head>
+<body>
+<div style="position:sticky;top:0;z-index:20;padding:12px 20px;border-bottom:1px solid #e5e5ea;background:#fff;color:#1d1d1f;font:600 14px/1.4 system-ui,sans-serif;text-align:center">这是设计蓝图总览 · <a href="/" style="color:#a9234f">打开可交互 React 前端</a></div>
+  <header class="top"><div class="top-inner"><div class="brand"><i>L</i><span>Love<em>Cards</em> 全页面审阅</span></div><div class="summary"><span><b>10</b>核心蓝图</span><span><b>1</b>补充任务集</span><span><b>6</b>系统状态</span></div><a href="../docs/registries/BLUEPRINTS.md">查看状态注册表</a></div></header>
+  <main>
+    <section class="intro"><div><h1>LoveCards 页面蓝图总览</h1><p>统一的是材质、Token、圆角、分隔和状态语言；保留的是每个页面正确的任务结构。每张预览均为可审阅的 HTML，蓝图状态与入口以 BLUEPRINTS.md 为准。</p></div><div class="principles"><span><b>内容优先</b>媒体与关系决定轮廓</span><span><b>实心材质</b>玻璃仅用于媒体控制</span><span><b>玫瑰状态轴</b>不作为页面装饰</span><span><b>同心几何</b>9 / 12 / 14px</span><span><b>分隔优先</b>常驻内容不漂浮</span><span><b>独立响应式</b>手机重新组织任务</span></div></section>
+    <section class="grid">
+      <article class="card wide"><header class="card-head"><span class="number">01</span><div class="copy"><h2>首页信息流</h2><p>编辑式主故事 · 双列移动发现 · grouped 上下文</p></div><a href="./blueprint-01-home-feed.html">打开</a></header><div class="preview"><iframe loading="lazy" title="Blueprint 01" src="./blueprint-01-home-feed.html"></iframe></div></article>
+      <article class="card"><header class="card-head"><span class="number">02</span><div class="copy"><h2>发现与搜索</h2><p>主动探索 · 搜索起始 · 结果 · 话题</p></div><a href="./blueprint-02-discovery-search.html">打开</a></header><div class="preview"><iframe loading="lazy" title="Blueprint 02" src="./blueprint-02-discovery-search.html"></iframe></div></article>
+      <article class="card"><header class="card-head"><span class="number">03</span><div class="copy"><h2>内容详情</h2><p>单一阅读轴 · 实心正文 · 连续讨论</p></div><a href="./blueprint-03-content-detail.html">打开</a></header><div class="preview"><iframe loading="lazy" title="Blueprint 03" src="./blueprint-03-content-detail.html"></iframe></div></article>
+      <article class="card"><header class="card-head"><span class="number">04</span><div class="copy"><h2>发布与草稿</h2><p>随笔/图文/视频显式选择 · 媒体工作区 · 草稿恢复</p></div><a href="./blueprint-04-compose.html">打开</a></header><div class="preview"><iframe loading="lazy" title="Blueprint 04" src="./blueprint-04-compose.html"></iframe></div></article>
+      <article class="card"><header class="card-head"><span class="number">05</span><div class="copy"><h2>用户中心</h2><p>身份 · 关系 · 内容资产 · 本人/他人</p></div><a href="./blueprint-05-profile.html">打开</a></header><div class="preview"><iframe loading="lazy" title="Blueprint 05" src="./blueprint-05-profile.html"></iframe></div></article>
+      <article class="card"><header class="card-head"><span class="number">06A</span><div class="copy"><h2>头像编辑任务</h2><p>主页直接触发 · FileStatus · scoped Banner · Toast</p></div><a href="./blueprint-06-avatar-edit.html">打开</a></header><div class="preview"><iframe loading="lazy" title="Blueprint 06A" src="./blueprint-06-avatar-edit.html"></iframe></div></article>
+      <article class="card"><header class="card-head"><span class="number">06B</span><div class="copy"><h2>关系与安全</h2><p>关系列表 · 举报与屏蔽 · 旧资料页仅供差异审阅</p></div><a href="./blueprint-06-identity-relationships.html">打开</a></header><div class="preview"><iframe loading="lazy" title="Blueprint 06B" src="./blueprint-06-identity-relationships.html"></iframe></div></article>
+      <article class="card"><header class="card-head"><span class="number">07</span><div class="copy"><h2>消息与通知</h2><p>私信第一入口 · 互动/系统通知 · 消息请求</p></div><a href="./blueprint-07-inbox-messages.html">打开</a></header><div class="preview"><iframe loading="lazy" title="Blueprint 07" src="./blueprint-07-inbox-messages.html"></iframe></div></article>
+      <article class="card"><header class="card-head"><span class="number">08</span><div class="copy"><h2>用户设置</h2><p>真实能力总览 · 账号 · 隐私 · 外观 · 会话</p></div><a href="./blueprint-08-library-settings.html">打开</a></header><div class="preview"><iframe loading="lazy" title="Blueprint 08" src="./blueprint-08-library-settings.html"></iframe></div></article>
+      <article class="card"><header class="card-head"><span class="number">09</span><div class="copy"><h2>登录与恢复</h2><p>单任务表单 · 中性可信 · 可恢复</p></div><a href="./blueprint-09-auth.html">打开</a></header><div class="preview"><iframe loading="lazy" title="Blueprint 09" src="./blueprint-09-auth.html"></iframe></div></article>
+      <article class="card wide"><header class="card-head"><span class="number">10</span><div class="copy"><h2>交互表面与 Dialog 系统</h2><p>Dialog/Modal · 移动 Sheet · Typeahead · 连续评论线程</p></div><a href="./blueprint-10-interaction-surfaces.html">打开</a></header><div class="preview"><iframe loading="lazy" title="Blueprint 10" src="./blueprint-10-interaction-surfaces.html"></iframe></div></article>
+      <article class="card"><header class="card-head"><span class="number">X</span><div class="copy"><h2>补充任务集</h2><p>关注流 · 独立线程 · 草稿 · 社区状态</p></div><a href="./supplemental-content-compose-community.html">打开</a></header><div class="preview"><iframe loading="lazy" title="Supplemental" src="./supplemental-content-compose-community.html"></iframe></div></article>
+      <article class="card"><header class="card-head"><span class="number">S</span><div class="copy"><h2>系统状态板</h2><p>加载 · 空 · 错误 · 权限 · 响应式 · 主题</p></div><a href="./system-state-boards.html">打开</a></header><div class="preview"><iframe loading="lazy" title="System states" src="./system-state-boards.html"></iframe></div></article>
+    </section>
+    <footer><b>审阅边界：</b>总览展示 Blueprint 01–10、补充任务和系统状态；每个页面的 `canonical`、`needs-sync`、`review-required` 或 `archive` 状态只以 BLUEPRINTS.md 为准。Blueprint 03 的历史探索版本已归档。C2C、完整社区治理和创作者商业中心继续保留扩展接口，但不计入当前页面蓝图范围。</footer>
+  </main>
+</body>
+</html>

@@ -1,5 +1,11 @@
 <?php
 
+$applicationRoot = rtrim(app()->getRootPath(), '/\\');
+$instanceRoot = \app\shared\SystemPaths\LocalStoragePath::configuredInstanceRoot();
+$publicStorageRoot = $instanceRoot === null
+    ? $applicationRoot . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'storage'
+    : (new \app\shared\SystemPaths\SystemPaths($instanceRoot, $applicationRoot))->storageRoot();
+
 return [
     // 默认磁盘
     'default' => env('filesystem.driver', 'local'),
@@ -13,7 +19,7 @@ return [
             // 磁盘类型
             'type'       => 'local',
             // 磁盘路径
-            'root'       => app()->getRootPath() . 'public/storage',
+            'root'       => $publicStorageRoot,
             // 磁盘路径对应的外部URL路径
             'url'        => '/storage',
             // 可见性

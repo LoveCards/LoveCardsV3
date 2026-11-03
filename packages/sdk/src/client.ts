@@ -6,22 +6,31 @@ import { Deduplicator } from './dedupe'
 import { defaultTokenStore, defaultConfig } from './config/defaults'
 import type { ResourceOptions } from './resources/base'
 
-import { Session } from './resources/session'
-import { Cards } from './resources/cards'
-import { Users } from './resources/users'
-import { Comments } from './resources/comments'
-import { Tags } from './resources/tags'
-import { Likes } from './resources/likes'
-import { Files } from './resources/files'
-import { Theme } from './resources/theme'
-import { Roles } from './resources/roles'
-import { Permissions } from './resources/permissions'
-import { Config } from './resources/config'
-import { Dashboard } from './resources/dashboard'
-import { Storage } from './resources/storage'
-import { Sender } from './resources/sender'
-import { Captcha } from './resources/captcha'
-import { System } from './resources/system'
+import { Session } from './generated/resources/session'
+import { Cards } from './generated/resources/cards'
+import { Users } from './generated/resources/users'
+import { Comments } from './generated/resources/comments'
+import { Tags } from './generated/resources/tags'
+import { Likes } from './generated/resources/likes'
+import { Files } from './generated/resources/files'
+import { Theme } from './generated/resources/theme'
+import { Roles } from './generated/resources/roles'
+import { Permissions } from './generated/resources/permissions'
+import { Config } from './generated/resources/config'
+import { Dashboard } from './generated/resources/dashboard'
+import { Storage } from './generated/resources/storage'
+import { Sender } from './generated/resources/sender'
+import { Captcha } from './generated/resources/captcha'
+import { System } from './generated/resources/system'
+import { Drafts } from './generated/resources/drafts'
+import { Library } from './generated/resources/library'
+import { Messages } from './generated/resources/messages'
+import { Notifications } from './generated/resources/notifications'
+import { Safety } from './generated/resources/safety'
+import { Social } from './generated/resources/social'
+import { Operations } from './generated/resources/operations'
+import { Reports } from './generated/resources/reports'
+import { Community } from './generated/resources/community'
 
 export interface LCClient {
   readonly session: Session
@@ -40,6 +49,15 @@ export interface LCClient {
   readonly sender: Sender
   readonly captcha: Captcha
   readonly system: System
+  readonly drafts: Drafts
+  readonly library: Library
+  readonly messages: Messages
+  readonly notifications: Notifications
+  readonly safety: Safety
+  readonly social: Social
+  readonly operations: Operations
+  readonly reports: Reports
+  readonly community: Community
   readonly hooks: HookRegistration
 
   setToken(token: string): void
@@ -56,7 +74,7 @@ export function createClient(config: LCClientConfig): LCClient {
   const retry: RetryConfig = config.retry ?? {}
 
   const instance = axios.create({
-    baseURL: config.apiUrl,
+    baseURL: config.apiUrl.trim(),
     timeout,
     headers: { 'Content-Type': 'application/json' },
   })
@@ -82,7 +100,14 @@ export function createClient(config: LCClientConfig): LCClient {
     (response) => response,
     (error) => {
       const apiErr = ApiError.from(error)
-      if (apiErr.status === 401 && config.onAuthError) config.onAuthError()
+      const headers = error?.config?.headers
+      const sentWithToken = Boolean(
+        headers?.Authorization
+        || headers?.authorization
+        || headers?.['X-Token']
+        || headers?.['x-token'],
+      )
+      if (apiErr.status === 401 && sentWithToken && config.onAuthError) config.onAuthError()
       return Promise.reject(apiErr)
     }
   )
@@ -119,6 +144,15 @@ class LCClientImpl implements LCClient {
   readonly sender: Sender
   readonly captcha: Captcha
   readonly system: System
+  readonly drafts: Drafts
+  readonly library: Library
+  readonly messages: Messages
+  readonly notifications: Notifications
+  readonly safety: Safety
+  readonly social: Social
+  readonly operations: Operations
+  readonly reports: Reports
+  readonly community: Community
   readonly hooks: HookRegistration
 
   private _tokenStore: TokenStore
@@ -151,6 +185,15 @@ class LCClientImpl implements LCClient {
     this.sender = new Sender(instance, opts)
     this.captcha = new Captcha(instance, opts)
     this.system = new System(instance, opts)
+    this.drafts = new Drafts(instance, opts)
+    this.library = new Library(instance, opts)
+    this.messages = new Messages(instance, opts)
+    this.notifications = new Notifications(instance, opts)
+    this.safety = new Safety(instance, opts)
+    this.social = new Social(instance, opts)
+    this.operations = new Operations(instance, opts)
+    this.reports = new Reports(instance, opts)
+    this.community = new Community(instance, opts)
 
     // 运行时 hook 注册
     const hookStore = opts.hooks

@@ -14,19 +14,38 @@
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `users` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
+  `uid` CHAR(12) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
   `number` VARCHAR(32) NOT NULL,
   `avatar` VARCHAR(255) NOT NULL DEFAULT '',
   `email` VARCHAR(320) NOT NULL,
   `phone` VARCHAR(20) NOT NULL,
   `username` VARCHAR(255) NOT NULL,
+  `bio` VARCHAR(160) DEFAULT NULL,
+  `location` VARCHAR(64) DEFAULT NULL,
+  `gender` VARCHAR(24) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+  `birth_date` DATE DEFAULT NULL,
   `password` VARCHAR(255) NOT NULL,
   `status` INT(11) NOT NULL,
   `roles_id` JSON DEFAULT NULL,
   `created_at` DATETIME NOT NULL,
   `updated_at` DATETIME NOT NULL,
   `deleted_at` DATETIME DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_users_uid` (`uid`),
+  UNIQUE KEY `uk_users_username` (`username`(191)),
+  KEY `idx_users_public_handle` (`username`(191), `status`, `deleted_at`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 ROW_FORMAT=COMPACT;
+
+-- Public immutable user UID reservation ledger. Migration backfills existing users.
+CREATE TABLE IF NOT EXISTS `user_uid_registry` (
+  `uid` CHAR(12) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `user_id` INT(11) NULL,
+  `issued_at` DATETIME NOT NULL,
+  `retired_at` DATETIME NULL,
+  PRIMARY KEY (`uid`),
+  UNIQUE KEY `uk_user_uid_registry_user_id` (`user_id`),
+  CONSTRAINT `fk_user_uid_registry_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin;
 
 -- ------------------------------------------------------------
 --  Required Table: roles
@@ -52,6 +71,82 @@ INSERT INTO `roles` (`id`, `name`, `slug`, `is_system`, `description`, `created_
 (2, '管理员', 'admin', 1, NULL, '2026-01-19 03:07:58', '2026-01-19 03:07:58', NULL),
 (3, '用户', 'user', 1, NULL, '2026-01-19 03:08:26', '2026-01-19 03:08:26', NULL),
 (4, '访客', 'guest', 1, NULL, '2026-01-19 03:08:40', '2026-01-19 03:08:40', NULL);
+
+-- Built-in administration templates use stable slugs but intentionally have no
+-- fixed ID anchors. PostInstallLock seeds their minimum grants and never assigns
+-- them to an existing user.
+INSERT INTO `roles` (`name`, `slug`, `is_system`, `description`, `created_at`, `updated_at`, `deleted_at`) VALUES
+('内容运营', 'content_operator', 1, '负责卡片与标签的日常内容治理，不包含审核、用户或系统权限。', NOW(), NOW(), NULL),
+('社区运营', 'community_operator', 1, '负责评论、举报和社区聚合信息，不包含内容编辑或系统配置。', NOW(), NOW(), NULL),
+('审核员', 'moderator', 1, '处理卡片、评论和举报审核，不获得正文编辑、删除或系统权限。', NOW(), NOW(), NULL),
+('安全管理员', 'security_admin', 1, '处理账号状态、会话和恢复事件，并读取安全相关审计记录。', NOW(), NOW(), NULL),
+('运维管理员', 'operations_admin', 1, '负责基础设施配置、事件投递、升级迁移和运行恢复。', NOW(), NOW(), NULL),
+('审计员', 'auditor', 1, '只读核对获授权的内容、用户、配置摘要、运行状态和审计记录。', NOW(), NOW(), NULL);
+
+-- ------------------------------------------------------------
+--  Required Table: user_roles
+--  Normalized user-to-role assignments. users.roles_id is kept
+--  temporarily for rollback and is not the target runtime source.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `user_roles` (
+  `user_id` INT(11) NOT NULL,
+  `role_id` INT(11) NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`user_id`, `role_id`),
+  KEY `idx_user_roles_role` (`role_id`),
+  CONSTRAINT `fk_user_roles_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_user_roles_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+--  Required Table: capabilities
+--  Runtime mirror of the code-owned capability catalog.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `capabilities` (
+  `capability` VARCHAR(100) NOT NULL,
+  `description` VARCHAR(255) NOT NULL,
+  `risk_level` TINYINT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`capability`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+--  Required Table: role_grants
+--  Structured capability assignment with explicit resource scope.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `role_grants` (
+  `role_id` INT(11) NOT NULL,
+  `capability` VARCHAR(100) NOT NULL,
+  `scope` VARCHAR(16) NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`role_id`, `capability`, `scope`),
+  KEY `idx_role_grants_capability` (`capability`),
+  CONSTRAINT `fk_role_grants_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_role_grants_capability` FOREIGN KEY (`capability`) REFERENCES `capabilities` (`capability`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+--  Required Table: auth_sessions
+--  Revocable JWT session registry. Only token hashes are stored.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `auth_sessions` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `public_id` CHAR(32) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  `jti_hash` CHAR(64) NOT NULL,
+  `user_id` INT(11) NOT NULL,
+  `token_expires_at` DATETIME NOT NULL,
+  `renewable_until` DATETIME NOT NULL,
+  `security_version` INT UNSIGNED NOT NULL DEFAULT 1,
+  `revoked_at` DATETIME DEFAULT NULL,
+  `revoked_reason` VARCHAR(64) DEFAULT NULL,
+  `rotated_to_session_id` BIGINT UNSIGNED DEFAULT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_auth_sessions_public_id` (`public_id`),
+  UNIQUE KEY `uk_auth_sessions_jti` (`jti_hash`),
+  KEY `idx_auth_sessions_user` (`user_id`),
+  KEY `idx_auth_sessions_expiry` (`token_expires_at`),
+  CONSTRAINT `fk_auth_sessions_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
 --  Required Table: role_capabilities
@@ -93,6 +188,24 @@ CREATE TABLE IF NOT EXISTS `configs` (
 -- NOTE: configs seed data is initialized after install by
 -- Config::init() which scans config/apps/*.php.
 -- No static seed data is provided here.
+
+-- ------------------------------------------------------------
+-- Required Table: theme_bindings
+-- Host to immutable theme Release and host-level configuration.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `theme_bindings` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `hostname` VARCHAR(253) NOT NULL,
+  `theme_id` VARCHAR(64) NOT NULL,
+  `release_key` VARCHAR(128) NOT NULL,
+  `config_overrides` JSON NULL,
+  `enabled` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` DATETIME NOT NULL,
+  `updated_at` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_theme_bindings_hostname` (`hostname`),
+  KEY `idx_theme_bindings_theme` (`theme_id`, `release_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
 --  Required Table: files
@@ -138,13 +251,13 @@ CREATE TABLE IF NOT EXISTS `likes` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `aid` INT(11) NOT NULL COMMENT '应用ID (legacy)',
   `pid` INT(11) NOT NULL COMMENT '条目ID (legacy)',
-  `ref_type` VARCHAR(32) DEFAULT NULL COMMENT '内容类型: card, comment',
-  `ref_id` INT(11) DEFAULT NULL COMMENT '内容ID',
+  `ref_type` VARCHAR(32) NOT NULL COMMENT '内容类型: card, comment',
+  `ref_id` INT(11) NOT NULL COMMENT '内容ID',
   `uid` INT(11) NOT NULL,
   `ip` VARCHAR(32) NOT NULL COMMENT '发布IP',
   `created_at` TIMESTAMP NULL DEFAULT NULL COMMENT '发布时间',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_likes_pid_uid` (`pid`, `uid`),
+  UNIQUE KEY `uk_likes_ref_uid` (`ref_type`, `ref_id`, `uid`),
   KEY `idx_uid` (`uid`),
   KEY `idx_ref` (`ref_type`, `ref_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -157,6 +270,7 @@ CREATE TABLE IF NOT EXISTS `cards` (
   `id` INT(11) NOT NULL AUTO_INCREMENT,
   `is_top` INT(11) NOT NULL DEFAULT 0,
   `status` INT(11) NOT NULL DEFAULT 0,
+  `visibility` VARCHAR(16) NOT NULL DEFAULT 'public',
   `user_id` INT(11) NOT NULL DEFAULT 0,
   `data` JSON DEFAULT NULL,
   `cover` VARCHAR(2083) DEFAULT NULL,
@@ -170,7 +284,8 @@ CREATE TABLE IF NOT EXISTS `cards` (
   `created_at` TIMESTAMP NULL DEFAULT NULL,
   `updated_at` TIMESTAMP NULL DEFAULT NULL,
   `deleted_at` TIMESTAMP NULL DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_cards_public_user` (`user_id`, `status`, `deleted_at`, `created_at`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
@@ -193,6 +308,26 @@ CREATE TABLE IF NOT EXISTS `comments` (
   `updated_at` TIMESTAMP NULL DEFAULT NULL,
   `deleted_at` TIMESTAMP NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ------------------------------------------------------------
+--  Required Table: content_mentions
+--  Durable mention relations used for notification idempotency.
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `content_mentions` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `resource_type` VARCHAR(16) NOT NULL,
+  `resource_id` BIGINT UNSIGNED NOT NULL,
+  `card_id` BIGINT UNSIGNED NOT NULL,
+  `comment_id` BIGINT UNSIGNED DEFAULT NULL,
+  `actor_id` INT(11) NOT NULL,
+  `mentioned_user_id` INT(11) NOT NULL,
+  `mentioned_username` VARCHAR(255) NOT NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_content_mentions_resource_user` (`resource_type`, `resource_id`, `mentioned_user_id`),
+  KEY `idx_content_mentions_user_id` (`mentioned_user_id`, `id`),
+  KEY `idx_content_mentions_card_id` (`card_id`, `id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
@@ -525,6 +660,11 @@ INSERT INTO `system` (`id`, `name`, `value`) VALUES
 -- ============================================================
 INSERT INTO `users` (`id`, `number`, `avatar`, `email`, `phone`, `username`, `password`, `status`, `roles_id`, `created_at`, `updated_at`, `deleted_at`) VALUES
 (1, '1000000000', '', 'admin@lovecards.cn', '', '超级管理员', '$2y$10$uBowOFgOBNTx1NT1uYJTleEo1r8d91R9iwxRCqncPJUShfsJoMvr6', 0, '[1, 2, 3]', '2023-12-06 20:09:26', '2025-08-01 20:50:25', NULL);
+
+INSERT INTO `user_roles` (`user_id`, `role_id`, `created_at`) VALUES
+(1, 1, '2025-08-01 20:50:25'),
+(1, 2, '2025-08-01 20:50:25'),
+(1, 3, '2025-08-01 20:50:25');
 
 -- ============================================================
 --  Foreign Key Constraints (legacy role_permissions)

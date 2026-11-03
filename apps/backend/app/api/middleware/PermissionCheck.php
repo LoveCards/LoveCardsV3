@@ -2,37 +2,34 @@
 
 namespace app\api\middleware;
 
-use app\api\ApiResponse;
 use app\api\ApiException;
+use app\api\ApiResponse;
 
-class PermissionCheck
+final class PermissionCheck
 {
     public function handle($request, \Closure $next)
     {
         $routeMeta = request()->rule()->getOption('meta') ?? [];
+        $access = $routeMeta['access'] ?? null;
+        if (!is_array($access)) return $this->deny('接口未声明访问策略');
 
-        // 公开路由 — 直接放行（由路由 meta.public 标记）
-        if ($routeMeta['public'] ?? false) {
-            return $next($request);
-        }
+        $auth = $access['auth'] ?? null;
+        if ($auth === 'public') return $next($request);
+        if ($auth !== 'required' || !isset($request->auth)) return $this->deny('权限不足');
 
-        // 获取路由所需能力
-        $requiredCaps = $routeMeta['caps'] ?? [];
-
-        // 无 caps 定义 → 降级为路由名
-        if (empty($requiredCaps)) {
-            $routeName = request()->rule()->getName();
-            $requiredCaps = [$routeName];
-        }
-
-        if (!$request->auth->hasAnyCapability($requiredCaps)) {
-            return ApiResponse::createForbidden(
-                '权限不足',
-                null,
-                ApiException::CODE_PERMISSION_DENIED
-            );
+        $grants = $request->auth->grants();
+        $allOf = $access['allOf'] ?? [];
+        $anyOf = $access['anyOf'] ?? [];
+        if (($allOf !== [] && !$grants->allowsAll($allOf))
+            || ($anyOf !== [] && !$grants->allowsAny($anyOf))) {
+            return $this->deny('权限不足');
         }
 
         return $next($request);
+    }
+
+    private function deny(string $message)
+    {
+        return ApiResponse::createForbidden($message, null, ApiException::CODE_PERMISSION_DENIED);
     }
 }

@@ -1,0 +1,29 @@
+<IfModule mod_rewrite.c>
+  Options +FollowSymlinks -Multiviews
+  RewriteEngine On
+  # 存储源文件仅允许授权媒体入口读取。
+  RewriteRule ^storage(?:/|$) - [R=404,L,NC]
+
+  # Apache/FastCGI may drop Authorization before PHP receives the request.
+  # Preserve it for clients that use the standard Bearer header.
+  RewriteCond %{HTTP:Authorization} ^(.+)$
+  RewriteRule ^ - [E=HTTP_AUTHORIZATION:%1]
+
+  # Admin is a static SPA. Keep its assets and API requests out of PHP routing.
+  RewriteRule ^admin/?$ admin/index.html [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule ^admin/.*$ admin/index.html [L]
+
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteRule ^(.*)$ index.php?s=/$1 [QSA,L]
+</IfModule>
+
+# The PHP response helper declares the same headers for normal responses, but
+# Apache answers OPTIONS preflight requests before PHP runs. Keep the SDK's
+# compatibility X-Token header in that preflight allow-list as well.
+<IfModule mod_headers.c>
+  Header always set Access-Control-Allow-Headers "Authorization, Content-Type, If-Match, If-Modified-Since, If-None-Match, X-CSRF-TOKEN, X-Requested-With, X-Token"
+  Header always set Access-Control-Allow-Methods "GET, POST, PATCH, PUT, DELETE, OPTIONS"
+</IfModule>

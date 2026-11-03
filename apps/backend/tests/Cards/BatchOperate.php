@@ -6,7 +6,22 @@
 
 namespace think\facade
 {
-    class Db {}
+    class Db
+    {
+        public static function startTrans(): void {}
+        public static function commit(): void {}
+        public static function rollback(): void {}
+        public static function table(string $table): object
+        {
+            return new class {
+                public function where(...$args): self { return $this; }
+                public function whereIn(...$args): self { return $this; }
+                public function field(...$args): self { return $this; }
+                public function find(): ?array { return ['status' => 0, 'deleted_at' => null]; }
+                public function delete(): int { return 1; }
+            };
+        }
+    }
 }
 
 namespace app\api
@@ -37,7 +52,7 @@ namespace app\api
     }
 }
 
-namespace app\api\model
+namespace app\modules\Content\Infrastructure\Persistence\Model
 {
     /**
      * 查询链代理 — 记录 whereIn / where / update / column 调用
@@ -45,23 +60,43 @@ namespace app\api\model
     class CardsQuery
     {
         public array $calls = [];
+        private array $filters = [];
 
         public function whereIn(string $field, array $values): self
         {
             $this->calls[] = [__FUNCTION__, $field, $values];
+            $this->filters[] = ['in', $field, $values];
             return $this;
         }
 
         public function where(string $field, $value): self
         {
             $this->calls[] = [__FUNCTION__, $field, $value];
+            $this->filters[] = ['eq', $field, $value];
             return $this;
+        }
+
+        public function order(string $field, string $direction): self { return $this; }
+        public function lock(bool $lock): self { return $this; }
+        public function select(): object
+        {
+            $rows = array_values(array_filter(Cards::$rows, fn(array $row): bool => $this->matches($row)));
+            return new class($rows) {
+                public function __construct(private array $rows) {}
+                public function toArray(): array { return $this->rows; }
+            };
         }
 
         public function update(array $data): int
         {
             $this->calls[] = [__FUNCTION__, $data];
-            return 1;
+            $changed = 0;
+            foreach (Cards::$rows as $id => $row) {
+                if (!$this->matches($row)) continue;
+                Cards::$rows[$id] = array_merge($row, $data);
+                $changed++;
+            }
+            return $changed ?: 1;
         }
 
         public function column(string $field): array
@@ -69,11 +104,22 @@ namespace app\api\model
             $this->calls[] = [__FUNCTION__, $field];
             return [];
         }
+
+        private function matches(array $row): bool
+        {
+            foreach ($this->filters as [$kind, $field, $value]) {
+                $actual = $row[$field] ?? null;
+                if ($kind === 'eq' && $actual !== $value) return false;
+                if ($kind === 'in' && !in_array($actual, $value, true)) return false;
+            }
+            return true;
+        }
     }
 
     class Cards
     {
         public static ?CardsQuery $lastQuery = null;
+        public static array $rows = [];
 
         public static function whereIn(string $field, array $values): CardsQuery
         {
@@ -94,6 +140,7 @@ namespace app\api\model
         public static function reset(): void
         {
             self::$lastQuery = null;
+            self::$rows = [];
         }
     }
 
@@ -111,7 +158,7 @@ namespace app\api\model
     }
 }
 
-namespace app\common\support
+namespace app\shared\Infrastructure\Persistence
 {
     trait OwnershipGuard
     {
@@ -130,7 +177,7 @@ namespace app\common\support
         protected static function guard(int $id, int $uid, array $caps, string $baseCap): void {}
     }
 
-    class FieldsToggle
+    class BulkFieldToggle
     {
         public static $lastToggleCall;
 
@@ -145,14 +192,64 @@ namespace app\common\support
         }
     }
 
-    class ModelList {}
+    class ModelQuery {}
 }
 
 // ============================================================
 // require 生产文件（此后所有替身必须已就绪）
 // ============================================================
+namespace app\shared\Authorization
+{
+    class GrantSet {}
+}
+
+namespace app\modules\Content\Mentions\Service
+{
+    final class Mentions
+    {
+        public static int $captures = 0;
+        public static function capture(...$arguments): array { self::$captures++; return []; }
+        public static function publishAdded(...$arguments): void {}
+    }
+}
+
+namespace app\modules\Platform\Notifications\Domain
+{
+    final class SystemNotice { public const MODERATION = 'system.moderation'; }
+}
+
+namespace app\modules\Platform\Files\Public
+{
+    final class Files
+    {
+        public static function referenceFileIds(string $type, string $id): array { return []; }
+        public static function replaceReferences(string $type, string $id, string $purpose, array $fileIds, int $ownerId, bool $isPublic, bool $allowAll): void {}
+    }
+}
+
+namespace app\modules\Content\Cards\Service\Policy
+{
+    class CardPolicy
+    {
+        public static function assertCanBatch(...$args): void {}
+        public static function assertCan(...$args): void {}
+    }
+}
+
 namespace {
-    require __DIR__ . '/../../app/api/service/Content/Cards.php';
+    final class CardNoticeState
+    {
+        public static object $issuer;
+    }
+
+    function app(string $class): object
+    {
+        if ($class === \app\modules\Platform\Notifications\Contract\SystemNoticeIssuer::class) return CardNoticeState::$issuer;
+        throw new \RuntimeException('Unexpected container lookup: ' . $class);
+    }
+
+require __DIR__ . '/../../app/modules/Content/Cards/Domain/PublicationStatus.php';
+    require __DIR__ . '/../../app/modules/Content/Cards/Service/Cards.php';
 }
 
 // ============================================================
@@ -186,15 +283,20 @@ namespace {
     };
 
     $reset = static function (): void {
-        \app\api\model\Cards::reset();
-        \app\common\support\FieldsToggle::reset();
+        \app\modules\Content\Infrastructure\Persistence\Model\Cards::reset();
+        \app\shared\Infrastructure\Persistence\BulkFieldToggle::reset();
+        \app\modules\Content\Mentions\Service\Mentions::$captures = 0;
+        CardNoticeState::$issuer = new class {
+            public array $records = [];
+            public function issue(...$arguments): object { $this->records[] = $arguments; return new \stdClass(); }
+        };
     };
 
     $test('unhide builds whereIn → where → update chain', static function () use ($reset, $assertSame): void {
         $reset();
-        \app\api\service\Content\Cards::batchOperate('unhide', [1, 2, 3], 1, ['cards.update.all']);
+        \app\modules\Content\Cards\Service\Cards::batchOperate('unhide', [1, 2, 3], 1, new \app\shared\Authorization\GrantSet());
 
-        $query = \app\api\model\Cards::$lastQuery;
+        $query = \app\modules\Content\Infrastructure\Persistence\Model\Cards::$lastQuery;
         $calls = $query->calls;
         $assertSame(3, count($calls), 'query chain call count');
 
@@ -212,10 +314,10 @@ namespace {
 
     $test('hide delegates to FieldsToggle with correct params', static function () use ($reset, $assertSame): void {
         $reset();
-        \app\api\service\Content\Cards::batchOperate('hide', [10, 20], 1, ['cards.update.all']);
+        \app\modules\Content\Cards\Service\Cards::batchOperate('hide', [10, 20], 1, new \app\shared\Authorization\GrantSet());
 
-        $call = \app\common\support\FieldsToggle::$lastToggleCall;
-        $assertSame(\app\api\model\Cards::class, $call[0], 'modelClass');
+        $call = \app\shared\Infrastructure\Persistence\BulkFieldToggle::$lastToggleCall;
+        $assertSame(\app\modules\Content\Infrastructure\Persistence\Model\Cards::class, $call[0], 'modelClass');
         $assertSame('status', $call[1], 'field');
         $assertSame([10, 20], $call[2], 'ids');
         $assertSame([0, 2], $call[3], 'from');
@@ -226,10 +328,24 @@ namespace {
         $reset();
         $assertThrows(
             static function (): void {
-                \app\api\service\Content\Cards::batchOperate('nonexistent', [1], 1, []);
+                \app\modules\Content\Cards\Service\Cards::batchOperate('nonexistent', [1], 1, new \app\shared\Authorization\GrantSet());
             },
             '不支持的操作'
         );
+    });
+
+    $test('pending card approval issues one moderation notice', static function () use ($reset, $assertSame): void {
+        $reset();
+        \app\modules\Content\Infrastructure\Persistence\Model\Cards::$rows[12] = [
+            'id' => 12, 'user_id' => 42, 'status' => 3, 'data' => [], 'content' => '',
+        ];
+        $approve = new \ReflectionMethod(\app\modules\Content\Cards\Service\Cards::class, 'approveCards');
+        $approve->setAccessible(true);
+        $approve->invoke(null, [12]);
+        $approve->invoke(null, [12]);
+        $assertSame(0, \app\modules\Content\Infrastructure\Persistence\Model\Cards::$rows[12]['status']);
+        $assertSame(1, count(CardNoticeState::$issuer->records), 'approval notice count');
+        $assertSame('moderation.card.12.approved', CardNoticeState::$issuer->records[0][1], 'approval notice key');
     });
 
     $failures = 0;

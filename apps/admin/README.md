@@ -1,75 +1,26 @@
-# Nuxt Minimal Starter
+# LoveCards Admin
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+这是 LoveCards 的 Nuxt 管理端，部署路径为 `/admin/`，以 SPA 方式运行。
 
-## Setup
+管理端的后端请求只能通过 `~/lib/api.ts` 提供的 `@lovecards/sdk` 客户端完成。页面可以直接调用 SDK；Pinia 只保存跨页面共享状态。
 
-Make sure to install dependencies:
+## 开发
 
-```bash
-# npm
-npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
-```
-
-## Development Server
-
-Start the development server on `http://localhost:3000`:
+在仓库根目录执行：
 
 ```bash
-# npm
-npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
+npm ci
+npm run dev:admin
 ```
 
-## Production
+开发服务器默认运行在 `http://127.0.0.1:3000/admin/`，`/api` 由 Nuxt 代理到后端。
 
-Build the application for production:
+## 验证
 
 ```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
+npm run typecheck:admin
+npm run build:admin
+npm run test:admin:e2e
 ```
 
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+完整目录、状态、通知和 SDK 边界见 [管理端架构规范](../../docs/engineering/ADMIN-ARCHITECTURE.md)。

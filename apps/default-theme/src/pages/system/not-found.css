@@ -1,0 +1,29 @@
+@layer lovecards-pages {
+  .not-found-page {
+    width: min(560px, calc(100% - 40px));
+    min-height: calc(100vh - 150px);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    justify-content: center;
+  }
+
+  .not-found-page > p {
+    margin-bottom: 12px;
+    color: var(--lc-rose-deep);
+    font-size: 0.78rem;
+    font-weight: 750;
+  }
+
+  .not-found-page h1 {
+    margin-bottom: 12px;
+    font-size: 2rem;
+    letter-spacing: -0.035em;
+  }
+
+  .not-found-page > span {
+    margin-bottom: 28px;
+    color: var(--lc-muted);
+  }
+}

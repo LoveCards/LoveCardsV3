@@ -23,12 +23,14 @@ class ApiException extends \Exception
     public const CODE_LOGIN_FAILED        = 1005;
     public const CODE_TOKEN_INVALID       = 1006;
     public const CODE_TOKEN_EXPIRED       = 1007;
+    public const CODE_PROFILE_NOT_FOUND   = 1008;
 
     // 权限 11xx
     public const CODE_PERMISSION_DENIED          = 1101;
     public const CODE_VISITOR_MODE_DISABLED      = 1102;
     public const CODE_ROLE_NOT_FOUND             = 1103;
     public const CODE_ROLE_IN_USE                = 1104;
+    public const CODE_PROFILE_RESTRICTED         = 1105;
 
     // 卡片 20xx
     public const CODE_CARD_NOT_FOUND = 2001;
@@ -56,6 +58,8 @@ class ApiException extends \Exception
     public const CODE_SYSTEM_ERROR          = 9001;
     public const CODE_PARAM_INVALID         = 9002;
     public const CODE_RESOURCE_NOT_FOUND    = 9003;
+    public const CODE_VALIDATION_ERROR      = 9010;
+    public const CODE_RATE_LIMITED          = 9011;
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 码→消息 / HTTP 映射
@@ -68,10 +72,12 @@ class ApiException extends \Exception
         self::CODE_LOGIN_FAILED        => '登录失败',
         self::CODE_TOKEN_INVALID       => '令牌无效',
         self::CODE_TOKEN_EXPIRED       => '令牌已过期',
+        self::CODE_PROFILE_NOT_FOUND   => '用户不存在',
         self::CODE_PERMISSION_DENIED   => '权限不足',
         self::CODE_VISITOR_MODE_DISABLED => '访客模式未开启',
         self::CODE_ROLE_NOT_FOUND      => '角色不存在',
         self::CODE_ROLE_IN_USE         => '角色使用中无法删除',
+        self::CODE_PROFILE_RESTRICTED  => '主页受限',
         self::CODE_CARD_NOT_FOUND      => '卡片不存在',
         self::CODE_CARD_DISABLED       => '卡片已被禁用',
         self::CODE_CARD_HIDDEN         => '卡片已隐藏',
@@ -87,6 +93,8 @@ class ApiException extends \Exception
         self::CODE_SYSTEM_ERROR         => '系统异常',
         self::CODE_PARAM_INVALID        => '参数错误',
         self::CODE_RESOURCE_NOT_FOUND   => '资源不存在',
+        self::CODE_VALIDATION_ERROR     => '字段校验失败',
+        self::CODE_RATE_LIMITED         => '请求过于频繁',
         self::CODE_UNKNOWN              => '未知错误',
     ];
 
@@ -98,10 +106,12 @@ class ApiException extends \Exception
         self::CODE_LOGIN_FAILED          => 401,
         self::CODE_TOKEN_INVALID         => 401,
         self::CODE_TOKEN_EXPIRED         => 401,
+        self::CODE_PROFILE_NOT_FOUND     => 404,
         self::CODE_PERMISSION_DENIED     => 403,
         self::CODE_VISITOR_MODE_DISABLED => 403,
         self::CODE_ROLE_NOT_FOUND        => 404,
         self::CODE_ROLE_IN_USE           => 409,
+        self::CODE_PROFILE_RESTRICTED    => 403,
         self::CODE_CARD_NOT_FOUND        => 404,
         self::CODE_CARD_DISABLED         => 403,
         self::CODE_CARD_HIDDEN           => 403,
@@ -112,6 +122,8 @@ class ApiException extends \Exception
         self::CODE_PERMISSION_NOT_FOUND  => 404,
         self::CODE_PARAM_INVALID         => 400,
         self::CODE_RESOURCE_NOT_FOUND    => 404,
+        self::CODE_VALIDATION_ERROR      => 422,
+        self::CODE_RATE_LIMITED          => 429,
         self::CODE_FILE_TOO_LARGE        => 413,
         self::CODE_FILE_TYPE_NOT_ALLOWED  => 415,
         self::CODE_FILE_UPLOAD_FAILED    => 500,
@@ -121,6 +133,7 @@ class ApiException extends \Exception
 
     protected $data;
     protected $httpStatus;
+    protected array $headers = [];
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 构造函数
@@ -146,6 +159,24 @@ class ApiException extends \Exception
         ?Throwable $previous = null
     ): self {
         return new self($message, $code, $data, $previous);
+    }
+
+    public static function validation(array $errors, string $message = '字段校验失败', ?string $reasonCode = null): self
+    {
+        $normalized = [];
+        foreach ($errors as $field => $error) {
+            $normalized[(string) $field] = is_array($error) ? array_values($error) : [(string) $error];
+        }
+        $data = ['errors' => $normalized];
+        if ($reasonCode !== null && $reasonCode !== '') $data['reason_code'] = $reasonCode;
+        return new self($message, self::CODE_VALIDATION_ERROR, $data);
+    }
+
+    public static function tooManyRequests(string $message, string $reasonCode, int $retryAfter): self
+    {
+        $exception = new self($message, self::CODE_RATE_LIMITED, ['reason_code' => $reasonCode]);
+        $exception->headers['Retry-After'] = (string) max(1, $retryAfter);
+        return $exception;
     }
 
     public static function unauthorized(
@@ -224,6 +255,7 @@ class ApiException extends \Exception
 
         $data = ApiResponse::error($message, $detail, $code);
         $result = \think\Response::create($data, 'json')->code($httpStatus);
+        foreach ($this->headers as $name => $value) $result->header($name, $value);
         return ApiResponse::setHeader($result);
     }
 }

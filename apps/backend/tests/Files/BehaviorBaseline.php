@@ -15,9 +15,15 @@ declare(strict_types=1);
 // ════════════════════════════════════════════════════════════
 namespace
 {
+    function fileRepository(): object
+    {
+        static $repository;
+        return $repository ??= new \app\modules\Platform\Files\Infrastructure\ThinkOrmFileRepository();
+    }
+
     /**
      * 替代 ThinkPHP 的 app() 容器，仅用 new 实例化模型。
-     * 供 ModelList::make(string) 调用。
+     * 供 ModelQuery::make(string) 调用。
      */
     function app(string $class): object
     {
@@ -29,7 +35,7 @@ namespace
 // 2. Model & Support 替身（命名空间覆盖）
 // ════════════════════════════════════════════════════════════
 
-namespace app\api\model
+namespace app\modules\Platform\Files\Infrastructure\Persistence\Model
 {
     /**
      * 查询链记录器 — 记录所有 think-chain 方法调用。
@@ -97,7 +103,7 @@ namespace app\api\model
     }
 
     /**
-     * Files 模型替身 — 只提供 StorageManager::list() 路径所需的表面。
+     * Files 模型替身 — 只提供 FilesManager::list() 路径所需的表面。
      * 定义常量保证其他方法体解析通过（不会被 list 路径执行）。
      */
     class Files
@@ -130,13 +136,13 @@ namespace app\api\model
     }
 }
 
-namespace app\common\support
+namespace app\shared\Infrastructure\Persistence
 {
     /**
      * ModelList 替身 — 捕获 getPaginate() 传入的 where 条件。
      * 不执行实际链式调用，只记录静态状态供断言检查。
      */
-    class ModelList
+    class ModelQuery
     {
         /** @var array 最近一次 getPaginate 收到的 where */
         public static array $capturedWhere = [];
@@ -179,17 +185,19 @@ namespace app\common\support
 
 // ════════════════════════════════════════════════════════════
 // 3. 加载生产代码
-//    StorageManager::list() 是此套件的被测入口。
+//    FilesManager::list() 是此套件的被测入口。
 //    仅测试 list/getPaginate 路径，upload/batch 等方法不会被调用。
 // ════════════════════════════════════════════════════════════
 namespace
 {
-    require __DIR__ . '/../../app/api/service/Storage/StorageManager.php';
+require __DIR__ . '/../../app/modules/Platform/Files/Contract/FileRepository.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Domain/FileConstants.php';
+    require __DIR__ . '/../../app/modules/Platform/Files/Infrastructure/ThinkOrmFileRepository.php';
 }
 
 // ════════════════════════════════════════════════════════════
 // 4. listOwn() 生产入口代理
-//    所有 strict-owner 断言必须调用生产 StorageManager::listOwn()，
+//    所有 strict-owner 断言必须调用生产 FilesManager::listOwn()，
 //    禁止在测试中复制一份参考业务逻辑。
 // ════════════════════════════════════════════════════════════
 namespace
@@ -203,7 +211,7 @@ namespace
      */
     function listOwn(array $params, int $userId): array
     {
-        return \app\api\service\Storage\StorageManager::listOwn($params, $userId);
+        return fileRepository()->paginateOwn($params, $userId);
     }
 }
 
@@ -226,7 +234,7 @@ namespace
      */
     function resolveWhere(array $where): array
     {
-        $query = new \app\api\model\FilesQuery;
+        $query = new \app\modules\Platform\Files\Infrastructure\Persistence\Model\FilesQuery;
         foreach ($where as $condition) {
             if ($condition instanceof \Closure) {
                 $condition($query);
@@ -301,9 +309,9 @@ namespace
      * 重置全部 mock 静态状态。每个测试开头必须调用。
      */
     $reset = static function (): void {
-        \app\common\support\ModelList::$capturedWhere     = [];
-        \app\common\support\ModelList::$withTrashedCalled = false;
-        \app\common\support\ModelList::$onlyTrashedCalled = false;
+        \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere     = [];
+        \app\shared\Infrastructure\Persistence\ModelQuery::$withTrashedCalled = false;
+        \app\shared\Infrastructure\Persistence\ModelQuery::$onlyTrashedCalled = false;
 
         // 清理 listOwn 调用的副作用（它通过 Mock ModelList 注册静态状态）
     };
@@ -320,9 +328,9 @@ namespace
 
     $test('A1: 非管理员 list 构建 (user_id OR secure_public) 可见范围', static function () use ($reset, $assertTrue, $assertFalse): void {
         $reset();
-        \app\api\service\Storage\StorageManager::list([], 10, false);
+        fileRepository()->paginate([], 10, false);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
         $assertTrue(
@@ -345,9 +353,9 @@ namespace
 
     $test('A2: 可读全部(hasCapability files.read.all) 无 owner 限制', static function () use ($reset, $assertSame): void {
         $reset();
-        \app\api\service\Storage\StorageManager::list([], 10, true);
+        fileRepository()->paginate([], 10, true);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
         $userWhere  = array_filter($calls, fn($c) => $c[0] === 'where' && $c[1] === 'user_id');
@@ -359,20 +367,20 @@ namespace
 
     $test('A3: 可读全部可通过 show_deleted 查看软删除记录', static function () use ($reset, $assertTrue): void {
         $reset();
-        \app\api\service\Storage\StorageManager::list(['show_deleted' => 1], 10, true);
+        fileRepository()->paginate(['show_deleted' => 1], 10, true);
 
         $assertTrue(
-            \app\common\support\ModelList::$withTrashedCalled,
+            \app\shared\Infrastructure\Persistence\ModelQuery::$withTrashedCalled,
             '可读全部 show_deleted=1 应调用 withTrashed'
         );
     });
 
     $test('A4: 无可读全部能力无法通过 show_deleted 绕过软删除过滤', static function () use ($reset, $assertFalse): void {
         $reset();
-        \app\api\service\Storage\StorageManager::list(['show_deleted' => 1], 10, false);
+        fileRepository()->paginate(['show_deleted' => 1], 10, false);
 
         $assertFalse(
-            \app\common\support\ModelList::$withTrashedCalled,
+            \app\shared\Infrastructure\Persistence\ModelQuery::$withTrashedCalled,
             '无可读全部能力 show_deleted 不应生效'
         );
     });
@@ -383,9 +391,9 @@ namespace
 
     $test('A5: 访客 uid=0 list 仅安全公开记录', static function () use ($reset, $assertTrue, $assertFalse): void {
         $reset();
-        \app\api\service\Storage\StorageManager::list([], 0, false);
+        fileRepository()->paginate([], 0, false);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
         $assertTrue(
@@ -418,7 +426,7 @@ namespace
         $reset();
         listOwn([], 10);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
         $assertTrue(
@@ -439,7 +447,7 @@ namespace
         $reset();
         listOwn([], 42);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
         $count = 0;
@@ -455,70 +463,61 @@ namespace
     // 组 C：筛选参数兼容 strict owner
     // ──────────────────────────────────────────────────────
 
-    $test('C1: strict owner + scene 筛选同步生效', static function () use ($reset, $assertSame): void {
+    $test('C1: strict owner + scene 筛选同步生效', static function () use ($reset, $assertTrue): void {
         $reset();
         listOwn(['scene' => 'card'], 10);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
-        $assertSame(2, count($calls), '应有 2 个条件: user_id + scene');
-        $assertSame('where', $calls[0][0], '第 1 个条件应为 where');
-        $assertSame('user_id', $calls[0][1], '第 1 个应为 user_id');
-        $assertSame(10, $calls[0][2], 'user_id 值应为 10');
-        $assertSame('where', $calls[1][0], '第 2 个条件应为 where');
-        $assertSame('scene', $calls[1][1], '第 2 个应为 scene');
-        $assertSame('card', $calls[1][2], 'scene 值应为 card');
+        $assertTrue(hasCall($calls, 'where', 'user_id', 10));
+        $assertTrue(hasCall($calls, 'whereNull', 'purge_status'));
+        $assertTrue(hasCall($calls, 'where', 'scene', 'card'));
     });
 
-    $test('C2: strict owner + status 筛选同步生效', static function () use ($reset, $assertSame): void {
+    $test('C2: strict owner + status 筛选同步生效', static function () use ($reset, $assertTrue): void {
         $reset();
         listOwn(['status' => 0], 10);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
-        $assertSame(2, count($calls));
-        $assertSame('where', $calls[0][0]);
-        $assertSame('user_id', $calls[0][1]);
-        $assertSame('where', $calls[1][0]);
-        $assertSame('status', $calls[1][1]);
-        $assertSame(0, $calls[1][2]);
+        $assertTrue(hasCall($calls, 'where', 'user_id', 10));
+        $assertTrue(hasCall($calls, 'whereNull', 'purge_status'));
+        $assertTrue(hasCall($calls, 'where', 'status', 0));
     });
 
-    $test('C3: strict owner + upload_status 筛选同步生效', static function () use ($reset, $assertSame): void {
+    $test('C3: strict owner + upload_status 筛选同步生效', static function () use ($reset, $assertTrue): void {
         $reset();
         listOwn(['upload_status' => 1], 10);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
-        $assertSame(2, count($calls));
-        $assertSame('where', $calls[0][0]);
-        $assertSame('user_id', $calls[0][1]);
-        $assertSame('where', $calls[1][0]);
-        $assertSame('upload_status', $calls[1][1]);
-        $assertSame(1, $calls[1][2]);
+        $assertTrue(hasCall($calls, 'where', 'user_id', 10));
+        $assertTrue(hasCall($calls, 'whereNull', 'purge_status'));
+        $assertTrue(hasCall($calls, 'where', 'upload_status', 1));
     });
 
-    $test('C4: strict owner + scene + status + upload_status 三维组合', static function () use ($reset, $assertSame): void {
+    $test('C4: strict owner + scene + status + upload_status 三维组合', static function () use ($reset, $assertTrue): void {
         $reset();
         listOwn(['scene' => 'avatar', 'status' => 0, 'upload_status' => 1], 10);
 
-        $where = \app\common\support\ModelList::$capturedWhere;
+        $where = \app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere;
         $calls = resolveWhere($where);
 
-        $assertSame(4, count($calls), '应有 4 个条件: user_id + scene + status + upload_status');
-        $assertSame('where', $calls[0][0]);
-        $assertSame('user_id', $calls[0][1]);
-        $assertSame(10, $calls[0][2]);
+        $assertTrue(hasCall($calls, 'where', 'user_id', 10));
+        $assertTrue(hasCall($calls, 'whereNull', 'purge_status'));
+        $assertTrue(hasCall($calls, 'where', 'scene', 'avatar'));
+        $assertTrue(hasCall($calls, 'where', 'status', 0));
+        $assertTrue(hasCall($calls, 'where', 'upload_status', 1));
     });
 
     $test('C5: strict owner + ref_type 筛选同步生效', static function () use ($reset, $assertTrue): void {
         $reset();
         listOwn(['ref_type' => 'card'], 10);
 
-        $calls = resolveWhere(\app\common\support\ModelList::$capturedWhere);
+        $calls = resolveWhere(\app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere);
         $assertTrue(hasCall($calls, 'where', 'user_id', 10));
         $assertTrue(hasCall($calls, 'where', 'ref_type', 'card'));
     });
@@ -527,7 +526,7 @@ namespace
         $reset();
         listOwn(['ref_id' => 123], 10);
 
-        $calls = resolveWhere(\app\common\support\ModelList::$capturedWhere);
+        $calls = resolveWhere(\app\shared\Infrastructure\Persistence\ModelQuery::$capturedWhere);
         $assertTrue(hasCall($calls, 'where', 'user_id', 10));
         $assertTrue(hasCall($calls, 'where', 'ref_id', 123));
     });
@@ -541,7 +540,7 @@ namespace
         listOwn([], 10);
 
         $assertFalse(
-            \app\common\support\ModelList::$withTrashedCalled,
+            \app\shared\Infrastructure\Persistence\ModelQuery::$withTrashedCalled,
             'strict owner 不应调用 withTrashed（SoftDelete 默认过滤）'
         );
     });
@@ -551,7 +550,7 @@ namespace
         listOwn(['show_deleted' => 1], 10);
 
         $assertFalse(
-            \app\common\support\ModelList::$withTrashedCalled,
+            \app\shared\Infrastructure\Persistence\ModelQuery::$withTrashedCalled,
             'strict owner 不响应 show_deleted 参数'
         );
     });
@@ -564,12 +563,12 @@ namespace
         }
     });
 
-    $test('E2: Files Application layer has no framework or legacy Service dependency', static function () use ($assertTrue): void {
-        $directory = dirname(__DIR__, 2) . '/app/api/application/Files/';
+    $test('E2: Files Service has no framework or legacy Storage dependency', static function () use ($assertTrue): void {
+        $directory = dirname(__DIR__, 2) . '/app/modules/Platform/Files/Application/';
         foreach (glob($directory . '*.php') as $file) {
             $source = file_get_contents($file);
             $assertTrue(strpos($source, 'think\\') === false, basename($file) . ' 不得依赖 ThinkPHP');
-            $assertTrue(strpos($source, 'app\\api\\service\\') === false, basename($file) . ' 不得依赖旧 Storage Service');
+            $assertTrue(strpos($source, 'app\\api\\service\\Storage\\') === false, basename($file) . ' 不得依赖旧 Storage Service');
         }
     });
 
@@ -597,7 +596,7 @@ namespace
     //                 throw ApiException::unauthorized('请先登入');
     //             }
     //             $params = $this->paramIndex(Request::param());
-    //             $result = StorageManager::listOwn($params, $userId);
+    //             $result = FilesManager::listOwn($params, $userId);
     //             return ApiResponse::createOk($result);
     //         }
     //

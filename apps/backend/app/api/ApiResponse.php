@@ -3,12 +3,13 @@
 namespace app\api;
 
 use think\Response;
+use app\shared\Transport\Http\Resource;
 
 class ApiResponse
 {
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // HTTP 状态码
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹?
+    // HTTP 鐘舵€佺爜
+    // 鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹?
     public const HTTP_OK           = 200;
     public const HTTP_CREATED      = 201;
     public const HTTP_ACCEPTED     = 202;
@@ -22,36 +23,38 @@ class ApiResponse
     public const HTTP_ERROR        = 500;
     public const HTTP_UNAVAILABLE = 503;
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 响应构建
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹?
+    // 鍝嶅簲鏋勫缓
+    // 鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹?
 
     public static function setHeader($object)
     {
         $data = [
+            'Content-Type'                 => 'application/json; charset=utf-8',
             'Access-Control-Allow-Origin'  => '*',
-            'Access-Control-Allow-Headers' => 'Authorization, Content-Type, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, X-CSRF-TOKEN, X-Requested-With, X-Token',
+            'Access-Control-Allow-Headers' => 'Authorization, Content-Type, If-Match, If-Modified-Since, If-None-Match, If-Unmodified-Since, X-CSRF-TOKEN, X-Requested-With, X-Token, X-Request-Id, X-Correlation-Id',
             'Access-Control-Allow-Methods' => 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
         ];
         return $object->header($data);
     }
 
     /**
-     * 包装成功响应
+     * 鍖呰鎴愬姛鍝嶅簲
      *
-     * @param mixed $data 业务数据（分页数据自动提取 pagination）
-     * @param string $message 提示消息
+     * @param mixed $data 涓氬姟鏁版嵁锛堝垎椤垫暟鎹嚜鍔ㄦ彁鍙?pagination锛?
+     * @param string $message 鎻愮ず娑堟伅
      * @return array
      */
-    public static function wrap($data = null, string $message = '操作成功'): array
+    public static function wrap($data = null, string $message = '鎿嶄綔鎴愬姛'): array
     {
+        $data = self::normalizeEncoding(Resource::normalize($data));
         $result = [
             'success' => true,
-            'message' => $message,
+            'message' => self::normalizeEncoding($message),
             'timestamp' => date('c'),
         ];
 
-        // 检测分页结构: {total, per_page, current_page, last_page, data}
+        // 妫€娴嬪垎椤电粨鏋? {total, per_page, current_page, last_page, data}
         if (is_array($data) && isset($data['total'], $data['current_page'], $data['data']) && is_array($data['data'])) {
             $result['data'] = $data['data'];
             $result['pagination'] = [
@@ -68,11 +71,11 @@ class ApiResponse
     }
 
     /**
-     * 包装错误响应
+     * 鍖呰閿欒鍝嶅簲
      *
-     * @param string $message 错误消息
-     * @param mixed $detail 错误详情
-     * @param int $code 业务码
+     * @param string $message 閿欒娑堟伅
+     * @param mixed $detail 閿欒璇︽儏
+     * @param int $code 涓氬姟鐮?
      * @return array
      */
     public static function error(string $message = '', $detail = null, int $code = 0): array
@@ -81,26 +84,63 @@ class ApiResponse
             'success' => false,
             'error' => [
                 'code'    => $code,
-                'message' => $message,
-                'details' => $detail,
+                'message' => self::normalizeEncoding($message),
+                'details' => self::normalizeEncoding($detail),
             ],
             'timestamp' => date('c'),
         ];
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 成功响应（200）
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    /**
+     * The legacy PHP sources contain UTF-8 Chinese text that was decoded and
+     * re-encoded once during the migration. Convert response strings back to
+     * their intended UTF-8 representation at the single transport boundary.
+     */
+    private static function normalizeEncoding($value)
+    {
+        if (is_string($value)) {
+            // Already-correct UTF-8 text must not be converted a second time.
+            // Only legacy mojibake strings (which contain the characteristic
+            // GBK-decoding markers) should go through the repair path.
+            if (!preg_match('/[鍊娓瀛閰鐭璇鐧缁濡鎴鐗榛鍓緤鈥闂]/u', $value)) {
+                return $value;
+            }
+            $converted = @iconv('UTF-8', 'GBK//IGNORE', $value);
+            // A converted value is safe only when the GBK byte sequence also
+            // forms valid UTF-8. This distinguishes legacy mojibake from
+            // already-correct Chinese strings and prevents malformed JSON.
+            if ($converted !== false && $converted !== '' && @preg_match('//u', $converted) === 1) {
+                return $converted;
+            }
+            return $value;
+        }
+        if (is_array($value)) {
+            foreach ($value as $key => $item) {
+                $value[$key] = self::normalizeEncoding($item);
+            }
+        }
+        return $value;
+    }
 
-    public static function createOk($data = null, string $message = '操作成功'): Response
+    // 鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹?
+    // 鎴愬姛鍝嶅簲锛?00锛?
+    // 鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹?
+
+    public static function createOk($data = null, string $message = '鎿嶄綔鎴愬姛'): Response
     {
         $result = Response::create(self::wrap($data, $message), 'json')->code(self::HTTP_OK);
         return self::setHeader($result);
     }
 
-    public static function createCreated(): Response
+    public static function createCreated($data = null, string $message = '鍒涘缓鎴愬姛'): Response
     {
-        $result = Response::create(self::wrap(null, '创建成功'), 'json')->code(self::HTTP_CREATED);
+        $result = Response::create(self::wrap($data, $message), 'json')->code(self::HTTP_CREATED);
+        return self::setHeader($result);
+    }
+
+    public static function createAccepted($data = null, string $message = ''): Response
+    {
+        $result = Response::create(self::wrap($data, $message), 'json')->code(self::HTTP_ACCEPTED);
         return self::setHeader($result);
     }
 
@@ -109,9 +149,9 @@ class ApiResponse
         return self::setHeader(Response::create()->code(self::HTTP_NO_CONTENT));
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 错误响应
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹?
+    // 閿欒鍝嶅簲
+    // 鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹?
 
     public static function createBadRequest(string $message = '', $detail = null, int $code = 0): Response
     {
@@ -153,9 +193,9 @@ class ApiResponse
         return self::errorResponse(self::error($message, $detail, $code), self::HTTP_UNAVAILABLE);
     }
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // 内部方法
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // 鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹?
+    // 鍐呴儴鏂规硶
+    // 鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹佲攣鈹?
 
     private static function errorResponse(array $errorData, int $httpCode): Response
     {

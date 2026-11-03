@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LoveCards · Blueprint 07 Inbox & Messages</title>
+  <link rel="stylesheet" href="./base.css">
+  <link rel="stylesheet" href="./secondary-pages.css">
+  <link rel="stylesheet" href="./responsive-overrides.css">
+  <link rel="stylesheet" href="./visual-language.css">
+  <link rel="stylesheet" href="./blueprint-07-messages.css?v=2">
+</head>
+<body>
+<main class="blueprint-page rb-page">
+  <section class="board rb-board">
+    <header class="board-meta">
+      <div><h1>Blueprint 07A · Messages & Conversation</h1><p>消息中心是独立页面体系：桌面为双栏工作区，手机拆为消息列表页与会话详情页；三种状态共享同一标题、选项卡和消息语义。</p></div>
+      <span class="board-tag">L2-15/16 · Messaging</span>
+    </header>
+    <div class="rb-frames">
+      <section class="rb-surface">
+        <header class="rb-meta"><strong>Desktop</strong><span>消息中心一级 Tab · 会话列表 · 当前聊天 · 发送状态</span><small>1440+</small></header>
+        <div class="frame desktop rb-desktop"><div class="rb-shell">
+          <header class="rb-top"><div class="rb-brand"><i>L</i>Love<em>Cards</em></div><nav class="rb-nav"><span>首页</span><span>发现</span><span class="active">消息</span></nav><div class="rb-search">⌕　搜索会话</div><div class="rb-user" aria-label="当前用户头像（缺失时显示首字 fallback）">晚</div></header>
+          <main class="rb-main" style="padding:18px"><div class="rb-split">
+            <aside class="rb-conversations">
+              <header><h3>私信</h3><small class="rb-meta-copy">4 个会话</small></header>
+              <div class="rb-conversation-tools"><div class="rb-search">⌕　搜索会话</div></div>
+              <div class="rb-conv active"><div class="rb-avatar">安</div><div><b>安安小姐姐</b><p>好呀，周末一起去看看。</p></div><time>12:42</time></div>
+              <div class="rb-conv"><div class="rb-avatar blue">见</div><div><b>见山影像</b><p>照片原图晚点发给你。</p></div><span class="rb-unread">2</span></div>
+              <div class="rb-conv"><div class="rb-avatar green">野</div><div><b>野餐研究所</b><p>你分享的地点很不错。</p></div><time>昨天</time></div>
+              <div class="rb-conv"><div class="rb-avatar yellow">城</div><div><b>城市漫步</b><p>下次一起走走旧街区。</p></div><time>周一</time></div>
+            </aside>
+            <section class="rb-chat">
+              <header><div class="rb-avatar">安</div><div style="margin-left:9px"><h3>安安小姐姐</h3><small class="rb-meta-copy">互相关注 · 在线</small></div><small class="rb-meta-copy">私信</small></header>
+              <div class="rb-chat-body">
+                <div class="rb-bubble">看到你发的海边照片了，好喜欢那个光线。</div>
+                <div class="rb-bubble mine">傍晚六点左右最舒服，沿着旧城区走过去刚刚好。</div>
+                <div class="rb-bubble">好呀，周末一起去看看。</div>
+              <div class="rb-note" style="margin-top:24px">私信正文、会话读取和发送只使用 Messages SDK。发送失败时保留原文并提供重试；收件人标识缺失时输入区显示明确说明。</div>
+              </div>
+              <div class="rb-chat-input"><div>输入消息…</div><button>发送</button></div>
+            </section>
+          </div></main>
+        </div></div>
+      </section>
+      <section class="rb-surface">
+        <header class="rb-meta"><strong>Mobile</strong><span>左：会话详情页　右：消息列表页 · 均为独立任务页面</span><small>390 × 844 × 2</small></header>
+        <div class="rb-phone-pair">
+        <div class="frame phone rb-phone"><div class="rb-mobile" style="padding-bottom:0">
+          <header class="rb-mobile-top"><button>←</button><strong>安安小姐姐</strong><span style="color:var(--muted);font-size:9px">私信</span></header>
+          <main class="rb-scroll" style="height:730px;padding:14px 16px;background:#fff">
+            <div class="rb-note" style="text-align:center">互相关注 · 在线</div>
+            <div class="rb-bubble">看到你发的海边照片了，好喜欢那个光线。</div>
+            <div class="rb-bubble mine">傍晚六点左右最舒服，沿着旧城区走过去刚刚好。</div>
+            <div class="rb-bubble">好呀，周末一起去看看。</div>
+          </main>
+          <div class="rb-chat-input" style="bottom:0"><div>输入消息…</div><button>发送</button></div>
+        </div></div>
+        <div class="frame phone rb-phone"><div class="rb-mobile">
+          <header class="rb-mobile-top rb-message-list-top"><strong>消息中心</strong><button aria-label="搜索会话" title="打开搜索页面" class="rb-search-trigger">⌕</button></header>
+          <nav class="rb-mobile-tabs"><span class="active">私信</span><span>通知</span></nav>
+          <main class="rb-scroll rb-message-list-screen">
+            <div class="rb-mobile-search">⌕　搜索会话</div>
+            <div class="rb-mobile-section rb-message-list">
+              <div class="rb-row active"><div class="rb-avatar">安</div><div><b>安安小姐姐</b><small>好呀，周末一起去看看。</small></div><time>10:24</time><span class="rb-unread-dot"></span></div>
+              <div class="rb-row"><div class="rb-avatar blue">见</div><div><b>见山影像</b><small>照片原图晚点发给你。</small></div><time>昨天</time><span class="rb-unread-dot"></span></div>
+              <div class="rb-row"><div class="rb-avatar green">野</div><div><b>野餐研究所</b><small>你分享的地点很不错。</small></div><time>周一</time></div>
+              <div class="rb-row"><div class="rb-avatar yellow">城</div><div><b>城市漫步</b><small>下次一起走走旧街区。</small></div><time>6/10</time></div>
+            </div>
+          </main>
+        </div></div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <section class="board rb-board">
+    <header class="board-meta">
+      <div><h1>Blueprint 07B · Notifications</h1><p>通知二级只保留互动消息与系统通知；联合列表由服务端分类、排序和分页。</p></div>
+      <span class="board-tag">L2-14 · Inbox</span>
+    </header>
+    <div class="rb-frames">
+      <section class="rb-surface">
+        <header class="rb-meta"><strong>Desktop</strong><span>消息中心一级 Tab · /inbox · engagement　/　/inbox/system · system</span><small>1440+</small></header>
+        <div class="frame desktop rb-desktop"><div class="rb-shell">
+          <header class="rb-top"><div class="rb-brand"><i>L</i>Love<em>Cards</em></div><nav class="rb-nav"><span>首页</span><span>发现</span><span class="active">消息</span></nav><div class="rb-search">⌕　搜索通知</div><div class="rb-user" aria-label="当前用户头像（缺失时显示首字 fallback）">晚</div></header>
+          <main class="rb-main">
+            <div class="rb-title"><div><h2>互动消息</h2><p>私信投影、关注、点赞、收藏、评论、回复和提及都按时间汇总。</p></div><button class="rb-btn">全部标为已读</button></div>
+            <div class="rb-grid">
+              <aside class="rb-rail"><h3>通知范围</h3><a class="active">互动消息 <b>12</b></a><a>系统通知</a></aside>
+              <section class="rb-list">
+                <header class="rb-list-head"><h3>今天</h3><span>12 条未读</span></header>
+                <div class="rb-row"><div class="rb-avatar blue">见</div><div><b>见山影像给你发来了新消息</b><small>打开对应会话 · 8 分钟前</small></div><span class="rb-unread">1</span></div>
+                <div class="rb-row"><div class="rb-avatar">安</div><div><b>安安小姐姐回复了你的动态</b><small>“照片里的风好像能从屏幕里吹出来。” · 12 分钟前</small></div><span class="rb-unread">1</span></div>
+                <div class="rb-row"><div class="rb-avatar green">野</div><div><b>野餐研究所关注了你</b><small>你们有 3 位共同关注 · 1 小时前</small></div><small style="color:var(--rose);font-size:8px">查看主页</small></div>
+                <div class="rb-row"><div>♡</div><div><b>你的动态获得了 46 个新喜欢</b><small>今天的晚霞像一封慢慢打开的信 · 2 小时前</small></div></div>
+              </section>
+            </div>
+          </main>
+        </div></div>
+      </section>
+      <section class="rb-surface">
+        <header class="rb-meta"><strong>Mobile</strong><span>互动 / 系统 · 连续通知流</span><small>390 × 844</small></header>
+        <div class="frame phone rb-phone"><div class="rb-mobile">
+          <header class="rb-mobile-top"><button>←</button><strong>通知</strong><span style="color:var(--muted);font-size:9px">消息中心</span></header>
+          <main class="rb-scroll">
+            <section class="rb-mobile-title"><div class="rb-mobile-notification-tabs"><span class="active">互动消息</span><span>系统通知</span></div><h2>互动消息</h2><p>12 条未读</p></section>
+            <section class="rb-mobile-section">
+              <div class="rb-row"><div class="rb-avatar blue">见</div><div><b>见山影像给你发来了新消息</b><small>打开对应会话 · 8 分钟</small></div><span class="rb-unread">1</span></div>
+              <div class="rb-row"><div class="rb-avatar">安</div><div><b>安安小姐姐回复了你</b><small>“照片里的风好像能吹出来。” · 12 分钟</small></div><span class="rb-unread">1</span></div>
+              <div class="rb-row"><div class="rb-avatar green">野</div><div><b>野餐研究所关注了你</b><small>3 位共同关注 · 1 小时</small></div><small style="color:var(--rose);font-size:8px">查看主页</small></div>
+              <div class="rb-row"><div>♡</div><div><b>获得了 46 个新喜欢</b><small>今天的晚霞… · 2 小时</small></div></div>
+            </section>
+          </main>
+          <nav class="rb-bottom"><button><b>⌂</b><span>首页</span></button><button><b>⌕</b><span>发现</span></button><button class="compose"><b>＋</b></button><button class="active"><b>♡</b><span>消息</span></button><button><b>○</b><span>我的</span></button></nav>
+        </div></div>
+      </section>
+    </div>
+  </section>
+
+  <section class="board rb-board">
+    <header class="board-meta">
+      <div><h1>Blueprint 07C · Message Requests & Search</h1><p>陌生人消息先建立权限语境；会话搜索在私信工作区中完成。当前版本暂未开放此能力。</p></div>
+      <span class="board-tag">L3-11 · Requests</span>
+    </header>
+    <div class="rb-frames">
+      <section class="rb-surface">
+        <header class="rb-meta"><strong>Desktop</strong><span>请求列表 · 会话搜索 · 权限动作</span><small>1440+</small></header>
+        <div class="frame desktop rb-desktop"><div class="rb-shell">
+          <header class="rb-top"><div class="rb-brand"><i>L</i>Love<em>Cards</em></div><nav class="rb-nav"><span>首页</span><span>发现</span><span class="active">消息</span></nav><div class="rb-search">⌕　搜索用户或消息内容</div></header>
+          <main class="rb-main">
+            <div class="rb-title"><div><h2>消息请求</h2><p>接受请求前，对方不会看到你已读消息。</p></div><button class="rb-btn">请求设置</button></div>
+            <div class="rb-grid">
+              <aside class="rb-rail"><h3>消息管理</h3><a class="active">待处理 <b>3</b></a><a>已接受</a><a>已删除</a><a>会话搜索</a></aside>
+              <section class="rb-list">
+                <header class="rb-list-head"><h3>待处理请求</h3><span>最近 30 天</span></header>
+                <div class="rb-row"><div class="rb-avatar blue">木</div><div><b>木木的胶片</b><small>“你好，想问一下照片使用授权…” · 2 小时前</small></div><button class="rb-btn primary">查看</button></div>
+                <div class="rb-row"><div class="rb-avatar green">桥</div><div><b>桥下读书会</b><small>“我们下周有一次线下活动…” · 昨天</small></div><button class="rb-btn">查看</button></div>
+                <div class="rb-row"><div class="rb-avatar yellow">商</div><div><b>某品牌合作</b><small>可能包含商业推广 · 3 天前</small></div><button class="rb-btn">查看</button></div>
+                <div class="rb-note" style="margin:16px">打开请求后提供接受、删除、举报和屏蔽；危险动作不会与接受按钮并排同权重。</div>
+              </section>
+            </div>
+          </main>
+        </div></div>
+      </section>
+      <section class="rb-surface">
+        <header class="rb-meta"><strong>Mobile</strong><span>权限说明 · 请求列表</span><small>390 × 844</small></header>
+        <div class="frame phone rb-phone"><div class="rb-mobile">
+          <header class="rb-mobile-top"><button>←</button><strong>消息请求</strong><span style="color:var(--muted);font-size:9px">暂未开放</span></header>
+          <main class="rb-scroll">
+            <section class="rb-mobile-title"><h2>3 条待处理请求</h2><p>接受前，对方不会看到你已读。</p></section>
+            <section class="rb-mobile-section">
+              <div class="rb-row"><div class="rb-avatar blue">木</div><div><b>木木的胶片</b><small>想问照片使用授权…</small></div><span>›</span></div>
+              <div class="rb-row"><div class="rb-avatar green">桥</div><div><b>桥下读书会</b><small>下周有一次线下活动…</small></div><span>›</span></div>
+              <div class="rb-row"><div class="rb-avatar yellow">商</div><div><b>某品牌合作</b><small>可能包含商业推广</small></div><span>›</span></div>
+            </section>
+            <section class="rb-mobile-section"><header><h3>谁可以给我发消息</h3><span>设置</span></header><div class="rb-note">所有人可以发送请求；只有你关注的人可以直接进入收件箱。</div></section>
+          </main>
+          <nav class="rb-bottom"><button><b>⌂</b><span>首页</span></button><button><b>⌕</b><span>发现</span></button><button class="compose"><b>＋</b></button><button class="active"><b>♡</b><span>消息</span></button><button><b>○</b><span>我的</span></button></nav>
+        </div></div>
+      </section>
+    </div>
+  </section>
+</main>
+</body>
+</html>

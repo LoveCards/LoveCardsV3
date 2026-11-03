@@ -2,9 +2,8 @@ export interface Like {
   id: number
   aid: number
   pid: number
-  ref_type: string | null
-  ref_id: number | null
+  ref_type: string
+  ref_id: number
   uid: number
-  ip: string
   created_at: string | null
 }

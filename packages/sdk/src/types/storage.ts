@@ -1,3 +1,5 @@
+import type { FieldDefinition, JsonObject, JsonValue } from './json'
+
 export interface StorageDriver {
   type: string
   name: string
@@ -5,10 +7,11 @@ export interface StorageDriver {
 }
 
 export interface StorageMeta {
+  [key: string]: JsonValue | undefined
   type: string
   name: string
   icon: string
-  schema: Record<string, any>
+  schema: JsonObject
   group: string
 }
 
@@ -16,9 +19,11 @@ export interface StorageChannel {
   slug: string
   name: string
   icon: string
-  fields: any[]
+  fields: FieldDefinition[]
+  configured?: boolean
+  available?: boolean
 }
 
 export interface ChannelStats {
-  [key: string]: any
+  [key: string]: { file_count: number; total_size: number }
 }

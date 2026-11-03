@@ -2,9 +2,9 @@
 
 namespace app\api\middleware;
 
-use app\api\application\Auth\AuthContext;
-use app\api\application\Auth\AuthenticateRequest;
-use app\api\application\Auth\MissingCredentials;
+use app\modules\Platform\Auth\Public\AuthContext;
+use app\modules\Platform\Auth\Application\AuthenticateRequest;
+use app\modules\Platform\Auth\Public\MissingCredentials;
 use app\api\ApiResponse;
 
 class JwtAuthCheck
@@ -18,14 +18,20 @@ class JwtAuthCheck
 
     public function handle($request, \Closure $next)
     {
-        $token = $request->header('authorization');
+        // Apache/FastCGI deployments may strip Authorization before PHP sees it.
+        // The SDK also sends X-Token for this compatibility path.
+        $token = $request->header('authorization') ?: $request->header('x-token');
 
         if ($token !== null) {
             $token = preg_replace('/^Bearer\s+/', '', $token);
         }
 
         try {
-            $this->attachContext($request, $this->authenticate->execute($token));
+            $context = $this->authenticate->execute($token);
+            if ($context->isVisitor()) {
+                return ApiResponse::createUnauthorized('请先登入');
+            }
+            $this->attachContext($request, $context);
         } catch (MissingCredentials $exception) {
             return ApiResponse::createUnauthorized($exception->getMessage());
         } catch (\RuntimeException $exception) {

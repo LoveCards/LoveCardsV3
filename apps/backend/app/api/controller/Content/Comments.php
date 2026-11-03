@@ -2,13 +2,10 @@
 
 namespace app\api\controller\Content;
 
-use think\facade\Request;
+use app\modules\Content\Comments\Service\Comments as CommentsService;
+use app\modules\Content\Likes\Service\Likes as LikesService;
+use app\modules\Content\Cards\Service\CardVisibilityPolicy;
 
-use app\api\validate\Comments as CommentsValidate;
-use app\api\service\Content\Comments as CommentsService;
-use app\common\service\Config as ConfigService;
-
-use app\api\ApiResponse;
 use app\api\controller\BaseController;
 use app\api\controller\BatchOperateTrait;
 
@@ -18,69 +15,145 @@ class Comments extends BaseController
 
     protected function getBatchService(): string
     {
-        return \app\api\service\Content\Comments::class;
+        return CommentsService::class;
     }
 
     public function cardList($id)
     {
-        $params = $this->paramIndex(Request::param());
-        $params['where'] = ['aid' => 1, 'pid' => $id];
-        $result = CommentsService::listAll($params);
-        return ApiResponse::createOk($result);
+        $params = $this->validated();
+        $viewerId = isset(request()->auth) ? (int) request()->auth->uid() : 0;
+        $result = CommentsService::listCard((int) $id, $params, $viewerId);
+        return $this->respond($result);
     }
 
     public function list()
     {
-        $params = $this->paramIndex(Request::param());
+        $params = $this->validated();
         $caps = request()->auth->capabilities();
         $result = CommentsService::listAll($params, $caps);
-        return ApiResponse::createOk($result);
+        return $this->respond($result);
     }
 
     public function create($id)
     {
-        $params = $this->param(CommentsValidate::class, CommentsValidate::$all_scene['create'], Request::param());
-        $params['id'] = $id;
+        $params = $this->validated(null, ['id' => (int) $id]);
         $params['user_id'] = request()->auth->uid();
         $params['post_ip'] = request()->ip();
-        $params['status'] = ConfigService::get('comments.approve') ? 3 : 0;
+        $params['status'] = CommentsService::requiresApproval() ? 3 : 0;
+        CardVisibilityPolicy::assertReadable((int) $id, request()->auth->uid());
 
         $result = CommentsService::createComment($params);
 
-        if (ConfigService::get('comments.approve')) {
-            return ApiResponse::createCreated();
-        }
-        return ApiResponse::createOk($result['data']);
+        return $this->respond([
+            'id' => (int) $result['data']->id,
+            'status' => (int) $result['data']->status,
+        ]);
     }
 
     public function get($id)
     {
-        $result = CommentsService::get((int) $id);
-        return ApiResponse::createOk($result);
+        $viewerId = isset(request()->auth) ? (int) request()->auth->uid() : 0;
+        $result = CommentsService::get((int) $id, false, $viewerId);
+        return $this->respond($result);
     }
 
-    public function update($id)
+    public function getManaged($id)
     {
-        $params = $this->param(CommentsValidate::class, CommentsValidate::$all_scene['create'], Request::param());
-        $params['id'] = (int) $id;
+        return $this->respond(CommentsService::get((int) $id, true));
+    }
 
+    public function like($id)
+    {
+        $likes = LikesService::like('comment', (int) $id, request()->auth->uid(), request()->ip());
+        return $this->respond(['likes' => $likes]);
+    }
+
+    public function unlike($id)
+    {
+        LikesService::unlike('comment', (int) $id, request()->auth->uid());
+        return $this->respond();
+    }
+
+    public function moderate($id)
+    {
+        $params = $this->validated(null, ['id' => (int) $id]);
         $auth = request()->auth;
-        CommentsService::updateComment($params, $auth->uid(), $auth->capabilities());
+        CommentsService::moderateComment($params, $auth->uid(), $auth->grants(), (string) request()->ip(), true);
 
-        return ApiResponse::createNoContent();
+        return $this->respond();
     }
 
     public function delete($id)
     {
         $auth = request()->auth;
-        CommentsService::deleteComments([(int) $id], $auth->uid(), $auth->capabilities());
-        return ApiResponse::createNoContent();
+        CommentsService::deleteComments([(int) $id], $auth->uid(), $auth->grants());
+        return $this->respond();
+    }
+
+    public function pin($id)
+    {
+        $params = $this->validated(null, ['id' => (int) $id]);
+        $auth = request()->auth;
+        CommentsService::pinComment(
+            (int) $params['id'],
+            (int) $params['comment_id'],
+            $auth->uid(),
+            $auth->grants(),
+            (string) request()->ip()
+        );
+        return $this->respond();
+    }
+
+    public function unpin($id)
+    {
+        $params = $this->validated(null, ['id' => (int) $id]);
+        $auth = request()->auth;
+        CommentsService::unpinComment(
+            (int) $params['id'],
+            $auth->uid(),
+            $auth->grants(),
+            (string) request()->ip()
+        );
+        return $this->respond();
+    }
+
+    public function pinOwn($id)
+    {
+        $params = $this->validated(null, ['id' => (int) $id]);
+        $auth = request()->auth;
+        CommentsService::pinOwnComment(
+            (int) $params['id'],
+            (int) $params['comment_id'],
+            $auth->uid(),
+            $auth->grants()
+        );
+        return $this->respond();
+    }
+
+    public function unpinOwn($id)
+    {
+        $auth = request()->auth;
+        CommentsService::unpinOwnComment((int) $id, $auth->uid(), $auth->grants());
+        return $this->respond();
+    }
+
+    public function deleteManaged($id)
+    {
+        $auth = request()->auth;
+        CommentsService::deleteComments(
+            [(int) $id],
+            $auth->uid(),
+            $auth->grants(),
+            (string) request()->ip(),
+            true
+        );
+        return $this->respond();
     }
 
     public function listOwn()
     {
-        $params = $this->paramIndex(Request::param());
+        $params = $this->validated();
         $result = CommentsService::newList($params, request()->auth->uid());
-        return ApiResponse::createOk($result);
+        return $this->respond($result);
     }
 }

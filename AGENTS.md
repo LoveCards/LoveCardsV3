@@ -11,12 +11,19 @@
 3. 明确行为基线、改动边界和可执行的成功标准。
 4. 不确定需求或存在多种会改变行为的解释时，先说明取舍并询问。
 
+涉及用户权益、账号安全、内容审核、互动提醒或站内公告的状态转换，必须先按
+`docs/engineering/NOTIFICATIONS.md` 判定是否发送通知；不得由前端触发通知，也不得由业务模块直接写
+`notifications` 表。
+
 ## 仓库边界
 
 - `apps/backend`：ThinkPHP API、领域规则、持久化和主题运行时。
 - `apps/admin`：Nuxt 管理端，只通过 `@lovecards/sdk` 调用后端。
+- `apps/default-theme`：React 用户前端；`src/` 只通过 `@lovecards/sdk` 调用后端，`ui/` 只保存设计真源且不得被运行码引用。
 - `packages/sdk`：跨前端消费者共享的 API 契约与客户端，不依赖任何 app。
 - 根目录：统一依赖锁、跨模块编排、工程检查和文档。
+
+管理端内部边界以 `docs/engineering/ADMIN-ARCHITECTURE.md` 为准：页面是路由和用例入口，SDK 是唯一后端请求边界，Pinia 只保存共享状态，`components/shared` 只放无业务归属的公共 UI。不得恢复 `apps/admin/api`、直接 transport、重复 Nuxt 布局或重复 UI 插件注册。
 
 禁止使用 `file:` 或 `../` 跨 workspace 建立隐式依赖。跨模块关系必须通过包名、HTTP 契约或根脚本表达。
 
@@ -43,11 +50,24 @@
 
 ## 后端依赖方向
 
+当前模块迁移基线以 `docs/engineering/MODULE-ARCHITECTURE.md` 为准。业务实现位于
+`apps/backend/app/modules`；`app/api`、`app/frontend` 和 `app/system` 仅作为 Host 适配层。
+旧的 `app/api/service`、`app/api/infrastructure`、`app/api/model`、`app/api/validate` 和
+`app/api/resource` 目录不再是有效实现位置。
+
+API 协议链：
+
+```text
+Route Meta -> Controller -> Validate -> Business -> Resource -> ApiResponse
+```
+
 当前可执行规则：
 
 - `common` 不依赖 `api`、`frontend`、`system`；现有唯一债务由检查脚本白名单锁定，只能减少。
 - `api/controller` 不直接依赖 `api/model`。
-- `api/service` 不依赖 `api/controller`。
+- `api/service` 不依赖 `api/controller` 或 `api/middleware`，也不读取 `request()`。
+- 简单 Service 可以依赖 Model/Db；复杂模块才拆为 Application、Domain、Contract 和 Infrastructure。
+- 不创建顶层 `api/application`；复杂用例放在 `api/service/<Module>/Application`。
 - Controller 负责协议适配，Application/Service 负责用例，Domain 负责业务规则，Infrastructure 负责框架与外部技术。
 - JWT 是 Token 基础设施实现，不代表完整鉴权模块。用户加载、角色能力和访客策略不得进入 JWT 编解码器。
 
@@ -58,17 +78,16 @@
 所有改动至少执行：
 
 ```bash
-npm run check:architecture
+npm run check
 ```
 
-JavaScript/TypeScript 改动执行：
+涉及构建产物或管理端运行时的改动再执行：
 
 ```bash
-npm run check
 npm run build:admin
 ```
 
-后端改动至少执行 Composer 校验和受影响 PHP 文件语法检查；涉及 API 行为时补充对应集成验证。无法运行的检查必须在交付说明中明确列出。
+后端改动还要对受影响 PHP 文件执行语法检查；涉及真实 API 行为时，在一次性本地环境运行 SDK 集成测试，发版候选再运行管理端 E2E。完整分层和安全限制见 `docs/engineering/BACKEND-TESTING.md`。无法运行的检查必须在交付说明中明确列出。
 
 ## Git
 

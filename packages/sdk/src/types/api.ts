@@ -5,6 +5,7 @@ export interface LCClientConfig {
   tokenStore?: TokenStore
   defaultRole?: string
   timeout?: number
+  /** 仅在携带认证 Token 的请求返回 401 时触发；登录失败等公开请求由调用方处理。 */
   onAuthError?: () => void
   debug?: boolean
   retry?: RetryConfig
@@ -44,7 +45,7 @@ export interface RequestContext {
 export interface ResponseContext extends RequestContext {
   status: number
   /** 解包后的业务数据。204 时为 undefined，审核模式 201 时为 { id: null } */
-  data: any
+  data: unknown
   elapsedMs: number
 }
 
@@ -106,7 +107,7 @@ export interface RawErrorResponse {
   error: {
     code: number
     message: string
-    details: any
+    details: unknown
   }
   timestamp: string
 }
@@ -118,8 +119,15 @@ export interface ListResult<T> {
   pagination?: PaginationInfo
 }
 
+export interface CursorPage<T = Record<string, unknown>> {
+  data: T[]
+  next_cursor: string | null
+  has_more: boolean
+}
+
 export interface CreateResult {
-  id: string | null
+  id: number
+  status?: number
 }
 
 export interface PaginationInfo {
@@ -139,6 +147,7 @@ export interface PaginationParams {
 export interface ListParams extends PaginationParams {
   search_value?: string
   search_keys?: string[]
+  search_like?: number
   order_key?: string
   order_desc?: boolean
 }

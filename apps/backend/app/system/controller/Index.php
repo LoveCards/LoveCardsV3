@@ -5,7 +5,7 @@ namespace app\system\controller;
 use think\facade\View;
 use think\facade\Cookie;
 
-use app\system\utils\Common;
+use app\modules\Operations\Installer\Infrastructure\Common;
 
 class Index
 {
@@ -13,7 +13,7 @@ class Index
     {
         $result = Common::CheckInstallLock();
         if ($result === true) {
-            Cookie::forever('msg', '检测到安装锁，如需重新安装请删除根目录[lock.txt]文件');
+            Cookie::forever('msg', '检测到安装锁；如需重新安装，请由运维人员清理实例持久状态');
             return redirect('/frontend/index');
         }
 
