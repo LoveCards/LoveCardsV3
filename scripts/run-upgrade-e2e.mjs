@@ -293,7 +293,8 @@ try {
     '--private-key', privateKey,
     '--key-id', 'upgrade-e2e-key',
     '--optional-facilities', 'redis,worker',
-  ], { ...dbEnv, LC_RELEASE_TRUSTED_KEYS_JSON: trustedKeys })
+  // ThinkPHP env() 只读 PHP_ 前缀，config/lifecycle.php 的受信公钥必须这样注入。
+  ], { ...dbEnv, LC_RELEASE_TRUSTED_KEYS_JSON: trustedKeys, PHP_LC_RELEASE_TRUSTED_KEYS_JSON: trustedKeys })
   const buildResult = buildOutput
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -309,6 +310,7 @@ try {
   backend = start(process.execPath, ['scripts/dev-backend.mjs'], {
     ...dbEnv,
     LC_RELEASE_TRUSTED_KEYS_JSON: trustedKeys,
+    PHP_LC_RELEASE_TRUSTED_KEYS_JSON: trustedKeys,
     LOVECARDS_DEV_BACKEND_PORT: String(backendPort),
     // PHP parses multipart bodies before ThinkPHP runs. Keep isolated E2E
     // uploads above the signed Release limit (512 MiB) unless the caller
