@@ -311,6 +311,23 @@ if (preg_match('/^PASSWORD\\s*=\\s*$/m', $envExample)) {
 }
 
 // ────────────────────────────────────────────────────────────
+//  安装器 GET 端点必须在安装锁之后（防环境/版本信息泄露与安装后 GitHub 外呼）
+// ────────────────────────────────────────────────────────────
+echo "--- Install controller GET endpoints behind install lock ---\n";
+foreach (['GetVersionInfo', 'GetCheckEnvironment'] as $lockedAction) {
+    // 方法体起点到下一个方法声明之间必须出现 CheckInstallLock
+    if (preg_match('/function\s+' . $lockedAction . '\s*\([^)]*\)\s*:\s*[\w\\\\]+\s*\{([\s\S]*?)(?=\n\s*(?:public|private|protected)\s+function|\z)/', $installCode, $mm) === 1
+        && str_contains($mm[1], 'CheckInstallLock')) {
+        pass("Install::{$lockedAction}() is guarded by the install lock");
+    } elseif (preg_match('/function\s+' . $lockedAction . '\s*\(\s*\)[\s\S]*?\n    \}/', $installCode, $mm) === 1
+        && str_contains($mm[0], 'CheckInstallLock')) {
+        pass("Install::{$lockedAction}() is guarded by the install lock");
+    } else {
+        fail("Install::{$lockedAction}() lost its install lock guard");
+    }
+}
+
+// ────────────────────────────────────────────────────────────
 //  Summary
 // ────────────────────────────────────────────────────────────
 echo "\n=== Summary ===\n";

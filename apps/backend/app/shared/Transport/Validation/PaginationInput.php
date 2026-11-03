@@ -76,6 +76,13 @@ class PaginationInput extends Validate
         if (!is_array($value)) {
             return '搜索字段格式错误';
         }
+        // 字段名直达 whereLike 的 SQL 键位，必须限定为安全标识符；
+        // 非法元素在此 422，避免穿透到查询层产生 500 噪音。
+        foreach ($value as $key) {
+            if (!is_string($key) || preg_match('/^[A-Za-z0-9_]{1,64}$/', $key) !== 1) {
+                return '搜索字段格式错误';
+            }
+        }
         return true;
     }
 
