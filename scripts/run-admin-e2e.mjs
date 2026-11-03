@@ -189,6 +189,9 @@ const dbEnv = {
   PHP_CAPTCHA_CAPTCHA_ENABLED: 'false',
   APP_DEBUG: 'true',
   PHP_APP_DEBUG: 'true',
+  // 入口 loadEnv 只读 .env.e2e（不存在）：带 .env 的开发仓库里后端进程必须
+  // 严格使用上面注入的隔离库连接参数（CI 裸检出无 .env，行为不变）。
+  LC_ENV_NAME: 'e2e',
   LC_INSTANCE_ROOT: instanceRoot,
   ...(openSslConfig ? { OPENSSL_CONF: openSslConfig } : {}),
   RANDFILE: path.join(temporaryRoot, 'openssl.rand'),

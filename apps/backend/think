@@ -25,6 +25,14 @@ require $releaseRoot . '/vendor/autoload.php';
 
 // 应用初始化
 $app = new App($releaseRoot);
+// 测试/脚本化 CLI 的 env 隔离钩子：框架 Env 的 .env 文件数据优先于进程环境变量，
+// 带 .env 的开发仓库里注入 PHP_DATABASE_* 会被静默覆盖（曾导致 e2e bootstrap
+// 的迁移打到 .env 指向的开发库）。设置 LC_CLI_ENV_NAME 后 loadEnv 只读取
+// .env.<name>（通常不存在），进程注入的环境变量因此完全生效。
+$cliEnvName = getenv('LC_ENV_NAME');
+if (is_string($cliEnvName) && trim($cliEnvName) !== '') {
+    $app->setEnvName(trim($cliEnvName));
+}
 $runtimeRoot = \LoveCards\Bootstrap\ReleaseBootstrap::sharedRuntimeRoot();
 if ($runtimeRoot !== null) {
     $app->setRuntimePath(rtrim($runtimeRoot, '/\\') . DIRECTORY_SEPARATOR);
