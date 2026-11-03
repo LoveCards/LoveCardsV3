@@ -128,6 +128,10 @@ $test('ThinkPHP config consumes persistent database and JWT state', static funct
     putenv('LC_INSTANCE_ROOT_RESOLVED=' . $managed);
     $app = new \think\App($root);
     $app->setRuntimePath($tmp . DIRECTORY_SEPARATOR . 'think-runtime' . DIRECTORY_SEPARATOR);
+    // 隔离：开发机的 apps/backend 下可能存在运行时 .env（会进 Env 最高优先级）。
+    // 本用例验证的是 "env 未设时持久实例配置回退生效"，不能被宿主机 .env 劫持；
+    // setEnvName 指向不存在的 .env.<marker>，让 loadEnv 跳过 .env 本体。
+    $app->setEnvName('lc-tests-isolated');
     $app->initialize();
     $database = $app->config->get('database.connections.mysql');
     $jwt = $app->config->get('jwt');
