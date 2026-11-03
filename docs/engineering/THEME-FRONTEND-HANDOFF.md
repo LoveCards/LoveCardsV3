@@ -55,6 +55,6 @@ Theme Gateway 对非保留 GET/HEAD 路径返回同一 Release 的 SPA entry。�
 
 ## 激活验证
 
-上传 ZIP 后，管理端使用返回的 `id + release` 激活当前 Host。页面验证路径至少包括 `/`、一个深层路由和一项静态资源加载。
+上传的 ZIP 经 `POST /api/admin/theme/upload`（Bearer + X-Token，multipart）上传，再用返回的 `id + release` 调 `POST /api/admin/theme/activate` 绑定当前 Host（激活请求的 Host 头必须是被绑定的域名）。主题上传/激活目前只有这组管理 API，尚无管理端图形页面。页面验证路径至少包括 `/`、一个深层路由和一项静态资源加载。
 
 仓库根 `npm run test:theme:e2e` 会验证 entry fallback、公开 API、深层路由、Bootstrap/Release 资源，以及在提供测试账号时的登录、发布和评论流程。
