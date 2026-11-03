@@ -60,3 +60,21 @@ foreach ([['status' => '4'], ['role_id' => '0'], ['role_id' => 'abc']] as $inval
 }
 $public = $controller->validateScene($pagination, 'Defult', ['status' => '0', 'role_id' => '2']);
 $assert(!isset($public['status']) && !isset($public['role_id']), 'managed filters must not leak to other pagination scenes');
+
+// search_keys 字段名直达查询层 SQL 键位：格式非法必须在校验层 422，不得穿透产生 500。
+$kept = $controller->validateScene($pagination, 'Defult', ['search_keys' => ['email', 'username'], 'search_value' => 'x']);
+$assert(($kept['search_keys'] ?? null) === ['email', 'username'], 'valid search_keys must be retained');
+foreach ([
+    ['search_keys' => ['password;drop']],
+    ['search_keys' => ['a.b']],
+    ['search_keys' => ['a b']],
+    ['search_keys' => ['`email`']],
+    ['search_keys' => ['%']],
+    ['search_keys' => [str_repeat('x', 65)]],
+    ['search_keys' => ['ok', 123]],
+] as $invalid) {
+    $rejected = false;
+    try { $controller->validateScene($pagination, 'Defult', $invalid + ['search_value' => 'x']); }
+    catch (\app\api\ApiException $error) { $rejected = true; }
+    $assert($rejected, 'malformed search_keys must fail validation');
+}

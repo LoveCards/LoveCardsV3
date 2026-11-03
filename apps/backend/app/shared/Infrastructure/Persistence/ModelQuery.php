@@ -219,7 +219,7 @@ class ModelQuery
 
         //  激活空值搜索
         if ($search_value === null) {
-            $fields = $search_keys ?: [$key]; // 没有指定字段就用默认字段
+            $fields = $this->availableSearchFields($search_keys ?: [$key]); // 没有指定字段就用默认字段
             $this->query = $this->query->where(function ($q) use ($fields) {
                 foreach ($fields as $f) {
                     $q->where(function ($q) use ($f) {
@@ -238,6 +238,7 @@ class ModelQuery
             default => $sv . '%',
         };
 
+        $search_keys = $this->availableSearchFields($search_keys);
         if ($search_keys) {                       // 多字段
             $this->query = $this->query->where(function ($q) use ($search_keys, $map) {
                 foreach ($search_keys as $i => $f) {
@@ -250,6 +251,26 @@ class ModelQuery
         }
 
         return $this;
+    }
+
+    /**
+     * 搜索字段必须命中模型真实列；未知列直接丢弃（全非法时上面的单字段分支
+     * 回退默认搜索键），防止列名噪音直达 SQL 产生 500。
+     * 格式白名单校验在 PaginationInput::searchKey（422）。
+     *
+     * @param array $search_keys
+     * @return array
+     */
+    private function availableSearchFields(array $search_keys): array
+    {
+        if ($search_keys === []) {
+            return [];
+        }
+        $columns = method_exists($this->model, 'getTableFields') ? $this->model->getTableFields() : [];
+        if ($columns === []) {
+            return $search_keys;
+        }
+        return array_values(array_intersect($search_keys, $columns));
     }
 
     /**
