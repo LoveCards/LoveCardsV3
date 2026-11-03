@@ -333,6 +333,22 @@ for (const file of applicationFiles) {
   }
 }
 
+// 审计 P3-10 守卫：meta 声明了授权组合（allOf/anyOf）的路由必须挂 PermissionCheck。
+// 历史上 community 族存在"业务层授权、中间件缺席"的自洽模式，但没有任何自动检查
+// 阻止新路由漏挂中间件——授权四元组漂移只能靠人肉评审发现。此处按清单锁定该模式。
+const routeManifestFile = path.join(root, 'contracts', 'route-manifest.json')
+if (await exists(routeManifestFile)) {
+  const routeManifest = await readJson(routeManifestFile)
+  const declaredRoutes = Array.isArray(routeManifest) ? routeManifest : (routeManifest.routes ?? [])
+  for (const route of declaredRoutes) {
+    const metaText = JSON.stringify(route?.meta ?? {})
+    const middlewareText = JSON.stringify(route?.middleware ?? [])
+    if ((metaText.includes('"allOf"') || metaText.includes('"anyOf"')) && !middlewareText.includes('PermissionCheck')) {
+      fail(`route ${route?.name ?? route?.path ?? 'unknown'} declares grants in meta but does not attach PermissionCheck middleware`)
+    }
+  }
+}
+
 if (failures.length > 0) {
   console.error('Architecture checks failed:')
   failures.forEach((message) => console.error(`- ${message}`))
