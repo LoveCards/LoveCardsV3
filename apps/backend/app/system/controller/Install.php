@@ -47,6 +47,11 @@ class Install
     //获取系统信息
     public function GetVersionInfo()
     {
+        // 安装锁存在后禁止访问：避免对外泄露版本与环境信息、安装后仍外呼 GitHub
+        if (Common::CheckInstallLock()) {
+            return Export::Create(null, 500, '系统已安装，禁止访问安装器接口');
+        }
+
         $latestInfo = $this->getHttpData('GithubReleasesLatestInfo', 'https://api.github.com/repos/zhiguai/LoveCards/releases/latest');
         $verlogMd = $this->getHttpData('GithubVerlogMd', 'https://github.moeyy.xyz/https://raw.githubusercontent.com/zhiguai/LoveCards/main/VerLog.md');
 
@@ -164,6 +169,11 @@ class Install
     //检查环境
     public function GetCheckEnvironment()
     {
+        // 安装锁存在后禁止访问：PHP 环境信息只允许在安装阶段暴露
+        if (Common::CheckInstallLock()) {
+            return Export::Create(null, 500, '系统已安装，禁止访问安装器接口');
+        }
+
         $data = Environment::Check();
         return Export::Create($data, 200);
     }
