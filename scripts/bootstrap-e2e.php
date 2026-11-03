@@ -82,6 +82,11 @@ $runtimeDatabaseEnv = [
 foreach ($runtimeDatabaseEnv as $key => $value) {
     putenv($key . '=' . $value);
 }
+// 关键隔离：框架 Env 里 .env 文件优先于进程环境变量。开发仓库存在 .env 时，
+// 下方 think lc:system:migrate 子进程会连到 .env 指向的库（开发库）而非这里的
+// 一次性 e2e 库。LC_ENV_NAME 让 think/index 入口的 loadEnv 只读取不存在的
+// .env.e2e，迁移因此严格使用上面 putenv 的 e2e 连接参数（CI 裸检出无 .env，行为不变）。
+putenv('LC_ENV_NAME=e2e');
 $dsn = "mysql:host={$host};port={$port};charset=utf8mb4";
 $pdo = null;
 $databaseCreated = false;

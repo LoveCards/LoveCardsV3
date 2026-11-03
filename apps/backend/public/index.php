@@ -48,6 +48,13 @@ if (isset($_SERVER['PATH_INFO']) && $_SERVER['PATH_INFO'] === '' && isset($_SERV
 }
 
 $app = new App($releaseRoot);
+// 测试/脚本化运行的 env 隔离钩子（与 think 入口一致）：框架 Env 的 .env 文件
+// 数据优先于进程环境变量，带 .env 的开发仓库里进程注入会被静默覆盖。
+// 设置 LC_ENV_NAME 后 loadEnv 只读取 .env.<name>（通常不存在），进程环境生效。
+$lcEnvName = getenv('LC_ENV_NAME');
+if (is_string($lcEnvName) && trim($lcEnvName) !== '') {
+    $app->setEnvName(trim($lcEnvName));
+}
 $runtimeRoot = \LoveCards\Bootstrap\ReleaseBootstrap::sharedRuntimeRoot();
 if ($runtimeRoot !== null) {
     $app->setRuntimePath(rtrim($runtimeRoot, '/\\') . DIRECTORY_SEPARATOR);

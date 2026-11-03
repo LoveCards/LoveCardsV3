@@ -273,6 +273,9 @@ const dbEnv = {
   PHP_DATABASE_DATABASE: database,
   PHP_DATABASE_USERNAME: databaseUser,
   PHP_DATABASE_PASSWORD: databasePassword,
+  // 与 run-admin-e2e 相同：入口 loadEnv 只读 .env.e2e（不存在），进程注入的
+  // 隔离库连接严格生效（带 .env 的开发仓库本地跑不再被劫持；CI 行为不变）。
+  LC_ENV_NAME: 'e2e',
   LC_INSTANCE_ROOT: instanceRoot,
   APP_DEBUG: 'true',
   PHP_APP_DEBUG: 'true',
