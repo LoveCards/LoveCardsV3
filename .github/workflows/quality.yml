@@ -72,6 +72,11 @@ jobs:
     env:
       NUXT_PUBLIC_APP_ENV: production
       NUXT_PUBLIC_API_BASE: /api
+      # mysqlnd 与 charset=utf8mb4 握手时连接 collation 固定为 utf8mb4_general_ci，
+      # 而 mysql:8.0 上建的 utf8mb4 表是 0900_ai_ci；迁移里 UNION 派生表列与表列
+      # 对比会抛 Illegal mix of collations，这里显式对齐（见 config/database.php；
+      # ThinkPHP env() 只读 PHP_ 前缀，故键名是 PHP_DATABASE_COLLATION）。
+      PHP_DATABASE_COLLATION: utf8mb4_0900_ai_ci
       LOVECARDS_E2E_DB_HOST: 127.0.0.1
       LOVECARDS_E2E_DB_PORT: '3306'
       LOVECARDS_E2E_DB_USER: root

@@ -205,7 +205,7 @@ CREATE TABLE IF NOT EXISTS `theme_bindings` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_theme_bindings_hostname` (`hostname`),
   KEY `idx_theme_bindings_theme` (`theme_id`, `release_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ------------------------------------------------------------
 --  Required Table: files
