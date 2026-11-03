@@ -2,7 +2,6 @@
   <AdminDangerActionDialog
     v-model="thisDialogState"
     :action-label="actionLabel"
-    :confirm-text="confirmText"
     :error="actionError"
     :impact="impact"
     :loading="processing"
@@ -29,7 +28,6 @@ const actionError = ref('')
 const actionName = computed(() => batchOptions.value.trim() || '处理')
 const title = computed(() => `确认批量${actionName.value}`)
 const actionLabel = computed(() => `确认${actionName.value}`)
-const confirmText = computed(() => `${actionName.value}${batchData.value.length}`)
 const resourceLabel = computed(() => `已选择 ${batchData.value.length} 个资源`)
 const impact = computed(() => {
   if (props.impactDescription) return props.impactDescription

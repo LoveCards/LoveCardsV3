@@ -238,7 +238,6 @@
     action-label="重建授权"
     resource-label="系统角色与全部自定义角色"
     impact="服务端会删除并重新生成角色授权关系；自定义角色现有授权会被清空。此操作仅用于权限策略升级或授权数据修复。"
-    confirm-text="重建授权"
     :loading="reseedLoading"
     :error="reseedError"
     @confirm="confirmReseed"

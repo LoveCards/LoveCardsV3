@@ -4,7 +4,6 @@
     :aria-label="title"
     :persistent="loading"
     max-width="560"
-    @after-leave="reset"
   >
     <v-card>
       <v-card-title class="d-flex align-center ga-2 text-h6">
@@ -18,15 +17,6 @@
           <dt>目标资源</dt>
           <dd>{{ resourceLabel }}</dd>
         </dl>
-        <v-text-field
-          v-if="confirmText"
-          v-model="confirmation"
-          :disabled="loading"
-          :hint="`请输入“${confirmText}”继续`"
-          label="确认文字"
-          persistent-hint
-          variant="outlined"
-        />
         <v-alert v-if="error" :text="error" class="mt-4" role="alert" type="error" variant="tonal" />
       </v-card-text>
       <v-divider />
@@ -58,14 +48,12 @@ const props = withDefaults(defineProps<{
   actionLabel?: string
   resourceLabel?: string
   impact: string
-  confirmText?: string
   loading?: boolean
   error?: string
   color?: string
 }>(), {
   actionLabel: '确认执行',
   resourceLabel: '',
-  confirmText: '',
   loading: false,
   error: '',
   color: 'error',
@@ -76,25 +64,16 @@ const emit = defineEmits<{
   confirm: []
 }>()
 
-const confirmation = ref('')
-
 const dialogOpen = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value),
 })
-const canConfirm = computed(() => {
-  if (props.loading) return false
-  if (props.confirmText && confirmation.value !== props.confirmText) return false
-  return true
-})
+// 规范 D-1：危险确认统一为“影响说明 + 明确动作按钮”，不提供文字输入确认（防误触靠文案说清后果，见 D-2）。
+const canConfirm = computed(() => !props.loading)
 
 const confirm = () => {
   if (!canConfirm.value) return
   emit('confirm')
-}
-
-const reset = () => {
-  confirmation.value = ''
 }
 </script>
 
