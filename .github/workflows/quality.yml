@@ -44,6 +44,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-version }}
+          extensions: pdo_mysql, zip, gd
           tools: composer:v2
       - run: composer validate --no-check-publish
         working-directory: apps/backend
@@ -92,7 +93,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: pdo_mysql, zip
+          extensions: pdo_mysql, zip, gd
           tools: composer:v2
       - run: npm ci
       - run: composer install --no-interaction --prefer-dist --no-progress

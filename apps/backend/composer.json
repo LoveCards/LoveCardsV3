@@ -21,6 +21,11 @@
     ],
     "require": {
         "php": ">=8.1 <9.0",
+        "ext-pdo_mysql": "*",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "ext-zip": "*",
+        "ext-gd": "*",
         "topthink/framework": "^8.1",
         "topthink/think-orm": "^3.0",
         "topthink/think-view": "^1.0",
