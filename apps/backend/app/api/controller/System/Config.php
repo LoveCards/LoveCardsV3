@@ -39,6 +39,8 @@ class Config extends BaseController
     public function init()
     {
         $result = $this->config->init(request()->auth->grants());
+        // 上传限额场景键首次播种时，把旧全局键的现存自定义值物化到新键（幂等）
+        \app\modules\Platform\Files\Application\UploadLimits::materialize($result['upload']['seeded'] ?? []);
         return ApiResponse::createOk(ConfigResource::make($result));
     }
 
