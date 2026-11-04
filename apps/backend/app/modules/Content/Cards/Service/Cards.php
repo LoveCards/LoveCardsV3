@@ -441,7 +441,7 @@ class Cards
                 ? self::mediaIds($data['media_file_ids'] ?? $data['picture_file_ids'])
                 : null;
             if (array_key_exists('tags', $data) && $data['tags'] !== null) {
-                $data['tags'] = self::resolveTagIds($data['tags'], $uid, $grants);
+                $data['tags'] = self::resolveTagIds($data['tags'], $uid, $grants, (int) ($data['id'] ?? 0));
             }
             $data = self::normalizeCardMetadata($data);
             $data = self::encodeJsonFields(
@@ -591,7 +591,7 @@ class Cards
      * @param mixed $value
      * @return array<int,int>
      */
-    private static function resolveTagIds($value, int $uid, ?GrantSet $grants = null): array
+    private static function resolveTagIds($value, int $uid, ?GrantSet $grants = null, ?int $pid = null): array
     {
         $tags = is_string($value) ? json_decode($value, true) : $value;
         if (!is_array($tags)) {
@@ -610,14 +610,42 @@ class Cards
                 }
                 $id = (int) $tag->id;
             } else {
-                // 名称解析统一走 Tags 模块 Public 门面：开关、审核与去重都在那里裁决。
-                $id = TagsFacade::ensureTag($name, $uid, $grants);
+                // 编辑保存场景：卡片已关联的同名待审核标签幂等重挂，
+                // 不因创建开关拒绝或放行重复行（编辑视图已把它回显给用户）。
+                $mappedPending = $pid !== null && $pid > 0 ? self::mappedPendingTagId($pid, $name) : 0;
+                if ($mappedPending > 0) {
+                    $id = $mappedPending;
+                } else {
+                    // 名称解析统一走 Tags 模块 Public 门面：开关、审核与去重都在那里裁决。
+                    $id = TagsFacade::ensureTag($name, $uid, $grants);
+                }
             }
 
             if ($id > 0 && !in_array($id, $ids, true)) $ids[] = $id;
         }
 
         return $ids;
+    }
+
+    /**
+     * 查询该卡片是否已关联指定名称的待审核标签（编辑保存的幂等依据）。
+     */
+    private static function mappedPendingTagId(int $pid, string $name): int
+    {
+        $row = Db::table('tags_map')
+            ->alias('tm')
+            ->join('tags t', 't.id = tm.tag_id')
+            ->where('tm.aid', 1)
+            ->where('tm.pid', $pid)
+            ->where('t.aid', 1)
+            ->where('t.status', 3)
+            ->where('t.name', $name)
+            ->where('tm.status', 0)
+            ->whereNull('tm.deleted_at')
+            ->whereNull('t.deleted_at')
+            ->field('tm.tag_id')
+            ->find();
+        return (int) (is_array($row) ? ($row['tag_id'] ?? 0) : 0);
     }
 
     /**
@@ -793,7 +821,8 @@ class Cards
         $cardId = (int) ($card['id'] ?? 0);
         $card['mentions'] = $preloadedMentions ?? (class_exists(Mentions::class) ? (self::mentionsForCards([$card])[$cardId] ?? []) : []);
         if ($topics === null && $cardId > 0) {
-            $topics = self::topicsForCards([$cardId])[$cardId] ?? [];
+            // 编辑视图（editable）需包含本人卡片上待审核的标签，保证"先审后发"下编辑保存不丢关联。
+            $topics = self::topicsForCards([$cardId], $editable)[$cardId] ?? [];
         }
         $card['topics'] = $topics ?? [];
         // Card.tags is the persisted relation-id projection.  Normalize old
@@ -885,18 +914,23 @@ class Cards
     }
 
     /** @return array<int,array<int,array{id:int,name:string}>> */
-    private static function topicsForCards(array $cardIds): array
+    private static function topicsForCards(array $cardIds, bool $includePending = false): array
     {
         if ($cardIds === []) return [];
 
-        $rows = Db::table('tags_map')
+        $query = Db::table('tags_map')
             ->alias('tm')
             ->join('tags t', 't.id = tm.tag_id')
             ->where('tm.aid', 1)
             ->whereIn('tm.pid', $cardIds)
-            ->where('t.aid', 1)
-            ->where('t.status', 0)
-            ->where('tm.status', 0)
+            ->where('t.aid', 1);
+        if ($includePending) {
+            // 编辑视图包含待审核标签（status=3），避免用户保存编辑时静默丢掉未放行的关联。
+            $query->whereIn('t.status', [0, 3]);
+        } else {
+            $query->where('t.status', 0);
+        }
+        $rows = $query->where('tm.status', 0)
             ->whereNull('tm.deleted_at')
             ->whereNull('t.deleted_at')
             ->field('tm.pid, t.id, t.name')
