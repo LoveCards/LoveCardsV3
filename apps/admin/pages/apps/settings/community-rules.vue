@@ -3,7 +3,7 @@
     <AdminPageHeader
       title="社区规则"
       description="维护上传限制与内容发布审核规则。保存后会影响前台内容发布流程。"
-      :breadcrumbs="[{ title: '站点设置' }]"
+      :breadcrumbs="[{ title: '系统设置' }]"
     />
 
     <AdminAsyncState

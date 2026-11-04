@@ -26,7 +26,7 @@ const routes = [
 ]
 
 const expectedHeadings: Record<string, string> = {
-  '/apps/settings/site': '站点设置',
+  '/apps/settings/site': '站点信息',
   // 新页面：社区规则从站点设置页拆分而来，无历史别名，导航直达。
   '/apps/settings/community-rules': '社区规则',
   '/apps/operations/upgrade': '升级与迁移',
