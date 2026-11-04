@@ -25,11 +25,11 @@ namespace app\api
 }
 
 // ════════════════════════════════════════════════════════════
-// 2. ConfigService 替身：内存键值 + setGroup 写入记录
+// 2. Config 门面替身（Public 层，与生产 import 保持一致）：内存键值 + setGroup 写入记录
 // ════════════════════════════════════════════════════════════
-namespace app\modules\Platform\Config\Infrastructure
+namespace app\modules\Platform\Config\Public
 {
-    class ConfigService
+    class Config
     {
         /** @var array<string, mixed> 全组键值（键含组前缀，如 upload.avatar_size） */
         public static array $rows = [];
@@ -80,7 +80,7 @@ namespace
     require __DIR__ . '/../../app/modules/Platform/Files/Application/UploadLimits.php';
 
     use app\api\ApiException;
-    use app\modules\Platform\Config\Infrastructure\ConfigService;
+    use app\modules\Platform\Config\Public\Config as ConfigService;
     use app\modules\Platform\Files\Application\UploadLimits;
 
     /**

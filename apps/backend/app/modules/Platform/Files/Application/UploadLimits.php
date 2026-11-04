@@ -3,7 +3,8 @@
 namespace app\modules\Platform\Files\Application;
 
 use app\api\ApiException;
-use app\modules\Platform\Config\Infrastructure\ConfigService;
+// Application 层不得触碰其它模块的 Infrastructure，统一走 Config 模块 Public 门面。
+use app\modules\Platform\Config\Public\Config as ConfigService;
 
 /**
  * 场景化上传限额
