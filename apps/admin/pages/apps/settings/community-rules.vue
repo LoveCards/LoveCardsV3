@@ -127,6 +127,7 @@
       </AdminConfigSection>
 
       <AdminConfigSection
+        class="mb-4"
         :dirty="commentsChanged"
         description="新评论是否需要人工审核后才对外可见。"
         icon="mdi-comment-outline"
