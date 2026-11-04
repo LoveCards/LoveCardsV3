@@ -17,7 +17,7 @@ LoveCards 管理端应从“按技术模块堆放的页面集合”改成“按�
 1. 工作台
 2. 内容与社区
 3. 用户与权限
-4. 站点设置
+4. 系统设置
 5. 系统运维
 
 工作台直接进入个人任务上下文；四个任务组只负责发现页面。具体资源、驱动、测试、迁移和高风险动作下沉到详情或子流程。
@@ -84,7 +84,7 @@ LoveCards 管理端应从“按技术模块堆放的页面集合”改成“按�
    ├─ 安全会话
    └─ 审计记录
 
-站点设置
+系统设置
 ├─ 站点与社区规则
 ├─ 主题外观
 ├─ 存储配置
@@ -118,7 +118,7 @@ LoveCards 管理端应从“按技术模块堆放的页面集合”改成“按�
 | 内容与社区 | `/apps/content/cards`、`/apps/content/comments`、`/apps/content/tags` | `/apps/content/*/:id` |
 | 社区治理 | `/apps/community/reports`、`/apps/community/insights` | `/apps/community/reports/:id` |
 | 用户与权限 | `/apps/users`、`/apps/security/recovery`、`/apps/access/roles`、`/apps/access/permissions` | 用户、角色和权限详情 |
-| 站点设置 | `/apps/settings/site`、`/apps/settings/community-rules`、`/apps/settings/appearance`、`/apps/settings/storage`、`/apps/settings/messaging`、`/apps/settings/verification` | 主题与渠道详情/测试 |
+| 系统设置 | `/apps/settings/site`、`/apps/settings/community-rules`、`/apps/settings/appearance`、`/apps/settings/storage`、`/apps/settings/messaging`、`/apps/settings/verification` | 主题与渠道详情/测试 |
 | 系统运维 | `/apps/operations/runtime`、`/apps/operations/deliveries`、`/apps/operations/audit` | `/apps/operations/upgrade`、投递/审计详情 |
 
 施工时必须先建立旧地址到规范地址的映射表，不能直接删除现有链接。

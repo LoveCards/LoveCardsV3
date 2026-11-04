@@ -1,9 +1,9 @@
 <template>
   <AdminPageContainer>
     <AdminPageHeader
-      title="站点设置"
+      title="站点信息"
       description="维护站点基础信息和访问开关。保存后会影响前台展示与注册流程。"
-      :breadcrumbs="[{ title: '站点设置' }]"
+      :breadcrumbs="[{ title: '系统设置' }]"
     />
 
     <AdminAsyncState
@@ -138,7 +138,7 @@
         </v-row>
       </AdminConfigSection>
 
-      <AdminConfigSaveBar class="mt-4" :dirty="siteChanged" label="站点设置">
+      <AdminConfigSaveBar class="mt-4" :dirty="siteChanged" label="站点信息">
         <AdminActionGuard capability="config.update" scope="global">
           <v-btn
             color="primary"
@@ -148,7 +148,7 @@
             variant="flat"
             @click="saveSite"
           >
-            保存站点设置
+            保存站点信息
           </v-btn>
         </AdminActionGuard>
       </AdminConfigSaveBar>
@@ -285,9 +285,9 @@ const saveSite = async () => {
   try {
     await client.config.update(toBackendSite(siteConfig.value))
     originConfig.value = CommonUtils.deepClone(siteConfig.value)
-    siteMessage.value = { type: 'success', text: '站点设置已保存。' }
+    siteMessage.value = { type: 'success', text: '站点信息已保存。' }
   } catch (cause) {
-    siteMessage.value = { type: 'error', text: errorMessage(cause, '站点设置保存失败，请稍后重试。') }
+    siteMessage.value = { type: 'error', text: errorMessage(cause, '站点信息保存失败，请稍后重试。') }
   } finally {
     siteSaving.value = false
   }

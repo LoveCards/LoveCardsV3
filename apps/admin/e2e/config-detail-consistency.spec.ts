@@ -78,7 +78,7 @@ test('channel edits use one dirty status, block testing, and preserve failed inp
   await page.getByRole('button', { name: '保存渠道配置', exact: true }).click()
   await expect(page.getByText('模拟保存失败，请检查输入。', { exact: true })).toBeVisible()
   await expect(page.getByRole('textbox', { name: /服务地址/ })).toHaveValue('edited.invalid')
-  await page.getByRole('link', { name: '站点设置', exact: true }).click()
+  await page.getByRole('link', { name: '站点信息', exact: true }).click()
   await expect(page.getByRole('dialog', { name: '有未保存的修改' })).toBeVisible()
   await page.getByRole('button', { name: '继续编辑', exact: true }).click()
   await expect(page).toHaveURL(/messaging\/demo/)
@@ -89,8 +89,8 @@ test('site and community rules pages keep independent dirty state and save scope
   const writes = await fixture(page)
   await page.goto('./apps/settings/site')
   await page.getByRole('textbox', { name: /站点名称/ }).fill('未保存名称')
-  await expect(page.getByRole('status')).toHaveText('站点设置有未保存修改', { timeout: 15_000 })
-  await expect(page.getByRole('button', { name: '保存站点设置', exact: true })).toBeEnabled()
+  await expect(page.getByRole('status')).toHaveText('站点信息有未保存修改', { timeout: 15_000 })
+  await expect(page.getByRole('button', { name: '保存站点信息', exact: true })).toBeEnabled()
 
   // 拆分后社区规则是独立页面：站内离开需经过未保存守卫，放弃后进入的页面没有任何脏状态。
   await page.getByRole('link', { name: '社区规则', exact: true }).click()
@@ -101,8 +101,8 @@ test('site and community rules pages keep independent dirty state and save scope
   await expect(page.getByRole('button', { name: '保存社区规则', exact: true })).toBeDisabled()
   await expect(page.getByText('有未保存修改')).toHaveCount(0)
 
-  // 返回站点设置页时重新加载原值：两页不共享草稿，写入始终为零。
-  await page.getByRole('link', { name: '站点设置', exact: true }).click()
+  // 返回站点信息页时重新加载原值：两页不共享草稿，写入始终为零。
+  await page.getByRole('link', { name: '站点信息', exact: true }).click()
   await expect(page.getByRole('textbox', { name: /站点名称/ })).not.toHaveValue('未保存名称')
   expect(writes).toEqual([])
 })
