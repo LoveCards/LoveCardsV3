@@ -10,13 +10,15 @@ export interface Notification {
 export const useNotificationStore = defineStore('notification', {
     state: () => ({
         queue: [] as Notification[],
+        // 递增序号：不能用 Date.now()，同一毫秒的多条通知会撞同一 id，导致 remove 只能删掉其中一条。
+        nextId: 1,
     }),
     actions: {
         /**
          * 添加通知到队列
          */
         add(notification: Omit<Notification, 'id'>) {
-            const id = Date.now();
+            const id = this.nextId++;
             this.queue.push({
                 id,
                 ...notification,
