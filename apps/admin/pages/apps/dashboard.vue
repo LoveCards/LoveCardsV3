@@ -260,7 +260,7 @@ const responsibilityLinks = computed(() => [
   { key: 'tags', label: '标签治理', description: '维护内容分类和标签状态。', icon: 'mdi-tag-multiple-outline', to: '/apps/content/tags' },
   { key: 'reports', label: '举报处理', description: '核对证据、状态和处理历史。', icon: 'mdi-flag-outline', to: '/apps/community/reports' },
   { key: 'insights', label: '社区洞察', description: '查看隐私安全的聚合指标。', icon: 'mdi-chart-line', to: '/apps/community/insights' },
-  { key: 'users', label: '用户与权限', description: '查看获授权的用户和账号安全状态。', icon: 'mdi-account-shield-outline', to: '/apps/users' },
+  { key: 'users', label: '用户与权限', description: '查看获授权的用户和账号安全状态。', icon: 'mdi-shield-account-outline', to: '/apps/users' },
   { key: 'recovery', label: '账号恢复', description: '核对恢复挑战，不展示恢复凭证。', icon: 'mdi-account-lock-outline', to: '/apps/security/recovery' },
   { key: 'runtime', label: '运行健康', description: '检查设施、事件队列和降级状态。', icon: 'mdi-heart-pulse', to: '/apps/operations/runtime' },
   { key: 'deliveries', label: '通知投递', description: '检查投递状态和失败原因。', icon: 'mdi-send-check-outline', to: '/apps/operations/deliveries' },
@@ -283,7 +283,7 @@ function taskIcon(key: string) {
     comments_pending: 'mdi-comment-alert-outline',
     reports_open: 'mdi-flag-outline',
     recovery_active: 'mdi-account-key-outline',
-    deliveries_dead: 'mdi-send-alert-outline',
+    deliveries_dead: 'mdi-alert-circle-outline',
     files_pending: 'mdi-file-clock-outline',
   } as Record<string, string>)[key] ?? 'mdi-clipboard-check-outline'
 }

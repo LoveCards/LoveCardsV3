@@ -11,7 +11,7 @@
         <AdminConfigSection
           title="渠道参数"
           description="测试发信只读取已保存配置；密钥字段留空表示保留服务端现值。"
-          icon="mdi-email-cog-outline"
+          icon="mdi-email-edit-outline"
           risk="high"
         >
           <template #actions><v-chip size="small" variant="outlined">{{ slug }}</v-chip></template>

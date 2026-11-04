@@ -80,7 +80,7 @@
 
         <template #no-data>
           <v-empty-state
-            :icon="tableError ? 'mdi-cloud-alert-outline' : 'mdi-shield-search-outline'"
+            :icon="tableError ? 'mdi-cloud-alert-outline' : 'mdi-shield-search'"
             :title="tableError ? '无法加载权限目录' : '没有匹配的能力授权'"
             :text="tableError || '权限定义由服务端维护，请调整搜索关键词。'"
           >

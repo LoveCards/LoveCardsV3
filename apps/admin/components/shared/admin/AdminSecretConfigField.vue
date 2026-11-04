@@ -52,7 +52,7 @@
         color="error"
         :disabled="disabled"
         :min-height="44"
-        prepend-icon="mdi-key-remove-outline"
+        prepend-icon="mdi-key-remove"
         size="small"
         variant="text"
         @click="clearDialog = true"
@@ -62,7 +62,7 @@
     </div>
 
     <v-dialog v-model="clearDialog" aria-label="清除敏感配置" max-width="480">
-      <v-card prepend-icon="mdi-key-remove-outline" :title="`清除${label}`">
+      <v-card prepend-icon="mdi-key-remove" :title="`清除${label}`">
         <v-card-text class="pt-4">
           <v-alert type="warning" variant="tonal">
             清除后，依赖此密钥的渠道可能立即不可用。本操作先加入未保存修改，只有点击页面的保存按钮后才会生效。
@@ -109,8 +109,8 @@ const stateColor = computed(() => {
 })
 const stateIcon = computed(() => {
   if (props.modelValue.$secret === 'replace') return 'mdi-key-change'
-  if (props.modelValue.$secret === 'clear') return 'mdi-key-remove-outline'
-  return configured.value ? 'mdi-key-check-outline' : 'mdi-key-outline'
+  if (props.modelValue.$secret === 'clear') return 'mdi-key-remove'
+  return configured.value ? 'mdi-key' : 'mdi-key-outline'
 })
 const hint = computed(() => {
   if (props.modelValue.$secret === 'replace') return '保存后会替换服务端密钥；当前输入不会再次回显。'

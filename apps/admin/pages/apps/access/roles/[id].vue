@@ -67,7 +67,7 @@
           </v-sheet>
           <v-empty-state
             v-else
-            icon="mdi-key-remove-outline"
+            icon="mdi-key-remove"
             title="没有授予能力"
             text="该角色不会单独提供管理能力。"
           />
