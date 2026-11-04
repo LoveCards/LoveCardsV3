@@ -242,6 +242,8 @@
   .compose-topic-suggestions { margin-top: -8px; }
   .compose-topic-suggestions > span,
   .compose-topic-hint { color: var(--lc-muted); font-size: 0.7rem; }
+  /* 提示 <p> 会带入浏览器默认 1em 下边距，与 grid gap 叠加出额外间距；显式清零保持节奏一致。 */
+  p.compose-topic-hint { margin: 0; }
   .compose-topic-suggestions button { color: var(--lc-body); background: var(--lc-surface); cursor: pointer; }
   .compose-visibility {
     min-width: 0;
