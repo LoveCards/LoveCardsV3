@@ -7,13 +7,13 @@
 
 > 日期：2026-11-04
 >
-> 范围：`站点设置` 域下三个驱动配置页（存储 / 消息 / 验证）从 UI 到驱动实现的纵向架构导读。
+> 范围：`系统设置` 域下三个驱动配置页（存储 / 消息 / 验证）从 UI 到驱动实现的纵向架构导读。
 
 ## 1. 结论概览
 
 后台可配置的"驱动面"共三块：**存储（storage）、消息（sender）、验证（captcha）**，
 分别对应页面 `/apps/settings/storage`、`/apps/settings/messaging`、`/apps/settings/verification`。
-其余站点设置页（站点设置、社区规则、外观）属于**业务配置**，不属于驱动面。
+系统设置组内其余页面（站点信息、社区规则、外观）属于**业务配置**，不属于驱动面。
 
 三块驱动共享同一条纵向链路：
 
@@ -25,7 +25,7 @@
 
 ## 2. 导航与权限层
 
-`apps/admin/config/navigation.ts` 中三个驱动条目位于 `站点设置`（system-config）域，
+`apps/admin/config/navigation.ts` 中三个驱动条目位于 `系统设置`（system-config）域，
 声明 `grants: config.read`、`actionCapabilities: config.update`、`riskLevel: sensitive`。
 
 权限模型不识别"驱动"概念，只识别能力；驱动页的高风险性由 `sensitive` 标记进入
@@ -98,7 +98,7 @@ MIME），执行的是**渠道级底线**。
 验证码不是孤立一条链，而是骑在消息域之上：
 
 ```text
-user.captcha（注册邮件验证开关，站点设置页）
+user.captcha（注册邮件验证开关，站点信息页）
 → captcha.code_enabled / default_code_driver（默认 smtp_code）
 → CodeDriver → sender.code_channel（smtp / sms）/ default_smtp / default_sms
 → Sender 驱动（SmtpDriver / AliyunSmsDriver）
