@@ -6,6 +6,7 @@ export const PUBLIC_API = {
   'cards.listPublicByUser': { method: 'GET', path: '/api/users/:uid/cards' },
   'tags.list':     { method: 'GET',  path: '/api/tags' },
   'tags.get':      { method: 'GET',  path: '/api/tags/:id' },
+  'tags.policy':   { method: 'GET',  path: '/api/tags/policy' },
   'comments.cardList': { method: 'GET', path: '/api/cards/:id/comments' },
   'users.me.get':      { method: 'GET', path: '/api/me' },
   'theme.publicConfig':{ method: 'GET', path: '/api/theme/config' },

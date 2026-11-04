@@ -11,6 +11,7 @@ use app\modules\Content\Infrastructure\Persistence\Model\Tags as TagsModel;
 use app\modules\Content\Infrastructure\Persistence\Model\TagsMap as TagsMapModel;
 use app\modules\Content\Infrastructure\Persistence\Model\Comments as CommentsModel;
 use app\modules\Content\Mentions\Service\Mentions;
+use app\modules\Content\Tags\Public\Tags as TagsFacade;
 use app\modules\Platform\Files\Infrastructure\Persistence\Model\Files as FilesModel;
 use app\modules\Platform\Files\Public\Files as PublicFiles;
 use app\modules\Platform\Safety\Public\Safety;
@@ -76,7 +77,13 @@ class Cards
 
         if (isset($params['tag_id'])) {
             $tagId = (int) $params['tag_id'];
-            $params['where'][] = ['id', 'in', TagsMapModel::where('aid', 1)->where('tag_id', $tagId)->column('pid') ?: [0]];
+            // 非公开状态（待审核/封禁/隐藏）的标签不得作为公开列表筛选条件，
+            // 否则等于绕过审核借卡片列表泄露其内容。
+            $visibleTag = TagsModel::where('aid', 1)->where('id', $tagId)->where('status', 0)->findOrEmpty();
+            $pids = $visibleTag->isEmpty()
+                ? [0]
+                : (TagsMapModel::where('aid', 1)->where('tag_id', $tagId)->column('pid') ?: [0]);
+            $params['where'][] = ['id', 'in', $pids];
         }
 
         // 无 cards.read.all 能力 → 只看已发布
@@ -338,7 +345,7 @@ class Cards
         }
     }
 
-    public static function createCard($data): string
+    public static function createCard($data, ?GrantSet $grants = null): string
     {
         Db::startTrans();
         try {
@@ -348,7 +355,7 @@ class Cards
             $data['visibility'] = CardVisibilityPolicy::normalize($data['visibility'] ?? CardVisibilityPolicy::PUBLIC);
             $data = self::normalizeCardMetadata($data);
             if (array_key_exists('tags', $data) && $data['tags'] !== null) {
-                $data['tags'] = self::resolveTagIds($data['tags'], $uid);
+                $data['tags'] = self::resolveTagIds($data['tags'], $uid, $grants);
             }
             $data = self::encodeJsonFields(self::normalizeMedia($data, $uid, false));
             $result = CardsModel::create($data);
@@ -434,7 +441,7 @@ class Cards
                 ? self::mediaIds($data['media_file_ids'] ?? $data['picture_file_ids'])
                 : null;
             if (array_key_exists('tags', $data) && $data['tags'] !== null) {
-                $data['tags'] = self::resolveTagIds($data['tags'], $uid);
+                $data['tags'] = self::resolveTagIds($data['tags'], $uid, $grants);
             }
             $data = self::normalizeCardMetadata($data);
             $data = self::encodeJsonFields(
@@ -584,7 +591,7 @@ class Cards
      * @param mixed $value
      * @return array<int,int>
      */
-    private static function resolveTagIds($value, int $uid): array
+    private static function resolveTagIds($value, int $uid, ?GrantSet $grants = null): array
     {
         $tags = is_string($value) ? json_decode($value, true) : $value;
         if (!is_array($tags)) {
@@ -596,17 +603,17 @@ class Cards
             $name = trim(ltrim((string) $raw, '#'));
             if ($name === '') continue;
 
-            $tag = ctype_digit($name)
-                ? TagsModel::where('aid', 1)->where('status', 0)->where('id', (int) $name)->find()
-                : TagsModel::where('aid', 1)->where('status', 0)->where('name', $name)->find();
-            if ($tag === null || $tag->isEmpty()) {
-                if (ctype_digit($name)) {
+            if (ctype_digit($name)) {
+                $tag = TagsModel::where('aid', 1)->where('status', 0)->where('id', (int) $name)->find();
+                if ($tag === null || $tag->isEmpty()) {
                     throw \app\api\ApiException::badRequest('话题不存在或不可用');
                 }
-                $tag = TagsModel::create(['aid' => 1, 'user_id' => $uid, 'name' => $name, 'status' => 0]);
+                $id = (int) $tag->id;
+            } else {
+                // 名称解析统一走 Tags 模块 Public 门面：开关、审核与去重都在那里裁决。
+                $id = TagsFacade::ensureTag($name, $uid, $grants);
             }
 
-            $id = (int) $tag->id;
             if ($id > 0 && !in_array($id, $ids, true)) $ids[] = $id;
         }
 

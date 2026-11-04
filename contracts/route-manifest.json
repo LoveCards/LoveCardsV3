@@ -1,6 +1,6 @@
 {
   "source": "thinkphp-runtime-route-registry",
-  "routeCount": 190,
+  "routeCount": 191,
   "routes": [
     {
       "path": "/admin/cards/:id",
@@ -2522,7 +2522,7 @@
       "method": "GET",
       "name": "tags.getManaged",
       "controller": "Content.Tags",
-      "action": "get",
+      "action": "getManaged",
       "meta": {
         "name": "管理标签详情",
         "group": "标签",
@@ -3735,6 +3735,30 @@
         "request": null,
         "response": {
           "resource": "app\\modules\\Content\\Tags\\Transport\\Api\\TagResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/tags/policy",
+      "method": "GET",
+      "name": "tags.policy",
+      "controller": "Content.Tags",
+      "action": "policy",
+      "meta": {
+        "name": "标签创建规则",
+        "group": "标签",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Content\\Tags\\Transport\\Api\\TagsPolicyResource",
           "shape": "item",
           "status": 200
         }

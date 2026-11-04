@@ -41,15 +41,27 @@ class Tags extends BaseController
 
     public function get($id)
     {
+        // 公开详情：仅已发布标签可见，待审核/封禁/隐藏标签对外等同不存在。
+        $result = TagsService::get((int) $id, true);
+        return $this->respond($result);
+    }
+
+    public function getManaged($id)
+    {
         $result = TagsService::get((int) $id);
         return $this->respond($result);
+    }
+
+    public function policy()
+    {
+        return $this->respond(TagsService::creationPolicy());
     }
 
     public function create()
     {
         $params = $this->validated();
         $params['user_id'] = request()->auth->uid();
-        return $this->respond(TagsService::createTag($params));
+        return $this->respond(TagsService::createTag($params, request()->auth->grants()));
     }
 
     public function update($id)

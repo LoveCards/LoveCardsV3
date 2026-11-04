@@ -12,6 +12,9 @@ use app\shared\Infrastructure\Persistence\ModelQuery;
 use app\shared\Authorization\GrantSet;
 use app\shared\Authorization\Scope;
 use app\modules\Content\Tags\Service\Policy\TagPolicy;
+use app\modules\Platform\Config\Public\Config as ConfigService;
+use app\modules\Platform\Notifications\Contract\SystemNoticeIssuer;
+use app\modules\Platform\Notifications\Domain\SystemNotice;
 use app\shared\Observability\AdminMutationAudit;
 
 class Tags
@@ -23,9 +26,14 @@ class Tags
         return $result->toArray();
     }
 
-    public static function get(int $id): array
+    public static function get(int $id, bool $publicView = false): array
     {
-        $result = TagsModel::where('id', $id)->findOrEmpty();
+        $query = TagsModel::where('id', $id);
+        if ($publicView) {
+            // 公开详情只暴露已发布标签；待审核/封禁/隐藏标签对外等同不存在。
+            $query->where('status', 0);
+        }
+        $result = $query->findOrEmpty();
         if ($result->isEmpty()) {
             throw \app\api\ApiException::notFound('标签不存在');
         }
@@ -54,14 +62,76 @@ class Tags
             ->toArray();
     }
 
-    public static function createTag($params): array
+    public static function createTag($params, ?GrantSet $grants = null): array
     {
-        $params['aid'] = 1;
-        $name = trim(ltrim((string) ($params['name'] ?? ''), '#'));
+        $name = trim(ltrim(trim((string) ($params['name'] ?? '')), '#'));
+        if ($name === '') {
+            throw \app\api\ApiException::badRequest('标签名称不能为空');
+        }
+        $id = self::ensureTag($name, (int) ($params['user_id'] ?? 0), $grants);
+        return TagsModel::where('id', $id)->findOrEmpty()->toArray();
+    }
+
+    /**
+     * 按名称取得或创建标签（隐式与显式两条创建通道共用的唯一入口）。
+     *
+     * 规则（社区规则页「标签」组）：
+     * - 已有正常标签（status=0）按名复用，不受开关影响；
+     * - tags.allow_user_create 关闭时，非特权用户创建新标签直接报错；
+     * - tags.review_new_tags 开启时，非特权用户的新标签落 status=3（待审核），
+     *   同名待审标签复用同一条记录，等待管理员在后台标签页「审核/取消」放行；
+     * - 持有 admin.access（global）的角色豁免两个开关，维持直接发布的行为。
+     */
+    public static function ensureTag(string $rawName, int $uid, ?GrantSet $grants = null): int
+    {
+        $name = trim(ltrim(trim($rawName), '#'));
+        if ($name === '') {
+            throw \app\api\ApiException::badRequest('标签名称不能为空');
+        }
+
         $existing = TagsModel::where('aid', 1)->where('status', 0)->where('name', $name)->find();
-        if ($existing !== null && !$existing->isEmpty()) return $existing->toArray();
-        $params['name'] = $name;
-        return TagsModel::create($params)->toArray();
+        if ($existing !== null && !$existing->isEmpty()) {
+            return (int) $existing->id;
+        }
+
+        $privileged = $grants !== null && $grants->allows('admin.access', Scope::GLOBAL);
+
+        if (!$privileged && !self::boolConfig('tags.allow_user_create', true)) {
+            throw \app\api\ApiException::badRequest('暂不支持创建新标签，请从已有标签中选择');
+        }
+
+        if (!$privileged && self::boolConfig('tags.review_new_tags', false)) {
+            $pending = TagsModel::where('aid', 1)->where('status', 3)->where('name', $name)->find();
+            if ($pending !== null && !$pending->isEmpty()) {
+                return (int) $pending->id;
+            }
+            return (int) TagsModel::create(['aid' => 1, 'user_id' => $uid, 'name' => $name, 'status' => 3])->id;
+        }
+
+        return (int) TagsModel::create(['aid' => 1, 'user_id' => $uid, 'name' => $name, 'status' => 0])->id;
+    }
+
+    /**
+     * 标签创建规则（供主题等公开消费方读取，键名与配置组一致）。
+     */
+    public static function creationPolicy(): array
+    {
+        return [
+            'allow_user_create' => self::boolConfig('tags.allow_user_create', true),
+            'review_new_tags'   => self::boolConfig('tags.review_new_tags', false),
+        ];
+    }
+
+    private static function boolConfig(string $key, bool $default): bool
+    {
+        $value = ConfigService::get($key, $default);
+        if (is_bool($value)) {
+            return $value;
+        }
+        if (is_numeric($value)) {
+            return (bool) (int) $value;
+        }
+        return $default;
     }
 
     /**
@@ -105,6 +175,24 @@ class Tags
         Db::startTrans();
         try {
             $before = $auditAdminMutation ? self::auditRows($ids, true, true) : [];
+
+            // 审核结果通知判定（NOTIFICATIONS.md §3.2）：仅对真实状态翻转的标签通知创建者；
+            // 「待审核→公开」发通过通知，「公开→待审核」发复核通知；进入审核队列本身不通知。
+            // 封禁/隐藏等治理动作的通知属于另一条通知线，另行排期补齐。
+            $noticeTargets = [];
+            if ($method === 'approve') {
+                foreach (TagsModel::where('aid', 1)->whereIn('id', $ids)->select() as $row) {
+                    if ((int) $row->user_id <= 0) {
+                        continue;
+                    }
+                    if ((int) $row->status === 3) {
+                        $noticeTargets[] = ['user_id' => (int) $row->user_id, 'id' => (int) $row->id, 'name' => (string) $row->name, 'kind' => 'approved'];
+                    } elseif ((int) $row->status === 0) {
+                        $noticeTargets[] = ['user_id' => (int) $row->user_id, 'id' => (int) $row->id, 'name' => (string) $row->name, 'kind' => 'rereview'];
+                    }
+                }
+            }
+
             match ($method) {
                 'approve' => BulkFieldToggle::toggle(TagsModel::class, 'status', $ids, [0, 3], [1, 2]),
                 'ban' => BulkFieldToggle::toggle(TagsModel::class, 'status', $ids, [0, 1], [2, 3]),
@@ -113,6 +201,22 @@ class Tags
                 'restore' => TagsModel::withTrashed()->onlyTrashed()->whereIn('id', $ids)->update(['deleted_at' => null]),
                 'hard_delete' => self::hardDeleteTagsWithMap($ids),
             };
+
+            $cycle = uniqid('tagbatch', true);
+            foreach ($noticeTargets as $target) {
+                app(SystemNoticeIssuer::class)->issue(
+                    $target['user_id'],
+                    'moderation.tag.' . $target['id'] . '.' . $target['kind'] . '.' . $cycle,
+                    SystemNotice::MODERATION,
+                    $target['kind'] === 'approved'
+                        ? '标签「' . $target['name'] . '」已通过审核并公开发布。'
+                        : '标签「' . $target['name'] . '」被转入人工复核，暂时不再公开展示。',
+                    null,
+                    $target['kind'] === 'approved' ? 'success' : 'warning',
+                    $uid
+                );
+            }
+
             if ($auditAdminMutation) {
                 app(AdminMutationAudit::class)->recordChanges(
                     $uid,
