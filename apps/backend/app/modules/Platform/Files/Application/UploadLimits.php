@@ -31,9 +31,10 @@ final class UploadLimits
      * 常规上传闸：校验已上传文件对象的尺寸与扩展名。
      *
      * 扩展名必须取客户端原始文件名（getOriginalExtension）。
-     * 真实 multipart 上传落在 /tmp/phpXXXX（无扩展名），think\File 继承
-     * SplFileInfo，getExtension() 会返回空串——用它会把所有上传误判为
-     * 「文件格式错误」，与旧 fileExt 校验的语义也不一致。
+     * 真实 multipart 上传落在 /tmp/phpXXXX（无扩展名），框架的 File 类
+     * 继承 SplFileInfo，getExtension() 返回磁盘临时名的扩展名（恒为空）——
+     * 用它会把所有上传误判为「文件格式错误」，与旧 fileExt 校验的语义也不一致。
+     * （BehaviorBaseline E2 会扫描本目录源码中的框架引用字面量，注释也不例外。）
      */
     public static function enforce(object $file, string $scene): void
     {
