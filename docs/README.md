@@ -34,3 +34,8 @@
 - [后端测试与质量门禁](engineering/BACKEND-TESTING.md)
 - [实现与验证审计](engineering/IMPLEMENTATION-AUDIT-2026-08-20.md)
 - [Git 工作流](engineering/GIT-WORKFLOW.md)
+
+## 参考读物（非规范）
+
+- [管理端驱动三域架构导读](engineering/ADMIN-DRIVERS.md) —— Agent 理解总结，仅限参考，不作为改动依据
+
