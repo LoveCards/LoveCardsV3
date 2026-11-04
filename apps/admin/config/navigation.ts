@@ -215,7 +215,7 @@ const systemConfigItems: readonly AdminNavigationItem[] = [
     path: '/apps/settings/community-rules',
     canonicalPath: '/apps/settings/community-rules',
     title: '社区规则',
-    searchAliases: ['上传限制', '内容审核', '卡片审核', '评论审核'],
+    searchAliases: ['上传限制', '内容审核', '卡片审核', '评论审核', '新标签', '标签审核'],
     icon: 'mdi-shield-check-outline',
     domain: 'system-config',
     section: '社区规则',

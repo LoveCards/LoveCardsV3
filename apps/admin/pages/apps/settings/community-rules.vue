@@ -148,6 +148,45 @@
         </v-row>
       </AdminConfigSection>
 
+      <AdminConfigSection
+        class="mb-4"
+        :dirty="tagsChanged"
+        description="控制普通用户在发布卡片时能否创建新标签，以及新标签是否需要先审核；持有后台访问能力的管理员不受这两个开关限制。"
+        icon="mdi-tag-outline"
+        title="标签"
+      >
+        <v-row dense>
+          <v-col cols="12" sm="6">
+            <v-select
+              v-model="rulesConfig.tags.allowUserCreate"
+              :disabled="!canUpdateConfig || rulesSaving"
+              density="comfortable"
+              hint="关闭后，用户发布卡片时只能使用已有标签"
+              item-title="title"
+              item-value="value"
+              :items="switchItems"
+              label="允许用户创建新标签"
+              persistent-hint
+              variant="outlined"
+            />
+          </v-col>
+          <v-col cols="12" sm="6">
+            <v-select
+              v-model="rulesConfig.tags.reviewNew"
+              :disabled="!canUpdateConfig || rulesSaving"
+              density="comfortable"
+              hint="开启后，用户新标签进入待审核状态，在标签管理中放行后才公开"
+              item-title="title"
+              item-value="value"
+              :items="switchItems"
+              label="新用户标签需先审核"
+              persistent-hint
+              variant="outlined"
+            />
+          </v-col>
+        </v-row>
+      </AdminConfigSection>
+
       <AdminConfigSaveBar class="mt-4" :dirty="rulesChanged" label="社区规则">
         <AdminActionGuard capability="config.update" scope="global">
           <v-btn
@@ -200,10 +239,15 @@ interface CardSettings {
 interface CommentSettings {
   approve: boolean
 }
+interface TagSettings {
+  allowUserCreate: boolean
+  reviewNew: boolean
+}
 interface RulesConfig {
   upload: UploadSettings
   cards: CardSettings
   comments: CommentSettings
+  tags: TagSettings
 }
 type ActionMessage = { type: 'success' | 'error'; text: string }
 
@@ -234,13 +278,18 @@ const emptyConfig: RulesConfig = {
   comments: {
     approve: false,
   },
+  tags: {
+    allowUserCreate: true,
+    reviewNew: false,
+  },
 }
 const rulesConfig = ref<RulesConfig>(CommonUtils.deepClone(emptyConfig))
 const originConfig = ref<RulesConfig>(CommonUtils.deepClone(emptyConfig))
 const uploadChanged = computed(() => JSON.stringify(rulesConfig.value.upload) !== JSON.stringify(originConfig.value.upload))
 const cardsChanged = computed(() => JSON.stringify(rulesConfig.value.cards) !== JSON.stringify(originConfig.value.cards))
 const commentsChanged = computed(() => JSON.stringify(rulesConfig.value.comments) !== JSON.stringify(originConfig.value.comments))
-const rulesChanged = computed(() => uploadChanged.value || cardsChanged.value || commentsChanged.value)
+const tagsChanged = computed(() => JSON.stringify(rulesConfig.value.tags) !== JSON.stringify(originConfig.value.tags))
+const rulesChanged = computed(() => uploadChanged.value || cardsChanged.value || commentsChanged.value || tagsChanged.value)
 const { unsavedChangesDialog, continueEditing, discardChanges } = useAdminUnsavedChanges(rulesChanged)
 
 // 场景新键未配置时回落到旧全局键，与后端 UploadLimits 的读时回落链保持一致。
@@ -248,6 +297,7 @@ const toFrontendFormat = (raw: JsonObject): RulesConfig => {
   const upload = readObject(raw.upload)
   const cards = readObject(raw.cards)
   const comments = readObject(raw.comments)
+  const tags = readObject(raw.tags)
   const legacySize = readNumber(upload.user_image_size, 2)
   const legacyExt = readString(upload.user_image_ext)
   return {
@@ -265,6 +315,11 @@ const toFrontendFormat = (raw: JsonObject): RulesConfig => {
     comments: {
       approve: readBoolean(comments.approve),
     },
+    // 新键未注册时默认保持现行行为：允许创建、不审核。
+    tags: {
+      allowUserCreate: readBoolean(tags.allow_user_create, true),
+      reviewNew: readBoolean(tags.review_new_tags),
+    },
   }
 }
 const toBackendRules = (config: RulesConfig): JsonObject => ({
@@ -281,6 +336,10 @@ const toBackendRules = (config: RulesConfig): JsonObject => ({
   },
   comments: {
     approve: config.comments.approve,
+  },
+  tags: {
+    allow_user_create: config.tags.allowUserCreate,
+    review_new_tags: config.tags.reviewNew,
   },
 })
 const errorMessage = (cause: unknown, fallback: string) => isApiError(cause) ? cause.message : fallback
