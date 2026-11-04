@@ -129,6 +129,16 @@ export async function loadComposeTopics() {
     : [];
 }
 
+// 读取标签创建规则（社区规则页「标签」组的公开投影）。
+// 读取失败时由调用方回落到宽松默认（允许创建、不审核），最终裁决始终在后端提交时执行。
+export async function loadTopicPolicy() {
+  const policy = await getSdkClient().tags.policy();
+  return {
+    allowUserCreate: policy?.allow_user_create !== false,
+    reviewNew: policy?.review_new_tags === true,
+  };
+}
+
 function readCardData(value) {
   if (value && typeof value === 'object' && !Array.isArray(value)) return { ...value };
   if (typeof value !== 'string' || !value.trim()) return {};
