@@ -43,6 +43,9 @@ final class UploadFile
             throw ApiException::tooMany('请求过于频繁');
         }
 
+        // 场景化上传限额（头像类与内容类各自过闸），见 UploadLimits。
+        UploadLimits::enforce($file, $scene);
+
         $defaultChannel = $this->channels->getDefaultChannel();
         $path = $this->channels->generatePath($file->getOriginalName());
 

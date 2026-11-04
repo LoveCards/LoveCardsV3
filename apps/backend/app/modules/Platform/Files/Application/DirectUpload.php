@@ -45,6 +45,9 @@ final class DirectUpload
             throw ApiException::tooMany('请求过于频繁');
         }
 
+        // 直传不携带场景，按内容类限额在签发凭证之前过闸，见 UploadLimits。
+        UploadLimits::enforcePending($filename, $size);
+
         $defaultChannel = $this->channels->getDefaultChannel();
         $channelSlug = $defaultChannel['slug'];
         $path = $this->channels->generatePath($filename);

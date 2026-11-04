@@ -143,9 +143,16 @@ class Install
         // ConfigService::init() 内部会跳过已存在的配置键，因此可安全重复调用
         // 必须在创建安装锁之前执行，确保初始化失败时可重试
         try {
-            ConfigService::init();
+            $initResults = ConfigService::init();
         } catch (\Throwable $e) {
             return Export::Create(null, 500, '配置初始化失败：' . $e->getMessage());
+        }
+
+        // 上传限额场景键首次播种时，把旧全局键的现存自定义值物化到新键（幂等）
+        try {
+            \app\modules\Platform\Files\Application\UploadLimits::materialize($initResults['upload']['seeded'] ?? []);
+        } catch (\Throwable $e) {
+            return Export::Create(null, 500, '上传限额配置初始化失败：' . $e->getMessage());
         }
 
         // 初始化系统角色能力（非破坏性，只补充缺失项，不覆盖自定义角色）
