@@ -77,6 +77,7 @@ Route::post('', 'Content.Cards/create')
 
 - `npm run check:routes:strict`：真实加载 ThinkPHP 路由，确认清单未漂移，且每条路由都有可执行契约；
 - `npm run check:admin-contracts`：交叉检查 Route access、`CapabilityCatalog`、`SystemRolePolicy`、数据库迁移种子、管理端 navigation 和 Nuxt 页面，阻止能力或入口漂移；
+- `npm run check:admin-icons`：把 apps/admin 源码里的每个 `mdi-*` 字面量对照 `@mdi/font` 真实字体清单，封死"凭空写出不存在的图标名"这类已发生两次的事故（#41 与 2026-11-04 复查）；
 - `npm run test:contract-workflow`：用最小故障夹具确认 Controller/scene/schema 漂移、P1 阻断、metadata fail-closed 和 SDK 参数位置不会再次漏检；
 - `npm run check:api-contract`：审计 Controller、Validate、Resource 和响应形状，P0/P1 问题阻止导出或检查，P2 仅记录；
 - `npm run check:generated:sdk`：确认 SDK 生成物与 OpenAPI 完全一致。
