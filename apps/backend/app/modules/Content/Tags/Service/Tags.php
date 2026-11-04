@@ -5,7 +5,6 @@ namespace app\modules\Content\Tags\Service;
 use think\facade\Db;
 
 use app\modules\Content\Infrastructure\Persistence\Model\Tags as TagsModel;
-use app\modules\Content\Infrastructure\Persistence\Model\TagsMap as TagsMapModel;
 
 use app\shared\Infrastructure\Persistence\BulkFieldToggle;
 use app\shared\Infrastructure\Persistence\ModelQuery;
@@ -303,7 +302,11 @@ class Tags
 
     public static function deleteTagsMap(array $ids): void
     {
-        TagsMapModel::where('tag_id', 'in', $ids)->delete();
+        // 查询级 delete() 对软删模型 TagsMap 为空操作（实测），显式写 deleted_at 才真正解除映射。
+        Db::table('tags_map')
+            ->where('tag_id', 'in', $ids)
+            ->whereNull('deleted_at')
+            ->update(['deleted_at' => date('Y-m-d H:i:s')]);
     }
 
     /**

@@ -440,8 +440,10 @@ class Cards
             $pictureIds = $hasMediaIds
                 ? self::mediaIds($data['media_file_ids'] ?? $data['picture_file_ids'])
                 : null;
-            if (array_key_exists('tags', $data) && $data['tags'] !== null) {
-                $data['tags'] = self::resolveTagIds($data['tags'], $uid, $grants, (int) ($data['id'] ?? 0));
+            if (array_key_exists('tags', $data)) {
+                // 校验层 toNull 规则会把空数组 tags 规范成 null：PATCH 语义下这是调用方
+                // 显式清空话题，必须照常解析并重绑，否则"编辑删光话题"会静默保留旧关联。
+                $data['tags'] = self::resolveTagIds($data['tags'] ?? [], $uid, $grants, (int) ($data['id'] ?? 0));
             }
             $data = self::normalizeCardMetadata($data);
             $data = self::encodeJsonFields(
@@ -523,7 +525,13 @@ class Cards
         }
 
         if (!$create) {
-            TagsMapModel::where('aid', 1)->where('pid', $pid)->delete();
+            // 软删除模型的查询级 delete() 实测为空操作（affected=0，既不硬删也不软删），
+            // 必须显式写 deleted_at，与所有读取侧的 whereNull('deleted_at') 语义一致。
+            Db::table('tags_map')
+                ->where('aid', 1)
+                ->where('pid', $pid)
+                ->whereNull('deleted_at')
+                ->update(['deleted_at' => date('Y-m-d H:i:s')]);
         }
 
         foreach ($tags as $tag_id) {
@@ -701,12 +709,22 @@ class Cards
 
     public static function deleteCardsTags($pids): void
     {
-        TagsMapModel::where('aid', 1)->where('pid', 'in', $pids)->delete();
+        // 同 updateCardTags：查询级 delete() 对软删模型为空操作，显式写 deleted_at。
+        Db::table('tags_map')
+            ->where('aid', 1)
+            ->where('pid', 'in', $pids)
+            ->whereNull('deleted_at')
+            ->update(['deleted_at' => date('Y-m-d H:i:s')]);
     }
 
     public static function deleteCardsComments($pids): void
     {
-        CommentsModel::where('aid', 1)->where('pid', 'in', $pids)->delete();
+        // 同 deleteCardsTags：显式软删评论，保留审计与恢复能力。
+        Db::table('comments')
+            ->where('aid', 1)
+            ->where('pid', 'in', $pids)
+            ->whereNull('deleted_at')
+            ->update(['deleted_at' => date('Y-m-d H:i:s')]);
     }
 
     /**
