@@ -84,7 +84,9 @@ namespace
     use app\modules\Platform\Files\Application\UploadLimits;
 
     /**
-     * 构造一个具备 getSize/getExtension 的上传文件替身。
+     * 构造一个具备 getSize/getOriginalExtension 的上传文件替身。
+     * 真实 multipart 上传落在 /tmp/phpXXXX（无扩展名），闸必须读客户端
+     * 原始文件名的扩展名（getOriginalExtension），不得读磁盘临时名。
      */
     function uploadedFile(int $size, string $extension): object
     {
@@ -98,9 +100,15 @@ namespace
                 return $this->size;
             }
 
-            public function getExtension(): string
+            public function getOriginalExtension(): string
             {
                 return $this->extension;
+            }
+
+            public function getExtension(): string
+            {
+                // 陷阱哨兵：若实现误用磁盘临时名扩展名，这里会暴露。
+                return '';
             }
         };
     }
@@ -336,6 +344,16 @@ namespace
         }
         if (strpos($directCode, 'UploadLimits::enforcePending($filename, $size);') === false) {
             throw new \RuntimeException('DirectUpload 必须在签发凭证前调用 UploadLimits::enforcePending');
+        }
+    };
+
+    $tests['H2: gate reads client original extension, never the tmp-path extension'] = static function (): void {
+        $limitsCode = file_get_contents(__DIR__ . '/../../app/modules/Platform/Files/Application/UploadLimits.php');
+        if (strpos($limitsCode, 'getOriginalExtension(') === false) {
+            throw new \RuntimeException('UploadLimits 必须通过 getOriginalExtension 读取客户端原始扩展名');
+        }
+        if (preg_match('/\$file->getExtension\(/', $limitsCode) === 1) {
+            throw new \RuntimeException('UploadLimits 不得使用 getExtension：真实上传的磁盘临时名无扩展名，会误杀全部上传');
         }
     };
 }
