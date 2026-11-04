@@ -71,7 +71,7 @@ function isValidationFailure(error) {
 }
 
 function isTechnicalMessage(message) {
-  return /SDK\s*契约|接口没有返回|VITE_|\b(?:axios|fetch|contract|ECONN|ERR_[A-Z_]+)\b|\.(?:php|js|ts)\b|[\\/]/i.test(message);
+  return /SDK\s*契约|接口没有返回|VITE_|SQLSTATE|\b(?:axios|fetch|contract|ECONN|ERR_[A-Z_]+)\b|\.(?:php|js|ts)\b|[\\/]/i.test(message);
 }
 
 function isContractFailure(error) {
@@ -187,7 +187,12 @@ export function getUserFacingError(error, {
   const message = cleanText(error?.message);
   const detail = getSafeValidationDetail(error?.details);
 
-  if (isValidationFailure(error)) return detail || validationFallback;
+  if (isValidationFailure(error)) {
+    // 校验失败同样可能携带 Service 层的精确消息（如"话题不存在或不可用"）。
+    // 优先展示精确消息，其次 details，最后才用兜底文案，避免把具体原因抹平成泛提示。
+    if (message && !genericMessages.has(message) && !isTechnicalMessage(message) && !/^请求失败\s*\(\d+\)$/.test(message)) return message;
+    return detail || validationFallback;
+  }
   if (isNetworkFailure(error)) return '网络连接不稳定，请检查网络后重试。';
   if (status === 401) return '登录状态已失效，请重新登录后再试。';
   if (status === 403) return '当前账号没有执行此操作的权限。';

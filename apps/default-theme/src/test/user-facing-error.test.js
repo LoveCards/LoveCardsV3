@@ -6,6 +6,25 @@ describe('user-facing errors', () => {
     expect(getUserFacingError({ code: 9002, status: 400, message: '参数错误', details: ['用户名需要 3–12 个字符'] })).toBe('用户名需要 3–12 个字符');
   });
 
+  it('prefers a precise service validation message over the surface fallback', () => {
+    // Service 层已给出具体原因的 400 不能被抹平成"发布内容不符合要求"这类兜底文案。
+    expect(
+      getUserFacingError(
+        { code: 9002, status: 400, message: '话题「618」不存在或不可用（纯数字会按标签编号解析，请改用话题名称）' },
+        { validationFallback: '发布内容不符合要求，请检查文字与媒体后重试。' },
+      ),
+    ).toBe('话题「618」不存在或不可用（纯数字会按标签编号解析，请改用话题名称）');
+  });
+
+  it('still falls back for generic technical validation messages', () => {
+    expect(
+      getUserFacingError(
+        { code: 9002, status: 400, message: 'SQLSTATE[23000]: Duplicate entry' },
+        { validationFallback: '发布内容不符合要求，请检查文字与媒体后重试。' },
+      ),
+    ).toBe('发布内容不符合要求，请检查文字与媒体后重试。');
+  });
+
   it('reads the first safe text from nested validation details', () => {
     expect(getErrorDetail({ avatar: { errors: ['文件格式错误'] } })).toBe('文件格式错误');
   });

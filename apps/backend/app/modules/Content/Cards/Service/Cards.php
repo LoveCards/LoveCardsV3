@@ -606,7 +606,8 @@ class Cards
             if (ctype_digit($name)) {
                 $tag = TagsModel::where('aid', 1)->where('status', 0)->where('id', (int) $name)->find();
                 if ($tag === null || $tag->isEmpty()) {
-                    throw \app\api\ApiException::badRequest('话题不存在或不可用');
+                    // 报错必须带上具体话题与原因：纯数字按标签 ID 解析，找不到时用户才能明白下一步怎么做。
+                    throw \app\api\ApiException::badRequest('话题「' . $name . '」不存在或不可用（纯数字会按标签编号解析，请改用话题名称）');
                 }
                 $id = (int) $tag->id;
             } else {
