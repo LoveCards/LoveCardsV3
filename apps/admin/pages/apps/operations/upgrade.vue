@@ -128,8 +128,8 @@
     </v-dialog>
 
     <AdminDangerActionDialog v-model="advanceDialog" title="推进升级计划" action-label="推进一个步骤" :resource-label="selectedPlan ? `${selectedPlan.release_id} · ${stepLabel(selectedPlan.current_step)}` : ''" impact="本次请求只推进一个持久化步骤。若执行失败，计划会保留失败代码并可在修复环境后重试。" :loading="actionPlanId !== null && actionType === 'advance'" :error="actionError" @confirm="confirmAdvance" />
-    <AdminDangerActionDialog v-model="contractDialog" title="批准 Contract 阶段" action-label="批准并继续" resource-label="数据库 Contract" impact="Contract 可能删除已弃用字段或索引。请先确认当前运行代码已经兼容新旧结构，批准结果会写入审计日志。" confirm-text="批准 CONTRACT" :loading="actionPlanId !== null && actionType === 'contract'" :error="actionError" @confirm="confirmContract" />
-    <AdminDangerActionDialog v-model="recoverDialog" title="恢复升级前 Release" action-label="确认恢复" :resource-label="selectedPlan ? `${selectedPlan.release_id} · ${selectedPlan.plan_id}` : ''" impact="系统会使用升级计划的指针备份恢复旧 Release。恢复本身也会写入审计日志，请确认已经完成故障判断。" confirm-text="确认恢复" :loading="actionPlanId !== null && actionType === 'recover'" :error="actionError" @confirm="confirmRecover" />
+    <AdminDangerActionDialog v-model="contractDialog" title="批准 Contract 阶段" action-label="批准并继续" resource-label="数据库 Contract" impact="Contract 可能删除已弃用字段或索引，且该阶段执行后不可撤销。请先确认当前运行代码已经兼容新旧结构，批准结果会写入审计日志。" :loading="actionPlanId !== null && actionType === 'contract'" :error="actionError" @confirm="confirmContract" />
+    <AdminDangerActionDialog v-model="recoverDialog" title="恢复升级前 Release" action-label="确认恢复" :resource-label="selectedPlan ? `${selectedPlan.release_id} · ${selectedPlan.plan_id}` : ''" impact="系统会使用升级计划的指针备份恢复旧 Release，数据库结构不会自动回退。恢复本身也会写入审计日志，请确认已经完成故障判断。" :loading="actionPlanId !== null && actionType === 'recover'" :error="actionError" @confirm="confirmRecover" />
 
   </AdminPageContainer>
 </template>

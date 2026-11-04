@@ -53,7 +53,7 @@
     </AdminAsyncState>
 
     <AdminDangerActionDialog v-model="revokeDialog" title="撤销 Session" action-label="撤销" :resource-label="`Session #${selectedSession}`" impact="该设备的登录态将立即失效，用户需要重新登录。" :loading="revoking" :error="actionError" @confirm="handleRevoke" />
-    <AdminDangerActionDialog v-model="revokeAllDialog" title="撤销全部 Session" action-label="全部撤销" :resource-label="security?.user.username || ''" impact="该用户所有设备的登录态将立即失效。" confirm-text="撤销全部" :loading="revoking" :error="actionError" @confirm="handleRevokeAll" />
+    <AdminDangerActionDialog v-model="revokeAllDialog" title="撤销全部 Session" action-label="全部撤销" :resource-label="security?.user.username || ''" impact="该用户所有设备（含正在使用的设备）的登录态将立即失效，此操作不可撤销，用户需要在各设备重新登录。" :loading="revoking" :error="actionError" @confirm="handleRevokeAll" />
   </AdminPageContainer>
 </template>
 

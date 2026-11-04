@@ -244,12 +244,16 @@
     v-model:thisDialogState="DeleteDialog_state"
     v-model:deleteData="DeleteDialog_data"
     :deleteFun="HardDeleteFun"
+    title="确认永久删除文件"
+    action-label="永久删除"
+    impact="存储对象将被彻底删除，此操作不可撤销，无法再恢复该文件；只有回收站中的文件才能被永久删除。"
   />
   <PublicBatchDialog
     v-model:thisDialogState="BatchDialog_state"
     v-model:batchData="tableSelected"
     v-model:batchOptions="BatchDialog_operate"
     :batchFun="BatchFun"
+    :impact-description="batchImpactDescription"
   />
   <PublicSearchDialog
     v-model:thisDialogState="SearchDialog_state"
@@ -265,7 +269,6 @@
     :action-label="singleActionDialogAction"
     :resource-label="singleActionResourceLabel"
     :impact="singleActionImpact"
-    :confirm-text="singleActionConfirmText"
     :color="singleAction.method === 'restore' ? 'primary' : 'error'"
     :loading="singleActionLoading"
     :error="singleActionError"
@@ -277,7 +280,6 @@
     action-label="确认处理"
     resource-label="处于上传中且已经超过有效期的文件记录"
     impact="服务端只会把过期的待上传记录标记为上传失败，不会删除数据库记录或已上传对象。"
-    confirm-text="处理"
     :loading="cleanupLoading"
     :error="cleanupError"
     @confirm="confirmCleanup"
@@ -493,7 +495,6 @@ const singleActionError = ref('');
 const singleAction = ref<{ id: number; display: string; method: FilesBatchMethod }>({ id: 0, display: '', method: 'trash' });
 const singleActionDialogTitle = computed(() => singleAction.value.method === 'restore' ? '确认恢复文件' : '确认移入回收站');
 const singleActionDialogAction = computed(() => singleAction.value.method === 'restore' ? '恢复文件' : '移入回收站');
-const singleActionConfirmText = computed(() => singleAction.value.method === 'restore' ? '恢复' : '回收');
 const singleActionResourceLabel = computed(() => `${singleAction.value.display || '文件'}（#${singleAction.value.id}）`);
 const singleActionImpact = computed(() => singleAction.value.method === 'restore'
   ? '文件将重新回到正常列表；能否在前台访问仍取决于审核状态、公开状态和实际存储对象。'
@@ -561,6 +562,10 @@ const confirmCleanup = async () => {
 
 const BatchDialog_state = ref(false);
 const BatchDialog_operate = ref('');
+// 规范 D-2：批量“永久删除”必须用文字与普通批量操作区分不可恢复后果。
+const batchImpactDescription = computed(() => BatchOperate.value === 'hard_delete'
+  ? `所选 ${tableSelected.value.length} 个文件的存储对象将被彻底删除，此操作不可撤销，无法再恢复这些文件。`
+  : '');
 const openBatchDialog = () => {
   const method = BatchOperate.value;
   BatchDialog_operate.value = TableBatchOptions.value.find((option) => option.value === method)?.title || '';
