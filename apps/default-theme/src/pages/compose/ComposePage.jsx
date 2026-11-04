@@ -294,7 +294,6 @@ export function ComposePage() {
   const currentSignature = composeSignature({ content, tags, publishType, media: persistedMedia, files, visibility });
   const dirty = currentSignature !== savedSignature;
   const topicList = topicsFrom(tags);
-  const activeVisibility = visibilityOptions.find((option) => option.value === visibility) || visibilityOptions[0];
   const contentError = validationAttempted && (!content.trim() || content.length > CARD_CONTENT_MAX_LENGTH);
   const contentErrorMessage = !content.trim()
     ? publishType === 'text' ? '请先写下要分享的内容。' : `${publishTypes[publishType].label}必须填写正文，请补充后再发布。`
@@ -597,14 +596,16 @@ export function ComposePage() {
               </section>
 
               <section className="compose-details" id="compose-details">
-                <TextInput className="compose-tags-field" label="话题" description={topicCreationBlocked ? '可选，最多 3 个；当前只能使用已有话题。' : '可选，最多 3 个；用空格或逗号分隔。'} value={tags} onChange={(value) => { setTags(value); setTopicLimitHit(false); }} size="lg" width="100%" placeholder="城市漫游  周末记录" isDisabled={busy} status={topicError ? { type: 'error', message: topicErrorMessage } : undefined} statusVariant="detached" />
-                {topicList.length > 0 && <div className="compose-topic-chips" aria-label="已选话题">{topicList.map((topic) => <button key={topic} type="button" className="compose-topic-chip" onClick={() => removeTopic(topic)} disabled={busy}>#{topic}<span aria-hidden="true">×</span></button>)}</div>}
-                {topicSuggestions.length > 0 && <div className="compose-topic-suggestions" aria-label="话题建议"><span>已有话题</span>{topicSuggestions.map((topic) => <button key={topic.id} type="button" onClick={() => addTopic(topic.name)} disabled={busy}>#{topic.name}</button>)}</div>}
-                {topicOptionsError && <ResourceErrorBanner className="compose-topic-hint" error={topicOptionsError} />}
-                {topicCreationBlocked && <p className="compose-topic-hint">新话题创建已关闭，请从“已有话题”中选择。</p>}
-                {!topicCreationBlocked && topicPolicy !== null && topicPolicy.reviewNew && <p className="compose-topic-hint">新话题需管理员审核通过后才会公开展示。</p>}
+                <div className="compose-topic-field">
+                  <TextInput className="compose-tags-field" label="话题" description={topicCreationBlocked ? '可选，最多 3 个；当前只能使用已有话题。' : '可选，最多 3 个；用空格或逗号分隔。'} value={tags} onChange={(value) => { setTags(value); setTopicLimitHit(false); }} size="lg" width="100%" placeholder="城市漫游  周末记录" isDisabled={busy} status={topicError ? { type: 'error', message: topicErrorMessage } : undefined} statusVariant="detached" />
+                  {topicList.length > 0 && <div className="compose-topic-chips" aria-label="已选话题">{topicList.map((topic) => <button key={topic} type="button" className="compose-topic-chip" onClick={() => removeTopic(topic)} disabled={busy}>#{topic}<span aria-hidden="true">×</span></button>)}</div>}
+                  {topicSuggestions.length > 0 && <div className="compose-topic-suggestions" aria-label="话题建议"><span>已有话题</span>{topicSuggestions.map((topic) => <button key={topic.id} type="button" onClick={() => addTopic(topic.name)} disabled={busy}>#{topic.name}</button>)}</div>}
+                  {topicOptionsError && <ResourceErrorBanner className="compose-topic-hint" error={topicOptionsError} />}
+                  {topicCreationBlocked && <p className="compose-topic-hint">新话题创建已关闭，请从“已有话题”中选择。</p>}
+                  {!topicCreationBlocked && topicPolicy !== null && topicPolicy.reviewNew && <p className="compose-topic-hint">新话题需管理员审核通过后才会公开展示。</p>}
+                </div>
                 <section className="compose-visibility" aria-labelledby="compose-visibility-title">
-                  <header><h3 id="compose-visibility-title">谁可以查看</h3><p>{activeVisibility.description} 卡片范围会与账号隐私设置共同生效。</p></header>
+                  <header><h3 id="compose-visibility-title">谁可以查看</h3><p>卡片范围会与账号隐私设置共同生效。</p></header>
                   <SegmentedControl className="compose-visibility-control" value={visibility} onChange={setVisibility} label="卡片可见范围" layout="fill" size="lg" isDisabled={busy}>
                     {visibilityOptions.map((option) => <SegmentedControlItem key={option.value} value={option.value} label={option.label} />)}
                   </SegmentedControl>
