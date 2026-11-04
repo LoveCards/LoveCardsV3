@@ -388,7 +388,7 @@ export const adminNavigation: {
     {
       key: 'user-access',
       title: '用户与权限',
-      icon: 'mdi-account-shield-outline',
+      icon: 'mdi-shield-account-outline',
       domain: 'user-security',
       items: [...userSecurityItems, ...accessControlItems],
     },
