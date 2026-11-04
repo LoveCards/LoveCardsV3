@@ -24,7 +24,7 @@ const roleCases: RoleCase[] = [
       globalGrant('config.read'), globalGrant('operations.read'),
       globalGrant('audit.read'), globalGrant('roles.read'), globalGrant('permissions.read'),
     ],
-    visible: ['卡片', '用户管理', '站点与社区规则', '运行状态', '审计日志', '角色管理', '权限目录'],
+    visible: ['卡片', '用户管理', '站点设置', '社区规则', '运行状态', '审计日志', '角色管理', '权限目录'],
     hidden: [],
   },
   {
@@ -53,7 +53,7 @@ const roleCases: RoleCase[] = [
     name: '审核员',
     grants: [...common, allGrant('cards.read'), allGrant('comments.read'), globalGrant('reports.read')],
     visible: ['卡片', '评论', '举报处理'],
-    hidden: ['站点与社区规则', '通知投递', '角色管理'],
+    hidden: ['站点设置', '社区规则', '通知投递', '角色管理'],
   },
   {
     slug: 'security_admin',
@@ -74,7 +74,7 @@ const roleCases: RoleCase[] = [
     name: '审计员',
     grants: [...common, globalGrant('audit.read')],
     visible: ['审计日志'],
-    hidden: ['卡片', '用户管理', '站点与社区规则', '角色管理'],
+    hidden: ['卡片', '用户管理', '站点设置', '社区规则', '角色管理'],
   },
 ]
 

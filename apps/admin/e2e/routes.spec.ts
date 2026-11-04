@@ -13,6 +13,7 @@ const routes = [
   '/apps/settings/messaging',
   '/apps/settings/verification',
   '/apps/settings/site',
+  '/apps/settings/community-rules',
   '/apps/settings/appearance',
   '/apps/settings/appearance/themes/current',
   '/apps/operations/upgrade',
@@ -25,7 +26,9 @@ const routes = [
 ]
 
 const expectedHeadings: Record<string, string> = {
-  '/apps/settings/site': '站点与社区规则',
+  '/apps/settings/site': '站点设置',
+  // 新页面：社区规则从站点设置页拆分而来，无历史别名，导航直达。
+  '/apps/settings/community-rules': '社区规则',
   '/apps/operations/upgrade': '升级与迁移',
   '/apps/operations/runtime': '运行状态',
 }

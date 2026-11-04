@@ -38,6 +38,7 @@ async function fixture(page: Page, readonly = false) {
 
 const surfaces: Array<[string, string]> = [
   ['settings/site', '站点地址'],
+  ['settings/community-rules', '卡片图集上限'],
   ['settings/messaging/demo', '服务地址'],
   ['settings/storage/demo', '服务地址'],
   ['settings/verification/demo', '服务地址'],
@@ -77,22 +78,32 @@ test('channel edits use one dirty status, block testing, and preserve failed inp
   await page.getByRole('button', { name: '保存渠道配置', exact: true }).click()
   await expect(page.getByText('模拟保存失败，请检查输入。', { exact: true })).toBeVisible()
   await expect(page.getByRole('textbox', { name: /服务地址/ })).toHaveValue('edited.invalid')
-  await page.getByRole('link', { name: '站点与社区规则', exact: true }).click()
+  await page.getByRole('link', { name: '站点设置', exact: true }).click()
   await expect(page.getByRole('dialog', { name: '有未保存的修改' })).toBeVisible()
   await page.getByRole('button', { name: '继续编辑', exact: true }).click()
   await expect(page).toHaveURL(/messaging\/demo/)
   expect(writes).toEqual(['/api/admin/config'])
 })
 
-test('site tabs retain independent dirty state and save scope', async ({ page }) => {
+test('site and community rules pages keep independent dirty state and save scope', async ({ page }) => {
   const writes = await fixture(page)
   await page.goto('./apps/settings/site')
   await page.getByRole('textbox', { name: /站点名称/ }).fill('未保存名称')
-  await expect(page.getByRole('tab', { name: '基本信息 · 未保存' })).toBeVisible()
-  await page.getByRole('tab', { name: '社区规则', exact: true }).click()
+  await expect(page.getByRole('status')).toHaveText('站点设置有未保存修改', { timeout: 15_000 })
+  await expect(page.getByRole('button', { name: '保存站点设置', exact: true })).toBeEnabled()
+
+  // 拆分后社区规则是独立页面：站内离开需经过未保存守卫，放弃后进入的页面没有任何脏状态。
+  await page.getByRole('link', { name: '社区规则', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '有未保存的修改' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: '放弃修改', exact: true }).click()
+  await expect(page).toHaveURL(/settings\/community-rules$/)
   await expect(page.getByRole('button', { name: '保存社区规则', exact: true })).toBeDisabled()
-  await page.getByRole('tab', { name: '基本信息 · 未保存' }).click()
-  await expect(page.getByRole('textbox', { name: /站点名称/ })).toHaveValue('未保存名称')
+  await expect(page.getByText('有未保存修改')).toHaveCount(0)
+
+  // 返回站点设置页时重新加载原值：两页不共享草稿，写入始终为零。
+  await page.getByRole('link', { name: '站点设置', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: /站点名称/ })).not.toHaveValue('未保存名称')
   expect(writes).toEqual([])
 })
 

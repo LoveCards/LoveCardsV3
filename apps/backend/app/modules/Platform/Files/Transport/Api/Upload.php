@@ -3,7 +3,6 @@
 namespace app\modules\Platform\Files\Transport\Api;
 
 use think\Validate;
-use app\modules\Platform\Config\Public\Config as ConfigService;
 
 class Upload extends Validate
 {
@@ -26,14 +25,8 @@ class Upload extends Validate
         'file.require' => '文件不得为空',
     ];
 
-    public function __construct()
-    {
-        parent::__construct();
-
-        $imageSize = ConfigService::get('upload.user_image_size', 2);
-        $imageExt = ConfigService::get('upload.user_image_ext', 'jpg,png,gif');
-        $this->rule['file'] = $this->rule['file'] . '|fileSize:' . (1024 * 1000 * $imageSize) . '|fileExt:' . $imageExt;
-    }
+    // 尺寸与扩展名限额已迁至 Application/UploadLimits（按上传场景分组），
+    // 校验层只保留协议级校验，不再读取业务配置。
 
     protected $rule = [
         'aid' => 'require|number',

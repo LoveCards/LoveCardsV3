@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 for (const width of [1440, 390]) {
-  for (const route of ['content/tags', 'access/roles', 'settings/storage/files', 'operations/runtime', 'settings/site', 'settings/storage', 'settings/messaging', 'settings/verification', 'settings/appearance']) {
+  for (const route of ['content/tags', 'access/roles', 'settings/storage/files', 'operations/runtime', 'settings/site', 'settings/community-rules', 'settings/storage', 'settings/messaging', 'settings/verification', 'settings/appearance']) {
     test(`native admin surfaces reflow at ${width}px: ${route}`, async ({ page }, testInfo) => {
       test.setTimeout(60_000)
       await page.setViewportSize({ width, height: 960 })
