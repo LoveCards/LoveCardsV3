@@ -33,7 +33,7 @@
       :error-title="errorTitle"
       :empty="missing"
       empty-description="该记录可能已清理，或输入的投递 ID 无效。"
-      empty-icon="mdi-send-off-outline"
+      empty-icon="mdi-send-outline"
       empty-title="投递记录不存在"
       skeleton-type="heading, list-item-two-line@6"
       @retry="load"
