@@ -6,6 +6,7 @@ const canonicalRoutes = [
   '/apps/content/tags',
   '/apps/users',
   '/apps/settings/site',
+  '/apps/settings/community-rules',
   '/apps/operations/audit',
   '/apps/access/roles',
 ]
@@ -148,6 +149,24 @@ test('configuration pages guard unsaved changes on in-app navigation', async ({ 
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: '继续编辑' }).click()
   await expect(page).toHaveURL(/\/admin\/apps\/settings\/site$/)
+
+  await page.getByRole('link', { name: '返回管理工作台' }).click()
+  await dialog.getByRole('button', { name: '放弃修改' }).click()
+  await expect(page).toHaveURL(/\/admin\/apps\/dashboard$/)
+})
+
+test('community rules page guards unsaved changes on in-app navigation', async ({ page }) => {
+  test.setTimeout(60_000)
+  await page.goto('./apps/settings/community-rules', { waitUntil: 'domcontentloaded' })
+  const pictureLimit = page.getByLabel('卡片图集上限')
+  await expect(pictureLimit).toBeEditable({ timeout: 15_000 })
+  await pictureLimit.fill('9')
+
+  await page.getByRole('link', { name: '返回管理工作台' }).click()
+  const dialog = page.getByRole('dialog', { name: '有未保存的修改' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: '继续编辑' }).click()
+  await expect(page).toHaveURL(/\/admin\/apps\/settings\/community-rules$/)
 
   await page.getByRole('link', { name: '返回管理工作台' }).click()
   await dialog.getByRole('button', { name: '放弃修改' }).click()
