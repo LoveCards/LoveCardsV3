@@ -66,7 +66,7 @@
 | 3 | GET /me/notifications without params → notifications.list() | ✅ PASS | - |
 | 4 | GET /me/notifications?category=engagement → unified notification list | ✅ PASS | - |
 | 5 | GET /me/notifications/unread → notifications.unread() | ✅ PASS | - |
-| 6 | GET /me/notifications/stream-ticket → notifications.streamTicket() | ⏳ 待重验 | 旧报告的通过结果属于已移除的伪 SSE；新 API 尚未执行真实集成测试 |
+| 6 | GET /me/notifications/stream-ticket → notifications.streamTicket() | ⏳ 待重验 | 未配置 Gateway 时应返回 503/9012；配置完整时应签发短期票据，等待真实集成重验 |
 | 7 | POST /me/notifications/read requires only ids | ✅ PASS | - |
 | 8 | POST /me/notifications/read-all without body | ✅ PASS | - |
 | 9 | GET /me/conversations without params → messages.conversations() | ✅ PASS | - |

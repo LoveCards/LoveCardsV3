@@ -8,7 +8,7 @@
 
 1. **Gateway Probe 协议不匹配（阻断 Realtime）**：PR #48 的 `RealtimeGatewayProbe` 使用 `LC_REALTIME_GATEWAY_URL`、`LC_RUNTIME_INTERNAL_TOKEN`，期待 `protocol=lc-realtime/1`、顶层 `ready/cursor/auth/transport`。当前 Gateway `/internal/health` 使用 `LC_REALTIME_INTERNAL_URL`、`LC_REALTIME_INTERNAL_SECRET`，返回 `status=ready`、`service=realtime-gateway`、`protocol=lc-realtime-1` 与 `capabilities.sse/cursor/last_event_id/topics`。以已实现的 Gateway 契约为准修改 Probe；验证正确内部凭据可判 ready，错误凭据、错误协议或缺 topic 均降级。不要增加兼容双协议的分支。
 2. **实施契约 §4 与当前实现冲突**：`COMMUNICATION-RUNTIME-CONTRACT-2026-11-06.md` 仍要求 Redis pub/sub、Gateway 直接 `source-poll`、数据库 `stream_tickets` 与后端验票接口。原设计 §4.3 明确本轮使用带内部凭据的 HTTP Publisher，Redis 仅在测出瓶颈后评估。Gateway 不读 MySQL、不消费 Outbox。把 §3、§4、§7、§8 中对应条目改为 PR #49 的 HMAC ticket、`GET /me/notifications/stream-ticket`、内部 HTTP signal 和客户端低频 API 补偿；运行环境统一 Node 22+。不创建未实现的 `source-poll` 能力。
-3. **模式门控缺失**：让 ticket 签发和 `HttpRealtimePublisher` 通过 Runtime Public 能力读取 `effective_mode`。Polling、Gateway 不可用或 Worker 心跳过期时，ticket API 返回稳定的能力不可用响应，Publisher 不发 HTTP 请求；不能让缺失密钥变成 500。模式判断只放在通信基础设施/Host 边界，不进入通知业务规则。覆盖切换、降级和恢复测试。
+3. **模式门控缺失**：让 ticket 签发和 `HttpRealtimePublisher` 通过 Runtime Public 能力读取 `effective_mode`。Polling、Gateway 不可用或 Worker 心跳过期时，ticket API 使用现有 `503/9012` 能力不可用响应，Publisher 不发 HTTP 请求。模式判断只放在通信基础设施/Host 边界，不进入通知业务规则。覆盖切换、降级和恢复测试。
 4. **主题所需状态 API 缺失**：设计中的 `/runtime/communication`（或等价的认证主题 API）仍未实现。主题必须读到 `effective_mode`、轮询频率、`revision` 与降级原因，才能统一驱动通知、未读数和私信；Admin 专用 `operations.runtimeConfig()` 不能代替用户端契约。由主开发明确所有权并生成 SDK 类型。
 
 ## 代码与文档修正

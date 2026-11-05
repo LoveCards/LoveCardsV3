@@ -21,7 +21,7 @@
 - 后台仅可设置 `desired_mode=polling|realtime`。`effective_mode` 由 Event Worker 心跳与 Gateway capability probe 推导；Realtime 不 ready 时保持 polling，并显示 degraded 原因。
 - 新增 Runtime 配置/状态 API、`operations.runtime.configure` 权限和管理端 Runtime 页面。Scheduler/Supervisor 按部署策略独立展示，不能误设为 Realtime 通用硬依赖。
 - `.env` 只承担 bootstrap/紧急禁用；不能覆盖已经持久化的后台选择。
-- `streamTicket` 仅在 `effective_mode=realtime` 时签发；Polling 或 Gateway 降级时返回稳定的能力不可用响应，不能把缺少密钥变成 500。
+- `streamTicket` 仅在 `effective_mode=realtime` 时签发；Polling 或 Gateway 降级时使用现有 `503/9012` 能力不可用响应。未配置 Gateway 密钥时已返回该响应，不能恢复为 500。
 - `HttpRealtimePublisher` 在 `effective_mode=polling` 时不发 HTTP signal，避免每条通知承担无用的网络开销；模式判断由 Runtime Public 能力提供，通知模块不直接读配置表。
 
 ### B. 通知策略控制面

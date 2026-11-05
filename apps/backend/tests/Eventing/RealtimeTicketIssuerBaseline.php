@@ -11,8 +11,10 @@ if (!function_exists('env')) {
 
 require dirname(__DIR__, 2) . '/app/modules/Platform/Eventing/Contract/RealtimeTicketIssuer.php';
 require dirname(__DIR__, 2) . '/app/modules/Platform/Eventing/Infrastructure/HmacRealtimeTicketIssuer.php';
+require dirname(__DIR__, 2) . '/app/api/ApiException.php';
 
 use app\modules\Platform\Eventing\Infrastructure\HmacRealtimeTicketIssuer;
+use app\api\ApiException;
 
 $GLOBALS['realtime_env'] = [
     'LC_REALTIME_TICKET_SECRET' => 'ticket-secret-abcdefghijklmnopqrstuvwxyz-1234',
@@ -31,6 +33,7 @@ $assert($issued['endpoint'] === 'http://127.0.0.1:7070/stream', 'ticket endpoint
 $assert($issued['protocol'] === 'lc-realtime-1', 'ticket protocol must be stable');
 $assert($issued['topics'] === ['notifications'], 'ticket topics must be normalized');
 $assert($issued['cursor_strategy'] === 'opaque', 'ticket must declare opaque cursor strategy');
+$assert(ApiException::getHttpStatusByCode(ApiException::CODE_REALTIME_UNAVAILABLE) === 503, 'unavailable ticket response must use HTTP 503');
 
 $failed = false;
 try { $issuer->issue(0); } catch (InvalidArgumentException) { $failed = true; }
