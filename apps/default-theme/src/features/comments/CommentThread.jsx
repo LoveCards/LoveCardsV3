@@ -21,10 +21,12 @@ function rootIdFor(comment, commentById) {
   return current?.id || comment.id;
 }
 
-export function buildCommentActionMenuItems({ item, source, viewerId, canDeleteComment, canPinComment = false, pinBusy = false, onRequestDelete, onRequestPinChange, onCopy }) {
+export function buildCommentActionMenuItems({ item, source, viewerId, canDeleteComment, canPinComment = false, pinBusy = false, canReport = false, onRequestDelete, onRequestPinChange, onCopy, onReport }) {
   const ownsComment = source === 'live' && ((item.authorUid && item.authorUid === viewerId) || (!item.authorUid && Number(item.ownerId) === Number(viewerId)));
   const canPinRoot = source === 'live' && canPinComment && !item.parentId && typeof onRequestPinChange === 'function';
-  if (!ownsComment && !canPinRoot) return [];
+  // 举报入口：登录后可举报他人评论（自己的评论由后端可见性规则兜底）。
+  const canReportComment = source === 'live' && canReport && !ownsComment && typeof onReport === 'function';
+  if (!ownsComment && !canPinRoot && !canReportComment) return [];
   const items = [];
   if (typeof onCopy === 'function') items.push({ label: '复制评论', icon: <Icon name="copy" size={16} />, onClick: () => onCopy(item.content) });
   if (canPinRoot) {
@@ -39,11 +41,15 @@ export function buildCommentActionMenuItems({ item, source, viewerId, canDeleteC
     if (items.length) items.push({ type: 'divider' });
     items.push({ label: '删除评论', icon: <Icon name="trash" size={16} />, onClick: () => onRequestDelete(item) });
   }
+  if (canReportComment) {
+    if (items.length) items.push({ type: 'divider' });
+    items.push({ label: '举报', icon: <Icon name="flag" size={16} />, onClick: () => onReport(item) });
+  }
   return items;
 }
 
-function CommentRow({ item, replies, depth, source, isAuthenticated, canComment, canLike, canDeleteComment, canPinComment, pinBusy, viewerId, focusedCommentId, onReply, onLogin, onToggleLike, likeBusyIds, onRequestDelete, onRequestPinChange, onCopy, isRepliesExpanded, onToggleReplies }) {
-  const menuItems = buildCommentActionMenuItems({ item, source, viewerId, canDeleteComment, canPinComment, pinBusy, onRequestDelete, onRequestPinChange, onCopy });
+function CommentRow({ item, replies, depth, source, isAuthenticated, canComment, canLike, canDeleteComment, canPinComment, pinBusy, viewerId, focusedCommentId, onReply, onLogin, onToggleLike, likeBusyIds, onRequestDelete, onRequestPinChange, onCopy, canReport, onReport, isRepliesExpanded, onToggleReplies }) {
+  const menuItems = buildCommentActionMenuItems({ item, source, viewerId, canDeleteComment, canPinComment, pinBusy, canReport, onRequestDelete, onRequestPinChange, onCopy, onReport });
   const isFocused = Number(item.id) === focusedCommentId;
   const replyAction = canComment ? () => onReply(item) : source === 'live' ? onLogin : undefined;
   const likeAction = source === 'live' && canLike
@@ -66,7 +72,7 @@ function CommentRow({ item, replies, depth, source, isAuthenticated, canComment,
           {replyAction && <button type="button" onClick={replyAction}>回复</button>}
         </footer>
         {replies?.length > 0 && <div className="comment-thread-replies">
-          {(isRepliesExpanded ? replies : replies.slice(0, 3)).map((reply) => <CommentRow key={reply.id} item={reply} replies={[]} depth={1} source={source} isAuthenticated={isAuthenticated} canComment={canComment} canLike={canLike} canDeleteComment={canDeleteComment} canPinComment={canPinComment} pinBusy={pinBusy} viewerId={viewerId} focusedCommentId={focusedCommentId} onReply={onReply} onLogin={onLogin} onToggleLike={onToggleLike} likeBusyIds={likeBusyIds} onRequestDelete={onRequestDelete} onRequestPinChange={onRequestPinChange} onCopy={onCopy} />)}
+          {(isRepliesExpanded ? replies : replies.slice(0, 3)).map((reply) => <CommentRow key={reply.id} item={reply} replies={[]} depth={1} source={source} isAuthenticated={isAuthenticated} canComment={canComment} canLike={canLike} canDeleteComment={canDeleteComment} canPinComment={canPinComment} pinBusy={pinBusy} viewerId={viewerId} focusedCommentId={focusedCommentId} onReply={onReply} onLogin={onLogin} onToggleLike={onToggleLike} likeBusyIds={likeBusyIds} onRequestDelete={onRequestDelete} onRequestPinChange={onRequestPinChange} onCopy={onCopy} canReport={canReport} onReport={onReport} />)}
           {replies.length > 3 && <button className="comment-thread-more" type="button" onClick={onToggleReplies}>{isRepliesExpanded ? '收起回复' : `查看其余 ${replies.length - 3} 条回复`}</button>}
         </div>}
       </div>
@@ -74,7 +80,7 @@ function CommentRow({ item, replies, depth, source, isAuthenticated, canComment,
   );
 }
 
-export function CommentThread({ comments = [], focusedCommentId, source, isAuthenticated, canComment, canLike, canDeleteComment, canPinComment = false, pinBusy = false, viewerId, commentsUnavailable, onRetryComments, onSubmitComment, onLogin, onToggleLike, likeBusyIds, onRequestDelete, onRequestPinChange, onCopy }) {
+export function CommentThread({ comments = [], focusedCommentId, source, isAuthenticated, canComment, canLike, canDeleteComment, canPinComment = false, pinBusy = false, viewerId, commentsUnavailable, onRetryComments, onSubmitComment, onLogin, onToggleLike, likeBusyIds, onRequestDelete, onRequestPinChange, onCopy, canReport = false, onReport }) {
   const [replyTarget, setReplyTarget] = useState(null);
   const [draft, setDraft] = useState('');
   const [status, setStatus] = useState('idle');
@@ -174,7 +180,7 @@ export function CommentThread({ comments = [], focusedCommentId, source, isAuthe
       <header className="comment-thread-heading"><div><h2 id="comments-title">讨论</h2><span>{commentItems.length} 条</span></div><span className="comment-thread-sort">置顶优先</span></header>
       {commentsUnavailable ? <ResourceErrorBanner className="comment-thread-boundary" error={commentsUnavailable} onRetry={onRetryComments} /> : <>
         {Number.isInteger(focusedId) && !focusedComment && <p className="comment-thread-boundary" role="status">这条评论当前不可见，可能已被删除或尚未通过审核。</p>}
-        {roots.length > 0 ? <div className="comment-thread-list">{roots.map((item) => <CommentRow key={item.id} item={item} replies={repliesByRoot.get(item.id)} depth={0} source={source} isAuthenticated={isAuthenticated} canComment={isAuthenticated && canComment} canLike={isAuthenticated && canLike} canDeleteComment={isAuthenticated && canDeleteComment} canPinComment={isAuthenticated && canPinComment} pinBusy={pinBusy} viewerId={viewerId} focusedCommentId={focusedId} onReply={setReplyTarget} onLogin={isAuthenticated ? undefined : onLogin} onToggleLike={onToggleLike} likeBusyIds={likeBusyIds} onRequestDelete={onRequestDelete} onRequestPinChange={onRequestPinChange} onCopy={onCopy} isRepliesExpanded={expandedRoots.has(item.id)} onToggleReplies={() => setExpandedRoots((current) => { const next = new Set(current); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} />)}</div> : <p className="comment-thread-empty">还没有讨论，成为第一个回复的人。</p>}
+        {roots.length > 0 ? <div className="comment-thread-list">{roots.map((item) => <CommentRow key={item.id} item={item} replies={repliesByRoot.get(item.id)} depth={0} source={source} isAuthenticated={isAuthenticated} canComment={isAuthenticated && canComment} canLike={isAuthenticated && canLike} canDeleteComment={isAuthenticated && canDeleteComment} canPinComment={isAuthenticated && canPinComment} pinBusy={pinBusy} viewerId={viewerId} focusedCommentId={focusedId} onReply={setReplyTarget} onLogin={isAuthenticated ? undefined : onLogin} onToggleLike={onToggleLike} likeBusyIds={likeBusyIds} onRequestDelete={onRequestDelete} onRequestPinChange={onRequestPinChange} onCopy={onCopy} canReport={canReport} onReport={onReport} isRepliesExpanded={expandedRoots.has(item.id)} onToggleReplies={() => setExpandedRoots((current) => { const next = new Set(current); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} />)}</div> : <p className="comment-thread-empty">还没有讨论，成为第一个回复的人。</p>}
       </>}
       {composer}
     </section>

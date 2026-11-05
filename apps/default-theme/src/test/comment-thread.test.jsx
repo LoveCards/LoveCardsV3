@@ -110,6 +110,18 @@ describe('comment pin action boundary', () => {
     expect(items.map((entry) => entry.type || entry.label)).toEqual(['复制评论', '置顶评论', 'divider', '删除评论']);
   });
 
+  it('offers report only to non-owners and keeps it last with a divider', () => {
+    const onReport = vi.fn();
+    const foreign = buildCommentActionMenuItems({ item: comments[0], source: 'live', viewerId: 9, canReport: true, onReport, onCopy: vi.fn() });
+    expect(foreign.map((entry) => entry.type || entry.label)).toEqual(['复制评论', 'divider', '举报']);
+    foreign[2].onClick();
+    expect(onReport).toHaveBeenCalledWith(comments[0]);
+    const own = buildCommentActionMenuItems({ item: comments[0], source: 'live', viewerId: 2, canReport: true, canDeleteComment: true, onRequestDelete: vi.fn(), onCopy: vi.fn(), onReport });
+    expect(own.map((entry) => entry.type || entry.label)).toEqual(['复制评论', 'divider', '删除评论']);
+    const silent = buildCommentActionMenuItems({ item: comments[0], source: 'live', viewerId: 9, canReport: true, onCopy: vi.fn() });
+    expect(silent).toEqual([]);
+  });
+
   it('does not expose a fake pin action before the user-facing SDK capability exists', () => {
     expect(buildCommentActionMenuItems({ item: comments[0], source: 'live', viewerId: 9, canPinComment: false, onCopy: vi.fn() })).toEqual([]);
     expect(buildCommentActionMenuItems({ item: comments[0], source: 'live', viewerId: 9, canPinComment: true, onCopy: vi.fn() })).toEqual([]);
