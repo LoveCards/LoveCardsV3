@@ -36,6 +36,9 @@ export class Tags extends BaseResource {
   get(id: number): Promise<ApiTypes.Tag> {
     return this._get<ApiTypes.Tag>(`/tags/${id}`)
   }
+  policy(): Promise<Record<string, unknown>> {
+    return this._get<Record<string, unknown>>("/tags/policy")
+  }
   listMe(params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }): Promise<ApiTypes.ListResult<ApiTypes.Tag>> {
     return this.listOwn(params)
   }

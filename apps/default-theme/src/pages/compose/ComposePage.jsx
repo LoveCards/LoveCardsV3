@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
-import { deleteComposeMedia, getComposeState, loadComposeTopics, loadPublishedCardForEdit, normalizeCardVisibility, normalizeDraftMedia, publishCard, updatePublishedCard, uploadComposeMedia } from '../../services/compose-service.js';
+import { deleteComposeMedia, getComposeState, loadComposeTopics, loadPublishedCardForEdit, loadTopicPolicy, normalizeCardVisibility, normalizeDraftMedia, publishCard, updatePublishedCard, uploadComposeMedia } from '../../services/compose-service.js';
 import { createDraft, deleteDraft, draftSummary, getDraft, normalizeDraftPayload, updateDraft } from '../../services/community-service.js';
 import { useAuth } from '../../app/providers.jsx';
 import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
@@ -96,6 +96,8 @@ export function ComposePage() {
   const [tags, setTags] = useState('');
   const [topicOptions, setTopicOptions] = useState([]);
   const [topicOptionsError, setTopicOptionsError] = useState(null);
+  // null 表示规则尚未加载或加载失败：按现行宽松行为渲染，提交仍由后端裁决。
+  const [topicPolicy, setTopicPolicy] = useState(null);
   const [files, setFiles] = useState([]);
   const [mediaPreviews, setMediaPreviews] = useState([]);
   const [persistedMedia, setPersistedMedia] = useState([]);
@@ -154,6 +156,7 @@ export function ComposePage() {
     if (designPreview || !isAuthenticated) return undefined;
     let active = true;
     loadComposeTopics().then((items) => { if (active) { setTopicOptions(items); setTopicOptionsError(null); } }).catch((error) => { if (active) setTopicOptionsError(error); });
+    loadTopicPolicy().then((policy) => { if (active) setTopicPolicy(policy); }).catch(() => {});
     return () => { active = false; };
   }, [designPreview, isAuthenticated]);
 
@@ -291,7 +294,6 @@ export function ComposePage() {
   const currentSignature = composeSignature({ content, tags, publishType, media: persistedMedia, files, visibility });
   const dirty = currentSignature !== savedSignature;
   const topicList = topicsFrom(tags);
-  const activeVisibility = visibilityOptions.find((option) => option.value === visibility) || visibilityOptions[0];
   const contentError = validationAttempted && (!content.trim() || content.length > CARD_CONTENT_MAX_LENGTH);
   const contentErrorMessage = !content.trim()
     ? publishType === 'text' ? '请先写下要分享的内容。' : `${publishTypes[publishType].label}必须填写正文，请补充后再发布。`
@@ -300,7 +302,18 @@ export function ComposePage() {
     ? `还可输入 ${Math.max(0, CARD_CONTENT_MAX_LENGTH - content.length)} 字。`
     : `最多 ${CARD_CONTENT_MAX_LENGTH} 字。`;
   const mediaError = validationAttempted && publishType !== 'text' && mediaCount === 0;
-  const topicError = topicList.length > 3 || topicLimitHit;
+  // 标签创建规则门控：关闭创建时，未知话题在提交前就地拦截（后端仍是最终裁决方）。
+  const topicCreationBlocked = topicPolicy !== null && topicPolicy.allowUserCreate === false;
+  const knownTopicNames = new Set(topicOptions.map((topic) => String(topic.name || '').toLowerCase()));
+  // 卡片上已保存的话题（编辑/草稿场景）视为已知，避免用户编辑自己的卡片时被误拦。
+  const savedTopicNames = new Set((Array.isArray(savedSignature.tags) ? savedSignature.tags : topicsFrom(String(savedSignature.tags ?? ''))).map((topic) => String(topic).toLowerCase()));
+  const unknownTopics = topicCreationBlocked
+    ? topicList.filter((topic) => !knownTopicNames.has(topic.toLowerCase()) && !savedTopicNames.has(topic.toLowerCase()))
+    : [];
+  const topicError = topicList.length > 3 || topicLimitHit || unknownTopics.length > 0;
+  const topicErrorMessage = unknownTopics.length > 0
+    ? `当前不支持创建新话题：#${unknownTopics.join('、#')} 尚不存在，请从已有话题中选择。`
+    : '最多添加 3 个话题，请移除多余话题。';
   const topicSuggestions = topicOptions.filter((topic) => !topicList.some((selected) => selected.toLowerCase() === topic.name.toLowerCase())).slice(0, 6);
   const showComposerHeading = designPreview || isAuthenticated;
   const busy = status === 'publishing' || status === 'draft-saving' || status === 'saving-edit';
@@ -423,6 +436,12 @@ export function ComposePage() {
       return;
     }
     if (topicList.length > 3) {
+      setStatus('idle');
+      setMessage('');
+      focusComposeIssue('compose-details', 'input');
+      return;
+    }
+    if (unknownTopics.length > 0) {
       setStatus('idle');
       setMessage('');
       focusComposeIssue('compose-details', 'input');
@@ -577,12 +596,16 @@ export function ComposePage() {
               </section>
 
               <section className="compose-details" id="compose-details">
-                <TextInput className="compose-tags-field" label="话题" description="可选，最多 3 个；用空格或逗号分隔。" value={tags} onChange={(value) => { setTags(value); setTopicLimitHit(false); }} size="lg" width="100%" placeholder="城市漫游  周末记录" isDisabled={busy} status={topicError ? { type: 'error', message: '最多添加 3 个话题，请移除多余话题。' } : undefined} statusVariant="detached" />
-                {topicList.length > 0 && <div className="compose-topic-chips" aria-label="已选话题">{topicList.map((topic) => <button key={topic} type="button" className="compose-topic-chip" onClick={() => removeTopic(topic)} disabled={busy}>#{topic}<span aria-hidden="true">×</span></button>)}</div>}
-                {topicSuggestions.length > 0 && <div className="compose-topic-suggestions" aria-label="话题建议"><span>已有话题</span>{topicSuggestions.map((topic) => <button key={topic.id} type="button" onClick={() => addTopic(topic.name)} disabled={busy}>#{topic.name}</button>)}</div>}
-                {topicOptionsError && <ResourceErrorBanner className="compose-topic-hint" error={topicOptionsError} />}
+                <div className="compose-topic-field">
+                  <TextInput className="compose-tags-field" label="话题" description={topicCreationBlocked ? '可选，最多 3 个；当前只能使用已有话题。' : '可选，最多 3 个；用空格或逗号分隔。'} value={tags} onChange={(value) => { setTags(value); setTopicLimitHit(false); }} size="lg" width="100%" placeholder="城市漫游  周末记录" isDisabled={busy} status={topicError ? { type: 'error', message: topicErrorMessage } : undefined} statusVariant="detached" />
+                  {topicList.length > 0 && <div className="compose-topic-chips" aria-label="已选话题">{topicList.map((topic) => <button key={topic} type="button" className="compose-topic-chip" onClick={() => removeTopic(topic)} disabled={busy}>#{topic}<span aria-hidden="true">×</span></button>)}</div>}
+                  {topicSuggestions.length > 0 && <div className="compose-topic-suggestions" aria-label="话题建议"><span>已有话题</span>{topicSuggestions.map((topic) => <button key={topic.id} type="button" onClick={() => addTopic(topic.name)} disabled={busy}>#{topic.name}</button>)}</div>}
+                  {topicOptionsError && <ResourceErrorBanner className="compose-topic-hint" error={topicOptionsError} />}
+                  {topicCreationBlocked && <p className="compose-topic-hint">新话题创建已关闭，请从“已有话题”中选择。</p>}
+                  {!topicCreationBlocked && topicPolicy !== null && topicPolicy.reviewNew && <p className="compose-topic-hint">新话题需管理员审核通过后才会公开展示。</p>}
+                </div>
                 <section className="compose-visibility" aria-labelledby="compose-visibility-title">
-                  <header><h3 id="compose-visibility-title">谁可以查看</h3><p>{activeVisibility.description} 卡片范围会与账号隐私设置共同生效。</p></header>
+                  <header><h3 id="compose-visibility-title">谁可以查看</h3><p>卡片范围会与账号隐私设置共同生效。</p></header>
                   <SegmentedControl className="compose-visibility-control" value={visibility} onChange={setVisibility} label="卡片可见范围" layout="fill" size="lg" isDisabled={busy}>
                     {visibilityOptions.map((option) => <SegmentedControlItem key={option.value} value={option.value} label={option.label} />)}
                   </SegmentedControl>

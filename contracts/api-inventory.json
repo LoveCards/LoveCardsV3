@@ -1,5 +1,5 @@
 {
-  "routeCount": 190,
+  "routeCount": 191,
   "summary": {},
   "routes": [
     {
@@ -5894,7 +5894,7 @@
       "method": "GET",
       "name": "tags.getManaged",
       "controller": "Content.Tags",
-      "action": "get",
+      "action": "getManaged",
       "meta": {
         "name": "管理标签详情",
         "group": "标签",
@@ -12658,6 +12658,65 @@
         "status": 200,
         "shape": "item",
         "resource": "TagResource",
+        "operation": "make"
+      }
+    },
+    {
+      "path": "/tags/policy",
+      "method": "GET",
+      "name": "tags.policy",
+      "controller": "Content.Tags",
+      "action": "policy",
+      "meta": {
+        "name": "标签创建规则",
+        "group": "标签",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Content\\Tags\\Transport\\Api\\TagsPolicyResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Content/Tags.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "TagsPolicyResource::make"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "TagsPolicyResource",
         "operation": "make"
       }
     },

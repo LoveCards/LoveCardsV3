@@ -3,7 +3,7 @@
     <AdminPageHeader
       title="验证配置"
       description="管理登录与敏感操作使用的验证器。扫描、切换和保存均由服务端再次校验权限。"
-      :breadcrumbs="[{ title: '站点设置' }]"
+      :breadcrumbs="[{ title: '系统设置' }]"
     >
       <template #actions>
         <AdminActionGuard capability="captcha.install" scope="global">

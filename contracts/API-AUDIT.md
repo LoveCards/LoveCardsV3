@@ -1,6 +1,6 @@
 # API Contract Audit
 
-- Routes inspected: 190
+- Routes inspected: 191
 - P0: 0
 - P1: 0
 - P2: 0
@@ -186,6 +186,7 @@
 | POST | `/session/register` | `session.register` | public | yes | AuthResource::make | — |
 | GET | `/tags` | `tags.list` | public | no | TagResource::collection | — |
 | GET | `/tags/:id` | `tags.get` | public | no | TagResource::make | — |
+| GET | `/tags/policy` | `tags.policy` | public | no | TagsPolicyResource::make | — |
 | GET | `/theme/config` | `theme.publicConfig` | public | no | ThemeConfigResource::make | — |
 | DELETE | `/users/:uid/block` | `safety.unblock` | grants:authenticated | no | createNoContent | — |
 | POST | `/users/:uid/block` | `safety.block` | grants:authenticated | no | createNoContent | — |

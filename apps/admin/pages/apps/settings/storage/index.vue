@@ -3,7 +3,7 @@
     <AdminPageHeader
       title="存储配置"
       description="管理存储渠道与上传策略。切换默认渠道只影响后续上传，不会自动迁移已有文件。"
-      :breadcrumbs="[{ title: '站点设置' }]"
+      :breadcrumbs="[{ title: '系统设置' }]"
     >
       <template #actions>
         <AdminActionGuard capability="storage.install" scope="global">

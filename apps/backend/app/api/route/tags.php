@@ -5,6 +5,7 @@ use app\api\middleware\JwtAuthCheck;
 use app\api\middleware\PermissionCheck;
 use app\modules\Content\Tags\Transport\Api\Tags as TagsValidate;
 use app\modules\Content\Tags\Transport\Api\TagResource;
+use app\modules\Content\Tags\Transport\Api\TagsPolicyResource;
 use app\shared\Authorization\Scope;
 use app\shared\Transport\Validation\PaginationInput;
 use app\shared\Transport\Validation\BatchOperationInput;
@@ -14,6 +15,9 @@ $required = static fn (array $allOf = [], array $anyOf = []): array => [
 ];
 $grant = static fn (string $capability, string $scope): array => compact('capability', 'scope');
 
+Route::get('tags/policy', 'Content.Tags/policy')->name('tags.policy')
+    ->setOption('contract', ['request' => null, 'response' => ['resource' => TagsPolicyResource::class, 'shape' => 'item', 'status' => 200]])
+    ->setOption('meta', ['name' => '标签创建规则', 'group' => '标签', 'access' => ['auth' => 'public']]);
 Route::get('tags/:id', 'Content.Tags/get')->name('tags.get')
     ->setOption('contract', ['request' => null, 'response' => ['resource' => TagResource::class, 'shape' => 'item', 'status' => 200]])
     ->setOption('meta', ['name' => '标签详情', 'group' => '标签', 'access' => ['auth' => 'public']]);
@@ -41,7 +45,7 @@ Route::group('admin/tags', function () use ($required, $grant) {
     Route::get('', 'Content.Tags/listAll')->name('tags.listManaged')
         ->setOption('contract', ['request' => ['validate' => PaginationInput::class, 'scene' => 'Defult'], 'response' => ['resource' => TagResource::class, 'shape' => 'paginated', 'status' => 200]])
         ->setOption('meta', ['name' => '管理标签列表', 'group' => '标签', 'access' => $required([$admin, $grant('tags.read', Scope::ALL)])]);
-    Route::get(':id', 'Content.Tags/get')->name('tags.getManaged')
+    Route::get(':id', 'Content.Tags/getManaged')->name('tags.getManaged')
         ->setOption('contract', ['request' => null, 'response' => ['resource' => TagResource::class, 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => '管理标签详情', 'group' => '标签', 'access' => $required([$admin, $grant('tags.read', Scope::ALL)])]);
     Route::patch(':id', 'Content.Tags/updateManaged')->name('tags.updateManaged')

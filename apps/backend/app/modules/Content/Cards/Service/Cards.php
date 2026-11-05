@@ -11,6 +11,7 @@ use app\modules\Content\Infrastructure\Persistence\Model\Tags as TagsModel;
 use app\modules\Content\Infrastructure\Persistence\Model\TagsMap as TagsMapModel;
 use app\modules\Content\Infrastructure\Persistence\Model\Comments as CommentsModel;
 use app\modules\Content\Mentions\Service\Mentions;
+use app\modules\Content\Tags\Public\Tags as TagsFacade;
 use app\modules\Platform\Files\Infrastructure\Persistence\Model\Files as FilesModel;
 use app\modules\Platform\Files\Public\Files as PublicFiles;
 use app\modules\Platform\Safety\Public\Safety;
@@ -76,7 +77,13 @@ class Cards
 
         if (isset($params['tag_id'])) {
             $tagId = (int) $params['tag_id'];
-            $params['where'][] = ['id', 'in', TagsMapModel::where('aid', 1)->where('tag_id', $tagId)->column('pid') ?: [0]];
+            // 非公开状态（待审核/封禁/隐藏）的标签不得作为公开列表筛选条件，
+            // 否则等于绕过审核借卡片列表泄露其内容。
+            $visibleTag = TagsModel::where('aid', 1)->where('id', $tagId)->where('status', 0)->findOrEmpty();
+            $pids = $visibleTag->isEmpty()
+                ? [0]
+                : (TagsMapModel::where('aid', 1)->where('tag_id', $tagId)->column('pid') ?: [0]);
+            $params['where'][] = ['id', 'in', $pids];
         }
 
         // 无 cards.read.all 能力 → 只看已发布
@@ -338,7 +345,7 @@ class Cards
         }
     }
 
-    public static function createCard($data): string
+    public static function createCard($data, ?GrantSet $grants = null): string
     {
         Db::startTrans();
         try {
@@ -348,7 +355,7 @@ class Cards
             $data['visibility'] = CardVisibilityPolicy::normalize($data['visibility'] ?? CardVisibilityPolicy::PUBLIC);
             $data = self::normalizeCardMetadata($data);
             if (array_key_exists('tags', $data) && $data['tags'] !== null) {
-                $data['tags'] = self::resolveTagIds($data['tags'], $uid);
+                $data['tags'] = self::resolveTagIds($data['tags'], $uid, $grants);
             }
             $data = self::encodeJsonFields(self::normalizeMedia($data, $uid, false));
             $result = CardsModel::create($data);
@@ -433,8 +440,10 @@ class Cards
             $pictureIds = $hasMediaIds
                 ? self::mediaIds($data['media_file_ids'] ?? $data['picture_file_ids'])
                 : null;
-            if (array_key_exists('tags', $data) && $data['tags'] !== null) {
-                $data['tags'] = self::resolveTagIds($data['tags'], $uid);
+            if (array_key_exists('tags', $data)) {
+                // 校验层 toNull 规则会把空数组 tags 规范成 null：PATCH 语义下这是调用方
+                // 显式清空话题，必须照常解析并重绑，否则"编辑删光话题"会静默保留旧关联。
+                $data['tags'] = self::resolveTagIds($data['tags'] ?? [], $uid, $grants, (int) ($data['id'] ?? 0));
             }
             $data = self::normalizeCardMetadata($data);
             $data = self::encodeJsonFields(
@@ -516,7 +525,13 @@ class Cards
         }
 
         if (!$create) {
-            TagsMapModel::where('aid', 1)->where('pid', $pid)->delete();
+            // 软删除模型的查询级 delete() 实测为空操作（affected=0，既不硬删也不软删），
+            // 必须显式写 deleted_at，与所有读取侧的 whereNull('deleted_at') 语义一致。
+            Db::table('tags_map')
+                ->where('aid', 1)
+                ->where('pid', $pid)
+                ->whereNull('deleted_at')
+                ->update(['deleted_at' => date('Y-m-d H:i:s')]);
         }
 
         foreach ($tags as $tag_id) {
@@ -584,7 +599,7 @@ class Cards
      * @param mixed $value
      * @return array<int,int>
      */
-    private static function resolveTagIds($value, int $uid): array
+    private static function resolveTagIds($value, int $uid, ?GrantSet $grants = null, ?int $pid = null): array
     {
         $tags = is_string($value) ? json_decode($value, true) : $value;
         if (!is_array($tags)) {
@@ -596,21 +611,50 @@ class Cards
             $name = trim(ltrim((string) $raw, '#'));
             if ($name === '') continue;
 
-            $tag = ctype_digit($name)
-                ? TagsModel::where('aid', 1)->where('status', 0)->where('id', (int) $name)->find()
-                : TagsModel::where('aid', 1)->where('status', 0)->where('name', $name)->find();
-            if ($tag === null || $tag->isEmpty()) {
-                if (ctype_digit($name)) {
-                    throw \app\api\ApiException::badRequest('话题不存在或不可用');
+            if (ctype_digit($name)) {
+                $tag = TagsModel::where('aid', 1)->where('status', 0)->where('id', (int) $name)->find();
+                if ($tag === null || $tag->isEmpty()) {
+                    // 报错必须带上具体话题与原因：纯数字按标签 ID 解析，找不到时用户才能明白下一步怎么做。
+                    throw \app\api\ApiException::badRequest('话题「' . $name . '」不存在或不可用（纯数字会按标签编号解析，请改用话题名称）');
                 }
-                $tag = TagsModel::create(['aid' => 1, 'user_id' => $uid, 'name' => $name, 'status' => 0]);
+                $id = (int) $tag->id;
+            } else {
+                // 编辑保存场景：卡片已关联的同名待审核标签幂等重挂，
+                // 不因创建开关拒绝或放行重复行（编辑视图已把它回显给用户）。
+                $mappedPending = $pid !== null && $pid > 0 ? self::mappedPendingTagId($pid, $name) : 0;
+                if ($mappedPending > 0) {
+                    $id = $mappedPending;
+                } else {
+                    // 名称解析统一走 Tags 模块 Public 门面：开关、审核与去重都在那里裁决。
+                    $id = TagsFacade::ensureTag($name, $uid, $grants);
+                }
             }
 
-            $id = (int) $tag->id;
             if ($id > 0 && !in_array($id, $ids, true)) $ids[] = $id;
         }
 
         return $ids;
+    }
+
+    /**
+     * 查询该卡片是否已关联指定名称的待审核标签（编辑保存的幂等依据）。
+     */
+    private static function mappedPendingTagId(int $pid, string $name): int
+    {
+        $row = Db::table('tags_map')
+            ->alias('tm')
+            ->join('tags t', 't.id = tm.tag_id')
+            ->where('tm.aid', 1)
+            ->where('tm.pid', $pid)
+            ->where('t.aid', 1)
+            ->where('t.status', 3)
+            ->where('t.name', $name)
+            ->where('tm.status', 0)
+            ->whereNull('tm.deleted_at')
+            ->whereNull('t.deleted_at')
+            ->field('tm.tag_id')
+            ->find();
+        return (int) (is_array($row) ? ($row['tag_id'] ?? 0) : 0);
     }
 
     /**
@@ -665,12 +709,22 @@ class Cards
 
     public static function deleteCardsTags($pids): void
     {
-        TagsMapModel::where('aid', 1)->where('pid', 'in', $pids)->delete();
+        // 同 updateCardTags：查询级 delete() 对软删模型为空操作，显式写 deleted_at。
+        Db::table('tags_map')
+            ->where('aid', 1)
+            ->where('pid', 'in', $pids)
+            ->whereNull('deleted_at')
+            ->update(['deleted_at' => date('Y-m-d H:i:s')]);
     }
 
     public static function deleteCardsComments($pids): void
     {
-        CommentsModel::where('aid', 1)->where('pid', 'in', $pids)->delete();
+        // 同 deleteCardsTags：显式软删评论，保留审计与恢复能力。
+        Db::table('comments')
+            ->where('aid', 1)
+            ->where('pid', 'in', $pids)
+            ->whereNull('deleted_at')
+            ->update(['deleted_at' => date('Y-m-d H:i:s')]);
     }
 
     /**
@@ -786,7 +840,8 @@ class Cards
         $cardId = (int) ($card['id'] ?? 0);
         $card['mentions'] = $preloadedMentions ?? (class_exists(Mentions::class) ? (self::mentionsForCards([$card])[$cardId] ?? []) : []);
         if ($topics === null && $cardId > 0) {
-            $topics = self::topicsForCards([$cardId])[$cardId] ?? [];
+            // 编辑视图（editable）需包含本人卡片上待审核的标签，保证"先审后发"下编辑保存不丢关联。
+            $topics = self::topicsForCards([$cardId], $editable)[$cardId] ?? [];
         }
         $card['topics'] = $topics ?? [];
         // Card.tags is the persisted relation-id projection.  Normalize old
@@ -878,18 +933,23 @@ class Cards
     }
 
     /** @return array<int,array<int,array{id:int,name:string}>> */
-    private static function topicsForCards(array $cardIds): array
+    private static function topicsForCards(array $cardIds, bool $includePending = false): array
     {
         if ($cardIds === []) return [];
 
-        $rows = Db::table('tags_map')
+        $query = Db::table('tags_map')
             ->alias('tm')
             ->join('tags t', 't.id = tm.tag_id')
             ->where('tm.aid', 1)
             ->whereIn('tm.pid', $cardIds)
-            ->where('t.aid', 1)
-            ->where('t.status', 0)
-            ->where('tm.status', 0)
+            ->where('t.aid', 1);
+        if ($includePending) {
+            // 编辑视图包含待审核标签（status=3），避免用户保存编辑时静默丢掉未放行的关联。
+            $query->whereIn('t.status', [0, 3]);
+        } else {
+            $query->where('t.status', 0);
+        }
+        $rows = $query->where('tm.status', 0)
             ->whereNull('tm.deleted_at')
             ->whereNull('t.deleted_at')
             ->field('tm.pid, t.id, t.name')

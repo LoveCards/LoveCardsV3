@@ -3,7 +3,7 @@
     <AdminPageHeader
       :title="`${channelName} 配置`"
       description="管理消息渠道参数，并使用已保存的配置发送测试消息。"
-      :breadcrumbs="[{ title: '站点设置' }, { title: '消息渠道', to: '/apps/settings/messaging' }, { title: channelName }]"
+      :breadcrumbs="[{ title: '系统设置' }, { title: '消息渠道', to: '/apps/settings/messaging' }, { title: channelName }]"
     />
 
     <v-row>

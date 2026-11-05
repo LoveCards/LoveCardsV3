@@ -98,7 +98,7 @@ class Cards extends BaseController
             ? PublicationStatus::pendingApproval()
             : PublicationStatus::visible();
 
-        $cardId = CardsService::createCard($params);
+        $cardId = CardsService::createCard($params, request()->auth->grants());
 
         return $this->respond([
             'id' => (int) $cardId,

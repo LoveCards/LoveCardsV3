@@ -10859,7 +10859,7 @@
         ],
         "summary": "管理标签详情",
         "description": "管理标签详情",
-        "x-controller": "Content.Tags/get",
+        "x-controller": "Content.Tags/getManaged",
         "x-access": {
           "auth": "required",
           "allOf": [
@@ -23740,6 +23740,87 @@
             }
           }
         ]
+      }
+    },
+    "/tags/policy": {
+      "get": {
+        "operationId": "tags.policy",
+        "tags": [
+          "标签"
+        ],
+        "summary": "标签创建规则",
+        "description": "标签创建规则",
+        "x-controller": "Content.Tags/policy",
+        "x-access": {
+          "auth": "public"
+        },
+        "x-capabilities": [],
+        "x-public": true,
+        "x-middleware": [],
+        "x-resource": "TagsPolicyResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "allow_user_create",
+                        "review_new_tags"
+                      ],
+                      "properties": {
+                        "allow_user_create": {
+                          "type": "boolean"
+                        },
+                        "review_new_tags": {
+                          "type": "boolean"
+                        }
+                      },
+                      "x-typescript-type": "Record<string, unknown>"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "parameters": []
       }
     },
     "/theme/config": {

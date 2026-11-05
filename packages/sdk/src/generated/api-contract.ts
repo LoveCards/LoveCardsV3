@@ -167,6 +167,7 @@ export interface GeneratedApiContract {
   "tags.list": { method: "GET"; path: "/tags"; request: void; response: ApiTypes.Tag[]; status: 200; shape: "collection"; public: true; capabilities: readonly string[] }
   "tags.listManaged": { method: "GET"; path: "/admin/tags"; request: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }; response: ApiTypes.ListResult<ApiTypes.Tag>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "tags.listOwn": { method: "GET"; path: "/me/tags"; request: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }; response: ApiTypes.ListResult<ApiTypes.Tag>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
+  "tags.policy": { method: "GET"; path: "/tags/policy"; request: void; response: Record<string, unknown>; status: 200; shape: "item"; public: true; capabilities: readonly string[] }
   "tags.update": { method: "PATCH"; path: "/me/tags/:id"; request: { name?: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "tags.updateManaged": { method: "PATCH"; path: "/admin/tags/:id"; request: { name?: string; status?: number }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "theme.activate": { method: "POST"; path: "/admin/theme/activate"; request: { id: string; release: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
@@ -364,6 +365,7 @@ export const generatedApiContract = {
   "tags.list": { method: "GET", path: "/tags", status: 200, shape: "collection", public: true, capabilities: [] },
   "tags.listManaged": { method: "GET", path: "/admin/tags", status: 200, shape: "paginated", public: false, capabilities: ["admin.access","tags.read"] },
   "tags.listOwn": { method: "GET", path: "/me/tags", status: 200, shape: "paginated", public: false, capabilities: ["tags.read"] },
+  "tags.policy": { method: "GET", path: "/tags/policy", status: 200, shape: "item", public: true, capabilities: [] },
   "tags.update": { method: "PATCH", path: "/me/tags/:id", status: 204, shape: "void", public: false, capabilities: ["tags.update","tags.update"] },
   "tags.updateManaged": { method: "PATCH", path: "/admin/tags/:id", status: 204, shape: "void", public: false, capabilities: ["admin.access","tags.update"] },
   "theme.activate": { method: "POST", path: "/admin/theme/activate", status: 204, shape: "void", public: false, capabilities: ["admin.access","theme.activate"] },
