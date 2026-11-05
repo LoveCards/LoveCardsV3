@@ -16,6 +16,7 @@
 5. `SchedulerRunProbe` 只按最新非 running 记录的时间判断 ready，因此最近一次 `outcome=failed` 仍会显示 ready。以最新一次运行结果为准，失败应显示不可用与明确原因；Scheduler 仍为 advisory，不阻断 Realtime。
 6. `UpdateRuntimeConfig::apply()` 的无效输入调用 `recordApply()` 改写配置行的 `last_apply_*` 和 `updated_at`，但不增 revision、也不审计；并发管理员可能看到另一个请求的失败状态。建议 422/409 不修改配置行，失败尝试若需留痕写独立审计。`CommunicationSettings::validateInput()` 也应自己校验必填 `desired_mode/expected_revision` 和严格正整数 revision，不能只依赖路由 Validate。
 7. 实施契约 §2.3 称 `20261106000003.sql` 是通知策略迁移，但 PR #48 的 000003/000004 实际是角色授权差分。按已提交迁移修正文档；策略迁移另选尚未占用的序号，避免账本和后续 Phase 3 冲突。
+8. `CommunicationControlPlaneBaseline.php` 的架构守卫扫描整个 `Platform` 模块，禁止出现 `effective_mode` 等字面量。完成第 3 项门控时，通信基础设施必须能读取 Runtime 快照；把守卫限定到业务 Application/Domain，明确允许 Eventing adapter 和 Host 入口访问模式，不能为让测试通过而把判断散落到前端或跳过门控。
 
 ## 集成与验收顺序
 
