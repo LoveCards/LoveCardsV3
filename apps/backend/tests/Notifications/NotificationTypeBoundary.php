@@ -129,6 +129,8 @@ namespace {
     require $root . '/app/modules/Platform/Notifications/Contract/NotificationTypeCatalog.php';
     require $root . '/app/modules/Platform/Notifications/Domain/NotificationIntent.php';
     require $root . '/app/modules/Platform/Notifications/Contract/NotificationRepository.php';
+    require $root . '/app/modules/Platform/Notifications/Contract/NotificationReceiptRepository.php';
+    require $root . '/app/modules/Platform/Notifications/Domain/NotificationWriteReceipt.php';
     require $root . '/app/modules/Platform/Notifications/Infrastructure/ThinkOrmNotificationRepository.php';
 
     use app\modules\Platform\Notifications\Infrastructure\ThinkOrmNotificationRepository;

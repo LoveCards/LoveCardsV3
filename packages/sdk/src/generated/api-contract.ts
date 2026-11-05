@@ -87,7 +87,7 @@ export interface GeneratedApiContract {
   "notifications.preferences": { method: "GET"; path: "/me/notifications/preferences"; request: void; response: ApiTypes.NotificationPreferences; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "notifications.read": { method: "POST"; path: "/me/notifications/read"; request: { ids: number[] }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "notifications.readAll": { method: "POST"; path: "/me/notifications/read-all"; request: { category?: ApiTypes.NotificationListCategory }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "notifications.stream": { method: "GET"; path: "/me/notifications/stream"; request: { after?: number }; response: string; status: 200; shape: "raw"; public: false; capabilities: readonly string[] }
+  "notifications.streamTicket": { method: "GET"; path: "/me/notifications/stream-ticket"; request: void; response: ApiTypes.RealtimeStreamTicket; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "notifications.unread": { method: "GET"; path: "/me/notifications/unread"; request: { category?: ApiTypes.NotificationListCategory }; response: ApiTypes.NotificationUnread; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "notifications.updatePreferences": { method: "POST"; path: "/me/notifications/preferences"; request: ApiTypes.NotificationPreferencesUpdate; response: ApiTypes.NotificationPreferences; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.advanceUpgrade": { method: "POST"; path: "/admin/operations/upgrades/:planId/advance"; request: void; response: ApiTypes.OperationsUpgradePlan; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
@@ -285,7 +285,7 @@ export const generatedApiContract = {
   "notifications.preferences": { method: "GET", path: "/me/notifications/preferences", status: 200, shape: "item", public: false, capabilities: [] },
   "notifications.read": { method: "POST", path: "/me/notifications/read", status: 204, shape: "void", public: false, capabilities: [] },
   "notifications.readAll": { method: "POST", path: "/me/notifications/read-all", status: 204, shape: "void", public: false, capabilities: [] },
-  "notifications.stream": { method: "GET", path: "/me/notifications/stream", status: 200, shape: "raw", public: false, capabilities: [] },
+  "notifications.streamTicket": { method: "GET", path: "/me/notifications/stream-ticket", status: 200, shape: "item", public: false, capabilities: [] },
   "notifications.unread": { method: "GET", path: "/me/notifications/unread", status: 200, shape: "item", public: false, capabilities: [] },
   "notifications.updatePreferences": { method: "POST", path: "/me/notifications/preferences", status: 200, shape: "item", public: false, capabilities: [] },
   "operations.advanceUpgrade": { method: "POST", path: "/admin/operations/upgrades/:planId/advance", status: 200, shape: "item", public: false, capabilities: ["admin.access","system.update"] },

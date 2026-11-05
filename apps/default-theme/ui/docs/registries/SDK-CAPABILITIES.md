@@ -39,7 +39,7 @@
 - 私信、关注、点赞与评论等用户事件在 `engagement` 通知中联合分页；禁止前端分别请求 `message/social/interaction` 后拼接。旧 `/inbox/message`、`/inbox/social`、`/inbox/interaction` 只做路由重定向。
 - 顶部全局角标需要全部通知未读数时调用 `notifications.unread()` 无参数；通知页的未读与全部已读始终传当前 category。不得按当前页条目推算未读总数。
 - `messages.conversations` 当前没有 `cursor / limit` 参数，主题只能消费会话列表接口当前返回的集合；不要在设计文档或页面中假设会话列表已经可分页。
-- `notifications.stream()` 由 SDK 发起，当前服务端返回单次 SSE 快照而非永久连接。若快照不支持当前 category，它只能触发同分类的 `notifications.list/unread` 刷新，不能把未筛选条目直接并入 `engagement` 或 `system` 列表；失败或不可用时使用同分类定时刷新，并提供手动刷新。
+- `notifications.streamTicket()` 只获取短期 Gateway ticket。主题端用 ticket 建立可取消的 EventSource；Gateway signal 不承载通知快照，收到后按当前 category 调用 `notifications.list/unread` 回源；失败或不可用时使用同分类定时刷新，并提供手动刷新。
 - 私信发送使用 `recipient_id + body + client_message_id`。会话详情必须从会话/消息上下文得到对方用户 ID；无法确定收件人时禁用发送并解释原因。
 - `safety.listBlocked({ cursor, limit, query })` 返回 `CursorPage` 的 `data`、不透明 `next_cursor` 和 `has_more`；设置页支持搜索、加载更多和解除拉黑。
 - `session.listSessions/revokeSession/revokeOthers` 是普通用户自助会话接口；session id 只作为不透明字符串传递。

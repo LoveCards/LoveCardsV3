@@ -3,15 +3,22 @@
 namespace app\modules\Platform\Notifications\Application;
 
 use app\modules\Platform\Notifications\Contract\NotificationRepository;
+use app\modules\Platform\Notifications\Contract\NotificationReceiptRepository;
 use app\modules\Platform\Notifications\Contract\NotificationTypeCatalog;
 use app\modules\Platform\Notifications\Domain\NotificationIntent;
 use app\shared\Transport\Http\CursorPage;
 use app\api\ApiException;
 use app\shared\Transaction\TransactionManager;
+use app\modules\Platform\Eventing\Contract\RealtimePublisher;
+use app\modules\Platform\Eventing\Domain\RealtimeSignal;
 
 final class ManageNotifications
 {
-    public function __construct(private NotificationRepository $repository, private ?TransactionManager $transactions = null)
+    public function __construct(
+        private NotificationRepository $repository,
+        private ?TransactionManager $transactions = null,
+        private ?RealtimePublisher $realtime = null
+    )
     {
     }
 
@@ -19,6 +26,18 @@ final class ManageNotifications
     {
         if ($intent->actorId() === $intent->recipientId()) return 0;
         if (!$this->repository->recipientCanReceive($intent->recipientId(), $intent->type())) return 0;
+        if ($this->repository instanceof NotificationReceiptRepository) {
+            $receipt = $this->repository->createWithReceipt($intent);
+            $id = $receipt->id();
+            if ($receipt->created() && $this->realtime !== null) {
+                try {
+                    $this->realtime->publish(new RealtimeSignal('notifications', 'user:' . $intent->recipientId()));
+                } catch (\Throwable) {
+                    // 实时唤醒失败不影响已保存的通知；客户端通过 API 回源补齐。
+                }
+            }
+            return $id;
+        }
         return $this->repository->create($intent);
     }
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace app\api\controller\Platform;
 
 use app\api\controller\BaseController;
+use app\api\ApiException;
 use app\modules\Platform\Social\Public\Social;
 use app\modules\Platform\Library\Public\Library;
 use app\modules\Platform\Notifications\Public\Notifications;
@@ -11,6 +12,7 @@ use app\modules\Platform\Safety\Public\Safety;
 use app\shared\Resource\ResourceRef;
 use app\modules\Platform\Drafts\Public\Drafts;
 use app\modules\Platform\Messaging\Public\Messaging;
+use app\modules\Platform\Eventing\Contract\RealtimeTicketIssuer;
 use app\modules\Platform\User\Public\UidResolver;
 use app\modules\Platform\Safety\Domain\ReportSubmission;
 use app\modules\Content\Cards\Service\CardVisibilityPolicy;
@@ -53,6 +55,15 @@ final class Community extends BaseController
     public function readAll() { $p=$this->validated(); Notifications::markAllRead($this->uid(), $p['category'] ?? null); return $this->respond(); }
     public function notificationPreferences() { return $this->respond(Notifications::preferences($this->uid())); }
     public function updateNotificationPreferences() { return $this->respond(Notifications::updatePreferences($this->uid(), $this->validated())); }
+    public function realtimeTicket()
+    {
+        $issuer = app(RealtimeTicketIssuer::class);
+        try {
+            return $this->respond($issuer->issue($this->uid()));
+        } catch (\RuntimeException) {
+            throw new ApiException('实时连接当前不可用', ApiException::CODE_REALTIME_UNAVAILABLE, ['reason_code' => 'gateway_not_configured']);
+        }
+    }
 
     public function preferences() { return $this->respond(Safety::preferences($this->uid())->toArray()); }
     public function updatePreferences() { $p=$this->validated(); if (array_key_exists('show_relations', $p)) $p['show_relations'] = $this->boolValue($p['show_relations']); return $this->respond(Safety::savePreferences($this->uid(), $p, request()->ip())->toArray()); }

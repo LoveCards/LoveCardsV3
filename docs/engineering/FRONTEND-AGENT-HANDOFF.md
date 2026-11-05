@@ -46,10 +46,11 @@ await client.notifications.list({ cursor, limit, unread_only, category: 'engagem
 await client.notifications.unread({ category: 'engagement' })
 await client.notifications.read({ ids })
 await client.notifications.readAll({ category: 'engagement' })
-await client.notifications.stream({ after })
+const { ticket, endpoint } = await client.notifications.streamTicket()
+const stream = new EventSource(`${endpoint}?ticket=${encodeURIComponent(ticket)}`)
 ```
 
-`engagement` 只属于列表/未读/批量已读查询参数，返回项的 `category` 仍是 `social|message|interaction|system`。游标是不透明字符串，必须原样回传；不得分别请求三类后在前端拼接。省略 category 的 unread/readAll 仍表示全局通知。SSE 是增强能力。连接失败或运行时关闭时继续用 list/unread 刷新；已读状态以 HTTP API 为准。默认主题入口为 `/inbox` 与 `/inbox/system`。
+`engagement` 只属于列表/未读/批量已读查询参数，返回项的 `category` 仍是 `social|message|interaction|system`。游标是不透明字符串，必须原样回传；不得分别请求三类后在前端拼接。省略 category 的 unread/readAll 仍表示全局通知。Gateway 的 `signal` SSE 事件以 `data.topic` 区分 `notifications|messages`，只触发相应 API 回源；断线重连必须重新取得一次性 ticket；Polling 模式继续用 list/unread 刷新。已读状态以 HTTP API 为准。默认主题入口为 `/inbox` 与 `/inbox/system`。
 
 `system.*` 只能由可信后端入口产生。前端只消费 SDK 返回的通知结构与安全 `action_url`，不得创建通知、解析 @提及、逐条查询 actor 或猜测跳转路由；完整边界见 [NOTIFICATIONS.md](NOTIFICATIONS.md)。
 
@@ -150,7 +151,7 @@ client.library.history()
 client.notifications.list()
 client.notifications.unread()
 client.notifications.readAll()
-client.notifications.stream()
+client.notifications.streamTicket()
 client.messages.conversations()
 client.messages.list(id)
 client.drafts.list()

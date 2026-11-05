@@ -20,8 +20,8 @@ PHP-FPM 每个请求都从持久化状态重新建立上下文，请求结束后
 
 | 形态 | 必需 | 推荐配置 | 可观察体验 |
 | --- | --- | --- | --- |
-| 虚拟机/中小型社区 | Nginx、PHP-FPM、MySQL | 默认 request fallback；可选短 SSE | 通知刷新/轮询可见；后台任务在请求预算或一次性调度中推进 |
-| 原生服务器/中大型社区 | Nginx、PHP-FPM、MySQL | Redis + Event Worker + Scheduler；按容量决定 SSE | Outbox 低延迟消费、独立重试和批处理，通知可实时到达 |
+| 虚拟机/中小型社区 | Nginx、PHP-FPM、MySQL | 默认 request fallback；可选独立 Gateway | 通知刷新/轮询可见；后台任务在请求预算或一次性调度中推进 |
+| 原生服务器/中大型社区 | Nginx、PHP-FPM、MySQL | Event Worker + Realtime Gateway；可选 Redis 和 Scheduler | Outbox 低延迟消费、独立重试和批处理，通知可实时到达 |
 
 不要求把 ThinkPHP Web Host 改造成常驻内存 Web。FPM 继续处理 HTTP，Worker 是独立 CLI 进程；这样既保留请求隔离，也避免每个请求承担全部异步工作。
 
@@ -33,7 +33,7 @@ PHP-FPM 每个请求都从持久化状态重新建立上下文，请求结束后
 | --- | --- | --- | --- |
 | `eventing.wakeup` | `LC_EVENTING_WAKEUP_MODE`、`LC_REDIS_HOST` | `redis` | `mysql-poll` |
 | `eventing.worker` | `LC_WORKER_MODE`、`LC_WORKER_ENABLED` | `php-worker` | `request` |
-| `realtime.sse` | `LC_SSE_MODE` | `fpm-sse` | `refresh` |
+| `realtime.gateway` | `LC_REALTIME_MODE` | `realtime-gateway` | `polling` |
 
 业务模块只能依赖能力接口或稳定用例，不判断 Redis 扩展、不自行启动进程。Redis 扩展或连接不可用时，`OptionalRedisWakeupTransport` 静默退回 MySQL authoritative state；不能把 Redis 当可靠队列。
 

@@ -15460,8 +15460,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -17223,8 +17222,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -17386,8 +17384,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -17520,8 +17517,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -17789,8 +17785,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -19404,8 +19399,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -19721,8 +19715,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -20185,8 +20178,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -20323,8 +20315,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -20746,8 +20737,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -20959,8 +20949,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -21063,8 +21052,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -21118,15 +21106,15 @@
         }
       }
     },
-    "/me/notifications/stream": {
+    "/me/notifications/stream-ticket": {
       "get": {
-        "operationId": "notifications.stream",
+        "operationId": "notifications.streamTicket",
         "tags": [
           "社区"
         ],
-        "summary": "通知实时流",
-        "description": "通知实时流",
-        "x-controller": "Platform.Realtime/stream",
+        "summary": "通知实时连接票据",
+        "description": "通知实时连接票据",
+        "x-controller": "Platform.Community/realtimeTicket",
         "x-access": {
           "auth": "required"
         },
@@ -21135,49 +21123,84 @@
         "x-middleware": [
           "JwtAuthCheck"
         ],
-        "x-resource": null,
-        "x-response-shape": "raw",
-        "x-validators": [
-          "app\\modules\\Platform\\Community\\Transport\\Api\\Community"
-        ],
-        "x-validator-scene": "stream",
+        "x-resource": "RealtimeTicketResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
         "x-contract-source": "backend",
-        "x-validation-rules": {
-          "app\\modules\\Platform\\Community\\Transport\\Api\\Community": {
-            "cursor": "max:128",
-            "limit": "number|between:1,100",
-            "unread_only": "stringBool",
-            "type": "in:social.followed,message,content.card_liked,content.comment_liked,library.saved,content.commented,content.replied,content.mentioned,system.notice,system.security,system.moderation",
-            "category": "in:social,message,interaction,system,engagement",
-            "ids": "arrayJson",
-            "profile_visibility": "in:public,followers,private",
-            "messages_from": "in:everyone,following,none",
-            "show_relations": "stringBool",
-            "gender_visibility": "in:public,followers,private",
-            "birth_date_visibility": "in:public,followers,private",
-            "query": "max:12|chsDash",
-            "in_app": "require|arrayJson",
-            "resource_type": "require|max:32|regex:/^[a-z][a-z0-9_]{0,31}$/",
-            "resource_id": "require|max:128|regex:/^[A-Za-z0-9][A-Za-z0-9._:-]*$/",
-            "reason": "require|max:64",
-            "details": "max:2000",
-            "title": "max:255",
-            "content": "max:100000",
-            "payload": "arrayJson",
-            "recipient_uid": "require|regex:/^[0-9]{12}$/",
-            "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
-          }
-        },
+        "x-validation-rules": {},
         "responses": {
           "200": {
             "description": "Success",
             "content": {
-              "text/event-stream": {
+              "application/json": {
                 "schema": {
-                  "type": "string",
-                  "x-typescript-type": "string"
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "x-typescript-type": "RealtimeStreamTicket",
+                      "additionalProperties": false,
+                      "required": [
+                        "ticket",
+                        "endpoint",
+                        "protocol",
+                        "expires_at",
+                        "topics",
+                        "cursor_strategy"
+                      ],
+                      "properties": {
+                        "ticket": {
+                          "type": "string"
+                        },
+                        "endpoint": {
+                          "type": "string",
+                          "format": "uri"
+                        },
+                        "protocol": {
+                          "type": "string",
+                          "enum": [
+                            "lc-realtime-1"
+                          ]
+                        },
+                        "expires_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "topics": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "notifications",
+                              "messages"
+                            ]
+                          }
+                        },
+                        "cursor_strategy": {
+                          "type": "string",
+                          "enum": [
+                            "opaque"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
                 }
               }
             }
@@ -21198,28 +21221,7 @@
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "name": "query",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "after": {
-                  "type": "integer",
-                  "minimum": 0
-                }
-              },
-              "additionalProperties": false,
-              "x-typescript-params": "params?: { after?: number }",
-              "x-validators": [
-                "app\\modules\\Platform\\Community\\Transport\\Api\\Community"
-              ],
-              "x-validator-scene": "stream"
-            }
-          }
-        ]
+        "parameters": []
       }
     },
     "/me/notifications/unread": {
@@ -21270,8 +21272,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -21632,8 +21633,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -22572,8 +22572,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -24522,8 +24521,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {
@@ -24685,8 +24683,7 @@
             "payload": "arrayJson",
             "recipient_uid": "require|regex:/^[0-9]{12}$/",
             "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
+            "client_message_id": "max:128"
           }
         },
         "responses": {

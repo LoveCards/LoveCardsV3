@@ -369,9 +369,16 @@ await test('GET /me/notifications/unread → notifications.unread()', async () =
   return r
 })
 
-await test('GET /me/notifications/stream without params → notifications.stream()', async () => {
-  const r = await adminClient.notifications.stream()
-  assert(typeof r === 'string' && r.includes('event: notifications'), 'notification stream should return one SSE event')
+await test('GET /me/notifications/stream-ticket → notifications.streamTicket()', async () => {
+  if (!process.env.LC_REALTIME_TICKET_SECRET || !process.env.LC_REALTIME_PUBLIC_URL) {
+    const error = await assertApiError(() => adminClient.notifications.streamTicket(), 503)
+    assert(error.code === 9012, 'unconfigured Gateway should return the realtime unavailable code')
+    return { unavailable: true }
+  }
+  const r = await adminClient.notifications.streamTicket()
+  assert(typeof r?.ticket === 'string' && r.ticket.includes('.'), 'stream ticket should contain a signed token')
+  assert(r.endpoint?.endsWith('/stream'), 'stream ticket should declare the Gateway endpoint')
+  assert(r.cursor_strategy === 'opaque', 'stream ticket should declare opaque cursors')
   return r
 })
 

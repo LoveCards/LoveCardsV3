@@ -9,6 +9,7 @@ apps/backend   ThinkPHP 后端与站点主题
 apps/admin     Nuxt 管理端
 apps/default-theme  React 用户前端与默认主题源码
 packages/sdk   JavaScript/TypeScript SDK
+apps/realtime-gateway  独立 Node.js Realtime Gateway（不进入前端 workspace）
 docs           架构、重构与协作规范
 scripts        跨 workspace 编排和架构检查
 ```
@@ -50,6 +51,7 @@ npm run build:default-theme   # 先构建 SDK，再构建用户前端
 npm run build                 # 构建 SDK、同步主题产物、构建管理端
 npm run dev:admin             # 启动管理端开发服务
 npm run dev:default-theme     # 启动用户前端，默认端口 4174
+npm --prefix apps/realtime-gateway test # 运行独立 Realtime Gateway 测试
 npm run test:sdk:integration  # 需要已运行且准备好测试数据的后端
 npm run test:admin:e2e        # 使用隔离临时数据库运行后台浏览器测试
 npm run test:theme:e2e        # 对已运行的本地 Theme Gateway 做真实浏览器回归
@@ -63,7 +65,7 @@ composer install
 php think run
 ```
 
-可裁剪运行时的最小部署只需要 Nginx、PHP-FPM 与 MySQL。服务器环境可按配置增加 Redis 唤醒、Event Worker、Scheduler 和 SSE；业务 API 与数据契约不变。诊断与运维入口：
+可裁剪运行时的最小部署只需要 Nginx、PHP-FPM 与 MySQL。服务器环境可按配置增加 Redis 唤醒、Event Worker、Scheduler 和独立 Realtime Gateway；业务 API 与数据契约不变。Realtime 模式的后台切换和主题连接客户端仍在迁移中。诊断与运维入口：
 
 ```bash
 php think lc:runtime:status

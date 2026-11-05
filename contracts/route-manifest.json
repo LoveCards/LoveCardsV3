@@ -3495,13 +3495,13 @@
       "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/me/notifications/stream",
+      "path": "/me/notifications/stream-ticket",
       "method": "GET",
-      "name": "notifications.stream",
-      "controller": "Platform.Realtime",
-      "action": "stream",
+      "name": "notifications.streamTicket",
+      "controller": "Platform.Community",
+      "action": "realtimeTicket",
       "meta": {
-        "name": "通知实时流",
+        "name": "通知实时连接票据",
         "group": "社区",
         "access": {
           "auth": "required"
@@ -3511,16 +3511,11 @@
         "app\\api\\middleware\\JwtAuthCheck"
       ],
       "contract": {
-        "request": {
-          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
-          "scene": "stream"
-        },
+        "request": null,
         "response": {
-          "resource": null,
-          "shape": "raw",
-          "status": 200,
-          "type": "string",
-          "contentType": "text/event-stream"
+          "resource": "app\\modules\\Platform\\Eventing\\Transport\\Api\\RealtimeTicketResource",
+          "shape": "item",
+          "status": 200
         }
       },
       "source": "apps/backend/app/api/route"

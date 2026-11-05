@@ -43,7 +43,7 @@ pending -> claimed -> delivered
 
 claim 使用随机 token、worker id 与 lease expiry；完成或失败更新必须匹配 claim token。Handler 仍须以 `DeliveryContext::idempotencyKey()` 或业务唯一键幂等，因为“副作用成功但进程在 checkpoint 前退出”会导致至少一次重放。
 
-错误记录只保存经过 `FailureSanitizer` 清理的稳定摘要，不保存 Token、凭证或完整个人数据。管理员可在 `/apps/operations/deliveries` 查看投递、筛选失败项并填写原因重试；手工重试需要 `operations.retry` 并写审计。
+错误记录只保存经过 `FailureSanitizer` 清理的稳定摘要，不保存 Token、凭证或完整个人数据。管理员可在 `/apps/operations/deliveries` 查看投递和筛选失败项；手工重试需要 `operations.retry` 并写审计。
 
 ## 两种执行模式
 

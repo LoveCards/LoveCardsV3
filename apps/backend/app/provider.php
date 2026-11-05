@@ -108,7 +108,9 @@ use app\modules\Platform\Eventing\Contract\WakeupTransport;
 use app\modules\Platform\Eventing\Infrastructure\NullWakeupTransport;
 use app\modules\Platform\Eventing\Infrastructure\OptionalRedisWakeupTransport;
 use app\modules\Platform\Eventing\Contract\RealtimePublisher;
-use app\modules\Platform\Eventing\Infrastructure\NullRealtimePublisher;
+use app\modules\Platform\Eventing\Infrastructure\HttpRealtimePublisher;
+use app\modules\Platform\Eventing\Contract\RealtimeTicketIssuer;
+use app\modules\Platform\Eventing\Infrastructure\HmacRealtimeTicketIssuer;
 use app\shared\Runtime\FacilityProbe;
 use app\shared\Runtime\NativeFacilityProbe;
 use app\shared\Observability\AuditLogger;
@@ -172,7 +174,8 @@ return [
     WorkerHeartbeatStore::class => ThinkDbWorkerHeartbeatStore::class,
     FailureSanitizer::class => ConservativeFailureSanitizer::class,
     WakeupTransport::class => OptionalRedisWakeupTransport::class,
-    RealtimePublisher::class => NullRealtimePublisher::class,
+    RealtimePublisher::class => HttpRealtimePublisher::class,
+    RealtimeTicketIssuer::class => HmacRealtimeTicketIssuer::class,
     FacilityProbe::class => NativeFacilityProbe::class,
     AuditLogger::class => ThinkDbAuditLogger::class,
     LogContextScope::class => LogContextScope::class,

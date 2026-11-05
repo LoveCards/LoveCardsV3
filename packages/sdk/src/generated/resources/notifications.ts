@@ -18,8 +18,8 @@ export class Notifications extends BaseResource {
   read(data: { ids: number[] }): Promise<void> {
     return this._post<void>("/me/notifications/read", data)
   }
-  stream(params?: { after?: number }): Promise<string> {
-    return this._get<string>("/me/notifications/stream", params)
+  streamTicket(): Promise<ApiTypes.RealtimeStreamTicket> {
+    return this._get<ApiTypes.RealtimeStreamTicket>("/me/notifications/stream-ticket")
   }
   unread(params?: { category?: ApiTypes.NotificationListCategory }): Promise<ApiTypes.NotificationUnread> {
     return this._get<ApiTypes.NotificationUnread>("/me/notifications/unread", params)

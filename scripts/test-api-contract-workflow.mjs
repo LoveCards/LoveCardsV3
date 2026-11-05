@@ -130,9 +130,9 @@ assert.match(notificationListMethod, /Promise<ApiTypes\.NotificationCursorPage>/
 assert.match(notificationListMethod, /category\?: ApiTypes\.NotificationListCategory/)
 assert.doesNotMatch(notificationListMethod, /ApiTypes\.ApiTypes/)
 
-const stream = operation('notifications.stream')
-assert.equal(stream['x-response-shape'], 'raw')
-assert.equal(stream.responses['200'].content['text/event-stream'].schema['x-typescript-type'], 'string')
+const streamTicket = operation('notifications.streamTicket')
+assert.equal(streamTicket['x-response-shape'], 'item')
+assert.deepEqual(streamTicket.responses['200'].content['application/json'].schema.properties.data.required, ['ticket', 'endpoint', 'protocol', 'expires_at', 'topics', 'cursor_strategy'])
 
 const migrationRun = operation('operations.runMigrations')
 assert.equal(migrationRun.requestBody.required, false)
