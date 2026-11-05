@@ -13,7 +13,7 @@ before(async () => {
   gateway = createGateway({
     host: '127.0.0.1', port: 0, version: 'test', protocol: 'lc-realtime-1',
     ticketSecret, internalSecret, heartbeatSeconds: 5, ticketTtlSeconds: 60,
-    maxConnections: 2, maxConnectionsPerRecipient: 1, drainSeconds: 1,
+    maxConnections: 2, maxConnectionsPerRecipient: 1, maxConnectionSeconds: 900, drainSeconds: 1,
   });
   await gateway.start();
   base = `http://127.0.0.1:${gateway.address().port}`;
@@ -114,4 +114,32 @@ test('connection limits apply per recipient and globally', async () => {
   assert.equal((await fetch(streamUrl(ticket('user:303')))).status, 429);
   await disconnect(first);
   await disconnect(second);
+});
+
+test('stream expires its connection and requires a new ticket', async () => {
+  const shortGateway = createGateway({
+    host: '127.0.0.1', port: 0, version: 'test', protocol: 'lc-realtime-1',
+    ticketSecret, internalSecret, heartbeatSeconds: 0.02, ticketTtlSeconds: 60,
+    maxConnections: 2, maxConnectionsPerRecipient: 1, maxConnectionSeconds: 0.06, drainSeconds: 0.01,
+  });
+  await shortGateway.start();
+  const shortBase = `http://127.0.0.1:${shortGateway.address().port}`;
+  try {
+    const value = ticket('user:401');
+    const response = await fetch(`${shortBase}/stream?ticket=${encodeURIComponent(value)}`);
+    assert.equal(response.status, 200);
+    const reader = response.body.getReader();
+    assert.match(await nextFrame(reader), /event: ready\r?\n/);
+    let expired = false;
+    for (let attempt = 0; attempt < 10 && !expired; attempt++) {
+      expired = (await nextFrame(reader)).includes('event: shutdown');
+    }
+    assert.equal(expired, true);
+    assert.equal((await fetch(`${shortBase}/stream?ticket=${encodeURIComponent(value)}`)).status, 401);
+    const reconnected = await fetch(`${shortBase}/stream?ticket=${encodeURIComponent(ticket('user:401'))}`);
+    assert.equal(reconnected.status, 200);
+    await reconnected.body.cancel();
+  } finally {
+    await shortGateway.stop();
+  }
 });

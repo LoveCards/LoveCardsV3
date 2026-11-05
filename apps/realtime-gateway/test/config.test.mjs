@@ -9,6 +9,7 @@ const base = {
 
 test('config requires separate strong secrets', () => {
   assert.equal(readConfig(base).port, 7070);
+  assert.equal(readConfig(base).maxConnectionSeconds, 900);
   assert.throws(() => readConfig({ ...base, LC_REALTIME_INTERNAL_SECRET: base.LC_REALTIME_TICKET_SECRET }), /must differ/);
   assert.throws(() => readConfig({ ...base, LC_REALTIME_TICKET_SECRET: 'short' }), /at least 32/);
 });
@@ -16,5 +17,6 @@ test('config requires separate strong secrets', () => {
 test('config rejects unsafe or out-of-range values', () => {
   assert.throws(() => readConfig({ ...base, LC_REALTIME_HOST: '0.0.0.0', LC_REALTIME_HEARTBEAT_SECONDS: '4' }), /between 5 and 120/);
   assert.throws(() => readConfig({ ...base, LC_REALTIME_PORT: '70000' }), /between 1 and 65535/);
+  assert.throws(() => readConfig({ ...base, LC_REALTIME_MAX_CONNECTION_SECONDS: '0' }), /between 60 and 3600/);
   assert.throws(() => readConfig({ ...base, LC_REALTIME_HOST: '0.0.0.0.example' }), /not supported/);
 });

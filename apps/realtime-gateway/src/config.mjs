@@ -23,6 +23,7 @@ export function readConfig(env = process.env) {
     ticketTtlSeconds: numberSetting(env, 'LC_REALTIME_TICKET_TTL_SECONDS', 60, 15, 300),
     maxConnections: numberSetting(env, 'LC_REALTIME_MAX_CONNECTIONS', 1000, 1, 100000),
     maxConnectionsPerRecipient: numberSetting(env, 'LC_REALTIME_MAX_CONNECTIONS_PER_RECIPIENT', 3, 1, 20),
+    maxConnectionSeconds: numberSetting(env, 'LC_REALTIME_MAX_CONNECTION_SECONDS', 900, 60, 3600),
     drainSeconds: numberSetting(env, 'LC_REALTIME_DRAIN_SECONDS', 5, 1, 30),
   };
 }

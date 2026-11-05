@@ -66,7 +66,7 @@ export function createGateway(config, clock = () => Date.now()) {
       protocol: config.protocol,
       version: config.version,
       capabilities: { sse: true, cursor: true, last_event_id: true, topics: allowedTopicsList() },
-      limits: { max_connections: config.maxConnections, max_connections_per_recipient: config.maxConnectionsPerRecipient },
+      limits: { max_connections: config.maxConnections, max_connections_per_recipient: config.maxConnectionsPerRecipient, max_connection_seconds: config.maxConnectionSeconds },
     };
   }
 
@@ -95,7 +95,7 @@ export function createGateway(config, clock = () => Date.now()) {
         connection: 'keep-alive',
         'x-accel-buffering': 'no',
       });
-      const connection = { response, recipientKey: ticket.recipient_key, topics: new Set(ticket.topics) };
+      const connection = { response, recipientKey: ticket.recipient_key, topics: new Set(ticket.topics), connectedAt: clock() };
       connections.add(connection);
       request.on('close', () => closeConnection(connection));
       write(connection, frame('ready', { protocol: config.protocol, after }));
@@ -130,7 +130,14 @@ export function createGateway(config, clock = () => Date.now()) {
       state = 'ready';
       heartbeat = setInterval(() => {
         sweepReplayCache();
-        for (const connection of connections) write(connection, ': ping\r\n\r\n');
+        for (const connection of connections) {
+          if (clock() - connection.connectedAt >= config.maxConnectionSeconds * 1000) {
+            write(connection, frame('shutdown', { reason: 'connection-expired' }));
+            closeConnection(connection);
+          } else {
+            write(connection, ': ping\r\n\r\n');
+          }
+        }
       }, config.heartbeatSeconds * 1000);
       heartbeat.unref();
     },

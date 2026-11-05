@@ -99,7 +99,8 @@ Cache-Control: no-cache
 - Gateway 建立连接后发送 `event: ready`；
 - 有新信号时发送 `event: signal`，`data.topic` 为 `notifications|messages`；客户端只用它触发 API 回源；
 - 每 15 秒发送注释心跳 `: ping`，避免代理关闭空闲连接；
-- 连接关闭由客户端、Gateway 优雅停止或代理超时触发。
+- 单条连接最长存活默认 15 分钟；到期发送 `event: shutdown` 后关闭，客户端重新取得 ticket 并通过 API 回源；
+- 连接也可由客户端、Gateway 优雅停止或代理超时关闭。
 
 ### 4.3 Internal Signal
 
@@ -174,6 +175,7 @@ Content-Type: application/json
 | `LC_REALTIME_TICKET_TTL_SECONDS` | `60` | 15..300 |
 | `LC_REALTIME_MAX_CONNECTIONS` | `1000` | 1..100000 |
 | `LC_REALTIME_MAX_CONNECTIONS_PER_RECIPIENT` | `3` | 1..20 |
+| `LC_REALTIME_MAX_CONNECTION_SECONDS` | `900` | 60..3600，单连接存活上限 |
 | `LC_REALTIME_DRAIN_SECONDS` | `5` | 1..30 |
 
 配置解析失败必须拒绝启动，不能悄悄使用不安全默认 secret。
