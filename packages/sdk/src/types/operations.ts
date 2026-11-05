@@ -151,6 +151,31 @@ export interface AdminReportEvent {
   created_at: string
 }
 
+/** 举报提交时刻的目标证据快照（内容截断存储，哈希对应全文）。 */
+export interface AdminReportEvidence {
+  type: string
+  captured: {
+    id?: number
+    uid?: string
+    number?: string
+    username?: string
+    user_id?: number
+    pid?: number
+    conversation_id?: number
+    sender_id?: number
+    status?: number
+    upload_status?: number | string
+    content?: string | null
+    content_sha256?: string
+    body?: string | null
+    body_sha256?: string
+    created_at?: string | null
+    hash?: string
+    mime_type?: string
+    file_url?: string | null
+  }
+}
+
 export interface AdminReport {
   id: number
   reporter_id: number
@@ -158,6 +183,7 @@ export interface AdminReport {
   target_id: string
   reason: string
   details?: string | null
+  evidence_snapshot?: AdminReportEvidence | null
   status: string
   assignee_id?: number | null
   resolution?: string | null
