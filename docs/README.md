@@ -15,6 +15,7 @@
 ## 平台基础设施
 
 - [可裁剪运行时](engineering/RUNTIME-ARCHITECTURE.md)
+- [通信运行时与事件投递统一设计](engineering/COMMUNICATION-RUNTIME-DESIGN-2026-11-05.md)
 - [系统生命周期、安装与升级](engineering/SYSTEM-LIFECYCLE.md)
 - [事件总线与异步投递](engineering/EVENTING.md)
 - [站内通知开发规范](engineering/NOTIFICATIONS.md)
