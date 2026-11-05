@@ -14,6 +14,7 @@ import { loadViewerLikeIds, updateCardLike } from '../../services/feed-service.j
 import { ActionMenu, AuthPromptDialog, Button, ConfirmActionDialog, ToggleButton, useToast } from '../../ui/index.js';
 import { MediaGallery } from '../../features/media/MediaGallery.jsx';
 import { CommentThread } from '../../features/comments/CommentThread.jsx';
+import { ReportResourceDialog } from '../../features/moderation/ReportResourceDialog.jsx';
 import { SaveCardButton } from '../../features/library/SaveCardButton.jsx';
 import { listSavedItems } from '../../services/community-service.js';
 import { topicHref } from '../../services/discovery-service.js';
@@ -60,6 +61,7 @@ export function DetailPage() {
   const resource = useResource(loader, initial);
   const data = resource.data || initial;
   const [deleteCardOpen, setDeleteCardOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState(null);
   const [deleteCommentItem, setDeleteCommentItem] = useState(null);
   const [dialogBusy, setDialogBusy] = useState(false);
   const [detailLiked, setDetailLiked] = useState(false);
@@ -210,9 +212,12 @@ export function DetailPage() {
   const canUpdateCard = data.source === 'live' && ownsCard && can('cards.update');
   const canDeleteCard = data.source === 'live' && ownsCard && can('cards.delete');
   const canPinComment = data.source === 'live' && isAuthenticated && ownsCard && can('comments.pin') && supportsUserCommentPinning();
+  const canReportCard = data.source === 'live' && !ownsCard;
   const contentMenuItems = [
     ...(canUpdateCard ? [{ label: '编辑内容', icon: <Icon name="edit" size={17} />, onClick: () => navigate(`/compose?edit=${data.card.id}`) }] : []),
     ...(canDeleteCard ? [...(canUpdateCard ? [{ type: 'divider' }] : []), { label: '删除内容', icon: <Icon name="trash" size={17} />, onClick: () => setDeleteCardOpen(true) }] : []),
+    // 举报入口对非作者开放（D-8⑤）；未登录点击走登录引导，后端仍做可见性裁决。
+    ...(canReportCard ? [...(canUpdateCard || canDeleteCard ? [{ type: 'divider' }] : []), { label: '举报', icon: <Icon name="flag" size={17} />, onClick: () => (isAuthenticated ? setReportTarget({ type: 'card', id: data.card.id }) : requestLogin('举报内容')) }] : []),
   ];
   const comments = useMemo(() => data.comments.map((comment) => ({
     ...comment,
@@ -256,6 +261,8 @@ export function DetailPage() {
            canLike={can('likes.create') && can('likes.delete')}
            canDeleteComment={can('comments.delete')}
            canPinComment={canPinComment}
+           canReport={isAuthenticated}
+           onReport={(comment) => setReportTarget({ type: 'comment', id: comment.id })}
            pinBusy={commentPinBusy}
            viewerId={session?.uid}
            commentsUnavailable={data.commentsError}
@@ -278,6 +285,7 @@ export function DetailPage() {
         <Link className="detail-back" to="/">← 回到信息流</Link>
         <ResourceState status={resource.status} error={resource.error} onRetry={resource.reload}>{content}</ResourceState>
         <ConfirmActionDialog isOpen={deleteCardOpen} onOpenChange={setDeleteCardOpen} title="删除这条内容？" description="内容和相关讨论将不再显示，此操作无法撤销。" actionLabel="删除内容" isLoading={dialogBusy} onAction={removeCard} />
+        {reportTarget && <ReportResourceDialog isOpen onOpenChange={(open) => { if (!open) setReportTarget(null); }} resourceType={reportTarget.type} resourceId={String(reportTarget.id)} onFeedback={(body, type) => toast({ body, type: type === 'error' ? 'error' : undefined, uniqueID: 'detail-report', collisionBehavior: 'overwrite' })} />}
         <ConfirmActionDialog isOpen={Boolean(deleteCommentItem)} onOpenChange={(open) => { if (!open) setDeleteCommentItem(null); }} title="删除这条评论？" description="评论删除后无法恢复。" actionLabel="删除评论" isLoading={dialogBusy} onAction={removeSelectedComment} />
         <ConfirmActionDialog isOpen={Boolean(replacePinCommentItem)} onOpenChange={(open) => { if (!open && !commentPinBusy) setReplacePinCommentItem(null); }} title="替换置顶评论？" description="当前置顶评论将取消置顶，并把这条评论放到讨论顶部。" actionLabel="替换置顶" isLoading={commentPinBusy} onAction={() => { if (replacePinCommentItem) void changePinnedComment(replacePinCommentItem, true); }} />
         <AuthPromptDialog isOpen={Boolean(authPromptAction)} action={authPromptAction} onOpenChange={(open) => { if (!open) setAuthPromptAction(''); }} onLogin={() => { setAuthPromptAction(''); navigate('/auth/login', { state: { from: loginFrom } }); }} />

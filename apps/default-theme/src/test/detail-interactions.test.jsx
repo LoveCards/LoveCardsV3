@@ -59,14 +59,17 @@ describe('detail interaction hierarchy', () => {
     expect(html).toContain('评论作者');
   });
 
-  it('keeps sharing explicit and reserves the content menu for owner actions', () => {
+  it('keeps sharing explicit and gates content and comment actions by ownership', () => {
     const html = renderRoute('/post/42');
     expect(html).toContain('detail-share');
     expect(html).toContain('detail-like-control');
     expect(html).toContain('aria-label="内容操作"');
     expect(html).not.toContain('分享或复制链接');
+    // 占位文案不得回归：举报入口如今是真实功能（D-8⑤），不再存在"暂未开放"。
     expect(html).not.toContain('举报 · 暂未开放');
-    expect(html).not.toContain('aria-label="评论操作"');
+    // 登录的非评论作者可对他人评论发起举报；作者本人仍看不到卡片举报。
+    expect(html).toContain('aria-label="评论操作"');
+    expect(html).toContain('>举报</span>');
     expect(html).not.toContain('编辑正文');
   });
 
@@ -78,12 +81,15 @@ describe('detail interaction hierarchy', () => {
     expect(html).toContain('href="/topic/4-%E7%94%9F%E6%97%A5"');
   });
 
-  it('shows the comment menu only to the comment owner', () => {
+  it('offers report to non-owners while hiding report on your own comment', () => {
     state.uid = 2;
     const html = renderRoute('/post/42');
-    expect(html).not.toContain('aria-label="内容操作"');
+    // 非作者登录后可举报卡片，自己的评论保留删除动作但不自举举报。
+    expect(html).toContain('aria-label="内容操作"');
     expect(html).toContain('aria-label="评论操作"');
+    expect(html).toContain('>删除评论</span>');
     expect(html).not.toContain('>置顶评论</span>');
+    expect((html.match(/>举报</g) ?? [])).toHaveLength(1);
   });
 
   it('reveals the root-comment pin action only when the owner SDK boundary is available', () => {
