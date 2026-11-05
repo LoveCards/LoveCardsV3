@@ -254,6 +254,7 @@ CREATE TABLE IF NOT EXISTS `notification_policy_versions` (
 | D4 | ticket 或 HttpOnly cookie（任务书二选一） | v1 仅 ticket | 单轨避免双凭证审计 |
 | D5 | "Redis 不可用时…回源"（设计 §5） | transport 退化 effective 仍 realtime | 回落 polling 是能力判定，不因传输退化丢实时 |
 | D6 | "Delivery 进入显式 skipped/no-op 或等价记录"（设计 §7） | `policy_decision` 列 + status=completed | 不扩 DeliveryStatus 枚举，死信/重试语义零改动 |
+| D7 | 系统角色模板授权变更方式 | 历史种子 `20260823000001.sql` 冻结（checksum 入 ledger 不可改写），模板新增授权以差分迁移追加（`20261106000004.sql` 起），`SystemRoleTemplatesBaseline` 联合解析两文件 | 直接编辑历史种子会触发 DirtyMigrationException，破坏既有实例升级 |
 
 ## 9. 验收映射（对任务书 10 条）
 
