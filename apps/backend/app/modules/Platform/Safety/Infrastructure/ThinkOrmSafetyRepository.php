@@ -170,7 +170,19 @@ final class ThinkOrmSafetyRepository implements SafetyRepository
         return true;
     }
 
-    public function createReport(ReportSubmission $submission, array $evidenceSnapshot): int
+    public function findOpenReport(int $reporterId, string $targetType, string $targetId): ?int
+    {
+        $existing = Db::table('reports')
+            ->where('reporter_id', $reporterId)
+            ->where('target_type', $targetType)
+            ->where('target_id', $targetId)
+            ->whereIn('status', ['open', 'reviewing'])
+            ->order('id', 'desc')
+            ->value('id');
+        return $existing === null ? null : (int) $existing;
+    }
+
+    public function createReport(ReportSubmission $submission, array $evidenceSnapshot, string $targetId): int
     {
         Db::startTrans();
         try {
@@ -178,7 +190,7 @@ final class ThinkOrmSafetyRepository implements SafetyRepository
             $reportId = (int) Db::table('reports')->insertGetId([
                 'reporter_id' => $submission->reporterId(),
                 'target_type' => $submission->resource()->type(),
-                'target_id' => $submission->resource()->id(),
+                'target_id' => $targetId,
                 'reason' => $submission->reason(),
                 'details' => $submission->details(),
                 'evidence_snapshot' => json_encode($evidenceSnapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),

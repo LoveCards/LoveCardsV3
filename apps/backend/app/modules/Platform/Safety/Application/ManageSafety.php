@@ -102,7 +102,14 @@ final class ManageSafety
     {
         $snapshot = $this->targets->snapshotForReporter($submission->reporterId(), $submission->resource());
         if ($snapshot === null) throw ApiException::notFound('举报目标不存在或无权访问');
-        return $this->repository->createReport($submission, $snapshot);
+        // 目标统一按快照解析出的内部主键落库：用户举报走公开 uid，管理端导航需要 users.id。
+        $targetId = isset($snapshot['captured']['id']) ? (string) $snapshot['captured']['id'] : $submission->resource()->id();
+        // 重复举报幂等：同一举报人对同一目标的 open/reviewing 案件不重复立案、不重复通知。
+        $existing = $this->repository->findOpenReport($submission->reporterId(), $submission->resource()->type(), $targetId);
+        if ($existing !== null) {
+            return $existing;
+        }
+        return $this->repository->createReport($submission, $snapshot, $targetId);
     }
 
     public function canMessage(int $senderId, int $recipientId): bool

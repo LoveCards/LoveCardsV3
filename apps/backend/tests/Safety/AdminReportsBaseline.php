@@ -82,6 +82,11 @@ catch (\app\api\ApiException) { $invalid = true; }
 $assert(!$invalid, 'reviewing may return to open according to the report state machine');
 
 $reports->transition(4, 9, 'reviewing', null, '重新审核', '127.0.0.1');
+$missingConclusion = false;
+try { $reports->transition(4, 9, 'resolved', null, null, '127.0.0.1'); }
+catch (\app\api\ApiException) { $missingConclusion = true; }
+$assert($missingConclusion, 'closing a report must require a written conclusion');
+$assert($repository->report['status'] === 'reviewing', 'rejected transition must not change the report state');
 $reports->transition(4, 9, 'resolved', 'resolved', '处理完成', '127.0.0.1');
 $assert(count($notices->records) === 1, 'resolved report must issue one moderation notice');
 $assert($notices->records[0]['noticeKey'] === 'safety.report.outcome:4:resolved', 'report outcome notice must use the terminal state key');

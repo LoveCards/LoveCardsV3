@@ -34,14 +34,20 @@ final class FakeSafetyRepository implements SafetyRepository
     public function userExists(int $userId): bool { return $userId > 0; }
     public function listBlocked(int $userId, ?string $cursor, int $limit, ?string $query): array { return ['items' => [], 'next_cursor' => null, 'has_more' => false]; }
     public function canMessage(int $senderId, int $recipientId): bool { return !$this->hasRelation($recipientId, $senderId, 'block'); }
-    public function createReport(ReportSubmission $submission, array $evidenceSnapshot): int { $this->evidence = $evidenceSnapshot; return 7; }
+    public array $reportInserts = [];
+    public ?int $existingOpen = null;
+    public function findOpenReport(int $reporterId, string $targetType, string $targetId): ?int { return $this->existingOpen; }
+    public function createReport(ReportSubmission $submission, array $evidenceSnapshot, string $targetId): int { $this->evidence = $evidenceSnapshot; $this->reportInserts[] = $targetId; return 7; }
 }
 
 final class FakeReportTargetResolver implements ReportTargetResolver
 {
     public function snapshotForReporter(int $reporterId, ResourceRef $resource): ?array
     {
-        return $resource->type() === 'comment' ? ['type' => 'comment', 'captured' => ['id' => $resource->id()]] : null;
+        if ($resource->type() === 'comment') return ['type' => 'comment', 'captured' => ['id' => $resource->id()]];
+        // 用户举报：请求携带 12 位公开 uid，快照解析出行后主键是 users.id。
+        if ($resource->type() === 'user') return ['type' => 'user', 'captured' => ['id' => 7, 'uid' => $resource->id()]];
+        return null;
     }
 }
 
@@ -63,6 +69,16 @@ $assert($selfRejected, 'self safety relation must be rejected');
 $report = new ReportSubmission(1, new ResourceRef('comment', 9), 'abuse', '测试');
 $assert($safety->report($report) === 7, 'report should return stable id');
 $assert($repository->evidence === ['type' => 'comment', 'captured' => ['id' => '9']], 'report must persist the resolved evidence snapshot');
+$assert($repository->reportInserts === ['9'], 'comment report must store the canonical target id');
+
+// 用户举报按公开 uid 提交，但落库主键必须统一为 users.id（管理端目标链接的导航键）。
+$assert($safety->report(new ReportSubmission(1, new ResourceRef('user', '123456789012'), 'abuse')) === 7, 'user report must create the case');
+$assert($repository->reportInserts === ['9', '7'], 'user report must store the canonical internal user id');
+
+// 重复举报幂等：同一目标已有待处理/处理中案件时返回原案件，不再插入。
+$repository->existingOpen = 7;
+$assert($safety->report(new ReportSubmission(1, new ResourceRef('user', '123456789012'), 'abuse')) === 7, 'duplicate report must return the open case id');
+$assert($repository->reportInserts === ['9', '7'], 'duplicate report must not create a second case');
 
 $missingRejected = false;
 try { $safety->report(new ReportSubmission(1, new ResourceRef('card', 99), 'spam')); }
