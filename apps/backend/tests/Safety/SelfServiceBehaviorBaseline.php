@@ -40,7 +40,8 @@ final class SelfServiceSafetyRepo implements SafetyRepository
     public function userExists(int $userId): bool { return $userId === 2; }
     public function listBlocked(int $userId, ?string $cursor, int $limit, ?string $query): array { return ['items' => [['user' => ['id' => 2, 'username' => 'blocked_user', 'avatar' => null], 'blocked_at' => '2026-08-25 00:00:00']], 'next_cursor' => 'opaque', 'has_more' => true]; }
     public function canMessage(int $senderId, int $recipientId): bool { return !$this->isBlockedEitherDirection($senderId, $recipientId); }
-    public function createReport(ReportSubmission $submission, array $evidenceSnapshot): int { return 1; }
+    public function findOpenReport(int $reporterId, string $targetType, string $targetId): ?int { return null; }
+    public function createReport(ReportSubmission $submission, array $evidenceSnapshot, string $targetId): int { return 1; }
 }
 final class SelfServiceTargets implements ReportTargetResolver { public function snapshotForReporter(int $reporterId, ResourceRef $resource): ?array { return null; } }
 final class SelfServiceSocial implements SocialGraphRepository

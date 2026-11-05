@@ -55,6 +55,11 @@ final class AdminReports
             if ($from !== $status && !$this->canTransition($from, $status)) {
                 throw ApiException::badRequest("不允许从 {$from} 转换为 {$status}");
             }
+            // 真实结案必须写处理结论（会通知举报人）；同状态追加备注不受此限制。
+            if ($from !== $status && in_array($status, ['resolved', 'rejected'], true)
+                && ($resolution === null || trim($resolution) === '')) {
+                throw ApiException::badRequest('请填写处理结论，再结束该举报。');
+            }
             $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
             $timestamp = $now->format('Y-m-d H:i:s');
             $values = ['status' => $status, 'updated_at' => $timestamp];
