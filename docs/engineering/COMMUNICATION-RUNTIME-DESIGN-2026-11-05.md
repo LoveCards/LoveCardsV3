@@ -293,12 +293,7 @@ GET /runtime/communication
 }
 ```
 
-现有 `GET /me/notifications/stream` 不能继续作为“伪 SSE 快照”。迁移方案二选一，但只能保留一个最终语义：
-
-1. Realtime-only：只有 effective realtime 时可用，返回真正可取消的长连接；Polling 模式返回稳定错误/能力提示。`after` 统一使用不透明 cursor，重连同时支持 `Last-Event-ID`，不得恢复数字 id 契约。
-2. 统一通信适配器：删除公开 stream 契约，前端只使用 polling API 和内部 Gateway adapter。
-
-本项目优先采用第 1 种，直到 Gateway 垂直切片完成；在此之前不得把当前 FPM Controller 当作 realtime 能力。
+现有 `GET /me/notifications/stream` 不能继续作为“伪 SSE 快照”。本项目冻结采用 **Realtime-only** 语义：只有 `effective_mode=realtime` 且 Gateway ready 时可用，返回真正可取消的长连接；Polling 模式返回稳定的能力错误，前端改用轮询 API。`after` 统一使用不透明 cursor，重连同时支持 `Last-Event-ID`，不得恢复数字 id 契约。在 Gateway 垂直切片完成前，旧 FPM Controller 必须被禁用或移除，不能继续被描述为实时能力。
 
 ## 9. 旧代码迁移清单
 
