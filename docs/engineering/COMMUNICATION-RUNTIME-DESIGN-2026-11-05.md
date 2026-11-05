@@ -158,14 +158,17 @@ SSE 只作为 Gateway 到浏览器的单向协议：
 - 客户端发送仍走 HTTP API；
 - Gateway 负责连接、心跳、断线和重连；
 - Event Worker 负责消费 Outbox；
+- 浏览器连接使用短期 stream ticket 或 HttpOnly auth cookie，不能把 JWT 长期放进 URL；
 - 推送信号包含 topic 和 cursor hint，不承载可替代的业务事实；
 - 重连后用 `after`/`Last-Event-ID` 游标补齐。
+
+Event Worker 到 Gateway 的进程间通知必须有明确 adapter。优先使用可选 Redis pub/sub 传递低价值唤醒信号；MySQL notifications/cursor 仍是权威事实。Redis 不可用时，Gateway/Worker 进入 degraded 并按受控间隔回源，不能把未定义的空 Publisher 当作实时已启用。
 
 如果 Worker 或 Gateway 不 ready，系统不得宣称 Realtime 已生效，应保持 `effective_mode=polling`、`status=degraded`，并在 Runtime 页面显示原因。
 
 ### 4.4 模式切换
 
-Polling -> Realtime：先探测并确认 Worker/Gateway/Supervisor ready，再原子提升 effective mode。前端读取新配置后建立连接，连接建立前继续按游标读取。
+Polling -> Realtime：先探测并确认 Worker/Gateway ready；若部署策略要求 process manager，再额外确认 Supervisor。通过后原子提升 effective mode。前端读取新配置后建立连接，连接建立前继续按游标读取。
 
 Realtime -> Polling：先停止新增实时信号，完成已提交 Outbox/Delivery，再发布新配置；前端用最后游标补齐后切换到轮询。
 
@@ -251,6 +254,8 @@ runtime_config_state
 
 通知策略使用专用的 `notification_policies` 与 `notification_policy_versions`（或等价的规范化结构），不改 `notifications` 核心语义。事件入 Outbox 并创建 `event_deliveries` 时必须解析并冻结策略版本：`event_deliveries` 增加 nullable `policy_revision` 或稳定 `policy_rule_key`，避免 pending delivery 在重试时因后台后来关闭规则而改变语义。
 
+建议字段至少包括 `event_type`、`event_version`、`rule_key`、`enabled`、`notification_type`、`recipient_rule`、`user_disableable`、`dedupe_strategy`、`locked`、`revision` 和更新审计字段。关闭规则时仍保留可观测的投递决策：Delivery 进入明确的 `skipped`/`no-op` 结果，或写入等价的 policy decision 记录，不能让事件从投递监控中凭空消失。
+
 策略只能控制可配置的互动通知投影；`system.security`、`system.moderation` 等强制事件由代码锁定，普通管理员不能关闭。
 
 通知投影发布 Realtime 信号时，必须区分“首次插入”和“幂等命中旧记录”。只有真正新建的通知才发布信号，避免重试因 dedupe 命中而重复唤醒浏览器。现有 `NotificationRepository::create(): int` 公共契约不应直接改成结构返回值；可增加内部 `createWithReceipt()` 或等价 Port，逐步迁移 fake 和测试。
@@ -322,7 +327,7 @@ GET /runtime/communication
 ### 数据库和配置
 
 - 新增并唯一使用 `runtime_config_state` 单例表，保存通信配置、revision、desired mode 和更新者；不得同时把 `configs` 作为第二个正常运行时事实源。
-- `effective_mode`、provider、reason 和探测时间属于运行时快照，可持久化为状态投影但不能覆盖 desired config。
+- `effective_mode`、provider、reason 和探测时间由 Runtime Resolver 每次结合 probe 派生；可持久化为带 `checked_at` 的状态快照，但管理员不能直接写 effective mode，也不能用过期快照代替实时探测。
 - 新增通知策略和策略版本表（不修改 notifications 核心语义）。
 - 复用 `runtime_workers`，扩展 worker type/provider 元数据，不重复建 heartbeat 表。
 - Scheduler 不能直接冒充 `runtime_workers` 心跳：在新增 heartbeat/run ledger 前，Runtime 必须显示 `scheduler=unknown` 或 `degraded`，不能声称 ready。
