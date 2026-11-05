@@ -9,7 +9,7 @@
         <v-alert v-if="communication && communication.status === 'degraded'" class="mb-4" type="warning" variant="tonal">
           目标模式为 {{ modeLabel(communication.desired_mode) }}，但当前实际生效 {{ modeLabel(communication.effective_mode) }}：{{ reasonLabel(communication.reason_code) }}。业务契约保持一致，浏览器按轮询取数。
         </v-alert>
-        <v-card v-if="communication" variant="outlined" class="mb-4 pa-4">
+        <v-card v-if="communication" class="mb-4 pa-4">
           <div class="d-flex flex-wrap align-center ga-3">
             <span>目标模式 <AdminStatusChip :status="communication.desired_mode === 'realtime' ? 'active' : 'available'" :label="modeLabel(communication.desired_mode)" /></span>
             <span>生效模式 <AdminStatusChip :status="communication.effective_mode === 'realtime' ? 'active' : 'available'" :label="modeLabel(communication.effective_mode)" /></span>
@@ -19,10 +19,12 @@
           <v-alert v-if="communication.last_apply_state && communication.last_apply_state !== 'applied'" class="mt-3" type="info" variant="tonal">
             最近一次配置操作未生效：{{ communication.last_apply_state === 'rejected' ? '参数被拒绝' : '执行失败' }}{{ communication.last_apply_reason ? `（${communication.last_apply_reason}）` : '' }}。
           </v-alert>
-          <v-data-table class="mt-4" :headers="capabilityHeaders" :items="communication.capabilities" item-value="key" :items-per-page="10" items-per-page-text="每页行数">
-            <template #item.ready="{ item }"><AdminStatusChip :status="capabilityStatus(item)" :label="capabilityLabel(item)" /></template>
-            <template #item.reason="{ item }">{{ reasonLabel(item.reason_code) }}</template>
-          </v-data-table>
+          <AdminResourceTableShell class="mt-4">
+            <v-data-table :headers="capabilityHeaders" :items="communication.capabilities" item-value="key" :items-per-page="10" items-per-page-text="每页行数">
+              <template #item.ready="{ item }"><AdminStatusChip :status="capabilityStatus(item)" :label="capabilityLabel(item)" /></template>
+              <template #item.reason="{ item }">{{ reasonLabel(item.reason_code) }}</template>
+            </v-data-table>
+          </AdminResourceTableShell>
           <AdminActionGuard capability="operations.runtime.configure">
             <v-divider class="my-4" />
             <h3 class="text-subtitle-1 mb-2">模式与运行参数</h3>
