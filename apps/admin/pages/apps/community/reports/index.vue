@@ -5,6 +5,18 @@
     </AdminPageHeader>
     <div class="d-flex flex-wrap ga-3 mb-4">
       <v-select v-model="status" :items="statusItems" clearable density="comfortable" label="状态" max-width="240" variant="outlined" @update:model-value="resetAndLoad" />
+      <v-select v-model="resourceType" :items="resourceTypeItems" clearable density="comfortable" label="目标类型" max-width="240" variant="outlined" @update:model-value="resetAndLoad" />
+      <v-text-field
+        v-model="searchValue"
+        append-icon="mdi-magnify"
+        clearable
+        density="comfortable"
+        label="搜索原因或补充说明"
+        max-width="320"
+        variant="outlined"
+        @keydown.enter="resetAndLoad"
+        @click:append="resetAndLoad"
+      />
     </div>
     <AdminAsyncState :loading="loading && !reports.length" :error="error && !reports.length ? error : null" :empty="!reports.length" @retry="load">
       <v-alert v-if="error" class="mb-3" type="error" variant="tonal">
@@ -25,6 +37,7 @@
           items-per-page-text="每页行数"
         >
           <template #item.id="{ item }"><v-btn :to="`/apps/community/reports/${item.id}`" variant="text">#{{ item.id }}</v-btn></template>
+          <template #item.reporter_id="{ item }"><AdminResourceLink :resource-type="'user'" :resource-id="item.reporter_id" /></template>
           <template #item.target="{ item }"><AdminResourceLink :resource-type="item.target_type" :resource-id="item.target_id" /></template>
           <template #item.status="{ item }"><AdminStatusChip :status="item.status" /></template>
           <template #item.created_at="{ item }"><time>{{ item.created_at }}</time></template>
@@ -61,6 +74,16 @@ const status = ref<string | null>(
     ? route.query.status
     : null,
 )
+const resourceTypeItems = [
+  { title: '卡片', value: 'card' }, { title: '评论', value: 'comment' }, { title: '用户', value: 'user' },
+  { title: '私信', value: 'message' }, { title: '文件', value: 'file' },
+]
+const resourceType = ref<string | null>(
+  typeof route.query.resource_type === 'string' && resourceTypeItems.some((item) => item.value === route.query.resource_type)
+    ? route.query.resource_type
+    : null,
+)
+const searchValue = ref(typeof route.query.search_value === 'string' ? route.query.search_value : '')
 const headers = [
   { title: '编号', key: 'id' }, { title: '举报人', key: 'reporter_id' }, { title: '目标', key: 'target' },
   { title: '原因', key: 'reason' }, { title: '状态', key: 'status' }, { title: '创建时间', key: 'created_at' },
@@ -72,7 +95,13 @@ async function load() {
   loading.value = true
   error.value = null
   try {
-    const result = await client.reports.listManaged({ page: page.value, list_rows: itemsPerPage.value, ...(status.value ? { status: status.value } : {}) })
+    const result = await client.reports.listManaged({
+      page: page.value,
+      list_rows: itemsPerPage.value,
+      ...(status.value ? { status: status.value } : {}),
+      ...(resourceType.value ? { resource_type: resourceType.value } : {}),
+      ...(searchValue.value.trim() ? { search_value: searchValue.value.trim() } : {}),
+    })
     if (requestId !== latestRequest) return
     reports.value = result.data
     totalItems.value = result.pagination?.totalItems ?? result.data.length
@@ -90,6 +119,10 @@ function syncRouteQuery() {
   query.list_rows = String(itemsPerPage.value)
   if (status.value) query.status = status.value
   else delete query.status
+  if (resourceType.value) query.resource_type = resourceType.value
+  else delete query.resource_type
+  if (searchValue.value.trim()) query.search_value = searchValue.value.trim()
+  else delete query.search_value
   void router.replace({ query, hash: route.hash })
 }
 watch([page, itemsPerPage], () => {
