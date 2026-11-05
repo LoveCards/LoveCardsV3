@@ -33,6 +33,10 @@ use app\modules\Platform\Auth\Contract\RecoveryRepository;
 use app\modules\Platform\Auth\Infrastructure\RecoveryStore;
 use app\shared\Transaction\TransactionManager;
 use app\shared\Infrastructure\Persistence\ThinkOrmTransactionManager;
+use app\modules\Operations\Runtime\Contract\RuntimeConfigStore;
+use app\modules\Operations\Runtime\Contract\SchedulerRunLedger;
+use app\modules\Operations\Runtime\Infrastructure\ThinkOrmRuntimeConfigStore;
+use app\modules\Operations\Runtime\Infrastructure\ThinkDbSchedulerRunLedger;
 use app\modules\Platform\Social\Contract\SocialGraphRepository;
 use app\modules\Platform\Social\Infrastructure\ThinkOrmSocialGraphRepository;
 use app\modules\Platform\Library\Contract\LibraryRepository;
@@ -177,4 +181,7 @@ return [
     AuditLogger::class => ThinkDbAuditLogger::class,
     LogContextScope::class => LogContextScope::class,
     LogContextProvider::class => LogContextScope::class,
+    // 通信运行时控制面（Phase 1）
+    RuntimeConfigStore::class => ThinkOrmRuntimeConfigStore::class,
+    SchedulerRunLedger::class => ThinkDbSchedulerRunLedger::class,
 ];

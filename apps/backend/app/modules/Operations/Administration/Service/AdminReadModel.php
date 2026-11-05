@@ -78,6 +78,8 @@ final class AdminReadModel
                 'queues' => $queues,
                 'last_updated' => $delivery['last_updated'] ?? null,
             ],
+            // 通信运行时控制面快照（desired/effective/status/capabilities）。
+            'communication' => app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->snapshot(),
         ];
     }
 

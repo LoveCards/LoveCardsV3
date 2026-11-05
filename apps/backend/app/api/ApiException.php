@@ -60,6 +60,8 @@ class ApiException extends \Exception
     public const CODE_RESOURCE_NOT_FOUND    = 9003;
     public const CODE_VALIDATION_ERROR      = 9010;
     public const CODE_RATE_LIMITED          = 9011;
+    // 运行时配置乐观并发/环境锁冲突（通信运行时控制面）。
+    public const CODE_CONFIG_CONFLICT       = 9016;
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     // 码→消息 / HTTP 映射
@@ -95,6 +97,7 @@ class ApiException extends \Exception
         self::CODE_RESOURCE_NOT_FOUND   => '资源不存在',
         self::CODE_VALIDATION_ERROR     => '字段校验失败',
         self::CODE_RATE_LIMITED         => '请求过于频繁',
+        self::CODE_CONFIG_CONFLICT      => '配置冲突',
         self::CODE_UNKNOWN              => '未知错误',
     ];
 
@@ -124,6 +127,7 @@ class ApiException extends \Exception
         self::CODE_RESOURCE_NOT_FOUND    => 404,
         self::CODE_VALIDATION_ERROR      => 422,
         self::CODE_RATE_LIMITED          => 429,
+        self::CODE_CONFIG_CONFLICT       => 409,
         self::CODE_FILE_TOO_LARGE        => 413,
         self::CODE_FILE_TYPE_NOT_ALLOWED  => 415,
         self::CODE_FILE_UPLOAD_FAILED    => 500,

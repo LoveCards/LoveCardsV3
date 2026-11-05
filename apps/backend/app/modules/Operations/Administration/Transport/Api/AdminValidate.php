@@ -27,6 +27,14 @@ final class AdminValidate extends Validate
         'upgradeCreate' => [
             'normal' => [], 'require' => ['file'], 'nonNull' => false, 'toNull' => [],
         ],
+        // 通信运行时控制面：字段级范围校验在 Runtime Domain（结构化 422），
+        // 这里只做类型与存在性防线。
+        'runtimeConfig' => [
+            'normal' => ['desired_mode', 'expected_revision', 'notification_interval_seconds', 'message_interval_seconds',
+                'unread_interval_seconds', 'polling_backoff_factor', 'polling_max_interval_seconds', 'pause_when_hidden',
+                'worker_stale_seconds', 'scheduler_stale_seconds', 'gateway_stale_seconds', 'require_supervisor'],
+            'require' => ['desired_mode', 'expected_revision'], 'nonNull' => false, 'toNull' => [],
+        ],
     ];
 
     protected $rule = [
@@ -43,6 +51,18 @@ final class AdminValidate extends Validate
         'limit' => 'number|between:1,200',
         'file' => 'require|fileExt:zip',
         'unread_only' => 'boolean',
+        'desired_mode' => 'max:16',
+        'expected_revision' => 'number',
+        'notification_interval_seconds' => 'number',
+        'message_interval_seconds' => 'number',
+        'unread_interval_seconds' => 'number',
+        'polling_backoff_factor' => 'number',
+        'polling_max_interval_seconds' => 'number',
+        'pause_when_hidden' => 'boolean',
+        'worker_stale_seconds' => 'number',
+        'scheduler_stale_seconds' => 'number',
+        'gateway_stale_seconds' => 'number',
+        'require_supervisor' => 'boolean',
     ];
 
     protected $message = [

@@ -1,6 +1,6 @@
 # API Contract Audit
 
-- Routes inspected: 191
+- Routes inspected: 195
 - P0: 0
 - P1: 0
 - P2: 0
@@ -52,6 +52,10 @@
 | GET | `/admin/operations/notifications` | `operations.notificationStats` | grants:admin.access:global,communications.read:global | no | AdminNotificationStatsResource::make | — |
 | GET | `/admin/operations/overview` | `operations.overview` | grants:admin.access:global,operations.read:global | no | AdminOverviewResource::make | — |
 | GET | `/admin/operations/runtime` | `operations.runtime` | grants:admin.access:global,operations.read:global | no | AdminRuntimeResource::make | — |
+| GET | `/admin/operations/runtime/config` | `operations.runtimeConfig` | grants:admin.access:global,operations.read:global | no | AdminRuntimeConfigResource::make | — |
+| PUT | `/admin/operations/runtime/config` | `operations.applyRuntimeConfig` | grants:admin.access:global,operations.runtime.configure:global | yes | AdminRuntimeConfigResource::make | — |
+| POST | `/admin/operations/runtime/reconcile` | `operations.reconcileRuntime` | grants:admin.access:global,operations.runtime.configure:global | no | AdminRuntimeConfigResource::make | — |
+| POST | `/admin/operations/runtime/validate` | `operations.validateRuntimeConfig` | grants:admin.access:global,operations.runtime.configure:global | yes | AdminRuntimeValidateResource::make | — |
 | GET | `/admin/operations/upgrades` | `operations.upgrades` | grants:admin.access:global,operations.read:global | yes | AdminUpgradePlanResource::collection | — |
 | POST | `/admin/operations/upgrades` | `operations.createUpgrade` | grants:admin.access:global,system.update:global | yes | AdminUpgradePlanResource::make | — |
 | GET | `/admin/operations/upgrades/:planId` | `operations.upgrade` | grants:admin.access:global,operations.read:global | no | AdminUpgradePlanResource::make | — |

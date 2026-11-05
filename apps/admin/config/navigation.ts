@@ -298,7 +298,8 @@ const operationsItems: readonly AdminNavigationItem[] = [
     section: '运行状态',
     parentRoute: '/apps/operations/runtime',
     grants: [operationsGrant],
-    actionCapabilities: ['operations.read'],
+    actionCapabilities: ['operations.read', 'operations.runtime.configure'],
+    riskLevel: 'sensitive',
   }),
   item({
     path: '/apps/operations/deliveries',

@@ -73,6 +73,62 @@ export interface OperationsRuntimeStatus {
     queues?: Array<{ queue_name: string; execution_mode: string; pending: number; processing: number; dead: number }>
     last_updated?: string | null
   }
+  communication: RuntimeCommunicationSnapshot
+}
+
+export interface RuntimeCapability {
+  key: string
+  ready: boolean | null
+  provider: string | null
+  reason_code: string | null
+  note?: Record<string, unknown> | null
+  checked_at: string
+}
+
+export interface RuntimeCommunicationSettings {
+  notification_interval_seconds: number
+  message_interval_seconds: number
+  unread_interval_seconds: number
+  polling_backoff_factor: number
+  polling_max_interval_seconds: number
+  pause_when_hidden: boolean
+  worker_stale_seconds: number
+  scheduler_stale_seconds: number
+  gateway_stale_seconds: number
+  require_supervisor: boolean
+}
+
+export interface RuntimeCommunicationSnapshot {
+  desired_mode: 'polling' | 'realtime'
+  effective_mode: 'polling' | 'realtime'
+  status: 'ready' | 'degraded'
+  revision: number
+  reason_code: string | null
+  checked_at: string
+  settings: RuntimeCommunicationSettings
+  last_apply_state: string | null
+  last_apply_reason: string | null
+  capabilities: RuntimeCapability[]
+}
+
+export interface RuntimeConfigUpdate {
+  desired_mode: 'polling' | 'realtime'
+  expected_revision: number
+  notification_interval_seconds?: number
+  message_interval_seconds?: number
+  unread_interval_seconds?: number
+  polling_backoff_factor?: number
+  polling_max_interval_seconds?: number
+  pause_when_hidden?: boolean
+  worker_stale_seconds?: number
+  scheduler_stale_seconds?: number
+  gateway_stale_seconds?: number
+  require_supervisor?: boolean
+}
+
+export interface RuntimeConfigValidation {
+  valid: boolean
+  violations: Array<{ field: string; message: string }>
 }
 
 export interface OperationsDelivery {

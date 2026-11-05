@@ -20,3 +20,4 @@ export type { SenderType, SenderMeta, SenderChannel, SenderTemplate } from './se
 export type { CaptchaDriver, CaptchaMeta, CaptchaConfig, CaptchaInstallResult, CaptchaChallenge } from './captcha'
 export type { AuthPolicy, SessionState } from './auth'
 export type { OperationsFacility, OperationsOverview, OperationsMigrationProgress, OperationsMigration, OperationsWorker, OperationsRuntimeStatus, OperationsDelivery, OperationsAuditLog, OperationsNotificationStats, OperationsCommunityInsights, OperationsUpgradeStep, OperationsUpgradePlan, AdminReportEvent, AdminReport, AdminReportEvidence, UserSecurityOverview, UserSession, RecoveryChallenge, FileUsage } from './operations'
+export type { RuntimeCapability, RuntimeCommunicationSettings, RuntimeCommunicationSnapshot, RuntimeConfigUpdate, RuntimeConfigValidation } from './operations'

@@ -72,6 +72,8 @@ function resourceType(route) {
   const base = short.replace(/Resource$/, '')
   const map = { Card: 'Card', CardCreated: 'CreateResult', Comment: 'Comment', CommentCreated: 'CreateResult', Tag: 'Tag', User: 'User', Profile: 'CurrentUser', PublicUserProfile: 'PublicUserProfile', SocialRelation: 'SocialRelation', CurrentUserSession: 'CurrentUserSession', EmailCaptcha: 'EmailCaptchaResult', PrivacyPreferences: 'PrivacyPreferences', BlockedUserCursorPage: 'BlockedUserCursorPage', MentionCandidate: 'MentionCandidate', Role: 'Role', Grant: 'Grant', Permission: 'CapabilityItem', Like: 'Like', LikeCount: '{ likes: number }', File: 'LCFile', DirectUpload: 'DirectUploadResult', Auth: 'LoginResult', AuthPolicy: 'AuthPolicy', Session: 'SessionState', Theme: 'ThemeItem', Config: 'ConfigData', Dashboard: 'DashboardData', System: 'SystemUpdateInfo', Sender: 'SenderMeta', Storage: 'StorageMeta', Captcha: 'CaptchaMeta', CaptchaChallenge: 'CaptchaChallenge', CursorPage: 'CursorPage', NotificationItem: 'NotificationItem', NotificationCursorPage: 'NotificationCursorPage', NotificationUnread: 'NotificationUnread', NotificationPreferences: 'NotificationPreferences', AdminOverview: 'OperationsOverview', AdminMigration: 'OperationsMigration', AdminRuntime: 'OperationsRuntimeStatus', AdminDelivery: 'OperationsDelivery', AdminAuditLog: 'OperationsAuditLog', AdminNotificationStats: 'OperationsNotificationStats', AdminCommunityInsights: 'OperationsCommunityInsights', AdminUpgradePlan: 'OperationsUpgradePlan', AdminReport: 'AdminReport', AdminSecurity: 'UserSecurityOverview', AdminSession: 'UserSession', AdminRecoveryChallenge: 'RecoveryChallenge', AdminFileUsage: 'FileUsage' }
   map.CardMediaAccess = 'CardMediaAccess'
+  map.AdminRuntimeConfig = 'RuntimeCommunicationSnapshot'
+  map.AdminRuntimeValidate = 'RuntimeConfigValidation'
   const item = map[base] || 'Record<string, unknown>'
   if (route.response?.shape === 'collection') return `${item}[]`
   if (route.response?.shape === 'paginated') return `ListResult<${item}>`
@@ -154,6 +156,8 @@ function requestSchema(route) {
   // unknown[].
   if (route.name === 'cards.create') schema['x-typescript-type'] = 'CreateCardParams'
   if (route.name === 'cards.update' || route.name === 'cards.updateManaged') schema['x-typescript-type'] = 'UpdateCardParams'
+  // 运行时控制面：请求参数使用手维护的 RuntimeConfigUpdate 契约（字段级范围校验在服务端 Domain）。
+  if (route.name === 'operations.applyRuntimeConfig' || route.name === 'operations.validateRuntimeConfig') schema['x-typescript-type'] = 'RuntimeConfigUpdate'
   for (const name of pathParams) {
     delete schema.properties?.[name]
     if (Array.isArray(schema.required)) schema.required = schema.required.filter((value) => value !== name)

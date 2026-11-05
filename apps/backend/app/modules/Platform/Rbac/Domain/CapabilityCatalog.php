@@ -113,6 +113,7 @@ final class CapabilityCatalog
             'operations.read'       => '查看系统运行和迁移状态',
             'operations.migrate'    => '推进系统迁移',
             'operations.retry'      => '重试异步投递',
+            'operations.runtime.configure' => '变更运行时通信模式与运行参数',
             'audit.read'            => '查看审计日志',
             'reports.read'          => '查看举报案件',
             'reports.manage'        => '处理举报案件',
