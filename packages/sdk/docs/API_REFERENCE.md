@@ -29,7 +29,7 @@ const result = await client.cards.create({ content: '正文' })
 await client.cards.delete(24) // void
 ```
 
-cursor 接口返回包含 `items/next_cursor/has_more` 的业务对象；不要把它当 `ListResult`。SSE `notifications.stream()` 是 raw string/stream 契约，与 JSON envelope 不同。
+cursor 接口返回包含 `items/next_cursor/has_more` 的业务对象；不要把它当 `ListResult`。实时连接先调用 `notifications.streamTicket()` 获取短期 Gateway ticket，再由主题端建立可取消的 EventSource；通知事实仍通过 cursor API 回源。
 
 ## 认证与恢复
 

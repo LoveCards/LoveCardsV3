@@ -2,14 +2,15 @@
 
 namespace app\modules\Platform\Notifications\Infrastructure;
 
-use app\modules\Platform\Notifications\Contract\NotificationRepository;
+use app\modules\Platform\Notifications\Contract\NotificationReceiptRepository;
 use app\modules\Platform\Notifications\Contract\NotificationTypeCatalog;
 use app\modules\Platform\Notifications\Domain\NotificationIntent;
 use think\facade\Db;
 use app\modules\Content\Cards\Public\CardAccess as CardVisibilityPolicy;
 use app\modules\Platform\User\Public\UserStatus;
+use app\modules\Platform\Notifications\Domain\NotificationWriteReceipt;
 
-final class ThinkOrmNotificationRepository implements NotificationRepository
+final class ThinkOrmNotificationRepository implements NotificationReceiptRepository
 {
     public function recipientCanReceive(int $userId, string $type): bool
     {
@@ -29,15 +30,20 @@ final class ThinkOrmNotificationRepository implements NotificationRepository
 
     public function create(NotificationIntent $intent): int
     {
+        return $this->createWithReceipt($intent)->id();
+    }
+
+    public function createWithReceipt(NotificationIntent $intent): NotificationWriteReceipt
+    {
         $existing = Db::table('notifications')
             ->where('recipient_id', $intent->recipientId())
             ->where('dedupe_key', $intent->dedupeKey())
             ->value('id');
-        if ($existing !== null) return (int) $existing;
+        if ($existing !== null) return new NotificationWriteReceipt((int) $existing, false);
 
         $resource = $intent->resource();
         try {
-            return (int) Db::table('notifications')->insertGetId([
+            $id = (int) Db::table('notifications')->insertGetId([
                 'recipient_id' => $intent->recipientId(),
                 'dedupe_key' => $intent->dedupeKey(),
                 'type' => $intent->type(),
@@ -48,12 +54,13 @@ final class ThinkOrmNotificationRepository implements NotificationRepository
                 'read_at' => null,
                 'created_at' => date('Y-m-d H:i:s'),
             ]);
+            return new NotificationWriteReceipt($id, true);
         } catch (\Throwable $exception) {
             $existing = Db::table('notifications')
                 ->where('recipient_id', $intent->recipientId())
                 ->where('dedupe_key', $intent->dedupeKey())
                 ->value('id');
-            if ($existing !== null) return (int) $existing;
+            if ($existing !== null) return new NotificationWriteReceipt((int) $existing, false);
             throw $exception;
         }
     }

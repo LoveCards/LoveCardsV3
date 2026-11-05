@@ -369,9 +369,11 @@ await test('GET /me/notifications/unread → notifications.unread()', async () =
   return r
 })
 
-await test('GET /me/notifications/stream without params → notifications.stream()', async () => {
-  const r = await adminClient.notifications.stream()
-  assert(typeof r === 'string' && r.includes('event: notifications'), 'notification stream should return one SSE event')
+await test('GET /me/notifications/stream-ticket → notifications.streamTicket()', async () => {
+  const r = await adminClient.notifications.streamTicket()
+  assert(typeof r?.ticket === 'string' && r.ticket.includes('.'), 'stream ticket should contain a signed token')
+  assert(r.endpoint?.endsWith('/stream'), 'stream ticket should declare the Gateway endpoint')
+  assert(r.cursor_strategy === 'opaque', 'stream ticket should declare opaque cursors')
   return r
 })
 

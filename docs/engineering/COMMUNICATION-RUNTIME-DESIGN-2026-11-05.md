@@ -1,6 +1,6 @@
 # 通信运行时与事件投递统一设计
 
-- 设计状态：Draft / 只完成设计与迁移盘点，尚未改动业务实现
+- 设计状态：基线已冻结；Gateway、票据、通知 signal、能力探测和契约迁移已实现，Runtime 控制面与主题通信客户端待接入
 - 日期：2026-11-05
 - 适用版本：LoveCardsV3
 - 责任边界：本文件定义 LC 基础能力、运行时控制面、通信模式和迁移验收；具体实现按任务包拆分并行完成
@@ -52,10 +52,10 @@
 
 | 现状 | 处理结论 |
 |---|---|
-| `config/runtime.php` 只有 `eventing.wakeup`、`eventing.worker`、`realtime.sse` | 增加统一通信运行时控制面；废弃 `fpm-sse` 作为有效 Provider。当前 `fpm-sse` 走 fallback 可能被页面误解为实时可用，必须改为 Gateway probe 决定 effective mode |
+| `config/runtime.php` 只有 `eventing.wakeup`、`eventing.worker`、旧 `realtime.sse` | 已迁移为 `realtime.gateway`；`fpm-sse` 不再是有效 Provider，必须由 Gateway capability probe 决定 effective mode |
 | `Platform\\Realtime::stream()` 只查一次并返回快照，且 SSE 换行拼接错误 | 删除伪长连接；Realtime 模式改由独立 Gateway 提供连接 |
 | `RealtimePublisher`/`NullRealtimePublisher` 无实际调用方 | 改成有明确语义的 Gateway Publisher，或在垂直切片完成时移除空接口；不得继续空绑定 |
-| `notifications.stream` SDK 契约是 `Promise<string>` 且 `after` 为数字 | 改为 Realtime-only 长连接适配器或统一通信客户端；禁止生成物手改 |
+| 旧 `notifications.stream` SDK 契约是 `Promise<string>` 且 `after` 为数字 | 已删除旧路由和生成方法，改为 `notifications.streamTicket`；主题通信客户端待接入 |
 | `InboxPage`/`AppShell` 各自固定 20s/30s 轮询 | 收敛到一个通信运行时客户端 |
 | 私信打开/发送后手动重新加载 | Polling 用游标，Realtime 用信号后回源；统一去重 |
 | Runtime API 只有 GET | 增加目标配置、校验/应用、状态查询接口，并更新权限和审计 |
@@ -162,7 +162,7 @@ SSE 只作为 Gateway 到浏览器的单向协议：
 - 推送信号包含 topic 和 cursor hint，不承载可替代的业务事实；
 - 重连后用 `after`/`Last-Event-ID` 游标补齐。
 
-Event Worker 到 Gateway 的进程间通知必须有明确 adapter。优先使用可选 Redis pub/sub 传递低价值唤醒信号；MySQL notifications/cursor 仍是权威事实。Redis 不可用时，Gateway/Worker 进入 degraded 并按受控间隔回源，不能把未定义的空 Publisher 当作实时已启用。
+Event Worker 到 Gateway 的进程间通知使用带内部凭证的 HTTP Publisher，发送低价值唤醒信号；MySQL notifications/cursor 仍是权威事实。Publisher 失败不回滚业务写入，浏览器必须通过定期回源补偿丢失的唤醒；不能把未定义的空 Publisher 当作实时已启用。Redis pub/sub 仅在测量到 HTTP Publisher 瓶颈后作为可替换传输评估。
 
 如果 Worker 或 Gateway 不 ready，系统不得宣称 Realtime 已生效，应保持 `effective_mode=polling`、`status=degraded`，并在 Runtime 页面显示原因。
 
@@ -293,14 +293,14 @@ GET /runtime/communication
 }
 ```
 
-现有 `GET /me/notifications/stream` 不能继续作为“伪 SSE 快照”。本项目冻结采用 **Realtime-only** 语义：只有 `effective_mode=realtime` 且 Gateway ready 时可用，返回真正可取消的长连接；Polling 模式返回稳定的能力错误，前端改用轮询 API。`after` 统一使用不透明 cursor，重连同时支持 `Last-Event-ID`，不得恢复数字 id 契约。在 Gateway 垂直切片完成前，旧 FPM Controller 必须被禁用或移除，不能继续被描述为实时能力。
+旧 `GET /me/notifications/stream` 伪 SSE 接口已删除。Realtime 模式通过 `GET /me/notifications/stream-ticket` 取得短期票据，再连接独立 Gateway 的 `/stream`；Polling 模式直接使用通知与私信 API。Gateway 连接可取消，`after` 和 `Last-Event-ID` 仅承载不透明 cursor hint；断线后重新签发 ticket 并通过业务 API 回源补齐，不恢复数字 id 契约。
 
 ## 9. 旧代码迁移清单
 
 ### 后端
 
 - `apps/backend/config/runtime.php`
-  - 增加 Runtime 配置 schema 和默认 polling；废弃 `fpm-sse`。
+  - 增加 Runtime 配置 schema 和默认 polling；`realtime.gateway` 由能力探测决定，不再使用 `fpm-sse`。
   - 明确 env/bootstrap 与 DB desired config 的优先级。
 - `app/api/controller/Platform/Realtime.php`
   - 在 Gateway 切片完成前删除伪快照；不得修成 FPM 内部循环。
@@ -337,7 +337,7 @@ GET /runtime/communication
 - `apps/admin/pages/apps/operations/deliveries/**`：保留现有投递监控，新增模式/transport 过滤字段时同步契约。
 - `apps/default-theme/src/pages/community/InboxPage.jsx`、`AppShell.jsx`：删除各自固定 interval，使用统一通信客户端。
 - `ConversationPanel.jsx`、`MessagesPage.jsx`、`community-service.js`：消息游标、轮询/实时切换、断线补偿、按 message id/client_message_id 去重。
-- `parseNotificationSseSnapshot` 和 `Promise<string>` stream 适配：在新协议完成后删除或转为真实可取消连接，不得长期双轨。
+- `streamTicket` 适配：主题端取得短期票据后由 EventSource 连接 Gateway；通知事实仍通过游标 API 回源。
 - 更新 `FRONTEND-AGENT-HANDOFF.md`、`COMMUNITY-CAPABILITIES.md`、`RUNTIME-ARCHITECTURE.md`、`API_REFERENCE.md`、`API_ENDPOINT_REFERENCE.md` 等文档。
 - 同步 `DATABASE-OPERATIONS.md`、`SYSTEM-LIFECYCLE.md` 中的迁移、启动和回滚说明；历史审计文档只追加勘误，不伪造旧测试数字。
 
@@ -359,7 +359,7 @@ GET /runtime/communication
 - **A：Runtime 控制面**
   - 配置持久化、校验、探测、desired/effective、切换 API、权限、审计、Runtime 页面。
 - **B：Eventing/Realtime adapter**
-  - Gateway publisher port、Worker/Gateway health、Realtime-only stream、去除 FPM 伪 SSE、重连游标契约。
+  - Gateway、短期 ticket、通知 signal、能力探测及旧 FPM 伪 SSE 移除已由独立进程任务完成；剩余 Runtime 模式门控、私信 signal 与真实部署联调。
 - **C：SDK/Theme 通信客户端**
   - 统一 polling/realtime adapter、通知和私信消费、退避、可见性、去重、断线补偿。
 - **D：契约/迁移/测试**
@@ -370,7 +370,7 @@ GET /runtime/communication
 | 文件/目录 | 唯一负责人 |
 |---|---|
 | `app/modules/Operations/Runtime/**`、`config/runtime.php`、Runtime migration | A |
-| `app/modules/Platform/Eventing/**`、`app/api/controller/Platform/Realtime.php` | B |
+| `apps/realtime-gateway/**`、Gateway ticket/publisher/probe | 独立进程任务；B 仅接 Runtime 模式门控与私信 signal |
 | `apps/default-theme/src/**`、主题通信测试、`apps/admin/pages/apps/operations/runtime.vue` | C |
 | RBAC seed、route/OpenAPI/SDK 生成、跨模块测试和文档 | D |
 | `provider.php`、共享 route 文件 | 先由 A/B 冻结接口，再由 D 串行修改；不能多人同时编辑 |
@@ -436,11 +436,10 @@ apps/backend 受影响 PHP 全部 php -l
 - 后台可切换模式并配置安全范围内的运行参数。
 - 现有 FPM 伪 SSE 不能继续作为实时实现。
 
-实现前需要主开发 Agent 按本文件提交：
+本轮基础接入已确定旧接口迁移方案与 Gateway 协议。主开发 Agent 继续提交：
 
 1. Runtime Contract 字段和状态机；
-2. 旧接口的最终迁移选择（Realtime-only stream 或统一 adapter）；
-3. Gateway health/auth 协议；
-4. 数据库迁移文件和回滚/兼容说明；
-5. 并行任务之间的文件 ownership，避免多人同时改同一文件。
+2. Runtime 门控 `streamTicket` 与 Publisher 的接口和降级响应；
+3. 数据库迁移文件和回滚/兼容说明；
+4. 并行任务之间的文件 ownership，避免多人同时改同一文件。
 

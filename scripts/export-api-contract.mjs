@@ -66,6 +66,7 @@ function resourceType(route) {
     'theme.publicConfig': 'ThemeConfigData', 'theme.updateConfig': 'void', 'roles.getGrants': 'Grant[]', 'permissions.all': 'CapabilityItem[]',
     'session.policy': 'AuthPolicy', 'session.check': 'SessionState',
     'notifications.unread': 'NotificationUnread',
+    'notifications.streamTicket': 'RealtimeStreamTicket',
   }
   if (operationTypes[operation]) return operationTypes[operation]
   const short = route.response?.resource || ''

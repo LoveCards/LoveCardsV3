@@ -112,7 +112,7 @@ export function createGateway(config, clock = () => Date.now()) {
       signalIds.set(signal.signal_id, clock() + 300_000);
       counters.signals_received++;
       let delivered = 0;
-      const payload = frame(signal.topic, { topic: signal.topic, cursor_hint: signal.cursor_hint }, signal.cursor_hint);
+      const payload = frame('signal', { topic: signal.topic, cursor_hint: signal.cursor_hint }, signal.cursor_hint);
       for (const connection of connections) {
         if (connection.recipientKey === signal.recipient_key && connection.topics.has(signal.topic) && write(connection, payload)) delivered++;
       }

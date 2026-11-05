@@ -111,11 +111,6 @@ final class Community extends Validate
                 'required' => ['recipient_uid', 'body'],
                 'additionalProperties' => false,
             ],
-            'stream' => [
-                'type' => 'object',
-                'properties' => ['after' => ['type' => 'integer', 'minimum' => 0]],
-                'additionalProperties' => false,
-            ],
         ];
     }
 
@@ -131,7 +126,6 @@ final class Community extends Validate
         'report' => ['normal' => ['details'], 'require' => ['resource_type', 'resource_id', 'reason'], 'nonNull' => false, 'toNull' => false],
         'draft' => ['normal' => ['title', 'content', 'payload'], 'require' => false, 'nonNull' => false, 'toNull' => false],
         'messageSend' => ['normal' => ['client_message_id'], 'require' => ['recipient_uid', 'body'], 'nonNull' => false, 'toNull' => false],
-        'stream' => ['normal' => ['after'], 'require' => false, 'nonNull' => false, 'toNull' => false],
     ];
 
     protected $rule = [
@@ -158,7 +152,6 @@ final class Community extends Validate
         'recipient_uid' => 'require|regex:/^[0-9]{12}$/',
         'body' => 'require|max:5000',
         'client_message_id' => 'max:128',
-        'after' => 'number|between:0,2147483647',
     ];
 
     /** 社区 JSON 请求的布尔字段同时接受 JSON boolean 与字符串形式。 */

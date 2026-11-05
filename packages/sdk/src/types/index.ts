@@ -6,7 +6,7 @@ export type { ProfileVisibility, MessagesFrom, PrivacyPreferences, BlockedUserIt
 export type { Comment, CreateCommentParams } from './comments'
 export type { Tag } from './tags'
 export type { Like } from './likes'
-export type { NotificationType, ConfigurableNotificationType, SystemNotificationType, NotificationCategory, NotificationListCategory, NotificationActorState, NotificationResourceState, NotificationActor, NotificationItem, NotificationCursorPage, NotificationUnread, NotificationPreferences, NotificationPreferencesUpdate } from './notifications'
+export type { NotificationType, ConfigurableNotificationType, SystemNotificationType, NotificationCategory, NotificationListCategory, NotificationActorState, NotificationResourceState, NotificationActor, NotificationItem, NotificationCursorPage, NotificationUnread, NotificationPreferences, NotificationPreferencesUpdate, RealtimeStreamTicket } from './notifications'
 export type { LCFile, UploadResult, DirectUploadResult } from './files'
 export type { ThemeMode, ThemeItem, ThemeConfigData, ThemeActivateParams, ThemeDeleteParams } from './theme'
 export type { Role, CreateRoleParams, UpdateRoleParams, AssignGrantsParams, ReseedResult } from './roles'

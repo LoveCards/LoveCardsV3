@@ -42,7 +42,7 @@
 3. 加载更多只把服务端返回的 `next_cursor` 原样传回当前分类。不得解析或构造游标，不得跨分类复用，也不得分别请求 `message/social/interaction` 后在前端合并。
 4. `engagement` 只存在于 `NotificationListCategory` 查询参数。每个返回项保留真实 `item.category`（`message/social/interaction/system`）与 `item.type`，呈现层不得重写分类。
 5. `type=message` 是私信产生的通知投影；点击仍只消费服务端 `action_url`，私信正文、会话列表与发送继续由 Messages SDK 负责。
-6. 定时同步必须沿用当前分类请求。若 `notifications.stream()` 不能接受当前 category，它只能作为“需要刷新”的失效信号，不能把未筛选快照直接并入当前列表。
+6. 定时同步必须沿用当前分类请求。Gateway signal 不承载通知快照，只表示数据可能更新；收到后必须沿用当前 category 调用 `notifications.list/unread` 回源。
 7. 页面始终提供“刷新”操作；后台同步或加载更多失败不清空已有内容。actor/resource 状态、站内 `action_url` 校验和已读状态以最新服务端结果为准。
 
 ## 草稿保存策略

@@ -94,7 +94,7 @@ test('signals require authentication and stay within recipient and topic scope',
   assert.equal(sent.status, 202);
   assert.equal((await sent.json()).connections, 1);
   const frame = await nextFrame(first.reader);
-  assert.match(frame, /event: notifications\r?\n/);
+  assert.match(frame, /event: signal\r?\n/);
   assert.match(frame, /id: opaque-9\r?\n/);
   assert.match(frame, /data: \{"topic":"notifications","cursor_hint":"opaque-9"\}\r?\n\r?\n/);
   const duplicate = await fetch(`${base}/internal/signals`, { method: 'POST', headers: { authorization: `Bearer ${internalSecret}`, 'content-type': 'application/json' }, body: JSON.stringify(signal) });

@@ -55,3 +55,12 @@ export interface NotificationPreferences {
 export interface NotificationPreferencesUpdate {
   in_app: Partial<Record<ConfigurableNotificationType, boolean>>
 }
+
+export interface RealtimeStreamTicket {
+  ticket: string
+  endpoint: string
+  protocol: 'lc-realtime-1'
+  expires_at: string
+  topics: ('notifications' | 'messages')[]
+  cursor_strategy: 'opaque'
+}

@@ -4,6 +4,7 @@
 - 日期：2026-11-06
 - 适用项目：LoveCardsV3
 - 实现目录：`apps/realtime-gateway`
+- 当前实现：Gateway foundation、后端短期 ticket 签发和通知新建 signal 已完成；Runtime 模式切换、前端 EventSource 和云端进程托管仍需联调接入。
 - 责任边界：本程序只维护浏览器长连接和低价值实时唤醒，不承载业务事实、不消费 MySQL Outbox、不写通知表。
 
 ## 1. 目标
@@ -96,6 +97,7 @@ Cache-Control: no-cache
 - `after` 只作为回源游标提示，Gateway 不解释其业务语义；
 - 浏览器重连时可使用 `Last-Event-ID`，Gateway 只把它作为 cursor hint 继续发送；
 - Gateway 建立连接后发送 `event: ready`；
+- 有新信号时发送 `event: signal`，`data.topic` 为 `notifications|messages`；客户端只用它触发 API 回源；
 - 每 15 秒发送注释心跳 `: ping`，避免代理关闭空闲连接；
 - 连接关闭由客户端、Gateway 优雅停止或代理超时触发。
 
@@ -165,7 +167,7 @@ Content-Type: application/json
 | `LC_REALTIME_HOST` | `127.0.0.1` | 监听地址 |
 | `LC_REALTIME_PORT` | `7070` | 监听端口 |
 | `LC_REALTIME_VERSION` | `dev` | 发布版本 |
-| `LC_REALTIME_PROTOCOL` | `lc-realtime-1` | 协议版本 |
+| 协议版本 | `lc-realtime-1` | 当前固定值，升级时须同时更新后端 Probe 与 ticket 签发器 |
 | `LC_REALTIME_TICKET_SECRET` | 无 | 必填 |
 | `LC_REALTIME_INTERNAL_SECRET` | 无 | 必填 |
 | `LC_REALTIME_HEARTBEAT_SECONDS` | `15` | 5..120 |
@@ -186,7 +188,9 @@ Content-Type: application/json
 6. 前端收到 signal 后按 cursor API 回源；
 7. Gateway 不可用时 Runtime 保持 polling effective mode。
 
-在后端适配器接入前，本目录可以独立运行和测试；不得伪装成已接入完整业务链路。
+当前后端已提供 `GET /me/notifications/stream-ticket`，由 `HmacRealtimeTicketIssuer` 签发一次性短期 ticket；通知首次持久化后由 `HttpRealtimePublisher` 发送低价值 signal。通知 signal 暂不携带 cursor hint，浏览器收到后需调用通知 API 回源；不得把通知自增 ID 伪装成不透明 cursor。两者都采用 best-effort 语义，不改变业务事务结果。
+
+后端 ticket 与通知 Publisher 已接入，但 Runtime 模式切换、私信 signal、主题 EventSource 和云端进程托管尚未完成；不得将当前基础接入视为完整业务链路。
 
 ## 10. 验收
 

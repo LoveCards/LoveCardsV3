@@ -77,30 +77,6 @@ export function classifyCommunityError(error) {
   };
 }
 
-export function parseNotificationSseSnapshot(text) {
-  if (typeof text !== 'string' || !text.trim()) return null;
-  const event = { id: null, event: 'message', retry: null, data: null };
-  const data = [];
-  for (const line of text.replace(/\r\n?/g, '\n').split('\n')) {
-    if (!line || line.startsWith(':')) continue;
-    const separator = line.indexOf(':');
-    const field = separator < 0 ? line : line.slice(0, separator);
-    const value = separator < 0 ? '' : line.slice(separator + 1).replace(/^ /, '');
-    if (field === 'data') data.push(value);
-    else if (field === 'id') event.id = value || null;
-    else if (field === 'event') event.event = value || 'message';
-    else if (field === 'retry' && /^\d+$/.test(value)) event.retry = Number(value);
-  }
-  if (!data.length) return null;
-  const raw = data.join('\n');
-  try {
-    event.data = JSON.parse(raw);
-  } catch {
-    event.data = raw;
-  }
-  return event;
-}
-
 function defaultMessageId() {
   if (typeof globalThis.crypto?.randomUUID === 'function') return globalThis.crypto.randomUUID();
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
@@ -226,6 +202,7 @@ export function markNotificationRead(input) {
   return client().notifications.read({ ids });
 }
 export const markAllNotificationsRead = (params) => client().notifications.readAll(params);
+export const getNotificationStreamTicket = () => client().notifications.streamTicket();
 
 export const listConversations = async () => normalizeCollection(await client().messages.conversations());
 export const listMessages = async (conversationId) => normalizeCollection(await client().messages.list(conversationId));

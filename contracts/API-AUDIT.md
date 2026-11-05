@@ -162,7 +162,7 @@
 | POST | `/me/notifications/preferences` | `notifications.updatePreferences` | grants:authenticated | yes | NotificationPreferencesResource::make | — |
 | POST | `/me/notifications/read-all` | `notifications.readAll` | grants:authenticated | yes | createNoContent | — |
 | POST | `/me/notifications/read` | `notifications.read` | grants:authenticated | yes | createNoContent | — |
-| GET | `/me/notifications/stream` | `notifications.stream` | grants:authenticated | yes | createOk | — |
+| GET | `/me/notifications/stream-ticket` | `notifications.streamTicket` | grants:authenticated | no | RealtimeTicketResource::make | — |
 | GET | `/me/notifications/unread` | `notifications.unread` | grants:authenticated | yes | NotificationUnreadResource::make | — |
 | POST | `/me/password` | `users.me.password` | grants:users.update:own | yes | createNoContent | — |
 | GET | `/me/privacy` | `safety.preferences` | grants:authenticated | no | PrivacyPreferencesResource::make | — |

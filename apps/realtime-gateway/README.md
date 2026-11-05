@@ -7,8 +7,8 @@
 ## 本地运行
 
 ```powershell
-$env:LC_REALTIME_TICKET_SECRET = 'local-ticket-secret'
-$env:LC_REALTIME_INTERNAL_SECRET = 'local-internal-secret'
+$env:LC_REALTIME_TICKET_SECRET = 'local-ticket-secret-abcdefghijklmnopqrstuvwxyz'
+$env:LC_REALTIME_INTERNAL_SECRET = 'local-internal-secret-abcdefghijklmnopqrstuvwxyz'
 node src/server.mjs
 ```
 

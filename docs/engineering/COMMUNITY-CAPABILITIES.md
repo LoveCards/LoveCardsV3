@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | 草稿箱 | `Platform/Drafts`、`card_drafts` | `client.drafts.list/create/get/update/delete` | owner 过滤、软删除、updated/id cursor、version 字段 |
 | 他人主页、关注/粉丝 | `Platform/Social`、`user_follows` | `profile/follow/unfollow/followers/following/relation` | handle 公开查找；禁止自关注和重复边；关系列表需认证 |
-| 通知 | `Platform/Notifications`、`notifications` | `list/unread/read/readAll/stream` | `engagement` 仅为联合查询分类；服务端复合游标、recipient 归属、dedupe/read 状态；SSE 可回退刷新 |
+| 通知 | `Platform/Notifications`、`notifications` | `list/unread/read/readAll/streamTicket` | `engagement` 仅为联合查询分类；服务端复合游标、recipient 归属、dedupe/read 状态；Gateway signal 仅触发回源 |
 | 私信 | `Platform/Messaging`、conversation 三表 | `conversations/list/send` | 会话成员范围、block/privacy 检查、client message 幂等 |
 | 账号恢复 | `Platform/Auth`、`security_challenges`、`auth_sessions` | `session.recovery_request/recovery_reset` | 一次性挑战、过期/尝试次数；成功后 security version 增长并撤销旧 Session |
 | 收藏与浏览历史 | `Platform/Library`、`library_items`/`view_history` | `list/save/remove/history/history_record/history_clear` | 用户+资源唯一；cursor；记录浏览累计次数 |
@@ -24,7 +24,7 @@
 - `GET /me/library`、`/me/history`、`/me/drafts`：仅可选 `cursor, limit`；
 - `DELETE /me/library`：必填 query `resource_type, resource_id`；生成方法为 `library.remove(params)`；
 - `GET /me/notifications`：可选 `cursor, limit, unread_only`；unread/read-all 无业务参数；
-- `GET /me/notifications/stream`：仅可选 `after`；响应是 `text/event-stream` raw；
+- `GET /me/notifications/stream-ticket`：返回一次性短期 Gateway 连接票据；浏览器连接由独立 Realtime Gateway 建立，通知事实仍通过 cursor API 回源；
 - `POST /me/notifications/read`：只要求 `ids`；
 - `GET /me/conversations`：无业务参数；消息列表只接收路径 `id` 和可选 cursor/limit；
 - `POST /me/messages`：必填 `recipient_id, body`，可选 `client_message_id`；
@@ -46,7 +46,7 @@ GET/DELETE 的非路径参数由 SDK 作为 query 发送，POST/PATCH 作为 JSO
 
 ## 通知与事件一致性
 
-关注、私信、点赞、收藏、评论/回复、提及和系统通知都先确认业务事实，再通过 MySQL Outbox 投影通知；通知自身用 dedupe key 幂等。最小环境由请求预算推进，完整环境由 Worker 推进。SSE 是读取通知的增强通道，不是通知事实来源；断线后客户端使用 `after`/未读接口恢复。
+关注、私信、点赞、收藏、评论/回复、提及和系统通知都先确认业务事实，再通过 MySQL Outbox 投影通知；通知自身用 dedupe key 幂等。最小环境由请求预算推进，完整环境由 Worker 推进。独立 Gateway 只推送失效信号；断线后客户端重新获取 ticket，并使用通知游标/未读接口回源。
 
 系统通知的强制触发条件、类型、严重级别、收件人状态、前后端边界与测试要求见
 [NOTIFICATIONS.md](NOTIFICATIONS.md)，本文件不重复维护第二份规则。

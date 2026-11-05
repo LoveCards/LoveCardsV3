@@ -4,12 +4,18 @@ namespace app\modules\Platform\Notifications\Public;
 
 use app\modules\Platform\Notifications\Application\ManageNotifications;
 use app\modules\Platform\Notifications\Contract\NotificationRepository;
+use app\modules\Platform\Eventing\Contract\RealtimePublisher;
 use app\modules\Platform\Notifications\Domain\NotificationIntent;
 use app\shared\Resource\ResourceRef;
 
 final class Notifications
 {
-    private static function useCase(): ManageNotifications { return new ManageNotifications(app(NotificationRepository::class)); }
+    private static function useCase(): ManageNotifications
+    {
+        $realtime = null;
+        try { $realtime = app(RealtimePublisher::class); } catch (\Throwable) { /* 测试替身或最小运行时可无 Gateway。 */ }
+        return new ManageNotifications(app(NotificationRepository::class), null, $realtime);
+    }
     public static function create(NotificationIntent $intent): int { return self::useCase()->create($intent); }
     public static function direct(int $recipientId, string $dedupeKey, string $type, ?int $actorId = null, ?ResourceRef $resource = null, array $data = []): int
     {

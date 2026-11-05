@@ -162,7 +162,7 @@ client.operations.recoverUpgrade(planId, { reason })
 | `notifications.list` | `GET` | `/me/notifications` | token | `200 / item` |
 | `notifications.read` | `POST` | `/me/notifications/read` | token | `204 / void` |
 | `notifications.readAll` | `POST` | `/me/notifications/read-all` | token | `204 / void` |
-| `notifications.stream` | `GET` | `/me/notifications/stream` | token | `200 / raw` |
+| `notifications.streamTicket` | `GET` | `/me/notifications/stream-ticket` | token | `200 / item` |
 | `notifications.unread` | `GET` | `/me/notifications/unread` | token | `200 / item` |
 
 ## operations (14)

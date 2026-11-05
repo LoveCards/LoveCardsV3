@@ -11079,13 +11079,13 @@
       }
     },
     {
-      "path": "/me/notifications/stream",
+      "path": "/me/notifications/stream-ticket",
       "method": "GET",
-      "name": "notifications.stream",
-      "controller": "Platform.Realtime",
-      "action": "stream",
+      "name": "notifications.streamTicket",
+      "controller": "Platform.Community",
+      "action": "realtimeTicket",
       "meta": {
-        "name": "通知实时流",
+        "name": "通知实时连接票据",
         "group": "社区",
         "access": {
           "auth": "required"
@@ -11095,57 +11095,48 @@
         "JwtAuthCheck"
       ],
       "contract": {
-        "request": {
-          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
-          "scene": "stream"
-        },
+        "request": null,
         "response": {
-          "resource": null,
-          "shape": "raw",
-          "status": 200,
-          "type": "string",
-          "contentType": "text/event-stream"
+          "resource": "app\\modules\\Platform\\Eventing\\Transport\\Api\\RealtimeTicketResource",
+          "shape": "item",
+          "status": 200
         }
       },
       "source": "apps/backend/app/api/route",
       "file": "apps/backend/app/api/route",
       "hasContract": true,
       "contractSource": "backend",
-      "controllerFile": "apps/backend/app/api/controller/Platform/Realtime.php",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Community.php",
       "missingController": false,
-      "validates": true,
+      "validates": false,
       "responses": [
         "createOk"
       ],
-      "resources": [],
-      "validators": [
-        "app\\modules\\Platform\\Community\\Transport\\Api\\Community"
+      "resources": [
+        "RealtimeTicketResource::make"
       ],
-      "validatorScene": "stream",
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
         "missingAction": false,
-        "usesValidated": true,
+        "usesValidated": false,
         "usesLegacyValidation": false,
         "usesDirectInput": false,
         "directInputKeys": [],
         "fileKeys": [],
-        "accessedFields": [
-          "after"
-        ],
-        "usesContractResponse": false,
-        "usesRawResponse": true
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
       },
-      "usesRawResponse": true,
+      "usesRawResponse": false,
       "issues": [],
       "response": {
         "status": 200,
-        "shape": "raw",
-        "resource": null,
-        "operation": null,
-        "type": "string",
-        "contentType": "text/event-stream"
+        "shape": "item",
+        "resource": "RealtimeTicketResource",
+        "operation": "make"
       }
     },
     {
