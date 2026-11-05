@@ -306,8 +306,7 @@ GET /runtime/communication
   - 在 Gateway 切片完成前删除伪快照；不得修成 FPM 内部循环。
 - `app/modules/Platform/Eventing/Contract/RealtimePublisher.php`
   - 改成有调用方、可探测的 Gateway publisher port；否则随旧 stream 一起删除。
-- `NullRealtimePublisher.php`、`RealtimeSignal.php`
-  - 仅在新 adapter 有明确 fallback 语义时保留；不能作为“已实时”的证明。
+- `NullRealtimePublisher.php` 已随真实 HTTP Publisher 接入移除；`RealtimeSignal.php` 保留为信号值对象。
 - `ResolveFacilities`、`FacilityResolver`、`NativeFacilityProbe`
   - 增加 desired/effective、Gateway/Scheduler/Supervisor probe 和 degraded reason。
 - `AdminReadModel::runtime()`、`AdminRuntimeResource`
