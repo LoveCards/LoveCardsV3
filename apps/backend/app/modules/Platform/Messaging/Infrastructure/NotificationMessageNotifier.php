@@ -28,7 +28,11 @@ final class NotificationMessageNotifier implements MessageNotifier
             ],
             $senderId
         );
-        // 消息实时信号独立于站内通知策略；通知被关闭时，私信仍需刷新。
+    }
+
+    public function messageCommitted(int $recipientId): void
+    {
+        // 提交后发信号；通知策略关闭时，私信仍需刷新。
         $this->signals?->publish(new RealtimeSignal('messages', 'user:' . $recipientId, ''));
     }
 }

@@ -11,6 +11,7 @@ export const SIGNAL_MESSAGES = 'messages';
 const MAX_RECONNECT_ATTEMPTS_BEFORE_POLL = 2;
 const SETTINGS_REFRESH_INTERVAL_MS = 30_000;
 const REALTIME_RECONCILE_INTERVAL_MS = 120_000;
+const POLLING_SETTING_KEYS = ['notification_interval_seconds', 'message_interval_seconds', 'unread_interval_seconds', 'pause_when_hidden'];
 
 function clampNumber(value, fallback) {
   const num = Number(value);
@@ -82,7 +83,7 @@ export function createCommunicationRuntime({
       const handle = setTimeoutFn(() => {
         chainTimers.delete(topic);
         if (!started) return;
-        if (isHidden()) { tick(topic, interval); return; }
+        if (isHidden() && settings.pause_when_hidden !== false) { tick(topic, interval); return; }
         emit(topic);
         tick(topic, interval);
       }, Math.max(1000, Math.round(interval * 1000)));
@@ -199,8 +200,9 @@ export function createCommunicationRuntime({
       try { next = await client.communication.settings(); } catch { scheduleSettingsRefresh(); return; }
       const previousMode = snapshot?.effective_mode;
       const previousStatus = snapshot?.status;
+      const pollingSettingsChanged = POLLING_SETTING_KEYS.some((key) => next?.settings?.[key] !== snapshot?.settings?.[key]);
       snapshot = next;
-      if (next?.effective_mode !== previousMode || next?.status !== previousStatus) {
+      if (next?.effective_mode !== previousMode || next?.status !== previousStatus || (next?.effective_mode !== 'realtime' && pollingSettingsChanged)) {
         clearTransportScheduling();
         attempts = 0;
         if (next?.effective_mode === 'realtime') await startRealtime();

@@ -9,7 +9,7 @@ import { IconButton } from '../ui/controls.jsx';
 import { useAuth } from '../app/providers.jsx';
 import { getRuntimeDataMode } from '../app/runtime-context.js';
 import { getSdkClient, sdkConfigured } from '../app/sdk-client.js';
-import { getCommunicationRuntime } from '../services/communication-runtime.js';
+import { getCommunicationRuntime, SIGNAL_UNREAD } from '../services/communication-runtime.js';
 
 const bottomNav = [
   { to: '/', label: '首页', icon: 'home', end: true },
@@ -71,7 +71,7 @@ export function AppShell({ children, mobileMode = 'standard' }) {
     void refreshUnread();
     // 通信运行时（契约 §6）：唯一取数节奏调度器；组件只订阅刷新信号，不自行定时。
     const runtime = getCommunicationRuntime();
-    const unsubscribe = runtime.subscribe(() => { void refreshUnread(); });
+    const unsubscribe = runtime.subscribe((topic) => { if (topic === SIGNAL_UNREAD) void refreshUnread(); });
     void runtime.start();
     window.addEventListener('lc-notifications-changed', refreshUnread);
     document.addEventListener('visibilitychange', onVisibilityChange);

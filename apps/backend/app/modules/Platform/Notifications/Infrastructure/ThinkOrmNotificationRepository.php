@@ -39,7 +39,7 @@ final class ThinkOrmNotificationRepository implements NotificationRepository
         $resource = $intent->resource();
         $createdAt = date('Y-m-d H:i:s');
         try {
-            return [(int) Db::table('notifications')->insertGetId([
+            $id = (int) Db::table('notifications')->insertGetId([
                 'recipient_id' => $intent->recipientId(),
                 'dedupe_key' => $intent->dedupeKey(),
                 'type' => $intent->type(),
@@ -49,7 +49,8 @@ final class ThinkOrmNotificationRepository implements NotificationRepository
                 'payload' => json_encode($intent->data(), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
                 'read_at' => null,
                 'created_at' => $createdAt,
-            ], true, $createdAt)];
+            ]);
+            return [$id, true, $createdAt];
         } catch (\Throwable $exception) {
             $existing = Db::table('notifications')
                 ->where('recipient_id', $intent->recipientId())

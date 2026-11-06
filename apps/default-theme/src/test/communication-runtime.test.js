@@ -39,6 +39,39 @@ describe('communication runtime', () => {
     runtime.destroy();
   });
 
+  it('applies changed polling intervals after the settings snapshot refresh', async () => {
+    const client = makeClient();
+    let unreadInterval = 5;
+    client.communication.settings = vi.fn(async () => ({
+      effective_mode: 'polling', status: 'ready',
+      settings: { notification_interval_seconds: 10, message_interval_seconds: 12, unread_interval_seconds: unreadInterval, pause_when_hidden: true },
+    }));
+    const runtime = createCommunicationRuntime({ clientResolver: () => client });
+    const seen = [];
+    runtime.subscribe((topic) => seen.push(topic));
+    await runtime.start();
+    unreadInterval = 7;
+    await vi.advanceTimersByTimeAsync(30_000);
+    seen.length = 0;
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(seen).not.toContain(SIGNAL_UNREAD);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(seen).toContain(SIGNAL_UNREAD);
+    runtime.destroy();
+  });
+
+  it('continues polling in a hidden tab when pause_when_hidden is disabled', async () => {
+    const client = makeClient({ pause_when_hidden: false });
+    const documentRef = { visibilityState: 'hidden', addEventListener: vi.fn() };
+    const runtime = createCommunicationRuntime({ clientResolver: () => client, documentRef });
+    const seen = [];
+    runtime.subscribe((topic) => seen.push(topic));
+    await runtime.start();
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(seen).toContain(SIGNAL_UNREAD);
+    runtime.destroy();
+  });
+
   it('uses the realtime chain when the server snapshot says so', async () => {
     const client = makeClient();
     const sources = [];

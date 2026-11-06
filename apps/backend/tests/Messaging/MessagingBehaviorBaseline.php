@@ -38,21 +38,33 @@ final class FakeMessageNotifier implements MessageNotifier
 {
     public int $calls = 0;
     public bool $calledInsideTransaction = false;
+    public int $committedCalls = 0;
+    public bool $committedInsideTransaction = false;
     public function __construct(private FakeMessageTransaction $transactions) {}
     public function messageSent(int $recipientId, int $senderId, int $conversationId, int $messageId): void
     {
         $this->calls++;
         $this->calledInsideTransaction = $this->transactions->active;
     }
+    public function messageCommitted(int $recipientId): void
+    {
+        $this->committedCalls++;
+        $this->committedInsideTransaction = $this->transactions->active;
+    }
 }
 
 final class FakeMessageTransaction implements TransactionManager
 {
     public bool $active = false;
+    public bool $failCommit = false;
     public function run(callable $callback): mixed
     {
         $this->active = true;
-        try { return $callback(); }
+        try {
+            $result = $callback();
+            if ($this->failCommit) throw new RuntimeException('commit failed');
+            return $result;
+        }
         finally { $this->active = false; }
     }
 }
@@ -68,6 +80,11 @@ $assert($messaging->send(1, 2, ' hello ', 'client-1') === ['id' => 21, 'conversa
 $assert($messaging->send(1, 2, 'hello', 'client-1') === ['id' => 21, 'conversation_id' => 9], 'same client id should be idempotent');
 $assert($notifier->calls === 1, 'idempotent retry must not duplicate notification');
 $assert($notifier->calledInsideTransaction, 'message notification Outbox write must share the message transaction');
+$assert($notifier->committedCalls === 1 && !$notifier->committedInsideTransaction, 'realtime signal must follow commit and skip idempotent retries');
+$transactions->failCommit = true;
+try { $messaging->send(1, 2, 'rollback', 'client-rollback'); } catch (RuntimeException $exception) {}
+$assert($notifier->committedCalls === 1, 'failed transaction must not publish realtime signal');
+$transactions->failCommit = false;
 $messaging->messages(1, 9);
 $assert($repository->readThrough === 12, 'opening messages should advance read cursor');
 
