@@ -2,6 +2,9 @@ const qualifiedTypeNames = 'ListResult CursorPage CreateResult Card Comment Tag 
 
 qualifiedTypeNames.push('CardMediaAccess')
 qualifiedTypeNames.push('RuntimeCommunicationSnapshot', 'RuntimeConfigValidation', 'RuntimeConfigUpdate')
+qualifiedTypeNames.push('StreamTicket', 'CommunicationSettingsSnapshot')
+qualifiedTypeNames.push('NotificationPolicyCatalog', 'NotificationPolicyApplyResult', 'NotificationPolicyUpdate', 'NotificationPolicyRule')
+qualifiedTypeNames.push('RealtimeTicketVerification', 'RealtimePollSnapshot', 'RealtimePollQuery', 'RealtimeSignalMessage')
 
 export function schemaType(schema, fallback = 'unknown') {
   if (!schema) return fallback

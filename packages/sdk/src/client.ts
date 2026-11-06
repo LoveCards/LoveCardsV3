@@ -31,6 +31,8 @@ import { Social } from './generated/resources/social'
 import { Operations } from './generated/resources/operations'
 import { Reports } from './generated/resources/reports'
 import { Community } from './generated/resources/community'
+import { Communication } from './generated/resources/communication'
+import { Communications } from './generated/resources/communications'
 
 export interface LCClient {
   readonly session: Session
@@ -58,6 +60,8 @@ export interface LCClient {
   readonly operations: Operations
   readonly reports: Reports
   readonly community: Community
+  readonly communication: Communication
+  readonly communications: Communications
   readonly hooks: HookRegistration
 
   setToken(token: string): void
@@ -153,6 +157,8 @@ class LCClientImpl implements LCClient {
   readonly operations: Operations
   readonly reports: Reports
   readonly community: Community
+  readonly communication: Communication
+  readonly communications: Communications
   readonly hooks: HookRegistration
 
   private _tokenStore: TokenStore
@@ -194,6 +200,8 @@ class LCClientImpl implements LCClient {
     this.operations = new Operations(instance, opts)
     this.reports = new Reports(instance, opts)
     this.community = new Community(instance, opts)
+    this.communication = new Communication(instance, opts)
+    this.communications = new Communications(instance, opts)
 
     // 运行时 hook 注册
     const hookStore = opts.hooks

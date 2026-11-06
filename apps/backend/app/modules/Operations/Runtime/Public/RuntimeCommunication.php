@@ -27,6 +27,30 @@ final class RuntimeCommunication
         return $this->resolver()->snapshot();
     }
 
+    /**
+     * 浏览器通信客户端所需的生效快照（契约偏差 D8）。
+     * 只暴露节奏与生效模式，不暴露设施细节；服务端裁决模式，前端绝不按模式分叉业务。
+     *
+     * @return array{effective_mode: string, status: string, settings: array<string, mixed>}
+     */
+    public function browserSettings(): array
+    {
+        $snapshot = $this->snapshot();
+        $settings = $snapshot['settings'];
+        return [
+            'effective_mode' => (string) $snapshot['effective_mode'],
+            'status' => (string) $snapshot['status'],
+            'settings' => [
+                'notification_interval_seconds' => (int) $settings['notification_interval_seconds'],
+                'message_interval_seconds' => (int) $settings['message_interval_seconds'],
+                'unread_interval_seconds' => (int) $settings['unread_interval_seconds'],
+                'polling_backoff_factor' => (float) $settings['polling_backoff_factor'],
+                'polling_max_interval_seconds' => (int) $settings['polling_max_interval_seconds'],
+                'pause_when_hidden' => (bool) $settings['pause_when_hidden'],
+            ],
+        ];
+    }
+
     public function validate(array $input): array
     {
         return $this->updater()->validate($input);

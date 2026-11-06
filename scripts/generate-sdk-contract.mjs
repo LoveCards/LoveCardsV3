@@ -15,6 +15,8 @@ const entries = []
 for (const [route, methods] of Object.entries(contract.paths)) {
   for (const [method, operation] of Object.entries(methods)) {
     if (method === 'parameters') continue
+    // 内部 Gateway 回源接口（x-internal）只允许服务间 Bearer，绝不进入浏览器 SDK。
+    if (operation['x-internal']) continue
     const status = Object.entries(operation.responses).find(([code]) => code !== 'default')?.[0] || '200'
     const requestBody = operation.requestBody?.content
     const requestSchema = requestBody ? Object.values(requestBody)[0]?.schema : operation.parameters?.find((item) => item.in === 'query')?.schema
@@ -63,6 +65,7 @@ const methodsByResource = new Map()
 for (const [route, operations] of Object.entries(contract.paths)) {
   for (const [httpMethod, operation] of Object.entries(operations)) {
     if (httpMethod === 'parameters') continue
+    if (operation['x-internal']) continue
     const parts = String(operation.operationId || '').split('.')
     const resource = className(parts[0] || 'Api')
     let methodName = parts[1] || operation.operationId

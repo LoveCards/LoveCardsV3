@@ -74,6 +74,12 @@ function resourceType(route) {
   map.CardMediaAccess = 'CardMediaAccess'
   map.AdminRuntimeConfig = 'RuntimeCommunicationSnapshot'
   map.AdminRuntimeValidate = 'RuntimeConfigValidation'
+  map.StreamTicket = 'StreamTicket'
+  map.CommunicationSettings = 'CommunicationSettingsSnapshot'
+  map.AdminNotificationPolicies = 'NotificationPolicyCatalog'
+  map.AdminNotificationPoliciesApply = 'NotificationPolicyApplyResult'
+  map.InternalTicketVerify = 'RealtimeTicketVerification'
+  map.InternalNotificationsPoll = 'RealtimePollSnapshot'
   const item = map[base] || 'Record<string, unknown>'
   if (route.response?.shape === 'collection') return `${item}[]`
   if (route.response?.shape === 'paginated') return `ListResult<${item}>`
@@ -158,6 +164,10 @@ function requestSchema(route) {
   if (route.name === 'cards.update' || route.name === 'cards.updateManaged') schema['x-typescript-type'] = 'UpdateCardParams'
   // 运行时控制面：请求参数使用手维护的 RuntimeConfigUpdate 契约（字段级范围校验在服务端 Domain）。
   if (route.name === 'operations.applyRuntimeConfig' || route.name === 'operations.validateRuntimeConfig') schema['x-typescript-type'] = 'RuntimeConfigUpdate'
+  // 通知策略 CAS 请求使用手维护契约（锁定行拒绝与 CAS 冲突在服务端 Domain）。
+  if (route.name === 'communications.applyPolicies') schema['x-typescript-type'] = 'NotificationPolicyUpdate'
+  // Gateway 回源游标查询：请求参数保持通用对象（内部接口）。
+  if (route.name === 'internal.realtimeNotificationsSince') schema['x-typescript-type'] = 'RealtimePollQuery'
   for (const name of pathParams) {
     delete schema.properties?.[name]
     if (Array.isArray(schema.required)) schema.required = schema.required.filter((value) => value !== name)
@@ -185,6 +195,8 @@ function requestSchema(route) {
 
 const paths = {}
 for (const route of inventory.routes) {
+  // 内部 Gateway 回源接口（internal.*）只允许服务间 Bearer，不进入公开 OpenAPI 文档（契约 §4.3）。
+  if (String(route.name || '').startsWith('internal.')) continue
   const operation = {
     operationId: route.name,
     tags: route.meta.group ? [route.meta.group] : [],

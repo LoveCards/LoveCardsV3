@@ -44,6 +44,9 @@ export interface GeneratedApiContract {
   "comments.unlike": { method: "DELETE"; path: "/comments/:id/like"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "comments.unpin": { method: "DELETE"; path: "/me/cards/:id/pinned-comment"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "comments.unpinManaged": { method: "DELETE"; path: "/admin/cards/:id/pinned-comment"; request: {  }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "communication.settings": { method: "GET"; path: "/me/communication/settings"; request: void; response: ApiTypes.CommunicationSettingsSnapshot; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "communications.applyPolicies": { method: "PUT"; path: "/admin/communications/policies"; request: ApiTypes.NotificationPolicyUpdate; response: ApiTypes.NotificationPolicyApplyResult; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "communications.policies": { method: "GET"; path: "/admin/communications/policies"; request: void; response: ApiTypes.NotificationPolicyCatalog; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "community.insights": { method: "GET"; path: "/admin/community/insights"; request: void; response: ApiTypes.OperationsCommunityInsights; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "config.delete": { method: "DELETE"; path: "/admin/config"; request: { group: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "config.deleteKey": { method: "DELETE"; path: "/admin/config/key"; request: { group: string; key: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
@@ -87,7 +90,7 @@ export interface GeneratedApiContract {
   "notifications.preferences": { method: "GET"; path: "/me/notifications/preferences"; request: void; response: ApiTypes.NotificationPreferences; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "notifications.read": { method: "POST"; path: "/me/notifications/read"; request: { ids: number[] }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "notifications.readAll": { method: "POST"; path: "/me/notifications/read-all"; request: { category?: ApiTypes.NotificationListCategory }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "notifications.stream": { method: "GET"; path: "/me/notifications/stream"; request: { after?: number }; response: string; status: 200; shape: "raw"; public: false; capabilities: readonly string[] }
+  "notifications.streamTicket": { method: "POST"; path: "/me/notifications/stream-ticket"; request: void; response: ApiTypes.StreamTicket; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "notifications.unread": { method: "GET"; path: "/me/notifications/unread"; request: { category?: ApiTypes.NotificationListCategory }; response: ApiTypes.NotificationUnread; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "notifications.updatePreferences": { method: "POST"; path: "/me/notifications/preferences"; request: ApiTypes.NotificationPreferencesUpdate; response: ApiTypes.NotificationPreferences; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.advanceUpgrade": { method: "POST"; path: "/admin/operations/upgrades/:planId/advance"; request: void; response: ApiTypes.OperationsUpgradePlan; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
@@ -246,6 +249,9 @@ export const generatedApiContract = {
   "comments.unlike": { method: "DELETE", path: "/comments/:id/like", status: 204, shape: "void", public: false, capabilities: ["likes.delete"] },
   "comments.unpin": { method: "DELETE", path: "/me/cards/:id/pinned-comment", status: 204, shape: "void", public: false, capabilities: ["comments.pin"] },
   "comments.unpinManaged": { method: "DELETE", path: "/admin/cards/:id/pinned-comment", status: 204, shape: "void", public: false, capabilities: ["admin.access","comments.pin"] },
+  "communication.settings": { method: "GET", path: "/me/communication/settings", status: 200, shape: "item", public: false, capabilities: [] },
+  "communications.applyPolicies": { method: "PUT", path: "/admin/communications/policies", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.configure"] },
+  "communications.policies": { method: "GET", path: "/admin/communications/policies", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.configure"] },
   "community.insights": { method: "GET", path: "/admin/community/insights", status: 200, shape: "item", public: false, capabilities: ["admin.access","community.insights.read"] },
   "config.delete": { method: "DELETE", path: "/admin/config", status: 204, shape: "void", public: false, capabilities: ["admin.access","config.deleteKey"] },
   "config.deleteKey": { method: "DELETE", path: "/admin/config/key", status: 204, shape: "void", public: false, capabilities: ["admin.access","config.deleteKey"] },
@@ -289,7 +295,7 @@ export const generatedApiContract = {
   "notifications.preferences": { method: "GET", path: "/me/notifications/preferences", status: 200, shape: "item", public: false, capabilities: [] },
   "notifications.read": { method: "POST", path: "/me/notifications/read", status: 204, shape: "void", public: false, capabilities: [] },
   "notifications.readAll": { method: "POST", path: "/me/notifications/read-all", status: 204, shape: "void", public: false, capabilities: [] },
-  "notifications.stream": { method: "GET", path: "/me/notifications/stream", status: 200, shape: "raw", public: false, capabilities: [] },
+  "notifications.streamTicket": { method: "POST", path: "/me/notifications/stream-ticket", status: 200, shape: "item", public: false, capabilities: [] },
   "notifications.unread": { method: "GET", path: "/me/notifications/unread", status: 200, shape: "item", public: false, capabilities: [] },
   "notifications.updatePreferences": { method: "POST", path: "/me/notifications/preferences", status: 200, shape: "item", public: false, capabilities: [] },
   "operations.advanceUpgrade": { method: "POST", path: "/admin/operations/upgrades/:planId/advance", status: 200, shape: "item", public: false, capabilities: ["admin.access","system.update"] },

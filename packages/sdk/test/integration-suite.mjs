@@ -369,9 +369,10 @@ await test('GET /me/notifications/unread → notifications.unread()', async () =
   return r
 })
 
-await test('GET /me/notifications/stream without params → notifications.stream()', async () => {
-  const r = await adminClient.notifications.stream()
-  assert(typeof r === 'string' && r.includes('event: notifications'), 'notification stream should return one SSE event')
+await test('POST /me/notifications/stream-ticket → notifications.streamTicket()', async () => {
+  const r = await adminClient.notifications.streamTicket()
+  assert(typeof r.ticket === 'string' && r.ticket.length >= 16, 'stream ticket should be an opaque short-lived string')
+  assert(typeof r.expires_in === 'number' && r.expires_in > 0, 'stream ticket should carry expiry')
   return r
 })
 

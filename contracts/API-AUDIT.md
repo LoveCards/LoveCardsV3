@@ -1,6 +1,6 @@
 # API Contract Audit
 
-- Routes inspected: 195
+- Routes inspected: 200
 - P0: 0
 - P1: 0
 - P2: 0
@@ -27,6 +27,8 @@
 | GET | `/admin/comments/:id` | `comments.getManaged` | grants:admin.access:global,comments.read:all | no | CommentResource::make | — |
 | PATCH | `/admin/comments/:id` | `comments.moderateManaged` | grants:admin.access:global,comments.update:all,comments.moderate:all | yes | createNoContent | — |
 | POST | `/admin/comments/batch` | `comments.batchManaged` | grants:admin.access:global | yes | createNoContent | — |
+| GET | `/admin/communications/policies` | `communications.policies` | grants:admin.access:global,communications.configure:global | no | AdminNotificationPoliciesResource::make | — |
+| PUT | `/admin/communications/policies` | `communications.applyPolicies` | grants:admin.access:global,communications.configure:global | yes | AdminNotificationPoliciesApplyResource::make | — |
 | GET | `/admin/community/insights` | `community.insights` | grants:admin.access:global,community.insights.read:global | no | AdminCommunityInsightsResource::make | — |
 | DELETE | `/admin/config` | `config.delete` | grants:admin.access:global,config.deleteKey:global | yes | createNoContent | — |
 | GET | `/admin/config` | `config.list` | grants:admin.access:global,config.read:global | yes | ConfigResource::make | — |
@@ -124,6 +126,8 @@
 | GET | `/comments/:id` | `comments.get` | public | no | CommentResource::make | — |
 | DELETE | `/comments/:id/like` | `comments.unlike` | grants:likes.delete:global | no | createNoContent | — |
 | POST | `/comments/:id/like` | `comments.like` | grants:likes.create:global | no | LikeCountResource::make | — |
+| GET | `/internal/realtime/notifications-since` | `internal.realtimeNotificationsSince` | public | yes | InternalNotificationsPollResource::make | — |
+| POST | `/internal/realtime/ticket/verify` | `internal.realtimeTicketVerify` | public | yes | InternalTicketVerifyResource::make | — |
 | GET | `/me` | `users.me.get` | grants:users.read:own | no | ProfileResource::make | — |
 | PATCH | `/me` | `users.me.update` | grants:users.update:own | yes | ProfileResource::make | — |
 | GET | `/me/blocked-users` | `safety.listBlocked` | grants:authenticated | yes | BlockedUserCursorPageResource::make | — |
@@ -136,6 +140,7 @@
 | PUT | `/me/cards/:id/pinned-comment` | `comments.pin` | grants:comments.pin:own | yes | createNoContent | — |
 | GET | `/me/comments` | `comments.listOwn` | grants:comments.read:own | yes | CommentResource::paginate | — |
 | DELETE | `/me/comments/:id` | `comments.delete` | grants:comments.delete:own,comments.delete:all | no | createNoContent | — |
+| GET | `/me/communication/settings` | `communication.settings` | grants:authenticated | no | CommunicationSettingsResource::make | — |
 | GET | `/me/conversations` | `messages.conversations` | grants:authenticated | no | ApiResource::collection | — |
 | GET | `/me/conversations/:id/messages` | `messages.list` | grants:authenticated | yes | CursorPageResource::make | — |
 | GET | `/me/drafts` | `drafts.list` | grants:authenticated | yes | ApiResource::collection | — |
@@ -166,7 +171,7 @@
 | POST | `/me/notifications/preferences` | `notifications.updatePreferences` | grants:authenticated | yes | NotificationPreferencesResource::make | — |
 | POST | `/me/notifications/read-all` | `notifications.readAll` | grants:authenticated | yes | createNoContent | — |
 | POST | `/me/notifications/read` | `notifications.read` | grants:authenticated | yes | createNoContent | — |
-| GET | `/me/notifications/stream` | `notifications.stream` | grants:authenticated | yes | createOk | — |
+| POST | `/me/notifications/stream-ticket` | `notifications.streamTicket` | grants:authenticated | no | StreamTicketResource::make | — |
 | GET | `/me/notifications/unread` | `notifications.unread` | grants:authenticated | yes | NotificationUnreadResource::make | — |
 | POST | `/me/password` | `users.me.password` | grants:users.update:own | yes | createNoContent | — |
 | GET | `/me/privacy` | `safety.preferences` | grants:authenticated | no | PrivacyPreferencesResource::make | — |
