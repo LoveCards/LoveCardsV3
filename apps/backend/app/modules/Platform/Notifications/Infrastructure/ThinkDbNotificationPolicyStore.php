@@ -83,36 +83,47 @@ final class ThinkDbNotificationPolicyStore implements NotificationPolicyStore
 
     public function applyChanges(array $changes, int $expectedRevision, ?int $actorId, ?string $reason): array
     {
-        $before = $this->listCurrent();
-        $current = $this->currentRevision();
-        if ($current === null) {
-            throw new \RuntimeException('stale-revision: 策略目录不存在');
-        }
-        if ($current !== $expectedRevision) {
-            throw new \RuntimeException('stale-revision');
-        }
-
-        $snapshot = $this->snapshot($expectedRevision) ?? [];
-        foreach ($changes as $change) {
-            $key = $change['event_type'] . '|' . $change['event_version'] . '|' . $change['rule_key'];
-            $snapshotKey = $change['event_type'];
-            if (!isset($snapshot[$snapshotKey])) {
-                throw new \RuntimeException('unknown-rule: ' . $key);
-            }
-            if ($snapshot[$snapshotKey]['locked']) {
-                throw new \RuntimeException('locked: ' . $key);
-            }
-            $snapshot[$snapshotKey]['enabled'] = $change['enabled'];
-        }
-        ksort($snapshot);
-
         $newRevision = $expectedRevision + 1;
         $now = gmdate('Y-m-d H:i:s.u');
-        Db::transaction(function () use ($changes, $expectedRevision, $newRevision, $actorId, $reason, $snapshot, $now): void {
+        $before = null;
+        Db::transaction(function () use ($changes, $expectedRevision, $newRevision, $actorId, $reason, $now, &$before): void {
+            // 先锁版本行并重查最新版本；版本快照的唯一键仍是并发 CAS 的最终裁决。
+            $version = Db::table('notification_policy_versions')
+                ->where('policy_revision', $expectedRevision)
+                ->lock(true)
+                ->find();
+            if ($version === null || $this->currentRevision() !== $expectedRevision) {
+                throw new \RuntimeException('stale-revision');
+            }
+            $lockedRows = Db::table('notification_policies')
+                ->where('policy_revision', $expectedRevision)
+                ->select();
+            if ($lockedRows->isEmpty()) {
+                throw new \RuntimeException('stale-revision');
+            }
+
+            $before = $this->listCurrent();
+            $snapshot = $this->snapshot($expectedRevision) ?? [];
+            foreach ($changes as $change) {
+                $key = $change['event_type'] . '|' . $change['event_version'] . '|' . $change['rule_key'];
+                $snapshotKey = $change['event_type'];
+                if (!isset($snapshot[$snapshotKey])) {
+                    throw new \RuntimeException('unknown-rule: ' . $key);
+                }
+                if ($snapshot[$snapshotKey]['locked']) {
+                    throw new \RuntimeException('locked: ' . $key);
+                }
+                $snapshot[$snapshotKey]['enabled'] = $change['enabled'];
+            }
+            ksort($snapshot);
+
             // 全部现行行晋升到新版本；仅变更行改写 enabled。
-            Db::table('notification_policies')
+            $updated = Db::table('notification_policies')
                 ->where('policy_revision', $expectedRevision)
                 ->update(['policy_revision' => $newRevision, 'updated_by' => $actorId, 'updated_at' => $now]);
+            if ($updated !== $lockedRows->count()) {
+                throw new \RuntimeException('stale-revision');
+            }
             foreach ($changes as $change) {
                 Db::table('notification_policies')
                     ->where('event_type', $change['event_type'])
@@ -121,16 +132,23 @@ final class ThinkDbNotificationPolicyStore implements NotificationPolicyStore
                     ->where('policy_revision', $newRevision)
                     ->update(['enabled' => $change['enabled'] ? 1 : 0, 'updated_by' => $actorId, 'updated_at' => $now]);
             }
-            Db::table('notification_policy_versions')->insert([
-                'policy_revision' => $newRevision,
-                'snapshot_json' => json_encode($snapshot, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
-                'source' => 'admin',
-                'reason' => $reason,
-                'created_by' => $actorId,
-                'created_at' => $now,
-            ]);
+            try {
+                Db::table('notification_policy_versions')->insert([
+                    'policy_revision' => $newRevision,
+                    'snapshot_json' => json_encode($snapshot, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                    'source' => 'admin',
+                    'reason' => $reason,
+                    'created_by' => $actorId,
+                    'created_at' => $now,
+                ]);
+            } catch (\Throwable $exception) {
+                if (str_contains($exception->getMessage(), 'uq_np_rev')) {
+                    throw new \RuntimeException('stale-revision', 0, $exception);
+                }
+                throw $exception;
+            }
         });
 
-        return ['revision' => $newRevision, 'policies' => $this->listCurrent(), 'before' => $before];
+        return ['revision' => $newRevision, 'policies' => $this->listCurrent(), 'before' => $before ?? []];
     }
 }

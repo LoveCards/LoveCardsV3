@@ -206,6 +206,42 @@ test('redis transport pushes recipient-scoped signals as SSE frames', async () =
   }
 })
 
+test('existing redis connections switch to source-poll when redis goes down', async () => {
+  let subscriberSocket = null
+  const fakeRedis = net.createServer((socket) => { subscriberSocket = socket })
+  const redisPort = await listen(fakeRedis)
+  const backend = createFakeBackend()
+  const backendPort = await listen(backend.server)
+  const app = createApp({
+    backendUrl: `http://127.0.0.1:${backendPort}`,
+    internalToken: 'test-internal-token-1234',
+    redis: { host: '127.0.0.1', port: redisPort },
+    pollIntervalMs: 50,
+  })
+  const port = await app.start(0)
+  try {
+    await new Promise((resolve) => {
+      const started = setInterval(() => {
+        if (subscriberSocket) { clearInterval(started); resolve() }
+      }, 10)
+    })
+    const stream = await httpGet(port, '/stream?ticket=valid-ticket-26chars-hex')
+    const framePromise = collectFrames(stream, 2)
+    subscriberSocket.destroy()
+    fakeRedis.close()
+    setTimeout(() => {
+      backend.notifications.latest_cursor = 'cursor-after-redis-down'
+      backend.notifications.newer = 1
+    }, 120)
+    const frames = await framePromise
+    assert.match(frames[1], /cursor-after-redis-down/)
+    stream.destroy()
+  } finally {
+    app.stop()
+    backend.server.close()
+  }
+})
+
 test('sse frames use real newline bytes and exact frame shape', () => {
   assert.equal(sseFrame({ id: 'a', event: 'signal', data: '{}' }), 'id: a\nevent: signal\ndata: {}\n\n')
   assert.equal(signalFrame({ id: 'c', topic: 'unread', cursor: 'c' }), 'id: c\nevent: signal\ndata: {"topic":"unread","cursor":"c"}\n\n')

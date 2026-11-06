@@ -369,7 +369,21 @@ await test('GET /me/notifications/unread → notifications.unread()', async () =
   return r
 })
 
+await test('GET /me/communication/settings → communication.settings()', async () => {
+  const r = await adminClient.communication.settings()
+  assert(r && (r.effective_mode === 'polling' || r.effective_mode === 'realtime'), 'communication settings must expose an effective mode')
+  assert(r.status === 'ready' || r.status === 'degraded', 'communication settings must expose a valid status')
+  assert(r.settings && typeof r.settings.notification_interval_seconds === 'number', 'communication settings must expose polling cadence')
+  return r
+})
+
 await test('POST /me/notifications/stream-ticket → notifications.streamTicket()', async () => {
+  const settings = await adminClient.communication.settings()
+  if (settings.effective_mode !== 'realtime') {
+    const error = await assertApiError(() => adminClient.notifications.streamTicket(), 503)
+    assert(error.code === 9012, 'polling/degraded mode must report the realtime capability-unavailable code')
+    return { unavailable: true, effective_mode: settings.effective_mode, status: settings.status }
+  }
   const r = await adminClient.notifications.streamTicket()
   assert(typeof r.ticket === 'string' && r.ticket.length >= 16, 'stream ticket should be an opaque short-lived string')
   assert(typeof r.expires_in === 'number' && r.expires_in > 0, 'stream ticket should carry expiry')

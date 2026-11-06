@@ -9,6 +9,9 @@ export const SIGNAL_NOTIFICATIONS = 'notifications';
 export const SIGNAL_MESSAGES = 'messages';
 
 const MAX_RECONNECT_ATTEMPTS_BEFORE_POLL = 2;
+const SETTINGS_REFRESH_INTERVAL_MS = 30_000;
+const REALTIME_RECONCILE_INTERVAL_MS = 120_000;
+const POLLING_SETTING_KEYS = ['notification_interval_seconds', 'message_interval_seconds', 'unread_interval_seconds', 'pause_when_hidden'];
 
 function clampNumber(value, fallback) {
   const num = Number(value);
@@ -33,6 +36,9 @@ export function createCommunicationRuntime({
   let eventSource = null;
   let watchdog = null;
   let reconnectDelay = null;
+  let settingsRefresh = null;
+  let realtimeReconcile = null;
+  let lastCursor = null;
   let attempts = 0;
   let started = false;
   let destroyed = false;
@@ -43,17 +49,23 @@ export function createCommunicationRuntime({
     }
   }
 
-  function clearScheduling() {
+  function clearTransportScheduling() {
     for (const handle of chainTimers.values()) clearTimeoutFn(handle);
     chainTimers.clear();
     for (const handle of timers) clearTimeoutFn(handle);
     timers = [];
     if (watchdog) { clearTimeoutFn(watchdog); watchdog = null; }
     if (reconnectDelay) { clearTimeoutFn(reconnectDelay); reconnectDelay = null; }
+    if (realtimeReconcile) { clearTimeoutFn(realtimeReconcile); realtimeReconcile = null; }
     if (eventSource) {
       try { eventSource.close(); } catch { /* 关闭失败可忽略 */ }
       eventSource = null;
     }
+  }
+
+  function clearScheduling() {
+    clearTransportScheduling();
+    if (settingsRefresh) { clearTimeoutFn(settingsRefresh); settingsRefresh = null; }
   }
 
   function isHidden() {
@@ -71,7 +83,7 @@ export function createCommunicationRuntime({
       const handle = setTimeoutFn(() => {
         chainTimers.delete(topic);
         if (!started) return;
-        if (isHidden()) { tick(topic, interval); return; }
+        if (isHidden() && settings.pause_when_hidden !== false) { tick(topic, interval); return; }
         emit(topic);
         tick(topic, interval);
       }, Math.max(1000, Math.round(interval * 1000)));
@@ -83,19 +95,50 @@ export function createCommunicationRuntime({
   }
 
   function fallBackToPolling() {
-    clearScheduling();
+    clearTransportScheduling();
     mode = 'polling';
     if (started && !isHidden()) startPolling();
+  }
+
+  function scheduleRealtimeRetry() {
+    if (!started || attempts >= MAX_RECONNECT_ATTEMPTS_BEFORE_POLL) return;
+    attempts += 1;
+    const settings = snapshot?.settings || {};
+    const backoff = clampNumber(settings.polling_backoff_factor, 2);
+    const maxDelay = clampNumber(settings.polling_max_interval_seconds, 300);
+    const base = clampNumber(settings.notification_interval_seconds, 30);
+    const delay = Math.min(maxDelay, base * Math.pow(backoff, attempts - 1));
+    reconnectDelay = setTimeoutFn(() => {
+      reconnectDelay = null;
+      if (started) {
+        clearTransportScheduling();
+        void startRealtime();
+      }
+    }, delay * 1000);
   }
 
   function armWatchdog(heartbeatSeconds) {
     if (watchdog) clearTimeoutFn(watchdog);
     // 心跳注释不产生 EventSource 事件；看门狗超过 3 个心跳周期无信号即判定链路失效。
-    const limit = Math.max(10, clampNumber(heartbeatSeconds, 15) * 3);
+    const limit = Math.max(10_000, clampNumber(heartbeatSeconds, 15) * 3 * 1000);
     watchdog = setTimeoutFn(() => {
       watchdog = null;
       fallBackToPolling();
+      scheduleRealtimeRetry();
     }, limit);
+  }
+
+  function scheduleRealtimeReconcile() {
+    if (!started || mode !== 'realtime') return;
+    realtimeReconcile = setTimeoutFn(() => {
+      realtimeReconcile = null;
+      if (!started || mode !== 'realtime') return;
+      // 信号可能丢失或先于事务提交到达；低频回源保证页面最终收敛。
+      emit(SIGNAL_NOTIFICATIONS);
+      emit(SIGNAL_MESSAGES);
+      emit(SIGNAL_UNREAD);
+      scheduleRealtimeReconcile();
+    }, REALTIME_RECONCILE_INTERVAL_MS);
   }
 
   async function startRealtime() {
@@ -105,37 +148,68 @@ export function createCommunicationRuntime({
     try {
       ticket = await client.notifications.streamTicket();
     } catch {
-      attempts += 1;
-      if (attempts > MAX_RECONNECT_ATTEMPTS_BEFORE_POLL) { fallBackToPolling(); return; }
-      const settings = snapshot?.settings || {};
-      const backoff = clampNumber(settings.polling_backoff_factor, 2);
-      const maxDelay = clampNumber(settings.polling_max_interval_seconds, 300);
-      const base = clampNumber(settings.notification_interval_seconds, 30);
-      const delay = Math.min(maxDelay, base * Math.pow(backoff, attempts - 1));
-      reconnectDelay = setTimeoutFn(() => { reconnectDelay = null; if (started) void startRealtime(); }, delay);
+      fallBackToPolling();
+      scheduleRealtimeRetry();
       return;
     }
     if (destroyed || !started) return;
-    const source = eventSourceFactory(`${ticket.connect_url}?ticket=${encodeURIComponent(ticket.ticket)}`);
-    if (!source) { fallBackToPolling(); return; }
+    const query = new URLSearchParams({ ticket: ticket.ticket });
+    if (lastCursor) query.set('lastEventId', lastCursor);
+    const source = eventSourceFactory(`${ticket.connect_url}?${query.toString()}`);
+    if (!source) { fallBackToPolling(); scheduleRealtimeRetry(); return; }
     attempts = 0;
     mode = 'realtime';
     eventSource = source;
     armWatchdog(ticket.heartbeat_seconds);
+    scheduleRealtimeReconcile();
+    source.addEventListener('heartbeat', () => {
+      armWatchdog(ticket.heartbeat_seconds);
+    });
+    source.addEventListener('resync', () => {
+      emit(SIGNAL_NOTIFICATIONS);
+      emit(SIGNAL_MESSAGES);
+      emit(SIGNAL_UNREAD);
+    });
     source.addEventListener('signal', (event) => {
       armWatchdog(ticket.heartbeat_seconds);
       let topic = SIGNAL_NOTIFICATIONS;
       try {
         const parsed = JSON.parse(event.data || '{}');
+        if (parsed.cursor) lastCursor = String(parsed.cursor);
         if (parsed.topic === 'messages') topic = SIGNAL_MESSAGES;
       } catch { /* 保持默认 topic */ }
       emit(topic);
       emit(SIGNAL_UNREAD);
     });
     source.addEventListener('error', () => {
-      // 任何链路错误：关闭 SSE，退回单条轮询链，不双轨并行。
+      // 先用轮询兜底，再重新签发一次性 ticket；重连成功后清掉轮询链。
       fallBackToPolling();
+      scheduleRealtimeRetry();
     });
+  }
+
+  function scheduleSettingsRefresh() {
+    if (settingsRefresh) clearTimeoutFn(settingsRefresh);
+    if (!started) return;
+    settingsRefresh = setTimeoutFn(async () => {
+      settingsRefresh = null;
+      if (!started) return;
+      const client = clientResolver();
+      if (!client) return;
+      let next;
+      try { next = await client.communication.settings(); } catch { scheduleSettingsRefresh(); return; }
+      const previousMode = snapshot?.effective_mode;
+      const previousStatus = snapshot?.status;
+      const pollingSettingsChanged = POLLING_SETTING_KEYS.some((key) => next?.settings?.[key] !== snapshot?.settings?.[key]);
+      snapshot = next;
+      if (next?.effective_mode !== previousMode || next?.status !== previousStatus || (next?.effective_mode !== 'realtime' && pollingSettingsChanged)) {
+        clearTransportScheduling();
+        attempts = 0;
+        if (next?.effective_mode === 'realtime') await startRealtime();
+        else startPolling();
+      }
+      scheduleSettingsRefresh();
+    }, SETTINGS_REFRESH_INTERVAL_MS);
   }
 
   async function start() {
@@ -151,6 +225,7 @@ export function createCommunicationRuntime({
     clearScheduling();
     if (snapshot?.effective_mode === 'realtime') await startRealtime();
     else startPolling();
+    scheduleSettingsRefresh();
   }
 
   function stop() {
@@ -179,8 +254,14 @@ export function createCommunicationRuntime({
         clearScheduling();
       } else if (started) {
         clearScheduling();
-        if (snapshot?.effective_mode === 'realtime') void startRealtime();
-        else startPolling();
+        void (async () => {
+          const client = clientResolver();
+          try { if (client) snapshot = await client.communication.settings(); } catch { /* 保留旧快照 */ }
+          if (!started) return;
+          if (snapshot?.effective_mode === 'realtime') await startRealtime();
+          else startPolling();
+          scheduleSettingsRefresh();
+        })();
       }
     });
   }

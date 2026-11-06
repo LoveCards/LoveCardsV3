@@ -39,6 +39,39 @@ describe('communication runtime', () => {
     runtime.destroy();
   });
 
+  it('applies changed polling intervals after the settings snapshot refresh', async () => {
+    const client = makeClient();
+    let unreadInterval = 5;
+    client.communication.settings = vi.fn(async () => ({
+      effective_mode: 'polling', status: 'ready',
+      settings: { notification_interval_seconds: 10, message_interval_seconds: 12, unread_interval_seconds: unreadInterval, pause_when_hidden: true },
+    }));
+    const runtime = createCommunicationRuntime({ clientResolver: () => client });
+    const seen = [];
+    runtime.subscribe((topic) => seen.push(topic));
+    await runtime.start();
+    unreadInterval = 7;
+    await vi.advanceTimersByTimeAsync(30_000);
+    seen.length = 0;
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(seen).not.toContain(SIGNAL_UNREAD);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(seen).toContain(SIGNAL_UNREAD);
+    runtime.destroy();
+  });
+
+  it('continues polling in a hidden tab when pause_when_hidden is disabled', async () => {
+    const client = makeClient({ pause_when_hidden: false });
+    const documentRef = { visibilityState: 'hidden', addEventListener: vi.fn() };
+    const runtime = createCommunicationRuntime({ clientResolver: () => client, documentRef });
+    const seen = [];
+    runtime.subscribe((topic) => seen.push(topic));
+    await runtime.start();
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(seen).toContain(SIGNAL_UNREAD);
+    runtime.destroy();
+  });
+
   it('uses the realtime chain when the server snapshot says so', async () => {
     const client = makeClient();
     const sources = [];
@@ -61,11 +94,32 @@ describe('communication runtime', () => {
     runtime.destroy();
   });
 
-  it('falls back to the polling chain when the realtime link errors and never runs both', async () => {
+  it('reconciles missed realtime signals and stops reconciliation with the stream', async () => {
+    const client = makeClient();
+    client.communication.settings = vi.fn(async () => ({ effective_mode: 'realtime', status: 'ready', settings: {} }));
+    client.notifications.streamTicket = vi.fn(async () => ({ ticket: 't'.repeat(26), connect_url: 'https://gateway.test/stream', heartbeat_seconds: 100 }));
+    const runtime = createCommunicationRuntime({
+      clientResolver: () => client,
+      eventSourceFactory: (url) => new FakeEventSource(url),
+    });
+    const seen = [];
+    runtime.subscribe((topic) => seen.push(topic));
+    await runtime.start();
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(seen).toEqual([SIGNAL_NOTIFICATIONS, SIGNAL_MESSAGES, SIGNAL_UNREAD]);
+    expect(client.notifications.streamTicket).toHaveBeenCalledTimes(1);
+    runtime.stop();
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(seen).toHaveLength(3);
+    expect(FakeEventSource.instances[0].closed).toBe(true);
+    runtime.destroy();
+  });
+
+  it('re-signs a one-time ticket after a realtime link error without keeping both transports', async () => {
     const client = makeClient();
     const runtime = createCommunicationRuntime({
       clientResolver: () => client,
-      eventSourceFactory: () => new FakeEventSource('https://gateway.test/stream?ticket=x'),
+      eventSourceFactory: (url) => new FakeEventSource(url),
     });
     client.communication.settings = vi.fn(async () => ({ effective_mode: 'realtime', status: 'ready', settings: { notification_interval_seconds: 10, message_interval_seconds: 12, unread_interval_seconds: 5, polling_backoff_factor: 2, polling_max_interval_seconds: 60, pause_when_hidden: true } }));
     const seen = [];
@@ -73,13 +127,18 @@ describe('communication runtime', () => {
     await runtime.start();
     expect(runtime.currentMode()).toBe('realtime');
     const source = FakeEventSource.instances[0];
+    source.emitSignal({ topic: 'notifications', cursor: 'cursor-1' });
     source.emitError();
     expect(runtime.currentMode()).toBe('polling');
     expect(source.closed).toBe(true);
     await vi.advanceTimersByTimeAsync(10_000);
     expect(seen).toContain(SIGNAL_NOTIFICATIONS);
-    // 不得再次打开 SSE：轮询与实时不长期双轨。
-    expect(FakeEventSource.instances).toHaveLength(1);
+    // 重试时必须重新签发一次性 ticket，并清理轮询链。
+    expect(FakeEventSource.instances).toHaveLength(2);
+    expect(client.notifications.streamTicket).toHaveBeenCalledTimes(2);
+    expect(FakeEventSource.instances[0].closed).toBe(true);
+    expect(FakeEventSource.instances[1].url).toContain('lastEventId=cursor-1');
+    expect(runtime.currentMode()).toBe('realtime');
     runtime.destroy();
   });
 

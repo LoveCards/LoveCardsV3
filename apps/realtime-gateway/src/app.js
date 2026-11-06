@@ -3,7 +3,7 @@
 
 import http from 'node:http'
 import { RedisSubscriber } from './redis-subscriber.js'
-import { pingComment, resyncFrame, retryDirective, signalFrame } from './sse.js'
+import { heartbeatFrame, pingComment, resyncFrame, retryDirective, signalFrame } from './sse.js'
 
 export const PROTOCOL = 'lc-realtime/1'
 export const VERSION = '0.1.0'
@@ -78,6 +78,24 @@ export function createApp(config) {
     }
   }
 
+  const startSourcePoll = (conn, uid) => {
+    if (conn.poll || !pollIntervalMs) return
+    conn.poll = setInterval(async () => {
+      const result = await backendFetch(
+        `/api/internal/realtime/notifications-since?uid=${uid}&limit=50${conn.cursor ? `&cursor=${encodeURIComponent(conn.cursor)}` : ''}`,
+      )
+      if (!result || !result.newer || !result.latest_cursor || result.latest_cursor === conn.cursor) return
+      conn.cursor = result.latest_cursor
+      conn.send(signalFrame({ id: conn.cursor, topic: 'notifications', cursor: conn.cursor }))
+    }, pollIntervalMs)
+  }
+
+  const stopSourcePoll = (conn) => {
+    if (!conn.poll) return
+    clearInterval(conn.poll)
+    conn.poll = null
+  }
+
   const subscriber = redis
     ? new RedisSubscriber({
         host: redis.host,
@@ -93,10 +111,12 @@ export function createApp(config) {
         onStatus: (status) => {
           if (status === 'down' && state.transport !== 'source-poll') {
             state.transport = 'source-poll'
+            for (const conn of state.connections) startSourcePoll(conn, conn.uid)
             logger('redis down, falling back to source-poll')
           }
           if (status === 'up' && redis) {
             state.transport = 'redis'
+            for (const conn of state.connections) stopSourcePoll(conn)
           }
         },
       })
@@ -105,7 +125,7 @@ export function createApp(config) {
   const closeConnection = (conn, reason = 'closed') => {
     if (!state.connections.delete(conn)) return
     clearInterval(conn.heartbeat)
-    if (conn.poll) clearInterval(conn.poll)
+    stopSourcePoll(conn)
     clearTimeout(conn.lifetime)
     try {
       conn.res.end()
@@ -137,6 +157,7 @@ export function createApp(config) {
 
     const conn = {
       recipientKey: `user:${verified.uid}`,
+      uid: verified.uid,
       cursor: lastEventId || verified.cursor_seed || null,
       res,
       send(frame) {
@@ -155,19 +176,10 @@ export function createApp(config) {
       conn.send(resyncFrame())
     }
 
-    conn.heartbeat = setInterval(() => conn.send(pingComment()), HEARTBEAT_MS)
+    conn.heartbeat = setInterval(() => { conn.send(pingComment()); conn.send(heartbeatFrame()) }, HEARTBEAT_MS)
     conn.lifetime = setTimeout(() => closeConnection(conn, 'max lifetime'), MAX_LIFETIME_MS)
 
-    if (state.transport === 'source-poll') {
-      conn.poll = setInterval(async () => {
-        const result = await backendFetch(
-          `/api/internal/realtime/notifications-since?uid=${verified.uid}&limit=50${conn.cursor ? `&cursor=${encodeURIComponent(conn.cursor)}` : ''}`,
-        )
-        if (!result || !result.newer || !result.latest_cursor || result.latest_cursor === conn.cursor) return
-        conn.cursor = result.latest_cursor
-        conn.send(signalFrame({ id: conn.cursor, topic: 'notifications', cursor: conn.cursor }))
-      }, pollIntervalMs)
-    }
+    if (state.transport === 'source-poll') startSourcePoll(conn, verified.uid)
 
     req.on('close', () => closeConnection(conn, 'client closed'))
   }
@@ -217,10 +229,10 @@ export function createApp(config) {
   return {
     server,
     state,
-    start(port) {
+    start(port, host = '127.0.0.1') {
       subscriber?.start()
       return new Promise((resolve) => {
-        server.listen(port, () => resolve(server.address().port))
+        server.listen(port, host, () => resolve(server.address().port))
       })
     },
     stop() {

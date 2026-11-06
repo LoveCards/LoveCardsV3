@@ -60,6 +60,7 @@ class ApiException extends \Exception
     public const CODE_RESOURCE_NOT_FOUND    = 9003;
     public const CODE_VALIDATION_ERROR      = 9010;
     public const CODE_RATE_LIMITED          = 9011;
+    public const CODE_CAPABILITY_UNAVAILABLE = 9012;
     // 运行时配置乐观并发/环境锁冲突（通信运行时控制面）。
     public const CODE_CONFIG_CONFLICT       = 9016;
 
@@ -97,6 +98,7 @@ class ApiException extends \Exception
         self::CODE_RESOURCE_NOT_FOUND   => '资源不存在',
         self::CODE_VALIDATION_ERROR     => '字段校验失败',
         self::CODE_RATE_LIMITED         => '请求过于频繁',
+        self::CODE_CAPABILITY_UNAVAILABLE => '实时通道暂不可用',
         self::CODE_CONFIG_CONFLICT      => '配置冲突',
         self::CODE_UNKNOWN              => '未知错误',
     ];
@@ -127,6 +129,7 @@ class ApiException extends \Exception
         self::CODE_RESOURCE_NOT_FOUND    => 404,
         self::CODE_VALIDATION_ERROR      => 422,
         self::CODE_RATE_LIMITED          => 429,
+        self::CODE_CAPABILITY_UNAVAILABLE => 503,
         self::CODE_CONFIG_CONFLICT       => 409,
         self::CODE_FILE_TOO_LARGE        => 413,
         self::CODE_FILE_TYPE_NOT_ALLOWED  => 415,
@@ -174,6 +177,12 @@ class ApiException extends \Exception
         $data = ['errors' => $normalized];
         if ($reasonCode !== null && $reasonCode !== '') $data['reason_code'] = $reasonCode;
         return new self($message, self::CODE_VALIDATION_ERROR, $data);
+    }
+
+    public static function capabilityUnavailable(string $message = '', ?string $reasonCode = null): self
+    {
+        $data = $reasonCode === null || $reasonCode === '' ? null : ['reason_code' => $reasonCode];
+        return new self($message, self::CODE_CAPABILITY_UNAVAILABLE, $data);
     }
 
     public static function tooManyRequests(string $message, string $reasonCode, int $retryAfter): self

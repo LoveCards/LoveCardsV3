@@ -21,7 +21,7 @@ const app = createApp({
 const port = Number(process.env.LC_REALTIME_GATEWAY_PORT ?? 20090)
 const host = process.env.LC_REALTIME_GATEWAY_HOST ?? '127.0.0.1'
 
-app.start(port).then((boundPort) => {
+app.start(port, host).then((boundPort) => {
   console.log(`[realtime-gateway] listening on http://${host}:${boundPort}`)
 })
 
