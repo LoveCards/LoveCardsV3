@@ -130,6 +130,7 @@ namespace {
     require $root . '/app/modules/Platform/Notifications/Domain/NotificationIntent.php';
     require $root . '/app/modules/Platform/Notifications/Contract/NotificationRepository.php';
     require $root . '/app/modules/Platform/Notifications/Infrastructure/ThinkOrmNotificationRepository.php';
+    require $root . '/app/modules/Platform/Notifications/Domain/NotificationCursor.php';
 
     use app\modules\Platform\Notifications\Infrastructure\ThinkOrmNotificationRepository;
     use think\facade\Db;

@@ -2,8 +2,11 @@
 
 namespace app\modules\Platform\Notifications\Application;
 
+use app\modules\Platform\Eventing\Public\RealtimeSignal;
+use app\modules\Platform\Eventing\Public\RealtimeSignalPublisher;
 use app\modules\Platform\Notifications\Contract\NotificationRepository;
 use app\modules\Platform\Notifications\Contract\NotificationTypeCatalog;
+use app\modules\Platform\Notifications\Domain\NotificationCursor;
 use app\modules\Platform\Notifications\Domain\NotificationIntent;
 use app\shared\Transport\Http\CursorPage;
 use app\api\ApiException;
@@ -11,15 +14,41 @@ use app\shared\Transaction\TransactionManager;
 
 final class ManageNotifications
 {
-    public function __construct(private NotificationRepository $repository, private ?TransactionManager $transactions = null)
-    {
+    public function __construct(
+        private NotificationRepository $repository,
+        private ?TransactionManager $transactions = null,
+        private ?RealtimeSignalPublisher $signals = null,
+        private ?NotificationPolicyGate $policies = null
+    ) {
     }
 
-    public function create(NotificationIntent $intent): int
+    /**
+     * @param array{0: string, 1: ?int, 2: int}|null $policyScope [event_type, 冻结版本, delivery_id]
+     *        事件投递链路由 DeliveryContext::policyScope() 传入；非事件签发为 null（旧路径）。
+     */
+    public function create(NotificationIntent $intent, ?array $policyScope = null): int
     {
         if ($intent->actorId() === $intent->recipientId()) return 0;
         if (!$this->repository->recipientCanReceive($intent->recipientId(), $intent->type())) return 0;
-        return $this->repository->create($intent);
+        if ($policyScope !== null && $this->policies !== null) {
+            [$eventType, $frozenRevision, $deliveryId] = $policyScope;
+            $decision = $this->policies->decide($eventType, $frozenRevision);
+            if ($decision !== 'not-configured') {
+                app(\app\modules\Platform\Eventing\Public\EventRecorder::class)->notePolicyDecision($deliveryId, $decision);
+            }
+            if ($decision === 'skipped') {
+                // 关闭规则：不投影通知，但事件与投递记录保留（契约 §5.2）。
+                return 0;
+            }
+        }
+        [$id, $firstInsert, $createdAt] = $this->repository->create($intent);
+        // 信号只由“首次 insert 成功”触发；去重命中不重复唤醒（契约 §4.5）。
+        if ($id > 0 && $firstInsert && $this->signals !== null) {
+            $topic = $intent->type() === 'message' ? 'messages' : 'notifications';
+            $cursorHint = $createdAt !== null && $createdAt !== '' ? NotificationCursor::encode($createdAt, $id) : '';
+            $this->signals->publish(new RealtimeSignal($topic, 'user:' . $intent->recipientId(), $cursorHint));
+        }
+        return $id;
     }
 
     /** @return array{data: array<int, mixed>, next_cursor: ?string, has_more: bool} */

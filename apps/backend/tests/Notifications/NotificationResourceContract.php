@@ -8,6 +8,7 @@ require $root . '/app/modules/Platform/Notifications/Domain/NotificationIntent.p
 require $root . '/app/modules/Platform/Notifications/Contract/NotificationRepository.php';
 require $root . '/app/modules/Platform/Notifications/Contract/NotificationTypeCatalog.php';
 require $root . '/app/modules/Platform/Notifications/Infrastructure/ThinkOrmNotificationRepository.php';
+require $root . '/app/modules/Platform/Notifications/Domain/NotificationCursor.php';
 require $root . '/app/modules/Platform/Notifications/Transport/Api/NotificationItemResource.php';
 require $root . '/app/modules/Platform/Notifications/Transport/Api/NotificationCursorPageResource.php';
 require $root . '/app/modules/Platform/Notifications/Transport/Api/NotificationUnreadResource.php';

@@ -19,7 +19,7 @@ final class NotificationPreferencesRepo implements NotificationRepository
 {
     public array $values = [];
     public array $created = [];
-    public function create(NotificationIntent $intent): int { $this->created[] = $intent; return count($this->created); }
+    public function create(NotificationIntent $intent): array { $this->created[] = $intent; return [count($this->created), true, null]; }
     public function recipientCanReceive(int $userId, string $type): bool { return str_starts_with($type, 'system.') || ($this->values[$type] ?? true); }
     public function listForUser(int $userId, ?string $cursor, int $limit, bool $unreadOnly, ?string $type, ?string $category): array { return ['items'=>[],'next_cursor'=>null,'has_more'=>false]; }
     public function markRead(int $userId, array $ids): int { return 0; }
