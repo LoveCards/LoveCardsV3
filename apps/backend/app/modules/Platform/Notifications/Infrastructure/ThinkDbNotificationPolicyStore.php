@@ -87,8 +87,7 @@ final class ThinkDbNotificationPolicyStore implements NotificationPolicyStore
         $now = gmdate('Y-m-d H:i:s.u');
         $before = null;
         Db::transaction(function () use ($changes, $expectedRevision, $newRevision, $actorId, $reason, $now, &$before): void {
-            // 版本行是所有策略写入共用的锁；等待者获得锁后重新读取最新版本。
-            // 仅锁规则行会让并发请求都读到旧版本，最后在快照唯一键上撞出 500。
+            // 先锁版本行并重查最新版本；版本快照的唯一键仍是并发 CAS 的最终裁决。
             $version = Db::table('notification_policy_versions')
                 ->where('policy_revision', $expectedRevision)
                 ->lock(true)
@@ -133,14 +132,21 @@ final class ThinkDbNotificationPolicyStore implements NotificationPolicyStore
                     ->where('policy_revision', $newRevision)
                     ->update(['enabled' => $change['enabled'] ? 1 : 0, 'updated_by' => $actorId, 'updated_at' => $now]);
             }
-            Db::table('notification_policy_versions')->insert([
-                'policy_revision' => $newRevision,
-                'snapshot_json' => json_encode($snapshot, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
-                'source' => 'admin',
-                'reason' => $reason,
-                'created_by' => $actorId,
-                'created_at' => $now,
-            ]);
+            try {
+                Db::table('notification_policy_versions')->insert([
+                    'policy_revision' => $newRevision,
+                    'snapshot_json' => json_encode($snapshot, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+                    'source' => 'admin',
+                    'reason' => $reason,
+                    'created_by' => $actorId,
+                    'created_at' => $now,
+                ]);
+            } catch (\Throwable $exception) {
+                if (str_contains($exception->getMessage(), 'uq_np_rev')) {
+                    throw new \RuntimeException('stale-revision', 0, $exception);
+                }
+                throw $exception;
+            }
         });
 
         return ['revision' => $newRevision, 'policies' => $this->listCurrent(), 'before' => $before ?? []];
