@@ -6,6 +6,7 @@ import { AuthorIdentity } from '../../components/AuthorIdentity.jsx';
 import { AppShell } from '../../layouts/AppShell.jsx';
 import { getRuntimeDataMode } from '../../app/runtime-context.js';
 import { listConversations } from '../../services/community-service.js';
+import { getCommunicationRuntime, SIGNAL_MESSAGES } from '../../services/communication-runtime.js';
 import { Icon } from '../../ui/icons.jsx';
 import { MessageCenterHeader } from './MessageCenterHeader.jsx';
 import { MessageCenterTabs } from './MessageCenterTabs.jsx';
@@ -76,6 +77,13 @@ export function MessagesPage() {
   }, [auth.session?.uid, query, state.items]);
   const messageUnread = state.status === 'success' ? conversationUnreadTotalOf(state.items) : undefined;
   useEffect(() => { if (auth.status === 'ready' && auth.isAuthenticated) void load(); }, [auth.isAuthenticated, auth.status, load]);
+  useEffect(() => {
+    if (designPreview || !auth.isAuthenticated) return undefined;
+    const runtime = getCommunicationRuntime();
+    const unsubscribe = runtime.subscribe((topic) => { if (topic === SIGNAL_MESSAGES) void load(); });
+    void runtime.start();
+    return () => unsubscribe();
+  }, [auth.isAuthenticated, designPreview, load]);
   const activateConversation = (id, recipientId) => {
     if (!id) return;
     if (isCompactViewport()) {

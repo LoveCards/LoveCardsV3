@@ -16,6 +16,10 @@ export function pingComment() {
   return `: ping\n\n`
 }
 
+export function heartbeatFrame() {
+  return sseFrame({ event: 'heartbeat', data: '{}' })
+}
+
 export function signalFrame({ id, topic, cursor }) {
   return sseFrame({ id, event: 'signal', data: JSON.stringify({ topic, cursor }) })
 }

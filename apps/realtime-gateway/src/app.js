@@ -3,7 +3,7 @@
 
 import http from 'node:http'
 import { RedisSubscriber } from './redis-subscriber.js'
-import { pingComment, resyncFrame, retryDirective, signalFrame } from './sse.js'
+import { heartbeatFrame, pingComment, resyncFrame, retryDirective, signalFrame } from './sse.js'
 
 export const PROTOCOL = 'lc-realtime/1'
 export const VERSION = '0.1.0'
@@ -155,7 +155,7 @@ export function createApp(config) {
       conn.send(resyncFrame())
     }
 
-    conn.heartbeat = setInterval(() => conn.send(pingComment()), HEARTBEAT_MS)
+    conn.heartbeat = setInterval(() => { conn.send(pingComment()); conn.send(heartbeatFrame()) }, HEARTBEAT_MS)
     conn.lifetime = setTimeout(() => closeConnection(conn, 'max lifetime'), MAX_LIFETIME_MS)
 
     if (state.transport === 'source-poll') {
@@ -217,10 +217,10 @@ export function createApp(config) {
   return {
     server,
     state,
-    start(port) {
+    start(port, host = '127.0.0.1') {
       subscriber?.start()
       return new Promise((resolve) => {
-        server.listen(port, () => resolve(server.address().port))
+        server.listen(port, host, () => resolve(server.address().port))
       })
     },
     stop() {

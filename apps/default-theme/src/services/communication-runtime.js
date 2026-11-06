@@ -91,7 +91,7 @@ export function createCommunicationRuntime({
   function armWatchdog(heartbeatSeconds) {
     if (watchdog) clearTimeoutFn(watchdog);
     // 心跳注释不产生 EventSource 事件；看门狗超过 3 个心跳周期无信号即判定链路失效。
-    const limit = Math.max(10, clampNumber(heartbeatSeconds, 15) * 3);
+    const limit = Math.max(10_000, clampNumber(heartbeatSeconds, 15) * 3 * 1000);
     watchdog = setTimeoutFn(() => {
       watchdog = null;
       fallBackToPolling();
@@ -122,6 +122,14 @@ export function createCommunicationRuntime({
     mode = 'realtime';
     eventSource = source;
     armWatchdog(ticket.heartbeat_seconds);
+    source.addEventListener('heartbeat', () => {
+      armWatchdog(ticket.heartbeat_seconds);
+    });
+    source.addEventListener('resync', () => {
+      emit(SIGNAL_NOTIFICATIONS);
+      emit(SIGNAL_MESSAGES);
+      emit(SIGNAL_UNREAD);
+    });
     source.addEventListener('signal', (event) => {
       armWatchdog(ticket.heartbeat_seconds);
       let topic = SIGNAL_NOTIFICATIONS;
