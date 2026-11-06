@@ -111,11 +111,6 @@ final class Community extends Validate
                 'required' => ['recipient_uid', 'body'],
                 'additionalProperties' => false,
             ],
-            'stream' => [
-                'type' => 'object',
-                'properties' => ['after' => ['type' => 'integer', 'minimum' => 0]],
-                'additionalProperties' => false,
-            ],
         ];
     }
 
@@ -131,7 +126,6 @@ final class Community extends Validate
         'report' => ['normal' => ['details'], 'require' => ['resource_type', 'resource_id', 'reason'], 'nonNull' => false, 'toNull' => false],
         'draft' => ['normal' => ['title', 'content', 'payload'], 'require' => false, 'nonNull' => false, 'toNull' => false],
         'messageSend' => ['normal' => ['client_message_id'], 'require' => ['recipient_uid', 'body'], 'nonNull' => false, 'toNull' => false],
-        'stream' => ['normal' => ['after'], 'require' => false, 'nonNull' => false, 'toNull' => false],
     ];
 
     protected $rule = [
