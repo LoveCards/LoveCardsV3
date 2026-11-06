@@ -56,7 +56,7 @@ $expected = [
         'operations.read:global', 'operations.migrate:global', 'operations.retry:global',
         // Phase 1 通信运行时控制面：运维管理员可变更模式与运行参数（敏感，走审计）。
         'operations.runtime.configure:global',
-        'communications.read:global', 'audit.read:global',
+        'communications.read:global', 'communications.configure:global', 'audit.read:global',
         'system.update:global', 'system.update.contract:global', 'system.recover:global',
         'config.read:global', 'config.update:global',
         'storage.read:global', 'storage.install:global', 'storage.test:global',
@@ -119,7 +119,8 @@ $assert(!in_array('roles.assign:global', $grantKeys($templates['operations_admin
 $dataSql = file_get_contents($root . '/data.sql');
 $migration = file_get_contents($root . '/database/migrations/20260823000001.sql');
 // 模板角色授权允许通过后续迁移差分工单追加（历史种子 checksum 不可改写）。
-$migrationDelta = file_get_contents($root . '/database/migrations/20261106000004.sql');
+$migrationDelta = file_get_contents($root . '/database/migrations/20261106000004.sql')
+    . "\n" . file_get_contents($root . '/database/migrations/20261106000008.sql');
 $rolesService = file_get_contents($root . '/app/modules/Platform/Rbac/Service/Roles.php');
 $assert($dataSql !== false && $migration !== false && $rolesService !== false, 'role template seed sources must be readable');
 foreach ($names as $slug => $name) {

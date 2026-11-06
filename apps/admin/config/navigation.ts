@@ -314,6 +314,18 @@ const operationsItems: readonly AdminNavigationItem[] = [
     actionCapabilities: ['operations.retry'],
   }),
   item({
+    path: '/apps/operations/notification-policies',
+    canonicalPath: '/apps/operations/notification-policies',
+    title: '通知策略',
+    icon: 'mdi-bell-cog-outline',
+    domain: 'operations-audit',
+    section: '通知策略',
+    parentRoute: '/apps/operations/notification-policies',
+    grants: [{ capability: 'communications.configure', scope: 'global' }],
+    riskLevel: 'sensitive',
+    actionCapabilities: ['communications.configure'],
+  }),
+  item({
     path: '/apps/operations/upgrade',
     canonicalPath: '/apps/operations/upgrade',
     legacyAliases: ['/apps/system/upgrade'],

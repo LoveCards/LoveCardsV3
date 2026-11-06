@@ -35,9 +35,16 @@ final class AdminValidate extends Validate
                 'worker_stale_seconds', 'scheduler_stale_seconds', 'gateway_stale_seconds', 'require_supervisor'],
             'require' => ['desired_mode', 'expected_revision'], 'nonNull' => false, 'toNull' => [],
         ],
+        // 通知策略 CAS 修改：结构化校验在 ManageNotificationPolicies（契约 §5.2）。
+        'notificationPolicies' => [
+            'normal' => ['reason'], 'require' => ['expected_revision', 'policies'], 'nonNull' => false, 'toNull' => [],
+        ],
     ];
 
     protected $rule = [
+        'expected_revision' => 'number',
+        'policies' => 'array',
+        'reason' => 'max:255',
         'page' => 'number',
         'list_rows' => 'number',
         'actor_id' => 'number',

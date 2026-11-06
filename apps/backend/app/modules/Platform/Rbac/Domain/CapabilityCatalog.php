@@ -121,6 +121,7 @@ final class CapabilityCatalog
             'users.sessions.revoke' => '撤销用户 Session',
             'users.recovery.read'   => '查看账号恢复状态',
             'communications.read'   => '查看通知和投递运维元数据',
+            'communications.configure' => '启停互动通知策略',
             'community.insights.read' => '查看社区隐私安全聚合',
             // Session（公开路由，通常不需要分配）
             'session.login'     => '登录',
