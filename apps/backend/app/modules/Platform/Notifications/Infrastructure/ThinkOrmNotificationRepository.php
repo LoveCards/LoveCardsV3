@@ -5,6 +5,7 @@ namespace app\modules\Platform\Notifications\Infrastructure;
 use app\modules\Platform\Notifications\Contract\NotificationRepository;
 use app\modules\Platform\Notifications\Contract\NotificationTypeCatalog;
 use app\modules\Platform\Notifications\Domain\NotificationIntent;
+use app\modules\Platform\Notifications\Domain\NotificationCursor;
 use think\facade\Db;
 use app\modules\Content\Cards\Public\CardAccess as CardVisibilityPolicy;
 use app\modules\Platform\User\Public\UserStatus;
@@ -27,17 +28,18 @@ final class ThinkOrmNotificationRepository implements NotificationRepository
         return $enabled === null || (bool) $enabled;
     }
 
-    public function create(NotificationIntent $intent): int
+    public function create(NotificationIntent $intent): array
     {
         $existing = Db::table('notifications')
             ->where('recipient_id', $intent->recipientId())
             ->where('dedupe_key', $intent->dedupeKey())
             ->value('id');
-        if ($existing !== null) return (int) $existing;
+        if ($existing !== null) return [(int) $existing, false, null];
 
         $resource = $intent->resource();
+        $createdAt = date('Y-m-d H:i:s');
         try {
-            return (int) Db::table('notifications')->insertGetId([
+            return [(int) Db::table('notifications')->insertGetId([
                 'recipient_id' => $intent->recipientId(),
                 'dedupe_key' => $intent->dedupeKey(),
                 'type' => $intent->type(),
@@ -46,14 +48,14 @@ final class ThinkOrmNotificationRepository implements NotificationRepository
                 'resource_id' => $resource?->id(),
                 'payload' => json_encode($intent->data(), JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
                 'read_at' => null,
-                'created_at' => date('Y-m-d H:i:s'),
-            ]);
+                'created_at' => $createdAt,
+            ], true, $createdAt)];
         } catch (\Throwable $exception) {
             $existing = Db::table('notifications')
                 ->where('recipient_id', $intent->recipientId())
                 ->where('dedupe_key', $intent->dedupeKey())
                 ->value('id');
-            if ($existing !== null) return (int) $existing;
+            if ($existing !== null) return [(int) $existing, false, null];
             throw $exception;
         }
     }
@@ -551,7 +553,6 @@ final class ThinkOrmNotificationRepository implements NotificationRepository
 
     private function encodeCursor(string $createdAt, int $id): string
     {
-        $payload = json_encode(['created_at' => $createdAt, 'id' => $id], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-        return rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
+        return NotificationCursor::encode($createdAt, $id);
     }
 }

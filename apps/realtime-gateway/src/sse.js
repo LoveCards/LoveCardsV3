@@ -1,0 +1,25 @@
+// SSE 帧工具：真实换行字节（契约 §4.5），杜绝旧 FPM 伪 SSE 的 \n 字面量缺陷。
+
+export function sseFrame({ id, event, data }) {
+  const lines = []
+  if (id !== undefined && id !== null && id !== '') lines.push(`id: ${id}`)
+  if (event) lines.push(`event: ${event}`)
+  if (data !== undefined && data !== null) lines.push(`data: ${data}`)
+  return `${lines.join('\n')}\n\n`
+}
+
+export function retryDirective(ms) {
+  return `retry: ${ms}\n\n`
+}
+
+export function pingComment() {
+  return `: ping\n\n`
+}
+
+export function signalFrame({ id, topic, cursor }) {
+  return sseFrame({ id, event: 'signal', data: JSON.stringify({ topic, cursor }) })
+}
+
+export function resyncFrame() {
+  return sseFrame({ event: 'resync', data: '' })
+}
