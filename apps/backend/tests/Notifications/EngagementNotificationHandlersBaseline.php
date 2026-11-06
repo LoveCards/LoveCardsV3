@@ -37,6 +37,8 @@ namespace
     require $root . '/app/modules/Platform/Notifications/Domain/NotificationIntent.php';
     require $root . '/app/modules/Platform/Notifications/Contract/NotificationRepository.php';
     require $root . '/app/modules/Platform/Notifications/Application/ManageNotifications.php';
+    require $root . '/app/modules/Platform/Notifications/Contract/NotificationPolicyStore.php';
+    require $root . '/app/modules/Platform/Notifications/Application/NotificationPolicyGate.php';
     require $root . '/app/modules/Platform/Notifications/Public/Notifications.php';
     require $root . '/app/modules/Platform/Notifications/Infrastructure/ContentLikedNotificationHandler.php';
     require $root . '/app/modules/Platform/Notifications/Infrastructure/LibrarySavedNotificationHandler.php';
@@ -54,11 +56,12 @@ namespace
         /** @var array<string, NotificationIntent> */
         public array $items = [];
 
-        public function create(NotificationIntent $intent): int
+        public function create(NotificationIntent $intent): array
         {
             $key = $intent->recipientId() . ':' . $intent->dedupeKey();
-            if (!isset($this->items[$key])) $this->items[$key] = $intent;
-            return array_search($key, array_keys($this->items), true) + 1;
+            $first = !isset($this->items[$key]);
+            if ($first) $this->items[$key] = $intent;
+            return [array_search($key, array_keys($this->items), true) + 1, $first, null];
         }
 
         public function listForUser(
@@ -85,11 +88,37 @@ namespace
         public static EngagementFakeNotificationRepository $notifications;
     }
 
+    if (!class_exists('FakeCommunicationPorts')) {
+            require_once __DIR__ . '/../../app/modules/Platform/Eventing/Public/RealtimeSignal.php';
+            require_once __DIR__ . '/../../app/modules/Platform/Eventing/Public/RealtimeSignalPublisher.php';
+            require_once __DIR__ . '/../../app/modules/Platform/Notifications/Contract/NotificationPolicyStore.php';
+            final class FakeCommunicationPorts
+            {
+                private static $instances = [];
+                public static function instance(string $class): object
+                {
+                    return self::$instances[$class] ??= new class implements
+                        \app\modules\Platform\Eventing\Public\RealtimeSignalPublisher,
+                        \app\modules\Platform\Notifications\Contract\NotificationPolicyStore {
+                        public function publish(\app\modules\Platform\Eventing\Public\RealtimeSignal $signal): void {}
+                        public function snapshot(int $policyRevision): ?array { return null; }
+                        public function currentRevision(): ?int { return null; }
+                        public function listCurrent(): array { return []; }
+                        public function applyChanges(array $changes, int $expectedRevision, ?int $actorId, ?string $reason): array
+                        { return ['revision' => $expectedRevision, 'policies' => [], 'before' => []]; }
+                    };
+                }
+            }
+        }
+
     function app(string $class): object
     {
         if ($class === NotificationRepository::class) return EngagementTestContainer::$notifications;
+        if (in_array($class, ['app\\modules\\Platform\\Eventing\\Public\\RealtimeSignalPublisher', 'app\\modules\\Platform\\Notifications\\Contract\\NotificationPolicyStore'], true)) {
+            return \FakeCommunicationPorts::instance($class);
+        }
         throw new RuntimeException('Unexpected container lookup: ' . $class);
-    }
+}
 
     /** @param array<string, mixed> $payload */
     $event = static function (
@@ -195,4 +224,7 @@ namespace
     $assert(count(EngagementTestContainer::$notifications->items) === 3, 'hidden card and non-card saves must not notify');
 
     fwrite(STDOUT, "PASS engagement notification handlers baseline\n");
+
+    
+
 }

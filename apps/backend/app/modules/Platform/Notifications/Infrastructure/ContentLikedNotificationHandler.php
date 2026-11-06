@@ -46,6 +46,6 @@ final class ContentLikedNotificationHandler implements EventHandler
             $actorId,
             new ResourceRef($targetType, (string) $targetId),
             $data
-        );
+        , $context->policyScope());
     }
 }

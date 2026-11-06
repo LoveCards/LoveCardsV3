@@ -58,7 +58,7 @@ final class ContentMentionsAddedNotificationHandler implements EventHandler
                     'comment_id' => $commentId,
                     'mentioned_username' => $username,
                 ]
-            );
+            , $context->policyScope());
         }
     }
 }

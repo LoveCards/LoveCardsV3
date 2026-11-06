@@ -45,6 +45,9 @@
         "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
+            "expected_revision": "number",
+            "policies": "array",
+            "reason": "max:255",
             "page": "number",
             "list_rows": "number",
             "actor_id": "number",
@@ -57,7 +60,18 @@
             "resolution": "max:255",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
-            "unread_only": "boolean"
+            "unread_only": "boolean",
+            "desired_mode": "max:16",
+            "notification_interval_seconds": "number",
+            "message_interval_seconds": "number",
+            "unread_interval_seconds": "number",
+            "polling_backoff_factor": "number",
+            "polling_max_interval_seconds": "number",
+            "pause_when_hidden": "boolean",
+            "worker_stale_seconds": "number",
+            "scheduler_stale_seconds": "number",
+            "gateway_stale_seconds": "number",
+            "require_supervisor": "boolean"
           }
         },
         "responses": {
@@ -2590,6 +2604,274 @@
         }
       }
     },
+    "/admin/communications/policies": {
+      "get": {
+        "operationId": "communications.policies",
+        "tags": [
+          "通信"
+        ],
+        "summary": "通知策略目录",
+        "description": "通知策略目录",
+        "x-controller": "Platform.AdminCommunications/policies",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.configure",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "communications.configure"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "AdminNotificationPoliciesResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "revision",
+                        "policies"
+                      ],
+                      "properties": {
+                        "revision": {
+                          "type": [
+                            "integer",
+                            "null"
+                          ]
+                        },
+                        "policies": {
+                          "type": "array"
+                        }
+                      },
+                      "x-typescript-type": "NotificationPolicyCatalog"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      },
+      "put": {
+        "operationId": "communications.applyPolicies",
+        "tags": [
+          "通信"
+        ],
+        "summary": "启停通知策略",
+        "description": "启停通知策略",
+        "x-controller": "Platform.AdminCommunications/applyPolicies",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.configure",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "communications.configure"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "AdminNotificationPoliciesApplyResource",
+        "x-response-shape": "item",
+        "x-validators": [
+          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+        ],
+        "x-validator-scene": "notificationPolicies",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
+            "expected_revision": "number",
+            "policies": "array",
+            "reason": "max:255",
+            "page": "number",
+            "list_rows": "number",
+            "actor_id": "number",
+            "status": "max:32",
+            "resource_type": "max:64",
+            "worker_type": "max:64",
+            "search_value": "max:255",
+            "search_keys": "max:255",
+            "note": "max:2000",
+            "resolution": "max:255",
+            "limit": "number|between:1,200",
+            "file": "require|fileExt:zip",
+            "unread_only": "boolean",
+            "desired_mode": "max:16",
+            "notification_interval_seconds": "number",
+            "message_interval_seconds": "number",
+            "unread_interval_seconds": "number",
+            "polling_backoff_factor": "number",
+            "polling_max_interval_seconds": "number",
+            "pause_when_hidden": "boolean",
+            "worker_stale_seconds": "number",
+            "scheduler_stale_seconds": "number",
+            "gateway_stale_seconds": "number",
+            "require_supervisor": "boolean"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "revision",
+                        "policies"
+                      ],
+                      "properties": {
+                        "revision": {
+                          "type": "integer"
+                        },
+                        "policies": {
+                          "type": "array"
+                        }
+                      },
+                      "x-typescript-type": "NotificationPolicyApplyResult"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "expected_revision": {
+                    "type": "number"
+                  },
+                  "policies": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "expected_revision",
+                  "policies"
+                ],
+                "additionalProperties": true,
+                "x-typescript-type": "NotificationPolicyUpdate",
+                "x-typescript-params": "data: NotificationPolicyUpdate",
+                "x-validators": [
+                  "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+                ],
+                "x-validator-scene": "notificationPolicies"
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/community/insights": {
       "get": {
         "operationId": "community.insights",
@@ -4802,6 +5084,9 @@
         "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
+            "expected_revision": "number",
+            "policies": "array",
+            "reason": "max:255",
             "page": "number",
             "list_rows": "number",
             "actor_id": "number",
@@ -4814,7 +5099,18 @@
             "resolution": "max:255",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
-            "unread_only": "boolean"
+            "unread_only": "boolean",
+            "desired_mode": "max:16",
+            "notification_interval_seconds": "number",
+            "message_interval_seconds": "number",
+            "unread_interval_seconds": "number",
+            "polling_backoff_factor": "number",
+            "polling_max_interval_seconds": "number",
+            "pause_when_hidden": "boolean",
+            "worker_stale_seconds": "number",
+            "scheduler_stale_seconds": "number",
+            "gateway_stale_seconds": "number",
+            "require_supervisor": "boolean"
           }
         },
         "responses": {
@@ -5330,6 +5626,9 @@
         "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
+            "expected_revision": "number",
+            "policies": "array",
+            "reason": "max:255",
             "page": "number",
             "list_rows": "number",
             "actor_id": "number",
@@ -5342,7 +5641,18 @@
             "resolution": "max:255",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
-            "unread_only": "boolean"
+            "unread_only": "boolean",
+            "desired_mode": "max:16",
+            "notification_interval_seconds": "number",
+            "message_interval_seconds": "number",
+            "unread_interval_seconds": "number",
+            "polling_backoff_factor": "number",
+            "polling_max_interval_seconds": "number",
+            "pause_when_hidden": "boolean",
+            "worker_stale_seconds": "number",
+            "scheduler_stale_seconds": "number",
+            "gateway_stale_seconds": "number",
+            "require_supervisor": "boolean"
           }
         },
         "responses": {
@@ -5722,6 +6032,9 @@
                         },
                         "eventing": {
                           "type": "object"
+                        },
+                        "communication": {
+                          "type": "object"
                         }
                       },
                       "x-typescript-type": "OperationsRuntimeStatus"
@@ -5753,6 +6066,675 @@
           }
         ],
         "parameters": []
+      }
+    },
+    "/admin/operations/runtime/config": {
+      "get": {
+        "operationId": "operations.runtimeConfig",
+        "tags": [
+          "运维"
+        ],
+        "summary": "运行时通信配置",
+        "description": "运行时通信配置",
+        "x-controller": "Platform.Administration/runtimeConfig",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "operations.read"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "AdminRuntimeConfigResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "desired_mode": {
+                          "type": "string"
+                        },
+                        "effective_mode": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "revision": {
+                          "type": "integer"
+                        },
+                        "reason_code": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "checked_at": {
+                          "type": "string"
+                        },
+                        "settings": {
+                          "type": "object"
+                        },
+                        "last_apply_state": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "last_apply_reason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "capabilities": {
+                          "type": "array"
+                        }
+                      },
+                      "x-typescript-type": "RuntimeCommunicationSnapshot"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      },
+      "put": {
+        "operationId": "operations.applyRuntimeConfig",
+        "tags": [
+          "运维"
+        ],
+        "summary": "应用运行时通信配置",
+        "description": "应用运行时通信配置",
+        "x-controller": "Platform.Administration/applyRuntimeConfig",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.runtime.configure",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "operations.runtime.configure"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "AdminRuntimeConfigResource",
+        "x-response-shape": "item",
+        "x-validators": [
+          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+        ],
+        "x-validator-scene": "runtimeConfig",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
+            "expected_revision": "number",
+            "policies": "array",
+            "reason": "max:255",
+            "page": "number",
+            "list_rows": "number",
+            "actor_id": "number",
+            "status": "max:32",
+            "resource_type": "max:64",
+            "worker_type": "max:64",
+            "search_value": "max:255",
+            "search_keys": "max:255",
+            "note": "max:2000",
+            "resolution": "max:255",
+            "limit": "number|between:1,200",
+            "file": "require|fileExt:zip",
+            "unread_only": "boolean",
+            "desired_mode": "max:16",
+            "notification_interval_seconds": "number",
+            "message_interval_seconds": "number",
+            "unread_interval_seconds": "number",
+            "polling_backoff_factor": "number",
+            "polling_max_interval_seconds": "number",
+            "pause_when_hidden": "boolean",
+            "worker_stale_seconds": "number",
+            "scheduler_stale_seconds": "number",
+            "gateway_stale_seconds": "number",
+            "require_supervisor": "boolean"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "desired_mode": {
+                          "type": "string"
+                        },
+                        "effective_mode": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "revision": {
+                          "type": "integer"
+                        },
+                        "reason_code": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "checked_at": {
+                          "type": "string"
+                        },
+                        "settings": {
+                          "type": "object"
+                        },
+                        "last_apply_state": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "last_apply_reason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "capabilities": {
+                          "type": "array"
+                        }
+                      },
+                      "x-typescript-type": "RuntimeCommunicationSnapshot"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "desired_mode": {
+                    "type": "string",
+                    "maxLength": 16
+                  },
+                  "expected_revision": {
+                    "type": "number"
+                  },
+                  "notification_interval_seconds": {
+                    "type": "number"
+                  },
+                  "message_interval_seconds": {
+                    "type": "number"
+                  },
+                  "unread_interval_seconds": {
+                    "type": "number"
+                  },
+                  "polling_backoff_factor": {
+                    "type": "number"
+                  },
+                  "polling_max_interval_seconds": {
+                    "type": "number"
+                  },
+                  "pause_when_hidden": {
+                    "type": "boolean"
+                  },
+                  "worker_stale_seconds": {
+                    "type": "number"
+                  },
+                  "scheduler_stale_seconds": {
+                    "type": "number"
+                  },
+                  "gateway_stale_seconds": {
+                    "type": "number"
+                  },
+                  "require_supervisor": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "desired_mode",
+                  "expected_revision"
+                ],
+                "additionalProperties": true,
+                "x-typescript-type": "RuntimeConfigUpdate",
+                "x-typescript-params": "data: RuntimeConfigUpdate",
+                "x-validators": [
+                  "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+                ],
+                "x-validator-scene": "runtimeConfig"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/operations/runtime/reconcile": {
+      "post": {
+        "operationId": "operations.reconcileRuntime",
+        "tags": [
+          "运维"
+        ],
+        "summary": "运行时对账",
+        "description": "运行时对账",
+        "x-controller": "Platform.Administration/reconcileRuntime",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.runtime.configure",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "operations.runtime.configure"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "AdminRuntimeConfigResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "desired_mode": {
+                          "type": "string"
+                        },
+                        "effective_mode": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string"
+                        },
+                        "revision": {
+                          "type": "integer"
+                        },
+                        "reason_code": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "checked_at": {
+                          "type": "string"
+                        },
+                        "settings": {
+                          "type": "object"
+                        },
+                        "last_apply_state": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "last_apply_reason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "capabilities": {
+                          "type": "array"
+                        }
+                      },
+                      "x-typescript-type": "RuntimeCommunicationSnapshot"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/admin/operations/runtime/validate": {
+      "post": {
+        "operationId": "operations.validateRuntimeConfig",
+        "tags": [
+          "运维"
+        ],
+        "summary": "校验运行时配置",
+        "description": "校验运行时配置",
+        "x-controller": "Platform.Administration/validateRuntimeConfig",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.runtime.configure",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "operations.runtime.configure"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "AdminRuntimeValidateResource",
+        "x-response-shape": "item",
+        "x-validators": [
+          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+        ],
+        "x-validator-scene": "runtimeConfig",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
+            "expected_revision": "number",
+            "policies": "array",
+            "reason": "max:255",
+            "page": "number",
+            "list_rows": "number",
+            "actor_id": "number",
+            "status": "max:32",
+            "resource_type": "max:64",
+            "worker_type": "max:64",
+            "search_value": "max:255",
+            "search_keys": "max:255",
+            "note": "max:2000",
+            "resolution": "max:255",
+            "limit": "number|between:1,200",
+            "file": "require|fileExt:zip",
+            "unread_only": "boolean",
+            "desired_mode": "max:16",
+            "notification_interval_seconds": "number",
+            "message_interval_seconds": "number",
+            "unread_interval_seconds": "number",
+            "polling_backoff_factor": "number",
+            "polling_max_interval_seconds": "number",
+            "pause_when_hidden": "boolean",
+            "worker_stale_seconds": "number",
+            "scheduler_stale_seconds": "number",
+            "gateway_stale_seconds": "number",
+            "require_supervisor": "boolean"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "valid": {
+                          "type": "boolean"
+                        },
+                        "violations": {
+                          "type": "array"
+                        }
+                      },
+                      "x-typescript-type": "RuntimeConfigValidation"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "desired_mode": {
+                    "type": "string",
+                    "maxLength": 16
+                  },
+                  "expected_revision": {
+                    "type": "number"
+                  },
+                  "notification_interval_seconds": {
+                    "type": "number"
+                  },
+                  "message_interval_seconds": {
+                    "type": "number"
+                  },
+                  "unread_interval_seconds": {
+                    "type": "number"
+                  },
+                  "polling_backoff_factor": {
+                    "type": "number"
+                  },
+                  "polling_max_interval_seconds": {
+                    "type": "number"
+                  },
+                  "pause_when_hidden": {
+                    "type": "boolean"
+                  },
+                  "worker_stale_seconds": {
+                    "type": "number"
+                  },
+                  "scheduler_stale_seconds": {
+                    "type": "number"
+                  },
+                  "gateway_stale_seconds": {
+                    "type": "number"
+                  },
+                  "require_supervisor": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "desired_mode",
+                  "expected_revision"
+                ],
+                "additionalProperties": true,
+                "x-typescript-type": "RuntimeConfigUpdate",
+                "x-typescript-params": "data: RuntimeConfigUpdate",
+                "x-validators": [
+                  "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+                ],
+                "x-validator-scene": "runtimeConfig"
+              }
+            }
+          }
+        }
       }
     },
     "/admin/operations/upgrades": {
@@ -5795,6 +6777,9 @@
         "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
+            "expected_revision": "number",
+            "policies": "array",
+            "reason": "max:255",
             "page": "number",
             "list_rows": "number",
             "actor_id": "number",
@@ -5807,7 +6792,18 @@
             "resolution": "max:255",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
-            "unread_only": "boolean"
+            "unread_only": "boolean",
+            "desired_mode": "max:16",
+            "notification_interval_seconds": "number",
+            "message_interval_seconds": "number",
+            "unread_interval_seconds": "number",
+            "polling_backoff_factor": "number",
+            "polling_max_interval_seconds": "number",
+            "pause_when_hidden": "boolean",
+            "worker_stale_seconds": "number",
+            "scheduler_stale_seconds": "number",
+            "gateway_stale_seconds": "number",
+            "require_supervisor": "boolean"
           }
         },
         "responses": {
@@ -6024,6 +7020,9 @@
         "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
+            "expected_revision": "number",
+            "policies": "array",
+            "reason": "max:255",
             "page": "number",
             "list_rows": "number",
             "actor_id": "number",
@@ -6036,7 +7035,18 @@
             "resolution": "max:255",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
-            "unread_only": "boolean"
+            "unread_only": "boolean",
+            "desired_mode": "max:16",
+            "notification_interval_seconds": "number",
+            "message_interval_seconds": "number",
+            "unread_interval_seconds": "number",
+            "polling_backoff_factor": "number",
+            "polling_max_interval_seconds": "number",
+            "pause_when_hidden": "boolean",
+            "worker_stale_seconds": "number",
+            "scheduler_stale_seconds": "number",
+            "gateway_stale_seconds": "number",
+            "require_supervisor": "boolean"
           }
         },
         "responses": {
@@ -7325,6 +8335,9 @@
         "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
+            "expected_revision": "number",
+            "policies": "array",
+            "reason": "max:255",
             "page": "number",
             "list_rows": "number",
             "actor_id": "number",
@@ -7337,7 +8350,18 @@
             "resolution": "max:255",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
-            "unread_only": "boolean"
+            "unread_only": "boolean",
+            "desired_mode": "max:16",
+            "notification_interval_seconds": "number",
+            "message_interval_seconds": "number",
+            "unread_interval_seconds": "number",
+            "polling_backoff_factor": "number",
+            "polling_max_interval_seconds": "number",
+            "pause_when_hidden": "boolean",
+            "worker_stale_seconds": "number",
+            "scheduler_stale_seconds": "number",
+            "gateway_stale_seconds": "number",
+            "require_supervisor": "boolean"
           }
         },
         "responses": {
@@ -7515,6 +8539,9 @@
         "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
+            "expected_revision": "number",
+            "policies": "array",
+            "reason": "max:255",
             "page": "number",
             "list_rows": "number",
             "actor_id": "number",
@@ -7527,7 +8554,18 @@
             "resolution": "max:255",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
-            "unread_only": "boolean"
+            "unread_only": "boolean",
+            "desired_mode": "max:16",
+            "notification_interval_seconds": "number",
+            "message_interval_seconds": "number",
+            "unread_interval_seconds": "number",
+            "polling_backoff_factor": "number",
+            "polling_max_interval_seconds": "number",
+            "pause_when_hidden": "boolean",
+            "worker_stale_seconds": "number",
+            "scheduler_stale_seconds": "number",
+            "gateway_stale_seconds": "number",
+            "require_supervisor": "boolean"
           }
         },
         "responses": {
@@ -8013,6 +9051,9 @@
         "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
+            "expected_revision": "number",
+            "policies": "array",
+            "reason": "max:255",
             "page": "number",
             "list_rows": "number",
             "actor_id": "number",
@@ -8025,7 +9066,18 @@
             "resolution": "max:255",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
-            "unread_only": "boolean"
+            "unread_only": "boolean",
+            "desired_mode": "max:16",
+            "notification_interval_seconds": "number",
+            "message_interval_seconds": "number",
+            "unread_interval_seconds": "number",
+            "polling_backoff_factor": "number",
+            "polling_max_interval_seconds": "number",
+            "pause_when_hidden": "boolean",
+            "worker_stale_seconds": "number",
+            "scheduler_stale_seconds": "number",
+            "gateway_stale_seconds": "number",
+            "require_supervisor": "boolean"
           }
         },
         "responses": {
@@ -17094,6 +18146,105 @@
         ]
       }
     },
+    "/me/communication/settings": {
+      "get": {
+        "operationId": "communication.settings",
+        "tags": [
+          "社区"
+        ],
+        "summary": "通信节奏快照",
+        "description": "通信节奏快照",
+        "x-controller": "Platform.Community/communicationSettings",
+        "x-access": {
+          "auth": "required"
+        },
+        "x-capabilities": [],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck"
+        ],
+        "x-resource": "CommunicationSettingsResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "effective_mode",
+                        "status",
+                        "settings"
+                      ],
+                      "properties": {
+                        "effective_mode": {
+                          "type": "string",
+                          "enum": [
+                            "polling",
+                            "realtime"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "ready",
+                            "degraded"
+                          ]
+                        },
+                        "settings": {
+                          "type": "object"
+                        }
+                      },
+                      "x-typescript-type": "CommunicationSettingsSnapshot"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      }
+    },
     "/me/conversations": {
       "get": {
         "operationId": "messages.conversations",
@@ -21118,15 +22269,15 @@
         }
       }
     },
-    "/me/notifications/stream": {
-      "get": {
-        "operationId": "notifications.stream",
+    "/me/notifications/stream-ticket": {
+      "post": {
+        "operationId": "notifications.streamTicket",
         "tags": [
           "社区"
         ],
-        "summary": "通知实时流",
-        "description": "通知实时流",
-        "x-controller": "Platform.Realtime/stream",
+        "summary": "通知实时流凭证",
+        "description": "通知实时流凭证",
+        "x-controller": "Platform.Community/streamTicket",
         "x-access": {
           "auth": "required"
         },
@@ -21135,49 +22286,61 @@
         "x-middleware": [
           "JwtAuthCheck"
         ],
-        "x-resource": null,
-        "x-response-shape": "raw",
-        "x-validators": [
-          "app\\modules\\Platform\\Community\\Transport\\Api\\Community"
-        ],
-        "x-validator-scene": "stream",
+        "x-resource": "StreamTicketResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
         "x-contract-source": "backend",
-        "x-validation-rules": {
-          "app\\modules\\Platform\\Community\\Transport\\Api\\Community": {
-            "cursor": "max:128",
-            "limit": "number|between:1,100",
-            "unread_only": "stringBool",
-            "type": "in:social.followed,message,content.card_liked,content.comment_liked,library.saved,content.commented,content.replied,content.mentioned,system.notice,system.security,system.moderation",
-            "category": "in:social,message,interaction,system,engagement",
-            "ids": "arrayJson",
-            "profile_visibility": "in:public,followers,private",
-            "messages_from": "in:everyone,following,none",
-            "show_relations": "stringBool",
-            "gender_visibility": "in:public,followers,private",
-            "birth_date_visibility": "in:public,followers,private",
-            "query": "max:12|chsDash",
-            "in_app": "require|arrayJson",
-            "resource_type": "require|max:32|regex:/^[a-z][a-z0-9_]{0,31}$/",
-            "resource_id": "require|max:128|regex:/^[A-Za-z0-9][A-Za-z0-9._:-]*$/",
-            "reason": "require|max:64",
-            "details": "max:2000",
-            "title": "max:255",
-            "content": "max:100000",
-            "payload": "arrayJson",
-            "recipient_uid": "require|regex:/^[0-9]{12}$/",
-            "body": "require|max:5000",
-            "client_message_id": "max:128",
-            "after": "number|between:0,2147483647"
-          }
-        },
+        "x-validation-rules": {},
         "responses": {
           "200": {
             "description": "Success",
             "content": {
-              "text/event-stream": {
+              "application/json": {
                 "schema": {
-                  "type": "string",
-                  "x-typescript-type": "string"
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "ticket",
+                        "expires_in",
+                        "connect_url",
+                        "heartbeat_seconds"
+                      ],
+                      "properties": {
+                        "ticket": {
+                          "type": "string"
+                        },
+                        "expires_in": {
+                          "type": "integer"
+                        },
+                        "connect_url": {
+                          "type": "string"
+                        },
+                        "heartbeat_seconds": {
+                          "type": "integer"
+                        }
+                      },
+                      "x-typescript-type": "StreamTicket"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
                 }
               }
             }
@@ -21198,28 +22361,7 @@
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "name": "query",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "object",
-              "properties": {
-                "after": {
-                  "type": "integer",
-                  "minimum": 0
-                }
-              },
-              "additionalProperties": false,
-              "x-typescript-params": "params?: { after?: number }",
-              "x-validators": [
-                "app\\modules\\Platform\\Community\\Transport\\Api\\Community"
-              ],
-              "x-validator-scene": "stream"
-            }
-          }
-        ]
+        "parameters": []
       }
     },
     "/me/notifications/unread": {

@@ -31,6 +31,6 @@ final class MessageSentNotificationHandler implements EventHandler
             $senderId,
             new ResourceRef('message', (string) $messageId),
             ['conversation_id' => $conversationId, 'message_id' => $messageId]
-        );
+        , $context->policyScope());
     }
 }

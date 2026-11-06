@@ -8,6 +8,8 @@ use app\modules\Operations\Administration\Transport\Api\AdminValidate;
 use app\modules\Operations\Administration\Transport\Api\AdminOverviewResource;
 use app\modules\Operations\Administration\Transport\Api\AdminMigrationResource;
 use app\modules\Operations\Administration\Transport\Api\AdminRuntimeResource;
+use app\modules\Operations\Administration\Transport\Api\AdminRuntimeConfigResource;
+use app\modules\Operations\Administration\Transport\Api\AdminRuntimeValidateResource;
 use app\modules\Operations\Administration\Transport\Api\AdminDeliveryResource;
 use app\modules\Operations\Administration\Transport\Api\AdminAuditLogResource;
 use app\modules\Operations\Administration\Transport\Api\AdminNotificationStatsResource;
@@ -47,6 +49,18 @@ Route::group('admin/operations', function () use ($access, $response, $request) 
     Route::get('runtime', 'Platform.Administration/runtime')->name('operations.runtime')
         ->setOption('contract', ['request' => null, 'response' => $response(AdminRuntimeResource::class)])
         ->setOption('meta', ['name' => '运行环境', 'group' => '运维', 'access' => $access('operations.read')]);
+    Route::get('runtime/config', 'Platform.Administration/runtimeConfig')->name('operations.runtimeConfig')
+        ->setOption('contract', ['request' => null, 'response' => $response(AdminRuntimeConfigResource::class)])
+        ->setOption('meta', ['name' => '运行时通信配置', 'group' => '运维', 'access' => $access('operations.read')]);
+    Route::post('runtime/validate', 'Platform.Administration/validateRuntimeConfig')->name('operations.validateRuntimeConfig')
+        ->setOption('contract', ['request' => $request('runtimeConfig'), 'response' => $response(AdminRuntimeValidateResource::class)])
+        ->setOption('meta', ['name' => '校验运行时配置', 'group' => '运维', 'access' => $access('operations.runtime.configure')]);
+    Route::put('runtime/config', 'Platform.Administration/applyRuntimeConfig')->name('operations.applyRuntimeConfig')
+        ->setOption('contract', ['request' => $request('runtimeConfig'), 'response' => $response(AdminRuntimeConfigResource::class)])
+        ->setOption('meta', ['name' => '应用运行时通信配置', 'group' => '运维', 'access' => $access('operations.runtime.configure')]);
+    Route::post('runtime/reconcile', 'Platform.Administration/reconcileRuntime')->name('operations.reconcileRuntime')
+        ->setOption('contract', ['request' => null, 'response' => $response(AdminRuntimeConfigResource::class)])
+        ->setOption('meta', ['name' => '运行时对账', 'group' => '运维', 'access' => $access('operations.runtime.configure')]);
     Route::get('deliveries', 'Platform.Administration/deliveries')->name('operations.deliveries')
         ->setOption('contract', ['request' => $request('pagination'), 'response' => $response(AdminDeliveryResource::class, 'paginated')])
         ->setOption('meta', ['name' => '事件投递', 'group' => '运维', 'access' => $access('communications.read')]);

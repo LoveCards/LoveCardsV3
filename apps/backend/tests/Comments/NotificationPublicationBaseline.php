@@ -295,12 +295,38 @@ namespace
         public static object $notices;
     }
 
+    if (!class_exists('FakeCommunicationPorts')) {
+            require_once __DIR__ . '/../../app/modules/Platform/Eventing/Public/RealtimeSignal.php';
+            require_once __DIR__ . '/../../app/modules/Platform/Eventing/Public/RealtimeSignalPublisher.php';
+            require_once __DIR__ . '/../../app/modules/Platform/Notifications/Contract/NotificationPolicyStore.php';
+            final class FakeCommunicationPorts
+            {
+                private static $instances = [];
+                public static function instance(string $class): object
+                {
+                    return self::$instances[$class] ??= new class implements
+                        \app\modules\Platform\Eventing\Public\RealtimeSignalPublisher,
+                        \app\modules\Platform\Notifications\Contract\NotificationPolicyStore {
+                        public function publish(\app\modules\Platform\Eventing\Public\RealtimeSignal $signal): void {}
+                        public function snapshot(int $policyRevision): ?array { return null; }
+                        public function currentRevision(): ?int { return null; }
+                        public function listCurrent(): array { return []; }
+                        public function applyChanges(array $changes, int $expectedRevision, ?int $actorId, ?string $reason): array
+                        { return ['revision' => $expectedRevision, 'policies' => [], 'before' => []]; }
+                    };
+                }
+            }
+        }
+
     function app(string $class): object
     {
         if ($class === DomainEventBus::class) return CommentNotificationTestState::$bus;
         if ($class === SystemNoticeIssuer::class) return CommentNotificationTestState::$notices;
+        if (in_array($class, ['app\\modules\\Platform\\Eventing\\Public\\RealtimeSignalPublisher', 'app\\modules\\Platform\\Notifications\\Contract\\NotificationPolicyStore'], true)) {
+            return \FakeCommunicationPorts::instance($class);
+        }
         throw new RuntimeException('Unexpected container lookup: ' . $class);
-    }
+}
 
     require dirname(__DIR__, 2) . '/app/modules/Content/Cards/Service/CardVisibilityPolicy.php';
     require dirname(__DIR__, 2) . '/app/modules/Content/Cards/Public/CardAccess.php';
@@ -374,4 +400,7 @@ namespace
     $assert(Mentions::$captures === 1, 'repeated approval must not persist mentions twice');
 
     fwrite(STDOUT, "PASS comment notification publication baseline\n");
+
+    
+
 }

@@ -7,6 +7,8 @@ use app\modules\Platform\Library\Transport\Api\Library as LibraryValidate;
 use app\modules\Platform\Community\Transport\Api\Community as CommunityValidate;
 use app\modules\Platform\Notifications\Transport\Api\NotificationCursorPageResource;
 use app\modules\Platform\Notifications\Transport\Api\NotificationUnreadResource;
+use app\modules\Operations\Runtime\Transport\Api\CommunicationSettingsResource;
+use app\modules\Platform\Notifications\Transport\Api\StreamTicketResource;
 use app\shared\Transport\Http\CursorPageResource;
 use app\modules\Platform\Safety\Transport\Api\PrivacyPreferencesResource;
 use app\modules\Platform\Safety\Transport\Api\BlockedUserCursorPageResource;
@@ -52,6 +54,8 @@ Route::delete('me/history', 'Platform.Community/clearHistory')->name('library.hi
 
 Route::get('me/notifications', 'Platform.Community/notifications')->name('notifications.list')->setOption('contract',['request'=>['validate'=>CommunityValidate::class,'scene'=>'notifications'],'response'=>$notificationCursorPage])->setOption('meta',['name'=>'notifications.list','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
 Route::get('me/notifications/unread', 'Platform.Community/unread')->name('notifications.unread')->setOption('contract',['request'=>['validate'=>CommunityValidate::class,'scene'=>'notificationUnread'],'response'=>['resource'=>NotificationUnreadResource::class,'shape'=>'item','status'=>200]])->setOption('meta',['name'=>'notifications.unread','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
+Route::get('me/communication/settings', 'Platform.Community/communicationSettings')->name('communication.settings')->setOption('contract',['request'=>null,'response'=>['resource'=>CommunicationSettingsResource::class,'shape'=>'item','status'=>200]])->setOption('meta',['name'=>'通信节奏快照','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
+Route::post('me/notifications/stream-ticket', 'Platform.Community/streamTicket')->name('notifications.streamTicket')->setOption('contract',['request'=>null,'response'=>['resource'=>StreamTicketResource::class,'shape'=>'item','status'=>200]])->setOption('meta',['name'=>'通知实时流凭证','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
 Route::post('me/notifications/read', 'Platform.Community/read')->name('notifications.read')->setOption('contract',['request'=>['validate'=>CommunityValidate::class,'scene'=>'read'],'response'=>$void])->setOption('meta',['name'=>'notifications.read','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
 Route::post('me/notifications/read-all', 'Platform.Community/readAll')->name('notifications.readAll')->setOption('contract',['request'=>['validate'=>CommunityValidate::class,'scene'=>'notificationReadAll'],'response'=>$void])->setOption('meta',['name'=>'notifications.readAll','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
 Route::get('me/notifications/preferences', 'Platform.Community/notificationPreferences')->name('notifications.preferences')->setOption('contract',['request'=>null,'response'=>['resource'=>NotificationPreferencesResource::class,'shape'=>'item','status'=>200]])->setOption('meta',['name'=>'notifications.preferences','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
@@ -71,4 +75,3 @@ Route::delete('me/drafts/:id', 'Platform.Community/deleteDraft')->name('drafts.d
 $get('me/conversations', 'Platform.Community/conversations', 'messages.conversations', $collection);
 Route::get('me/conversations/:id/messages', 'Platform.Community/messages')->name('messages.list')->setOption('contract',['request'=>['validate'=>CommunityValidate::class,'scene'=>'cursor'],'response'=>$cursorPage])->setOption('meta',['name'=>'messages.list','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
 Route::post('me/messages', 'Platform.Community/sendMessage')->name('messages.send')->setOption('contract',['request'=>['validate'=>CommunityValidate::class,'scene'=>'messageSend'],'response'=>$item])->setOption('meta',['name'=>'messages.send','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
-Route::get('me/notifications/stream', 'Platform.Realtime/stream')->name('notifications.stream')->setOption('contract',['request'=>['validate'=>CommunityValidate::class,'scene'=>'stream'],'response'=>['resource'=>null,'shape'=>'raw','status'=>200,'type'=>'string','contentType'=>'text/event-stream']])->setOption('meta',['name'=>'通知实时流','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);

@@ -242,11 +242,37 @@ namespace {
         public static object $issuer;
     }
 
+    if (!class_exists('FakeCommunicationPorts')) {
+            require_once __DIR__ . '/../../app/modules/Platform/Eventing/Public/RealtimeSignal.php';
+            require_once __DIR__ . '/../../app/modules/Platform/Eventing/Public/RealtimeSignalPublisher.php';
+            require_once __DIR__ . '/../../app/modules/Platform/Notifications/Contract/NotificationPolicyStore.php';
+            final class FakeCommunicationPorts
+            {
+                private static $instances = [];
+                public static function instance(string $class): object
+                {
+                    return self::$instances[$class] ??= new class implements
+                        \app\modules\Platform\Eventing\Public\RealtimeSignalPublisher,
+                        \app\modules\Platform\Notifications\Contract\NotificationPolicyStore {
+                        public function publish(\app\modules\Platform\Eventing\Public\RealtimeSignal $signal): void {}
+                        public function snapshot(int $policyRevision): ?array { return null; }
+                        public function currentRevision(): ?int { return null; }
+                        public function listCurrent(): array { return []; }
+                        public function applyChanges(array $changes, int $expectedRevision, ?int $actorId, ?string $reason): array
+                        { return ['revision' => $expectedRevision, 'policies' => [], 'before' => []]; }
+                    };
+                }
+            }
+        }
+
     function app(string $class): object
     {
         if ($class === \app\modules\Platform\Notifications\Contract\SystemNoticeIssuer::class) return CardNoticeState::$issuer;
+        if (in_array($class, ['app\\modules\\Platform\\Eventing\\Public\\RealtimeSignalPublisher', 'app\\modules\\Platform\\Notifications\\Contract\\NotificationPolicyStore'], true)) {
+            return \FakeCommunicationPorts::instance($class);
+        }
         throw new \RuntimeException('Unexpected container lookup: ' . $class);
-    }
+}
 
 require __DIR__ . '/../../app/modules/Content/Cards/Domain/PublicationStatus.php';
     require __DIR__ . '/../../app/modules/Content/Cards/Service/Cards.php';
@@ -365,4 +391,7 @@ namespace {
     }
 
     fwrite(STDOUT, count($tests) . " Cards batch tests passed.\n");
+
+    
+
 }

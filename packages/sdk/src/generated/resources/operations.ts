@@ -33,6 +33,18 @@ export class Operations extends BaseResource {
   runtime(): Promise<ApiTypes.OperationsRuntimeStatus> {
     return this._get<ApiTypes.OperationsRuntimeStatus>("/admin/operations/runtime")
   }
+  runtimeConfig(): Promise<ApiTypes.RuntimeCommunicationSnapshot> {
+    return this._get<ApiTypes.RuntimeCommunicationSnapshot>("/admin/operations/runtime/config")
+  }
+  applyRuntimeConfig(data: ApiTypes.RuntimeConfigUpdate): Promise<ApiTypes.RuntimeCommunicationSnapshot> {
+    return this._put<ApiTypes.RuntimeCommunicationSnapshot>("/admin/operations/runtime/config", data)
+  }
+  reconcileRuntime(): Promise<ApiTypes.RuntimeCommunicationSnapshot> {
+    return this._post<ApiTypes.RuntimeCommunicationSnapshot>("/admin/operations/runtime/reconcile")
+  }
+  validateRuntimeConfig(data: ApiTypes.RuntimeConfigUpdate): Promise<ApiTypes.RuntimeConfigValidation> {
+    return this._post<ApiTypes.RuntimeConfigValidation>("/admin/operations/runtime/validate", data)
+  }
   upgrades(params?: { limit?: number }): Promise<ApiTypes.OperationsUpgradePlan[]> {
     return this._get<ApiTypes.OperationsUpgradePlan[]>("/admin/operations/upgrades", params)
   }

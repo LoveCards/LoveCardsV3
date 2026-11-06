@@ -2,8 +2,12 @@
 
 declare(strict_types=1);
 
-namespace app\modules\Platform\Eventing\Domain;
+namespace app\modules\Platform\Eventing\Public;
 
+/**
+ * Realtime 信号值对象：只携带 topic / recipient scope / cursor hint，不承载业务事实。
+ * 浏览器与 Gateway 收到信号后必须回到游标 API 读取真实数据（契约 §4.5）。
+ */
 final class RealtimeSignal
 {
     private string $topic;
@@ -27,6 +31,8 @@ final class RealtimeSignal
     }
 
     public function topic(): string { return $this->topic; }
+
     public function recipientKey(): string { return $this->recipientKey; }
+
     public function cursorHint(): string { return $this->cursorHint; }
 }

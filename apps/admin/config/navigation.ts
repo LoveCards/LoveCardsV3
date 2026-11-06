@@ -298,7 +298,8 @@ const operationsItems: readonly AdminNavigationItem[] = [
     section: '运行状态',
     parentRoute: '/apps/operations/runtime',
     grants: [operationsGrant],
-    actionCapabilities: ['operations.read'],
+    actionCapabilities: ['operations.read', 'operations.runtime.configure'],
+    riskLevel: 'sensitive',
   }),
   item({
     path: '/apps/operations/deliveries',
@@ -311,6 +312,18 @@ const operationsItems: readonly AdminNavigationItem[] = [
     grants: [{ capability: 'communications.read', scope: 'global' }],
     riskLevel: 'sensitive',
     actionCapabilities: ['operations.retry'],
+  }),
+  item({
+    path: '/apps/operations/notification-policies',
+    canonicalPath: '/apps/operations/notification-policies',
+    title: '通知策略',
+    icon: 'mdi-bell-cog-outline',
+    domain: 'operations-audit',
+    section: '通知策略',
+    parentRoute: '/apps/operations/notification-policies',
+    grants: [{ capability: 'communications.configure', scope: 'global' }],
+    riskLevel: 'sensitive',
+    actionCapabilities: ['communications.configure'],
   }),
   item({
     path: '/apps/operations/upgrade',

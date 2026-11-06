@@ -1,0 +1,15 @@
+{
+  "name": "@lovecards/realtime-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "LoveCards 独立实时网关：一次性 ticket 鉴权的 SSE 供流进程（契约 §4），永不进入 PHP-FPM。",
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  }
+}

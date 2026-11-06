@@ -46,7 +46,7 @@ final class ContentCommentPublishedNotificationHandler implements EventHandler
                     $actorId,
                     $resource,
                     ['card_id' => $cardId, 'comment_id' => $commentId, 'parent_comment_id' => $parentId]
-                );
+                , $context->policyScope());
             } else {
                 Notifications::direct(
                     $primaryRecipientId,
@@ -55,7 +55,7 @@ final class ContentCommentPublishedNotificationHandler implements EventHandler
                     $actorId,
                     $resource,
                     ['card_id' => $cardId, 'comment_id' => $commentId]
-                );
+                , $context->policyScope());
             }
         }
 
@@ -74,7 +74,7 @@ final class ContentCommentPublishedNotificationHandler implements EventHandler
                     'comment_id' => $commentId,
                     'mentioned_username' => $mention['username'],
                 ]
-            );
+            , $context->policyScope());
         }
     }
 

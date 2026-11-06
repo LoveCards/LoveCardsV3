@@ -14,6 +14,10 @@ final class Administration
     public static function migrations(string $directory): array { return app(AdminReadModel::class)->migrations($directory); }
     public static function runMigrations(string $directory): array { return app(SystemLifecycleCoordinator::class)->run($directory, false); }
     public static function runtime(): array { return app(AdminReadModel::class)->runtime(); }
+    public static function runtimeConfig(): array { return app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->snapshot(); }
+    public static function validateRuntimeConfig(array $input): array { return app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->validate($input); }
+    public static function applyRuntimeConfig(array $input, int $actorId): array { return app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->apply($input, $actorId); }
+    public static function reconcileRuntime(): array { return app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->reconcile(); }
     public static function deliveries(array $params): array { return app(AdminReadModel::class)->deliveries($params); }
     public static function delivery(int $id): array { return app(AdminReadModel::class)->delivery($id); }
     public static function auditLogs(array $params): array { return app(AdminReadModel::class)->auditLogs($params); }

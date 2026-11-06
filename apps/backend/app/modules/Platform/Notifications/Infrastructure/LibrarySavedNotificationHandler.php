@@ -46,6 +46,6 @@ final class LibrarySavedNotificationHandler implements EventHandler
             $actorId,
             new ResourceRef('card', (string) $cardId),
             ['card_id' => $cardId]
-        );
+        , $context->policyScope());
     }
 }

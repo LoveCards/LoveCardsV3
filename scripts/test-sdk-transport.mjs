@@ -63,9 +63,9 @@ try {
       body: Buffer.concat(chunks).toString('utf8'),
     })
 
-    if (url.pathname === '/api/me/notifications/stream') {
-      response.writeHead(200, { 'Content-Type': 'text/event-stream' })
-      response.end('data: {"id":1}\n\n')
+    if (url.pathname === '/api/me/notifications/stream-ticket') {
+      response.writeHead(200, { 'Content-Type': 'application/json' })
+      response.end(JSON.stringify({ success: true, data: { ticket: '0123456789abcdef0123456789ab', expires_in: 60 } }))
       return
     }
 
@@ -91,7 +91,7 @@ try {
   await client.operations.runMigrations()
   await client.reports.transition(61, { status: 'resolved', resolution: 'policy_applied', note: 'reviewed' })
   await client.users.revokeSession(7, 'session-9')
-  const stream = await client.notifications.stream({ after: 9 })
+  await client.notifications.streamTicket()
   await client.library.history()
   await client.library.history_record({ resource_type: 'card', resource_id: '26' })
   await client.library.history_clear()
@@ -157,10 +157,9 @@ try {
   assert.equal(requests[11].url.pathname, '/api/admin/users/7/sessions/session-9/revoke')
   assert.equal(body(requests[11]), undefined)
 
-  assert.equal(requests[12].method, 'GET')
-  assert.equal(requests[12].url.pathname, '/api/me/notifications/stream')
-  assert.deepEqual(query(requests[12]), { after: '9' })
-  assert.equal(stream, 'data: {"id":1}\n\n')
+  assert.equal(requests[12].method, 'POST')
+  assert.equal(requests[12].url.pathname, '/api/me/notifications/stream-ticket')
+  assert.equal(body(requests[12]), undefined)
 
   assert.equal(requests[13].method, 'GET')
   assert.equal(requests[13].url.pathname, '/api/me/history')

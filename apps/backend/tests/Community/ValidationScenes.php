@@ -33,7 +33,7 @@ $assert = static function (bool $condition, string $message): void {
     }
 };
 
-foreach (['cursor', 'notifications', 'notificationUnread', 'notificationReadAll', 'stream', 'draft', 'preferences'] as $scene) {
+foreach (['cursor', 'notifications', 'notificationUnread', 'notificationReadAll', 'draft', 'preferences'] as $scene) {
     $assert($controller->validateScene($scene, []) === [], "empty {$scene} scene should pass");
 }
 
