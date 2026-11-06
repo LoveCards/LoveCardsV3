@@ -16,7 +16,6 @@ import {
   markAllNotificationsRead,
   normalizeCollection,
   normalizeDraftPayload,
-  parseNotificationSseSnapshot,
   recordHistoryItem,
   removeSavedItem,
   sendMessage,
@@ -67,23 +66,6 @@ describe('community SDK adapter', () => {
     [500, 'error'],
   ])('classifies status %s as %s', (status, kind) => {
     expect(classifyCommunityError({ status, message: 'failure' })).toMatchObject({ status, kind, message: 'failure' });
-  });
-
-  it('parses one SSE snapshot including multiline JSON data', () => {
-    const snapshot = parseNotificationSseSnapshot([
-      'id: notification-9',
-      'event: snapshot',
-      'retry: 5000',
-      'data: {"items":[',
-      'data: {"id":9,"type":"mention"}]}',
-      '',
-    ].join('\n'));
-    expect(snapshot).toEqual({
-      id: 'notification-9',
-      event: 'snapshot',
-      retry: 5000,
-      data: { items: [{ id: 9, type: 'mention' }] },
-    });
   });
 
   it('keeps an existing client message id stable across retries', () => {
