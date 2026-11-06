@@ -10,6 +10,7 @@ export const SIGNAL_MESSAGES = 'messages';
 
 const MAX_RECONNECT_ATTEMPTS_BEFORE_POLL = 2;
 const SETTINGS_REFRESH_INTERVAL_MS = 30_000;
+const REALTIME_RECONCILE_INTERVAL_MS = 120_000;
 
 function clampNumber(value, fallback) {
   const num = Number(value);
@@ -35,6 +36,7 @@ export function createCommunicationRuntime({
   let watchdog = null;
   let reconnectDelay = null;
   let settingsRefresh = null;
+  let realtimeReconcile = null;
   let lastCursor = null;
   let attempts = 0;
   let started = false;
@@ -53,6 +55,7 @@ export function createCommunicationRuntime({
     timers = [];
     if (watchdog) { clearTimeoutFn(watchdog); watchdog = null; }
     if (reconnectDelay) { clearTimeoutFn(reconnectDelay); reconnectDelay = null; }
+    if (realtimeReconcile) { clearTimeoutFn(realtimeReconcile); realtimeReconcile = null; }
     if (eventSource) {
       try { eventSource.close(); } catch { /* 关闭失败可忽略 */ }
       eventSource = null;
@@ -124,6 +127,19 @@ export function createCommunicationRuntime({
     }, limit);
   }
 
+  function scheduleRealtimeReconcile() {
+    if (!started || mode !== 'realtime') return;
+    realtimeReconcile = setTimeoutFn(() => {
+      realtimeReconcile = null;
+      if (!started || mode !== 'realtime') return;
+      // 信号可能丢失或先于事务提交到达；低频回源保证页面最终收敛。
+      emit(SIGNAL_NOTIFICATIONS);
+      emit(SIGNAL_MESSAGES);
+      emit(SIGNAL_UNREAD);
+      scheduleRealtimeReconcile();
+    }, REALTIME_RECONCILE_INTERVAL_MS);
+  }
+
   async function startRealtime() {
     const client = clientResolver();
     if (!client) { fallBackToPolling(); return; }
@@ -144,6 +160,7 @@ export function createCommunicationRuntime({
     mode = 'realtime';
     eventSource = source;
     armWatchdog(ticket.heartbeat_seconds);
+    scheduleRealtimeReconcile();
     source.addEventListener('heartbeat', () => {
       armWatchdog(ticket.heartbeat_seconds);
     });

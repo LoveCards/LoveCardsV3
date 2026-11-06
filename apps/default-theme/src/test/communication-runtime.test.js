@@ -61,6 +61,27 @@ describe('communication runtime', () => {
     runtime.destroy();
   });
 
+  it('reconciles missed realtime signals and stops reconciliation with the stream', async () => {
+    const client = makeClient();
+    client.communication.settings = vi.fn(async () => ({ effective_mode: 'realtime', status: 'ready', settings: {} }));
+    client.notifications.streamTicket = vi.fn(async () => ({ ticket: 't'.repeat(26), connect_url: 'https://gateway.test/stream', heartbeat_seconds: 100 }));
+    const runtime = createCommunicationRuntime({
+      clientResolver: () => client,
+      eventSourceFactory: (url) => new FakeEventSource(url),
+    });
+    const seen = [];
+    runtime.subscribe((topic) => seen.push(topic));
+    await runtime.start();
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(seen).toEqual([SIGNAL_NOTIFICATIONS, SIGNAL_MESSAGES, SIGNAL_UNREAD]);
+    expect(client.notifications.streamTicket).toHaveBeenCalledTimes(1);
+    runtime.stop();
+    await vi.advanceTimersByTimeAsync(120_000);
+    expect(seen).toHaveLength(3);
+    expect(FakeEventSource.instances[0].closed).toBe(true);
+    runtime.destroy();
+  });
+
   it('re-signs a one-time ticket after a realtime link error without keeping both transports', async () => {
     const client = makeClient();
     const runtime = createCommunicationRuntime({

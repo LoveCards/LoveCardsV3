@@ -87,11 +87,17 @@ final class ThinkDbNotificationPolicyStore implements NotificationPolicyStore
         $now = gmdate('Y-m-d H:i:s.u');
         $before = null;
         Db::transaction(function () use ($changes, $expectedRevision, $newRevision, $actorId, $reason, $now, &$before): void {
-            // 先锁住当前 revision 的全部规则行，再做 CAS。两个并发请求只能有一个拿到这把锁；
-            // 后续请求会看不到 expected_revision，从而稳定返回 stale-revision。
-            $lockedRows = Db::table('notification_policies')
+            // 版本行是所有策略写入共用的锁；等待者获得锁后重新读取最新版本。
+            // 仅锁规则行会让并发请求都读到旧版本，最后在快照唯一键上撞出 500。
+            $version = Db::table('notification_policy_versions')
                 ->where('policy_revision', $expectedRevision)
                 ->lock(true)
+                ->find();
+            if ($version === null || $this->currentRevision() !== $expectedRevision) {
+                throw new \RuntimeException('stale-revision');
+            }
+            $lockedRows = Db::table('notification_policies')
+                ->where('policy_revision', $expectedRevision)
                 ->select();
             if ($lockedRows->isEmpty()) {
                 throw new \RuntimeException('stale-revision');
