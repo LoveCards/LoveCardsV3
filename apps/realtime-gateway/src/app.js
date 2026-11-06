@@ -69,7 +69,10 @@ export function createApp(config) {
     })
     if (response.status !== 200) return null
     try {
-      return await response.json()
+      const payload = await response.json()
+      // 后端 ApiResponse 信封：内部通道一律在 data 字段下返回业务载荷。
+      if (payload && typeof payload === 'object' && 'data' in payload) return payload.data ?? null
+      return payload
     } catch {
       return null
     }

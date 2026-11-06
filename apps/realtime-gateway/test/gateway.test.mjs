@@ -73,12 +73,12 @@ function createFakeBackend() {
       }
       tickets.delete(body.ticket) // one-time semantics
       res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ uid: ticket.uid, cursor_seed: ticket.cursor_seed }))
+      res.end(JSON.stringify({ success: true, data: { uid: ticket.uid, cursor_seed: ticket.cursor_seed } }))
       return
     }
     if (req.method === 'GET' && req.url.startsWith('/api/internal/realtime/notifications-since')) {
       res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify(notifications))
+      res.end(JSON.stringify({ success: true, data: notifications }))
       return
     }
     res.writeHead(404)
