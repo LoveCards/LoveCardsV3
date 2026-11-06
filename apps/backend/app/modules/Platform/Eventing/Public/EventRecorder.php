@@ -46,4 +46,10 @@ final class EventRecorder
 
         return new RecordedEvent($eventId, $deliveryIds);
     }
+
+    /** 投影前策略决策落列（applied/skipped/not-configured，契约 §5.2 D6）。 */
+    public function notePolicyDecision(int $deliveryId, string $decision): void
+    {
+        $this->deliveries->notePolicyDecision($deliveryId, $decision);
+    }
 }

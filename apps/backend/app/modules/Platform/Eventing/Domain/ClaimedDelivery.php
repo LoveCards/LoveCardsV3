@@ -16,6 +16,7 @@ final class ClaimedDelivery
     private int $attemptCount;
     private string $claimToken;
     private \DateTimeImmutable $leaseExpiresAt;
+    private ?int $policyRevision;
 
     public function __construct(
         int $id,
@@ -25,7 +26,8 @@ final class ClaimedDelivery
         string $executionMode,
         int $attemptCount,
         string $claimToken,
-        \DateTimeImmutable $leaseExpiresAt
+        \DateTimeImmutable $leaseExpiresAt,
+        ?int $policyRevision = null
     ) {
         if ($id < 1 || $eventId < 1 || $attemptCount < 1) {
             throw new \InvalidArgumentException('ClaimedDelivery 数值必须为正整数');
@@ -39,6 +41,7 @@ final class ClaimedDelivery
         $this->attemptCount = $attemptCount;
         $this->claimToken = $claimToken;
         $this->leaseExpiresAt = $leaseExpiresAt;
+        $this->policyRevision = $policyRevision;
     }
 
     public function id(): int { return $this->id; }
@@ -49,4 +52,7 @@ final class ClaimedDelivery
     public function attemptCount(): int { return $this->attemptCount; }
     public function claimToken(): string { return $this->claimToken; }
     public function leaseExpiresAt(): \DateTimeImmutable { return $this->leaseExpiresAt; }
+
+    /** 事件登记时冻结的策略版本；NULL=策略化之前或未配置（not-configured）。 */
+    public function policyRevision(): ?int { return $this->policyRevision; }
 }

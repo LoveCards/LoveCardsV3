@@ -97,7 +97,9 @@ final class DeliveryProcessor
                     $delivery->id(),
                     $delivery->eventId(),
                     $delivery->handlerKey(),
-                    $delivery->attemptCount()
+                    $delivery->attemptCount(),
+                    $delivery->policyRevision(),
+                    $event->eventType()
                 )
             );
         } catch (\Throwable $exception) {
