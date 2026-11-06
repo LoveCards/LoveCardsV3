@@ -97,7 +97,12 @@ CREATE TABLE IF NOT EXISTS `runtime_config_state` (
 
 - `20261106000001.sql`：`runtime_config_state` + `scheduler_runs` + 默认行（Phase 1）。
 - `20261106000002.sql`：`capabilities` 追加 `operations.runtime.configure`（幂等 LEFT JOIN 种子，risk_level=3）（Phase 1）。
-- `20261106000003.sql`：`notification_policies` + `notification_policy_versions` + 种子 + `event_deliveries` **ADD COLUMN**（`policy_revision` INT UNSIGNED NULL、`policy_decision` VARCHAR(24) NULL）（Phase 3，expand→backfill→verify→contract 四步，回滚=只停写不 DROP）。
+- 实际落号（实现期核对）：
+  - `20261106000004.sql`：系统角色模板差分种子 `operations_admin + operations.runtime.configure`（Phase 1，见 D7）。
+  - `20261106000005.sql`：`stream_tickets`（一次性 stream ticket 哈希表，Phase 2）。
+  - `20261106000006.sql`：`notification_policies` + `notification_policy_versions` + 种子 + `event_deliveries` **ADD COLUMN**（`policy_revision` INT UNSIGNED NULL、`policy_decision` VARCHAR(24) NULL）（Phase 3，expand→backfill→verify→complete 四阶段，回滚=只停写不 DROP；历史在途投递不回填，NULL=not-configured fail-open）。
+  - `20261106000007.sql`：`capabilities` 追加 `communications.configure` + legacy admin 角色种子（Phase 3）。
+  - `20261106000008.sql`：系统角色模板差分种子 `operations_admin + communications.configure`（Phase 3，D7 工作流）。
 - 回滚原则：新表/新列可空/只增，旧代码无感；不写 down 脚本，`schema_migrations` 账本为事实源（既有 SystemMigrate 流程）。
 
 ## 3. 旧资产删除/迁移清单（冻结）
@@ -254,6 +259,8 @@ CREATE TABLE IF NOT EXISTS `notification_policy_versions` (
 | D4 | ticket 或 HttpOnly cookie（任务书二选一） | v1 仅 ticket | 单轨避免双凭证审计 |
 | D5 | "Redis 不可用时…回源"（设计 §5） | transport 退化 effective 仍 realtime | 回落 polling 是能力判定，不因传输退化丢实时 |
 | D6 | "Delivery 进入显式 skipped/no-op 或等价记录"（设计 §7） | `policy_decision` 列 + status=completed | 不扩 DeliveryStatus 枚举，死信/重试语义零改动 |
+| D8 | 浏览器通信节奏来源（§6 API 冻结未列出用户侧快照端点） | 新增 `GET /api/me/communication/settings`（登录态，返回 `effective_mode + status + settings` 节奏快照） | 服务端裁决模式、客户端零模式分叉的必要入口；不暴露设施与管理能力细节 |
+| D9 | 策略决策落点（§5.2 "投影前决策点"） | 决策在签发器 `ManageNotifications::create` 内、通知投影 insert 之前；`policy_decision` 由 `EventRecorder::notePolicyDecision` 落 Delivery 列 | Handler 照常执行到签发点；关闭规则只跳过投影，事件与投递记录保留 |
 | D7 | 系统角色模板授权变更方式 | 历史种子 `20260823000001.sql` 冻结（checksum 入 ledger 不可改写），模板新增授权以差分迁移追加（`20261106000004.sql` 起），`SystemRoleTemplatesBaseline` 联合解析两文件 | 直接编辑历史种子会触发 DirtyMigrationException，破坏既有实例升级 |
 
 ## 9. 验收映射（对任务书 10 条）

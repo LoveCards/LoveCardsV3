@@ -31,7 +31,7 @@ async function walk(directory, predicate, result = []) {
   return result
 }
 
-for (const directory of ['apps/backend', 'apps/admin', 'apps/default-theme', 'packages/sdk']) {
+for (const directory of ['apps/backend', 'apps/admin', 'apps/default-theme', 'apps/realtime-gateway', 'packages/sdk']) {
   if (!(await exists(path.join(root, directory)))) fail(`Missing workspace directory: ${directory}`)
 }
 
@@ -40,13 +40,17 @@ const adminPackage = await readJson(path.join(root, 'apps/admin/package.json'))
 const defaultThemePackage = await readJson(path.join(root, 'apps/default-theme/package.json'))
 const sdkPackage = await readJson(path.join(root, 'packages/sdk/package.json'))
 
-const expectedWorkspaces = ['apps/admin', 'apps/default-theme', 'packages/sdk']
+// 通信运行时（契约 §7）：独立 Realtime Gateway 是第四个 Node workspace。
+const expectedWorkspaces = ['apps/admin', 'apps/default-theme', 'apps/realtime-gateway', 'packages/sdk']
 if (JSON.stringify(rootPackage.workspaces) !== JSON.stringify(expectedWorkspaces)) {
   fail(`Root workspaces must be exactly: ${expectedWorkspaces.join(', ')}`)
 }
 if (adminPackage.name !== '@lovecards/admin') fail('Admin package name must be @lovecards/admin')
 if (defaultThemePackage.name !== '@lovecards/default-theme') fail('Default theme package name must be @lovecards/default-theme')
 if (sdkPackage.name !== '@lovecards/sdk') fail('SDK package name must be @lovecards/sdk')
+const gatewayPackage = await readJson(path.join(root, 'apps/realtime-gateway/package.json'))
+if (gatewayPackage.name !== '@lovecards/realtime-gateway') fail('Gateway package name must be @lovecards/realtime-gateway')
+if (gatewayPackage.private !== true) fail('Realtime Gateway must be private (进程产物，不发布 npm)')
 if (adminPackage.dependencies?.['@lovecards/sdk'] !== sdkPackage.version) {
   fail('Admin must depend on the local SDK version, not a filesystem path')
 }

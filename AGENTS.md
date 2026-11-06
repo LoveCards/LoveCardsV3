@@ -20,6 +20,7 @@
 - `apps/backend`：ThinkPHP API、领域规则、持久化和主题运行时。
 - `apps/admin`：Nuxt 管理端，只通过 `@lovecards/sdk` 调用后端。
 - `apps/default-theme`：React 用户前端；`src/` 只通过 `@lovecards/sdk` 调用后端，`ui/` 只保存设计真源且不得被运行码引用。
+- `apps/realtime-gateway`：独立 Realtime SSE Gateway 进程（Node），只经内部 Bearer 接口回源后端，不包含业务逻辑。
 - `packages/sdk`：跨前端消费者共享的 API 契约与客户端，不依赖任何 app。
 - 根目录：统一依赖锁、跨模块编排、工程检查和文档。
 

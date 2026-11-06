@@ -33,7 +33,7 @@ PHP-FPM 每个请求都从持久化状态重新建立上下文，请求结束后
 | --- | --- | --- | --- |
 | `eventing.wakeup` | `LC_EVENTING_WAKEUP_MODE`、`LC_REDIS_HOST` | `redis` | `mysql-poll` |
 | `eventing.worker` | `LC_WORKER_MODE`、`LC_WORKER_ENABLED` | `php-worker` | `request` |
-| `realtime.sse` | `LC_SSE_MODE` | `fpm-sse` | `refresh` |
+| `realtime.gateway` | `LC_REALTIME_MODE`、`LC_REALTIME_GATEWAY_URL` | `external-gateway`（独立 Node 进程） | `polling` |
 
 业务模块只能依赖能力接口或稳定用例，不判断 Redis 扩展、不自行启动进程。Redis 扩展或连接不可用时，`OptionalRedisWakeupTransport` 静默退回 MySQL authoritative state；不能把 Redis 当可靠队列。
 
@@ -77,11 +77,15 @@ php think lc:scheduler:run-once
 - 配置写路径：`GET/PUT /admin/operations/runtime/config`、`POST runtime/validate`、`POST runtime/reconcile`，
   capability `operations.runtime.configure`；PUT 携带 `expected_revision`，冲突 409 stale-revision，
   失败保留旧 effective，成功写审计 `runtime.communication.configure`（before/after 全量）。
-- 旧的 FPM 伪 SSE（`me/notifications/stream`）已定性为迁移对象：realtime 由独立 Gateway 进程提供
-  SSE，PHP-FPM 内禁止长连接；该端点在 Gateway 切片（Phase 2）中删除，禁止就地修补。
-- `config/runtime.php` 的 `realtime.sse`（fpm-sse）设施条目随 Phase 2 替换为 `realtime.gateway`；
-  在其存续期间，运行状态页的通信模式卡片以本控制面探测为唯一实时口径，不得把 fpm-sse fallback
-  展示为"实时可用"。
+- FPM 伪 SSE（`me/notifications/stream` 与 `Platform/Realtime.php`）已于通信运行时 Phase 2 删除：
+  realtime 由独立 Gateway 进程（`apps/realtime-gateway`）提供 SSE，PHP-FPM 内禁止长连接；
+  浏览器经 `POST /api/me/notifications/stream-ticket` 领取一次性凭证连接 Gateway。
+- `config/runtime.php` 的 `realtime.sse`（fpm-sse）设施条目已替换为 `realtime.gateway`
+  （provider `external-gateway`，fallback `polling`）；运行状态页的通信模式卡片以本控制面
+  探测为唯一实时口径，Gateway 不可用时 effective 回落 polling 并如实标记 degraded。
+- 浏览器端唯一取数节奏调度器为 `communication-runtime`（主题侧），节奏来自
+  `GET /api/me/communication/settings` 的服务端生效快照；组件不得自行 `setInterval`
+  形成第二条长期取数链，realtime 链路故障时自动退回单条轮询链。
 
 ## 扩容边界
 
