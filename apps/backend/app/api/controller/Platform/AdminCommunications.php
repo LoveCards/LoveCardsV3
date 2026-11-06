@@ -11,6 +11,8 @@ use app\modules\Operations\Administration\Public\CommunicationsManagement;
  */
 final class AdminCommunications extends BaseController
 {
+    private function uid(): int { return (int) request()->auth->uid(); }
+
     public function policies() { return $this->respond(CommunicationsManagement::policies()); }
 
     public function applyPolicies() { return $this->respond(CommunicationsManagement::applyPolicies($this->validated(), $this->uid())); }
