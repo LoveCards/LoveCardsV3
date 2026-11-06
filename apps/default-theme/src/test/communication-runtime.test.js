@@ -61,11 +61,11 @@ describe('communication runtime', () => {
     runtime.destroy();
   });
 
-  it('falls back to the polling chain when the realtime link errors and never runs both', async () => {
+  it('re-signs a one-time ticket after a realtime link error without keeping both transports', async () => {
     const client = makeClient();
     const runtime = createCommunicationRuntime({
       clientResolver: () => client,
-      eventSourceFactory: () => new FakeEventSource('https://gateway.test/stream?ticket=x'),
+      eventSourceFactory: (url) => new FakeEventSource(url),
     });
     client.communication.settings = vi.fn(async () => ({ effective_mode: 'realtime', status: 'ready', settings: { notification_interval_seconds: 10, message_interval_seconds: 12, unread_interval_seconds: 5, polling_backoff_factor: 2, polling_max_interval_seconds: 60, pause_when_hidden: true } }));
     const seen = [];
@@ -73,13 +73,18 @@ describe('communication runtime', () => {
     await runtime.start();
     expect(runtime.currentMode()).toBe('realtime');
     const source = FakeEventSource.instances[0];
+    source.emitSignal({ topic: 'notifications', cursor: 'cursor-1' });
     source.emitError();
     expect(runtime.currentMode()).toBe('polling');
     expect(source.closed).toBe(true);
     await vi.advanceTimersByTimeAsync(10_000);
     expect(seen).toContain(SIGNAL_NOTIFICATIONS);
-    // 不得再次打开 SSE：轮询与实时不长期双轨。
-    expect(FakeEventSource.instances).toHaveLength(1);
+    // 重试时必须重新签发一次性 ticket，并清理轮询链。
+    expect(FakeEventSource.instances).toHaveLength(2);
+    expect(client.notifications.streamTicket).toHaveBeenCalledTimes(2);
+    expect(FakeEventSource.instances[0].closed).toBe(true);
+    expect(FakeEventSource.instances[1].url).toContain('lastEventId=cursor-1');
+    expect(runtime.currentMode()).toBe('realtime');
     runtime.destroy();
   });
 

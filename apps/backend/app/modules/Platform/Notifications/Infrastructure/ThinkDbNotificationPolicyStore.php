@@ -83,36 +83,42 @@ final class ThinkDbNotificationPolicyStore implements NotificationPolicyStore
 
     public function applyChanges(array $changes, int $expectedRevision, ?int $actorId, ?string $reason): array
     {
-        $before = $this->listCurrent();
-        $current = $this->currentRevision();
-        if ($current === null) {
-            throw new \RuntimeException('stale-revision: 策略目录不存在');
-        }
-        if ($current !== $expectedRevision) {
-            throw new \RuntimeException('stale-revision');
-        }
-
-        $snapshot = $this->snapshot($expectedRevision) ?? [];
-        foreach ($changes as $change) {
-            $key = $change['event_type'] . '|' . $change['event_version'] . '|' . $change['rule_key'];
-            $snapshotKey = $change['event_type'];
-            if (!isset($snapshot[$snapshotKey])) {
-                throw new \RuntimeException('unknown-rule: ' . $key);
-            }
-            if ($snapshot[$snapshotKey]['locked']) {
-                throw new \RuntimeException('locked: ' . $key);
-            }
-            $snapshot[$snapshotKey]['enabled'] = $change['enabled'];
-        }
-        ksort($snapshot);
-
         $newRevision = $expectedRevision + 1;
         $now = gmdate('Y-m-d H:i:s.u');
-        Db::transaction(function () use ($changes, $expectedRevision, $newRevision, $actorId, $reason, $snapshot, $now): void {
+        $before = null;
+        Db::transaction(function () use ($changes, $expectedRevision, $newRevision, $actorId, $reason, $now, &$before): void {
+            // 先锁住当前 revision 的全部规则行，再做 CAS。两个并发请求只能有一个拿到这把锁；
+            // 后续请求会看不到 expected_revision，从而稳定返回 stale-revision。
+            $lockedRows = Db::table('notification_policies')
+                ->where('policy_revision', $expectedRevision)
+                ->lock(true)
+                ->select();
+            if ($lockedRows->isEmpty()) {
+                throw new \RuntimeException('stale-revision');
+            }
+
+            $before = $this->listCurrent();
+            $snapshot = $this->snapshot($expectedRevision) ?? [];
+            foreach ($changes as $change) {
+                $key = $change['event_type'] . '|' . $change['event_version'] . '|' . $change['rule_key'];
+                $snapshotKey = $change['event_type'];
+                if (!isset($snapshot[$snapshotKey])) {
+                    throw new \RuntimeException('unknown-rule: ' . $key);
+                }
+                if ($snapshot[$snapshotKey]['locked']) {
+                    throw new \RuntimeException('locked: ' . $key);
+                }
+                $snapshot[$snapshotKey]['enabled'] = $change['enabled'];
+            }
+            ksort($snapshot);
+
             // 全部现行行晋升到新版本；仅变更行改写 enabled。
-            Db::table('notification_policies')
+            $updated = Db::table('notification_policies')
                 ->where('policy_revision', $expectedRevision)
                 ->update(['policy_revision' => $newRevision, 'updated_by' => $actorId, 'updated_at' => $now]);
+            if ($updated !== $lockedRows->count()) {
+                throw new \RuntimeException('stale-revision');
+            }
             foreach ($changes as $change) {
                 Db::table('notification_policies')
                     ->where('event_type', $change['event_type'])
@@ -131,6 +137,6 @@ final class ThinkDbNotificationPolicyStore implements NotificationPolicyStore
             ]);
         });
 
-        return ['revision' => $newRevision, 'policies' => $this->listCurrent(), 'before' => $before];
+        return ['revision' => $newRevision, 'policies' => $this->listCurrent(), 'before' => $before ?? []];
     }
 }

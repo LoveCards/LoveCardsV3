@@ -33,6 +33,12 @@ final class RealtimeGatewayProbe implements RuntimeProbe
         if ($base === '') {
             return ['ready' => false, 'provider' => null, 'reason_code' => 'gateway-not-configured'];
         }
+        // 内部 health 可达还不够；浏览器必须有一个可公开连接的 Gateway 地址，
+        // 否则 effective=realtime 会让客户端拿到无法使用的空 connect_url。
+        $public = rtrim((string) Env::get('LC_REALTIME_GATEWAY_PUBLIC_URL', ''), '/');
+        if ($public === '') {
+            return ['ready' => false, 'provider' => $provider, 'reason_code' => 'gateway-public-url-not-configured'];
+        }
         $token = (string) Env::get('LC_RUNTIME_INTERNAL_TOKEN', '');
         if ($token === '') {
             return ['ready' => false, 'provider' => $provider, 'reason_code' => 'gateway-auth-unavailable'];
