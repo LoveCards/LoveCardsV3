@@ -22957,7 +22957,9 @@
         },
         "x-capabilities": [],
         "x-public": true,
-        "x-middleware": [],
+        "x-middleware": [
+          "LoginThrottle"
+        ],
         "x-resource": "AuthResource",
         "x-response-shape": "item",
         "x-validators": [],
@@ -23033,7 +23035,9 @@
         },
         "x-capabilities": [],
         "x-public": true,
-        "x-middleware": [],
+        "x-middleware": [
+          "LoginThrottle"
+        ],
         "x-resource": "AuthResource",
         "x-response-shape": "item",
         "x-validators": [

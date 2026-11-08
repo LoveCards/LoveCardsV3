@@ -1,4 +1,4 @@
-import { cp, lstat, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises'
+import { chmod, cp, lstat, mkdtemp, readdir, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { existsSync, openAsBlob } from 'node:fs'
 import { spawn } from 'node:child_process'
 import net from 'node:net'
@@ -164,7 +164,27 @@ async function safeRemove(directory) {
   if (resolved === temp || !resolved.startsWith(`${temp}${path.sep}`)) {
     throw new Error(`Refusing to remove non-temporary E2E directory: ${resolved}`)
   }
-  await rm(resolved, { recursive: true, force: true })
+  try {
+    await rm(resolved, { recursive: true, force: true })
+  } catch (error) {
+    if (error.code !== 'EACCES' && error.code !== 'EPERM') throw error
+    // 激活后的 Release 目录按不可变发布设计为只读；非 root 运行器（CI）删除时
+    // 会 EACCES。仅对已确认在临时根内的目录自底向上恢复写权限后重试。
+    // 首次 rm 已删掉部分目录，恢复遍历必须容忍 ENOENT。
+    const restoreWritable = async (current) => {
+      let entries
+      try { entries = await readdir(current, { withFileTypes: true }) }
+      catch (error) { if (error.code === 'ENOENT') return; throw error }
+      for (const entry of entries) {
+        const child = path.join(current, entry.name)
+        if (entry.isDirectory() && !entry.isSymbolicLink()) await restoreWritable(child)
+      }
+      try { await chmod(current, 0o755) }
+      catch (error) { if (error.code !== 'ENOENT') throw error }
+    }
+    await restoreWritable(resolved)
+    await rm(resolved, { recursive: true, force: true })
+  }
 }
 
 async function prepareReleaseSource(destination) {
@@ -293,7 +313,8 @@ try {
     '--private-key', privateKey,
     '--key-id', 'upgrade-e2e-key',
     '--optional-facilities', 'redis,worker',
-  ], { ...dbEnv, LC_RELEASE_TRUSTED_KEYS_JSON: trustedKeys })
+  // ThinkPHP env() 只读 PHP_ 前缀，config/lifecycle.php 的受信公钥必须这样注入。
+  ], { ...dbEnv, LC_RELEASE_TRUSTED_KEYS_JSON: trustedKeys, PHP_LC_RELEASE_TRUSTED_KEYS_JSON: trustedKeys })
   const buildResult = buildOutput
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -309,6 +330,7 @@ try {
   backend = start(process.execPath, ['scripts/dev-backend.mjs'], {
     ...dbEnv,
     LC_RELEASE_TRUSTED_KEYS_JSON: trustedKeys,
+    PHP_LC_RELEASE_TRUSTED_KEYS_JSON: trustedKeys,
     LOVECARDS_DEV_BACKEND_PORT: String(backendPort),
     // PHP parses multipart bodies before ThinkPHP runs. Keep isolated E2E
     // uploads above the signed Release limit (512 MiB) unless the caller

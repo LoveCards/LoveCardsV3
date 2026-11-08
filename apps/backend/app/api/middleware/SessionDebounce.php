@@ -2,7 +2,7 @@
 
 namespace app\api\middleware;
 
-use think\facade\Session;
+use think\facade\Cache;
 use app\api\ApiResponse;
 
 class SessionDebounce
@@ -15,12 +15,12 @@ class SessionDebounce
         $name = 'LastPostTime:' . $routeName . ':' . (string) request()->ip();
         $time = 6;
 
-        $lastPostTime = Session::get($name);
-        if ($lastPostTime === null || time() > strtotime((string) $lastPostTime)) {
-            Session::set($name, date("Y-m-d H:i:s", strtotime('+' . $time . ' second')));
-        } else {
+        // 计数存 Cache（生产为 Redis，多进程共享）；旧实现存 PHP 会话，
+        // 对不带 Cookie 的 API 客户端完全失效。
+        if (Cache::has($name)) {
             return ApiResponse::createTooMany('操作太快了，请稍后再试');
         }
+        Cache::set($name, date('Y-m-d H:i:s'), $time);
 
         return $next($request);
     }

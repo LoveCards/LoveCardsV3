@@ -182,9 +182,11 @@ const dbEnv = {
   PHP_DATABASE_PASSWORD: process.env.LOVECARDS_E2E_DB_PASSWORD || '',
   // Guest permission tests require a visitor token. Keep the policy scoped to
   // this disposable backend process instead of relying on a persistent write.
-  CORE_VISITOR_MODE: 'true',
-  USER_CAPTCHA: 'false',
-  CAPTCHA_CAPTCHA_ENABLED: 'false',
+  // ThinkPHP env() 只读 PHP_ 前缀（Env::getEnv），旧无前缀键从未生效；
+  // 隔离库 configs 无对应行时访客模式会被判为关闭。
+  PHP_CORE_VISITOR_MODE: 'true',
+  PHP_USER_CAPTCHA: 'false',
+  PHP_CAPTCHA_CAPTCHA_ENABLED: 'false',
   APP_DEBUG: 'true',
   PHP_APP_DEBUG: 'true',
   LC_INSTANCE_ROOT: instanceRoot,

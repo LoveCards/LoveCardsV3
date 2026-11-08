@@ -5,6 +5,7 @@ use think\facade\Route;
 use app\api\middleware\JwtAuthCheck;
 use app\api\middleware\PermissionCheck;
 use app\api\middleware\SessionDebounce;
+use app\api\middleware\LoginThrottle;
 use app\api\middleware\CaptchaCheck;
 
 use app\modules\Platform\Auth\Transport\Api\AuthPolicyResource;
@@ -17,7 +18,8 @@ use app\modules\Platform\Auth\Transport\Api\CurrentUserSessionResource;
 Route::post('session/login', 'User.Session/login')
     ->name('session.login')
     ->setOption('contract', ['request' => ['validate' => 'app\\modules\\Platform\\Auth\\Transport\\Api\\Session', 'scene' => 'login'], 'response' => ['resource' => 'app\\modules\\Platform\\Auth\\Transport\\Api\\AuthResource', 'shape' => 'item', 'status' => 200]])
-    ->setOption('meta', ['name' => '登录', 'group' => '认证', 'access' => ['auth' => 'public']]);
+    ->setOption('meta', ['name' => '登录', 'group' => '认证', 'access' => ['auth' => 'public']])
+    ->middleware(LoginThrottle::class);
 
 Route::post('session/register', 'User.Session/register')
     ->name('session.register')
@@ -28,7 +30,8 @@ Route::post('session/register', 'User.Session/register')
 Route::post('session/guest', 'User.Session/guest')
     ->name('session.guest')
     ->setOption('contract', ['request' => null, 'response' => ['resource' => 'app\\modules\\Platform\\Auth\\Transport\\Api\\AuthResource', 'shape' => 'item', 'status' => 200]])
-    ->setOption('meta', ['name' => '访客登录', 'group' => '认证', 'access' => ['auth' => 'public']]);
+    ->setOption('meta', ['name' => '访客登录', 'group' => '认证', 'access' => ['auth' => 'public']])
+    ->middleware(LoginThrottle::class);
 
 Route::post('session/captcha', 'User.Session/captcha')
     ->name('session.captcha')
