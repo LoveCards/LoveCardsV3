@@ -420,7 +420,7 @@ CREATE TABLE `theme_bindings` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_theme_bindings_hostname` (`hostname`),
   KEY `idx_theme_bindings_theme` (`theme_id`,`release_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE `users` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `uid` char(12) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
