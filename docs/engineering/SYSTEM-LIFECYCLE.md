@@ -2,6 +2,20 @@
 
 LoveCards 的安装、数据库迁移、Release 导入、激活和恢复属于同一个系统生命周期。旧安装器只负责环境检查、收集首次安装配置并调用统一数据库入口；后续升级不得再通过“解压覆盖当前目录 + 临时执行 SQL”绕过账本、签名、备份和恢复协议。
 
+## 2026-11-08 设计收敛：完整结构快照与审核迁移
+
+安装和升级继续共用 `Operations/SystemLifecycle` 的 Release、迁移账本、升级计划、备份 Gate、Pointer 和恢复协议。此次收敛不新增第二套安装器、Release Manager、Migration Runner、Backup Manager 或升级状态机，也不改变 `apps/backend/app/modules` 的模块边界；`app/system` 仍然只是 Installer Host。
+
+每个发行版可以携带一份完整的 `database/schema.sql` 作为新安装的目标结构，`database/seed.sql` 只保存系统默认数据。结构差异只在发行构建阶段由工具生成候选迁移，经过开发者审核后随发行包进入现有迁移账本。生产安装器不比较两个 schema，也不动态猜测并直接执行 SQL。字段重命名、数据转换、拆表合表、删除和其他无法由结构差异安全推断的操作，必须作为已审核迁移步骤声明。
+
+`schema.sql` 与迁移不能成为两套手工维护的结构真源。发行构建必须从干净数据库执行当前迁移链并导出目标结构，然后校验新安装得到的结构与迁移后的结构一致。迁移 checksum、phase、cursor、revision、attempts 和 failure code 继续使用本节后文规定的现有账本字段。
+
+用户只看到当前版本、目标版本、更新说明、上传包和升级状态；数据库版本、迁移编号和 SQL 计划属于诊断信息。手动上传包和未来的签名更新源只负责提供同一种 Release ZIP，下载或上传后必须进入同一个 `UpgradeCoordinator`。在线更新源不是安装升级核心链路的前置依赖。
+
+安装流程是生命周期的 Bootstrap 特例：校验 Release、检查环境、写入实例配置、执行完整结构和系统种子、创建首个管理员、写入初始 Release/迁移账本、建立安装锁并执行健康检查。升级流程执行已有的持久计划和 phase 状态机。文件失败可以恢复 Release pointer；数据库恢复依赖升级前备份，不承诺通用的自动 SQL 回滚。
+
+以下规则是本设计的低熵约束：业务模块只提供迁移内容和必要的数据转换，不编排升级；不创建每个版本的专用升级适配器；不创建第二套迁移账本；不在运行时使用 schema diff 代替已审核迁移；普通结构变更由构建工具生成候选，语义变更由明确迁移负责；升级兼容性由 Release Manifest 声明，不能承诺任意旧版本无条件直升。
+
 ## 持久目录与不可变 Release
 
 `config/lifecycle.php` 通过 `LC_INSTANCE_ROOT` 指定实例持久目录。Release、升级包、备份、配置、密钥、运行日志和 active pointer 均位于不可变 Release 之外；未显式配置时，兼容默认值是仓库 `apps/.lovecards-instance`。生产环境应显式设置绝对路径，把它挂载到持久磁盘并纳入主机级备份。
