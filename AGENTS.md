@@ -26,6 +26,8 @@
 
 管理端内部边界以 `docs/engineering/ADMIN-ARCHITECTURE.md` 为准：页面是路由和用例入口，SDK 是唯一后端请求边界，Pinia 只保存共享状态，`components/shared` 只放无业务归属的公共 UI。不得恢复 `apps/admin/api`、直接 transport、重复 Nuxt 布局或重复 UI 插件注册。
 
+管理端一级菜单、页面归属和中文名称以 `docs/engineering/ADMIN-NAVIGATION-CONVENTION-2026-11-07.md` 为准；`ADMIN-IA-DESIGN.md` 的旧菜单图仅保留迁移历史。调整导航时须同步页面标题、面包屑和相关 E2E 断言。
+
 禁止使用 `file:` 或 `../` 跨 workspace 建立隐式依赖。跨模块关系必须通过包名、HTTP 契约或根脚本表达。
 
 ## 改动纪律

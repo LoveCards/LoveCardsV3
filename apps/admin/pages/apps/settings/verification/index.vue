@@ -1,9 +1,9 @@
 <template>
   <AdminPageContainer>
     <AdminPageHeader
-      title="验证配置"
-      description="管理登录与敏感操作使用的验证器。扫描、切换和保存均由服务端再次校验权限。"
-      :breadcrumbs="[{ title: '系统设置' }]"
+      title="验证服务"
+      description="管理验证码发送服务、发送渠道和人机验证驱动。站点验证要求在访问与验证中设置。"
+      :breadcrumbs="[{ title: '系统' }]"
     >
       <template #actions>
         <AdminActionGuard capability="captcha.install" scope="global">
@@ -30,7 +30,7 @@
     <div>
       <v-tabs v-model="tab" color="primary">
         <v-tab prepend-icon="mdi-puzzle-outline" value="drivers">驱动管理</v-tab>
-        <v-tab prepend-icon="mdi-tune-variant" value="settings">基础设置</v-tab>
+        <v-tab prepend-icon="mdi-tune-variant" value="settings">服务设置</v-tab>
       </v-tabs>
       <v-divider />
 
@@ -124,19 +124,7 @@
                           item-title="title"
                           item-value="value"
                           :items="switchItems"
-                          label="验证码功能"
-                          variant="outlined"
-                        />
-                      </v-col>
-                      <v-col cols="12" sm="6">
-                        <v-select
-                          v-model="settings.captcha_enabled"
-                          :disabled="!canUpdateConfig || settingsSaving"
-                          density="comfortable"
-                          item-title="title"
-                          item-value="value"
-                          :items="switchItems"
-                          label="人机验证功能"
+                          label="验证码服务"
                           variant="outlined"
                         />
                       </v-col>
@@ -152,19 +140,10 @@
                           variant="outlined"
                         />
                       </v-col>
-                      <v-col cols="12" sm="6">
-                        <v-select
-                          v-model="settings.user_captcha"
-                          :disabled="!canUpdateConfig || settingsSaving"
-                          density="comfortable"
-                          item-title="title"
-                          item-value="value"
-                          :items="switchItems"
-                          label="注册验证码"
-                          variant="outlined"
-                        />
-                      </v-col>
                     </v-row>
+                    <p class="mt-2 text-body-2 text-medium-emphasis">
+                      站点是否要求注册邮件验证或人机验证，请到 <NuxtLink to="/apps/settings/access">访问与验证</NuxtLink> 设置。
+                    </p>
                     <v-divider class="mb-4" />
                     <div class="d-flex justify-end">
                       <AdminActionGuard capability="config.update" scope="global">
@@ -222,7 +201,7 @@ const changingDefault = ref('')
 const settingsSaving = ref(false)
 const settingsMessage = ref<Feedback | null>(null)
 const driverGroups = shallowRef<DriverGroup[]>([])
-const settings = ref({ code_enabled: true, captcha_enabled: true, code_channel: 'smtp', user_captcha: false })
+const settings = ref({ code_enabled: true, code_channel: 'smtp' })
 const originSettings = ref(CommonUtils.deepClone(settings.value))
 const canUpdateConfig = computed(() => userStore.hasGrant('config.update', 'global'))
 const canInstallCaptcha = computed(() => userStore.hasGrant('captcha.install', 'global'))
@@ -238,7 +217,6 @@ const loadPage = async () => {
   try {
     const [drivers, rawConfig] = await Promise.all([client.captcha.drivers(), client.config.list()])
     const captchaConfig = readObject(rawConfig.captcha)
-    const userConfig = readObject(rawConfig.user)
     const groups: Record<string, CaptchaDriver[]> = {}
     for (const driver of drivers) {
       const type = driver.type || '其他'
@@ -252,9 +230,7 @@ const loadPage = async () => {
     }))
     settings.value = {
       code_enabled: readBoolean(captchaConfig.code_enabled, true),
-      captcha_enabled: readBoolean(captchaConfig.captcha_enabled, true),
       code_channel: readString(captchaConfig.code_channel, 'smtp'),
-      user_captcha: readBoolean(userConfig.captcha, false),
     }
     originSettings.value = CommonUtils.deepClone(settings.value)
   } catch (cause) {
@@ -290,10 +266,8 @@ const saveSettings = async () => {
     await client.config.update({
       captcha: {
         code_enabled: settings.value.code_enabled,
-        captcha_enabled: settings.value.captcha_enabled,
         code_channel: settings.value.code_channel,
       },
-      user: { captcha: settings.value.user_captcha },
     })
     originSettings.value = CommonUtils.deepClone(settings.value)
     settingsMessage.value = { type: 'success', text: '验证设置已保存。' }

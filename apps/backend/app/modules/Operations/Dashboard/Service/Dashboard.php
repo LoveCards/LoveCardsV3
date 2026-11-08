@@ -95,16 +95,6 @@ class Dashboard
                 'warning'
             );
         }
-        if (in_array('recovery_active', $allowed, true)) {
-            $tasks[] = self::task(
-                'recovery_active',
-                '有效恢复挑战',
-                '核对仍在有效期内的账号恢复请求。',
-                self::countWhere('security_challenges', static fn ($query) => $query->whereNull('consumed_at')->where('expires_at', '>', Db::raw('UTC_TIMESTAMP()'))),
-                '/apps/security/recovery',
-                'info'
-            );
-        }
         if (in_array('deliveries_dead', $allowed, true)) {
             $tasks[] = self::task(
                 'deliveries_dead',

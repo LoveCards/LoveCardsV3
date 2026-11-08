@@ -1,5 +1,5 @@
 {
-  "routeCount": 200,
+  "routeCount": 201,
   "summary": {},
   "routes": [
     {
@@ -31,8 +31,8 @@
       ],
       "contract": {
         "request": {
-          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
-          "scene": "pagination"
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminAuditQueryValidate",
+          "scene": "list"
         },
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminAuditLogResource",
@@ -54,9 +54,9 @@
         "AdminAuditLogResource::paginate"
       ],
       "validators": [
-        "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+        "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminAuditQueryValidate"
       ],
-      "validatorScene": "pagination",
+      "validatorScene": "list",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
@@ -1364,7 +1364,7 @@
               "scope": "global"
             },
             {
-              "capability": "communications.configure",
+              "capability": "communications.read",
               "scope": "global"
             }
           ]
@@ -2800,7 +2800,7 @@
       "contract": {
         "request": {
           "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
-          "scene": "pagination"
+          "scene": "deliveryList"
         },
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminDeliveryResource",
@@ -2824,7 +2824,7 @@
       "validators": [
         "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
       ],
-      "validatorScene": "pagination",
+      "validatorScene": "deliveryList",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
@@ -2987,6 +2987,78 @@
         "shape": "void",
         "resource": null,
         "operation": null
+      }
+    },
+    {
+      "path": "/admin/operations/deliveries/summary",
+      "method": "GET",
+      "name": "operations.deliverySummary",
+      "controller": "Platform.Administration",
+      "action": "deliverySummary",
+      "meta": {
+        "name": "通知处理汇总",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminDeliverySummaryResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Administration.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "AdminDeliverySummaryResource::make"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "AdminDeliverySummaryResource",
+        "operation": "make"
       }
     },
     {

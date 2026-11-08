@@ -163,8 +163,10 @@ SDK 负责：暴露通知列表、未读数、已读操作和稳定字段类型�
 3. 在业务事务内发布事件或调用 `SystemNoticeIssuer`。
 4. 在 Notifications 模块注册 Handler，并生成 `NotificationIntent` 与稳定 `dedupe_key`。
 5. 扩展 `NotificationTypeCatalog`（仅新增公开类型时）、读取模型与 SDK 类型；系统通知优先复用三种既有类型。
-6. 前端只在 SDK 契约就绪后增加展示映射，不增加触发请求。
+6. 前端只在 SDK 契约就绪后消费通知展示字段，不增加触发请求；后台策略名称与影响说明由管理 API Resource 提供。
 7. 更新 [EVENTING.md](EVENTING.md) 的当前事件表和必要的前端交接说明。
+
+若新增事件需要出现在后台“通知策略”，还须在前向迁移中增加当前策略规则、在管理 API Resource 中补中文名称和影响说明，并验证该规则与 `HandlerRegistry` 的通知处理器一致。策略表保存开关与历史版本，Resource 只提供展示文案；不得从处理器注册自动改写策略表。当前策略按 `event_type` 开关，同名事件的不同 `event_version` 不构成独立开关。
 
 ## 11. 强制测试与评审清单
 

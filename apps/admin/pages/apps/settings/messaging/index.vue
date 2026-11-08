@@ -3,7 +3,7 @@
     <AdminPageHeader
       title="消息渠道"
       description="管理通知使用的发信渠道。密钥仅在详情页编辑，扫描和默认渠道切换均由服务端校验权限。"
-      :breadcrumbs="[{ title: '系统设置' }]"
+      :breadcrumbs="[{ title: '系统' }]"
     >
       <template #actions>
         <AdminActionGuard capability="sender.install" scope="global">

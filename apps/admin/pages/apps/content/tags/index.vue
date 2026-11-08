@@ -2,7 +2,7 @@
   <AdminPageHeader
     title="标签"
     description="维护内容分类与标签状态。"
-    :breadcrumbs="[{ title: '内容与社区' }]"
+    :breadcrumbs="[{ title: '内容' }]"
   >
     <template #actions>
       <AdminActionGuard capability="tags.create" scope="global">
@@ -178,6 +178,7 @@ import { useApi } from '~/lib/api';
 import { useUserStore } from '~/stores/userStore';
 import CommonUtils from '@/utils/common';
 import SelectUtils from '~/utils/select';
+import { tableSearchValue as mapTableSearchValue } from '~/utils/tableSearchValue';
 
 type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
 
@@ -271,7 +272,7 @@ const getTableData = async () => {
     list_rows: tableListRows.value,
     ...tableSearchFilter.value,
   };
-  if (searchValue) params.search_value = searchValue;
+  if (searchValue) params.search_value = mapTableSearchValue(searchValue, tableSearchFilter.value.search_keys, { status: SelectUtils.Common.Status });
   if (sort) {
     params.order_key = sort.key;
     params.order_desc = sort.order === 'desc';

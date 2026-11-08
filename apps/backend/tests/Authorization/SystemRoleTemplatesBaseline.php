@@ -171,7 +171,7 @@ $expectedTasks = [
     'content_operator' => [],
     'community_operator' => ['reports_open'],
     'moderator' => ['cards_pending', 'comments_pending', 'reports_open'],
-    'security_admin' => ['recovery_active'],
+    'security_admin' => [],
     'operations_admin' => ['deliveries_dead', 'files_pending'],
     'auditor' => [],
 ];

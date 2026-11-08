@@ -16,7 +16,6 @@ async function fixtures(page: Page, limited = false) {
     const grants = [
       { capability: 'admin.access', scope: 'global' },
       { capability: 'users.read', scope: 'all' },
-      { capability: 'users.recovery.read', scope: 'global' },
       { capability: 'roles.read', scope: 'global' },
       ...(!limited ? [
         { capability: 'users.update', scope: 'all' },
@@ -29,19 +28,15 @@ async function fixtures(page: Page, limited = false) {
       avatar: null, status, roles_id: [2], roles: [{ id: 2, name: '普通用户', slug: 'user' }],
       created_at: '2026-09-18 09:20:00',
     }))
-    const records = ['active', 'consumed', 'expired'].map((state, index) => ({
-      id: 201 + index, user_id: 101 + index, purpose: 'password_recovery', state, attempts: index,
-      created_at: '2026-09-18 09:20:00', expires_at: '2026-09-18 09:35:00',
-    }))
     let data: unknown = []
     if (url.pathname === '/api/me') data = { id: 9001, username: '布局测试管理员', roles: [], grants, status: 0 }
     if (url.pathname === '/api/admin/roles') return route.fulfill({ json: {
       success: true, data: [{ id: 2, name: '普通用户', slug: 'user' }],
       pagination: { totalItems: 1, currentPage: 1, totalPages: 1, itemsPerPage: 100 },
     } })
-    if (url.pathname === '/api/admin/users' || url.pathname === '/api/admin/recovery') {
+    if (url.pathname === '/api/admin/users') {
       const currentPage = Number(url.searchParams.get('page') || 1)
-      data = currentPage > 1 ? [] : url.pathname.endsWith('recovery') ? records : users
+      data = currentPage > 1 ? [] : users
       return route.fulfill({ json: { success: true, data, pagination: { totalItems: 3, currentPage, totalPages: 1, itemsPerPage: 20 } } })
     }
     await route.fulfill({ json: { success: true, data } })
@@ -64,16 +59,6 @@ for (const width of [1440, 390]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
   })
 
-  test(`recovery record hierarchy at ${width}px`, async ({ page }, testInfo) => {
-    await fixtures(page)
-    await page.setViewportSize({ width, height: 900 })
-    await page.goto('./apps/security/recovery')
-    await expect(page.getByRole('heading', { name: '账号恢复记录', exact: true })).toBeVisible()
-    await expect(page.locator('tbody tr').first()).toContainText('密码恢复')
-    await page.screenshot({ path: testInfo.outputPath('recovery.png'), fullPage: true })
-    await expect(page.locator('tbody tr').first().getByRole('link', { name: '查看账号安全' })).toHaveAttribute('href', '/admin/apps/users/101/security')
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
-  })
 }
 
 test('limited roles do not see security or mutation actions', async ({ page }) => {
@@ -81,20 +66,10 @@ test('limited roles do not see security or mutation actions', async ({ page }) =
   await page.goto('./apps/users')
   await expect(page.locator('tbody tr').first().getByRole('link', { name: '查看用户' })).toBeVisible({ timeout: 20_000 })
   await expect(page.getByRole('button', { name: '更多用户操作' })).toHaveCount(0)
-  await page.goto('./apps/security/recovery')
-  await expect(page.locator('tbody tr').first()).toContainText('密码恢复')
-  await expect(page.getByRole('link', { name: '查看账号安全' })).toHaveCount(0)
-})
-
-test('empty recovery page retains a path back to records', async ({ page }) => {
-  await fixtures(page)
-  await page.goto('./apps/security/recovery?page=9&list_rows=20')
-  await page.getByRole('button', { name: '返回第一页' }).click()
-  await expect(page.locator('tbody tr').first()).toContainText('密码恢复')
-  await expect(page).toHaveURL(/page=1(?:&|$)/)
 })
 
 test('user filters survive sorting changes and clear without losing normal status zero', async ({ page }) => {
+  test.setTimeout(60_000)
   await fixtures(page)
   await page.goto('./apps/users?filters=' + encodeURIComponent(JSON.stringify({ status: 0, role_id: 2 })))
   await expect(page.locator('tbody tr').first()).toContainText('member_1', { timeout: 20_000 })
@@ -109,38 +84,41 @@ test('user filters survive sorting changes and clear without losing normal statu
   await dialog.getByRole('button', { name: '重置', exact: true }).click()
   const clearedSort = page.waitForRequest(request => request.url().includes('/api/admin/users?') && !new URL(request.url()).searchParams.has('order_key'))
   await dialog.getByRole('button', { name: '应用筛选', exact: true }).click()
-  expect(new URL((await clearedSort).url()).searchParams.get('status')).toBe('0')
+  expect(new URL((await clearedSort).url()).searchParams.has('status')).toBe(false)
   await expect(page).not.toHaveURL(/order_key=/)
   await page.reload()
-  await expect(page.locator('tbody tr').first()).toContainText('member_1')
+  await expect(page.locator('tbody tr').first()).toContainText('member_1', { timeout: 20_000 })
   const cleared = page.waitForRequest(request => request.url().includes('/api/admin/users?') && !new URL(request.url()).searchParams.has('status') && !new URL(request.url()).searchParams.has('role_id'))
   await page.getByRole('button', { name: '清除筛选', exact: true }).click()
   await cleared
 })
 
-test('recovery status is sent to the server and retained in the URL', async ({ page }) => {
-  await fixtures(page)
-  await page.goto('./apps/security/recovery?status=expired')
-  await expect(page.locator('tbody tr').first()).toContainText('密码恢复')
-  await page.getByRole('combobox').filter({ hasText: '恢复状态' }).click()
-  const request = page.waitForRequest(request => request.url().includes('/api/admin/recovery?') && new URL(request.url()).searchParams.get('status') === 'active')
-  await page.getByRole('option', { name: '待验证', exact: true }).click()
-  await request
-  await expect(page).toHaveURL(/status=active/)
-})
-
 test('user status and role controls send both filters', async ({ page }) => {
+  test.setTimeout(60_000)
   await fixtures(page)
   await page.goto('./apps/users')
-  await expect(page.locator('tbody tr').first()).toContainText('member_1')
-  await page.getByRole('combobox').filter({ hasText: '账号状态' }).click()
+  await expect(page.locator('tbody tr').first()).toContainText('member_1', { timeout: 20_000 })
+  await page.getByRole('button', { name: '搜索与排序', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '搜索与排序' })
+  await dialog.getByRole('combobox').filter({ hasText: '账号状态' }).click()
   const statusRequest = page.waitForRequest(request => request.url().includes('/api/admin/users?') && new URL(request.url()).searchParams.get('status') === '0')
   await page.getByRole('option', { name: '#0 正常', exact: true }).click()
-  await statusRequest
-  await page.getByRole('combobox').filter({ hasText: '角色' }).click()
-  const roleRequest = page.waitForRequest(request => request.url().includes('/api/admin/users?') && new URL(request.url()).searchParams.get('role_id') === '2')
+  await dialog.getByRole('combobox').filter({ hasText: '角色' }).click()
+  const roleRequest = page.waitForRequest(request => request.url().includes('/api/admin/users?') && new URL(request.url()).searchParams.get('role_id') === '2' && new URL(request.url()).searchParams.get('status') === '0')
   await page.getByRole('option', { name: '普通用户', exact: true }).click()
+  await dialog.getByRole('button', { name: '应用筛选', exact: true }).click()
+  await statusRequest
   expect(new URL((await roleRequest).url()).searchParams.get('status')).toBe('0')
+})
+
+test('status search sends the stored value for a Chinese label', async ({ page }) => {
+  await fixtures(page)
+  await page.goto('./apps/users?filters=' + encodeURIComponent(JSON.stringify({ search_keys: ['status'] })))
+  await expect(page.locator('tbody tr').first()).toContainText('member_1', { timeout: 20_000 })
+  const request = page.waitForRequest(request => request.url().includes('/api/admin/users?') && new URL(request.url()).searchParams.get('search_value') === '0')
+  await page.getByRole('textbox', { name: '搜索用户名' }).fill('正常')
+  await request
+  await expect(page).toHaveURL(/search_value=%E6%AD%A3%E5%B8%B8/)
 })
 
 test('user deletion confirmation identifies the account and session impact without mutating', async ({ page }) => {

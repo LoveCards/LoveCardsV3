@@ -3,7 +3,7 @@
     <AdminPageHeader
       :title="configTheme.id ? `主题配置 · ${configTheme.id}` : '主题配置'"
       description="按当前主题提供的配置定义调整外观。保存后将影响所有访问该主题的用户。"
-      :breadcrumbs="[{ title: '系统设置' }, { title: '主题外观', to: '/apps/settings/appearance' }, { title: requestedSlug }]"
+      :breadcrumbs="[{ title: '站点' }, { title: '主题外观', to: '/apps/settings/appearance' }, { title: requestedSlug }]"
     />
 
     <AdminConfigSection title="主题参数" description="保存后对当前主题生效；校验失败时保留本次输入。" icon="mdi-palette-outline">

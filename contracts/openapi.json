@@ -39,39 +39,26 @@
         "x-resource": "AdminAuditLogResource",
         "x-response-shape": "paginated",
         "x-validators": [
-          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminAuditQueryValidate"
         ],
-        "x-validator-scene": "pagination",
+        "x-validator-scene": "list",
         "x-contract-source": "backend",
         "x-validation-rules": {
-          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
-            "expected_revision": "number",
-            "policies": "array",
-            "reason": "max:255",
-            "page": "number",
-            "list_rows": "number",
-            "actor_id": "number",
-            "status": "max:32",
-            "resource_type": "max:64",
-            "worker_type": "max:64",
-            "search_value": "max:255",
-            "search_keys": "max:255",
-            "note": "max:2000",
-            "resolution": "max:255",
-            "limit": "number|between:1,200",
-            "file": "require|fileExt:zip",
-            "unread_only": "boolean",
-            "desired_mode": "max:16",
-            "notification_interval_seconds": "number",
-            "message_interval_seconds": "number",
-            "unread_interval_seconds": "number",
-            "polling_backoff_factor": "number",
-            "polling_max_interval_seconds": "number",
-            "pause_when_hidden": "boolean",
-            "worker_stale_seconds": "number",
-            "scheduler_stale_seconds": "number",
-            "gateway_stale_seconds": "number",
-            "require_supervisor": "boolean"
+          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminAuditQueryValidate": {
+            "page": "number|between:1,1000000",
+            "list_rows": "number|between:1,100",
+            "action": "max:128|regex:/^[A-Za-z][A-Za-z0-9._:-]*$/",
+            "actor": [
+              "max:10",
+              "regex:/^(?:system|[1-9][0-9]{0,9})$/"
+            ],
+            "actor_id": "number|between:1,2147483647",
+            "resource_type": "max:64|regex:/^[A-Za-z][A-Za-z0-9._:-]*$/",
+            "resource_id": "max:128",
+            "request_id": "max:128",
+            "correlation_id": "max:128",
+            "from": "dateFormat:Y-m-d H:i:s",
+            "to": "dateFormat:Y-m-d H:i:s"
           }
         },
         "responses": {
@@ -177,39 +164,46 @@
                 "list_rows": {
                   "type": "number"
                 },
-                "search_value": {
+                "action": {
                   "type": "string",
-                  "maxLength": 255
+                  "maxLength": 128
                 },
-                "search_keys": {
+                "actor": {
                   "type": "string",
-                  "maxLength": 255
+                  "maxLength": 10
                 },
-                "status": {
-                  "type": "string",
-                  "maxLength": 32
+                "actor_id": {
+                  "type": "number"
                 },
                 "resource_type": {
                   "type": "string",
                   "maxLength": 64
                 },
-                "actor_id": {
-                  "type": "number"
-                },
-                "unread_only": {
-                  "type": "boolean"
-                },
-                "worker_type": {
+                "resource_id": {
                   "type": "string",
-                  "maxLength": 64
+                  "maxLength": 128
+                },
+                "request_id": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "correlation_id": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "from": {
+                  "type": "string"
+                },
+                "to": {
+                  "type": "string"
                 }
               },
               "additionalProperties": true,
-              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_value?: string; search_keys?: string; status?: string; resource_type?: string; actor_id?: number; unread_only?: boolean; worker_type?: string }",
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; action?: string; actor?: string; actor_id?: number; resource_type?: string; resource_id?: string; request_id?: string; correlation_id?: string; from?: string; to?: string }",
               "x-validators": [
-                "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+                "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminAuditQueryValidate"
               ],
-              "x-validator-scene": "pagination"
+              "x-validator-scene": "list"
             }
           }
         ]
@@ -2621,14 +2615,14 @@
               "scope": "global"
             },
             {
-              "capability": "communications.configure",
+              "capability": "communications.read",
               "scope": "global"
             }
           ]
         },
         "x-capabilities": [
           "admin.access",
-          "communications.configure"
+          "communications.read"
         ],
         "x-public": false,
         "x-middleware": [
@@ -2674,7 +2668,68 @@
                           ]
                         },
                         "policies": {
-                          "type": "array"
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "event_type",
+                              "event_version",
+                              "rule_key",
+                              "enabled",
+                              "notification_type",
+                              "recipient_rule",
+                              "user_disableable",
+                              "locked",
+                              "policy_revision",
+                              "display_name",
+                              "impact_text"
+                            ],
+                            "properties": {
+                              "event_type": {
+                                "type": "string"
+                              },
+                              "event_version": {
+                                "type": "integer"
+                              },
+                              "rule_key": {
+                                "type": "string"
+                              },
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "notification_type": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "recipient_rule": {
+                                "type": "string"
+                              },
+                              "user_disableable": {
+                                "type": "boolean"
+                              },
+                              "locked": {
+                                "type": "boolean"
+                              },
+                              "policy_revision": {
+                                "type": "integer"
+                              },
+                              "display_name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "impact_text": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            }
+                          }
                         }
                       },
                       "x-typescript-type": "NotificationPolicyCatalog"
@@ -2753,6 +2808,8 @@
             "list_rows": "number",
             "actor_id": "number",
             "status": "max:32",
+            "queue_name": "max:64",
+            "policy_decision": "in:applied,skipped,not-configured",
             "resource_type": "max:64",
             "worker_type": "max:64",
             "search_value": "max:255",
@@ -2805,7 +2862,68 @@
                           "type": "integer"
                         },
                         "policies": {
-                          "type": "array"
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "event_type",
+                              "event_version",
+                              "rule_key",
+                              "enabled",
+                              "notification_type",
+                              "recipient_rule",
+                              "user_disableable",
+                              "locked",
+                              "policy_revision",
+                              "display_name",
+                              "impact_text"
+                            ],
+                            "properties": {
+                              "event_type": {
+                                "type": "string"
+                              },
+                              "event_version": {
+                                "type": "integer"
+                              },
+                              "rule_key": {
+                                "type": "string"
+                              },
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "notification_type": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "recipient_rule": {
+                                "type": "string"
+                              },
+                              "user_disableable": {
+                                "type": "boolean"
+                              },
+                              "locked": {
+                                "type": "boolean"
+                              },
+                              "policy_revision": {
+                                "type": "integer"
+                              },
+                              "display_name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "impact_text": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            }
+                          }
                         }
                       },
                       "x-typescript-type": "NotificationPolicyApplyResult"
@@ -5080,7 +5198,7 @@
         "x-validators": [
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
         ],
-        "x-validator-scene": "pagination",
+        "x-validator-scene": "deliveryList",
         "x-contract-source": "backend",
         "x-validation-rules": {
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
@@ -5091,6 +5209,8 @@
             "list_rows": "number",
             "actor_id": "number",
             "status": "max:32",
+            "queue_name": "max:64",
+            "policy_decision": "in:applied,skipped,not-configured",
             "resource_type": "max:64",
             "worker_type": "max:64",
             "search_value": "max:255",
@@ -5136,6 +5256,9 @@
                       "items": {
                         "type": "object",
                         "additionalProperties": false,
+                        "required": [
+                          "display_name"
+                        ],
                         "properties": {
                           "id": {
                             "type": "integer"
@@ -5145,6 +5268,12 @@
                           },
                           "event_type": {
                             "type": "string"
+                          },
+                          "display_name": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
                           },
                           "handler_key": {
                             "type": "string"
@@ -5169,6 +5298,14 @@
                             "nullable": true
                           },
                           "correlation_id": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "policy_revision": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "policy_decision": {
                             "type": "string",
                             "nullable": true
                           },
@@ -5225,39 +5362,33 @@
                 "list_rows": {
                   "type": "number"
                 },
-                "search_value": {
-                  "type": "string",
-                  "maxLength": 255
-                },
-                "search_keys": {
-                  "type": "string",
-                  "maxLength": 255
-                },
                 "status": {
                   "type": "string",
                   "maxLength": 32
                 },
-                "resource_type": {
-                  "type": "string",
-                  "maxLength": 64
-                },
-                "actor_id": {
-                  "type": "number"
-                },
-                "unread_only": {
-                  "type": "boolean"
-                },
                 "worker_type": {
                   "type": "string",
                   "maxLength": 64
+                },
+                "queue_name": {
+                  "type": "string",
+                  "maxLength": 64
+                },
+                "policy_decision": {
+                  "type": "string",
+                  "enum": [
+                    "applied",
+                    "skipped",
+                    "not-configured"
+                  ]
                 }
               },
               "additionalProperties": true,
-              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_value?: string; search_keys?: string; status?: string; resource_type?: string; actor_id?: number; unread_only?: boolean; worker_type?: string }",
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; status?: string; worker_type?: string; queue_name?: string; policy_decision?: string }",
               "x-validators": [
                 "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
               ],
-              "x-validator-scene": "pagination"
+              "x-validator-scene": "deliveryList"
             }
           }
         ]
@@ -5321,6 +5452,9 @@
                     "data": {
                       "type": "object",
                       "additionalProperties": false,
+                      "required": [
+                        "display_name"
+                      ],
                       "properties": {
                         "id": {
                           "type": "integer"
@@ -5330,6 +5464,12 @@
                         },
                         "event_type": {
                           "type": "string"
+                        },
+                        "display_name": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "handler_key": {
                           "type": "string"
@@ -5354,6 +5494,14 @@
                           "nullable": true
                         },
                         "correlation_id": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "policy_revision": {
+                          "type": "integer",
+                          "nullable": true
+                        },
+                        "policy_decision": {
                           "type": "string",
                           "nullable": true
                         },
@@ -5471,6 +5619,112 @@
             }
           }
         ]
+      }
+    },
+    "/admin/operations/deliveries/summary": {
+      "get": {
+        "operationId": "operations.deliverySummary",
+        "tags": [
+          "运维"
+        ],
+        "summary": "通知处理汇总",
+        "description": "通知处理汇总",
+        "x-controller": "Platform.Administration/deliverySummary",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.read",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "communications.read"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "AdminDeliverySummaryResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "pending": {
+                          "type": "integer"
+                        },
+                        "processing": {
+                          "type": "integer"
+                        },
+                        "dead": {
+                          "type": "integer"
+                        },
+                        "skipped": {
+                          "type": "integer"
+                        },
+                        "checked_at": {
+                          "type": "string"
+                        }
+                      },
+                      "x-typescript-type": "OperationsDeliverySummary"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
       }
     },
     "/admin/operations/migrations": {
@@ -5633,6 +5887,8 @@
             "list_rows": "number",
             "actor_id": "number",
             "status": "max:32",
+            "queue_name": "max:64",
+            "policy_decision": "in:applied,skipped,not-configured",
             "resource_type": "max:64",
             "worker_type": "max:64",
             "search_value": "max:255",
@@ -6243,6 +6499,8 @@
             "list_rows": "number",
             "actor_id": "number",
             "status": "max:32",
+            "queue_name": "max:64",
+            "policy_decision": "in:applied,skipped,not-configured",
             "resource_type": "max:64",
             "worker_type": "max:64",
             "search_value": "max:255",
@@ -6595,6 +6853,8 @@
             "list_rows": "number",
             "actor_id": "number",
             "status": "max:32",
+            "queue_name": "max:64",
+            "policy_decision": "in:applied,skipped,not-configured",
             "resource_type": "max:64",
             "worker_type": "max:64",
             "search_value": "max:255",
@@ -6784,6 +7044,8 @@
             "list_rows": "number",
             "actor_id": "number",
             "status": "max:32",
+            "queue_name": "max:64",
+            "policy_decision": "in:applied,skipped,not-configured",
             "resource_type": "max:64",
             "worker_type": "max:64",
             "search_value": "max:255",
@@ -7027,6 +7289,8 @@
             "list_rows": "number",
             "actor_id": "number",
             "status": "max:32",
+            "queue_name": "max:64",
+            "policy_decision": "in:applied,skipped,not-configured",
             "resource_type": "max:64",
             "worker_type": "max:64",
             "search_value": "max:255",
@@ -8342,6 +8606,8 @@
             "list_rows": "number",
             "actor_id": "number",
             "status": "max:32",
+            "queue_name": "max:64",
+            "policy_decision": "in:applied,skipped,not-configured",
             "resource_type": "max:64",
             "worker_type": "max:64",
             "search_value": "max:255",
@@ -8546,6 +8812,8 @@
             "list_rows": "number",
             "actor_id": "number",
             "status": "max:32",
+            "queue_name": "max:64",
+            "policy_decision": "in:applied,skipped,not-configured",
             "resource_type": "max:64",
             "worker_type": "max:64",
             "search_value": "max:255",
@@ -9058,6 +9326,8 @@
             "list_rows": "number",
             "actor_id": "number",
             "status": "max:32",
+            "queue_name": "max:64",
+            "policy_decision": "in:applied,skipped,not-configured",
             "resource_type": "max:64",
             "worker_type": "max:64",
             "search_value": "max:255",

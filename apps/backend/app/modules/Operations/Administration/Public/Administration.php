@@ -19,6 +19,7 @@ final class Administration
     public static function applyRuntimeConfig(array $input, int $actorId): array { return app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->apply($input, $actorId); }
     public static function reconcileRuntime(): array { return app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->reconcile(); }
     public static function deliveries(array $params): array { return app(AdminReadModel::class)->deliveries($params); }
+    public static function deliverySummary(): array { return app(AdminReadModel::class)->deliverySummary(); }
     public static function delivery(int $id): array { return app(AdminReadModel::class)->delivery($id); }
     public static function auditLogs(array $params): array { return app(AdminReadModel::class)->auditLogs($params); }
     public static function auditLog(int $id): array { return app(AdminReadModel::class)->auditLog($id); }

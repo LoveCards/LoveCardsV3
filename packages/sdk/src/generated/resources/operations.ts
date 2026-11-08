@@ -3,13 +3,13 @@ import type * as ApiTypes from '../../types'
 
 /** Generated from contracts/openapi.json. Do not edit manually. */
 export class Operations extends BaseResource {
-  auditLogs(params?: { page?: number; list_rows?: number; search_value?: string; search_keys?: string; status?: string; resource_type?: string; actor_id?: number; unread_only?: boolean; worker_type?: string }): Promise<ApiTypes.ListResult<ApiTypes.OperationsAuditLog>> {
+  auditLogs(params?: { page?: number; list_rows?: number; action?: string; actor?: string; actor_id?: number; resource_type?: string; resource_id?: string; request_id?: string; correlation_id?: string; from?: string; to?: string }): Promise<ApiTypes.ListResult<ApiTypes.OperationsAuditLog>> {
     return this._get<ApiTypes.ListResult<ApiTypes.OperationsAuditLog>>("/admin/audit-logs", params)
   }
   auditLog(id: number): Promise<ApiTypes.OperationsAuditLog> {
     return this._get<ApiTypes.OperationsAuditLog>(`/admin/audit-logs/${id}`)
   }
-  deliveries(params?: { page?: number; list_rows?: number; search_value?: string; search_keys?: string; status?: string; resource_type?: string; actor_id?: number; unread_only?: boolean; worker_type?: string }): Promise<ApiTypes.ListResult<ApiTypes.OperationsDelivery>> {
+  deliveries(params?: { page?: number; list_rows?: number; status?: string; worker_type?: string; queue_name?: string; policy_decision?: string }): Promise<ApiTypes.ListResult<ApiTypes.OperationsDelivery>> {
     return this._get<ApiTypes.ListResult<ApiTypes.OperationsDelivery>>("/admin/operations/deliveries", params)
   }
   delivery(id: number): Promise<ApiTypes.OperationsDelivery> {
@@ -17,6 +17,9 @@ export class Operations extends BaseResource {
   }
   retryDelivery(id: number): Promise<void> {
     return this._post<void>(`/admin/operations/deliveries/${id}/retry`)
+  }
+  deliverySummary(): Promise<ApiTypes.OperationsDeliverySummary> {
+    return this._get<ApiTypes.OperationsDeliverySummary>("/admin/operations/deliveries/summary")
   }
   migrations(): Promise<ApiTypes.OperationsMigration[]> {
     return this._get<ApiTypes.OperationsMigration[]>("/admin/operations/migrations")

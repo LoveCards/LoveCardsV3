@@ -6,6 +6,7 @@
           {{ applyError }}
         </v-alert>
         <v-row dense>
+          <slot name="filters" :filters="extraFilters" />
           <v-col cols="12">
             <v-select
               v-model="filter.search_keys"
@@ -81,6 +82,7 @@ const filter = ref({
   order_key: undefined as string | undefined,
   order_desc: true,
 })
+const extraFilters = ref<Record<string, unknown>>({})
 
 const syncInitialFilter = () => {
   const current = props.initialFilter ?? {}
@@ -89,6 +91,8 @@ const syncInitialFilter = () => {
     order_key: typeof current.order_key === 'string' ? current.order_key : undefined,
     order_desc: current.order_desc !== false,
   }
+  const { search_keys, order_key, order_desc, ...rest } = current
+  extraFilters.value = { ...rest }
 }
 
 watch(thisDialogState, (open) => {
@@ -100,11 +104,15 @@ watch(thisDialogState, (open) => {
 
 const reset = () => {
   filter.value = { search_keys: [], order_key: undefined, order_desc: true }
+  extraFilters.value = {}
 }
 
 const submit = async () => {
   if (applying.value) return
-  const nextFilter: Record<string, unknown> = { ...props.initialFilter, ...filter.value }
+  const nextFilter: Record<string, unknown> = { ...extraFilters.value, ...filter.value }
+  for (const key of Object.keys(nextFilter)) {
+    if (nextFilter[key] == null) delete nextFilter[key]
+  }
   if (!nextFilter.order_key) delete nextFilter.order_key
   if (Array.isArray(nextFilter.search_keys) && nextFilter.search_keys.length === 0) {
     delete nextFilter.search_keys

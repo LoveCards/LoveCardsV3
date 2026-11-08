@@ -135,6 +135,7 @@ export interface OperationsDelivery {
   id: number
   event_id: number
   event_type: string
+  display_name: string | null
   handler_key: string
   queue_name: string
   execution_mode: string
@@ -143,8 +144,18 @@ export interface OperationsDelivery {
   available_at: string
   last_error?: string | null
   correlation_id?: string | null
+  policy_revision?: number | null
+  policy_decision?: 'applied' | 'skipped' | 'not-configured' | null
   created_at: string
   updated_at: string
+}
+
+export interface OperationsDeliverySummary {
+  pending: number
+  processing: number
+  dead: number
+  skipped: number
+  checked_at: string
 }
 
 export interface OperationsAuditLog {

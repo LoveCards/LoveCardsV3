@@ -1,6 +1,6 @@
 # 管理端信息架构与 UX 设计基线
 
-> 状态：2026-09-14 信息架构收敛已确认；应用壳与标签样板进入施工
+> 状态：页面结构与交互基线继续有效；一级菜单、页面名称和归属以 [管理端菜单与页面归属规范](ADMIN-NAVIGATION-CONVENTION-2026-11-07.md) 为准。下文旧菜单图中的账号恢复独立页已移除。
 >
 > 日期：2026-08-23
 >
@@ -12,13 +12,13 @@
 
 LoveCards 管理端应从“按技术模块堆放的页面集合”改成“按角色和任务组织的工作台”。技术保持 Nuxt + Vuetify；优先重做信息架构和统一页面壳，再逐域迁移旧页面。
 
-本次锁定为一个一级直达入口和四个任务组：
+当前锁定为一个一级直达入口和四个任务组：
 
 1. 工作台
-2. 内容与社区
-3. 用户与权限
-4. 系统设置
-5. 系统运维
+2. 内容
+3. 用户
+4. 站点
+5. 系统
 
 工作台直接进入个人任务上下文；四个任务组只负责发现页面。具体资源、驱动、测试、迁移和高风险动作下沉到详情或子流程。
 
@@ -59,6 +59,8 @@ LoveCards 管理端应从“按技术模块堆放的页面集合”改成“按�
 角色视图必须由 capability 和数据范围共同决定。不能仅根据角色名称在前端写死页面。
 
 ## 4. 目标信息架构
+
+本节以下的 2026-09-14 路由地图保留迁移历史。当前菜单结构、名称、归属和“站点策略” Tab 页面由 [2026-11-07 规范](ADMIN-NAVIGATION-CONVENTION-2026-11-07.md) 定义；后续施工不得从本节恢复旧分组。
 
 ```text
 工作台
@@ -118,7 +120,7 @@ LoveCards 管理端应从“按技术模块堆放的页面集合”改成“按�
 | 内容与社区 | `/apps/content/cards`、`/apps/content/comments`、`/apps/content/tags` | `/apps/content/*/:id` |
 | 社区治理 | `/apps/community/reports`、`/apps/community/insights` | `/apps/community/reports/:id` |
 | 用户与权限 | `/apps/users`、`/apps/security/recovery`、`/apps/access/roles`、`/apps/access/permissions` | 用户、角色和权限详情 |
-| 系统设置 | `/apps/settings/site`、`/apps/settings/community-rules`、`/apps/settings/appearance`、`/apps/settings/storage`、`/apps/settings/messaging`、`/apps/settings/verification` | 主题与渠道详情/测试 |
+| 站点与系统设置 | `/apps/settings/site`、`/apps/settings/site/policies`、`/apps/settings/appearance`、`/apps/settings/storage`、`/apps/settings/messaging`、`/apps/settings/verification` | 站点策略 Tab、主题与渠道详情/测试 |
 | 系统运维 | `/apps/operations/runtime`、`/apps/operations/deliveries`、`/apps/operations/audit` | `/apps/operations/upgrade`、投递/审计详情 |
 
 施工时必须先建立旧地址到规范地址的映射表，不能直接删除现有链接。

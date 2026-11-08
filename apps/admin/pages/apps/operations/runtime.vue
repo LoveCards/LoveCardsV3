@@ -1,100 +1,143 @@
 <template>
   <AdminPageContainer>
-    <AdminPageHeader title="运行状态" description="核对当前部署实际启用的设施、通信模式、降级路径和 Worker 心跳。" :breadcrumbs="[{ title: '系统运维' }]">
-      <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn></template>
+    <AdminPageHeader title="运行状态" description="先确认通信是否正常，再查看事件处理和部署诊断。" :breadcrumbs="[{ title: '系统' }]">
+      <template #actions>
+        <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="hasChanges" @click="load">刷新</v-btn>
+      </template>
     </AdminPageHeader>
-    <AdminAsyncState :loading="loading" :error="error" :empty="!runtime" @retry="load">
-      <template v-if="runtime">
-        <h2 class="text-h6 mb-3">通信模式</h2>
-        <v-alert v-if="communication && communication.status === 'degraded'" class="mb-4" type="warning" variant="tonal">
-          目标模式为 {{ modeLabel(communication.desired_mode) }}，但当前实际生效 {{ modeLabel(communication.effective_mode) }}：{{ reasonLabel(communication.reason_code) }}。业务契约保持一致，浏览器按轮询取数。
-        </v-alert>
-        <v-card v-if="communication" class="mb-4 pa-4">
-          <div class="d-flex flex-wrap align-center ga-3">
-            <span>目标模式 <AdminStatusChip :status="communication.desired_mode === 'realtime' ? 'active' : 'available'" :label="modeLabel(communication.desired_mode)" /></span>
-            <span>生效模式 <AdminStatusChip :status="communication.effective_mode === 'realtime' ? 'active' : 'available'" :label="modeLabel(communication.effective_mode)" /></span>
-            <span>状态 <AdminStatusChip :status="communication.status === 'ready' ? 'available' : 'degraded'" :label="communication.status === 'ready' ? '就绪' : '降级'" /></span>
-            <span class="text-caption text-medium-emphasis">配置版本 {{ communication.revision }} · 检查时间 {{ communication.checked_at }}</span>
+    <AdminAsyncState :loading="loading && !runtime" :error="error && !runtime ? error : null" :empty="!runtime" @retry="load">
+      <template v-if="runtime && communication">
+          <v-alert v-if="error" class="mb-4" type="warning" variant="tonal">刷新失败，以下是上次读取的状态：{{ error }}</v-alert>
+          <v-alert v-if="configConflict" class="mb-4" type="warning" variant="tonal">{{ configConflict }}</v-alert>
+        <v-sheet border rounded class="pa-4 mb-5">
+          <div class="d-flex flex-wrap align-center justify-space-between ga-4">
+            <div>
+              <h2 class="text-h6 mb-2">当前通信</h2>
+              <div class="d-flex align-center flex-wrap ga-3">
+                <AdminStatusChip :status="communication.status === 'ready' ? 'available' : 'degraded'" :label="communication.status === 'ready' ? '正常' : '已降级'" />
+                <span class="text-body-1">浏览器通过{{ modeLabel(communication.effective_mode) }}获取更新</span>
+              </div>
+              <div class="text-body-2 text-medium-emphasis mt-2">最近检查：{{ communication.checked_at }} · 配置版本 {{ communication.revision }}</div>
+            </div>
+            <v-btn to="/apps/operations/deliveries" variant="text" append-icon="mdi-arrow-right">查看通知处理</v-btn>
           </div>
-          <v-alert v-if="communication.last_apply_state && communication.last_apply_state !== 'applied'" class="mt-3" type="info" variant="tonal">
+          <v-alert v-if="communication.status === 'degraded'" class="mt-4" type="warning" variant="tonal" icon="mdi-alert-outline">
+            已选择{{ modeLabel(communication.desired_mode) }}，当前实际使用{{ modeLabel(communication.effective_mode) }}。{{ reasonLabel(communication.reason_code) }}。请核对下方诊断。
+          </v-alert>
+          <v-alert v-if="communication.last_apply_state && communication.last_apply_state !== 'applied'" class="mt-4" type="info" variant="tonal">
             最近一次配置操作未生效：{{ communication.last_apply_state === 'rejected' ? '参数被拒绝' : '执行失败' }}{{ communication.last_apply_reason ? `（${communication.last_apply_reason}）` : '' }}。
           </v-alert>
-          <AdminResourceTableShell class="mt-4">
-            <v-data-table :headers="capabilityHeaders" :items="communication.capabilities" item-value="key" :items-per-page="10" items-per-page-text="每页行数">
-              <template #item.ready="{ item }"><AdminStatusChip :status="capabilityStatus(item)" :label="capabilityLabel(item)" /></template>
-              <template #item.reason="{ item }">{{ reasonLabel(item.reason_code) }}</template>
-            </v-data-table>
-          </AdminResourceTableShell>
+        </v-sheet>
+
+        <section aria-labelledby="runtime-summary-title" class="mb-6">
+          <div class="d-flex align-center justify-space-between mb-3">
+            <h2 id="runtime-summary-title" class="text-h6">需要处理的情况</h2>
+            <span v-if="!hasRuntimeAttention" class="text-body-2 text-medium-emphasis">当前没有需要处理的异常</span>
+          </div>
+          <v-alert v-if="hasRuntimeAttention" :type="runtime.eventing.dead ? 'error' : 'warning'" variant="tonal" icon="mdi-alert-circle-outline">
+            <div v-if="communication.status === 'degraded'">通信已降级：{{ reasonLabel(communication.reason_code) }}。可以先查看通知处理记录。</div>
+            <div v-if="runtime.eventing.dead">有 {{ runtime.eventing.dead }} 条事件进入失败状态。</div>
+            <div v-if="runtime.eventing.expired_processing">有 {{ runtime.eventing.expired_processing }} 条处理租约已过期。</div>
+          </v-alert>
+          <v-sheet v-else border rounded class="pa-4 text-body-2">通信、事件处理和当前部署检查均未报告异常。</v-sheet>
+        </section>
+
+        <v-sheet border rounded class="pa-4 mb-6">
+          <div class="d-flex flex-wrap align-center justify-space-between ga-3">
+            <div>
+              <div class="text-subtitle-1 font-weight-medium">通信方式</div>
+              <div class="text-body-2 text-medium-emphasis mt-1">当前生效：{{ modeLabel(communication.effective_mode) }} · 已选择：{{ modeLabel(communication.desired_mode) }}</div>
+            </div>
+            <AdminActionGuard capability="operations.runtime.configure">
+              <v-btn :color="settingsOpen ? undefined : 'primary'" :variant="settingsOpen ? 'outlined' : 'flat'" @click="settingsOpen = !settingsOpen">{{ settingsOpen ? '收起设置' : '修改通信设置' }}</v-btn>
+            </AdminActionGuard>
+          </div>
+          <div class="d-flex flex-wrap ga-6 mt-4 text-body-2">
+            <span>待处理事件 <strong>{{ runtime.eventing.pending }}</strong></span>
+            <span>处理中 <strong>{{ runtime.eventing.processing }}</strong></span>
+            <span>失败 <strong>{{ runtime.eventing.dead }}</strong></span>
+            <span v-if="runtime.eventing.oldest_pending_age_seconds !== null && runtime.eventing.oldest_pending_age_seconds !== undefined">最早待处理 {{ formatAge(runtime.eventing.oldest_pending_age_seconds) }}</span>
+          </div>
           <AdminActionGuard capability="operations.runtime.configure">
-            <v-divider class="my-4" />
-            <h3 class="text-subtitle-1 mb-2">模式与运行参数</h3>
-            <div class="mb-3">
-              <v-btn-toggle v-model="form.desired_mode" mandatory dense>
-                <v-btn value="polling">轮询</v-btn>
-                <v-btn value="realtime">实时（需 Gateway 与 Worker）</v-btn>
-              </v-btn-toggle>
-            </div>
-            <v-form @submit.prevent>
-              <v-row dense>
-                <v-col v-for="field in numericFields" :key="field.key" cols="12" sm="6" md="4">
-                  <v-text-field v-model="form[field.key]" :label="field.label" type="number" :hint="field.hint" persistent-hint density="compact" variant="outlined" />
-                </v-col>
-                <v-col cols="12" sm="6" md="4">
-                  <v-switch v-model="form.pause_when_hidden" label="页面隐藏时暂停轮询" density="compact" hide-details />
-                </v-col>
-                <v-col cols="12" sm="6" md="4">
-                  <v-switch v-model="form.require_supervisor" label="部署要求 Supervisor 进程治理" density="compact" hide-details />
-                </v-col>
-              </v-row>
-            </v-form>
-            <v-alert v-if="violations.length" class="mt-3" type="error" variant="tonal">
-              <div v-for="violation in violations" :key="violation.field + violation.message">{{ violation.field }}：{{ violation.message }}</div>
-            </v-alert>
-            <div class="d-flex flex-wrap mt-4 ga-2">
-              <v-btn variant="outlined" :loading="validating" @click="validateForm">校验参数</v-btn>
-              <v-btn color="primary" variant="elevated" :loading="applying" @click="openApply">应用变更</v-btn>
-              <v-btn variant="text" prepend-icon="mdi-sync" :loading="reconciling" @click="reconcile">重新探测对账</v-btn>
-            </div>
+            <v-expand-transition>
+              <div v-if="settingsOpen" class="mt-5">
+                <v-divider class="mb-5" />
+                <h3 class="text-subtitle-1 mb-3">通信方式与刷新频率</h3>
+                <v-btn-toggle v-model="form.desired_mode" mandatory density="comfortable" class="mb-4">
+                  <v-btn value="polling">轮询</v-btn>
+                  <v-btn value="realtime">实时</v-btn>
+                </v-btn-toggle>
+                <div class="text-body-2 text-medium-emphasis mb-4">实时模式依赖 Gateway 和 Event Worker；探测不可用时，系统会继续使用轮询。</div>
+                <v-row dense>
+                  <v-col v-for="field in primaryNumericFields" :key="field.key" cols="12" sm="6" md="4">
+                    <v-text-field v-model="form[field.key]" :label="field.label" type="number" :hint="field.hint" persistent-hint density="compact" variant="outlined" />
+                  </v-col>
+                  <v-col cols="12" sm="6" md="4"><v-switch v-model="form.pause_when_hidden" label="页面隐藏时暂停轮询" density="compact" hide-details /></v-col>
+                </v-row>
+                <v-expansion-panels variant="accordion" class="mt-4">
+                  <v-expansion-panel title="高级参数（诊断与部署策略）">
+                    <v-expansion-panel-text>
+                      <v-row dense>
+                        <v-col v-for="field in advancedNumericFields" :key="field.key" cols="12" sm="6" md="4">
+                          <v-text-field v-model="form[field.key]" :label="field.label" type="number" :hint="field.hint" persistent-hint density="compact" variant="outlined" />
+                        </v-col>
+                        <v-col cols="12" sm="6" md="4"><v-switch v-model="form.require_supervisor" label="要求部署进程治理" hint="只表示部署要求，不会自动启动进程" persistent-hint density="compact" /></v-col>
+                      </v-row>
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
+                </v-expansion-panels>
+                <v-alert v-if="violations.length" class="mt-4" type="error" variant="tonal">
+                  <div v-for="violation in violations" :key="violation.field + violation.message">{{ violation.field }}：{{ violation.message }}</div>
+                </v-alert>
+                <div class="d-flex flex-wrap mt-4 ga-2">
+                  <v-btn variant="outlined" :loading="validating" @click="validateForm">校验参数</v-btn>
+                  <v-btn color="primary" variant="flat" :disabled="!hasChanges" :loading="applying" @click="openApply">应用变更</v-btn>
+                  <v-btn variant="text" prepend-icon="mdi-sync" :disabled="hasChanges" :loading="reconciling" @click="reconcile">重新探测</v-btn>
+                </div>
+              </div>
+            </v-expand-transition>
           </AdminActionGuard>
-        </v-card>
+        </v-sheet>
 
-        <AdminDangerActionDialog
-          v-model="applyDialog"
-          title="应用通信运行时配置"
-          action-label="确认应用"
-          :impact="applyImpact"
-          :loading="applying"
-          :error="applyError"
-          @confirm="doApply"
-        />
+        <AdminDangerActionDialog v-model="applyDialog" title="应用通信运行时配置" action-label="确认应用" color="primary" :impact="applyImpact" :loading="applying" :error="applyError" @confirm="doApply" />
 
-        <v-alert v-if="degradedCount" class="mb-4" type="warning" variant="tonal">
-          当前有 {{ degradedCount }} 项设施处于降级或不可用状态，业务契约保持一致，但实时性或吞吐可能降低。
-        </v-alert>
-        <AdminResourceTableShell>
-          <v-data-table :headers="facilityHeaders" :items="runtime.facilities" item-value="name" items-per-page-text="每页行数">
-            <template #item.name="{ item }"><strong>{{ item.name }}</strong><div class="text-caption text-medium-emphasis">{{ item.effective_provider || '未选择 Provider' }}</div></template>
-            <template #item.mode="{ item }">{{ item.desired_mode }}</template>
-            <template #item.status="{ item }"><AdminStatusChip :status="item.ready ? 'available' : item.enabled ? 'degraded' : 'disabled'" /></template>
-            <template #item.reason="{ item }">{{ facilityReason(item.reason_code, item.ready) }}</template>
-            <template #item.checked="{ item }">{{ item.checked_at }}</template>
-          </v-data-table>
-        </AdminResourceTableShell>
-
-        <h2 class="text-h6 mt-8 mb-3">Worker 心跳</h2>
-        <AdminResourceTableShell>
-          <v-data-table :headers="workerHeaders" :items="runtime.workers" item-value="worker_id" items-per-page-text="每页行数">
-            <template #item.state="{ item }"><AdminStatusChip :status="item.online ? 'active' : item.state" /></template>
-          </v-data-table>
-        </AdminResourceTableShell>
-        <v-alert class="mt-4" type="info" variant="tonal">
-          Outbox：待处理 {{ runtime.eventing.pending }}，处理中 {{ runtime.eventing.processing }}，死信 {{ runtime.eventing.dead }}；最早待处理 {{ runtime.eventing.oldest_pending_at || '-' }}，过期租约 {{ runtime.eventing.expired_processing ?? 0 }}。
-        </v-alert>
-        <AdminResourceTableShell v-if="runtime.eventing.queues?.length" class="mt-4">
-          <v-data-table :headers="queueHeaders" :items="runtime.eventing.queues" item-value="queue_name" items-per-page-text="每页行数">
-            <template #item.execution_mode="{ item }"><AdminStatusChip :status="item.execution_mode" /></template>
-          </v-data-table>
-        </AdminResourceTableShell>
+        <v-expansion-panels variant="accordion">
+          <v-expansion-panel title="高级诊断" elevation="0" border>
+            <v-expansion-panel-text>
+              <p class="text-body-2 text-medium-emphasis mb-4">以下信息用于定位部署问题。正常使用时无需处理。</p>
+              <h3 class="text-subtitle-1 mb-3">能力探测</h3>
+              <AdminResourceTableShell class="mb-6">
+                <v-data-table :headers="capabilityHeaders" :items="communication.capabilities" item-value="key" :items-per-page="-1" hide-default-footer>
+                  <template #item.ready="{ item }"><AdminStatusChip :status="capabilityStatus(item)" :label="capabilityLabel(item)" /></template>
+                  <template #item.reason="{ item }">{{ reasonLabel(item.reason_code) }}</template>
+                </v-data-table>
+              </AdminResourceTableShell>
+              <h3 class="text-subtitle-1 mb-3">设施</h3>
+              <AdminResourceTableShell class="mb-6">
+                <v-data-table :headers="facilityHeaders" :items="runtime.facilities" item-value="name" :items-per-page="-1" hide-default-footer>
+                  <template #item.name="{ item }"><strong>{{ facilityLabel(item.name) }}</strong><div class="text-caption text-medium-emphasis">{{ item.effective_provider || '未选择服务提供方' }}</div></template>
+                  <template #item.mode="{ item }">{{ modeLabel(item.desired_mode) }}</template>
+                  <template #item.status="{ item }"><AdminStatusChip :status="facilityStatus(item)" :label="facilityLabelForStatus(item)" /></template>
+                  <template #item.reason="{ item }">{{ facilityReason(item.reason_code, item.ready) }}</template>
+                  <template #item.checked="{ item }">{{ item.checked_at }}</template>
+                </v-data-table>
+              </AdminResourceTableShell>
+              <h3 class="text-subtitle-1 mb-3">处理进程</h3>
+              <AdminResourceTableShell class="mb-6">
+                <v-data-table :headers="workerHeaders" :items="runtime.workers" item-value="worker_id" items-per-page-text="每页行数">
+                  <template #item.state="{ item }"><AdminStatusChip :status="item.online ? 'active' : item.state" :label="item.online ? '在线' : '离线'" /></template>
+                </v-data-table>
+              </AdminResourceTableShell>
+              <h3 class="text-subtitle-1 mb-3">事件队列</h3>
+              <AdminResourceTableShell v-if="runtime.eventing.queues?.length">
+                <v-data-table :headers="queueHeaders" :items="runtime.eventing.queues" item-value="queue_name" :items-per-page="-1" hide-default-footer>
+                  <template #item.execution_mode="{ item }"><AdminStatusChip :status="item.execution_mode" :label="executionModeLabel(item.execution_mode)" /></template>
+                </v-data-table>
+              </AdminResourceTableShell>
+              <v-sheet v-else border rounded class="pa-4 text-body-2 text-medium-emphasis">暂无队列分布数据。</v-sheet>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
       </template>
     </AdminAsyncState>
   </AdminPageContainer>
@@ -117,8 +160,15 @@ const notifier = useAdminNotifier()
 const runtime = ref<OperationsRuntimeStatus | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const configConflict = ref('')
 
 const communication = computed<RuntimeCommunicationSnapshot | null>(() => runtime.value?.communication ?? null)
+const hasChanges = computed(() => {
+  const current = communication.value
+  if (!current) return false
+  if (form.desired_mode !== current.desired_mode) return true
+  return Object.entries(current.settings).some(([key, value]) => String(form[key as keyof typeof form]) !== String(value))
+})
 
 const form = reactive({
   desired_mode: 'polling',
@@ -133,10 +183,12 @@ const form = reactive({
   gateway_stale_seconds: 15,
   require_supervisor: false,
 })
-const numericFields = [
+const primaryNumericFields = [
   { key: 'notification_interval_seconds', label: '通知轮询间隔（秒）', hint: '5~300' },
   { key: 'message_interval_seconds', label: '私信轮询间隔（秒）', hint: '5~300' },
   { key: 'unread_interval_seconds', label: '未读数轮询间隔（秒）', hint: '5~120' },
+] as const
+const advancedNumericFields = [
   { key: 'polling_backoff_factor', label: '退避倍率', hint: '1~5' },
   { key: 'polling_max_interval_seconds', label: '轮询上限间隔（秒）', hint: '60~900' },
   { key: 'worker_stale_seconds', label: 'Worker 心跳过期窗口（秒）', hint: '10~300' },
@@ -147,6 +199,7 @@ const numericFields = [
 const validating = ref(false)
 const applying = ref(false)
 const reconciling = ref(false)
+const settingsOpen = ref(false)
 const applyDialog = ref(false)
 const applyError = ref<string | undefined>(undefined)
 const violations = ref<Array<{ field: string; message: string }>>([])
@@ -168,7 +221,14 @@ const queueHeaders = [
   { title: '待处理', key: 'pending' }, { title: '处理中', key: 'processing' }, { title: '死信', key: 'dead' },
 ]
 
-const degradedCount = computed(() => runtime.value?.facilities.filter((item: OperationsRuntimeStatus['facilities'][number]) => !item.ready).length ?? 0)
+const hasRuntimeAttention = computed(() => {
+  const snapshot = communication.value
+  return Boolean(
+    snapshot?.status === 'degraded'
+      || runtime.value?.eventing.dead
+      || runtime.value?.eventing.expired_processing,
+  )
+})
 
 const reasonLabels: Record<string, string> = {
   'config-locked': '环境变量已锁定运行模式',
@@ -189,7 +249,13 @@ function reasonLabel(code: string | null | undefined) {
   if (!code) return '运行正常'
   return reasonLabels[code] ?? '需要关注'
 }
-function modeLabel(mode: string) { return mode === 'realtime' ? '实时' : '轮询' }
+function modeLabel(mode: string) { return mode === 'realtime' ? '实时' : mode === 'polling' ? '轮询' : mode }
+function formatAge(seconds: number) {
+  if (seconds < 60) return `${seconds} 秒`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes} 分钟`
+  return `${Math.floor(minutes / 60)} 小时`
+}
 function capabilityStatus(item: { ready: boolean | null }) {
   if (item.ready === null) return 'disabled'
   return item.ready ? 'available' : 'degraded'
@@ -207,6 +273,31 @@ function facilityReason(reason: string | null | undefined, ready: boolean) {
   } as Record<string, string>)[reason || ''] ?? '需要关注'
 }
 
+function facilityLabel(name: string) {
+  return ({
+    eventing: '事件处理',
+    realtime_gateway: '实时连接服务',
+    scheduler: '定时任务',
+    supervisor: '进程治理',
+  } as Record<string, string>)[name] ?? name
+}
+
+function facilityStatus(item: OperationsRuntimeStatus['facilities'][number]) {
+  if (item.ready) return 'available'
+  if (!item.enabled || item.reason_code === 'not-required') return 'disabled'
+  return 'degraded'
+}
+
+function facilityLabelForStatus(item: OperationsRuntimeStatus['facilities'][number]) {
+  if (item.ready) return '正常'
+  if (!item.enabled || item.reason_code === 'not-required') return '不需要'
+  return '需要关注'
+}
+
+function executionModeLabel(mode: string) {
+  return mode === 'request_safe' ? '请求内处理' : mode === 'daemon_required' ? '常驻进程' : mode
+}
+
 function syncFormFromSnapshot(snapshot: RuntimeCommunicationSnapshot | null) {
   if (!snapshot) return
   form.desired_mode = snapshot.desired_mode
@@ -216,10 +307,22 @@ function syncFormFromSnapshot(snapshot: RuntimeCommunicationSnapshot | null) {
 const applyImpact = computed(() => {
   const current = communication.value
   if (!current) return '即将修改通信运行时配置。'
-  const modeChange = current.desired_mode !== form.desired_mode
-    ? `目标模式 ${modeLabel(current.desired_mode)} → ${modeLabel(form.desired_mode)}`
-    : '目标模式不变'
-  return `${modeChange}；生效模式由服务端探测实时判定，Gateway 或 Worker 不可用时将自动保持轮询。本次操作写入审计日志。`
+  const changes: string[] = []
+  if (current.desired_mode !== form.desired_mode) {
+    changes.push(`通信方式：${modeLabel(current.desired_mode)} → ${modeLabel(form.desired_mode)}`)
+  }
+  const fieldLabels: Record<string, string> = Object.fromEntries(
+    [...primaryNumericFields, ...advancedNumericFields].map((field) => [field.key, field.label]),
+  )
+  fieldLabels.pause_when_hidden = '页面隐藏时暂停轮询'
+  fieldLabels.require_supervisor = '要求部署进程治理'
+  for (const [key, value] of Object.entries(current.settings)) {
+    const next = form[key as keyof typeof form]
+    if (String(value) === String(next)) continue
+    const display = (item: unknown) => typeof item === 'boolean' ? (item ? '是' : '否') : String(item)
+    changes.push(`${fieldLabels[key] ?? key}：${display(value)} → ${display(next)}`)
+  }
+  return `${changes.join('；')}。生效模式由服务端探测实时判定，Gateway 或 Worker 不可用时将自动保持轮询。本次操作写入审计日志。`
 })
 
 function buildUpdate(): RuntimeConfigUpdate {
@@ -239,21 +342,27 @@ function buildUpdate(): RuntimeConfigUpdate {
   }
 }
 
-async function validateForm() {
+async function validateForm(): Promise<boolean> {
   validating.value = true
   violations.value = []
   try {
     const result = await client.operations.validateRuntimeConfig(buildUpdate())
     violations.value = result.violations
     if (result.valid) violations.value = []
+    return result.valid
   }
-  catch (cause) { violations.value = [{ field: 'request', message: isApiError(cause) ? cause.message : '校验请求失败' }] }
+  catch (cause) {
+    violations.value = [{ field: 'request', message: isApiError(cause) ? cause.message : '校验请求失败' }]
+    return false
+  }
   finally { validating.value = false }
 }
 
-function openApply() {
+async function openApply() {
+  if (!hasChanges.value || validating.value) return
   applyError.value = undefined
-  violations.value = []
+  if (!await validateForm()) return
+  configConflict.value = ''
   applyDialog.value = true
 }
 
@@ -264,13 +373,22 @@ async function doApply() {
     const snapshot = await client.operations.applyRuntimeConfig(buildUpdate())
     applyDialog.value = false
     await load()
+    configConflict.value = ''
     notifier.success('通信运行时配置已应用并写入审计')
     void snapshot
   }
   catch (cause) {
     if (isApiError(cause)) {
       applyError.value = cause.message
-      if (cause.status === 409) await load()
+      if (cause.status === 409) {
+        applyDialog.value = false
+        try {
+          runtime.value = await client.operations.runtime()
+          configConflict.value = '配置已被其他操作更新。你的修改仍保留，请核对最新配置并重新审阅。'
+        } catch {
+          configConflict.value = '配置已被其他操作更新，暂时无法读取最新版本。你的修改仍保留，请稍后刷新。'
+        }
+      }
     } else applyError.value = '应用配置失败'
   }
   finally { applying.value = false }

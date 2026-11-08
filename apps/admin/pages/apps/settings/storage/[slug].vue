@@ -3,7 +3,7 @@
     <AdminPageHeader
       :title="`${channelName} 配置`"
       description="编辑存储渠道参数。保存后可使用服务端已保存的配置测试连接。"
-      :breadcrumbs="[{ title: '系统设置' }, { title: '存储配置', to: '/apps/settings/storage' }, { title: channelName }]"
+      :breadcrumbs="[{ title: '系统' }, { title: '存储服务', to: '/apps/settings/storage' }, { title: channelName }]"
     />
 
     <v-row>

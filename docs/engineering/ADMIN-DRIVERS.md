@@ -7,13 +7,13 @@
 
 > 日期：2026-11-04
 >
-> 范围：`系统设置` 域下三个驱动配置页（存储 / 消息 / 验证）从 UI 到驱动实现的纵向架构导读。
+> 范围：存储、消息、验证三个驱动配置页从 UI 到驱动实现的纵向架构导读。菜单归属以 [管理端菜单与页面归属规范](ADMIN-NAVIGATION-CONVENTION-2026-11-07.md) 为准。
 
 ## 1. 结论概览
 
 后台可配置的"驱动面"共三块：**存储（storage）、消息（sender）、验证（captcha）**，
 分别对应页面 `/apps/settings/storage`、`/apps/settings/messaging`、`/apps/settings/verification`。
-系统设置组内其余页面（站点信息、社区规则、外观）属于**业务配置**，不属于驱动面。
+站点信息、访问与验证、内容规则、主题外观属于**站点配置**，不属于驱动面。
 
 三块驱动共享同一条纵向链路：
 
@@ -25,8 +25,9 @@
 
 ## 2. 导航与权限层
 
-`apps/admin/config/navigation.ts` 中三个驱动条目位于 `系统设置`（system-config）域，
-声明 `grants: config.read`、`actionCapabilities: config.update`、`riskLevel: sensitive`。
+`apps/admin/config/navigation.ts` 中三个驱动条目位于“系统”菜单；各自要求
+`config.read` 和对应的组级读取权限（`storage.read`、`sender.read` 或 `captcha.read`）。
+写入还需 `config.update`，安装和测试操作另有 capability。
 
 权限模型不识别"驱动"概念，只识别能力；驱动页的高风险性由 `sensitive` 标记进入
 RBAC 可见性与审计口径。新增驱动页无需改动权限系统。
@@ -111,7 +112,7 @@ user.captcha（注册邮件验证开关，站点信息页）
 
 上传类限制存在三层，逐层**只能更严，不能更宽**：
 
-1. 业务层：社区规则页的场景桶限额（`upload.avatar_*` / `upload.content_*`，
+1. 业务层：内容规则页的场景桶限额（`upload.avatar_*` / `upload.content_*`，
    见 ADMIN-IA-DESIGN 与决策记录 D-4）；
 2. 渠道层：驱动详情页的 `max_file_size` / `allow_mime_types`；
 3. 厂商层：对象存储 / 邮件 / 短信服务商自身的硬限制。

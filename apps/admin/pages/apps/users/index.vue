@@ -2,7 +2,7 @@
   <AdminPageHeader
     title="用户管理"
     description="查找用户，查看账号状态与角色。"
-    :breadcrumbs="[{ title: '用户与权限' }]"
+    :breadcrumbs="[{ title: '用户' }]"
   />
 
   <AdminPageContainer fluid>
@@ -13,23 +13,12 @@
       preference-key="users"
       @reset-view="resetTableView"
     >
-      <template #toolbar>
-        <v-row dense>
-          <v-col cols="12" sm="4">
-            <v-select :model-value="tableSearchFilter.status" :items="SelectUtils.User.status" label="账号状态" clearable @update:model-value="updateUserFilter('status', $event)" />
-          </v-col>
-          <v-col v-if="canHydrateRoles" cols="12" sm="4">
-            <v-select :model-value="tableSearchFilter.role_id" :items="UserRoles" item-title="name" item-value="id" label="角色" :loading="rolesLoading" clearable @update:model-value="updateUserFilter('role_id', $event)" />
-          </v-col>
-          <v-col cols="auto"><v-btn variant="text" @click="clearFilters">清除筛选</v-btn></v-col>
-        </v-row>
-      </template>
       <template #search>
         <v-text-field v-model="tableSearchValue" clearable label="搜索用户名" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
       </template>
       <template #actions>
-
         <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">搜索与排序</v-btn>
+        <v-btn variant="text" @click="clearFilters">清除筛选</v-btn>
       </template>
       <template v-if="tableSelected.length" #selection>
         <v-row dense align="center" aria-live="polite">
@@ -215,7 +204,16 @@
     :getTableData="getTableData"
     :initial-filter="searchDialogFilter"
     KeysMessages="默认按用户名；可选择其他字段"
-  />
+  >
+    <template #filters="{ filters }">
+      <v-col cols="12" sm="6">
+        <v-select :model-value="filters.status" :items="SelectUtils.User.status" label="账号状态" clearable @update:model-value="filters.status = $event" />
+      </v-col>
+      <v-col v-if="canHydrateRoles" cols="12" sm="6">
+        <v-select :model-value="filters.role_id" :items="UserRoles" item-title="name" item-value="id" label="角色" :loading="rolesLoading" clearable @update:model-value="filters.role_id = $event" />
+      </v-col>
+    </template>
+  </PublicSearchDialog>
 </template>
 
 <script setup lang="ts">
@@ -233,6 +231,7 @@ import { useApi } from '~/lib/api';
 import { useUserStore } from '~/stores/userStore';
 import CommonUtils from '@/utils/common';
 import SelectUtils from '~/utils/select';
+import { tableSearchValue as mapTableSearchValue } from '~/utils/tableSearchValue';
 
 type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
 type EditableUser = {
@@ -278,7 +277,7 @@ const columnOptions = AllTableHeaders.map((header) => ({
   key: header.value,
   required: header.value === 'username' || header.value === 'operate',
 }));
-const SearchKeys = AllTableHeaders.slice(0, -1).map((header) => header.value === 'username' ? { ...header, title: '用户名' } : header);
+const SearchKeys = AllTableHeaders.filter((header) => !['roles_id', 'avatar', 'operate'].includes(header.value)).map((header) => header.value === 'username' ? { ...header, title: '用户名' } : header);
 const BaseTableBatchOptions = [
   { title: '切换封禁状态', value: 'ban' },
   { title: '切换冻结状态', value: 'hide' },
@@ -434,7 +433,7 @@ const getTableData = async () => {
     list_rows: tableListRows.value,
     ...tableSearchFilter.value,
   };
-  if (searchValue) params.search_value = searchValue;
+  if (searchValue) params.search_value = mapTableSearchValue(searchValue, tableSearchFilter.value.search_keys, { status: SelectUtils.User.status });
   if (sort) {
     params.order_key = sort.key;
     params.order_desc = sort.order === 'desc';
@@ -487,13 +486,6 @@ const searchTableData = CommonUtils.lodash.debounce(refreshFromFirstPage, 500);
 const clearFilters = () => {
   tableSearchValue.value = undefined;
   tableSearchFilter.value = {};
-  refreshFromFirstPage();
-};
-const updateUserFilter = (key: 'status' | 'role_id', value: unknown) => {
-  const next = { ...tableSearchFilter.value };
-  if (typeof value !== 'number') delete next[key];
-  else next[key] = value;
-  tableSearchFilter.value = next;
   refreshFromFirstPage();
 };
 const resetTableView = () => {

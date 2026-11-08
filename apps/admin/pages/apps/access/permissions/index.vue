@@ -2,7 +2,7 @@
   <AdminPageHeader
     title="权限目录"
     description="查看服务端能力目录与作用域。权限定义由后端维护，管理端仅提供只读检索。"
-    :breadcrumbs="[{ title: '用户与权限' }]"
+    :breadcrumbs="[{ title: '用户' }]"
   >
     <template #actions>
       <v-chip color="info" variant="tonal" size="small">只读目录</v-chip>

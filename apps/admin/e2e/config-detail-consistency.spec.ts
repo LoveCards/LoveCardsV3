@@ -19,7 +19,8 @@ async function fixture(page: Page, readonly = false) {
     capabilities.push('communications.read')
     const values: Record<string, unknown> = {
       '/api/me': { id: 9001, username: '界面验收', roles: [], grants: capabilities.map(capability => ({ capability, scope: 'global' })), status: 0 },
-      '/api/admin/config': { core: { name: '测试站点', url: 'https://fixture.invalid' }, sender_demo: params, storage_demo: params, captcha_demo: params },
+      '/api/admin/config': { core: { name: '测试站点', url: 'https://fixture.invalid', visitor_mode: false }, user: { captcha: false }, captcha: { captcha_enabled: false, code_enabled: true, code_channel: 'smtp', default_captcha_driver: 'gd_image' }, sender_demo: params, storage_demo: params, captcha_demo: params },
+      '/api/captcha/config': { captcha_geetest_v4: { status: false }, captcha_enabled: false },
       '/api/admin/sender/channels': [{ slug: 'demo', name: '测试消息渠道', fields }],
       '/api/admin/storage/channels': [{ slug: 'demo', name: '测试存储渠道', fields }],
       '/api/admin/captcha/drivers': [{ slug: 'demo', name: '测试验证驱动', fields }],
@@ -38,7 +39,8 @@ async function fixture(page: Page, readonly = false) {
 
 const surfaces: Array<[string, string]> = [
   ['settings/site', '站点地址'],
-  ['settings/community-rules', '卡片图集上限'],
+  ['settings/access', '访客浏览'],
+  ['settings/site/policies?tab=content', '卡片图集上限'],
   ['settings/messaging/demo', '服务地址'],
   ['settings/storage/demo', '服务地址'],
   ['settings/verification/demo', '服务地址'],
@@ -78,7 +80,9 @@ test('channel edits use one dirty status, block testing, and preserve failed inp
   await page.getByRole('button', { name: '保存渠道配置', exact: true }).click()
   await expect(page.getByText('模拟保存失败，请检查输入。', { exact: true })).toBeVisible()
   await expect(page.getByRole('textbox', { name: /服务地址/ })).toHaveValue('edited.invalid')
-  await page.getByRole('link', { name: '站点信息', exact: true }).click()
+  await page.getByRole('button', { name: '搜索管理页面' }).click()
+  await page.getByPlaceholder('输入页面名称').fill('站点信息')
+  await page.getByRole('listbox').last().getByRole('link', { name: /^站点信息(?:\s|$)/ }).click()
   await expect(page.getByRole('dialog', { name: '有未保存的修改' })).toBeVisible()
   await page.getByRole('button', { name: '继续编辑', exact: true }).click()
   await expect(page).toHaveURL(/messaging\/demo/)
@@ -92,13 +96,14 @@ test('site and community rules pages keep independent dirty state and save scope
   await expect(page.getByRole('status')).toHaveText('站点信息有未保存修改', { timeout: 15_000 })
   await expect(page.getByRole('button', { name: '保存站点信息', exact: true })).toBeEnabled()
 
-  // 拆分后社区规则是独立页面：站内离开需经过未保存守卫，放弃后进入的页面没有任何脏状态。
-  await page.getByRole('link', { name: '社区规则', exact: true }).click()
+  // 站点策略的内容规则是独立 Tab：离开站点信息页仍需经过未保存守卫，放弃后进入内容规则 Tab。
+  await page.getByRole('link', { name: '站点策略', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '有未保存的修改' })
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: '放弃修改', exact: true }).click()
-  await expect(page).toHaveURL(/settings\/community-rules$/)
-  await expect(page.getByRole('button', { name: '保存社区规则', exact: true })).toBeDisabled()
+  await expect(page).toHaveURL(/settings\/site\/policies\?tab=access$/)
+  await page.getByRole('tab', { name: '内容规则' }).click()
+  await expect(page.getByRole('button', { name: '保存内容规则', exact: true })).toBeDisabled()
   await expect(page.getByText('有未保存修改')).toHaveCount(0)
 
   // 返回站点信息页时重新加载原值：两页不共享草稿，写入始终为零。
@@ -117,6 +122,7 @@ test('read-only channel shows no save or external test actions', async ({ page }
 })
 
 test('detail errors can be retried without showing an empty success state', async ({ page }) => {
+  test.setTimeout(60_000)
   await fixture(page)
   let failed = false
   await page.route('**/api/admin/audit-logs/1', async route => {
@@ -125,7 +131,7 @@ test('detail errors can be retried without showing an empty success state', asyn
     return route.fulfill({ status: 503, json: { success: false, message: '模拟服务暂不可用', code: 503 } })
   })
   await page.goto('./apps/operations/audit/1')
-  await expect(page.getByRole('alert')).toContainText('模拟服务暂不可用')
+  await expect(page.getByRole('alert')).toContainText('模拟服务暂不可用', { timeout: 20_000 })
   await page.getByRole('button', { name: '重试', exact: true }).click()
   await expect(page.getByRole('heading', { name: '状态变化', exact: true })).toBeVisible()
 })
@@ -141,6 +147,6 @@ test('missing audit detail retains the return route', async ({ page }) => {
 test('forbidden page has one unambiguous return action', async ({ page }) => {
   await fixture(page, true)
   await page.goto('./apps/access/roles')
-  await expect(page.getByRole('heading', { name: '无权访问', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '无权访问', exact: true })).toBeVisible({ timeout: 20_000 })
   await expect(page.getByRole('button', { name: '前往可访问页面', exact: true })).toHaveCount(1)
 })

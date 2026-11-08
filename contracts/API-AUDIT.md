@@ -1,6 +1,6 @@
 # API Contract Audit
 
-- Routes inspected: 200
+- Routes inspected: 201
 - P0: 0
 - P1: 0
 - P2: 0
@@ -27,7 +27,7 @@
 | GET | `/admin/comments/:id` | `comments.getManaged` | grants:admin.access:global,comments.read:all | no | CommentResource::make | — |
 | PATCH | `/admin/comments/:id` | `comments.moderateManaged` | grants:admin.access:global,comments.update:all,comments.moderate:all | yes | createNoContent | — |
 | POST | `/admin/comments/batch` | `comments.batchManaged` | grants:admin.access:global | yes | createNoContent | — |
-| GET | `/admin/communications/policies` | `communications.policies` | grants:admin.access:global,communications.configure:global | no | AdminNotificationPoliciesResource::make | — |
+| GET | `/admin/communications/policies` | `communications.policies` | grants:admin.access:global,communications.read:global | no | AdminNotificationPoliciesResource::make | — |
 | PUT | `/admin/communications/policies` | `communications.applyPolicies` | grants:admin.access:global,communications.configure:global | yes | AdminNotificationPoliciesApplyResource::make | — |
 | GET | `/admin/community/insights` | `community.insights` | grants:admin.access:global,community.insights.read:global | no | AdminCommunityInsightsResource::make | — |
 | DELETE | `/admin/config` | `config.delete` | grants:admin.access:global,config.deleteKey:global | yes | createNoContent | — |
@@ -49,6 +49,7 @@
 | GET | `/admin/operations/deliveries` | `operations.deliveries` | grants:admin.access:global,communications.read:global | yes | AdminDeliveryResource::paginate | — |
 | GET | `/admin/operations/deliveries/:id` | `operations.delivery` | grants:admin.access:global,communications.read:global | no | AdminDeliveryResource::make | — |
 | POST | `/admin/operations/deliveries/:id/retry` | `operations.retryDelivery` | grants:admin.access:global,operations.retry:global | no | createNoContent | — |
+| GET | `/admin/operations/deliveries/summary` | `operations.deliverySummary` | grants:admin.access:global,communications.read:global | no | AdminDeliverySummaryResource::make | — |
 | GET | `/admin/operations/migrations` | `operations.migrations` | grants:admin.access:global,operations.read:global | no | AdminMigrationResource::collection | — |
 | POST | `/admin/operations/migrations/run` | `operations.runMigrations` | grants:admin.access:global,operations.migrate:global | yes | AdminMigrationResource::collection | — |
 | GET | `/admin/operations/notifications` | `operations.notificationStats` | grants:admin.access:global,communications.read:global | no | AdminNotificationStatsResource::make | — |

@@ -10,19 +10,15 @@ final class AdminNotificationPoliciesApplyResource extends Resource
 {
     public static function schema(string $variant = 'default'): array
     {
-        return ['type' => 'object', 'additionalProperties' => false, 'required' => ['revision', 'policies'], 'properties' => [
-            'revision' => ['type' => 'integer'],
-            'policies' => ['type' => 'array'],
-        ]];
+        $schema = AdminNotificationPoliciesResource::schema($variant);
+        $schema['properties']['revision'] = ['type' => 'integer'];
+        return $schema;
     }
 
     public static function make($value): array
     {
-        $data = self::normalize($value);
-        if (!is_array($data)) return ['revision' => 0, 'policies' => []];
-        return [
-            'revision' => (int) ($data['revision'] ?? 0),
-            'policies' => array_values(is_array($data['policies'] ?? null) ? $data['policies'] : []),
-        ];
+        $data = AdminNotificationPoliciesResource::make($value);
+        $data['revision'] = (int) ($data['revision'] ?? 0);
+        return $data;
     }
 }

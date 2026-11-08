@@ -5,12 +5,14 @@ use think\facade\Route;
 use app\api\middleware\JwtAuthCheck;
 use app\api\middleware\PermissionCheck;
 use app\modules\Operations\Administration\Transport\Api\AdminValidate;
+use app\modules\Operations\Administration\Transport\Api\AdminAuditQueryValidate;
 use app\modules\Operations\Administration\Transport\Api\AdminOverviewResource;
 use app\modules\Operations\Administration\Transport\Api\AdminMigrationResource;
 use app\modules\Operations\Administration\Transport\Api\AdminRuntimeResource;
 use app\modules\Operations\Administration\Transport\Api\AdminRuntimeConfigResource;
 use app\modules\Operations\Administration\Transport\Api\AdminRuntimeValidateResource;
 use app\modules\Operations\Administration\Transport\Api\AdminDeliveryResource;
+use app\modules\Operations\Administration\Transport\Api\AdminDeliverySummaryResource;
 use app\modules\Operations\Administration\Transport\Api\AdminAuditLogResource;
 use app\modules\Operations\Administration\Transport\Api\AdminNotificationStatsResource;
 use app\modules\Operations\Administration\Transport\Api\AdminCommunityInsightsResource;
@@ -62,8 +64,11 @@ Route::group('admin/operations', function () use ($access, $response, $request) 
         ->setOption('contract', ['request' => null, 'response' => $response(AdminRuntimeConfigResource::class)])
         ->setOption('meta', ['name' => '运行时对账', 'group' => '运维', 'access' => $access('operations.runtime.configure')]);
     Route::get('deliveries', 'Platform.Administration/deliveries')->name('operations.deliveries')
-        ->setOption('contract', ['request' => $request('pagination'), 'response' => $response(AdminDeliveryResource::class, 'paginated')])
+        ->setOption('contract', ['request' => $request('deliveryList'), 'response' => $response(AdminDeliveryResource::class, 'paginated')])
         ->setOption('meta', ['name' => '事件投递', 'group' => '运维', 'access' => $access('communications.read')]);
+    Route::get('deliveries/summary', 'Platform.Administration/deliverySummary')->name('operations.deliverySummary')
+        ->setOption('contract', ['request' => null, 'response' => $response(AdminDeliverySummaryResource::class)])
+        ->setOption('meta', ['name' => '通知处理汇总', 'group' => '运维', 'access' => $access('communications.read')]);
     Route::get('deliveries/:id', 'Platform.Administration/delivery')->name('operations.delivery')
         ->pattern(['id' => '\\d+'])
         ->setOption('contract', ['request' => null, 'response' => $response(AdminDeliveryResource::class)])
@@ -100,7 +105,7 @@ Route::group('admin/operations', function () use ($access, $response, $request) 
 
 Route::group('admin', function () use ($access, $response, $request) {
     Route::get('audit-logs', 'Platform.Administration/auditLogs')->name('operations.auditLogs')
-        ->setOption('contract', ['request' => $request('pagination'), 'response' => $response(AdminAuditLogResource::class, 'paginated')])
+        ->setOption('contract', ['request' => ['validate' => AdminAuditQueryValidate::class, 'scene' => 'list'], 'response' => $response(AdminAuditLogResource::class, 'paginated')])
         ->setOption('meta', ['name' => '审计日志', 'group' => '审计', 'access' => $access('audit.read')]);
     Route::get('audit-logs/:id', 'Platform.Administration/auditLog')->name('operations.auditLog')
         ->pattern(['id' => '\\d+'])

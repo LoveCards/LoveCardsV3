@@ -36,6 +36,33 @@ await test('session.login() → admin token', async () => {
   return result
 })
 
+await test('communications policies match registered notification events', async () => {
+  const catalog = await adminClient.communications.policies()
+  const names = catalog.policies.map((row) => row.event_type)
+  const expected = ['content.comment.published', 'content.liked', 'content.mentions.added', 'library.saved', 'message.sent', 'social.followed', 'system.notification.issued']
+  assert(catalog.revision >= 1, 'current policy revision must exist')
+  assert(names.length === expected.length && expected.every((name) => names.includes(name)), 'current policy names must match the seven registered notification events')
+  assert(new Set(names).size === names.length, 'current policies must have one row per event type')
+  for (const row of catalog.policies) {
+    assert(typeof row.display_name === 'string' && /[\u4e00-\u9fff]/.test(row.display_name), `missing Chinese policy name: ${row.event_type}`)
+    assert(typeof row.impact_text === 'string' && row.impact_text.length > 0, `missing policy impact: ${row.event_type}`)
+  }
+  const system = catalog.policies.find((row) => row.event_type === 'system.notification.issued')
+  assert(system?.locked === true && system?.enabled === true, 'system notifications must stay locked and enabled')
+
+  const liked = catalog.policies.find((row) => row.event_type === 'content.liked')
+  assert(liked, 'liked policy must exist')
+  let disabled
+  try {
+    disabled = await adminClient.communications.applyPolicies({ expected_revision: catalog.revision, policies: [{ event_type: 'content.liked', enabled: !liked.enabled }] })
+    const row = disabled.policies.find((item) => item.event_type === liked.event_type)
+    assert(row?.enabled === !liked.enabled && row?.display_name === liked.display_name && row?.impact_text === liked.impact_text, 'apply response must preserve the catalog presentation')
+  } finally {
+    if (disabled) await adminClient.communications.applyPolicies({ expected_revision: disabled.revision, policies: [{ event_type: 'content.liked', enabled: liked.enabled }] })
+  }
+  return catalog
+})
+
 await test('configure disposable auth fixtures', async () => {
   await adminClient.config.update({ user: { captcha: false }, captcha: { captcha_enabled: false } })
   const policy = await adminClient.session.policy()

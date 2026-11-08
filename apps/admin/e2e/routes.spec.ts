@@ -13,13 +13,13 @@ const routes = [
   '/apps/settings/messaging',
   '/apps/settings/verification',
   '/apps/settings/site',
+  '/apps/settings/site/policies',
   '/apps/settings/community-rules',
   '/apps/settings/appearance',
   '/apps/settings/appearance/themes/current',
   '/apps/operations/upgrade',
   '/apps/operations/runtime',
   '/apps/community/reports',
-  '/apps/security/recovery',
   '/apps/operations/deliveries',
   '/apps/operations/audit',
   '/apps/community/insights',
@@ -27,8 +27,8 @@ const routes = [
 
 const expectedHeadings: Record<string, string> = {
   '/apps/settings/site': '站点信息',
-  // 新页面：社区规则从站点设置页拆分而来，无历史别名，导航直达。
-  '/apps/settings/community-rules': '社区规则',
+  '/apps/settings/site/policies': '站点策略',
+  '/apps/settings/community-rules': '站点策略',
   '/apps/operations/upgrade': '升级与迁移',
   '/apps/operations/runtime': '运行状态',
 }
@@ -46,6 +46,9 @@ const legacyAliases = [
   ['/apps/storage/config', '/apps/settings/storage'],
   ['/apps/sender/config', '/apps/settings/messaging'],
   ['/apps/captcha/config', '/apps/settings/verification'],
+  ['/apps/settings/access', '/apps/settings/site/policies'],
+  ['/apps/settings/community-rules', '/apps/settings/site/policies'],
+  ['/apps/operations/notification-policies', '/apps/settings/site/policies'],
   ['/apps/system/runtime', '/apps/operations/runtime'],
   ['/apps/system/upgrade', '/apps/operations/upgrade'],
   ['/apps/updata', '/apps/operations/upgrade'],
@@ -255,7 +258,8 @@ for (const route of routes) {
 		// networkidle would make the whole route suite time out even though the
 		// page is usable, so assert the application shell instead.
 		await page.goto(`.${route}`, { waitUntil: 'domcontentloaded' })
-		await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
+		const shellTimeout = route === '/apps/settings/site' ? 60_000 : 20_000
+		await expect(page.locator('main')).toBeVisible({ timeout: shellTimeout })
 		await expect(page).not.toHaveURL(/\/admin\/login$/)
 		await expect(page.locator('body')).not.toContainText('权限不足')
 		if (expectedHeadings[route]) {
@@ -267,6 +271,12 @@ for (const route of routes) {
 	})
 }
 
+const legacyPolicyTabs: Record<string, string> = {
+  '/apps/settings/access': 'access',
+  '/apps/settings/community-rules': 'content',
+  '/apps/operations/notification-policies': 'notifications',
+}
+
 for (const [legacyPath, canonicalPath] of legacyAliases) {
   test(`legacy route redirects to canonical path: ${legacyPath}`, async ({ page }) => {
     await page.goto(`.${legacyPath}?source=legacy#route-alias`, { waitUntil: 'domcontentloaded' })
@@ -276,6 +286,8 @@ for (const [legacyPath, canonicalPath] of legacyAliases) {
     expect(url.pathname).toBe(`/admin${canonicalPath}`)
     expect(url.searchParams.get('source')).toBe('legacy')
     expect(url.hash).toBe('#route-alias')
+    const policyTab = legacyPolicyTabs[legacyPath]
+    if (policyTab) expect(url.searchParams.get('tab')).toBe(policyTab)
   })
 }
 

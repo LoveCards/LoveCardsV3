@@ -100,7 +100,7 @@ const accountStatus = computed(() => {
   return states[security.value?.user.status ?? -1] ?? { status: 'unknown', label: '未知' }
 })
 const breadcrumbs = [
-  { title: '用户与权限' },
+  { title: '用户' },
   { title: '用户管理', to: '/apps/users' },
   { title: `用户 #${route.params.id}`, to: `/apps/users/${route.params.id}` },
   { title: '账号安全', disabled: true },

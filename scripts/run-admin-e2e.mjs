@@ -7,6 +7,7 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { resolveSupportedPhp } from './lib/php-runtime.mjs'
+import { detectUtf8mb4Collation } from './lib/mysql-collation.mjs'
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
 const backendPort = Number(process.env.LOVECARDS_E2E_BACKEND_PORT || process.env.LOVECARDS_DEV_BACKEND_PORT || 6001)
@@ -164,6 +165,13 @@ const adminRoot = path.join(root, 'apps/admin')
 const nuxtCli = path.join(adminRoot, 'node_modules/nuxt/bin/nuxt.mjs')
 const bundledOpenSsl = path.join(path.dirname(php), 'extras', 'ssl', 'openssl.cnf')
 const openSslConfig = process.env.OPENSSL_CONF || (existsSync(bundledOpenSsl) ? bundledOpenSsl : '')
+const databaseEnv = {
+  DATABASE_HOSTNAME: databaseHost,
+  DATABASE_HOSTPORT: process.env.LOVECARDS_E2E_DB_PORT || '3306',
+  DATABASE_USERNAME: process.env.LOVECARDS_E2E_DB_USER || 'root',
+  DATABASE_PASSWORD: process.env.LOVECARDS_E2E_DB_PASSWORD || '',
+}
+const databaseCollation = await detectUtf8mb4Collation(php, databaseEnv)
 const dbEnv = {
   LOVECARDS_E2E_DB_NAME: database,
   DATABASE_DRIVER: 'mysql',
@@ -180,6 +188,7 @@ const dbEnv = {
   PHP_DATABASE_DATABASE: database,
   PHP_DATABASE_USERNAME: process.env.LOVECARDS_E2E_DB_USER || 'root',
   PHP_DATABASE_PASSWORD: process.env.LOVECARDS_E2E_DB_PASSWORD || '',
+  PHP_DATABASE_COLLATION: databaseCollation,
   // Guest permission tests require a visitor token. Keep the policy scoped to
   // this disposable backend process instead of relying on a persistent write.
   // ThinkPHP env() 只读 PHP_ 前缀（Env::getEnv），旧无前缀键从未生效；

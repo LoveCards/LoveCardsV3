@@ -23,7 +23,7 @@
 - 用户资料、状态、删除、角色分配、批量管理和 Session 撤销都必须在 Service/Application 层比较操作者与目标的角色和 grants。非 root 不能操作 root 或权限高于自己的目标。
 - 非 root 不能通过管理接口修改自己的角色。任何删除、禁用或移除 root 角色的事务，提交后必须仍至少存在一名状态允许登录且未删除的 root 用户。
 - root 身份以 `config('system.system_roles.root')` 的角色锚点判断，不能用用户名、展示名称或前端页面身份推断。
-- 用户安全概览和账号恢复记录当前是只读入口；若以后增加会改变 Session、凭据或恢复状态的动作，必须复用同一目标层级边界。
+- 用户安全概览当前是只读入口；管理端已移除独立账号恢复记录页，恢复操作通过审计日志追溯。若以后增加会改变 Session、凭据或恢复状态的动作，必须复用同一目标层级边界。
 - `users.security` 响应通过 `session_mutation_allowed` 返回当前 actor 对目标用户的服务端判定。该字段不包含角色或 grants；Session 撤销接口仍须重新授权。专职安全角色不需要拥有目标用户的内容类 grants，但非 root 仍不能撤销 root 用户的 Session。
 
 ## 回归检查

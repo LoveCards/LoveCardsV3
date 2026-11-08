@@ -69,6 +69,8 @@ export interface NotificationPolicyRule {
   event_version: number
   rule_key: string
   enabled: boolean
+  display_name: string | null
+  impact_text: string | null
   notification_type: string | null
   recipient_rule: string
   user_disableable: boolean

@@ -1,6 +1,6 @@
 {
   "source": "thinkphp-runtime-route-registry",
-  "routeCount": 200,
+  "routeCount": 201,
   "routes": [
     {
       "path": "/admin/cards/:id",
@@ -949,8 +949,8 @@
       ],
       "contract": {
         "request": {
-          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
-          "scene": "pagination"
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminAuditQueryValidate",
+          "scene": "list"
         },
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminAuditLogResource",
@@ -1283,7 +1283,7 @@
               "scope": "global"
             },
             {
-              "capability": "communications.configure",
+              "capability": "communications.read",
               "scope": "global"
             }
           ]
@@ -1600,7 +1600,7 @@
       "contract": {
         "request": {
           "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
-          "scene": "pagination"
+          "scene": "deliveryList"
         },
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminDeliveryResource",
@@ -1641,6 +1641,43 @@
         "request": null,
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminDeliveryResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/deliveries/summary",
+      "method": "GET",
+      "name": "operations.deliverySummary",
+      "controller": "Platform.Administration",
+      "action": "deliverySummary",
+      "meta": {
+        "name": "通知处理汇总",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminDeliverySummaryResource",
           "shape": "item",
           "status": 200
         }

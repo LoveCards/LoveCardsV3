@@ -13,6 +13,10 @@ final class AdminValidate extends Validate
             'normal' => ['page', 'list_rows', 'search_value', 'search_keys', 'status', 'resource_type', 'actor_id', 'unread_only', 'worker_type'],
             'require' => false, 'nonNull' => false, 'toNull' => [],
         ],
+        'deliveryList' => [
+            'normal' => ['page', 'list_rows', 'status', 'worker_type', 'queue_name', 'policy_decision'],
+            'require' => false, 'nonNull' => false, 'toNull' => [],
+        ],
         'transition' => [
             'normal' => ['note', 'resolution'],
             'require' => ['status'], 'nonNull' => false, 'toNull' => [],
@@ -49,6 +53,8 @@ final class AdminValidate extends Validate
         'list_rows' => 'number',
         'actor_id' => 'number',
         'status' => 'max:32',
+        'queue_name' => 'max:64',
+        'policy_decision' => 'in:applied,skipped,not-configured',
         'resource_type' => 'max:64',
         'worker_type' => 'max:64',
         'search_value' => 'max:255',

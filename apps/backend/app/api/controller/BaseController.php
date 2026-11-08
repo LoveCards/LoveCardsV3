@@ -176,6 +176,9 @@ class BaseController
             if ($ValidateClass === \app\modules\Platform\Community\Transport\Api\Community::class) {
                 throw ApiException::validation(is_array($errors) ? $errors : ['request' => (string) $errors]);
             }
+            if ($ValidateClass === \app\modules\Operations\Administration\Transport\Api\AdminAuditQueryValidate::class) {
+                throw ApiException::validation(is_array($errors) ? $errors : ['request' => (string) $errors]);
+            }
             throw ApiException::badRequest('参数错误', ApiException::CODE_PARAM_INVALID, $errors);
         }
 

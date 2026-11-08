@@ -14,7 +14,7 @@
     "packages/sdk"
   ],
   "scripts": {
-    "check": "npm run test:php-runtime && npm run test:php-upload-limits && npm run test:e2e:safety && npm run test:gateway && npm run test:backend && npm run test:contract-workflow && npm run check:architecture && npm run check:routes:strict && npm run check:admin-contracts && npm run check:admin-icons && npm run check:api-contract && npm run check:generated:sdk && npm run check:sdk-package && npm run test:sdk:transport && npm run test:sdk:safety && npm run test:sdk:debug && npm run check:sdk-theme && npm run typecheck:sdk && npm run typecheck:admin && npm run check:default-theme",
+    "check": "npm run test:php-runtime && npm run test:php-upload-limits && npm run test:e2e:safety && npm run test:mysql-collation && npm run test:gateway && npm run test:backend && npm run test:contract-workflow && npm run check:architecture && npm run check:routes:strict && npm run check:admin-contracts && npm run check:admin-icons && npm run check:api-contract && npm run check:generated:sdk && npm run check:sdk-package && npm run test:sdk:transport && npm run test:sdk:safety && npm run test:sdk:debug && npm run check:sdk-theme && npm run typecheck:sdk && npm run typecheck:admin && npm run check:default-theme",
     "check:architecture": "node scripts/check-architecture.mjs",
     "audit:api": "node scripts/audit-api-contract.mjs",
     "export:routes": "node scripts/check-route-manifest.mjs",
@@ -29,6 +29,7 @@
     "test:php-runtime": "node scripts/test-php-runtime.mjs",
     "test:php-upload-limits": "node scripts/test-php-upload-limits.mjs",
     "test:e2e:safety": "node scripts/test-e2e-safety.mjs",
+    "test:mysql-collation": "node scripts/test-mysql-collation.mjs",
     "test:backend": "node scripts/run-backend-tests.mjs",
     "test:contract-workflow": "node scripts/test-api-contract-workflow.mjs",
     "test:gateway": "npm --workspace @lovecards/realtime-gateway run test",
