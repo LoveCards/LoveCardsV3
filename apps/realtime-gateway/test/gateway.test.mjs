@@ -133,6 +133,75 @@ test('stream rejects unknown ticket with 401 and consumes tickets once', async (
   }
 })
 
+test('capacity rejects new streams before consuming their ticket and changes health', async () => {
+  const backend = createFakeBackend()
+  backend.tickets.set('second-ticket-26chars-hex', { uid: 8, cursor_seed: 'seed-2' })
+  const backendPort = await listen(backend.server)
+  const app = createApp({ backendUrl: `http://127.0.0.1:${backendPort}`, internalToken: 'test-internal-token-1234', maxConnections: 1 })
+  const port = await app.start(0)
+  try {
+    const first = await httpGet(port, '/stream?ticket=valid-ticket-26chars-hex')
+    assert.equal(first.statusCode, 200)
+    const fullHealth = await readJson(await httpGet(port, '/internal/health', { Authorization: 'Bearer test-internal-token-1234' }))
+    assert.equal(fullHealth.ready, false)
+    assert.equal(fullHealth.connections, 1)
+    assert.equal(fullHealth.max_connections, 1)
+
+    const rejected = await httpGet(port, '/stream?ticket=second-ticket-26chars-hex')
+    assert.equal(rejected.statusCode, 503)
+    await readJson(rejected)
+    assert.equal(backend.tickets.has('second-ticket-26chars-hex'), true)
+
+    first.destroy()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    const second = await httpGet(port, '/stream?ticket=second-ticket-26chars-hex')
+    assert.equal(second.statusCode, 200)
+    second.destroy()
+  } finally {
+    app.stop()
+    backend.server.close()
+  }
+})
+
+test('capacity reserves a slot while ticket verification is pending', async () => {
+  let releaseVerification
+  const verification = new Promise((resolve) => { releaseVerification = resolve })
+  let verificationStarted
+  const started = new Promise((resolve) => { verificationStarted = resolve })
+  let verifyCalls = 0
+  const app = createApp({
+    backendUrl: 'http://127.0.0.1:1',
+    internalToken: 'test-internal-token-1234',
+    maxConnections: 1,
+    fetchImpl: async () => {
+      verifyCalls += 1
+      verificationStarted()
+      await verification
+      return { status: 200, json: async () => ({ data: { uid: 7, cursor_seed: 'seed-1' } }) }
+    },
+  })
+  const port = await app.start(0)
+  try {
+    const firstRequest = httpGet(port, '/stream?ticket=valid-ticket-26chars-hex')
+    await started
+    assert.equal(verifyCalls, 1)
+    const health = await readJson(await httpGet(port, '/internal/health', { Authorization: 'Bearer test-internal-token-1234' }))
+    assert.equal(health.ready, false)
+    assert.equal(health.pending_connections, 1)
+    const rejected = await httpGet(port, '/stream?ticket=second-ticket-26chars-hex')
+    assert.equal(rejected.statusCode, 503)
+    await readJson(rejected)
+    assert.equal(verifyCalls, 1)
+    releaseVerification()
+    const first = await firstRequest
+    assert.equal(first.statusCode, 200)
+    first.destroy()
+  } finally {
+    releaseVerification()
+    app.stop()
+  }
+})
+
 test('source-poll fallback emits signal frames when backend reports newer notifications', async () => {
   const backend = createFakeBackend()
   const backendPort = await listen(backend.server)

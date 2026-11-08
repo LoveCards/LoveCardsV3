@@ -12,6 +12,7 @@ const HEARTBEAT_MS = 15_000
 const MAX_LIFETIME_MS = 900_000
 const DEFAULT_POLL_INTERVAL_MS = 5_000
 const RECONNECT_RETRY_MS = 2_000
+const DEFAULT_MAX_CONNECTIONS = 100
 
 function bearerOk(req, token) {
   if (!token) return false
@@ -51,15 +52,20 @@ export function createApp(config) {
     fetchImpl = globalThis.fetch,
     logger = () => {},
     pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
+    maxConnections = DEFAULT_MAX_CONNECTIONS,
   } = config
   if (!backendUrl || !internalToken) {
     throw new Error('gateway requires backendUrl and internalToken')
+  }
+  if (!Number.isInteger(maxConnections) || maxConnections < 1) {
+    throw new Error('gateway maxConnections must be a positive integer')
   }
 
   // transport 状态机：redis 订阅断开时退回 source-poll，恢复后回到 redis。
   const state = {
     transport: redis ? 'redis' : 'source-poll',
     connections: new Set(),
+    pendingConnections: 0,
   }
 
   const backendFetch = async (path, init = {}) => {
@@ -136,17 +142,31 @@ export function createApp(config) {
   }
 
   const openStream = async (req, res, ticket, lastEventId) => {
-    const verified = await backendFetch('/api/internal/realtime/ticket/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ticket }),
-    })
+    if (state.connections.size + state.pendingConnections >= maxConnections) {
+      res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '2' })
+      res.end(JSON.stringify({ error: 'gateway at capacity' }))
+      return
+    }
+    state.pendingConnections += 1
+    let verified
+    try {
+      verified = await backendFetch('/api/internal/realtime/ticket/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticket }),
+      })
+    } catch {
+      res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '2' })
+      res.end(JSON.stringify({ error: 'backend unavailable' }))
+      return
+    } finally {
+      state.pendingConnections -= 1
+    }
     if (!verified || typeof verified.uid !== 'number' || verified.uid < 1) {
       res.writeHead(401, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ success: false, error: { code: 1005, message: 'invalid stream ticket' } }))
       return
     }
-
     res.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache',
@@ -196,11 +216,14 @@ export function createApp(config) {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({
         protocol: PROTOCOL,
-        ready: true,
+        ready: state.connections.size + state.pendingConnections < maxConnections,
         cursor: true,
         auth: ['ticket'],
         version: VERSION,
         transport: state.transport,
+        connections: state.connections.size,
+        pending_connections: state.pendingConnections,
+        max_connections: maxConnections,
       }))
       return
     }
