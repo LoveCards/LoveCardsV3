@@ -6690,8 +6690,7 @@
         }
       },
       "middleware": [
-        "app\\api\\middleware\\SessionDebounce",
-        "app\\api\\middleware\\CaptchaCheck"
+        "app\\api\\middleware\\SessionDebounce"
       ],
       "contract": {
         "request": {

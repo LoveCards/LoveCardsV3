@@ -6,7 +6,7 @@ export interface AuthPolicy {
     email_verification_available: boolean
   }
   guest: { enabled: boolean }
-  human_verification: { enabled: boolean; driver: string }
+  human_verification: { enabled: boolean; driver: string; available: boolean }
 }
 
 export interface SessionState {

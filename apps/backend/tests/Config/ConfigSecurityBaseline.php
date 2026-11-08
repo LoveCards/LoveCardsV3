@@ -62,6 +62,18 @@ namespace app\modules\Platform\Config\Public {
     }
 }
 
+namespace app\modules\Platform\Captcha\Public {
+    final class Captcha
+    {
+        public static bool $ready = false;
+
+        public static function isReady(string $type): bool
+        {
+            return $type === 'captcha' && self::$ready;
+        }
+    }
+}
+
 namespace {
     $root = dirname(__DIR__, 2);
     require $root . '/app/shared/Authorization/Scope.php';
@@ -74,6 +86,7 @@ namespace {
     use app\api\ApiException;
     use app\modules\Platform\Config\Public\Config;
     use app\modules\Platform\Config\Service\ConfigManager;
+    use app\modules\Platform\Captcha\Public\Captcha;
     use app\shared\Authorization\Grant;
     use app\shared\Authorization\GrantSet;
     use app\shared\Authorization\Scope;
@@ -205,6 +218,31 @@ namespace {
         Config::$environmentManaged['storage_cos.secret_key'] = true;
         $expectApi(400, static fn() => $manager->update(['storage_cos' => ['secret_key' => ['$secret' => 'clear']]], $writeGrants), 'environment-managed secret cannot be cleared in the database');
         $assertSame([], Config::$writes, 'environment-managed secret update must not write');
+    });
+
+    $test('human verification requires a ready driver before enabling', static function () use ($grants, $expectApi, $assertSame): void {
+        Config::reset();
+        Config::$groups[] = 'captcha';
+        Config::$schemas['captcha'] = ['captcha_enabled' => ['type' => 'bool']];
+        $manager = new ConfigManager();
+        $writeGrants = $grants('admin.access', 'config.update', 'captcha.read');
+
+        Captcha::$ready = false;
+        $expectApi(422, static fn() => $manager->update(['captcha' => ['captcha_enabled' => true]], $writeGrants), 'unready human verification must be rejected');
+        $assertSame([], Config::$writes, 'unready driver must not persist enabled policy');
+
+        $manager->update(['captcha' => ['captcha_enabled' => false]], $writeGrants);
+        $assertSame([['captcha', ['captcha_enabled' => false]]], Config::$writes, 'operator must be able to disable an unready policy');
+
+        Config::$writes = [];
+        Captcha::$ready = true;
+        $manager->update(['captcha' => ['captcha_enabled' => true]], $writeGrants);
+        $assertSame([['captcha', ['captcha_enabled' => true]]], Config::$writes, 'ready driver permits enabling');
+    });
+
+    $test('fresh install leaves human verification disabled', static function () use ($assertSame): void {
+        $schema = require dirname(__DIR__, 2) . '/config/apps/captcha.php';
+        $assertSame(false, $schema['captcha_enabled']['default'] ?? null, 'fresh install must not require an unconfigured challenge');
     });
 
     $failures = 0;

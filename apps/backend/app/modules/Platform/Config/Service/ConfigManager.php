@@ -4,6 +4,7 @@ namespace app\modules\Platform\Config\Service;
 
 use app\api\ApiException;
 use app\modules\Platform\Config\Public\Config as ConfigService;
+use app\modules\Platform\Captcha\Public\Captcha;
 use app\shared\Authorization\GrantSet;
 
 /**
@@ -82,6 +83,10 @@ final class ConfigManager
             if (!empty($validated)) {
                 $pending[$group] = $validated;
             }
+        }
+
+        if (($pending['captcha']['captcha_enabled'] ?? false) && !Captcha::isReady('captcha')) {
+            throw ApiException::validation(['captcha.captcha_enabled' => '人机验证驱动未就绪，请先完成系统验证服务配置']);
         }
 
         foreach ($pending as $group => $validated) {

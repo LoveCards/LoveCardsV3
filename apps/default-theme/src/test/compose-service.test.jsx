@@ -38,6 +38,19 @@ describe('compose media publishing', () => {
     expect(create).toHaveBeenCalledWith({ content: '今天的随笔', tags: [], visibility: 'public', data: { kind: 'text' } });
   });
 
+  it('passes human verification to the card write without changing the media flow', async () => {
+    const create = vi.fn().mockResolvedValue({ id: 7 });
+    const update = vi.fn().mockResolvedValue(undefined);
+    const client = { getToken: vi.fn().mockReturnValue('token'), files: { upload: vi.fn(), delete: vi.fn() }, cards: { create, update } };
+    sdk.getSdkClient.mockReturnValue(client);
+    const verification = { captcha_id: 'image-id', captcha_code: 'ABCD' };
+    await publishCard({ content: '正文', kind: 'text', verification });
+    await updatePublishedCard({ id: 7, content: '改后正文', kind: 'text', verification });
+    expect(create).toHaveBeenCalledWith(expect.objectContaining(verification));
+    expect(update).toHaveBeenCalledWith(7, expect.objectContaining(verification));
+    expect(client.files.upload).not.toHaveBeenCalled();
+  });
+
   it('rejects card content longer than 1000 characters before creating it', async () => {
     const create = vi.fn();
     const client = { getToken: vi.fn().mockReturnValue('token'), files: { upload: vi.fn(), delete: vi.fn() }, cards: { create } };

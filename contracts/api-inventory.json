@@ -13193,8 +13193,7 @@
         }
       },
       "middleware": [
-        "SessionDebounce",
-        "CaptchaCheck"
+        "SessionDebounce"
       ],
       "contract": {
         "request": {

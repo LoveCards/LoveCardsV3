@@ -50,7 +50,7 @@ class Cards extends Validate
                 'picture_file_ids',
                 'cover_file_id',
                 'tags'
-                ,'visibility'
+                ,'visibility', 'captcha_id', 'captcha_code', 'lot_number', 'captcha_output', 'pass_token', 'gen_time'
 
             ],
 
@@ -83,7 +83,7 @@ class Cards extends Validate
                 'picture_file_ids',
                 'cover_file_id',
                 'tags'
-                ,'visibility'
+                ,'visibility', 'captcha_id', 'captcha_code', 'lot_number', 'captcha_output', 'pass_token', 'gen_time'
 
             ],
 
@@ -152,6 +152,12 @@ class Cards extends Validate
         'tags' => 'arrayJson|tagsLength',
 
         'visibility' => 'in:public,followers,private',
+        'captcha_id' => 'max:128',
+        'captcha_code' => 'max:64',
+        'lot_number' => 'max:128',
+        'captcha_output' => 'max:512',
+        'pass_token' => 'max:512',
+        'gen_time' => 'max:64',
 
         'good' => 'number',
 

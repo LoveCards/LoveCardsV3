@@ -1457,6 +1457,12 @@
             "content": "notBlank|max:1000",
             "tags": "arrayJson|tagsLength",
             "visibility": "in:public,followers,private",
+            "captcha_id": "max:128",
+            "captcha_code": "max:64",
+            "lot_number": "max:128",
+            "captcha_output": "max:512",
+            "pass_token": "max:512",
+            "gen_time": "max:64",
             "good": "number",
             "views": "number",
             "comments": "number",
@@ -17299,6 +17305,12 @@
             "content": "notBlank|max:1000",
             "tags": "arrayJson|tagsLength",
             "visibility": "in:public,followers,private",
+            "captcha_id": "max:128",
+            "captcha_code": "max:64",
+            "lot_number": "max:128",
+            "captcha_output": "max:512",
+            "pass_token": "max:512",
+            "gen_time": "max:64",
             "good": "number",
             "views": "number",
             "comments": "number",
@@ -17409,6 +17421,30 @@
                       "followers",
                       "private"
                     ]
+                  },
+                  "captcha_id": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "captcha_code": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "lot_number": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "captcha_output": {
+                    "type": "string",
+                    "maxLength": 512
+                  },
+                  "pass_token": {
+                    "type": "string",
+                    "maxLength": 512
+                  },
+                  "gen_time": {
+                    "type": "string",
+                    "maxLength": 64
                   },
                   "content": {
                     "type": "string",
@@ -17831,6 +17867,12 @@
             "content": "notBlank|max:1000",
             "tags": "arrayJson|tagsLength",
             "visibility": "in:public,followers,private",
+            "captcha_id": "max:128",
+            "captcha_code": "max:64",
+            "lot_number": "max:128",
+            "captcha_output": "max:512",
+            "pass_token": "max:512",
+            "gen_time": "max:64",
             "good": "number",
             "views": "number",
             "comments": "number",
@@ -17904,6 +17946,30 @@
                       "followers",
                       "private"
                     ]
+                  },
+                  "captcha_id": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "captcha_code": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "lot_number": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "captcha_output": {
+                    "type": "string",
+                    "maxLength": 512
+                  },
+                  "pass_token": {
+                    "type": "string",
+                    "maxLength": 512
+                  },
+                  "gen_time": {
+                    "type": "string",
+                    "maxLength": 64
                   },
                   "cover": {
                     "type": "string",
@@ -24801,8 +24867,7 @@
         "x-capabilities": [],
         "x-public": true,
         "x-middleware": [
-          "SessionDebounce",
-          "CaptchaCheck"
+          "SessionDebounce"
         ],
         "x-resource": "AuthResource",
         "x-response-shape": "item",
