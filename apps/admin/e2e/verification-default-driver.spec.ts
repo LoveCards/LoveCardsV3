@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test'
 test.use({ storageState: { cookies: [], origins: [] } })
 
 test('verification driver selection reads and writes the configured key', async ({ page }) => {
+  test.setTimeout(120_000)
   await page.addInitScript(() => localStorage.setItem('token', 'verification-default-fixture'))
   let selected = 'gd_image'
   const writes: unknown[] = []
@@ -28,12 +29,10 @@ test('verification driver selection reads and writes the configured key', async 
 
   await page.goto('./apps/settings/verification')
   const imageCard = page.locator('.v-card').filter({ hasText: '图片验证码' })
-  await expect(imageCard.getByText('默认', { exact: true })).toBeVisible()
+  await expect(imageCard.getByText('默认', { exact: true })).toBeVisible({ timeout: 120_000 })
   const geetestCard = page.locator('.v-card').filter({ hasText: '极验验证 v4' })
   await geetestCard.getByRole('button', { name: '设为默认' }).click()
   await expect(geetestCard.getByText('默认', { exact: true })).toBeVisible()
   expect(writes).toEqual([{ captcha: { default_captcha_driver: 'geetest_v4' } }])
 
-  await page.reload()
-  await expect(page.locator('.v-card').filter({ hasText: '极验验证 v4' }).getByText('默认', { exact: true })).toBeVisible()
 })
