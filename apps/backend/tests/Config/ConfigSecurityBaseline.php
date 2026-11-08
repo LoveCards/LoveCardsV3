@@ -66,10 +66,12 @@ namespace app\modules\Platform\Captcha\Public {
     final class Captcha
     {
         public static bool $ready = false;
+        public static ?string $readyDriver = null;
 
-        public static function isReady(string $type): bool
+        public static function isReady(string $type, ?string $driverSlug = null): bool
         {
-            return $type === 'captcha' && self::$ready;
+            return $type === 'captcha' && self::$ready
+                && (self::$readyDriver === null || self::$readyDriver === $driverSlug);
         }
     }
 }
@@ -228,6 +230,7 @@ namespace {
         $writeGrants = $grants('admin.access', 'config.update', 'captcha.read');
 
         Captcha::$ready = false;
+        Captcha::$readyDriver = null;
         $expectApi(422, static fn() => $manager->update(['captcha' => ['captcha_enabled' => true]], $writeGrants), 'unready human verification must be rejected');
         $assertSame([], Config::$writes, 'unready driver must not persist enabled policy');
 
@@ -238,6 +241,27 @@ namespace {
         Captcha::$ready = true;
         $manager->update(['captcha' => ['captcha_enabled' => true]], $writeGrants);
         $assertSame([['captcha', ['captcha_enabled' => true]]], Config::$writes, 'ready driver permits enabling');
+    });
+
+    $test('enabled policy rejects switching to an unready driver', static function () use ($grants, $expectApi, $assertSame): void {
+        Config::reset();
+        Config::$groups[] = 'captcha';
+        Config::$schemas['captcha'] = [
+            'captcha_enabled' => ['type' => 'bool'],
+            'default_captcha_driver' => ['type' => 'string'],
+        ];
+        Config::$values['captcha'] = ['captcha_enabled' => true, 'default_captcha_driver' => 'geetest_v4'];
+        Captcha::$ready = true;
+        Captcha::$readyDriver = 'geetest_v4';
+        $manager = new ConfigManager();
+        $writeGrants = $grants('admin.access', 'config.update', 'captcha.read');
+
+        $expectApi(422, static fn() => $manager->update(['captcha' => ['default_captcha_driver' => 'gd_image']], $writeGrants), 'active policy cannot switch to unready image driver');
+        $assertSame([], Config::$writes, 'invalid driver switch must not persist');
+
+        Config::$values['captcha']['captcha_enabled'] = false;
+        $manager->update(['captcha' => ['default_captcha_driver' => 'gd_image']], $writeGrants);
+        $assertSame([['captcha', ['default_captcha_driver' => 'gd_image']]], Config::$writes, 'disabled policy may select driver before setup');
     });
 
     $test('fresh install leaves human verification disabled', static function () use ($assertSame): void {

@@ -16951,8 +16951,8 @@
         "x-public": false,
         "x-middleware": [
           "JwtAuthCheck",
-          "CaptchaCheck",
-          "PermissionCheck"
+          "PermissionCheck",
+          "CaptchaCheck"
         ],
         "x-resource": "CardResource",
         "x-response-shape": "paginated",
@@ -17281,8 +17281,8 @@
         "x-public": false,
         "x-middleware": [
           "JwtAuthCheck",
-          "CaptchaCheck",
-          "PermissionCheck"
+          "PermissionCheck",
+          "CaptchaCheck"
         ],
         "x-resource": "CardCreatedResource",
         "x-response-shape": "item",
@@ -17502,8 +17502,8 @@
         "x-public": false,
         "x-middleware": [
           "JwtAuthCheck",
-          "CaptchaCheck",
-          "PermissionCheck"
+          "PermissionCheck",
+          "CaptchaCheck"
         ],
         "x-resource": null,
         "x-response-shape": "void",
@@ -17566,8 +17566,8 @@
         "x-public": false,
         "x-middleware": [
           "JwtAuthCheck",
-          "CaptchaCheck",
-          "PermissionCheck"
+          "PermissionCheck",
+          "CaptchaCheck"
         ],
         "x-resource": "CardResource",
         "x-response-shape": "item",
@@ -17843,8 +17843,8 @@
         "x-public": false,
         "x-middleware": [
           "JwtAuthCheck",
-          "CaptchaCheck",
-          "PermissionCheck"
+          "PermissionCheck",
+          "CaptchaCheck"
         ],
         "x-resource": null,
         "x-response-shape": "void",
@@ -18019,8 +18019,8 @@
         "x-public": false,
         "x-middleware": [
           "JwtAuthCheck",
-          "CaptchaCheck",
-          "PermissionCheck"
+          "PermissionCheck",
+          "CaptchaCheck"
         ],
         "x-resource": null,
         "x-response-shape": "void",
@@ -18083,8 +18083,8 @@
         "x-public": false,
         "x-middleware": [
           "JwtAuthCheck",
-          "CaptchaCheck",
-          "PermissionCheck"
+          "PermissionCheck",
+          "CaptchaCheck"
         ],
         "x-resource": null,
         "x-response-shape": "void",

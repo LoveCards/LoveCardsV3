@@ -51,7 +51,7 @@ class ImageDriver extends AbstractDriver
         $imageId = $params['image_id'] ?? '';
         $code    = $params['code'] ?? '';
 
-        if (empty($imageId) || empty($code)) {
+        if (!is_string($imageId) || !is_string($code) || $imageId === '' || $code === '') {
             return false;
         }
 

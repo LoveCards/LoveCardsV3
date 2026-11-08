@@ -13,6 +13,7 @@ const MAX_LIFETIME_MS = 900_000
 const DEFAULT_POLL_INTERVAL_MS = 5_000
 const RECONNECT_RETRY_MS = 2_000
 const DEFAULT_MAX_CONNECTIONS = 100
+const BACKEND_TIMEOUT_MS = 5_000
 
 function bearerOk(req, token) {
   if (!token) return false
@@ -53,6 +54,7 @@ export function createApp(config) {
     logger = () => {},
     pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
     maxConnections = DEFAULT_MAX_CONNECTIONS,
+    backendTimeoutMs = BACKEND_TIMEOUT_MS,
   } = config
   if (!backendUrl || !internalToken) {
     throw new Error('gateway requires backendUrl and internalToken')
@@ -71,6 +73,7 @@ export function createApp(config) {
   const backendFetch = async (path, init = {}) => {
     const response = await fetchImpl(new URL(path, backendUrl), {
       ...init,
+      signal: AbortSignal.timeout(backendTimeoutMs),
       headers: { Authorization: `Bearer ${internalToken}`, Accept: 'application/json', ...(init.headers ?? {}) },
     })
     if (response.status !== 200) return null
@@ -87,12 +90,20 @@ export function createApp(config) {
   const startSourcePoll = (conn, uid) => {
     if (conn.poll || !pollIntervalMs) return
     conn.poll = setInterval(async () => {
-      const result = await backendFetch(
-        `/api/internal/realtime/notifications-since?uid=${uid}&limit=50${conn.cursor ? `&cursor=${encodeURIComponent(conn.cursor)}` : ''}`,
-      )
-      if (!result || !result.newer || !result.latest_cursor || result.latest_cursor === conn.cursor) return
-      conn.cursor = result.latest_cursor
-      conn.send(signalFrame({ id: conn.cursor, topic: 'notifications', cursor: conn.cursor }))
+      if (conn.polling) return
+      conn.polling = true
+      try {
+        const result = await backendFetch(
+          `/api/internal/realtime/notifications-since?uid=${uid}&limit=50${conn.cursor ? `&cursor=${encodeURIComponent(conn.cursor)}` : ''}`,
+        )
+        if (!state.connections.has(conn) || !result || !result.newer || !result.latest_cursor || result.latest_cursor === conn.cursor) return
+        conn.cursor = result.latest_cursor
+        conn.send(signalFrame({ id: conn.cursor, topic: 'notifications', cursor: conn.cursor }))
+      } catch {
+        // 本次回源失败，下一轮继续；浏览器自身会补读。
+      } finally {
+        conn.polling = false
+      }
     }, pollIntervalMs)
   }
 

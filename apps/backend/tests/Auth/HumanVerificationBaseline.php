@@ -86,6 +86,7 @@ namespace {
     ]);
     $assert(ChannelManager::defaultDriver('captcha') === 'gd_image', 'configured image driver must be selected');
     CacheManager::$values['Captcha_image_test-image'] = 'ABCD';
+    $assert(!Captcha::verify('captcha', ['image_id' => 'test-image', 'code' => []]), 'image driver must reject non-string input without a server error');
     $assert($session->verifyHumanVerification(['captcha_id' => 'test-image', 'captcha_code' => 'abcd']), 'image result must use its own request fields');
     $assert(!$session->verifyHumanVerification(['captcha_id' => 'test-image', 'captcha_code' => 'abcd']), 'image result must reject replay');
 

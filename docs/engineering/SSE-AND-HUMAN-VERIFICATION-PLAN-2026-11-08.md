@@ -6,7 +6,7 @@
 
 ### 当前基线
 
-- `main` 的 `GET /me/notifications/stream` 是单次 PHP 响应，帧中的 `\n` 是字面量；它既不能形成有效的持续 SSE，也没有主题消费方。
+- 合并前 `main` 的 `GET /me/notifications/stream` 是单次 PHP 响应，帧中的 `\n` 是字面量；它既不能形成有效的持续 SSE，也没有主题消费方。
 - #52 已将 #48 + #50 的通信运行时链合入 `main`，删除旧路由及 SDK 方法，使用 `apps/realtime-gateway` 的 `GET /stream?ticket=`。Gateway 负责连接与 SSE 帧，业务后端负责权限、一次性 ticket、持久化和补读。主题 `communication-runtime.js` 统一调度通知、私信与未读状态。
 - #49 是另一套 Gateway 协议和信号实现，未进入主线。
 
@@ -15,7 +15,7 @@
 1. 管理端只选择 `polling` 或 `realtime`。默认 `polling` 可在 PHP-FPM + MySQL 环境运行；选择 `realtime` 前，Resolver 必须确认 Event Worker、Gateway、内部 token 和公网连接 URL 可用。状态不满足时 `effective_mode=polling`，并展示原因。
 2. 浏览器的业务组件只订阅通信主题并用 SDK 回源取数，不直接识别运行模式。`realtime` 用 EventSource 接收定向的 `signal`，信号不携带私信正文；每次实际数据读取仍由已有 API 鉴权。一次性 ticket 60 秒有效，Gateway 消费后按用户定向推送；重连须重新签发 ticket。
 3. Gateway 输出符合 SSE 规范的真实换行帧、`text/event-stream`、心跳。游标只用于补读和去重提示，Redis Pub/Sub 只传唤醒信号，不作为消息事实源。
-4. 断线时浏览器切到 polling；Gateway 丢失 Redis 时的回源和浏览器 `realtime` 模式下的低频校准属于故障补偿，不能成为第二套业务通信接口。Gateway 在 source-poll 下每连接 5 秒回源的成本随连接数线性增长。本轮增加连接上限（默认 100，可由 `LC_REALTIME_GATEWAY_MAX_CONNECTIONS` 设置）；容量满时 `/stream` 返回 503，浏览器现有错误回调退回 polling。生产启用前仍须按部署资源压测。
+4. 断线时浏览器切到 polling；Gateway 丢失 Redis 时的回源和浏览器 `realtime` 模式下的低频校准属于故障补偿，不能成为第二套业务通信接口。Gateway 在 source-poll 下每连接 5 秒回源的成本随连接数线性增长。本轮增加连接上限（默认 100，可由 `LC_REALTIME_GATEWAY_MAX_CONNECTIONS` 设置）、后端回源 5 秒超时和单连接单次回源；容量满时 `/stream` 返回 503，浏览器错误回调退回 polling，连续重连失败后停止尝试。生产启用前仍须按部署资源压测。
 5. 部署形态：Gateway、Event Worker 由进程管理器托管，反代提供同源 `/stream`，内网 Bearer 接口和 token 不暴露到浏览器。dev 默认保持 polling；生产切换需另做部署验收。
 
 ### 合并与验收
@@ -35,7 +35,7 @@
 
 ### 最小实现路径
 
-1. 保持配置分层：系统“验证服务”维护 GeeTest v4 ID/Key 与驱动状态，站点“访问与验证”选择是否要求人机验证。公开策略返回要求状态、驱动名和配置就绪状态；`captcha.challenge()` 只返回公开的 Captcha ID，Key 永远只在服务端。启用站点策略时检查驱动状态及 ID/Key 完整性；页面显示就绪状态，不把配置完整误称为外部服务已连通。新安装站点开关默认关闭。
+1. 保持配置分层：系统“验证服务”维护 GeeTest v4 ID/Key 与驱动状态，站点“访问与验证”选择是否要求人机验证。公开策略返回要求状态、驱动名和配置就绪状态；`captcha.challenge()` 只返回公开的 Captcha ID，Key 永远只在服务端。启用站点策略或在启用状态下切换默认驱动时检查目标驱动配置；页面显示就绪状态，不把配置完整误称为外部服务已连通。新安装站点开关默认关闭。默认驱动配置键为 `default_captcha_driver` 与 `default_code_driver`，管理端必须使用这两个键并回读保存结果。
 2. 主题用一个可复用的挑战调用点加载 GeeTest 官方 Web 脚本并调用 `initGeetest4`；用户通过后取得 `lot_number`、`captcha_output`、`pass_token`、`gen_time`。注册表单和卡片创建/编辑在提交前调用它，将四个字段交给现有 SDK 请求。仅在策略要求的写入动作触发，不拦普通浏览；邮件验证码与人机验证可按策略同时要求。
 3. 后端保留卡片 `CaptchaCheck → Driver::verify` 与注册 `Session → Captcha::verify` 两条入口，均使用同一驱动选择器。驱动未就绪、字段不完整、外部超时或校验失败均拒绝受保护写入；不得在 `status=false` 时放行已启用的站点策略。`/validate` 改为 HTTPS POST，完整传入官方六个字段，要求响应 `status=success` 且 `result=success`。对失败请求不记录 token、Key 或完整第三方响应。
 4. 前端脚本加载失败、超时或用户取消时保留表单输入并显示可重试提示；不自动绕过挑战。后端节流仍独立生效。先在 dev 用测试凭据验收，再允许启用站点开关；不得把密钥提交到仓库。

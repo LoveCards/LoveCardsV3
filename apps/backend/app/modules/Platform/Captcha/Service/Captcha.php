@@ -47,10 +47,10 @@ class Captcha
         return ChannelManager::isEnabled($type);
     }
 
-    public static function isReady(string $type): bool
+    public static function isReady(string $type, ?string $driverSlug = null): bool
     {
         if ($type !== 'captcha') return false;
-        return match (ChannelManager::defaultDriver($type)) {
+        return match ($driverSlug ?? ChannelManager::defaultDriver($type)) {
             'geetest_v4' => GeetestDriver::configured(),
             'gd_image' => function_exists('imagecreatetruecolor'),
             default => false,

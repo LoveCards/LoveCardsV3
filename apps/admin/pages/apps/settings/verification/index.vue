@@ -226,7 +226,7 @@ const loadPage = async () => {
     driverGroups.value = Object.entries(groups).map(([type, groupDrivers]) => ({
       type,
       drivers: groupDrivers,
-      defaultSlug: readString(captchaConfig[`default_${type}`], groupDrivers[0]?.slug ?? ''),
+      defaultSlug: readString(captchaConfig[`default_${type}_driver`], groupDrivers[0]?.slug ?? ''),
     }))
     settings.value = {
       code_enabled: readBoolean(captchaConfig.code_enabled, true),
@@ -245,9 +245,10 @@ const setDefault = async (type: string, slug: string) => {
   changingDefault.value = `${type}:${slug}`
   actionMessage.value = null
   try {
-    await client.config.update({ captcha: { [`default_${type}`]: slug } })
-    const group = driverGroups.value.find(item => item.type === type)
-    if (group) group.defaultSlug = slug
+    await client.config.update({ captcha: { [`default_${type}_driver`]: slug } })
+    const saved = readObject((await client.config.list()).captcha)
+    if (readString(saved[`default_${type}_driver`]) !== slug) throw new Error('默认驱动未保存')
+    driverGroups.value = driverGroups.value.map(group => group.type === type ? { ...group, defaultSlug: slug } : group)
     actionMessage.value = { type: 'success', text: `已将 ${slug} 设为${groupTitle(type)}默认驱动。` }
   } catch (cause) {
     actionMessage.value = { type: 'error', text: errorMessage(cause, '默认驱动切换失败，请稍后重试。') }

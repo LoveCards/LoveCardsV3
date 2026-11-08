@@ -85,8 +85,14 @@ final class ConfigManager
             }
         }
 
-        if (($pending['captcha']['captcha_enabled'] ?? false) && !Captcha::isReady('captcha')) {
-            throw ApiException::validation(['captcha.captcha_enabled' => '人机验证驱动未就绪，请先完成系统验证服务配置']);
+        $captchaUpdate = $pending['captcha'] ?? [];
+        if (array_key_exists('captcha_enabled', $captchaUpdate) || array_key_exists('default_captcha_driver', $captchaUpdate)) {
+            $current = ConfigService::getGroup('captcha');
+            $enabled = (bool) ($captchaUpdate['captcha_enabled'] ?? $current['captcha_enabled'] ?? false);
+            $driver = (string) ($captchaUpdate['default_captcha_driver'] ?? $current['default_captcha_driver'] ?? 'geetest_v4');
+            if ($enabled && !Captcha::isReady('captcha', $driver)) {
+                throw ApiException::validation(['captcha.default_captcha_driver' => '人机验证驱动未就绪，请先完成系统验证服务配置']);
+            }
         }
 
         foreach ($pending as $group => $validated) {

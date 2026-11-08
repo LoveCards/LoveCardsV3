@@ -202,6 +202,29 @@ test('capacity reserves a slot while ticket verification is pending', async () =
   }
 })
 
+test('ticket verification timeout releases the reserved capacity slot', async () => {
+  const app = createApp({
+    backendUrl: 'http://127.0.0.1:1',
+    internalToken: 'test-internal-token-1234',
+    maxConnections: 1,
+    backendTimeoutMs: 20,
+    fetchImpl: async (_url, init) => new Promise((_resolve, reject) => {
+      init.signal.addEventListener('abort', () => reject(init.signal.reason), { once: true })
+    }),
+  })
+  const port = await app.start(0)
+  try {
+    const failed = await httpGet(port, '/stream?ticket=valid-ticket-26chars-hex')
+    assert.equal(failed.statusCode, 503)
+    await readJson(failed)
+    const health = await readJson(await httpGet(port, '/internal/health', { Authorization: 'Bearer test-internal-token-1234' }))
+    assert.equal(health.ready, true)
+    assert.equal(health.pending_connections, 0)
+  } finally {
+    app.stop()
+  }
+})
+
 test('source-poll fallback emits signal frames when backend reports newer notifications', async () => {
   const backend = createFakeBackend()
   const backendPort = await listen(backend.server)
