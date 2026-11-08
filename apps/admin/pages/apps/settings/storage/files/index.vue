@@ -15,7 +15,7 @@
       @reset-view="resetTableView"
     >
       <template #search>
-        <v-text-field v-model="tableSearchValue" clearable label="搜索文件名称" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+        <v-text-field v-model="tableSearchValue" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
       </template>
       <template #actions>
         <AdminActionGuard capability="files.cleanup" scope="global">
@@ -87,6 +87,7 @@
                 resource-type="file"
                 :resource-id="item.id"
                 :label="item.original_name || `文件 #${item.id}`"
+                :highlight-query="highlightQuery('original_name')"
               />
             </v-list-item-title>
             <v-list-item-subtitle>{{ item.mime_type || '未知类型' }}</v-list-item-subtitle>
@@ -111,19 +112,23 @@
         <template #[`item.file_size`]="{ item }">{{ formatSize(item.file_size) }}</template>
 
         <template #[`item.scene`]="{ item }">
-          <v-chip size="x-small" variant="outlined">{{ item.scene || '未分类' }}</v-chip>
+          <v-chip size="x-small" variant="outlined"><AdminTableSearchHighlight :text="item.scene || '未分类'" :query="highlightQuery('scene')" /></v-chip>
         </template>
 
         <template #[`item.status`]="{ item }">
           <v-chip size="small" variant="tonal" :color="fileStatusColor(item.status)">
-            {{ SelectUtils.getSelect(SelectUtils.Files.status, item.status).title }}
+            <AdminTableSearchHighlight :text="SelectUtils.getSelect(SelectUtils.Files.status, item.status).title" :query="highlightQuery('status')" />
           </v-chip>
         </template>
 
         <template #[`item.upload_status`]="{ item }">
           <v-chip size="small" variant="tonal" :color="uploadStatusColor(item.upload_status)">
-            {{ SelectUtils.getSelect(SelectUtils.Files.uploadStatus, item.upload_status).title }}
+            <AdminTableSearchHighlight :text="SelectUtils.getSelect(SelectUtils.Files.uploadStatus, item.upload_status).title" :query="highlightQuery('upload_status')" />
           </v-chip>
+        </template>
+
+        <template v-for="field in ['id', 'channel_slug', 'user_id']" :key="field" #[`item.${field}`]="{ item }">
+          <AdminTableSearchHighlight :text="tableSearchCell(item, field)" :query="highlightQuery(field)" />
         </template>
 
         <template #[`item.is_public`]="{ item }">
@@ -297,6 +302,7 @@ import EditFileDialog from '@/components/storage/EditFileDialog.vue';
 import PublicBatchDialog from '@/components/shared/Table/BatchDialog.vue';
 import PublicDeleteDialog from '@/components/shared/Table/DeleteDialog.vue';
 import PublicSearchDialog from '@/components/shared/Table/SearchDialog.vue';
+import { tableSearchCell } from '~/composables/useAdminTableSearch';
 import { useApi } from '~/lib/api';
 import { useUserStore } from '~/stores/userStore';
 import CommonUtils from '~/utils/common';
@@ -397,6 +403,7 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
 const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
 const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
+const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } = useAdminTableSearchFeedback(tableSearchValue, tableSearchFilter, SearchKeys, 'original_name', '搜索文件名称');
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
 let latestRequest = 0;
@@ -412,6 +419,7 @@ const getTableData = async () => {
   tableLoading.value = true;
   tableError.value = null;
   const searchValue = tableSearchValue.value?.trim();
+  const searchHighlight = searchSnapshot();
   const sort = tableSortBy.value[0];
   const params: Record<string, unknown> = {
     page: tableCurrentPage.value,
@@ -429,6 +437,7 @@ const getTableData = async () => {
     const result = await client.files.listManaged(params as Parameters<typeof client.files.listManaged>[0]);
     if (requestId !== latestRequest) return;
     tableItems.value = result.data;
+    applySearchSnapshot(searchHighlight);
     tableCurrentPage.value = result.pagination?.currentPage ?? tableCurrentPage.value;
     tableTotalItems.value = result.pagination?.totalItems ?? result.data.length;
   } catch (error) {

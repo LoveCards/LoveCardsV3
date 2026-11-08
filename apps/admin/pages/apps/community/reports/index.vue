@@ -33,6 +33,7 @@
           <template #item.target="{ item }"><AdminResourceLink :resource-type="item.target_type" :resource-id="item.target_id" /></template>
           <template #item.status="{ item }"><AdminStatusChip :status="item.status" /></template>
           <template #item.created_at="{ item }"><time>{{ item.created_at }}</time></template>
+          <template #item.reason="{ item }"><AdminTableSearchHighlight :text="item.reason" :query="appliedSearch" /></template>
           <template #no-data>
             <v-empty-state :icon="error ? 'mdi-cloud-alert-outline' : 'mdi-flag-outline'" :title="error ? '无法加载举报' : '没有匹配的举报'" :text="error || '调整关键词或筛选条件后重试。'">
               <template #actions><v-btn v-if="error" variant="outlined" @click="load">重试</v-btn><v-btn v-else variant="text" @click="clearFilters">清除筛选</v-btn></template>
@@ -85,6 +86,7 @@ const resourceType = ref<string | null>(
     : null,
 )
 const searchValue = ref(typeof route.query.search_value === 'string' ? route.query.search_value : '')
+const appliedSearch = ref('')
 const allHeaders = [
   { title: '编号', key: 'id' }, { title: '举报人', key: 'reporter_id' }, { title: '目标', key: 'target' },
   { title: '原因', key: 'reason' }, { title: '状态', key: 'status' }, { title: '创建时间', key: 'created_at' },
@@ -97,6 +99,7 @@ let latestRequest = 0
 
 async function load() {
   const requestId = ++latestRequest
+  const searchTerm = searchValue.value.trim()
   loading.value = true
   error.value = null
   try {
@@ -105,10 +108,11 @@ async function load() {
       list_rows: itemsPerPage.value,
       ...(status.value ? { status: status.value } : {}),
       ...(resourceType.value ? { resource_type: resourceType.value } : {}),
-      ...(searchValue.value.trim() ? { search_value: searchValue.value.trim() } : {}),
+      ...(searchTerm ? { search_value: searchTerm } : {}),
     })
     if (requestId !== latestRequest) return
     reports.value = result.data
+    appliedSearch.value = searchTerm
     totalItems.value = result.pagination?.totalItems ?? result.data.length
   } catch (cause) { if (requestId === latestRequest) error.value = isApiError(cause) ? cause.message : '无法加载举报列表' }
   finally { if (requestId === latestRequest) loading.value = false }

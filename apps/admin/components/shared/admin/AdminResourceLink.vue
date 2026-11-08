@@ -7,9 +7,9 @@
     min-height="44"
     variant="text"
   >
-    {{ displayLabel }}
+    <AdminTableSearchHighlight :text="displayLabel" :query="highlightQuery" />
   </v-btn>
-  <span v-else class="text-medium-emphasis">{{ displayLabel }}</span>
+  <span v-else class="text-medium-emphasis"><AdminTableSearchHighlight :text="displayLabel" :query="highlightQuery" /></span>
 </template>
 
 <script setup lang="ts">
@@ -19,6 +19,7 @@ const props = withDefaults(defineProps<{
   resourceType: string
   resourceId?: string | number | null
   label?: string
+  highlightQuery?: string
 }>(), {
   resourceId: null,
   label: '',

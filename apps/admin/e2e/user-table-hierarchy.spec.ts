@@ -116,9 +116,22 @@ test('status search sends the stored value for a Chinese label', async ({ page }
   await page.goto('./apps/users?filters=' + encodeURIComponent(JSON.stringify({ search_keys: ['status'] })))
   await expect(page.locator('tbody tr').first()).toContainText('member_1', { timeout: 20_000 })
   const request = page.waitForRequest(request => request.url().includes('/api/admin/users?') && new URL(request.url()).searchParams.get('search_value') === '0')
-  await page.getByRole('textbox', { name: '搜索用户名' }).fill('正常')
+  await page.getByRole('textbox', { name: '搜索状态' }).fill('正常')
   await request
   await expect(page).toHaveURL(/search_value=%E6%AD%A3%E5%B8%B8/)
+  await expect(page.locator('tbody tr').first().locator('mark')).toHaveText('正常')
+})
+
+test('search hint and highlight follow the selected user field', async ({ page }) => {
+  await fixtures(page)
+  await page.goto('./apps/users?filters=' + encodeURIComponent(JSON.stringify({ search_keys: ['number'] })) + '&search_value=member')
+  const row = page.locator('tbody tr').first()
+  await expect(page.getByRole('textbox', { name: '搜索账号' })).toBeVisible()
+  await expect(row).toContainText('member_1', { timeout: 20_000 })
+  await expect(row.locator('mark')).toHaveText('member')
+  await expect(row.getByText('林晓')).toBeVisible()
+  await page.getByRole('textbox', { name: '搜索账号' }).clear()
+  await expect(row.locator('mark')).toHaveCount(0)
 })
 
 test('user deletion confirmation identifies the account and session impact without mutating', async ({ page }) => {
