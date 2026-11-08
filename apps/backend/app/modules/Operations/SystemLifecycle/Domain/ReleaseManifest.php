@@ -32,7 +32,7 @@ final class ReleaseManifest
     public static function fromArray(array $data): self
     {
         $missing = array_diff(self::REQUIRED_FIELDS, array_keys($data));
-        $unknown = array_diff(array_keys($data), self::REQUIRED_FIELDS);
+        $unknown = array_diff(array_keys($data), [...self::REQUIRED_FIELDS, 'release_notes']);
         if ($missing !== []) throw new ReleaseManifestException('Release Manifest 缺少字段: ' . implode(', ', $missing));
         if ($unknown !== []) throw new ReleaseManifestException('Release Manifest 包含未知字段: ' . implode(', ', $unknown));
         if ($data['schema_version'] !== 1) throw new ReleaseManifestException('不支持的 Release Manifest 协议版本');
@@ -40,6 +40,10 @@ final class ReleaseManifest
         self::assertIdentifier($data['release_id'], 'release_id', 128);
         if (!is_string($data['version']) || preg_match(self::SEMVER_PATTERN, $data['version']) !== 1) {
             throw new ReleaseManifestException('Release version 必须是 SemVer');
+        }
+        if (array_key_exists('release_notes', $data)
+            && (!is_string($data['release_notes']) || strlen($data['release_notes']) > 16000)) {
+            throw new ReleaseManifestException('Release 更新说明不合法');
         }
         self::assertIdentifier($data['build'], 'build', 128);
         if (!is_string($data['channel']) || preg_match('/^[a-z][a-z0-9_-]{0,31}$/', $data['channel']) !== 1) {
@@ -83,6 +87,7 @@ final class ReleaseManifest
 
     public function releaseId(): string { return (string) $this->data['release_id']; }
     public function version(): string { return (string) $this->data['version']; }
+    public function releaseNotes(): ?string { return isset($this->data['release_notes']) ? (string) $this->data['release_notes'] : null; }
     public function build(): string { return (string) $this->data['build']; }
     public function channel(): string { return (string) $this->data['channel']; }
     public function sequence(): int { return (int) $this->data['sequence']; }

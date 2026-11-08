@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 $mode = $argv[1] ?? 'create';
 $database = $argv[2] ?? '';
+if (!in_array($mode, ['create', 'create-legacy', 'drop'], true)) {
+    fwrite(STDERR, "Unsupported E2E database mode\n");
+    exit(2);
+}
 
 // The bundled Windows PHP runtime may not inherit an OpenSSL configuration
 // path. RSA generation otherwise fails with "configuration file routines";
@@ -28,7 +32,7 @@ if (!in_array($host, ['127.0.0.1', 'localhost', '::1'], true)) {
     exit(1);
 }
 $instanceRoot = trim((string) (getenv('LC_INSTANCE_ROOT') ?: ''));
-if ($mode === 'create') {
+if ($mode !== 'drop') {
     if ($instanceRoot === '' || strpos($instanceRoot, "\0") !== false) {
         fwrite(STDERR, "Refusing E2E bootstrap without an isolated LC_INSTANCE_ROOT\n");
         exit(1);
@@ -125,14 +129,18 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     ]);
     $databasePdo->exec("SET NAMES utf8mb4 COLLATE {$collation}");
-    $sql = file_get_contents(__DIR__ . '/../apps/backend/data.sql');
-    if ($sql === false || trim($sql) === '') {
-        throw new RuntimeException('apps/backend/data.sql is missing or empty');
+    $installFiles = $mode === 'create-legacy'
+        ? [__DIR__ . '/../apps/backend/data.sql']
+        : [__DIR__ . '/../apps/backend/database/schema.sql', __DIR__ . '/../apps/backend/database/seed.sql'];
+    foreach ($installFiles as $installFile) {
+        $sql = file_get_contents($installFile);
+        if ($sql === false || trim($sql) === '') {
+            throw new RuntimeException('E2E install SQL is missing or empty: ' . basename($installFile));
+        }
+        $databasePdo->exec($sql);
     }
-    $databasePdo->exec($sql);
 
-    // E2E 数据库必须与安装后的运行时一致：基础 data.sql 之后还要推进
-    // 当前所有可执行迁移，否则认证会缺少 session 字段，社区表也不存在。
+    // 新安装记录目标结构的迁移身份；历史路径逐阶段执行同一迁移目录。
     $backend = __DIR__ . '/../apps/backend';
     $php = escapeshellarg(PHP_BINARY);
     $think = escapeshellarg($backend . '/think');
@@ -145,8 +153,16 @@ try {
         if ($expectedMigrations < 1) {
             throw new RuntimeException('No database migrations found for E2E bootstrap');
         }
-        // 单次命令只推进一个阶段；按迁移数量给出有界预算，不能在仓库增长后固定卡在 128 次。
+        if ($mode === 'create') {
+            $lines = [];
+            exec($php . ' ' . escapeshellarg(__DIR__ . '/record-installed-schema-e2e.php'), $lines, $exitCode);
+            if ($exitCode !== 0) {
+                throw new RuntimeException('E2E install ledger failed: ' . implode("\n", $lines));
+            }
+        }
+        // 历史库一次只推进一个 phase；按迁移数量给出有界预算。
         for ($attempt = 0; $attempt < $expectedMigrations * 8 + 1 && !$complete; $attempt++) {
+            if ($mode !== 'create-legacy') break;
             $lines = [];
             // This database is disposable and isolated. Complete the full
             // schema, including contract phases, so the subsequent E2E suite
@@ -160,13 +176,14 @@ try {
 
             // 每次 CLI 调用只推进一个 phase；不能仅根据本次输出的
             // 单条记录判断全库完成。必须以账本全表和迁移文件数量交叉确认。
-            $ledgerCount = (int) $databasePdo
-                ->query('SELECT COUNT(*) FROM `system_upgrade_steps`')
-                ->fetchColumn();
-            $openCount = (int) $databasePdo
-                ->query("SELECT COUNT(*) FROM `system_upgrade_steps` WHERE `status` <> 'complete'")
-                ->fetchColumn();
+            $ledgerCount = (int) $databasePdo->query('SELECT COUNT(*) FROM `system_upgrade_steps`')->fetchColumn();
+            $openCount = (int) $databasePdo->query("SELECT COUNT(*) FROM `system_upgrade_steps` WHERE `status` <> 'complete'")->fetchColumn();
             $complete = $ledgerCount >= $expectedMigrations && $openCount === 0;
+        }
+        if ($mode === 'create') {
+            $ledgerCount = (int) $databasePdo->query('SELECT COUNT(*) FROM `system_upgrade_steps`')->fetchColumn();
+            $openCount = (int) $databasePdo->query("SELECT COUNT(*) FROM `system_upgrade_steps` WHERE `status` <> 'complete'")->fetchColumn();
+            $complete = $ledgerCount === $expectedMigrations && $openCount === 0;
         }
         if (!$complete) {
             throw new RuntimeException('E2E migrations did not reach a terminal state');

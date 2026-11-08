@@ -74,6 +74,8 @@ final class UpgradeCoordinator
                     [
                         'package' => $package->toArray(),
                         'manifest_checksum' => $manifest->documentChecksum(),
+                        'target_version' => $manifest->version(),
+                        'update_notes' => $manifest->releaseNotes(),
                         'created_at' => gmdate('c'),
                     ],
                     $actorId

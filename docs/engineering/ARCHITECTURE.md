@@ -32,6 +32,8 @@ Route Meta -> Controller -> Validate -> Business -> Resource -> ApiResponse
 | Domain | 实体、值对象、业务策略 | 领域内部 | HTTP、ORM、JWT、缓存、框架 | 迁移切片中逐步建立 |
 | Contract | 业务内部 Port | 值对象、接口定义 | HTTP 请求/响应契约、框架实现 | 迁移切片中逐步建立 |
 | Infrastructure | ORM、JWT、缓存、邮件等适配 | 第三方库、Contract | 业务流程编排 | 迁移切片中逐步建立 |
+| Installer Host (`app/system`) | 首次安装的 HTTP 适配 | Installer、SystemLifecycle 入口 | 独立迁移/升级状态机、运行时 schema diff | 已检查 Host 仅含 Controller 与安装输入；JWT/RBAC 直接调用是已知债务 |
+| SystemLifecycle | 迁移账本与 Release 编排 | 本模块 Contract/Infrastructure、其他模块 Public/Contract | 其他业务模块 Service/Model/Infrastructure | 已检查跨模块 import 边界 |
 | `shared` | 无业务归属的跨模块技术能力 | Infrastructure、Transport | modules、api/frontend/system、common | 架构检查覆盖 |
 
 约束原则：外层可以依赖内层定义的抽象，内层不能知道外层实现。模块之间“不依赖”不是互不调用，而是调用稳定契约，不引用对方内部结构。
@@ -73,9 +75,10 @@ Auth 的 `UserRepository` 返回只读 `AuthUser`，不会把 ThinkORM Model 带
 ## 当前架构基线
 
 - `app/common` 已删除；公共技术能力统一归入 `app/shared`，业务能力归入所属模块。
+- 安装的结构变更与升级共用 `Operations/SystemLifecycle`。`app/system` 只做 Installer Host；新安装读取 `database/schema.sql` 和 `database/seed.sql`，不维护第二套迁移执行器或升级状态机。首次配置、默认数据和锁仍由现有 Installer 代码处理。
 - 后端业务层采用两档结构。Auth、Files、Drafts、Library、Social、Safety、Messaging、Notifications、Eventing 和 SystemLifecycle 已按复杂度使用 Application/Domain/Contract；普通模块保持简单 Service。
 - MySQL 是最小运行时的可靠状态源；Redis、Worker、Scheduler 和 SSE 均通过 Facility/Port 可裁剪，不进入业务模块依赖。
-- 系统安装、迁移、不可变 Release、签名校验、备份、激活与恢复由 SystemLifecycle 统一，不允许 Host 自行覆盖文件或执行无账本 SQL。
+- 系统迁移、不可变 Release、签名校验、备份、激活与恢复由 SystemLifecycle 统一。首次安装导入经发行版审核的完整 schema 和默认数据；Host 不得自行覆盖 Release 文件或执行动态生成的 SQL。
 
 ## 已完成样板
 

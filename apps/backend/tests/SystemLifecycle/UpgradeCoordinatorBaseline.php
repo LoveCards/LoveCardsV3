@@ -148,11 +148,16 @@ final class UpgradeCoordinatorFakePointer implements ReleasePointer
 final class UpgradeCoordinatorFakeRuntime implements ReleaseRuntime
 {
     public function __construct(private array &$trace) {}
+    public bool $failHealth = false;
     public function canDrain(): bool { return true; }
     public function drain(string $releaseId): void { $this->trace[] = 'drain'; }
     public function canReload(): bool { return true; }
     public function reload(string $releaseId): void { $this->trace[] = 'reload:' . $releaseId; }
-    public function healthCheck(string $releaseId): void { $this->trace[] = 'health:' . $releaseId; }
+    public function healthCheck(string $releaseId): void
+    {
+        $this->trace[] = 'health:' . $releaseId;
+        if ($this->failHealth) throw new LogicException('fixture health failure');
+    }
 }
 
 final class UpgradeCoordinatorFakePlanRepository implements UpgradePlanRepository
@@ -321,6 +326,22 @@ $tests['recovery is one-shot, only after activation and before contract work'] =
     $assert(in_array('health:release-old-001', $state->trace, true), 'recovery did not health-check the restored release');
     $assertThrows(static fn() => $state->coordinator->advance($planId), '不能继续推进');
     $assertThrows(static fn() => $state->coordinator->recover($planId), '不能重复执行');
+};
+
+$tests['health-check failure persists a failed upgrade step'] = static function () use (
+    $fixture, $source, $assert, $assertThrows
+): void {
+    $state = $fixture();
+    $state->runtime->failHealth = true;
+    $plan = $state->coordinator->createPlan($source, 7);
+    $planId = $plan->plan()->planId();
+    $assertThrows(static fn() => $state->coordinator->runUntilSettled($planId, true), 'fixture health failure');
+    $failed = $state->coordinator->find($planId);
+    $assert($failed !== null && $failed->plan()->status() === UpgradePlan::FAILED, 'health failure was not persisted as failed plan');
+    $current = $failed?->plan()->current();
+    $assert($current?->name() === UpgradeStep::HEALTH_CHECK, 'health failure did not remain on health_check step');
+    $assert($current?->state() === UpgradeStepState::FAILED, 'health failure step is not FAILED');
+    $assert($current?->failureCode() === 'logicexception', 'health failure code was not persisted');
 };
 
 $tests['run contract flag is applied only after the explicit waiting gate'] = static function () use (

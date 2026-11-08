@@ -57,6 +57,8 @@
 
 这层优先使用内存替身或最小框架替身，测试 Domain、Application、Service 和 Resource 的确定性行为。涉及真实 HTTP、真实数据库和 SDK 序列化的场景不能只停留在本层。
 
+数据库终态另用 `npm run test:schema:e2e` 验证：在两个一次性本地数据库分别执行干净安装与历史迁移，并比较结构和迁移账本；该命令不属于 L1 静态基线。
+
 ### L2：路由和 API 契约
 
 每条 API 路由必须同时具备稳定 `name`、`meta` 和 `contract`：

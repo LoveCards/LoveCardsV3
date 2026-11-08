@@ -70,7 +70,7 @@ final class SystemLifecycleInMemoryLedger implements MigrationLedger
     }
 }
 
-final class SystemLifecycleFakeMigration implements Migration
+class SystemLifecycleFakeMigration implements Migration
 {
     private MigrationDescriptor $descriptor;
 
@@ -130,6 +130,15 @@ final class SystemLifecycleFakeMigration implements Migration
     public function contract(): void
     {
         $this->contractCalls++;
+    }
+}
+
+final class SystemLifecycleFailingMigration extends SystemLifecycleFakeMigration
+{
+    public function expand(): void
+    {
+        parent::expand();
+        throw new RuntimeException('fixture expand failure');
     }
 }
 
@@ -311,6 +320,22 @@ $test('MigrationRunner keeps contract work waiting until explicitly authorized',
     $complete = $runner->runNext($migration, true);
     $assertSame(MigrationStatus::COMPLETE, $complete->status());
     $assertSame(1, $migration->contractCalls);
+});
+
+$test('MigrationRunner persists failure code and requires explicit retry', static function () use ($assertSame, $assertThrows): void {
+    $ledger = new SystemLifecycleInMemoryLedger();
+    $runner = new MigrationRunner($ledger);
+    $migration = new SystemLifecycleFailingMigration('20260819000250_failed');
+
+    $runner->runNext($migration);
+    $assertThrows(RuntimeException::class, static fn() => $runner->runNext($migration), 'fixture expand failure');
+    $failed = $ledger->find($migration->descriptor()->id());
+    $assertSame(MigrationStatus::FAILED, $failed?->status());
+    $assertSame(RuntimeException::class, $failed?->failureCode());
+    $assertSame(2, $failed?->attempts(), 'preflight and expand must be counted before failure');
+    $assertSame(MigrationStatus::FAILED, $runner->runNext($migration)->status(), 'scheduler retry must not repeat failed work');
+    $assertThrows(RuntimeException::class, static fn() => $runner->runNext($migration, false, true), 'fixture expand failure');
+    $assertSame(MigrationStatus::FAILED, $ledger->find($migration->descriptor()->id())?->status());
 });
 
 $test('Coordinator settles multiple migrations and renews around every advance', static function () use ($assertSame): void {

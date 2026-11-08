@@ -122,6 +122,32 @@ final class SystemLifecycleCoordinator
         }
     }
 
+    /** 首次安装直接导入已审核目标结构后，沿用同一账本记录迁移身份。 */
+    public function recordInstalledSchema(string $directory): void
+    {
+        $holder = $this->lease->acquire(LifecycleLease::NAME, $this->now(), LifecycleLease::TTL_SECONDS);
+        if ($holder === null) throw new UpgradeLeaseUnavailableException('已有系统迁移正在执行');
+        try {
+            $this->assertNoUnsettledUpgradePlan();
+            $this->planner->recordInstalledTarget($this->source->discover($directory));
+            $this->assertInstalledSchemaComplete($directory);
+        } finally {
+            $this->lease->release(LifecycleLease::NAME, $holder);
+        }
+    }
+
+    public function assertInstalledSchemaComplete(string $directory): void
+    {
+        $this->assertNoUnsettledUpgradePlan();
+        $plan = $this->planner->plan($this->source->discover($directory));
+        if ($plan->steps() === []) throw new \RuntimeException('安装包缺少数据库迁移目录');
+        foreach ($plan->steps() as $step) {
+            if ($step->state() !== MigrationPlanStep::COMPLETE) {
+                throw new \RuntimeException('安装数据库迁移账本未完成: ' . $step->descriptor()->id());
+            }
+        }
+    }
+
     /** @return array<int, array<string, mixed>> */
     private function advanceOne(
         string $directory,

@@ -1,6 +1,9 @@
 import { test as setup, expect } from '@playwright/test'
+import os from 'node:os'
+import path from 'node:path'
 
-const authFile = 'apps/admin/test-results/.auth/admin.json'
+const authFile = process.env.LOVECARDS_E2E_AUTH_FILE
+  || path.join(os.tmpdir(), 'lovecards-admin-e2e-auth.json')
 
 setup('authenticate admin', async ({ page }) => {
   if (process.env.LOVECARDS_E2E_ISOLATED !== '1') {
