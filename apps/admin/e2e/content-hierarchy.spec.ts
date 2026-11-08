@@ -87,7 +87,8 @@ for (const resource of ['cards', 'comments'] as const) {
 
   test(`saved diagnostic columns are preserved: ${resource}`, async ({ page }) => {
     await contentFixtures(page, resource, false, true)
-    await page.goto(`./apps/content/${resource}`)
+    await page.goto(`./apps/content/${resource}`, { waitUntil: 'domcontentloaded' })
+    await expect(page.locator('tbody tr').first()).toContainText('周末在校园', { timeout: 20_000 })
     await expect(page.locator('thead').getByText('ID', { exact: true })).toBeVisible({ timeout: 20_000 })
     await expect(page.locator('thead').getByText('点赞数', { exact: true })).toBeVisible()
   })

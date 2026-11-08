@@ -53,10 +53,11 @@ Module/
 - Messaging 与 Social 分别通过 Eventing 传播 `message.sent`、`social.followed`，再由 Notifications Handler 投影收件提醒；业务模块不能直接写通知表。
 - Eventing 只认识 EventEnvelope、Registry 与 Port；业务 Handler 位于拥有副作用的目标模块 Infrastructure。
 - SystemLifecycle 通过 Contract 操作 Release、Migration、Backup、Lease、Pointer 和 Runtime，Domain 不依赖 ZIP、PDO、文件系统或 ThinkPHP。
+- Installer Host 处理首次连接、持久配置、密钥、默认数据和安装锁；结构来自 `database/schema.sql`，默认数据来自 `database/seed.sql`。干净安装在 SystemLifecycle 账本中记录历史迁移为 `complete`，旧版本才执行迁移内容。当前 Host 仍直接调用 RBAC 种子和 JWT 密钥校验，后续切片应改为模块公开入口。
 - Content 的跨 Cards/Comments/Tags/Likes 一致性由 Content 协调用例负责，禁止子模块互相直接写对方 Model。
 - 前台主题只返回 Shell 和启动上下文，页面数据统一由浏览器 SDK 请求 API。
 - Dashboard 是跨模块只读组合，不直接读取其他模块 Model。
-- Installer 不依赖正常运行期 Auth/Rbac。
+- Installer 的长期约束是不引用正常运行期 Auth/Rbac 内部实现；当前 Host 对 JWT/RBAC 的直接调用是已知边界债务，不得扩散到 SystemLifecycle。
 - `shared/` 只能放无业务语义的 HTTP、缓存、分页、事务和基础技术能力。
 
 ## 驱动规范

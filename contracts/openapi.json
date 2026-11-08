@@ -7113,6 +7113,21 @@
                           "release_id": {
                             "type": "string"
                           },
+                          "current_version": {
+                            "type": "string"
+                          },
+                          "target_version": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "update_notes": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
                           "previous_release_id": {
                             "type": [
                               "string",
@@ -7356,6 +7371,21 @@
                         "release_id": {
                           "type": "string"
                         },
+                        "current_version": {
+                          "type": "string"
+                        },
+                        "target_version": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "update_notes": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "previous_release_id": {
                           "type": [
                             "string",
@@ -7572,6 +7602,21 @@
                         "release_id": {
                           "type": "string"
                         },
+                        "current_version": {
+                          "type": "string"
+                        },
+                        "target_version": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "update_notes": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "previous_release_id": {
                           "type": [
                             "string",
@@ -7770,6 +7815,21 @@
                         },
                         "release_id": {
                           "type": "string"
+                        },
+                        "current_version": {
+                          "type": "string"
+                        },
+                        "target_version": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "update_notes": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "previous_release_id": {
                           "type": [
@@ -7970,6 +8030,21 @@
                         "release_id": {
                           "type": "string"
                         },
+                        "current_version": {
+                          "type": "string"
+                        },
+                        "target_version": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "update_notes": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
                         "previous_release_id": {
                           "type": [
                             "string",
@@ -8168,6 +8243,21 @@
                         },
                         "release_id": {
                           "type": "string"
+                        },
+                        "current_version": {
+                          "type": "string"
+                        },
+                        "target_version": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "update_notes": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
                         },
                         "previous_release_id": {
                           "type": [

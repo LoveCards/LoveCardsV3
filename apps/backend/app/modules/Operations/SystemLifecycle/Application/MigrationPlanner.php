@@ -51,4 +51,21 @@ final class MigrationPlanner
         }
         return new MigrationPlan($steps);
     }
+
+    /** 仅供已导入完整 schema.sql 的首次安装调用；可在写账本中断后重试。 */
+    public function recordInstalledTarget(array $migrations): void
+    {
+        foreach ($this->plan($migrations)->steps() as $step) {
+            $progress = $step->progress();
+            if ($progress?->isComplete()) continue;
+            if ($progress !== null && ($progress->status() !== 'pending' || $progress->attempts() !== 0)) {
+                throw new SchemaDriftException('首次安装账本包含未完成的历史执行状态: ' . $step->descriptor()->id());
+            }
+            $progress ??= $this->ledger->initialize($step->descriptor());
+            if (!hash_equals($step->descriptor()->checksum(), $progress->checksum())) {
+                throw DirtyMigrationException::forId($step->descriptor()->id());
+            }
+            $this->ledger->save($progress->installedTarget(), $progress->revision());
+        }
+    }
 }

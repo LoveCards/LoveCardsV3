@@ -15,7 +15,7 @@ final class ThinkDbMigrationLedger implements MigrationLedger
     private function bootstrap(): void
     {
         if ($this->bootstrapped) return;
-        // The legacy installer imports data.sql before the first lifecycle migration.
+        // The installer imports schema.sql and seed.sql before the first lifecycle migration.
         // Create only the lifecycle ledger here so the upgrade coordinator can adopt it.
         Db::execute("CREATE TABLE IF NOT EXISTS `system_upgrade_steps` (`migration_id` VARCHAR(128) NOT NULL, `checksum` CHAR(64) NOT NULL, `phase` VARCHAR(16) NOT NULL, `status` VARCHAR(16) NOT NULL, `cursor` VARCHAR(2048) NULL, `revision` INT UNSIGNED NOT NULL DEFAULT 0, `attempts` INT UNSIGNED NOT NULL DEFAULT 0, `failure_code` VARCHAR(128) NULL, `created_at` DATETIME NOT NULL, `updated_at` DATETIME NOT NULL, PRIMARY KEY (`migration_id`), KEY `idx_upgrade_status` (`status`,`updated_at`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
         $this->bootstrapped = true;

@@ -3,10 +3,10 @@ declare(strict_types=1);
 
 namespace app\modules\Operations\SystemLifecycle\Infrastructure;
 
-use app\modules\Operations\Installer\Infrastructure\Database;
 use app\modules\Operations\SystemLifecycle\Contract\Migration;
 use app\modules\Operations\SystemLifecycle\Domain\BackfillBatch;
 use app\modules\Operations\SystemLifecycle\Domain\MigrationDescriptor;
+use app\shared\Infrastructure\Persistence\SqlStatementExecutor;
 
 /** Adapts the existing SQL migration files to the resumable lifecycle runner. */
 final class SqlFileMigration implements Migration
@@ -48,7 +48,7 @@ final class SqlFileMigration implements Migration
     private function execute(string $phase): void
     {
         $sql = trim($this->phases[$phase] ?? '');
-        if ($sql !== '') Database::ImportSQL($sql);
+        if ($sql !== '') SqlStatementExecutor::execute($sql);
     }
 
     /**

@@ -1,6 +1,16 @@
 # 系统生命周期、安装与升级
 
-LoveCards 的安装、数据库迁移、Release 导入、激活和恢复属于同一个系统生命周期。旧安装器只负责环境检查、收集首次安装配置并调用统一数据库入口；后续升级不得再通过“解压覆盖当前目录 + 临时执行 SQL”绕过账本、签名、备份和恢复协议。
+LoveCards 的安装、数据库迁移、Release 导入、激活和恢复属于同一个系统生命周期。当前安装 Host 仍负责首次数据库连接、配置与密钥写入、目标 schema 和默认数据导入及安装锁；历史迁移身份由 SystemLifecycle 记入账本，旧版本结构变更由该模块执行。后续升级不得通过“解压覆盖当前目录 + 临时执行 SQL”绕过账本、签名、备份和恢复协议。
+
+## 安装输入与 Schema 一致性
+
+新安装的输入固定为 `database/schema.sql` 与 `database/seed.sql`：前者是发行版声明的完整目标结构，后者只包含系统默认数据。安装 Host 不再导入旧的组合数据文件，也不在运行时比较两个 schema 或根据 diff 猜测 SQL。
+
+干净安装导入完整目标结构后，`Operations/SystemLifecycle` 在同一 Migration Catalog 中核对 migration id、checksum 和顺序，并用共享 Lease 将这些历史迁移记为 `complete`；安装过程不重新执行历史 SQL。写入安装锁前再次确认账本全部完成。旧版本升级仍通过账本推进 phase/cursor、记录失败并由 `UpgradeCoordinator` 编排。在线更新源目前尚未实现；未来接入时必须走同一入口。
+
+发行构建阶段可运行 `node scripts/generate-schema-diff-candidate.mjs --from <old-schema.sql> --to <schema.sql> --output <candidate.json>` 生成结构变更候选清单。工具只输出表、列、索引和外键的 added/removed/changed 记录，明确标记 `review_required`，不生成 SQL、不连接数据库、不写迁移账本，也不被生产安装器调用。字段重命名、数据转换、拆表、合表、删除和其他语义变化必须由维护者写成明确迁移步骤；该候选清单不能直接执行。干净安装与旧版本迁移后的 schema 一致性由隔离数据库验证固定；安装、迁移和健康检查失败不得标记成功。
+
+隔离数据库验收运行 `npm run test:schema:e2e`（先设置 `LOVECARDS_SCHEMA_E2E_ISOLATED=1` 和本地数据库环境变量）；它创建新装和旧版迁移两条路径，再用 `scripts/verify-schema-consistency.php` 比较表、列、索引和外键，忽略自增计数，不读取或输出密码。
 
 ## 持久目录与不可变 Release
 
@@ -114,11 +124,13 @@ php think lc:release:build /absolute/out/release.zip \
 
 `lc:release:build` 要求输出 ZIP 和 PEM 私钥都在 source 之外；source 必须是已经安装生产依赖、包含 `vendor/autoload.php`、启动入口和至少一个迁移的完整 backend。Builder 不打包 `.env`（保留 `.env.example`）、实例目录、运行时、测试、源码内 RSA、`public/storage` 或主题 Release；它生成 Handler Catalog、迁移 checksum、所有文件 hash 与 Manifest 签名，最后原子发布 ZIP。私钥口令只从 `LC_RELEASE_SIGNING_PASSPHRASE` 读取。
 
+Builder 还要求 `database/schema.sql` 和 `database/seed.sql`。若 Release source 根目录包含 `release-notes.md`，Builder 会把最多 16 KB 的更新说明纳入签名 Manifest；管理端只显示该 Manifest 的目标版本和更新说明，缺失时明确显示未提供。签名包的来源不会改变 `UpgradeCoordinator` 的执行路径。
+
 上传接口受 `config/lifecycle.php` 的 ZIP 上限保护（默认 512 MiB）；PHP `upload_max_filesize` 至少应覆盖应用上限，`post_max_size` 与 Nginx `client_max_body_size` 还要为 multipart 开销保留余量。若 multipart 在 ThinkPHP 启动前已被 PHP 丢弃，或 PHP 为文件设置 size error，接口返回 413 与 `post_max_size`/`upload_max_filesize` 诊断，而不是把缺失的 `file` 误报成普通业务字段错误。小型虚拟机可以同步下调应用、PHP 和 Web Server 三层上限。
 
 ## 运维入口
 
-管理端 `/apps/system/upgrade` 提供 Release ZIP 上传、计划列表/详情、逐步推进、Contract 批准、恢复和迁移账本视图。对应 SDK：
+管理端 `/apps/operations/upgrade` 展示当前版本、目标版本、更新说明、ZIP 上传和计划状态，提供单步推进、Contract 批准与 pointer 恢复动作。`/apps/system/upgrade` 是兼容路由；迁移账本仍由 API/CLI 提供，当前升级页不展示其明细。对应 SDK：
 
 ```typescript
 client.operations.upgrades({ limit: 50 })
@@ -185,8 +197,8 @@ multipart body；诊断依赖请求的 `Content-Length` 与当前 PHP 指令。�
 
 ## 已验证范围与尚未自动化的边界
 
-2026-08-20 的根质量门禁已通过，后端递归基线为 39/39。独立的 localhost/一次性数据库升级 E2E 使用 Builder 生成真实签名 ZIP，经真实 JWT multipart 上传后由 HTTP API 逐单元推进；21 次 `advance` 后完成 Contract 与激活，并验证了 active pointer、后续响应的 `X-LoveCards-Release-Id` 和持久化 `health_check` 成功状态。`/_lc/release-health` 的路由识别与 Release 标识由持久运行时基线覆盖。
+2026-08-20 的历史验收记录为根质量门禁通过、后端递归基线 39/39；它不代表当前分支的测试数量或结果。独立的 localhost/一次性数据库升级 E2E 使用 Builder 生成真实签名 ZIP，经真实 JWT multipart 上传后由 HTTP API 逐单元推进，验证 active pointer、后续响应的 `X-LoveCards-Release-Id` 和持久化 `health_check` 成功状态。`/_lc/release-health` 的路由识别与 Release 标识由持久运行时基线覆盖。
 
-当前生产迁移目录没有 `contract` phase。为真实验证通用 Gate，E2E 会在系统临时目录复制一份 Release source，并仅向该副本注入分段测试迁移；演练确认提前批准返回 400、计划进入 `contract_migrations` waiting、独立批准持久化、Contract step/milestone 成功且 SQL probe 得到预期标记，随后清除一次性数据库与临时 Release。激活后、Contract 前只能恢复一次仍由 `UpgradeCoordinatorBaseline`、`BehaviorBaseline` 与 `RecoveryBaseline` 的状态机测试保护；未来首次加入生产 Contract migration 时，仍须用实际迁移内容在专用可丢弃实例完成容量、锁影响和灾备恢复演练。
+当前迁移目录已有 `contract` phase。E2E 仍在系统临时目录复制 Release source，并仅向该副本注入独立分段测试迁移，验证提前批准被拒、计划等待批准、批准持久化和 Contract SQL probe；这不能代替对每个实际 Contract 迁移的数据量、锁影响与恢复演练。激活后、Contract 前只能恢复一次由 `UpgradeCoordinatorBaseline`、`BehaviorBaseline` 与 `RecoveryBaseline` 的状态机测试保护；生产变更仍需在可丢弃的旧版本数据副本上演练。
 
 对中大型实例，当前 PHP 逻辑数据库备份与本地文件 ZIP 是正确性基线，不代表无限容量方案。上线前应按真实数据量测量备份时长、临时磁盘、锁/快照影响和恢复时间目标；达到阈值后，应通过 `BackupArtifactStore` 接入数据库原生备份及对象存储快照，而不是绕过 `backup_gate`。

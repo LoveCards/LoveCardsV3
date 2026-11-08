@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace app\modules\Operations\Administration\Transport\Api;
 
 use app\shared\Transport\Http\Resource;
+use app\modules\Operations\Version\Public\Version;
 
 /** Public administration projection of a durable upgrade plan. */
 final class AdminUpgradePlanResource extends Resource
@@ -17,6 +18,9 @@ final class AdminUpgradePlanResource extends Resource
             'properties' => [
                 'plan_id' => ['type' => 'string'],
                 'release_id' => ['type' => 'string'],
+                'current_version' => ['type' => 'string'],
+                'target_version' => ['type' => ['string', 'null']],
+                'update_notes' => ['type' => ['string', 'null']],
                 'previous_release_id' => ['type' => ['string', 'null']],
                 'revision' => ['type' => 'integer'],
                 'status' => ['type' => 'string'],
@@ -91,6 +95,9 @@ final class AdminUpgradePlanResource extends Resource
         return [
             'plan_id' => (string) ($data['plan_id'] ?? ''),
             'release_id' => (string) ($data['release_id'] ?? ''),
+            'current_version' => (string) (Version::current()['version'] ?? ''),
+            'target_version' => isset($context['target_version']) ? (string) $context['target_version'] : null,
+            'update_notes' => isset($context['update_notes']) ? (string) $context['update_notes'] : null,
             'previous_release_id' => isset($data['previous_release_id']) ? (string) $data['previous_release_id'] : null,
             'revision' => (int) ($data['revision'] ?? 0),
             'status' => (string) ($data['status'] ?? 'pending'),

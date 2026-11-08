@@ -113,6 +113,15 @@ final class MigrationProgress
         return new self($this->id, $this->checksum, MigrationPhase::COMPLETE, MigrationStatus::COMPLETE, null, $this->revision, $this->attempts, null);
     }
 
+    /** 干净安装已导入目标 schema 时记录迁移目录的 checksum，不执行历史 SQL。 */
+    public function installedTarget(): self
+    {
+        if ($this->status !== MigrationStatus::PENDING || $this->attempts !== 0 || $this->cursor !== null) {
+            throw new \LogicException('只能为全新目标 Schema 标记未执行的 Migration');
+        }
+        return new self($this->id, $this->checksum, MigrationPhase::COMPLETE, MigrationStatus::COMPLETE, null, $this->revision, 0, null);
+    }
+
     public function failed(string $failureCode): self
     {
         $failureCode = trim($failureCode);
