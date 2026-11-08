@@ -4,6 +4,7 @@ namespace app\modules\Platform\Captcha\Service;
 
 use app\modules\Platform\Captcha\Infrastructure\CaptchaFactory;
 use app\modules\Platform\Captcha\Contract\CaptchaInterface;
+use app\modules\Platform\Captcha\Infrastructure\Driver\GeetestDriver;
 
 class Captcha
 {
@@ -44,6 +45,16 @@ class Captcha
     public static function isEnabled(string $type): bool
     {
         return ChannelManager::isEnabled($type);
+    }
+
+    public static function isReady(string $type, ?string $driverSlug = null): bool
+    {
+        if ($type !== 'captcha') return false;
+        return match ($driverSlug ?? ChannelManager::defaultDriver($type)) {
+            'geetest_v4' => GeetestDriver::configured(),
+            'gd_image' => function_exists('imagecreatetruecolor'),
+            default => false,
+        };
     }
 
     public static function delete(string $type, string $key, string $scene = 'default', ?string $driverSlug = null): bool

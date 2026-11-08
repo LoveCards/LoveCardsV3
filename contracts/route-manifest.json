@@ -563,8 +563,8 @@
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\PermissionCheck",
+        "app\\api\\middleware\\CaptchaCheck"
       ],
       "contract": {
         "request": null,
@@ -598,8 +598,8 @@
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\PermissionCheck",
+        "app\\api\\middleware\\CaptchaCheck"
       ],
       "contract": {
         "request": null,
@@ -3183,8 +3183,8 @@
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\PermissionCheck",
+        "app\\api\\middleware\\CaptchaCheck"
       ],
       "contract": {
         "request": {
@@ -3221,8 +3221,8 @@
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\PermissionCheck",
+        "app\\api\\middleware\\CaptchaCheck"
       ],
       "contract": {
         "request": null,
@@ -4460,8 +4460,8 @@
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\PermissionCheck",
+        "app\\api\\middleware\\CaptchaCheck"
       ],
       "contract": {
         "request": {
@@ -5956,8 +5956,8 @@
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\PermissionCheck",
+        "app\\api\\middleware\\CaptchaCheck"
       ],
       "contract": {
         "request": {
@@ -6690,8 +6690,7 @@
         }
       },
       "middleware": [
-        "app\\api\\middleware\\SessionDebounce",
-        "app\\api\\middleware\\CaptchaCheck"
+        "app\\api\\middleware\\SessionDebounce"
       ],
       "contract": {
         "request": {
@@ -6941,8 +6940,8 @@
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\PermissionCheck",
+        "app\\api\\middleware\\CaptchaCheck"
       ],
       "contract": {
         "request": {

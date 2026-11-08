@@ -15,6 +15,7 @@ const app = createApp({
   backendUrl: required('LC_BACKEND_URL'),
   internalToken: required('LC_RUNTIME_INTERNAL_TOKEN'),
   redis: process.env.LC_REDIS_HOST ? { host: process.env.LC_REDIS_HOST, port: Number(process.env.LC_REDIS_PORT ?? 6379) } : null,
+  maxConnections: Number(process.env.LC_REALTIME_GATEWAY_MAX_CONNECTIONS ?? 100),
   logger: (message) => console.log(`[realtime-gateway] ${message}`),
 })
 

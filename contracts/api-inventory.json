@@ -9035,8 +9035,8 @@
       },
       "middleware": [
         "JwtAuthCheck",
-        "CaptchaCheck",
-        "PermissionCheck"
+        "PermissionCheck",
+        "CaptchaCheck"
       ],
       "contract": {
         "request": {
@@ -9110,8 +9110,8 @@
       },
       "middleware": [
         "JwtAuthCheck",
-        "CaptchaCheck",
-        "PermissionCheck"
+        "PermissionCheck",
+        "CaptchaCheck"
       ],
       "contract": {
         "request": {
@@ -9191,8 +9191,8 @@
       },
       "middleware": [
         "JwtAuthCheck",
-        "CaptchaCheck",
-        "PermissionCheck"
+        "PermissionCheck",
+        "CaptchaCheck"
       ],
       "contract": {
         "request": null,
@@ -9259,8 +9259,8 @@
       },
       "middleware": [
         "JwtAuthCheck",
-        "CaptchaCheck",
-        "PermissionCheck"
+        "PermissionCheck",
+        "CaptchaCheck"
       ],
       "contract": {
         "request": null,
@@ -9333,8 +9333,8 @@
       },
       "middleware": [
         "JwtAuthCheck",
-        "CaptchaCheck",
-        "PermissionCheck"
+        "PermissionCheck",
+        "CaptchaCheck"
       ],
       "contract": {
         "request": {
@@ -9406,8 +9406,8 @@
       },
       "middleware": [
         "JwtAuthCheck",
-        "CaptchaCheck",
-        "PermissionCheck"
+        "PermissionCheck",
+        "CaptchaCheck"
       ],
       "contract": {
         "request": null,
@@ -9474,8 +9474,8 @@
       },
       "middleware": [
         "JwtAuthCheck",
-        "CaptchaCheck",
-        "PermissionCheck"
+        "PermissionCheck",
+        "CaptchaCheck"
       ],
       "contract": {
         "request": {
@@ -13193,8 +13193,7 @@
         }
       },
       "middleware": [
-        "SessionDebounce",
-        "CaptchaCheck"
+        "SessionDebounce"
       ],
       "contract": {
         "request": {

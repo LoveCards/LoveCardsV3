@@ -79,7 +79,7 @@
           </v-col>
         </v-row>
         <p class="mt-2 text-body-2 text-medium-emphasis">
-          当前驱动：{{ service.humanDriver || '未配置' }} · {{ service.humanReady ? '可用' : '未就绪' }}
+          当前驱动：{{ service.humanDriver || '未配置' }} · {{ service.humanReady ? '配置已就绪（未检测第三方连通）' : '未就绪' }}
           · <NuxtLink to="/apps/settings/verification">配置验证服务</NuxtLink>
         </p>
       </AdminConfigSection>
@@ -176,12 +176,11 @@ async function loadConfig() {
       return
     }
     const captcha = readObject(raw.captcha)
-    const geetest = readObject(captchaStatus.captcha_geetest_v4)
     const humanDriver = readString(captcha.default_captcha_driver, 'geetest_v4')
     const current: Settings = {
       visitorMode: readBoolean(core.visitor_mode),
       emailVerify: readBoolean(user.captcha),
-      humanVerify: readBoolean(captcha.captcha_enabled, true),
+      humanVerify: readBoolean(captcha.captcha_enabled),
     }
     settings.value = CommonUtils.deepClone(current)
     origin.value = CommonUtils.deepClone(current)
@@ -189,7 +188,7 @@ async function loadConfig() {
       codeEnabled: readBoolean(captcha.code_enabled, true),
       codeChannel: readString(captcha.code_channel, 'smtp'),
       humanDriver,
-      humanReady: humanDriver === 'gd_image' || (humanDriver === 'geetest_v4' && readBoolean(geetest.status)),
+      humanReady: readBoolean(captchaStatus.human_ready),
     }
     loaded.value = true
   } catch (cause) {
@@ -222,6 +221,6 @@ onMounted(() => {
   if (props.active) void loadConfig()
 })
 watch(() => props.active, (active) => {
-  if (active && !loaded.value && !loading.value) void loadConfig()
+  if (active && !loading.value && !changed.value) void loadConfig()
 })
 </script>

@@ -157,11 +157,11 @@ export function createCommunicationRuntime({
     if (lastCursor) query.set('lastEventId', lastCursor);
     const source = eventSourceFactory(`${ticket.connect_url}?${query.toString()}`);
     if (!source) { fallBackToPolling(); scheduleRealtimeRetry(); return; }
-    attempts = 0;
     mode = 'realtime';
     eventSource = source;
     armWatchdog(ticket.heartbeat_seconds);
     scheduleRealtimeReconcile();
+    source.addEventListener('open', () => { attempts = 0; });
     source.addEventListener('heartbeat', () => {
       armWatchdog(ticket.heartbeat_seconds);
     });

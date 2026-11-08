@@ -18,6 +18,7 @@ class FakeEventSource {
   addEventListener(name, fn) { this.listeners[name] = fn; }
   close() { this.closed = true; }
   emitSignal(payload) { this.listeners.signal?.({ data: JSON.stringify(payload) }); }
+  emitOpen() { this.listeners.open?.({}); }
   emitError() { this.listeners.error?.({}); }
 }
 
@@ -151,6 +152,25 @@ describe('communication runtime', () => {
     // ticket 连续失败超过阈值后转轮询。
     await vi.advanceTimersByTimeAsync(30_000);
     expect(runtime.currentMode()).toBe('polling');
+    runtime.destroy();
+  });
+
+  it('stops retrying a stream that repeatedly fails before opening', async () => {
+    const client = makeClient();
+    client.communication.settings = vi.fn(async () => ({ effective_mode: 'realtime', status: 'ready', settings: { notification_interval_seconds: 1, polling_backoff_factor: 2, polling_max_interval_seconds: 4 } }));
+    const runtime = createCommunicationRuntime({ clientResolver: () => client, eventSourceFactory: (url) => new FakeEventSource(url) });
+    await runtime.start();
+    FakeEventSource.instances[0].emitError();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(FakeEventSource.instances).toHaveLength(2);
+    FakeEventSource.instances[1].emitError();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(FakeEventSource.instances).toHaveLength(3);
+    FakeEventSource.instances[2].emitError();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(FakeEventSource.instances).toHaveLength(3);
+    expect(runtime.currentMode()).toBe('polling');
+    expect(client.notifications.streamTicket).toHaveBeenCalledTimes(3);
     runtime.destroy();
   });
 });

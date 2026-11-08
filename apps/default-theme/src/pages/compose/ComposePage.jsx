@@ -8,6 +8,8 @@ import { ResourceErrorBanner, ResourceState } from '../../components/ResourceSta
 import { useUnsavedChanges } from '../../app/use-unsaved-changes.js';
 import { getUserFacingError } from '../../app/user-facing-error.js';
 import { getSdkClient } from '../../app/sdk-client.js';
+import { loadAuthPolicy } from '../../services/auth-service.js';
+import { useHumanVerification } from '../../features/human-verification/useHumanVerification.jsx';
 import { createMentionTrigger, createPreviewMentionAdapter, createSdkMentionAdapter, normalizeMentionCaret } from '../../services/mentions-service.js';
 import { previewCreators } from '../../fixtures/feed-preview.js';
 import { renderMentionCandidateItem } from '../../features/mentions/MentionCandidateItem.jsx';
@@ -79,6 +81,7 @@ export function ComposePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
+  const { verify, dialog: humanVerificationDialog } = useHumanVerification();
   const { isAuthenticated, status: authStatus, can, error: authError, refresh: refreshAuth } = useAuth();
   const capability = useMemo(() => getComposeState(), []);
   const designPreview = capability.source === 'preview';
@@ -450,6 +453,7 @@ export function ComposePage() {
     setStatus(editMode ? 'saving-edit' : 'publishing');
     setMessage('');
     try {
+      const verification = await verify(await loadAuthPolicy());
       if (editMode) {
         const result = await updatePublishedCard({
           id: publishedCardId || requestedEditId,
@@ -461,6 +465,7 @@ export function ComposePage() {
           data: publishedData,
           mediaChanged: files.length > 0 || removedMediaIds.length > 0,
           ...(visibility !== loadedEditVisibilityRef.current ? { visibility } : {}),
+          verification,
         });
         await deleteComposeMedia(removedMediaIds);
         setRemovedMediaIds([]);
@@ -470,7 +475,7 @@ export function ComposePage() {
         navigate(`/post/${result.id}`);
         return;
       }
-      const result = await publishCard({ content, tags: topicsFrom(tags), kind: resolveKind(publishType, mediaCount), files, media: persistedMedia, visibility });
+      const result = await publishCard({ content, tags: topicsFrom(tags), kind: resolveKind(publishType, mediaCount), files, media: persistedMedia, visibility, verification });
       let draftCleanupFailed = false;
       if (draftId) {
         try {
@@ -626,6 +631,7 @@ export function ComposePage() {
         </form>}
         <ConfirmActionDialog isOpen={typeSwitchOpen} onOpenChange={(open) => { setTypeSwitchOpen(open); if (!open) setPendingPublishType(null); }} title={`切换为${publishTypes[pendingPublishType]?.label || '其他类型'}？`} description="当前已选媒体与新类型不兼容，继续切换会移除这些文件，正文和话题会保留。" actionLabel="移除媒体并切换" onAction={confirmTypeSwitch} />
         <ConfirmActionDialog isOpen={discardOpen} onOpenChange={setDiscardOpen} title="放弃这次编辑？" description={editMode ? '尚未保存的修改将不会保留。' : '尚未发布的文字、话题和媒体将不会保留。'} actionLabel="放弃编辑" onAction={() => { setDiscardOpen(false); navigate(discardDestination); }} />
+        {humanVerificationDialog}
       </main>
     </AppShell>
   );

@@ -4,6 +4,7 @@ namespace app\modules\Platform\Config\Service;
 
 use app\api\ApiException;
 use app\modules\Platform\Config\Public\Config as ConfigService;
+use app\modules\Platform\Captcha\Public\Captcha;
 use app\shared\Authorization\GrantSet;
 
 /**
@@ -81,6 +82,16 @@ final class ConfigManager
             }
             if (!empty($validated)) {
                 $pending[$group] = $validated;
+            }
+        }
+
+        $captchaUpdate = $pending['captcha'] ?? [];
+        if (array_key_exists('captcha_enabled', $captchaUpdate) || array_key_exists('default_captcha_driver', $captchaUpdate)) {
+            $current = ConfigService::getGroup('captcha');
+            $enabled = (bool) ($captchaUpdate['captcha_enabled'] ?? $current['captcha_enabled'] ?? false);
+            $driver = (string) ($captchaUpdate['default_captcha_driver'] ?? $current['default_captcha_driver'] ?? 'geetest_v4');
+            if ($enabled && !Captcha::isReady('captcha', $driver)) {
+                throw ApiException::validation(['captcha.default_captcha_driver' => '人机验证驱动未就绪，请先完成系统验证服务配置']);
             }
         }
 
