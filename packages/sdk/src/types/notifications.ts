@@ -55,3 +55,54 @@ export interface NotificationPreferences {
 export interface NotificationPreferencesUpdate {
   in_app: Partial<Record<ConfigurableNotificationType, boolean>>
 }
+
+// 通信运行时（契约 §4/§5）：一次性流凭证与通知策略目录。
+export interface StreamTicket {
+  ticket: string
+  expires_in: number
+  connect_url: string
+  heartbeat_seconds: number
+}
+
+export interface NotificationPolicyRule {
+  event_type: string
+  event_version: number
+  rule_key: string
+  enabled: boolean
+  display_name: string | null
+  impact_text: string | null
+  notification_type: string | null
+  recipient_rule: string
+  user_disableable: boolean
+  locked: boolean
+  policy_revision: number
+}
+
+export interface NotificationPolicyCatalog {
+  revision: number | null
+  policies: NotificationPolicyRule[]
+}
+
+export interface NotificationPolicyApplyResult {
+  revision: number
+  policies: NotificationPolicyRule[]
+}
+
+export interface NotificationPolicyUpdate {
+  expected_revision: number
+  policies: Array<{ event_type: string; event_version?: number; rule_key?: string; enabled: boolean }>
+  reason?: string
+}
+
+export interface CommunicationSettingsSnapshot {
+  effective_mode: 'polling' | 'realtime'
+  status: 'ready' | 'degraded'
+  settings: {
+    notification_interval_seconds: number
+    message_interval_seconds: number
+    unread_interval_seconds: number
+    polling_backoff_factor: number
+    polling_max_interval_seconds: number
+    pause_when_hidden: boolean
+  }
+}

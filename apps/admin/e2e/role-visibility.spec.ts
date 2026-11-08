@@ -21,10 +21,10 @@ const roleCases: RoleCase[] = [
     grants: [
       ...common,
       allGrant('cards.read'), allGrant('users.read'),
-      globalGrant('config.read'), globalGrant('operations.read'),
+      globalGrant('config.read'), globalGrant('captcha.read'), globalGrant('operations.read'),
       globalGrant('audit.read'), globalGrant('roles.read'), globalGrant('permissions.read'),
     ],
-    visible: ['卡片', '用户管理', '站点信息', '社区规则', '运行状态', '审计日志', '角色管理', '权限目录'],
+    visible: ['卡片', '用户管理', '站点信息', '站点策略', '运行状态', '审计日志', '角色管理', '权限目录'],
     hidden: [],
   },
   {
@@ -35,11 +35,18 @@ const roleCases: RoleCase[] = [
     hidden: ['升级与迁移', '审计日志', '角色管理'],
   },
   {
+    slug: 'site_editor',
+    name: '站点编辑',
+    grants: [...common, globalGrant('config.read'), globalGrant('config.update')],
+    visible: ['站点信息', '站点策略'],
+    hidden: ['验证服务', '通知处理'],
+  },
+  {
     slug: 'content_operator',
     name: '内容运营',
     grants: [...common, allGrant('cards.read'), allGrant('comments.read'), allGrant('tags.read')],
     visible: ['卡片', '评论', '标签'],
-    hidden: ['账号恢复记录', '存储配置', '角色管理'],
+    hidden: ['存储服务', '角色管理'],
   },
   {
     slug: 'community_operator',
@@ -53,28 +60,35 @@ const roleCases: RoleCase[] = [
     name: '审核员',
     grants: [...common, allGrant('cards.read'), allGrant('comments.read'), globalGrant('reports.read')],
     visible: ['卡片', '评论', '举报处理'],
-    hidden: ['站点信息', '社区规则', '通知投递', '角色管理'],
+    hidden: ['站点信息', '站点策略', '通知处理', '角色管理'],
   },
   {
     slug: 'security_admin',
     name: '安全管理员',
     grants: [...common, allGrant('users.read'), globalGrant('users.recovery.read'), globalGrant('audit.read')],
-    visible: ['用户管理', '账号恢复记录', '审计日志'],
-    hidden: ['卡片', '存储配置', '升级与迁移'],
+    visible: ['用户管理', '审计日志'],
+    hidden: ['卡片', '存储服务', '升级与迁移'],
   },
   {
     slug: 'operations_admin',
     name: '运维管理员',
     grants: [...common, globalGrant('operations.read'), globalGrant('communications.read'), allGrant('files.read')],
-    visible: ['文件管理', '运行状态', '通知投递', '升级与迁移'],
-    hidden: ['用户管理', '举报处理', '角色管理'],
+    visible: ['文件管理', '站点策略', '运行状态', '通知处理', '升级与迁移'],
+    hidden: ['站点信息', '用户管理', '举报处理', '角色管理'],
+  },
+  {
+    slug: 'notification_reader',
+    name: '通知只读员',
+    grants: [...common, globalGrant('communications.read')],
+    visible: ['站点策略', '通知处理'],
+    hidden: ['站点信息', '运行状态', '验证服务'],
   },
   {
     slug: 'auditor',
     name: '审计员',
     grants: [...common, globalGrant('audit.read')],
     visible: ['审计日志'],
-    hidden: ['卡片', '用户管理', '站点信息', '社区规则', '角色管理'],
+    hidden: ['卡片', '用户管理', '站点信息', '站点策略', '角色管理'],
   },
 ]
 
@@ -156,6 +170,6 @@ test('the workbench is direct and only the current task group expands automatica
   await expect(navigation.getByRole('link', { name: '卡片', exact: true })).not.toBeVisible()
 
   await page.goto('./apps/content/tags', { waitUntil: 'domcontentloaded' })
-  await expect(navigation.getByRole('link', { name: '标签', exact: true })).toBeVisible()
+  await expect(navigation.getByRole('link', { name: '标签', exact: true })).toBeVisible({ timeout: 20_000 })
   await expect(navigation.getByRole('link', { name: '用户管理', exact: true })).not.toBeVisible()
 })

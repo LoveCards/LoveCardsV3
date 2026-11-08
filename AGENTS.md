@@ -20,10 +20,13 @@
 - `apps/backend`：ThinkPHP API、领域规则、持久化和主题运行时。
 - `apps/admin`：Nuxt 管理端，只通过 `@lovecards/sdk` 调用后端。
 - `apps/default-theme`：React 用户前端；`src/` 只通过 `@lovecards/sdk` 调用后端，`ui/` 只保存设计真源且不得被运行码引用。
+- `apps/realtime-gateway`：独立 Realtime SSE Gateway 进程（Node），只经内部 Bearer 接口回源后端，不包含业务逻辑。
 - `packages/sdk`：跨前端消费者共享的 API 契约与客户端，不依赖任何 app。
 - 根目录：统一依赖锁、跨模块编排、工程检查和文档。
 
 管理端内部边界以 `docs/engineering/ADMIN-ARCHITECTURE.md` 为准：页面是路由和用例入口，SDK 是唯一后端请求边界，Pinia 只保存共享状态，`components/shared` 只放无业务归属的公共 UI。不得恢复 `apps/admin/api`、直接 transport、重复 Nuxt 布局或重复 UI 插件注册。
+
+管理端一级菜单、页面归属和中文名称以 `docs/engineering/ADMIN-NAVIGATION-CONVENTION-2026-11-07.md` 为准；`ADMIN-IA-DESIGN.md` 的旧菜单图仅保留迁移历史。调整导航时须同步页面标题、面包屑和相关 E2E 断言。
 
 禁止使用 `file:` 或 `../` 跨 workspace 建立隐式依赖。跨模块关系必须通过包名、HTTP 契约或根脚本表达。
 

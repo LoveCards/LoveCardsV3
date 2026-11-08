@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace app\modules\Platform\Eventing\Infrastructure;
 
 use app\modules\Platform\Eventing\Contract\DeliveryRepository;
+use app\modules\Platform\Eventing\Contract\PolicyVersionSource;
 use app\modules\Platform\Eventing\Domain\ClaimedDelivery;
 use app\modules\Platform\Eventing\Domain\DeliveryClaim;
 use app\modules\Platform\Eventing\Domain\DeliveryDefinition;
@@ -14,6 +15,10 @@ use think\facade\Db;
 
 final class ThinkDbDeliveryRepository implements DeliveryRepository
 {
+    public function __construct(private ?PolicyVersionSource $policyVersions = null)
+    {
+    }
+
     public function enqueue(int $eventId, array $definitions, \DateTimeImmutable $availableAt): array
     {
         if ($eventId < 1) {
@@ -21,6 +26,8 @@ final class ThinkDbDeliveryRepository implements DeliveryRepository
         }
         $deliveryIds = [];
         $now = $availableAt->format('Y-m-d H:i:s.u');
+        // 登记时冻结当时的全局策略版本；无目录返回 null（not-configured）。
+        $frozenRevision = $this->policyVersions?->currentRevision();
         foreach ($definitions as $definition) {
             if (!$definition instanceof DeliveryDefinition) {
                 throw new \InvalidArgumentException('Delivery definition 类型不合法');
@@ -30,6 +37,7 @@ final class ThinkDbDeliveryRepository implements DeliveryRepository
                 'handler_key' => $definition->handlerKey(),
                 'queue_name' => $definition->queueName(),
                 'execution_mode' => $definition->executionMode(),
+                'policy_revision' => $frozenRevision,
                 'status' => DeliveryStatus::PENDING,
                 'attempt_count' => 0,
                 'available_at' => $now,
@@ -92,9 +100,20 @@ final class ThinkDbDeliveryRepository implements DeliveryRepository
                 (string) $row['execution_mode'],
                 (int) $row['attempt_count'],
                 (string) $row['claim_token'],
-                new \DateTimeImmutable((string) $row['lease_expires_at'], new \DateTimeZone('UTC'))
+                new \DateTimeImmutable((string) $row['lease_expires_at'], new \DateTimeZone('UTC')),
+                isset($row['policy_revision']) && $row['policy_revision'] !== null ? (int) $row['policy_revision'] : null
             );
         }, $rows);
+    }
+
+    public function notePolicyDecision(int $deliveryId, string $decision): void
+    {
+        if (!in_array($decision, ['applied', 'skipped', 'not-configured'], true)) {
+            throw new \InvalidArgumentException('policy decision 不合法');
+        }
+        Db::table('event_deliveries')
+            ->where('id', $deliveryId)
+            ->update(['policy_decision' => $decision, 'updated_at' => gmdate('Y-m-d H:i:s.u')]);
     }
 
     public function complete(int $deliveryId, string $claimToken, \DateTimeImmutable $completedAt): bool

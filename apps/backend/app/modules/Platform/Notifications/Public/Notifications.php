@@ -2,18 +2,29 @@
 
 namespace app\modules\Platform\Notifications\Public;
 
+use app\modules\Platform\Eventing\Public\RealtimeSignalPublisher;
 use app\modules\Platform\Notifications\Application\ManageNotifications;
+use app\modules\Platform\Notifications\Application\NotificationPolicyGate;
+use app\modules\Platform\Notifications\Contract\NotificationPolicyStore;
 use app\modules\Platform\Notifications\Contract\NotificationRepository;
 use app\modules\Platform\Notifications\Domain\NotificationIntent;
 use app\shared\Resource\ResourceRef;
 
 final class Notifications
 {
-    private static function useCase(): ManageNotifications { return new ManageNotifications(app(NotificationRepository::class)); }
-    public static function create(NotificationIntent $intent): int { return self::useCase()->create($intent); }
-    public static function direct(int $recipientId, string $dedupeKey, string $type, ?int $actorId = null, ?ResourceRef $resource = null, array $data = []): int
+    private static function useCase(): ManageNotifications
     {
-        return self::create(new NotificationIntent($recipientId, $dedupeKey, $type, $actorId, $resource, $data));
+        return new ManageNotifications(
+            app(NotificationRepository::class),
+            null,
+            app(RealtimeSignalPublisher::class),
+            new NotificationPolicyGate(app(NotificationPolicyStore::class))
+        );
+    }
+    public static function create(NotificationIntent $intent, ?array $policyScope = null): int { return self::useCase()->create($intent, $policyScope); }
+    public static function direct(int $recipientId, string $dedupeKey, string $type, ?int $actorId = null, ?ResourceRef $resource = null, array $data = [], ?array $policyScope = null): int
+    {
+        return self::create(new NotificationIntent($recipientId, $dedupeKey, $type, $actorId, $resource, $data), $policyScope);
     }
     public static function list(int $userId, ?string $cursor = null, int $limit = 20, bool $unreadOnly = false, ?string $type = null, ?string $category = null): array { return self::useCase()->list($userId, $cursor, $limit, $unreadOnly, $type, $category); }
     public static function markRead(int $userId, array $ids): int { return self::useCase()->markRead($userId, $ids); }

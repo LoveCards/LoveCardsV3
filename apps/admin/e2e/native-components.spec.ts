@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 for (const width of [1440, 390]) {
-  for (const route of ['content/tags', 'access/roles', 'settings/storage/files', 'operations/runtime', 'settings/site', 'settings/community-rules', 'settings/storage', 'settings/messaging', 'settings/verification', 'settings/appearance']) {
+  for (const route of ['content/tags', 'access/roles', 'settings/storage/files', 'operations/runtime', 'settings/site', 'settings/site/policies', 'settings/storage', 'settings/messaging', 'settings/verification', 'settings/appearance']) {
     test(`native admin surfaces reflow at ${width}px: ${route}`, async ({ page }, testInfo) => {
       test.setTimeout(60_000)
       await page.setViewportSize({ width, height: 960 })
@@ -38,7 +38,7 @@ for (const width of [1440, 390]) {
       }
       await page.screenshot({ path: testInfo.outputPath('page.png'), fullPage: true })
       if (['settings/storage', 'settings/verification'].includes(route)) {
-        await page.getByRole('tab', { name: '基础设置' }).click()
+        await page.getByRole('tab', { name: route === 'settings/verification' ? '服务设置' : '基础设置' }).click()
         await expect(page.getByRole('button', { name: /保存.*设置/ })).toBeVisible()
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
         await page.screenshot({ path: testInfo.outputPath('settings.png'), fullPage: true })

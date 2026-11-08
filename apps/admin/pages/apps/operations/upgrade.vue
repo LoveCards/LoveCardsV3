@@ -1,6 +1,6 @@
 <template>
   <AdminPageContainer>
-    <AdminPageHeader title="升级与迁移" description="以持久化计划、单步推进和审计记录管理 Release 与数据库迁移。" :breadcrumbs="[{ title: '系统运维' }]">
+    <AdminPageHeader title="升级与迁移" description="以持久化计划、单步推进和审计记录管理 Release 与数据库迁移。" :breadcrumbs="[{ title: '系统' }]">
       <template #actions>
         <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn>
         <AdminActionGuard capability="system.update">

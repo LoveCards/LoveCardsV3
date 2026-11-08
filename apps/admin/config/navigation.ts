@@ -26,6 +26,8 @@ export type AdminNavigationDomain =
   | 'system-config'
   | 'operations-audit'
   | 'access-control'
+  | 'site'
+  | 'system'
 
 export interface AdminNavigationItem {
   /** 当前部署页面的规范路径。 */
@@ -33,6 +35,8 @@ export interface AdminNavigationItem {
   title: string
   icon?: string
   grants: readonly AdminGrantRequirement[]
+  /** 可访问该页面的权限组合；满足任一组合即可。 */
+  grantSets?: readonly (readonly AdminGrantRequirement[])[]
   /** 页面搜索使用的旧名称或同义词，不作为菜单标签显示。 */
   searchAliases?: readonly string[]
 
@@ -89,7 +93,7 @@ const dashboard = item({
   grants: [dashboardGrant],
 })
 
-const contentItems: readonly AdminNavigationItem[] = [
+const contentItems = [
   item({
     path: '/apps/content/cards',
     canonicalPath: '/apps/content/cards',
@@ -166,7 +170,9 @@ const contentItems: readonly AdminNavigationItem[] = [
     grants: [{ capability: 'community.insights.read', scope: 'global' }],
     actionCapabilities: [],
   }),
-]
+] as const
+
+const [cards, comments, tags, files, reports, insights] = contentItems
 
 const userSecurityItems: readonly AdminNavigationItem[] = [
   item({
@@ -181,22 +187,9 @@ const userSecurityItems: readonly AdminNavigationItem[] = [
     dataScope: 'global',
     actionCapabilities: ['users.update', 'users.update.all', 'users.delete', 'users.delete.all', 'users.roles.assign', 'users.security.read', 'users.sessions.revoke'],
   }),
-  item({
-    path: '/apps/security/recovery',
-    canonicalPath: '/apps/security/recovery',
-    title: '账号恢复记录',
-    searchAliases: ['账号恢复', '密码恢复'],
-    icon: 'mdi-account-lock-outline',
-    domain: 'user-security',
-    section: '账号安全',
-    parentRoute: '/apps/security/recovery',
-    grants: [{ capability: 'users.recovery.read', scope: 'global' }],
-    riskLevel: 'high',
-    actionCapabilities: ['users.recovery.read'],
-  }),
 ]
 
-const systemConfigItems: readonly AdminNavigationItem[] = [
+const systemConfigItems = [
   item({
     path: '/apps/settings/site',
     canonicalPath: '/apps/settings/site',
@@ -204,7 +197,7 @@ const systemConfigItems: readonly AdminNavigationItem[] = [
     title: '站点信息',
     searchAliases: ['站点设置', '基本设置', '备案信息'],
     icon: 'mdi-tune-variant',
-    domain: 'system-config',
+    domain: 'site',
     section: '站点信息',
     parentRoute: '/apps/settings/site',
     grants: [{ capability: 'config.read', scope: 'global' }],
@@ -212,17 +205,22 @@ const systemConfigItems: readonly AdminNavigationItem[] = [
     actionCapabilities: ['config.update'],
   }),
   item({
-    path: '/apps/settings/community-rules',
-    canonicalPath: '/apps/settings/community-rules',
-    title: '社区规则',
-    searchAliases: ['上传限制', '内容审核', '卡片审核', '评论审核', '新标签', '标签审核'],
-    icon: 'mdi-shield-check-outline',
-    domain: 'system-config',
-    section: '社区规则',
-    parentRoute: '/apps/settings/community-rules',
-    grants: [{ capability: 'config.read', scope: 'global' }],
+    path: '/apps/settings/site/policies',
+    canonicalPath: '/apps/settings/site/policies',
+    legacyAliases: ['/apps/settings/access', '/apps/settings/community-rules', '/apps/operations/notification-policies'],
+    title: '站点策略',
+    searchAliases: ['访问与验证', '注册邮件验证', '人机验证', '内容规则', '社区规则', '通知策略', '发布与审核', '上传限制', '内容审核'],
+    icon: 'mdi-tune-vertical-variant',
+    domain: 'site',
+    section: '站点策略',
+    parentRoute: '/apps/settings/site/policies',
+    grants: [],
+    grantSets: [
+      [{ capability: 'config.read', scope: 'global' }],
+      [{ capability: 'communications.read', scope: 'global' }],
+    ],
     riskLevel: 'sensitive',
-    actionCapabilities: ['config.update'],
+    actionCapabilities: ['config.update', 'communications.configure'],
   }),
   item({
     path: '/apps/settings/appearance',
@@ -231,7 +229,7 @@ const systemConfigItems: readonly AdminNavigationItem[] = [
     title: '主题外观',
     searchAliases: ['主题列表', '外观'],
     icon: 'mdi-palette-outline',
-    domain: 'system-config',
+    domain: 'site',
     section: '外观',
     parentRoute: '/apps/settings/appearance',
     grants: [{ capability: 'theme.read', scope: 'global' }],
@@ -241,9 +239,10 @@ const systemConfigItems: readonly AdminNavigationItem[] = [
     path: '/apps/settings/storage',
     canonicalPath: '/apps/settings/storage',
     legacyAliases: ['/apps/storage/config'],
-    title: '存储配置',
+    title: '存储服务',
+    searchAliases: ['存储配置'],
     icon: 'mdi-database-cog-outline',
-    domain: 'system-config',
+    domain: 'system',
     section: '存储',
     parentRoute: '/apps/settings/storage',
     grants: [
@@ -259,7 +258,7 @@ const systemConfigItems: readonly AdminNavigationItem[] = [
     legacyAliases: ['/apps/sender/config'],
     title: '消息渠道',
     icon: 'mdi-email-outline',
-    domain: 'system-config',
+    domain: 'system',
     section: '消息渠道',
     parentRoute: '/apps/settings/messaging',
     grants: [
@@ -273,10 +272,11 @@ const systemConfigItems: readonly AdminNavigationItem[] = [
     path: '/apps/settings/verification',
     canonicalPath: '/apps/settings/verification',
     legacyAliases: ['/apps/captcha/config'],
-    title: '验证配置',
+    title: '验证服务',
+    searchAliases: ['验证配置', '验证码服务'],
     icon: 'mdi-shield-check-outline',
-    domain: 'system-config',
-    section: '验证',
+    domain: 'system',
+    section: '验证服务',
     parentRoute: '/apps/settings/verification',
     grants: [
       { capability: 'captcha.read', scope: 'global' },
@@ -285,28 +285,29 @@ const systemConfigItems: readonly AdminNavigationItem[] = [
     riskLevel: 'sensitive',
     actionCapabilities: ['captcha.install', 'config.update'],
   }),
-]
+] as const
 
-const operationsItems: readonly AdminNavigationItem[] = [
+const operationsItems = [
   item({
     path: '/apps/operations/runtime',
     canonicalPath: '/apps/operations/runtime',
     legacyAliases: ['/apps/system/runtime'],
     title: '运行状态',
     icon: 'mdi-heart-pulse',
-    domain: 'operations-audit',
+    domain: 'system',
     section: '运行状态',
     parentRoute: '/apps/operations/runtime',
     grants: [operationsGrant],
-    actionCapabilities: ['operations.read'],
+    actionCapabilities: ['operations.read', 'operations.runtime.configure'],
+    riskLevel: 'sensitive',
   }),
   item({
     path: '/apps/operations/deliveries',
     canonicalPath: '/apps/operations/deliveries',
-    title: '通知投递',
+    title: '通知处理',
     icon: 'mdi-send-check-outline',
-    domain: 'operations-audit',
-    section: '通知投递',
+    domain: 'system',
+    section: '通知处理',
     parentRoute: '/apps/operations/deliveries',
     grants: [{ capability: 'communications.read', scope: 'global' }],
     riskLevel: 'sensitive',
@@ -318,7 +319,7 @@ const operationsItems: readonly AdminNavigationItem[] = [
     legacyAliases: ['/apps/system/upgrade'],
     title: '升级与迁移',
     icon: 'mdi-package-up',
-    domain: 'operations-audit',
+    domain: 'system',
     section: '升级与迁移',
     parentRoute: '/apps/operations/upgrade',
     grants: [operationsGrant],
@@ -330,13 +331,16 @@ const operationsItems: readonly AdminNavigationItem[] = [
     canonicalPath: '/apps/operations/audit',
     title: '审计日志',
     icon: 'mdi-clipboard-text-clock-outline',
-    domain: 'operations-audit',
+    domain: 'system',
     section: '审计日志',
     parentRoute: '/apps/operations/audit',
     grants: [auditGrant],
     actionCapabilities: ['audit.read'],
   }),
-]
+] as const
+
+const [siteInformation, sitePolicies, appearance, storageService, messagingService, verificationService] = systemConfigItems
+const [runtimeStatus, deliveryProcessing, upgrade, auditLog] = operationsItems
 
 const accessControlItems: readonly AdminNavigationItem[] = [
   item({
@@ -380,31 +384,31 @@ export const adminNavigation: {
   groups: [
     {
       key: 'content-community',
-      title: '内容与社区',
+      title: '内容',
       icon: 'mdi-forum-outline',
       domain: 'content-community',
-      items: contentItems,
+      items: [cards, comments, tags, reports, files, insights],
     },
     {
       key: 'user-access',
-      title: '用户与权限',
+      title: '用户',
       icon: 'mdi-shield-account-outline',
       domain: 'user-security',
       items: [...userSecurityItems, ...accessControlItems],
     },
     {
-      key: 'system-config',
-      title: '系统设置',
-      icon: 'mdi-cog-outline',
-      domain: 'system-config',
-      items: systemConfigItems,
+      key: 'site',
+      title: '站点',
+      icon: 'mdi-web',
+      domain: 'site',
+      items: [siteInformation, sitePolicies, appearance],
     },
     {
-      key: 'operations-audit',
-      title: '系统运维',
+      key: 'system',
+      title: '系统',
       icon: 'mdi-console-line',
-      domain: 'operations-audit',
-      items: operationsItems,
+      domain: 'system',
+      items: [runtimeStatus, deliveryProcessing, auditLog, storageService, messagingService, verificationService, upgrade],
     },
   ],
 }
@@ -432,7 +436,7 @@ const routeGrantOverrides: readonly AdminNavigationItem[] = [
     aliases: ['/apps/settings/appearance/themes'],
     legacyAliases: ['/apps/view/theme-config'],
     title: '主题配置',
-    domain: 'system-config',
+    domain: 'site',
     section: '外观',
     parentRoute: '/apps/settings/appearance',
     grants: [{ capability: 'theme.read', scope: 'global' }],
@@ -455,7 +459,7 @@ const routeGrantOverrides: readonly AdminNavigationItem[] = [
     canonicalPath: '/apps/settings/storage/:slug',
     legacyAliases: ['/apps/storage/config/:slug'],
     title: '存储驱动详情',
-    domain: 'system-config',
+    domain: 'system',
     section: '存储',
     parentRoute: '/apps/settings/storage',
     grants: [
@@ -469,7 +473,7 @@ const routeGrantOverrides: readonly AdminNavigationItem[] = [
     canonicalPath: '/apps/settings/messaging/:slug',
     legacyAliases: ['/apps/sender/config/:slug'],
     title: '消息渠道详情',
-    domain: 'system-config',
+    domain: 'system',
     section: '消息渠道',
     parentRoute: '/apps/settings/messaging',
     grants: [
@@ -483,8 +487,8 @@ const routeGrantOverrides: readonly AdminNavigationItem[] = [
     canonicalPath: '/apps/settings/verification/:slug',
     legacyAliases: ['/apps/captcha/config/:slug'],
     title: '验证器详情',
-    domain: 'system-config',
-    section: '验证',
+    domain: 'system',
+    section: '验证服务',
     parentRoute: '/apps/settings/verification',
     grants: [
       { capability: 'captcha.read', scope: 'global' },
@@ -497,7 +501,7 @@ const routeGrantOverrides: readonly AdminNavigationItem[] = [
     canonicalPath: '/apps/operations/upgrade',
     legacyAliases: ['/apps/system/upgrade'],
     title: '系统升级',
-    domain: 'operations-audit',
+    domain: 'system',
     section: '升级与迁移',
     parentRoute: '/apps/operations/upgrade',
     grants: [operationsGrant],
@@ -581,11 +585,25 @@ export function requiredGrants(path: string): readonly AdminGrantRequirement[] {
   return entry?.grants ?? []
 }
 
+export function requiredGrantSets(path: string): readonly (readonly AdminGrantRequirement[])[] {
+  if (path === '/apps/updata' || path.startsWith('/apps/updata/')) return [[operationsGrant]]
+
+  const entry = [...routeGrantOverrides, ...adminNavigationItems]
+    .map(candidate => ({ candidate, specificity: matchingPathSpecificity(candidate, path) }))
+    .filter(match => match.specificity >= 0)
+    .sort((a, b) => b.specificity - a.specificity)[0]?.candidate
+
+  if (!entry) return []
+  if (entry.grantSets && entry.grantSets.length > 0) return entry.grantSets
+  return entry.grants.length > 0 ? [entry.grants] : []
+}
+
 export function canAccessNavigationItem(
   item: AdminNavigationItem,
   grants: readonly { capability: string; scope: string }[],
 ): boolean {
-  return item.grants.length === 0 || item.grants.every((required) => grants.some((grant) =>
+  const satisfies = (requirements: readonly AdminGrantRequirement[]) => requirements.every((required) => grants.some((grant) =>
     grant.capability === required.capability && grant.scope === required.scope,
   ))
+  return item.grantSets?.some(satisfies) ?? (item.grants.length === 0 || satisfies(item.grants))
 }

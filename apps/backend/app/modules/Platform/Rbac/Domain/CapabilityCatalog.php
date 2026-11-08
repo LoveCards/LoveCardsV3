@@ -113,6 +113,7 @@ final class CapabilityCatalog
             'operations.read'       => '查看系统运行和迁移状态',
             'operations.migrate'    => '推进系统迁移',
             'operations.retry'      => '重试异步投递',
+            'operations.runtime.configure' => '变更运行时通信模式与运行参数',
             'audit.read'            => '查看审计日志',
             'reports.read'          => '查看举报案件',
             'reports.manage'        => '处理举报案件',
@@ -120,6 +121,7 @@ final class CapabilityCatalog
             'users.sessions.revoke' => '撤销用户 Session',
             'users.recovery.read'   => '查看账号恢复状态',
             'communications.read'   => '查看通知和投递运维元数据',
+            'communications.configure' => '启停互动通知策略',
             'community.insights.read' => '查看社区隐私安全聚合',
             // Session（公开路由，通常不需要分配）
             'session.login'     => '登录',

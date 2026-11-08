@@ -2,7 +2,7 @@
   <AdminPageHeader
     title="卡片"
     description="查看卡片内容，处理待审核或异常内容。"
-    :breadcrumbs="[{ title: '内容与社区' }]"
+    :breadcrumbs="[{ title: '内容' }]"
   />
 
   <AdminPageContainer fluid>
@@ -193,6 +193,7 @@ import { useTagsStore } from '@/stores/tagsStore';
 import { useUserStore } from '~/stores/userStore';
 import CommonUtils from '@/utils/common';
 import SelectUtils from '~/utils/select';
+import { tableSearchValue as mapTableSearchValue } from '~/utils/tableSearchValue';
 
 type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
 
@@ -309,7 +310,7 @@ const getTableData = async () => {
     ...tableSearchFilter.value,
   };
   if (searchValue) {
-    params.search_value = searchValue;
+    params.search_value = mapTableSearchValue(searchValue, tableSearchFilter.value.search_keys, { status: SelectUtils.Cards.status, model: SelectUtils.Cards.model });
     params.search_like = 2;
   }
   if (sort) {

@@ -4,7 +4,7 @@
       :title="`审计记录 #${route.params.id}`"
       description="核对一次管理操作的操作者、目标资源、状态前后值和请求链路。"
       :breadcrumbs="[
-        { title: '系统运维' },
+        { title: '系统' },
         { title: '审计日志', to: '/apps/operations/audit' },
         { title: `#${route.params.id}` },
       ]"

@@ -28,10 +28,6 @@ final class WorkbenchPolicy
         if ($grants->allows('cards.approve', Scope::ALL)) $keys[] = 'cards_pending';
         if ($grants->allows('comments.moderate', Scope::ALL)) $keys[] = 'comments_pending';
         if ($grants->allows('reports.manage', Scope::GLOBAL)) $keys[] = 'reports_open';
-        if ($grants->allows('users.recovery.read', Scope::GLOBAL)
-            && $grants->allows('users.sessions.revoke', Scope::GLOBAL)) {
-            $keys[] = 'recovery_active';
-        }
         if ($grants->allows('operations.retry', Scope::GLOBAL)) $keys[] = 'deliveries_dead';
         if ($grants->allows('files.update', Scope::ALL)) $keys[] = 'files_pending';
         return $keys;

@@ -3,7 +3,7 @@
     <AdminPageHeader
       title="主题外观"
       description="查看已安装主题、切换当前主题，并进入当前主题的配置页面。"
-      :breadcrumbs="[{ title: '系统设置' }]"
+      :breadcrumbs="[{ title: '站点' }]"
     />
 
     <v-alert v-if="activationError" class="mb-4" role="alert" type="error" variant="tonal">

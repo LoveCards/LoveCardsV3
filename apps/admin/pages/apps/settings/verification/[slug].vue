@@ -3,7 +3,7 @@
     <AdminPageHeader
       :title="`${driverName} 配置`"
       description="配置验证码驱动。修改后应确认登录、注册和敏感操作仍能正常校验。"
-      :breadcrumbs="[{ title: '系统设置' }, { title: '验证配置', to: '/apps/settings/verification' }, { title: driverName }]"
+      :breadcrumbs="[{ title: '系统' }, { title: '验证服务', to: '/apps/settings/verification' }, { title: driverName }]"
     />
 
     <v-row>

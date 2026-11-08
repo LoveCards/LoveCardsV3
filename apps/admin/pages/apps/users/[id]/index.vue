@@ -4,7 +4,7 @@
       :title="user ? `用户 · ${user.username}` : `用户 #${route.params.id}`"
       description="查看账号身份、状态与角色归属；安全会话和恢复能力保持在独立的受限页面。"
       :breadcrumbs="[
-        { title: '用户与权限' },
+        { title: '用户' },
         { title: '用户管理', to: '/apps/users' },
         { title: user?.username || `#${route.params.id}` },
       ]"

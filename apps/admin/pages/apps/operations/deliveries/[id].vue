@@ -2,10 +2,10 @@
   <AdminPageContainer>
     <AdminPageHeader
       :title="`投递 #${route.params.id}`"
-      description="核对单次事件投递的处理器、执行状态、重试次数与端到端关联标识。"
+      description="查看这条站内提醒事件的处理结果、失败原因与重试条件。"
       :breadcrumbs="[
-        { title: '系统运维' },
-        { title: '通知投递', to: '/apps/operations/deliveries' },
+        { title: '系统' },
+        { title: '通知处理', to: '/apps/operations/deliveries' },
         { title: `#${route.params.id}` },
       ]"
     >
@@ -39,22 +39,24 @@
       @retry="load"
     >
       <template v-if="delivery">
+        <p class="mb-4 text-body-2">处理记录只说明服务端如何执行；不表示浏览器已接收或用户已阅读。</p>
         <v-alert
           v-if="delivery.status === 'dead'"
           class="mb-5"
           icon="mdi-email-alert-outline"
-          title="该投递已进入死信状态"
+          title="处理失败，需要人工检查"
           type="error"
           variant="tonal"
         >
-          核对最后失败信息和处理器幂等性后再执行人工重试。
+          核对最后错误并排除原因后，可以重新运行该处理器。
         </v-alert>
 
         <v-sheet border rounded="lg" overflow-hidden>
           <v-list aria-label="投递摘要" lines="two">
-            <v-list-item prepend-icon="mdi-list-status" subtitle="当前状态">
+            <v-list-item prepend-icon="mdi-list-status" subtitle="处理结果">
               <template #title>
-                <AdminStatusChip :status="delivery.status" />
+                <span v-if="delivery.policy_decision === 'skipped'">已按策略跳过通知</span>
+                <AdminStatusChip v-else :status="delivery.status" />
               </template>
               <template #append>
                 <span class="text-body-2">已尝试 {{ delivery.attempt_count }} 次</span>
@@ -63,30 +65,15 @@
             <v-divider />
             <v-list-item
               prepend-icon="mdi-lightning-bolt-outline"
-              :subtitle="`事件 #${delivery.event_id}`"
-              :title="delivery.event_type"
+              :subtitle="delivery.event_type"
+              :title="delivery.display_name || delivery.event_type"
             />
             <v-divider />
-            <v-list-item
-              prepend-icon="mdi-cog-transfer-outline"
-              subtitle="处理器"
-              :title="delivery.handler_key"
-            />
+            <v-list-item prepend-icon="mdi-clock-outline" subtitle="创建时间" :title="delivery.created_at" />
             <v-divider />
-            <v-list-item prepend-icon="mdi-tray-full" subtitle="队列与执行模式">
-              <template #title>
-                {{ delivery.queue_name }}
-                <v-chip class="ml-2" size="small" variant="outlined">
-                  {{ delivery.execution_mode }}
-                </v-chip>
-              </template>
-            </v-list-item>
+            <v-list-item prepend-icon="mdi-clock-check-outline" subtitle="最早可执行时间" :title="delivery.available_at" />
             <v-divider />
-            <v-list-item
-              prepend-icon="mdi-vector-link"
-              subtitle="Correlation ID"
-              :title="delivery.correlation_id || '未提供'"
-            />
+            <v-list-item prepend-icon="mdi-update" subtitle="最近更新时间" :title="delivery.updated_at" />
           </v-list>
         </v-sheet>
 
@@ -104,12 +91,21 @@
           </v-sheet>
         </section>
 
-        <section class="mt-7" aria-labelledby="delivery-timeline-title">
-          <h2 id="delivery-timeline-title" class="mb-3 text-h6">投递时序</h2>
-          <v-sheet border class="pa-5" rounded="lg">
-            <AdminStateTimeline :items="timelineItems" />
-          </v-sheet>
-        </section>
+        <v-expansion-panels class="mt-6">
+          <v-expansion-panel title="技术信息">
+            <v-expansion-panel-text>
+              <dl class="delivery-detail__metadata">
+                <dt>事件 ID</dt><dd>{{ delivery.event_id }}</dd>
+                <dt>处理器</dt><dd>{{ delivery.handler_key }}</dd>
+                <dt>队列</dt><dd>{{ delivery.queue_name }}</dd>
+                <dt>执行模式</dt><dd>{{ delivery.execution_mode }}</dd>
+                <dt>策略版本</dt><dd>{{ delivery.policy_revision ?? '旧记录未配置' }}</dd>
+                <dt>策略判断</dt><dd>{{ policyDecisionLabel(delivery.policy_decision) }}</dd>
+                <dt>关联 ID</dt><dd>{{ delivery.correlation_id || '未提供' }}</dd>
+              </dl>
+            </v-expansion-panel-text>
+          </v-expansion-panel>
+        </v-expansion-panels>
 
         <v-alert
           class="mt-6"
@@ -143,7 +139,6 @@ import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
-import AdminStateTimeline, { type AdminTimelineItem } from '~/components/shared/admin/AdminStateTimeline.vue'
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
 import { useAdminNotifier } from '~/composables/useAdminNotifier'
 import { isApiError, useApi } from '~/lib/api'
@@ -160,30 +155,12 @@ const retryDialog = ref(false)
 const retrying = ref(false)
 const actionError = ref('')
 
-const timelineItems = computed<AdminTimelineItem[]>(() => {
-  if (!delivery.value) return []
-  return [
-    {
-      id: 'created',
-      title: '创建投递记录',
-      timestamp: delivery.value.created_at,
-      description: `事件 #${delivery.value.event_id} 交给 ${delivery.value.handler_key}`,
-    },
-    {
-      id: 'available',
-      title: '进入可执行时间窗',
-      timestamp: delivery.value.available_at,
-      description: `${delivery.value.queue_name} · ${delivery.value.execution_mode}`,
-    },
-    {
-      id: 'updated',
-      title: '最近一次状态更新',
-      timestamp: delivery.value.updated_at,
-      description: `累计尝试 ${delivery.value.attempt_count} 次`,
-      status: delivery.value.status,
-    },
-  ]
-})
+function policyDecisionLabel(decision: OperationsDelivery['policy_decision']) {
+  if (decision === 'skipped') return '已按策略跳过通知'
+  if (decision === 'applied') return '已执行通知投影'
+  if (decision === 'not-configured') return '旧记录或事件未配置策略'
+  return '无策略判断记录'
+}
 
 let latestRequest = 0
 async function load() {
@@ -254,4 +231,6 @@ watch(() => route.params.id, () => { void load() }, { immediate: true })
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.delivery-detail__metadata { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; }
+.delivery-detail__metadata dd { margin: 0; overflow-wrap: anywhere; }
 </style>

@@ -3,10 +3,12 @@ declare(strict_types=1);
 
 namespace app\api\controller\Platform;
 
+use app\api\ApiException;
 use app\api\controller\BaseController;
 use app\modules\Platform\Social\Public\Social;
 use app\modules\Platform\Library\Public\Library;
 use app\modules\Platform\Notifications\Public\Notifications;
+use app\modules\Platform\Notifications\Public\StreamTickets;
 use app\modules\Platform\Safety\Public\Safety;
 use app\shared\Resource\ResourceRef;
 use app\modules\Platform\Drafts\Public\Drafts;
@@ -48,6 +50,19 @@ final class Community extends BaseController
     public function clearHistory() { Library::clearHistory($this->uid()); return $this->respond(); }
 
     public function notifications() { $p=$this->validated(); return $this->respond(Notifications::list($this->uid(), $p['cursor'] ?? null, (int)($p['limit'] ?? 20), $this->boolValue($p['unread_only'] ?? null), $p['type'] ?? null, $p['category'] ?? null)); }
+        public function communicationSettings()
+    {
+        return $this->respond(app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->browserSettings());
+    }
+
+public function streamTicket()
+    {
+        $runtime = app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->snapshot();
+        if (($runtime['effective_mode'] ?? 'polling') !== 'realtime') {
+            throw ApiException::capabilityUnavailable('实时通道当前不可用，请稍后重试', (string) ($runtime['reason_code'] ?? 'realtime-not-ready'));
+        }
+        return $this->respond(StreamTickets::issue($this->uid()));
+    }
     public function unread() { $p=$this->validated(); return $this->respond(['unread' => Notifications::unreadCount($this->uid(), $p['category'] ?? null)]); }
     public function read() { $p=$this->validated(); $ids = $p['ids'] ?? []; if (is_string($ids)) $ids = json_decode($ids, true) ?: []; Notifications::markRead($this->uid(), array_map('intval', (array)$ids)); return $this->respond(); }
     public function readAll() { $p=$this->validated(); Notifications::markAllRead($this->uid(), $p['category'] ?? null); return $this->respond(); }

@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../app/providers.jsx';
 import { getUserFacingError } from '../../app/user-facing-error.js';
 import { getRuntimeDataMode } from '../../app/runtime-context.js';
+import { getCommunicationRuntime, SIGNAL_MESSAGES, SIGNAL_NOTIFICATIONS } from '../../services/communication-runtime.js';
 import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
 import { notificationPreview } from '../../fixtures/notification-preview.js';
 import { AppShell } from '../../layouts/AppShell.jsx';
@@ -121,11 +122,13 @@ export function InboxPage() {
   useEffect(() => { if (designPreview || (auth.status === 'ready' && auth.isAuthenticated)) void load(); }, [auth.isAuthenticated, auth.status, designPreview, load]);
   useEffect(() => {
     if (designPreview || !auth.isAuthenticated) return undefined;
-    const sync = () => { void load({ silent: true }); };
-    const onVisibility = () => { if (document.visibilityState === 'visible') sync(); };
-    const interval = window.setInterval(sync, 20_000);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => { window.clearInterval(interval); document.removeEventListener('visibilitychange', onVisibility); };
+    // 通信运行时（契约 §6）：刷新节奏由服务端快照驱动；页面只订阅信号。
+    const runtime = getCommunicationRuntime();
+    const unsubscribe = runtime.subscribe((topic) => {
+      if (topic === SIGNAL_NOTIFICATIONS || topic === SIGNAL_MESSAGES) void load({ silent: true });
+    });
+    void runtime.start();
+    return () => { unsubscribe(); };
   }, [auth.isAuthenticated, designPreview, load]);
 
   const loadMore = async () => {

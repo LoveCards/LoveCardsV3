@@ -29,4 +29,10 @@ interface DeliveryRepository
         DeliveryFailure $failure,
         \DateTimeImmutable $failedAt
     ): bool;
+
+    /**
+     * 记录投影前策略决策（applied/skipped/not-configured，契约 §5.2 D6）。
+     * 只写列，不改变 DeliveryStatus 枚举。
+     */
+    public function notePolicyDecision(int $deliveryId, string $decision): void;
 }

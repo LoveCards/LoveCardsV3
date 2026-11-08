@@ -78,6 +78,8 @@ final class AdminReadModel
                 'queues' => $queues,
                 'last_updated' => $delivery['last_updated'] ?? null,
             ],
+            // 通信运行时控制面快照（desired/effective/status/capabilities）。
+            'communication' => app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->snapshot(),
         ];
     }
 
@@ -88,9 +90,11 @@ final class AdminReadModel
         $limit = $this->limit($params);
         $query = Db::table('event_deliveries')->alias('d')
             ->leftJoin('outbox_events e', 'e.id = d.event_id')
-            ->field('d.id,d.event_id,d.handler_key,d.queue_name,d.execution_mode,d.status,d.attempt_count,d.available_at,d.last_error,d.created_at,d.updated_at,e.event_type,e.correlation_id');
+            ->field('d.id,d.event_id,d.handler_key,d.queue_name,d.execution_mode,d.status,d.attempt_count,d.available_at,d.last_error,d.policy_revision,d.policy_decision,d.created_at,d.updated_at,e.event_type,e.correlation_id');
         if (!empty($params['status'])) $query->where('d.status', (string) $params['status']);
         if (!empty($params['worker_type'])) $query->where('d.execution_mode', (string) $params['worker_type']);
+        if (!empty($params['queue_name'])) $query->where('d.queue_name', (string) $params['queue_name']);
+        if (!empty($params['policy_decision'])) $query->where('d.policy_decision', (string) $params['policy_decision']);
         $total = (clone $query)->count('d.id');
         $rows = $query->order('d.id', 'desc')->page($page, $limit)->select()->toArray();
         return $this->paginate($rows, (int) $total, $page, $limit);
@@ -101,11 +105,27 @@ final class AdminReadModel
     {
         $row = Db::table('event_deliveries')->alias('d')
             ->leftJoin('outbox_events e', 'e.id = d.event_id')
-            ->field('d.id,d.event_id,d.handler_key,d.queue_name,d.execution_mode,d.status,d.attempt_count,d.available_at,d.last_error,d.created_at,d.updated_at,e.event_type,e.correlation_id')
+            ->field('d.id,d.event_id,d.handler_key,d.queue_name,d.execution_mode,d.status,d.attempt_count,d.available_at,d.last_error,d.policy_revision,d.policy_decision,d.created_at,d.updated_at,e.event_type,e.correlation_id')
             ->where('d.id', $id)
             ->find();
         if (!$row) throw \app\api\ApiException::notFound('投递记录不存在');
         return $row;
+    }
+
+    /** 通知处理队列的当前累计状态，与列表的 queue_name=notifications 口径一致。 */
+    public function deliverySummary(): array
+    {
+        $row = Db::table('event_deliveries')
+            ->where('queue_name', 'notifications')
+            ->field("SUM(status = 'pending') AS pending, SUM(status = 'processing') AS processing, SUM(status = 'dead') AS dead, SUM(status = 'completed' AND policy_decision = 'skipped') AS skipped")
+            ->find();
+        return [
+            'pending' => (int) ($row['pending'] ?? 0),
+            'processing' => (int) ($row['processing'] ?? 0),
+            'dead' => (int) ($row['dead'] ?? 0),
+            'skipped' => (int) ($row['skipped'] ?? 0),
+            'checked_at' => gmdate('Y-m-d H:i:s'),
+        ];
     }
 
     /** @return array{data: array<int,array<string,mixed>>,total:int,per_page:int,current_page:int,last_page:int} */
@@ -113,11 +133,34 @@ final class AdminReadModel
     {
         $page = $this->page($params);
         $limit = $this->limit($params);
-        $query = Db::table('audit_logs');
-        foreach (['action', 'resource_type'] as $field) {
-            if (!empty($params[$field])) $query->where($field, 'like', '%' . (string) $params[$field] . '%');
+        $query = Db::table('audit_logs')
+            ->field('id,actor_id,action,resource_type,resource_id,request_id,correlation_id,created_at');
+        if (isset($params['action'])) {
+            $query->whereLike('action', addcslashes((string) $params['action'], '%_\\') . '%');
         }
-        if (!empty($params['actor_id'])) $query->where('actor_id', (int) $params['actor_id']);
+        foreach (['resource_type', 'resource_id', 'request_id', 'correlation_id'] as $field) {
+            if (!isset($params[$field])) continue;
+            $value = trim((string) $params[$field]);
+            if ($value === '') throw \app\api\ApiException::validation([$field => ['筛选值不能为空']]);
+            $query->where($field, $value);
+        }
+        if (isset($params['actor']) && isset($params['actor_id'])) {
+            throw \app\api\ApiException::validation(['actor' => ['不能同时指定操作者和旧版操作者 ID']]);
+        }
+        if (($params['actor'] ?? null) === 'system') {
+            $query->whereNull('actor_id');
+        } elseif (isset($params['actor'])) {
+            $actorId = (int) $params['actor'];
+            if ($actorId < 1 || $actorId > 2147483647) throw \app\api\ApiException::validation(['actor' => ['操作者 ID 无效']]);
+            $query->where('actor_id', $actorId);
+        } elseif (isset($params['actor_id'])) {
+            $query->where('actor_id', (int) $params['actor_id']);
+        }
+        if (isset($params['from'], $params['to']) && strcmp((string) $params['from'], (string) $params['to']) >= 0) {
+            throw \app\api\ApiException::validation(['to' => ['结束时间必须晚于开始时间']]);
+        }
+        if (isset($params['from'])) $query->where('created_at', '>=', (string) $params['from']);
+        if (isset($params['to'])) $query->where('created_at', '<', (string) $params['to']);
         $total = (clone $query)->count('id');
         $rows = $query->order('id', 'desc')->page($page, $limit)->select()->toArray();
         return $this->paginate($rows, (int) $total, $page, $limit);

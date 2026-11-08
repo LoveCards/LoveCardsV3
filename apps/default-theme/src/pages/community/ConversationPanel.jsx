@@ -5,6 +5,7 @@ import { getUserFacingError } from '../../app/user-facing-error.js';
 import { AuthorIdentity } from '../../components/AuthorIdentity.jsx';
 import { ResourceState } from '../../components/ResourceState.jsx';
 import { ensureClientMessageId, listConversations, listMessages, sendMessage } from '../../services/community-service.js';
+import { getCommunicationRuntime, SIGNAL_MESSAGES } from '../../services/communication-runtime.js';
 import { Button, ChatComposer, ChatComposerInput, ChatSendButton } from '../../ui/index.js';
 import { conversationIdOf, conversationRecipientOf, formatMessageTime } from './message-utils.js';
 
@@ -75,6 +76,13 @@ export function ConversationPanel({ conversationId, initialRecipientId = null, s
   }, [auth.isAuthenticated, auth.session?.uid, numericId, validId]);
 
   useEffect(() => { if (auth.status === 'ready' && auth.isAuthenticated && validId) void load(); }, [auth.isAuthenticated, auth.status, load, validId]);
+  useEffect(() => {
+    if (!auth.isAuthenticated || !validId) return undefined;
+    const runtime = getCommunicationRuntime();
+    const unsubscribe = runtime.subscribe((topic) => { if (topic === SIGNAL_MESSAGES) void load(); });
+    void runtime.start();
+    return () => unsubscribe();
+  }, [auth.isAuthenticated, load, validId]);
 
   const transmit = async (message) => {
     if (!recipientId || busy) return;

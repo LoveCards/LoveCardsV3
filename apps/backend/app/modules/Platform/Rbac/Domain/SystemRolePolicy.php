@@ -65,7 +65,8 @@ final class SystemRolePolicy
                 'grants' => self::grants([
                     ['admin.access', 'global'], ['dashboard.read', 'global'],
                     ['operations.read', 'global'], ['operations.migrate', 'global'],
-                    ['operations.retry', 'global'], ['communications.read', 'global'],
+                    ['operations.retry', 'global'], ['operations.runtime.configure', 'global'],
+                    ['communications.read', 'global'], ['communications.configure', 'global'],
                     ['audit.read', 'global'],
                     ['system.update', 'global'], ['system.update.contract', 'global'],
                     ['system.recover', 'global'],
@@ -141,6 +142,7 @@ final class SystemRolePolicy
                 'likes.create', 'likes.read', 'likes.delete',
                 'dashboard.read',
                 'system.update', 'system.update.contract', 'system.recover',
+                'operations.runtime.configure',
                 'config.read', 'config.update', 'config.init', 'config.reload', 'config.register', 'config.deleteKey',
                 'storage.read', 'storage.install', 'storage.test',
                 'sender.read', 'sender.install', 'sender.test',
@@ -150,7 +152,7 @@ final class SystemRolePolicy
                 'roles.read', 'roles.create', 'roles.update', 'roles.delete', 'roles.assign',
                 'operations.read', 'operations.migrate', 'operations.retry', 'audit.read',
                 'reports.read', 'reports.manage', 'users.security.read', 'users.sessions.revoke',
-                'users.recovery.read', 'communications.read', 'community.insights.read',
+                'users.recovery.read', 'communications.read', 'communications.configure', 'community.insights.read',
             ],
             $roles['root'] => [],
         ];

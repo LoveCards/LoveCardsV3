@@ -112,6 +112,22 @@ assert.equal(
   'data?: { category?: NotificationListCategory }',
 )
 
+// 通信运行时（Phase 2）：一次性 stream ticket 签发端点（契约 §4.4），替代假 SSE 流。
+const streamTicketRoute = routeManifest.routes.find((item) => item.name === 'notifications.streamTicket')
+assert(streamTicketRoute, 'notifications.streamTicket must be exported in the route manifest')
+assert.equal(streamTicketRoute.meta.access.auth, 'required', 'streamTicket must require authentication')
+assert(String(streamTicketRoute.contract.response.resource).endsWith('StreamTicketResource'), 'streamTicket must bind the StreamTicket contract resource')
+assert.equal(streamTicketRoute.contract.response.shape, 'item')
+assert.equal(operationResponseType(operation('notifications.streamTicket')), 'StreamTicket')
+// Gateway 回源接口只允许内部 Bearer（契约 §4.3）：不进入 SDK 方法，也不出现在 OpenAPI 文档。
+const internalOperationIds = Object.values(openapi.paths)
+  .flatMap((methods) => Object.values(methods))
+  .map((item) => item.operationId)
+assert(!internalOperationIds.includes('internal.realtimeTicketVerify'), 'gateway verify must stay out of the public OpenAPI surface')
+assert(!internalOperationIds.includes('internal.realtimeNotificationsSince'), 'gateway poll must stay out of the public OpenAPI surface')
+const internalRoutes = routeManifest.routes.filter((item) => item.name.startsWith('internal.'))
+assert.equal(internalRoutes.length, 2, 'internal gateway routes must remain exported for route-level audits')
+
 const notificationList = operation('notifications.list')
 const notificationQuery = notificationList.parameters.find((item) => item.in === 'query').schema
 assert.equal(
@@ -130,10 +146,6 @@ assert.match(notificationListMethod, /Promise<ApiTypes\.NotificationCursorPage>/
 assert.match(notificationListMethod, /category\?: ApiTypes\.NotificationListCategory/)
 assert.doesNotMatch(notificationListMethod, /ApiTypes\.ApiTypes/)
 
-const stream = operation('notifications.stream')
-assert.equal(stream['x-response-shape'], 'raw')
-assert.equal(stream.responses['200'].content['text/event-stream'].schema['x-typescript-type'], 'string')
-
 const migrationRun = operation('operations.runMigrations')
 assert.equal(migrationRun.requestBody.required, false)
 assert.deepEqual(Object.keys(migrationRun.requestBody.content['application/json'].schema.properties ?? {}), [])
@@ -148,10 +160,13 @@ const adminOperations = [
   ['operations.migrations', 'operations.read', null, 'collection', 200],
   ['operations.runMigrations', 'operations.migrate', 'migrationRun', 'collection', 200],
   ['operations.runtime', 'operations.read', null, 'item', 200],
-  ['operations.deliveries', 'communications.read', 'pagination', 'paginated', 200],
+  ['communications.policies', 'communications.read', null, 'item', 200],
+  ['communications.applyPolicies', 'communications.configure', 'notificationPolicies', 'item', 200],
+  ['operations.deliveries', 'communications.read', 'deliveryList', 'paginated', 200],
+  ['operations.deliverySummary', 'communications.read', null, 'item', 200],
   ['operations.retryDelivery', 'operations.retry', null, 'void', 204],
   ['operations.notificationStats', 'communications.read', null, 'item', 200],
-  ['operations.auditLogs', 'audit.read', 'pagination', 'paginated', 200],
+  ['operations.auditLogs', 'audit.read', 'list', 'paginated', 200],
   ['reports.listManaged', 'reports.read', 'pagination', 'paginated', 200],
   ['reports.getManaged', 'reports.read', null, 'item', 200],
   ['reports.transition', 'reports.manage', 'transition', 'item', 200],

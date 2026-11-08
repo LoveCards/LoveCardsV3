@@ -101,13 +101,39 @@ namespace
         public static object $audit;
     }
 
+    if (!class_exists('FakeCommunicationPorts')) {
+            require_once __DIR__ . '/../../app/modules/Platform/Eventing/Public/RealtimeSignal.php';
+            require_once __DIR__ . '/../../app/modules/Platform/Eventing/Public/RealtimeSignalPublisher.php';
+            require_once __DIR__ . '/../../app/modules/Platform/Notifications/Contract/NotificationPolicyStore.php';
+            final class FakeCommunicationPorts
+            {
+                private static $instances = [];
+                public static function instance(string $class): object
+                {
+                    return self::$instances[$class] ??= new class implements
+                        \app\modules\Platform\Eventing\Public\RealtimeSignalPublisher,
+                        \app\modules\Platform\Notifications\Contract\NotificationPolicyStore {
+                        public function publish(\app\modules\Platform\Eventing\Public\RealtimeSignal $signal): void {}
+                        public function snapshot(int $policyRevision): ?array { return null; }
+                        public function currentRevision(): ?int { return null; }
+                        public function listCurrent(): array { return []; }
+                        public function applyChanges(array $changes, int $expectedRevision, ?int $actorId, ?string $reason): array
+                        { return ['revision' => $expectedRevision, 'policies' => [], 'before' => []]; }
+                    };
+                }
+            }
+        }
+
     function app(string $class): object
     {
         if ($class === SessionRegistry::class) return ProfileSecurityState::$sessions;
         if ($class === SystemNoticeIssuer::class) return ProfileSecurityState::$notices;
         if ($class === \app\shared\Observability\AuditLogger::class) return ProfileSecurityState::$audit;
+        if (in_array($class, ['app\\modules\\Platform\\Eventing\\Public\\RealtimeSignalPublisher', 'app\\modules\\Platform\\Notifications\\Contract\\NotificationPolicyStore'], true)) {
+            return \FakeCommunicationPorts::instance($class);
+        }
         throw new RuntimeException('Unexpected container lookup: ' . $class);
-    }
+}
 
     require dirname(__DIR__, 2) . '/app/modules/Platform/Auth/Contract/SessionRegistry.php';
     require dirname(__DIR__, 2) . '/app/modules/Platform/Notifications/Contract/SystemNoticeIssuer.php';
@@ -157,4 +183,7 @@ namespace
     $assert(ProfileSecurityState::$notices->records === [] && ProfileSecurityState::$sessions->records === [], 'rejected email change must have no side effects');
 
     fwrite(STDOUT, "PASS profile security notification baseline\n");
+
+
+
 }

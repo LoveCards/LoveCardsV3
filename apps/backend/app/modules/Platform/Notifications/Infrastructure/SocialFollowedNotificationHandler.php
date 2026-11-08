@@ -27,6 +27,6 @@ final class SocialFollowedNotificationHandler implements EventHandler
             'social.followed',
             $actorId,
             new ResourceRef('user', (string) $actorId)
-        );
+        , $context->policyScope());
     }
 }

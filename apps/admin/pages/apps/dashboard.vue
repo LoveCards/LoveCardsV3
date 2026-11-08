@@ -162,23 +162,23 @@
         <section v-if="canReadCommunications" class="workbench-notifications" aria-labelledby="notifications-title">
           <div class="d-flex flex-wrap align-start justify-space-between ga-3 mb-3">
             <div>
-              <h2 id="notifications-title" class="text-subtitle-1 font-weight-bold">通知投递</h2>
-              <p class="text-body-2 text-medium-emphasis mt-1">站内通知处理器的当前汇总。</p>
+              <h2 id="notifications-title" class="text-subtitle-1 font-weight-bold">站内通知统计</h2>
+              <p class="text-body-2 text-medium-emphasis mt-1">已生成的用户通知累计数据；处理异常请查看通知处理。</p>
             </div>
-            <v-btn to="/apps/operations/deliveries" variant="text" color="primary" append-icon="mdi-arrow-right">打开投递</v-btn>
+            <v-btn to="/apps/operations/deliveries" variant="text" color="primary" append-icon="mdi-arrow-right">查看通知处理</v-btn>
           </div>
           <v-card v-if="notificationStats">
             <v-list>
-              <v-list-item prepend-icon="mdi-bell-outline" title="通知总量" to="/apps/operations/deliveries?source=dashboard&metric=total" value="notification-total">
-                <template #append><div class="d-flex align-center ga-3"><strong class="text-h6">{{ notificationStats.total }}</strong><v-icon icon="mdi-chevron-right" size="18" /></div></template>
+              <v-list-item prepend-icon="mdi-bell-outline" title="通知总量" value="notification-total">
+                <template #append><strong class="text-h6">{{ notificationStats.total }}</strong></template>
               </v-list-item>
               <v-divider />
-              <v-list-item prepend-icon="mdi-bell-badge-outline" title="未读通知" to="/apps/operations/deliveries?source=dashboard&metric=unread" value="notification-unread">
-                <template #append><div class="d-flex align-center ga-3"><strong class="text-h6">{{ notificationStats.unread }}</strong><v-icon icon="mdi-chevron-right" size="18" /></div></template>
+              <v-list-item prepend-icon="mdi-bell-badge-outline" title="未读通知" value="notification-unread">
+                <template #append><strong class="text-h6">{{ notificationStats.unread }}</strong></template>
               </v-list-item>
               <v-divider />
-              <v-list-item prepend-icon="mdi-account-multiple-outline" title="覆盖用户" to="/apps/operations/deliveries?source=dashboard&metric=recipients" value="notification-recipients">
-                <template #append><div class="d-flex align-center ga-3"><strong class="text-h6">{{ notificationStats.recipients }}</strong><v-icon icon="mdi-chevron-right" size="18" /></div></template>
+              <v-list-item prepend-icon="mdi-account-multiple-outline" title="覆盖用户" value="notification-recipients">
+                <template #append><strong class="text-h6">{{ notificationStats.recipients }}</strong></template>
               </v-list-item>
             </v-list>
           </v-card>
@@ -260,11 +260,10 @@ const responsibilityLinks = computed(() => [
   { key: 'tags', label: '标签治理', description: '维护内容分类和标签状态。', icon: 'mdi-tag-multiple-outline', to: '/apps/content/tags' },
   { key: 'reports', label: '举报处理', description: '核对证据、状态和处理历史。', icon: 'mdi-flag-outline', to: '/apps/community/reports' },
   { key: 'insights', label: '社区洞察', description: '查看隐私安全的聚合指标。', icon: 'mdi-chart-line', to: '/apps/community/insights' },
-  { key: 'users', label: '用户与权限', description: '查看获授权的用户和账号安全状态。', icon: 'mdi-shield-account-outline', to: '/apps/users' },
-  { key: 'recovery', label: '账号恢复', description: '核对恢复挑战，不展示恢复凭证。', icon: 'mdi-account-lock-outline', to: '/apps/security/recovery' },
+  { key: 'users', label: '用户', description: '查看获授权的用户和账号安全状态。', icon: 'mdi-shield-account-outline', to: '/apps/users' },
   { key: 'runtime', label: '运行健康', description: '检查设施、事件队列和降级状态。', icon: 'mdi-heart-pulse', to: '/apps/operations/runtime' },
-  { key: 'deliveries', label: '通知投递', description: '检查投递状态和失败原因。', icon: 'mdi-send-check-outline', to: '/apps/operations/deliveries' },
-  { key: 'storage', label: '存储配置', description: '维护文件渠道和基础设施配置。', icon: 'mdi-database-cog-outline', to: '/apps/settings/storage' },
+  { key: 'deliveries', label: '通知处理', description: '检查提醒事件的处理结果和失败原因。', icon: 'mdi-send-check-outline', to: '/apps/operations/deliveries' },
+  { key: 'storage', label: '存储服务', description: '维护文件渠道和基础设施配置。', icon: 'mdi-database-cog-outline', to: '/apps/settings/storage' },
   { key: 'upgrade', label: '升级与迁移', description: '检查升级计划和迁移状态。', icon: 'mdi-package-up', to: '/apps/operations/upgrade' },
   { key: 'audit', label: '审计记录', description: '追溯管理动作、资源变化和请求链路。', icon: 'mdi-clipboard-text-clock-outline', to: '/apps/operations/audit' },
   { key: 'roles', label: '角色与权限', description: '管理角色和 capability grants。', icon: 'mdi-shield-lock-outline', to: '/apps/access/roles' },
@@ -282,7 +281,6 @@ function taskIcon(key: string) {
     cards_pending: 'mdi-card-search-outline',
     comments_pending: 'mdi-comment-alert-outline',
     reports_open: 'mdi-flag-outline',
-    recovery_active: 'mdi-account-key-outline',
     deliveries_dead: 'mdi-alert-circle-outline',
     files_pending: 'mdi-file-clock-outline',
   } as Record<string, string>)[key] ?? 'mdi-clipboard-check-outline'

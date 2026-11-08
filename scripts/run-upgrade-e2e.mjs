@@ -7,6 +7,7 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { resolveSupportedPhp } from './lib/php-runtime.mjs'
+import { detectUtf8mb4Collation } from './lib/mysql-collation.mjs'
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
 const backendRoot = path.join(root, 'apps', 'backend')
@@ -253,6 +254,12 @@ const bundledOpenSsl = path.join(path.dirname(php), 'extras', 'ssl', 'openssl.cn
 const openSslConfig = process.env.OPENSSL_CONF || (existsSync(bundledOpenSsl) ? bundledOpenSsl : '')
 const randFile = path.join(temporaryRoot, 'openssl.rand')
 await writeFile(randFile, '')
+const databaseCollation = await detectUtf8mb4Collation(php, {
+  DATABASE_HOSTNAME: databaseHost,
+  DATABASE_HOSTPORT: databasePort,
+  DATABASE_USERNAME: databaseUser,
+  DATABASE_PASSWORD: databasePassword,
+})
 const dbEnv = {
   LOVECARDS_E2E_ISOLATED: '1',
   LOVECARDS_E2E_DB_HOST: databaseHost,
@@ -273,6 +280,7 @@ const dbEnv = {
   PHP_DATABASE_DATABASE: database,
   PHP_DATABASE_USERNAME: databaseUser,
   PHP_DATABASE_PASSWORD: databasePassword,
+  PHP_DATABASE_COLLATION: databaseCollation,
   // 与 run-admin-e2e 相同：入口 loadEnv 只读 .env.e2e（不存在），进程注入的
   // 隔离库连接严格生效（带 .env 的开发仓库本地跑不再被劫持；CI 行为不变）。
   LC_ENV_NAME: 'e2e',

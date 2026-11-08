@@ -35,6 +35,8 @@ namespace {
     require $root . '/app/modules/Platform/Notifications/Contract/NotificationRepository.php';
     require $root . '/app/modules/Platform/Notifications/Contract/NotificationTypeCatalog.php';
     require $root . '/app/modules/Platform/Notifications/Application/ManageNotifications.php';
+    require $root . '/app/modules/Platform/Notifications/Contract/NotificationPolicyStore.php';
+    require $root . '/app/modules/Platform/Notifications/Application/NotificationPolicyGate.php';
     require $root . '/app/modules/Platform/Notifications/Public/Notifications.php';
     require $root . '/app/modules/Platform/Notifications/Infrastructure/ContentCommentPublishedNotificationHandler.php';
     require $root . '/app/modules/Platform/Notifications/Infrastructure/ContentMentionsAddedNotificationHandler.php';
@@ -52,11 +54,12 @@ namespace {
         /** @var array<string, NotificationIntent> */
         public array $items = [];
         public function recipientCanReceive(int $userId, string $type): bool { return isset(Db::$activeUsers[$userId]); }
-        public function create(NotificationIntent $intent): int
+        public function create(NotificationIntent $intent): array
         {
             $key = $intent->recipientId() . ':' . $intent->dedupeKey();
-            if (!isset($this->items[$key])) $this->items[$key] = $intent;
-            return array_search($key, array_keys($this->items), true) + 1;
+            $first = !isset($this->items[$key]);
+            if ($first) $this->items[$key] = $intent;
+            return [array_search($key, array_keys($this->items), true) + 1, $first, null];
         }
         public function listForUser(int $userId, ?string $cursor, int $limit, bool $unreadOnly, ?string $type, ?string $category): array { return ['items' => [], 'next_cursor' => null, 'has_more' => false]; }
         public function markRead(int $userId, array $ids): int { return 0; }
@@ -67,11 +70,37 @@ namespace {
     }
 
     final class ContentMentionContainer { public static ContentMentionFakeRepository $repository; }
+    if (!class_exists('FakeCommunicationPorts')) {
+            require_once __DIR__ . '/../../app/modules/Platform/Eventing/Public/RealtimeSignal.php';
+            require_once __DIR__ . '/../../app/modules/Platform/Eventing/Public/RealtimeSignalPublisher.php';
+            require_once __DIR__ . '/../../app/modules/Platform/Notifications/Contract/NotificationPolicyStore.php';
+            final class FakeCommunicationPorts
+            {
+                private static $instances = [];
+                public static function instance(string $class): object
+                {
+                    return self::$instances[$class] ??= new class implements
+                        \app\modules\Platform\Eventing\Public\RealtimeSignalPublisher,
+                        \app\modules\Platform\Notifications\Contract\NotificationPolicyStore {
+                        public function publish(\app\modules\Platform\Eventing\Public\RealtimeSignal $signal): void {}
+                        public function snapshot(int $policyRevision): ?array { return null; }
+                        public function currentRevision(): ?int { return null; }
+                        public function listCurrent(): array { return []; }
+                        public function applyChanges(array $changes, int $expectedRevision, ?int $actorId, ?string $reason): array
+                        { return ['revision' => $expectedRevision, 'policies' => [], 'before' => []]; }
+                    };
+                }
+            }
+        }
+
     function app(string $class): object
     {
         if ($class === NotificationRepository::class) return ContentMentionContainer::$repository;
+        if (in_array($class, ['app\\modules\\Platform\\Eventing\\Public\\RealtimeSignalPublisher', 'app\\modules\\Platform\\Notifications\\Contract\\NotificationPolicyStore'], true)) {
+            return \FakeCommunicationPorts::instance($class);
+        }
         throw new RuntimeException('Unexpected container lookup: ' . $class);
-    }
+}
 
     $assert = static function (bool $condition, string $message): void {
         if (!$condition) throw new RuntimeException($message);
@@ -136,4 +165,7 @@ namespace {
     $assert($items[2]->dedupeKey() === 'mention:card:11:user:4', 'mention should use a durable business dedupe key');
 
     fwrite(STDOUT, "PASS content comment and mention notification projection\n");
+
+
+
 }

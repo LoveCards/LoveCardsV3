@@ -97,6 +97,18 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
+    $collation = trim((string) (getenv('PHP_DATABASE_COLLATION') ?: ''));
+    if ($collation === '') {
+        $collation = (string) $pdo->query(
+            "SELECT COLLATION_NAME FROM information_schema.COLLATIONS " .
+            "WHERE CHARACTER_SET_NAME = 'utf8mb4' AND IS_DEFAULT = 'Yes' LIMIT 1"
+        )->fetchColumn();
+    }
+    if (preg_match('/^[A-Za-z0-9_]+$/', $collation) !== 1) {
+        throw new RuntimeException('Unable to determine the server utf8mb4 collation');
+    }
+    putenv('PHP_DATABASE_COLLATION=' . $collation);
+    $pdo->exec("SET NAMES utf8mb4 COLLATE {$collation}");
     if ($mode === 'drop') {
         $pdo->exec("DROP DATABASE IF EXISTS {$quoted}");
         exit(0);
@@ -107,11 +119,12 @@ try {
     if ($exists->fetchColumn() !== false) {
         throw new RuntimeException('Refusing to reuse an existing E2E database: ' . $database);
     }
-    $pdo->exec("CREATE DATABASE {$quoted} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    $pdo->exec("CREATE DATABASE {$quoted} CHARACTER SET utf8mb4 COLLATE {$collation}");
     $databaseCreated = true;
     $databasePdo = new PDO("{$dsn};dbname={$database}", $user, $password, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     ]);
+    $databasePdo->exec("SET NAMES utf8mb4 COLLATE {$collation}");
     $sql = file_get_contents(__DIR__ . '/../apps/backend/data.sql');
     if ($sql === false || trim($sql) === '') {
         throw new RuntimeException('apps/backend/data.sql is missing or empty');
@@ -163,8 +176,10 @@ try {
         // runner. This fixture is created only in the disposable database.
         $e2eAccount = trim((string) (getenv('LOVECARDS_E2E_ADMIN_ACCOUNT') ?: ''));
         $e2ePassword = (string) (getenv('LOVECARDS_E2E_ADMIN_PASSWORD') ?: '');
-        // SDK 全量套件覆盖 root 专属能力；仅为新建的隔离夹具选择 root，普通 UI 验收仍用 admin。
+        // SDK 全量套件覆盖 root 专属能力；普通 UI 验收使用 admin + user，
+        // 以便路由夹具通过真实用户接口创建卡片和评论。
         $e2eRoleId = getenv('LOVECARDS_E2E_RUN_SDK_INTEGRATION') === '1' ? 1 : 2;
+        $e2eRoleIds = $e2eRoleId === 2 ? [2, 3] : [1];
         if ($e2eAccount !== '' && $e2ePassword !== '') {
             $e2eEmail = filter_var($e2eAccount, FILTER_VALIDATE_EMAIL) ? $e2eAccount : 'e2e-admin@example.test';
             $e2eUsername = filter_var($e2eAccount, FILTER_VALIDATE_EMAIL) ? 'e2e_admin' : $e2eAccount;
@@ -177,12 +192,12 @@ try {
                 $e2eUid = (string) random_int(100000000000, 999999999999);
                 $insert = $databasePdo->prepare('INSERT INTO `users` (`uid`,`number`,`avatar`,`email`,`phone`,`username`,`password`,`status`,`roles_id`,`security_version`,`created_at`,`updated_at`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
                 $now = date('Y-m-d H:i:s');
-                $insert->execute([$e2eUid, $e2eNumber, '', $e2eEmail, '', $e2eUsername, password_hash($e2ePassword, PASSWORD_DEFAULT), 0, json_encode([$e2eRoleId]), 1, $now, $now]);
+                $insert->execute([$e2eUid, $e2eNumber, '', $e2eEmail, '', $e2eUsername, password_hash($e2ePassword, PASSWORD_DEFAULT), 0, json_encode($e2eRoleIds), 1, $now, $now]);
                 $e2eUserId = (int) $databasePdo->lastInsertId();
                 $registry = $databasePdo->prepare('INSERT INTO `user_uid_registry` (`uid`,`user_id`,`issued_at`) VALUES (?,?,?)');
                 $registry->execute([$e2eUid, $e2eUserId, $now]);
                 $role = $databasePdo->prepare('INSERT INTO `user_roles` (`user_id`,`role_id`,`created_at`) VALUES (?,?,?)');
-                $role->execute([$e2eUserId, $e2eRoleId, $now]);
+                foreach ($e2eRoleIds as $roleId) $role->execute([$e2eUserId, $roleId, $now]);
             }
         }
     } finally {

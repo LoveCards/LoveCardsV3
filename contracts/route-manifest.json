@@ -1,6 +1,6 @@
 {
   "source": "thinkphp-runtime-route-registry",
-  "routeCount": 191,
+  "routeCount": 201,
   "routes": [
     {
       "path": "/admin/cards/:id",
@@ -949,8 +949,8 @@
       ],
       "contract": {
         "request": {
-          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
-          "scene": "pagination"
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminAuditQueryValidate",
+          "scene": "list"
         },
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminAuditLogResource",
@@ -1267,6 +1267,43 @@
       "source": "apps/backend/app/api/route"
     },
     {
+      "path": "/admin/communications/policies",
+      "method": "GET",
+      "name": "communications.policies",
+      "controller": "Platform.AdminCommunications",
+      "action": "policies",
+      "meta": {
+        "name": "通知策略目录",
+        "group": "通信",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminNotificationPoliciesResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
       "path": "/admin/community/insights",
       "method": "GET",
       "name": "community.insights",
@@ -1563,7 +1600,7 @@
       "contract": {
         "request": {
           "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
-          "scene": "pagination"
+          "scene": "deliveryList"
         },
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminDeliveryResource",
@@ -1604,6 +1641,43 @@
         "request": null,
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminDeliveryResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/deliveries/summary",
+      "method": "GET",
+      "name": "operations.deliverySummary",
+      "controller": "Platform.Administration",
+      "action": "deliverySummary",
+      "meta": {
+        "name": "通知处理汇总",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminDeliverySummaryResource",
           "shape": "item",
           "status": 200
         }
@@ -1752,6 +1826,43 @@
         "request": null,
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminRuntimeResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/runtime/config",
+      "method": "GET",
+      "name": "operations.runtimeConfig",
+      "controller": "Platform.Administration",
+      "action": "runtimeConfig",
+      "meta": {
+        "name": "运行时通信配置",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminRuntimeConfigResource",
           "shape": "item",
           "status": 200
         }
@@ -2959,6 +3070,35 @@
       "source": "apps/backend/app/api/route"
     },
     {
+      "path": "/internal/realtime/notifications-since",
+      "method": "GET",
+      "name": "internal.realtimeNotificationsSince",
+      "controller": "Platform.RealtimeInternal",
+      "action": "notificationsSince",
+      "meta": {
+        "name": "通知游标回源（内部）",
+        "group": "运行时",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\InternalTokenCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalRealtimeValidate",
+          "scene": "since"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalNotificationsPollResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
       "path": "/me",
       "method": "GET",
       "name": "users.me.get",
@@ -3126,6 +3266,32 @@
         "response": {
           "resource": "app\\modules\\Content\\Comments\\Transport\\Api\\CommentResource",
           "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/communication/settings",
+      "method": "GET",
+      "name": "communication.settings",
+      "controller": "Platform.Community",
+      "action": "communicationSettings",
+      "meta": {
+        "name": "通信节奏快照",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Runtime\\Transport\\Api\\CommunicationSettingsResource",
+          "shape": "item",
           "status": 200
         }
       },
@@ -3490,37 +3656,6 @@
           "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\NotificationPreferencesResource",
           "shape": "item",
           "status": 200
-        }
-      },
-      "source": "apps/backend/app/api/route"
-    },
-    {
-      "path": "/me/notifications/stream",
-      "method": "GET",
-      "name": "notifications.stream",
-      "controller": "Platform.Realtime",
-      "action": "stream",
-      "meta": {
-        "name": "通知实时流",
-        "group": "社区",
-        "access": {
-          "auth": "required"
-        }
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck"
-      ],
-      "contract": {
-        "request": {
-          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
-          "scene": "stream"
-        },
-        "response": {
-          "resource": null,
-          "shape": "raw",
-          "status": 200,
-          "type": "string",
-          "contentType": "text/event-stream"
         }
       },
       "source": "apps/backend/app/api/route"
@@ -4831,6 +4966,83 @@
       "source": "apps/backend/app/api/route"
     },
     {
+      "path": "/admin/operations/runtime/reconcile",
+      "method": "POST",
+      "name": "operations.reconcileRuntime",
+      "controller": "Platform.Administration",
+      "action": "reconcileRuntime",
+      "meta": {
+        "name": "运行时对账",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.runtime.configure",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminRuntimeConfigResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/runtime/validate",
+      "method": "POST",
+      "name": "operations.validateRuntimeConfig",
+      "controller": "Platform.Administration",
+      "action": "validateRuntimeConfig",
+      "meta": {
+        "name": "校验运行时配置",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.runtime.configure",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "runtimeConfig"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminRuntimeValidateResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
       "path": "/admin/operations/upgrades",
       "method": "POST",
       "name": "operations.createUpgrade",
@@ -5694,6 +5906,35 @@
       "source": "apps/backend/app/api/route"
     },
     {
+      "path": "/internal/realtime/ticket/verify",
+      "method": "POST",
+      "name": "internal.realtimeTicketVerify",
+      "controller": "Platform.RealtimeInternal",
+      "action": "verifyTicket",
+      "meta": {
+        "name": "流凭证校验（内部）",
+        "group": "运行时",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\InternalTokenCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalRealtimeValidate",
+          "scene": "verify"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalTicketVerifyResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
       "path": "/me/cards",
       "method": "POST",
       "name": "cards.create",
@@ -6079,6 +6320,32 @@
           "resource": null,
           "shape": "void",
           "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/notifications/stream-ticket",
+      "method": "POST",
+      "name": "notifications.streamTicket",
+      "controller": "Platform.Community",
+      "action": "streamTicket",
+      "meta": {
+        "name": "通知实时流凭证",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\StreamTicketResource",
+          "shape": "item",
+          "status": 200
         }
       },
       "source": "apps/backend/app/api/route"
@@ -6528,6 +6795,86 @@
           "resource": null,
           "shape": "void",
           "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/communications/policies",
+      "method": "PUT",
+      "name": "communications.applyPolicies",
+      "controller": "Platform.AdminCommunications",
+      "action": "applyPolicies",
+      "meta": {
+        "name": "启停通知策略",
+        "group": "通信",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.configure",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "notificationPolicies"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminNotificationPoliciesApplyResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/runtime/config",
+      "method": "PUT",
+      "name": "operations.applyRuntimeConfig",
+      "controller": "Platform.Administration",
+      "action": "applyRuntimeConfig",
+      "meta": {
+        "name": "应用运行时通信配置",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.runtime.configure",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "runtimeConfig"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminRuntimeConfigResource",
+          "shape": "item",
+          "status": 200
         }
       },
       "source": "apps/backend/app/api/route"

@@ -72,8 +72,8 @@ SDK hook / Page -> useAdminNotifier -> notificationStore -> NotificationNotifier
 | # | 管理域 | 页面 | SDK / 权限 | 行为边界 |
 | --- | --- | --- | --- | --- |
 | 1 | 举报治理 | `/apps/community/reports`、`/:id` | `reports.listManaged/getManaged/transition`；`reports.read/manage` | 按状态分页、查看证据快照与事件、选择审核结论并转换状态 |
-| 2 | 账号恢复与 Session | `/apps/security/recovery`、`/apps/users/:id/security` | `users.recovery/security/sessions/revokeSession/revokeSessions`；`users.recovery.read`、`users.security.read`、`users.sessions.revoke` | 恢复挑战只读；敏感字段遮罩；单 Session/全部撤销必须明确确认 |
-| 3 | 通知投递 | `/apps/operations/deliveries`、`/:id` | `operations.deliveries/delivery/retryDelivery/notificationStats`；`communications.read`、`operations.retry` | 列表下沉投递详情；查看 Outbox 状态、失败摘要与 attempts；只对允许状态手工重试 |
+| 2 | 账号安全与 Session | `/apps/users/:id/security` | `users.security/sessions/revokeSession/revokeSessions`；`users.security.read`、`users.sessions.revoke` | 单 Session/全部撤销必须明确确认；恢复操作通过审计日志追溯 |
+| 3 | 通知处理 | `/apps/operations/deliveries`、`/:id` | `operations.deliveries/delivery/deliverySummary/retryDelivery/notificationStats`；`communications.read`、`operations.retry` | 通知处理页按 `queue_name=notifications` 过滤，专用汇总与列表同口径；列表/详情展示冻结策略版本及处理结果；只对允许状态手工重试。`notificationStats` 是用户通知总量，不与事件投递计数混用 |
 | 4 | 审计日志 | `/apps/operations/audit`、`/:id` | `operations.auditLogs/auditLog`；`audit.read` | 以 resource、request/correlation id 追踪；详情 payload 只显示后端白名单 |
 | 5 | 运行时与升级 | `/apps/operations/runtime`、`/apps/operations/upgrade` | `operations.runtime/migrations/runMigrations/upgrades/...`；`operations.read/migrate`、`system.update/update.contract/recover` | Facility/Worker 状态；签名 ZIP、单步推进、Contract 独立批准、pointer 恢复 |
 | 6 | 社区聚合 | `/apps/community/insights` | `community.insights`；`community.insights.read` | 仅显示草稿、收藏、历史的总量和参与人数，不返回成员私密明细 |
