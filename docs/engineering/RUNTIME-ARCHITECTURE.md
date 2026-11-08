@@ -20,7 +20,7 @@ PHP-FPM 每个请求都从持久化状态重新建立上下文，请求结束后
 
 | 形态 | 必需 | 推荐配置 | 可观察体验 |
 | --- | --- | --- | --- |
-| 虚拟机/中小型社区 | Nginx、PHP-FPM、MySQL | 默认 request fallback；可选短 SSE | 通知刷新/轮询可见；后台任务在请求预算或一次性调度中推进 |
+| 虚拟机/中小型社区 | Nginx、PHP-FPM、MySQL | 默认 request fallback 与浏览器轮询 | 通知和私信按配置间隔刷新；后台任务在请求预算或一次性调度中推进 |
 | 原生服务器/中大型社区 | Nginx、PHP-FPM、MySQL | Redis + Event Worker + Scheduler；按容量决定 SSE | Outbox 低延迟消费、独立重试和批处理，通知可实时到达 |
 
 不要求把 ThinkPHP Web Host 改造成常驻内存 Web。FPM 继续处理 HTTP，Worker 是独立 CLI 进程；这样既保留请求隔离，也避免每个请求承担全部异步工作。
