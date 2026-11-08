@@ -243,6 +243,31 @@ CREATE TABLE `runtime_workers` (
   KEY `idx_runtime_workers_state` (`state`,`updated_at`),
   KEY `idx_runtime_workers_type` (`worker_type`,`updated_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `runtime_config_state` (
+  `id` tinyint(3) unsigned NOT NULL,
+  `desired_mode` varchar(16) NOT NULL DEFAULT 'polling',
+  `settings_json` text NOT NULL,
+  `revision` int(10) unsigned NOT NULL DEFAULT 1,
+  `last_apply_state` varchar(16) NOT NULL DEFAULT 'applied',
+  `last_apply_reason` varchar(64) DEFAULT NULL,
+  `updated_by` bigint(20) unsigned DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `scheduler_runs` (
+  `run_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `worker_id` varchar(128) NOT NULL,
+  `started_at` datetime(6) NOT NULL,
+  `finished_at` datetime(6) DEFAULT NULL,
+  `outcome` varchar(16) NOT NULL DEFAULT 'running',
+  `jobs_processed` int(10) unsigned NOT NULL DEFAULT 0,
+  `release_id` varchar(128) NOT NULL DEFAULT '',
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`run_id`),
+  KEY `idx_scheduler_runs_outcome` (`outcome`,`finished_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE `schema_migrations` (
   `migration_id` varchar(128) NOT NULL,
   `checksum` char(64) NOT NULL,
@@ -267,6 +292,16 @@ CREATE TABLE `system` (
   `name` varchar(255) DEFAULT '',
   `value` varchar(2555) NOT NULL DEFAULT '',
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `stream_tickets` (
+  `ticket_hash` char(64) NOT NULL,
+  `uid` bigint(20) unsigned NOT NULL,
+  `expires_at` datetime(6) NOT NULL,
+  `used_at` datetime(6) DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`ticket_hash`),
+  KEY `idx_stream_tickets_uid_created` (`uid`,`created_at`),
+  KEY `idx_stream_tickets_expires` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE `system_backups` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -462,6 +497,8 @@ CREATE TABLE `event_deliveries` (
   `handler_key` varchar(128) NOT NULL,
   `queue_name` varchar(64) NOT NULL DEFAULT 'default',
   `execution_mode` varchar(16) NOT NULL DEFAULT 'request_safe',
+  `policy_revision` int(10) unsigned DEFAULT NULL,
+  `policy_decision` varchar(24) DEFAULT NULL,
   `status` varchar(16) NOT NULL DEFAULT 'pending',
   `attempt_count` int(10) unsigned NOT NULL DEFAULT 0,
   `available_at` datetime(6) NOT NULL,
@@ -525,6 +562,34 @@ CREATE TABLE `notification_preferences` (
   `updated_at` datetime NOT NULL,
   PRIMARY KEY (`user_id`,`notification_type`),
   CONSTRAINT `fk_notification_preferences_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `notification_policies` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `event_type` varchar(128) NOT NULL,
+  `event_version` smallint(5) unsigned NOT NULL,
+  `rule_key` varchar(128) NOT NULL,
+  `enabled` tinyint(1) NOT NULL DEFAULT 1,
+  `notification_type` varchar(64) DEFAULT NULL,
+  `recipient_rule` varchar(64) NOT NULL DEFAULT 'handler',
+  `user_disableable` tinyint(1) NOT NULL DEFAULT 1,
+  `locked` tinyint(1) NOT NULL DEFAULT 0,
+  `policy_revision` int(10) unsigned NOT NULL,
+  `updated_by` bigint(20) unsigned DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_np_rule` (`event_type`,`event_version`,`rule_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `notification_policy_versions` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `policy_revision` int(10) unsigned NOT NULL,
+  `snapshot_json` longtext NOT NULL,
+  `source` varchar(16) NOT NULL,
+  `reason` varchar(255) DEFAULT NULL,
+  `created_by` bigint(20) unsigned DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_np_rev` (`policy_revision`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE `notifications` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
