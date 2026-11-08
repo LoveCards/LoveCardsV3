@@ -38,7 +38,7 @@ for (const width of [1440, 390]) {
       }
       await page.screenshot({ path: testInfo.outputPath('page.png'), fullPage: true })
       if (['settings/storage', 'settings/verification'].includes(route)) {
-        await page.getByRole('tab', { name: '基础设置' }).click()
+        await page.getByRole('tab', { name: route === 'settings/verification' ? '服务设置' : '基础设置' }).click()
         await expect(page.getByRole('button', { name: /保存.*设置/ })).toBeVisible()
         expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
         await page.screenshot({ path: testInfo.outputPath('settings.png'), fullPage: true })
