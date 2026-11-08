@@ -62,7 +62,7 @@
             :to="`/apps/access/permissions/${encodeURIComponent(item.capability)}/${encodeURIComponent(item.scope)}`"
             variant="text"
           >
-            {{ item.capability }}
+            <AdminTableSearchHighlight :text="item.capability" :query="appliedSearch" />
           </v-btn>
         </template>
 
@@ -73,7 +73,7 @@
         <template #[`item.description`]="{ item }">
           <v-list-item class="px-0 py-1" width="480">
             <v-list-item-subtitle class="text-high-emphasis text-wrap">
-              {{ item.description || '—' }}
+              <AdminTableSearchHighlight :text="item.description" :query="appliedSearch" />
             </v-list-item-subtitle>
           </v-list-item>
         </template>
@@ -141,6 +141,7 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
   ? [{ key: route.query.order_key, order: ['1', 'true', 'desc'].includes(String(route.query.order_desc)) ? 'desc' : 'asc' }]
   : []);
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
+const appliedSearch = ref('');
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
 let latestRequest = 0;
@@ -171,6 +172,7 @@ const getTableData = async () => {
     const result = await client.permissions.list(params as Parameters<typeof client.permissions.list>[0]);
     if (requestId !== latestRequest) return;
     tableItems.value = result.data;
+    appliedSearch.value = searchValue ?? '';
     tableCurrentPage.value = result.pagination?.currentPage ?? tableCurrentPage.value;
     tableTotalItems.value = result.pagination?.totalItems ?? result.data.length;
   } catch (error) {

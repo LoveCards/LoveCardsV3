@@ -14,7 +14,7 @@
       @reset-view="resetTableView"
     >
       <template #search>
-        <v-text-field v-model="tableSearchValue" clearable label="搜索用户名" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+        <v-text-field v-model="tableSearchValue" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
       </template>
       <template #actions>
         <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">搜索与排序</v-btn>
@@ -94,7 +94,7 @@
               size="x-small"
               variant="tonal"
             >
-              {{ role.title }}
+              <AdminTableSearchHighlight :text="role.title" :query="highlightQuery('roles_id')" />
             </v-chip>
             <span v-if="renderUserRoles(item).length === 0" class="text-medium-emphasis">—</span>
           </div>
@@ -114,8 +114,8 @@
               <v-icon v-else icon="mdi-account" aria-label="默认头像" />
             </v-avatar>
             <div>
-              <v-btn :to="`/apps/users/${item.id}`" variant="text" class="px-0 text-none justify-start">{{ item.username }}</v-btn>
-              <div v-if="!visibleColumns.includes('number')" class="text-caption text-medium-emphasis">账号 {{ item.number || '—' }}</div>
+              <v-btn :to="`/apps/users/${item.id}`" variant="text" class="px-0 text-none justify-start"><AdminTableSearchHighlight :text="item.username" :query="highlightQuery('username')" /></v-btn>
+              <div v-if="!visibleColumns.includes('number')" class="text-caption text-medium-emphasis">账号 <AdminTableSearchHighlight :text="item.number" :query="highlightQuery('number')" /></div>
             </div>
           </div>
         </template>
@@ -154,13 +154,16 @@
         </template>
 
         <template #[`item.status`]="{ item }">
-          <span v-if="Number(item.status) === 0" class="text-body-2 text-medium-emphasis">正常</span>
+          <span v-if="Number(item.status) === 0" class="text-body-2 text-medium-emphasis"><AdminTableSearchHighlight text="正常" :query="highlightQuery('status')" /></span>
           <v-chip v-else size="small" variant="tonal" :color="statusColor(item.status)">
-            {{ SelectUtils.getSelect(SelectUtils.User.status, item.status).title.replace(/^#\d+\s*/, '') }}
+            <AdminTableSearchHighlight :text="SelectUtils.getSelect(SelectUtils.User.status, item.status).title.replace(/^#\d+\s*/, '')" :query="highlightQuery('status')" />
           </v-chip>
         </template>
 
-        <template #[`item.created_at`]="{ value }"><span class="text-body-2 text-medium-emphasis">{{ value }}</span></template>
+        <template v-for="field in ['id', 'number', 'email', 'phone']" :key="field" #[`item.${field}`]="{ item }">
+          <AdminTableSearchHighlight :text="tableSearchCell(item, field)" :query="highlightQuery(field)" />
+        </template>
+        <template #[`item.created_at`]="{ value }"><span class="text-body-2 text-medium-emphasis"><AdminTableSearchHighlight :text="value" :query="highlightQuery('created_at')" /></span></template>
 
         <template #no-data>
           <v-empty-state
@@ -232,6 +235,7 @@ import { useUserStore } from '~/stores/userStore';
 import CommonUtils from '@/utils/common';
 import SelectUtils from '~/utils/select';
 import { tableSearchValue as mapTableSearchValue } from '~/utils/tableSearchValue';
+import { tableSearchCell } from '~/composables/useAdminTableSearch';
 
 type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
 type EditableUser = {
@@ -412,6 +416,7 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
 const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
 const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
+const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } = useAdminTableSearchFeedback(tableSearchValue, tableSearchFilter, SearchKeys, 'username', '搜索用户名');
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
 let latestRequest = 0;
@@ -427,6 +432,7 @@ const getTableData = async () => {
   tableLoading.value = true;
   tableError.value = null;
   const searchValue = tableSearchValue.value?.trim();
+  const searchHighlight = searchSnapshot();
   const sort = tableSortBy.value[0];
   const params: Record<string, unknown> = {
     page: tableCurrentPage.value,
@@ -444,6 +450,7 @@ const getTableData = async () => {
     const result = await client.users.listManaged(params as Parameters<typeof client.users.listManaged>[0]);
     if (requestId !== latestRequest) return;
     tableItems.value = result.data;
+    applySearchSnapshot(searchHighlight);
     const visibleIds = new Set(result.data.map((item) => item.id));
     tableSelected.value = tableSelected.value.filter((id) => visibleIds.has(id));
     tableCurrentPage.value = result.pagination?.currentPage ?? tableCurrentPage.value;
