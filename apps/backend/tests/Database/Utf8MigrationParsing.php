@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
-use app\modules\Operations\Installer\Infrastructure\Database;
 use app\modules\Operations\SystemLifecycle\Infrastructure\SqlFileMigration;
+use app\shared\Infrastructure\Persistence\SqlStatementExecutor;
 
 function expectSame($expected, $actual, string $message): void
 {
@@ -15,11 +15,9 @@ function expectSame($expected, $actual, string $message): void
     }
 }
 
-$splitStatements = new ReflectionMethod(Database::class, 'splitStatements');
-$splitStatements->setAccessible(true);
 $sql = "INSERT INTO `capabilities` (`description`) VALUES ('查看系统运行和迁移状态');\n"
     . "SELECT '恢复系统 Release 指针';\n";
-$statements = $splitStatements->invoke(null, $sql);
+$statements = SqlStatementExecutor::splitStatements($sql);
 expectSame([
     "INSERT INTO `capabilities` (`description`) VALUES ('查看系统运行和迁移状态')",
     "SELECT '恢复系统 Release 指针'",

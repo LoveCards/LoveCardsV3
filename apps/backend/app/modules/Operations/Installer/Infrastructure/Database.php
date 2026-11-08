@@ -6,6 +6,7 @@ use think\facade\Db;
 use think\facade\Config;
 use app\api\ApiException;
 use app\shared\SystemPaths\SystemPaths;
+use app\shared\Infrastructure\Persistence\SqlStatementExecutor;
 
 class Database
 {
@@ -135,67 +136,25 @@ class Database
 
     public static function ImportSQLFile($file): void
     {
-        try {
-            $sql = file_get_contents($file);
-        } catch (\Exception $e) {
-            throw ApiException::error('无法找到sql文件，请检查sql文件是否命名为"data.sql"并存在于程序根目录！', ApiException::CODE_PARAM_INVALID);
+        $sql = @file_get_contents($file);
+        if ($sql === false || trim($sql) === '') {
+            throw ApiException::error('无法找到 SQL 文件，请检查安装包是否包含 schema.sql 或 seed.sql！', ApiException::CODE_PARAM_INVALID);
         }
 
-        self::ImportSQL((string) $sql);
+        self::ImportSQL($sql);
     }
 
     public static function ImportSQL(string $sql): void
     {
+        if (trim($sql) === '') {
+            throw ApiException::error('SQL 文件为空，安装或迁移未执行', ApiException::CODE_PARAM_INVALID);
+        }
         try {
-            foreach (self::splitStatements($sql) as $statement) {
-                if ($statement !== '') {
-                    $pdoStatement = Db::connect()->getPdo()->prepare($statement);
-                    $pdoStatement->execute();
-                    $pdoStatement->closeCursor();
-                }
-            }
+            SqlStatementExecutor::execute($sql);
         } catch (\Exception $e) {
             $errorData = self::getErrorData($e);
             throw ApiException::error($errorData['Message'], ApiException::CODE_SYSTEM_ERROR);
         }
     }
 
-    /** Split ordinary SQL safely; DELIMITER directives are interpreted for legacy dumps. */
-    private static function splitStatements(string $sql): array
-    {
-        $sql = preg_replace('/^\s*(?:--|#).*(?:\r?\n|$)/m', '', $sql) ?? $sql;
-        $result = [];
-        $buffer = '';
-        $quote = null;
-        $delimiter = ';';
-        foreach (preg_split('/\R/u', $sql) ?: [] as $line) {
-            if (preg_match('/^\s*DELIMITER\s+(\S+)\s*$/i', $line, $directive)) {
-                $delimiter = $directive[1];
-                continue;
-            }
-            $line .= "\n";
-            $length = strlen($line);
-            for ($i = 0; $i < $length; $i++) {
-                $char = $line[$i];
-                if ($quote === null && substr($line, $i, strlen($delimiter)) === $delimiter) {
-                    $statement = trim($buffer);
-                    if ($statement !== '') $result[] = $statement;
-                    $buffer = '';
-                    $i += strlen($delimiter) - 1;
-                    continue;
-                }
-                if ($quote !== null) {
-                    $buffer .= $char;
-                    if ($char === '\\' && $i + 1 < $length) { $buffer .= $line[++$i]; continue; }
-                    if ($char === $quote) $quote = null;
-                    continue;
-                }
-                if ($char === "'" || $char === '"' || $char === '`') { $quote = $char; }
-                $buffer .= $char;
-            }
-        }
-        $statement = trim($buffer);
-        if ($statement !== '') { $result[] = $statement; }
-        return $result;
-    }
 }

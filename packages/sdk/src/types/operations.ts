@@ -195,6 +195,9 @@ export interface OperationsUpgradeStep {
 export interface OperationsUpgradePlan {
   plan_id: string
   release_id: string
+  current_version: string
+  target_version: string | null
+  update_notes: string | null
   previous_release_id: string | null
   revision: number
   status: string

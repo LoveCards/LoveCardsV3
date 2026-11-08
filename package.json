@@ -56,6 +56,8 @@
     "test:sdk:integration": "npm run build:sdk && npm run sync:sdk-theme && node packages/sdk/test/run-sdk-tests.mjs",
     "test:admin:e2e": "node scripts/run-admin-e2e.mjs",
     "test:theme:e2e": "node scripts/run-theme-e2e.mjs",
-    "test:upgrade:e2e": "node scripts/run-upgrade-e2e.mjs"
+    "test:upgrade:e2e": "node scripts/run-upgrade-e2e.mjs",
+    "test:schema:e2e": "node scripts/run-schema-consistency-e2e.mjs",
+    "test:schema:diff": "node scripts/test-schema-diff-candidate.mjs"
   }
 }
