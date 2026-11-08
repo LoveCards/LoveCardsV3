@@ -236,6 +236,16 @@ if (await exists(path.join(root, 'apps/backend/app/api/resource'))) {
 if (await exists(path.join(root, 'apps/backend/app/system/utils'))) {
   fail('Legacy system utility directory must not exist; use modules/Operations/Installer')
 }
+const systemHostRoot = path.join(root, 'apps/backend/app/system')
+for (const file of await walk(systemHostRoot, (candidate) => candidate.endsWith('.php'))) {
+  if (!path.relative(systemHostRoot, file).split(path.sep).join('/').startsWith('controller/')) {
+    fail(`System Host may contain controller adapters only: ${relative(file)}`)
+  }
+}
+const installerHost = await readFile(path.join(systemHostRoot, 'controller/Install.php'), 'utf8')
+if (!installerHost.includes("'schema.sql'") || !installerHost.includes("'seed.sql'") || installerHost.includes("'data.sql'")) {
+  fail('Installer Host must load database/schema.sql and database/seed.sql, not the legacy combined data.sql')
+}
 
 async function checkPhpBoundary(directory, forbidden, allowlist = new Set()) {
   const base = path.join(root, directory)
@@ -280,6 +290,9 @@ for (const file of moduleFiles) {
   for (const match of source.matchAll(/^\s*use\s+(app\\[^;]+|think\\[^;]+);/gmi)) {
     const dependency = match[1].replace(/\s+as\s+.+$/i, '')
     const key = `${rel}:${dependency}`
+    if (sourceModule === 'Operations/SystemLifecycle' && /^app\\modules\\(?!Operations\\SystemLifecycle\\)[^\\]+\\[^\\]+\\(?!Public\\|Contract\\)/i.test(dependency)) {
+      fail(`SystemLifecycle must not depend on another module's internals: ${key}`)
+    }
     if (sourceModule !== 'Content/Cards' && /^app\\modules\\Content\\Cards\\(?!Public\\|Contract\\)/i.test(dependency)) {
       fail(`Cross-module Cards dependencies must use Public or Contract: ${key}`)
     }

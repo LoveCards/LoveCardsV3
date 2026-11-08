@@ -62,6 +62,19 @@ const upgradeRemoteDatabase = runNode('scripts/run-upgrade-e2e.mjs', {
 assert.notEqual(upgradeRemoteDatabase.status, 0)
 assert.match(upgradeRemoteDatabase.stderr, /database host must be local/)
 
+const schemaWithoutFence = runNode('scripts/run-schema-consistency-e2e.mjs', {
+  LOVECARDS_SCHEMA_E2E_ISOLATED: '',
+})
+assert.notEqual(schemaWithoutFence.status, 0)
+assert.match(schemaWithoutFence.stderr, /LOVECARDS_SCHEMA_E2E_ISOLATED=1/)
+
+const schemaRemoteDatabase = runNode('scripts/run-schema-consistency-e2e.mjs', {
+  LOVECARDS_SCHEMA_E2E_ISOLATED: '1',
+  LOVECARDS_E2E_DB_HOST: 'database.example.com',
+})
+assert.notEqual(schemaRemoteDatabase.status, 0)
+assert.match(schemaRemoteDatabase.stderr, /localhost database address/)
+
 const bootstrapSource = await readFile(path.join(root, 'scripts/bootstrap-e2e.php'), 'utf8')
 assert.match(bootstrapSource, /getenv\('LOVECARDS_E2E_ISOLATED'\)\s*!==\s*'1'/)
 assert.match(bootstrapSource, /\^lovecards_e2e_\[a-z0-9_\]\+\$/)
@@ -146,4 +159,4 @@ if (process.env.LOVECARDS_E2E_DB_SAFETY_LIVE === '1') {
   }
 }
 
-console.log('Admin, theme, upgrade and database E2E safety guards passed.')
+console.log('Admin, theme, upgrade, schema and database E2E safety guards passed.')

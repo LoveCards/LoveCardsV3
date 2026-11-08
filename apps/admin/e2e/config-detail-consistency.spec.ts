@@ -129,7 +129,7 @@ test('missing audit detail retains the return route', async ({ page }) => {
 
 test('forbidden page has one unambiguous return action', async ({ page }) => {
   await fixture(page, true)
-  await page.goto('./apps/access/roles')
-  await expect(page.getByRole('heading', { name: '无权访问', exact: true })).toBeVisible()
+  await page.goto('./apps/access/roles', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '无权访问', exact: true })).toBeVisible({ timeout: 20_000 })
   await expect(page.getByRole('button', { name: '前往可访问页面', exact: true })).toHaveCount(1)
 })

@@ -257,6 +257,7 @@ try {
     ...dbEnv,
     LOVECARDS_E2E_ISOLATED: '1',
     LOVECARDS_E2E_MANAGED_SERVERS: '1',
+    LOVECARDS_E2E_AUTH_FILE: path.join(temporaryRoot, 'admin-auth.json'),
     LOVECARDS_DEV_BACKEND_ORIGIN: `http://127.0.0.1:${backendPort}`,
     LOVECARDS_DEV_ADMIN_ORIGIN: `http://127.0.0.1:${adminPort}`,
   })

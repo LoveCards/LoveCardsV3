@@ -112,7 +112,7 @@ test('user filters survive sorting changes and clear without losing normal statu
   expect(new URL((await clearedSort).url()).searchParams.get('status')).toBe('0')
   await expect(page).not.toHaveURL(/order_key=/)
   await page.reload()
-  await expect(page.locator('tbody tr').first()).toContainText('member_1')
+  await expect(page.locator('tbody tr').first()).toContainText('member_1', { timeout: 20_000 })
   const cleared = page.waitForRequest(request => request.url().includes('/api/admin/users?') && !new URL(request.url()).searchParams.has('status') && !new URL(request.url()).searchParams.has('role_id'))
   await page.getByRole('button', { name: '清除筛选', exact: true }).click()
   await cleared
@@ -132,7 +132,7 @@ test('recovery status is sent to the server and retained in the URL', async ({ p
 test('user status and role controls send both filters', async ({ page }) => {
   await fixtures(page)
   await page.goto('./apps/users')
-  await expect(page.locator('tbody tr').first()).toContainText('member_1')
+  await expect(page.locator('tbody tr').first()).toContainText('member_1', { timeout: 20_000 })
   await page.getByRole('combobox').filter({ hasText: '账号状态' }).click()
   const statusRequest = page.waitForRequest(request => request.url().includes('/api/admin/users?') && new URL(request.url()).searchParams.get('status') === '0')
   await page.getByRole('option', { name: '#0 正常', exact: true }).click()

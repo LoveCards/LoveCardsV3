@@ -26,7 +26,7 @@ const routes = [
 
 const expectedHeadings: Record<string, string> = {
   '/apps/settings/site': '站点与社区规则',
-  '/apps/operations/upgrade': '升级与迁移',
+  '/apps/operations/upgrade': '系统升级',
   '/apps/operations/runtime': '运行状态',
 }
 
@@ -90,9 +90,9 @@ const firstListId = (body: unknown): number | null => {
   return itemId(body.data[0])
 }
 
-async function callApi(page: Page, path: string, method = 'GET', data?: Record<string, unknown>): Promise<ApiCallResult> {
-  return page.evaluate(async ({ path, method, data }) => {
-    const token = window.localStorage.getItem('token')
+async function callApi(page: Page, path: string, method = 'GET', data?: Record<string, unknown>, asToken?: string): Promise<ApiCallResult> {
+  return page.evaluate(async ({ path, method, data, asToken }) => {
+    const token = asToken ?? window.localStorage.getItem('token')
     const response = await window.fetch(path, {
       method,
       headers: {
@@ -110,7 +110,7 @@ async function callApi(page: Page, path: string, method = 'GET', data?: Record<s
       body = text
     }
     return { ok: response.ok, status: response.status, body }
-  }, { path, method, data })
+  }, { path, method, data, asToken })
 }
 
 function requireSuccessful(result: ApiCallResult, action: string): unknown {
@@ -143,7 +143,14 @@ async function ensureComment(page: Page, cardId: number): Promise<number> {
   const existing = firstListId(requireSuccessful(listed, 'list comments'))
   if (existing) return existing
 
-  const created = await callApi(page, `/api/cards/${cardId}/comments`, 'POST', { content: 'Admin comment detail route fixture' })
+  const account = `admin-route-${Date.now()}-${Math.floor(Math.random() * 1_000_000)}@example.invalid`
+  const registered = requireSuccessful(
+    await callApi(page, '/api/session/register', 'POST', { account, password: 'RouteFixture_2026' }),
+    'register comment author',
+  )
+  const token = isRecord(registered) ? registered.token : null
+  expect(typeof token, 'registered comment author must receive a token').toBe('string')
+  const created = await callApi(page, `/api/cards/${cardId}/comments`, 'POST', { content: 'Admin comment detail route fixture' }, token as string)
   const comment = requireSuccessful(created, 'create comment')
   const id = itemId(comment)
   expect(id, 'created comment response must contain an ID').not.toBeNull()
@@ -264,6 +271,17 @@ for (const route of routes) {
 	})
 }
 
+test('upgrade page exposes only the release summary and upload entry', async ({ page }) => {
+  await page.goto('./apps/operations/upgrade', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '系统升级', exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByText('当前版本', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '上传升级包' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: '数据库迁移' })).toHaveCount(0)
+  await page.getByRole('button', { name: '上传升级包' }).click()
+  await expect(page.getByRole('dialog', { name: '上传升级包' })).toBeVisible()
+  await expect(page.locator('input[type="file"][accept*=".zip"]')).toBeVisible()
+})
+
 for (const [legacyPath, canonicalPath] of legacyAliases) {
   test(`legacy route redirects to canonical path: ${legacyPath}`, async ({ page }) => {
     await page.goto(`.${legacyPath}?source=legacy#route-alias`, { waitUntil: 'domcontentloaded' })
@@ -279,7 +297,9 @@ for (const [legacyPath, canonicalPath] of legacyAliases) {
 for (const [legacyPath, canonicalPath] of legacyDetailAliases) {
   test(`legacy detail route redirects to canonical path: ${legacyPath}`, async ({ page }) => {
     await page.goto(`.${legacyPath}?source=legacy#detail-alias`, { waitUntil: 'domcontentloaded' })
-    await expect(page).toHaveURL(new RegExp(`/admin${canonicalPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?`))
+    await expect(page).toHaveURL(new RegExp(`/admin${canonicalPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?`), {
+      timeout: legacyPath === '/apps/sender/config/smtp' ? 20_000 : 5_000,
+    })
 
     const url = new URL(page.url())
     expect(url.pathname).toBe(`/admin${canonicalPath}`)

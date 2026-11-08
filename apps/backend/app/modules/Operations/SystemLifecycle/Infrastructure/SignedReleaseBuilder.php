@@ -113,6 +113,11 @@ final class SignedReleaseBuilder
             'signature_key_id' => $signatureKeyId,
             'signature' => base64_encode('unsigned'),
         ];
+        if (isset($files['release-notes.md'])) {
+            $notes = file_get_contents($files['release-notes.md']);
+            if ($notes === false || strlen($notes) > 16000) throw new \RuntimeException('Release 更新说明不可读取或超过 16 KB');
+            $manifestData['release_notes'] = trim($notes);
+        }
         $unsigned = ReleaseManifest::fromArray($manifestData);
         $privateKey = $this->loadPrivateKey($privateKeyPath, $privateKeyPassphrase);
         if (!openssl_sign($unsigned->canonicalPayload(), $signature, $privateKey, OPENSSL_ALGO_SHA256)) {
@@ -227,7 +232,7 @@ final class SignedReleaseBuilder
     /** @param array<string, string> $files */
     private function assertRunnableRelease(array $files): void
     {
-        foreach (['bootstrap/ReleaseBootstrap.php', 'public/index.php', 'think', 'vendor/autoload.php', 'config/app.php'] as $required) {
+        foreach (['bootstrap/ReleaseBootstrap.php', 'public/index.php', 'think', 'vendor/autoload.php', 'config/app.php', 'database/schema.sql', 'database/seed.sql'] as $required) {
             if (!isset($files[$required])) throw new \RuntimeException('Release source 缺少运行必需文件: ' . $required);
         }
     }

@@ -107,9 +107,13 @@ class Install
             }
             //导入数据库文件
             try {
-                Database::ImportSQLFile(app()->getRootPath() . 'data.sql');
-                // 全新安装必须完成全部增量迁移；contract 阶段仍由运维流程显式审批。
-                app(SystemLifecycleCoordinator::class)->runUntilSettled(
+                // schema.sql 只负责结构，seed.sql 只负责系统默认数据。
+                // 后续结构变更仍由同一个 SystemLifecycle 迁移账本推进。
+                $databaseRoot = app()->getRootPath() . 'database' . DIRECTORY_SEPARATOR;
+                Database::ImportSQLFile($databaseRoot . 'schema.sql');
+                Database::ImportSQLFile($databaseRoot . 'seed.sql');
+                // 目标 schema 已包含历史迁移终态；记录审核过的迁移身份和 checksum。
+                app(SystemLifecycleCoordinator::class)->recordInstalledSchema(
                     dirname(__DIR__, 3) . '/database/migrations'
                 );
                 return Export::Create(null, 200);
@@ -132,6 +136,14 @@ class Install
         // 已安装则禁止再次执行
         if (Common::CheckInstallLock()) {
             return Export::Create(null, 500, '系统已安装，禁止重复执行安装锁');
+        }
+
+        try {
+            app(SystemLifecycleCoordinator::class)->assertInstalledSchemaComplete(
+                dirname(__DIR__, 3) . '/database/migrations'
+            );
+        } catch (\Throwable $e) {
+            return Export::Create(null, 500, '安装数据库未完成：' . $e->getMessage());
         }
 
         // 先初始化配置项（从 config/apps/*.php 注册默认配置）

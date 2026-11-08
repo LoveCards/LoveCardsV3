@@ -46,6 +46,9 @@ try {
     $write($source . '/think', "#!/usr/bin/env php\n<?php echo 'cli';\n");
     $write($source . '/vendor/autoload.php', "<?php return true;\n");
     $write($source . '/config/app.php', "<?php return [];\n");
+    $write($source . '/database/schema.sql', "CREATE TABLE fixture (id INT PRIMARY KEY);\n");
+    $write($source . '/database/seed.sql', "INSERT INTO fixture (id) VALUES (1);\n");
+    $write($source . '/release-notes.md', "修复安装与升级入口。\n");
     $migration = "-- @lc-phase expand\nSELECT 1;\n";
     $write($source . '/database/migrations/20260819000003.sql', $migration);
     $write($source . '/app/example.php', "<?php return 'release';\n");
@@ -107,6 +110,9 @@ try {
         }
         if (($manifest['migration_checksums']['20260819000003'] ?? '') !== hash('sha256', $migration)) {
             throw new RuntimeException('migration checksum mismatch');
+        }
+        if (($manifest['release_notes'] ?? '') !== '修复安装与升级入口。') {
+            throw new RuntimeException('signed release notes missing');
         }
     } finally {
         $zip->close();

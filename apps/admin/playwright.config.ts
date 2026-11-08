@@ -1,9 +1,15 @@
 import { defineConfig, devices } from '@playwright/test'
+import os from 'node:os'
+import path from 'node:path'
 
 const adminOrigin = process.env.LOVECARDS_DEV_ADMIN_ORIGIN || 'http://127.0.0.1:3000'
 const backendOrigin = process.env.LOVECARDS_DEV_BACKEND_ORIGIN || 'http://127.0.0.1:6001'
 const adminPort = new URL(adminOrigin).port || '3000'
-const authFile = 'apps/admin/test-results/.auth/admin.json'
+// Keep the shared login state outside Playwright's outputDir. Playwright may
+// prune outputDir while a long suite is running, which would cascade into
+// unrelated 401/redirect failures for later tests.
+const authFile = process.env.LOVECARDS_E2E_AUTH_FILE
+  || path.join(os.tmpdir(), 'lovecards-admin-e2e-auth.json')
 const chromeExecutable = process.env.PLAYWRIGHT_CHROME_PATH
   || (process.platform === 'win32' ? 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe' : '')
 const browserChannel = process.platform === 'win32' ? { channel: 'chrome' as const } : {}

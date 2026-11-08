@@ -1,6 +1,6 @@
 # 数据库与迁移运维
 
-LoveCards 以 MySQL/InnoDB 为唯一事务基线。数据库变更既服务首次安装，也服务跨版本升级；`data.sql` 是新装基线，`database/migrations/*.sql` 是旧实例到当前结构的幂等演进路径，两者由 Schema Contract 交叉检查。
+LoveCards 以 MySQL/InnoDB 为唯一事务基线。数据库变更既服务首次安装，也服务跨版本升级；`database/schema.sql` 是新装目标结构，`database/seed.sql` 只保存系统默认数据，`database/migrations/*.sql` 是旧实例到当前结构的幂等演进路径。当前静态 `SchemaContract` 仍核对历史 `data.sql` 夹具；新旧路径的结构一致性由独立隔离数据库验证，不能把静态检查误当作实际 schema 相等。
 
 ## 当前公共表组
 
@@ -30,7 +30,7 @@ LoveCards 以 MySQL/InnoDB 为唯一事务基线。数据库变更既服务首�
 - 禁止迁移中直接 `DROP TABLE`、`TRUNCATE` 或无条件全表 destructive rewrite。
 - Backfill 用稳定主键/cursor、小事务和确定排序；失败后从账本 cursor 继续。
 - 所有外键、唯一键和高频筛选必须在新装基线与迁移路径中同时存在。
-- SQL 导入器支持 MySQL `DELIMITER`，每条语句结束后关闭 PDO cursor，避免 pending result sets。
+- 安装和 SystemLifecycle 共用的基础 SQL 执行器只运行已明确提供的语句，支持 MySQL `DELIMITER`，每条语句结束后关闭 PDO cursor，避免 pending result sets；运行时不得生成或执行 schema diff。
 
 ## 事务与一致性
 
@@ -54,4 +54,4 @@ php think lc:system:upgrade run <plan-id>
 
 ## 验证
 
-`npm run test:backend` 包含安装基线与 Schema Contract，检查表、列类型、索引、迁移幂等守卫、敏感默认值和模型字段。真实迁移还必须在一次性空库和由受支持旧版本恢复的副本上各运行一次；测试数据库名与安全门禁规则见 `BACKEND-TESTING.md`。
+`npm run test:backend` 包含安装基线与历史 Schema Contract，检查表、列类型、索引、迁移幂等守卫、敏感默认值和模型字段。`npm run test:schema:e2e` 在两个一次性数据库分别运行 `schema.sql` + `seed.sql` + 安装账本标记与旧基线 + 历史迁移，再比较表、列、索引和外键；必须先设置 `LOVECARDS_SCHEMA_E2E_ISOLATED=1` 与本地数据库连接环境变量。测试数据库名与安全门禁规则见 `BACKEND-TESTING.md`。支持旧版本的真实数据副本仍需单独演练数据转换和锁影响。
