@@ -317,6 +317,6 @@ namespace
 
     fwrite(STDOUT, "PASS like notification event baseline\n");
 
-    
+
 
 }

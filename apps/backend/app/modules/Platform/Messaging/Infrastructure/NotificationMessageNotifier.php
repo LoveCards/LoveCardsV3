@@ -36,5 +36,3 @@ final class NotificationMessageNotifier implements MessageNotifier
         $this->signals?->publish(new RealtimeSignal('messages', 'user:' . $recipientId, ''));
     }
 }
-
-

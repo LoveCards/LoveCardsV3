@@ -166,6 +166,6 @@ namespace {
 
     fwrite(STDOUT, "PASS content comment and mention notification projection\n");
 
-    
+
 
 }

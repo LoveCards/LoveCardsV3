@@ -392,6 +392,6 @@ namespace {
 
     fwrite(STDOUT, count($tests) . " Cards batch tests passed.\n");
 
-    
+
 
 }
