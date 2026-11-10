@@ -21,6 +21,9 @@ export class Config extends BaseResource {
   deleteKey(params: { group: string; key: string }): Promise<void> {
     return this._delete<void>("/admin/config/key", params)
   }
+  redisTest(): Promise<Record<string, unknown>> {
+    return this._post<Record<string, unknown>>("/admin/config/redis/test")
+  }
   register(data: { group: string; schema: Record<string, unknown> }): Promise<ApiTypes.ConfigData> {
     return this._post<ApiTypes.ConfigData>("/admin/config/register", data)
   }

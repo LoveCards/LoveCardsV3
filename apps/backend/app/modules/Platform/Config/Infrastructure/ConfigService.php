@@ -168,7 +168,8 @@ class ConfigService
     public static function getGroup(string $group): array
     {
         // 1. CacheManager
-        $cached = CacheManager::get('config', "group:{$group}");
+        // Redis 组含凭据，且必须及时反映后台修改；不写入通用文件缓存。
+        $cached = $group === 'redis' ? null : CacheManager::get('config', "group:{$group}");
         if ($cached !== null) {
             return $cached;
         }
@@ -197,7 +198,9 @@ class ConfigService
         }
 
         // 4. 写入 CacheManager
-        CacheManager::set('config', "group:{$group}", $result, CacheManager::TTL_DAY);
+        if ($group !== 'redis') {
+            CacheManager::set('config', "group:{$group}", $result, CacheManager::TTL_DAY);
+        }
 
         return $result;
     }

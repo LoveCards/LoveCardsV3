@@ -16,7 +16,19 @@ final class Administration
     public static function runtime(): array { return app(AdminReadModel::class)->runtime(); }
     public static function runtimeConfig(): array { return app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->snapshot(); }
     public static function validateRuntimeConfig(array $input): array { return app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->validate($input); }
-    public static function applyRuntimeConfig(array $input, int $actorId): array { return app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->apply($input, $actorId); }
+    public static function applyRuntimeConfig(array $input, int $actorId): array
+    {
+        return app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->apply(
+            $input,
+            $actorId,
+            static function (array $payload): void {
+                if (($payload['before']['desired_mode'] ?? null) === 'realtime'
+                    && ($payload['after']['desired_mode'] ?? null) === 'polling') {
+                    \app\modules\Platform\Eventing\Public\SignalDeliveryControl::settleForPolling();
+                }
+            }
+        );
+    }
     public static function reconcileRuntime(): array { return app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->reconcile(); }
     public static function deliveries(array $params): array { return app(AdminReadModel::class)->deliveries($params); }
     public static function deliverySummary(): array { return app(AdminReadModel::class)->deliverySummary(); }

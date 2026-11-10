@@ -14,6 +14,7 @@ use app\modules\Platform\Eventing\Domain\DeliveryOutcome;
 use app\modules\Platform\Eventing\Public\DeliveryContext;
 use app\modules\Platform\Eventing\Public\HandlerRegistration;
 use app\modules\Platform\Eventing\Public\HandlerRegistry;
+use app\modules\Platform\Eventing\Public\SignalTransportUnavailable;
 use app\shared\Observability\LogContext;
 use app\shared\Observability\LogContextScope;
 
@@ -90,18 +91,24 @@ final class DeliveryProcessor
             'event.causation_id' => $event->causationId(),
         ]));
 
+        $context = new DeliveryContext(
+            $delivery->id(),
+            $delivery->eventId(),
+            $delivery->handlerKey(),
+            $delivery->attemptCount(),
+            $delivery->policyRevision(),
+            $event->eventType()
+        );
         try {
             $registration->handler()->handle(
                 $event,
-                new DeliveryContext(
-                    $delivery->id(),
-                    $delivery->eventId(),
-                    $delivery->handlerKey(),
-                    $delivery->attemptCount(),
-                    $delivery->policyRevision(),
-                    $event->eventType()
-                )
+                $context
             );
+            if ($registration->signal() !== null && $context->signalDecision() === null) {
+                throw new \UnexpectedValueException('Realtime signal Handler 未记录投递决策');
+            }
+        } catch (SignalTransportUnavailable $exception) {
+            return $this->defer($delivery, $exception);
         } catch (\Throwable $exception) {
             return $this->fail(
                 $delivery,
@@ -116,10 +123,23 @@ final class DeliveryProcessor
         $completed = $this->deliveries->complete(
             $delivery->id(),
             $delivery->claimToken(),
-            $this->clock->now()
+            $this->clock->now(),
+            $context->signalDecision()
         );
 
         return $completed ? DeliveryOutcome::COMPLETED : DeliveryOutcome::FENCED;
+    }
+
+    private function defer(ClaimedDelivery $delivery, SignalTransportUnavailable $exception): string
+    {
+        $now = $this->clock->now();
+        $updated = $this->deliveries->defer(
+            $delivery->id(),
+            $delivery->claimToken(),
+            new DeliveryFailure(false, $this->sanitizer->sanitize($exception), $now->modify('+30 seconds')),
+            $now
+        );
+        return $updated ? DeliveryOutcome::RETRY_SCHEDULED : DeliveryOutcome::FENCED;
     }
 
     private function fail(

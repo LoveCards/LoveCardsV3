@@ -24,6 +24,17 @@ namespace think\facade {
     }
 }
 
+namespace app\modules\Platform\Eventing\Public {
+    final class DomainEventBus
+    {
+        public array $events = [];
+        public function publish(string $type, string $aggregateType, string $aggregateKey, array $payload, ?int $actorId = null): void
+        {
+            $this->events[] = [$type, $aggregateType, $aggregateKey, $payload, $actorId];
+        }
+    }
+}
+
 namespace {
     $root = dirname(__DIR__, 2);
     require $root . '/app/shared/Resource/ResourceRef.php';
@@ -40,14 +51,21 @@ namespace {
     require $root . '/app/modules/Platform/Notifications/Public/Notifications.php';
     require $root . '/app/modules/Platform/Notifications/Infrastructure/ContentCommentPublishedNotificationHandler.php';
     require $root . '/app/modules/Platform/Notifications/Infrastructure/ContentMentionsAddedNotificationHandler.php';
+    require $root . '/app/shared/Transaction/TransactionManager.php';
 
     use app\modules\Platform\Eventing\Public\DeliveryContext;
+    use app\modules\Platform\Eventing\Public\DomainEventBus;
     use app\modules\Platform\Eventing\Public\EventEnvelope;
     use app\modules\Platform\Notifications\Contract\NotificationRepository;
     use app\modules\Platform\Notifications\Domain\NotificationIntent;
     use app\modules\Platform\Notifications\Infrastructure\ContentCommentPublishedNotificationHandler;
     use app\modules\Platform\Notifications\Infrastructure\ContentMentionsAddedNotificationHandler;
     use think\facade\Db;
+
+    final class ContentMentionTransactions implements \app\shared\Transaction\TransactionManager
+    {
+        public function run(callable $callback): mixed { return $callback(); }
+    }
 
     final class ContentMentionFakeRepository implements NotificationRepository
     {
@@ -59,7 +77,7 @@ namespace {
             $key = $intent->recipientId() . ':' . $intent->dedupeKey();
             $first = !isset($this->items[$key]);
             if ($first) $this->items[$key] = $intent;
-            return [array_search($key, array_keys($this->items), true) + 1, $first, null];
+            return [array_search($key, array_keys($this->items), true) + 1, $first, '2026-11-10 00:00:00'];
         }
         public function listForUser(int $userId, ?string $cursor, int $limit, bool $unreadOnly, ?string $type, ?string $category): array { return ['items' => [], 'next_cursor' => null, 'has_more' => false]; }
         public function markRead(int $userId, array $ids): int { return 0; }
@@ -96,6 +114,8 @@ namespace {
     function app(string $class): object
     {
         if ($class === NotificationRepository::class) return ContentMentionContainer::$repository;
+        if ($class === \app\shared\Transaction\TransactionManager::class) return new ContentMentionTransactions();
+        if ($class === DomainEventBus::class) return new DomainEventBus();
         if (in_array($class, ['app\\modules\\Platform\\Eventing\\Public\\RealtimeSignalPublisher', 'app\\modules\\Platform\\Notifications\\Contract\\NotificationPolicyStore'], true)) {
             return \FakeCommunicationPorts::instance($class);
         }

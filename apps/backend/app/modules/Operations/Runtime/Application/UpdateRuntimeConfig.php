@@ -22,6 +22,18 @@ final class UpdateRuntimeConfig
     public function validate(array $input): array
     {
         $violations = CommunicationSettings::validateInput($input);
+        if ($violations === [] && ($input['desired_mode'] ?? null) === 'realtime') {
+            $current = $this->store->current();
+            if ($current === null) {
+                $violations[] = ['field' => 'desired_mode', 'message' => '运行时配置不可用'];
+            } elseif ($current['desired_mode'] !== 'realtime') {
+                $settings = CommunicationSettings::merge($current['settings'], array_intersect_key($input, array_flip(CommunicationSettings::INPUT_KEYS)));
+                $reason = $this->resolver->realtimeBlockingReason($settings);
+                if ($reason !== null) {
+                    $violations[] = ['field' => 'desired_mode', 'message' => "实时链路未就绪：{$reason}"];
+                }
+            }
+        }
         return ['valid' => $violations === [], 'violations' => $violations];
     }
 
@@ -57,7 +69,17 @@ final class UpdateRuntimeConfig
         }
 
         $expected = (int) $input['expected_revision'];
+        if ((int) $current['revision'] !== $expected) {
+            throw new ApiException('配置已被其他操作修改，请刷新后重试', ApiException::CODE_CONFIG_CONFLICT, ['reason_code' => 'stale-revision']);
+        }
         $settings = CommunicationSettings::merge($current['settings'], array_intersect_key($input, array_flip(CommunicationSettings::INPUT_KEYS)));
+        if ($desired === 'realtime' && $current['desired_mode'] !== 'realtime') {
+            $reason = $this->resolver->realtimeBlockingReason($settings);
+            if ($reason !== null) {
+                $this->store->recordApply('rejected', $reason);
+                throw new ApiException('实时链路未就绪，无法开启', ApiException::CODE_CONFIG_CONFLICT, ['reason_code' => $reason]);
+            }
+        }
         $before = ['desired_mode' => $current['desired_mode'], 'settings' => CommunicationSettings::normalize($current['settings'])];
 
         $applied = $this->store->compareAndSwap($expected, $desired, $settings, $actorId, static function () use ($actorId, $before, $desired, $settings, $expected, $audit): void {

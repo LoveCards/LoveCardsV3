@@ -130,15 +130,20 @@ final class ThinkDbMessagingRepository implements MessagingRepository
         Db::table('conversations')->where('id', $conversationId)->update(['updated_at' => $this->utc($at)]);
     }
 
-    public function markReadThrough(int $userId, int $conversationId, int $messageId): void
+    public function markReadThrough(int $userId, int $conversationId, int $messageId): bool
     {
-        Db::table('conversation_members')
+        return Db::table('conversation_members')
             ->where('conversation_id', $conversationId)
             ->where('user_id', $userId)
             ->where(function ($query) use ($messageId): void {
                 $query->whereNull('last_read_message_id')->whereOr('last_read_message_id', '<', $messageId);
             })
-            ->update(['last_read_message_id' => $messageId]);
+            ->update(['last_read_message_id' => $messageId]) === 1;
+    }
+
+    public function participantIds(int $conversationId): array
+    {
+        return array_map('intval', Db::table('conversation_members')->where('conversation_id', $conversationId)->column('user_id'));
     }
 
     private function assertMember(int $userId, int $conversationId): void

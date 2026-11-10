@@ -5,6 +5,7 @@ qualifiedTypeNames.push('OperationsDeliverySummary')
 qualifiedTypeNames.push('RuntimeCommunicationSnapshot', 'RuntimeConfigValidation', 'RuntimeConfigUpdate')
 qualifiedTypeNames.push('StreamTicket', 'CommunicationSettingsSnapshot')
 qualifiedTypeNames.push('NotificationPolicyCatalog', 'NotificationPolicyApplyResult', 'NotificationPolicyUpdate', 'NotificationPolicyRule')
+qualifiedTypeNames.push('SignalPolicyCatalog', 'SignalPolicyUpdate', 'SignalPolicyItem')
 qualifiedTypeNames.push('RealtimeTicketVerification', 'RealtimePollSnapshot', 'RealtimePollQuery', 'RealtimeSignalMessage')
 
 export function schemaType(schema, fallback = 'unknown') {

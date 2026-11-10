@@ -1,6 +1,6 @@
 {
   "source": "thinkphp-runtime-route-registry",
-  "routeCount": 201,
+  "routeCount": 204,
   "routes": [
     {
       "path": "/admin/cards/:id",
@@ -1297,6 +1297,43 @@
         "request": null,
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminNotificationPoliciesResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/communications/signals",
+      "method": "GET",
+      "name": "communications.signals",
+      "controller": "Platform.AdminCommunications",
+      "action": "signals",
+      "meta": {
+        "name": "主动更新目录",
+        "group": "通信",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminSignalPoliciesResource",
           "shape": "item",
           "status": 200
         }
@@ -3070,13 +3107,13 @@
       "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/internal/realtime/notifications-since",
+      "path": "/internal/realtime/redis-config",
       "method": "GET",
-      "name": "internal.realtimeNotificationsSince",
-      "controller": "Platform.RealtimeInternal",
-      "action": "notificationsSince",
+      "name": "internal.realtimeRedisConfig",
+      "controller": "System.Config",
+      "action": "internalRedisConfig",
       "meta": {
-        "name": "通知游标回源（内部）",
+        "name": "Redis 连接配置（内部）",
         "group": "运行时",
         "access": {
           "auth": "public"
@@ -3086,12 +3123,9 @@
         "app\\api\\middleware\\InternalTokenCheck"
       ],
       "contract": {
-        "request": {
-          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalRealtimeValidate",
-          "scene": "since"
-        },
+        "request": null,
         "response": {
-          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalNotificationsPollResource",
+          "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\InternalRedisConfigResource",
           "shape": "item",
           "status": 200
         }
@@ -4762,6 +4796,43 @@
         "request": null,
         "response": {
           "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\ConfigResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/config/redis/test",
+      "method": "POST",
+      "name": "config.redisTest",
+      "controller": "System.Config",
+      "action": "testRedis",
+      "meta": {
+        "name": "测试 Redis 连接",
+        "group": "配置",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.runtime.configure",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\RedisConnectionTestResource",
           "shape": "item",
           "status": 200
         }
@@ -6833,6 +6904,46 @@
         },
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminNotificationPoliciesApplyResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/communications/signals",
+      "method": "PUT",
+      "name": "communications.applySignals",
+      "controller": "Platform.AdminCommunications",
+      "action": "applySignals",
+      "meta": {
+        "name": "启停主动更新",
+        "group": "通信",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.configure",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "signalPolicies"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminSignalPoliciesResource",
           "shape": "item",
           "status": 200
         }

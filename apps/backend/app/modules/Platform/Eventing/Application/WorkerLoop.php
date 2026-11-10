@@ -106,6 +106,7 @@ final class WorkerLoop
             $options->releaseId(),
             $options->schemaVersion(),
             $this->handlers->catalogHash(),
+            $options->queueNames(),
             $jobsProcessed,
             $this->clock->now()
         ));

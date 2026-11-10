@@ -1,9 +1,21 @@
 -- LoveCards clean-install defaults only.
 -- Do not add schema changes here; use database/migrations and the lifecycle ledger.
 
+-- Redis 是可选系统设施，新安装默认关闭。
+INSERT INTO `configs` (`group`, `key`, `value`, `type`, `description`, `created_at`, `updated_at`) VALUES
+('redis', 'enabled', '0', 'bool', '启用 Redis 系统连接', NOW(), NOW()),
+('redis', 'host', '127.0.0.1', 'string', 'Redis 地址', NOW(), NOW()),
+('redis', 'port', '6379', 'int', 'Redis 端口', NOW(), NOW()),
+('redis', 'database', '0', 'int', 'Redis 数据库编号', NOW(), NOW()),
+('redis', 'password', '', 'password', 'Redis 认证密码', NOW(), NOW());
+
 -- 通信运行时首次安装默认配置；历史实例由 20261106000001 迁移初始化。
 INSERT INTO `runtime_config_state` (`id`, `desired_mode`, `settings_json`, `revision`, `last_apply_state`, `created_at`, `updated_at`) VALUES
 (1, 'polling', '{"notification_interval_seconds":30,"message_interval_seconds":45,"unread_interval_seconds":20,"polling_backoff_factor":2,"polling_max_interval_seconds":300,"pause_when_hidden":true,"worker_stale_seconds":30,"scheduler_stale_seconds":3600,"gateway_stale_seconds":15,"require_supervisor":false}', 1, 'applied', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6));
+
+-- 主动更新目录由 Handler Registry 定义；这里只保存管理员覆盖值。
+INSERT INTO `signal_policy_state` (`id`, `revision`, `overrides_json`, `created_at`, `updated_at`) VALUES
+(1, 1, '{}', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6));
 
 -- 首次安装直接使用规范事件名；历史实例由 20261107000001 迁移别名。
 INSERT INTO `notification_policy_versions` (`policy_revision`, `snapshot_json`, `source`, `reason`, `created_by`, `created_at`) VALUES

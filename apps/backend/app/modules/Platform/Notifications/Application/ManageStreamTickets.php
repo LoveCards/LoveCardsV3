@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace app\modules\Platform\Notifications\Application;
 
-use app\modules\Platform\Notifications\Contract\RealtimePollReader;
 use app\modules\Platform\Notifications\Contract\StreamTicketStore;
 
 /**
- * 浏览器 realtime 会话支撑：一次性 ticket 签发/消费 + Gateway 回源读取。
+ * 浏览器 realtime 会话支撑：一次性 ticket 签发/消费。
  * ticket 明文 26-hex（13 熵字节），60s TTL，verify 即消费（契约 §4.4）。
  */
 final class ManageStreamTickets
@@ -17,8 +16,7 @@ final class ManageStreamTickets
     public const HEARTBEAT_SECONDS = 15;
 
     public function __construct(
-        private StreamTicketStore $store,
-        private RealtimePollReader $pollReader
+        private StreamTicketStore $store
     ) {
     }
 
@@ -44,9 +42,4 @@ final class ManageStreamTickets
         return $this->store->consume($ticket);
     }
 
-    /** @return array{latest_cursor: ?string, newer: int} */
-    public function poll(int $uid, ?string $cursor, int $limit = 50): array
-    {
-        return $this->pollReader->since($uid, $cursor, $limit);
-    }
 }

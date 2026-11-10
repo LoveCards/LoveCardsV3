@@ -4,21 +4,22 @@ declare(strict_types=1);
 namespace app\modules\Operations\Runtime\Infrastructure;
 
 use app\modules\Operations\Runtime\Contract\RuntimeProbe;
+use app\modules\Platform\Config\Public\RedisConnectionSettings;
 use think\facade\Env;
 
 /**
  * Realtime Gateway 能力探测（契约 §4.3，验收 #7：禁止只查端口）。
  *
  * GET {LC_REALTIME_GATEWAY_URL}/internal/health + Bearer LC_RUNTIME_INTERNAL_TOKEN，
- * 校验 protocol 版本、cursor 能力、ticket 鉴权能力与自报 ready。
- * 结果按 gateway_stale_seconds 进程内缓存。transport=source-poll 时能力仍 ready，
- * 但带 realtime-transport-degraded 注记（effective 不因传输退化回落）。
+ * 校验 protocol 版本、topic 内读取提示能力、ticket 鉴权能力与自报 ready。
+ * 结果按 gateway_stale_seconds 进程内缓存。实时模式必须使用 Redis 信号通道；
+ * Gateway 回源不再作为正常传输。
  */
 final class RealtimeGatewayProbe implements RuntimeProbe
 {
     public const PROTOCOL = 'lc-realtime/1';
 
-    /** @var array{expiresAt:int,payload:array}|null */
+    /** @var array{expiresAt:int,payload:array,configRevision:string}|null */
     private static ?array $cache = null;
 
     public function key(): string
@@ -44,15 +45,17 @@ final class RealtimeGatewayProbe implements RuntimeProbe
             return ['ready' => false, 'provider' => $provider, 'reason_code' => 'gateway-auth-unavailable'];
         }
 
+        $configRevision = RedisConnectionSettings::current()['revision'];
         $ttl = max(1, (int) ($settings['gateway_stale_seconds'] ?? 15));
-        if (self::$cache !== null && self::$cache['expiresAt'] > time()) {
+        if (self::$cache !== null && self::$cache['expiresAt'] > time()
+            && self::$cache['configRevision'] === $configRevision) {
             $payload = self::$cache['payload'];
             $payload['note'] = array_merge($payload['note'] ?? [], ['cached' => true]);
             return $payload;
         }
 
-        $result = $this->fetchHealth($base, $token);
-        self::$cache = ['expiresAt' => time() + $ttl, 'payload' => $result];
+        $result = $this->fetchHealth($base, $token, $configRevision);
+        self::$cache = ['expiresAt' => time() + $ttl, 'payload' => $result, 'configRevision' => $configRevision];
         return $result;
     }
 
@@ -62,7 +65,7 @@ final class RealtimeGatewayProbe implements RuntimeProbe
         self::$cache = null;
     }
 
-    private function fetchHealth(string $base, string $token): array
+    private function fetchHealth(string $base, string $token, string $configRevision): array
     {
         $context = stream_context_create(['http' => [
             'timeout' => 2,
@@ -87,6 +90,7 @@ final class RealtimeGatewayProbe implements RuntimeProbe
         if (!is_array($payload)) {
             return ['ready' => false, 'provider' => 'realtime-gateway', 'reason_code' => 'gateway-protocol-mismatch'];
         }
+        // cursor=true 只表示 topic 内读取提示，不代表跨 topic 的 SSE 续传游标。
         if (($payload['protocol'] ?? null) !== self::PROTOCOL || ($payload['cursor'] ?? null) !== true) {
             return ['ready' => false, 'provider' => 'realtime-gateway', 'reason_code' => 'gateway-protocol-mismatch'];
         }
@@ -97,11 +101,22 @@ final class RealtimeGatewayProbe implements RuntimeProbe
         if (($payload['ready'] ?? null) !== true) {
             return ['ready' => false, 'provider' => 'realtime-gateway', 'reason_code' => 'gateway-not-ready'];
         }
-        $transport = (string) ($payload['transport'] ?? 'redis');
+        $transport = (string) ($payload['transport'] ?? '');
+        if (($payload['redis_config_version'] ?? null) !== $configRevision) {
+            return ['ready' => false, 'provider' => 'realtime-gateway', 'reason_code' => 'gateway-config-mismatch'];
+        }
+        if ($transport !== 'redis') {
+            return [
+                'ready' => false,
+                'provider' => 'realtime-gateway',
+                'reason_code' => 'realtime-transport-unavailable',
+                'note' => ['version' => $payload['version'] ?? null, 'transport' => $transport],
+            ];
+        }
         return [
             'ready' => true,
             'provider' => 'realtime-gateway',
-            'reason_code' => $transport === 'source-poll' ? 'realtime-transport-degraded' : null,
+            'reason_code' => null,
             'note' => ['version' => $payload['version'] ?? null, 'transport' => $transport],
         ];
     }
