@@ -43,6 +43,33 @@ final class RuntimeCommunication
         return $this->resolver()->snapshot();
     }
 
+    /** CLI 与管理端共用同一模式及健康快照，避免旧 Facility fallback 混入状态。 */
+    public function statusSnapshot(): array
+    {
+        $communication = $this->snapshot();
+        $consumer = app(EventConsumption::class)->current();
+        if ($consumer === null) {
+            $eventProcessing = ['mode' => 'unknown', 'state' => 'unavailable', 'target_mode' => null,
+                'revision' => 0, 'scheduled_trigger' => 'none', 'status' => 'degraded',
+                'reason_code' => 'event-consumer-unavailable', 'note' => null];
+        } else {
+            $probeKey = $consumer['mode'] === 'scheduled' ? 'scheduler' : 'event-worker';
+            $probe = null;
+            foreach ($communication['capabilities'] ?? [] as $item) {
+                if (($item['key'] ?? null) === $probeKey) { $probe = $item; break; }
+            }
+            $probe ??= ['ready' => false, 'reason_code' => 'probe-unavailable', 'note' => null];
+            $active = ($consumer['state'] ?? null) === 'active';
+            $ready = $active && ($probe['ready'] ?? null) === true;
+            $eventProcessing = $consumer + [
+                'status' => $ready ? 'ready' : 'degraded',
+                'reason_code' => $ready ? null : (!$active ? 'event-consumer-draining' : ($probe['reason_code'] ?? 'probe-unavailable')),
+                'note' => $probe['note'] ?? null,
+            ];
+        }
+        return ['communication' => $communication, 'event_processing' => $eventProcessing];
+    }
+
     /** 升级健康 Gate：要求新 Release 的 Worker 心跳，不接受旧进程代答。 */
     public function eventWorkerReadyForRelease(string $releaseId): bool
     {

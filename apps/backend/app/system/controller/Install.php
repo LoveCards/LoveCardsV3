@@ -112,11 +112,14 @@ class Install
             }
             //导入数据库文件
             try {
+                Database::AssertEmpty();
                 // schema.sql 只负责结构，seed.sql 只负责系统默认数据。
                 // 后续结构变更仍由同一个 SystemLifecycle 迁移账本推进。
                 $databaseRoot = app()->getRootPath() . 'database' . DIRECTORY_SEPARATOR;
                 Database::ImportSQLFile($databaseRoot . 'schema.sql');
                 Database::ImportSQLFile($databaseRoot . 'seed.sql');
+                app(\app\modules\Operations\SystemLifecycle\Public\CleanInstallReceipt::class)
+                    ->record($databaseRoot . 'schema.sql', $databaseRoot . 'migrations');
                 // 目标 schema 已包含历史迁移终态；记录审核过的迁移身份和 checksum。
                 app(SystemLifecycleCoordinator::class)->recordInstalledSchema(
                     dirname(__DIR__, 3) . '/database/migrations'

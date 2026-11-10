@@ -14,6 +14,8 @@ require $backend . '/vendor/autoload.php';
 $app = new \think\App($backend . DIRECTORY_SEPARATOR);
 $app->setEnvName('e2e');
 $app->initialize();
+$app->make(\app\modules\Operations\SystemLifecycle\Public\CleanInstallReceipt::class)
+    ->record($backend . '/database/schema.sql', $backend . '/database/migrations');
 $app->make(\app\modules\Operations\SystemLifecycle\Application\SystemLifecycleCoordinator::class)
     ->recordInstalledSchema($backend . '/database/migrations');
 \app\modules\Platform\Config\Public\Config::init();

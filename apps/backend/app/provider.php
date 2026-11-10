@@ -123,8 +123,6 @@ use app\modules\Platform\Eventing\Infrastructure\NullWakeupTransport;
 use app\modules\Platform\Eventing\Infrastructure\OptionalRedisWakeupTransport;
 use app\modules\Platform\Eventing\Infrastructure\RedisRealtimeSignalPublisher;
 use app\modules\Platform\Eventing\Public\RealtimeSignalPublisher;
-use app\shared\Runtime\FacilityProbe;
-use app\modules\Operations\Runtime\Infrastructure\ConfiguredFacilityProbe;
 use app\shared\Observability\AuditLogger;
 use app\shared\Observability\ThinkDbAuditLogger;
 use app\shared\Observability\LogContextScope;
@@ -194,7 +192,6 @@ return [
     // 通信运行时（Phase 3）：通知策略目录与版本冻结
     NotificationPolicyStore::class => ThinkDbNotificationPolicyStore::class,
     PolicyVersionSource::class => ThinkDbNotificationPolicyVersionSource::class,
-    FacilityProbe::class => ConfiguredFacilityProbe::class,
     AuditLogger::class => ThinkDbAuditLogger::class,
     LogContextScope::class => LogContextScope::class,
     LogContextProvider::class => LogContextScope::class,

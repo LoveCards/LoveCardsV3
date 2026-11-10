@@ -11,6 +11,7 @@ use app\modules\Operations\SystemLifecycle\Domain\MigrationPlanStep;
 use app\modules\Operations\SystemLifecycle\Domain\LifecycleLease;
 use app\modules\Operations\SystemLifecycle\Exception\UnsettledUpgradePlanException;
 use app\modules\Operations\SystemLifecycle\Exception\UpgradeLeaseUnavailableException;
+use app\modules\Operations\SystemLifecycle\Public\CleanInstallReceipt;
 
 final class SystemLifecycleCoordinator
 {
@@ -129,6 +130,7 @@ final class SystemLifecycleCoordinator
         if ($holder === null) throw new UpgradeLeaseUnavailableException('已有系统迁移正在执行');
         try {
             $this->assertNoUnsettledUpgradePlan();
+            app(CleanInstallReceipt::class)->assertCurrent(dirname($directory) . '/schema.sql', $directory);
             $this->planner->recordInstalledTarget($this->source->discover($directory));
             $this->assertInstalledSchemaComplete($directory);
         } finally {
@@ -139,6 +141,7 @@ final class SystemLifecycleCoordinator
     public function assertInstalledSchemaComplete(string $directory): void
     {
         $this->assertNoUnsettledUpgradePlan();
+        app(CleanInstallReceipt::class)->assertCurrent(dirname($directory) . '/schema.sql', $directory);
         $plan = $this->planner->plan($this->source->discover($directory));
         if ($plan->steps() === []) throw new \RuntimeException('安装包缺少数据库迁移目录');
         foreach ($plan->steps() as $step) {
