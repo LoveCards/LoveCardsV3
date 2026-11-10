@@ -35,6 +35,8 @@ const baseEnv = {
   LOVECARDS_E2E_DB_PASSWORD: password,
   LOVECARDS_E2E_ADMIN_ACCOUNT: '',
   LOVECARDS_E2E_ADMIN_PASSWORD: '',
+  LC_ENV_NAME: 'e2e',
+  PHP_CACHE_DRIVER: 'file',
   LC_SCHEMA_COMPARE_USER: user,
   LC_SCHEMA_COMPARE_PASSWORD: password,
   ...(openSsl ? { OPENSSL_CONF: openSsl } : {}),
