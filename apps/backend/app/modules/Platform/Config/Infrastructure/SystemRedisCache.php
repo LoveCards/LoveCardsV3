@@ -13,6 +13,14 @@ final class SystemRedisCache extends Redis
     private ?array $connectionSettings = null;
     private int $settingsReadAt = 0;
 
+    public function __construct(array $options = [])
+    {
+        if (($options['prefix'] ?? '') === '') {
+            throw new \InvalidArgumentException('系统 Redis 缓存必须使用独立 key 前缀');
+        }
+        parent::__construct($options);
+    }
+
     public function handler()
     {
         $now = time();
@@ -54,5 +62,18 @@ final class SystemRedisCache extends Redis
         $this->handler = $redis;
         $this->connectionRevision = $settings['revision'];
         return $redis;
+    }
+
+    /** 系统 Redis 可供多个用途共享，清理缓存只删除本缓存前缀。 */
+    public function clear(): bool
+    {
+        $redis = $this->handler();
+        $prefix = (string) $this->options['prefix'];
+        $cursor = null;
+        do {
+            $keys = $redis->scan($cursor, $prefix . '*', 200);
+            if (is_array($keys) && $keys !== []) $redis->del($keys);
+        } while ($cursor !== 0);
+        return true;
     }
 }

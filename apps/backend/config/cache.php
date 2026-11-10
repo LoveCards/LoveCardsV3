@@ -32,7 +32,7 @@ return [
         // 仅当 cache.driver=redis 显式选用时，延迟读取系统 Redis 配置。
         'redis' => [
             'type' => \app\modules\Platform\Config\Infrastructure\SystemRedisCache::class,
-            'prefix' => 'lc:',
+            'prefix' => 'lc:cache:',
         ],
     ],
 ];

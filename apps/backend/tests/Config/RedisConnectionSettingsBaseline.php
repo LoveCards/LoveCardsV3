@@ -39,7 +39,7 @@ namespace {
     $disabled = RedisConnectionSettings::current();
     $assert($disabled['enabled'] === false && $disabled['host'] === '' && $disabled['source'] === 'database', 'new install must leave Redis unconfigured');
     $assert(RedisConnectionSettings::test()['reason_code'] === 'redis-disabled', 'disabled Redis must not attempt connection');
-    $cacheDriver = new \app\modules\Platform\Config\Infrastructure\SystemRedisCache();
+    $cacheDriver = new \app\modules\Platform\Config\Infrastructure\SystemRedisCache(['prefix' => 'lc:cache:']);
     try {
         $cacheDriver->handler();
         throw new \RuntimeException('disabled system Redis cache must fail closed');
