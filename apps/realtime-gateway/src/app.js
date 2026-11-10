@@ -94,12 +94,13 @@ export function createApp(config) {
     }
   }
 
-  const closeConnection = (conn, reason = 'closed') => {
+  const closeConnection = (conn, reason = 'closed', force = false) => {
     if (!state.connections.delete(conn)) return
     clearInterval(conn.heartbeat)
     clearTimeout(conn.lifetime)
     try {
-      conn.res.end()
+      if (force) conn.res.destroy()
+      else conn.res.end()
     } catch {
       // 客户端已断开。
     }
@@ -226,14 +227,18 @@ export function createApp(config) {
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
     })
-    res.write(retryDirective(RECONNECT_RETRY_MS))
+    if (!res.write(retryDirective(RECONNECT_RETRY_MS))) {
+      res.destroy()
+      logger('connection write backpressure')
+      return
+    }
 
     const conn = {
       recipientKey: `user:${verified.uid}`,
       res,
       send(frame) {
         try {
-          res.write(frame)
+          if (!res.write(frame)) closeConnection(conn, 'write backpressure', true)
         } catch {
           closeConnection(conn, 'write failed')
         }
