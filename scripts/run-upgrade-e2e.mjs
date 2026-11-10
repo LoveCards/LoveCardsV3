@@ -405,7 +405,7 @@ try {
     if (plan.status === 'completed') break
     if (plan.status === 'failed' || plan.status === 'recovered') throw new Error(`Upgrade entered unexpected terminal state: ${plan.status}`)
     if (plan.current_step === 'health_check' && !ranActivatedConsumer) {
-      const consumerOutput = await run(php, ['think', 'lc:scheduler:run-once'], dbEnv)
+      const consumerOutput = await run(php, [path.join('apps', 'backend', 'think'), 'lc:scheduler:run-once', '--max-jobs=1', '--max-ms=100'], dbEnv)
       if (!consumerOutput.includes('claimed=')) throw new Error('Activated Release did not complete a scheduled consumer run')
       ranActivatedConsumer = true
     }
