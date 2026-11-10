@@ -18,6 +18,7 @@ use app\modules\Platform\Safety\Public\Safety;
 use app\modules\Platform\Social\Public\Social;
 use app\modules\Platform\Notifications\Contract\SystemNoticeIssuer;
 use app\modules\Platform\Notifications\Domain\SystemNotice;
+use app\modules\Platform\Eventing\Public\DomainEventBus;
 
 use app\shared\Infrastructure\Persistence\BulkFieldToggle;
 use app\shared\Infrastructure\Persistence\ModelQuery;
@@ -309,6 +310,8 @@ class Cards
         Db::startTrans();
         try {
             $before = $auditAdminMutation ? self::auditRows($ids, true, true) : [];
+            $newlyVisibleBefore = in_array($method, ['unhide', 'restore'], true)
+                ? self::auditRows($ids, true, true) : [];
             match ($method) {
                 'top', 'unset_top' => BulkFieldToggle::toggle(CardsModel::class, 'is_top', $ids, [0, 1]),
                 'approve' => self::approveCards($ids),
@@ -327,6 +330,15 @@ class Cards
                 'hard_delete' => self::hardDeleteCards($ids),
             };
             self::syncMediaVisibility($ids, $method === 'hard_delete');
+            if ($newlyVisibleBefore !== []) {
+                $afterVisible = self::auditRows($ids);
+                foreach ($afterVisible as $cardId => $card) {
+                    $old = $newlyVisibleBefore[$cardId] ?? null;
+                    if ($old === null || (int) ($card['status'] ?? -1) !== PublicationStatus::visible()
+                        || ((int) ($old['status'] ?? -1) === PublicationStatus::visible() && empty($old['deleted_at']))) continue;
+                    self::publishFeedChange((int) $cardId, (int) ($card['user_id'] ?? 0), (string) ($card['visibility'] ?? 'public'));
+                }
+            }
             if ($auditAdminMutation) {
                 app(AdminMutationAudit::class)->recordChanges(
                     $uid,
@@ -376,6 +388,7 @@ class Cards
             if ($data['visibility'] !== CardVisibilityPolicy::PUBLIC) CardMedia::assertRestrictedStorage((int) $result->id);
             if ((int) ($data['status'] ?? 0) === PublicationStatus::visible()) {
                 self::captureCardMentions(self::decodeJsonFields($result->toArray()));
+                self::publishFeedChange((int) $result->id, $uid, (string) $data['visibility']);
             }
             Db::commit();
             return $result->id;
@@ -412,6 +425,7 @@ class Cards
                 throw \app\api\ApiException::validation(['data.visibility' => ['请使用卡片顶层 visibility 字段。']]);
             }
             $beforeAudit = $shouldAudit ? self::auditRows([$cardId], false, true) : [];
+            $previousCard = CardsModel::where('id', $cardId)->field('status,visibility')->lock(true)->find();
             // 验证能力 + 归属
             CardPolicy::assertCan($grants, 'update', $cardId, $uid);
 
@@ -487,6 +501,17 @@ class Cards
                 ->where('status', PublicationStatus::visible())
                 ->findOrEmpty();
             if (!$card->isEmpty()) self::captureCardMentions(self::decodeJsonFields($card->toArray()));
+            if (!$card->isEmpty()) {
+                $previousStatus = (int) ($previousCard->status ?? -1);
+                $previousVisibility = (string) ($previousCard->visibility ?? CardVisibilityPolicy::PUBLIC);
+                $visibility = (string) ($card->visibility ?? CardVisibilityPolicy::PUBLIC);
+                if ($visibility !== CardVisibilityPolicy::PRIVATE
+                    && ($previousStatus !== PublicationStatus::visible()
+                        || ($previousVisibility === CardVisibilityPolicy::PRIVATE)
+                        || ($previousVisibility === CardVisibilityPolicy::FOLLOWERS && $visibility === CardVisibilityPolicy::PUBLIC))) {
+                    self::publishFeedChange($cardId, (int) $card->user_id, $visibility);
+                }
+            }
 
             if ($shouldAudit) {
                 app(AdminMutationAudit::class)->recordChanges(
@@ -574,7 +599,19 @@ class Cards
                 'success'
             );
             self::captureCardMentions(self::decodeJsonFields($card));
+            self::publishFeedChange((int) $card['id'], (int) $card['user_id'], (string) ($card['visibility'] ?? 'public'));
         }
+    }
+
+    /** 与卡片可见状态变化同事务记录前端提示，不把正文放入事件。 */
+    private static function publishFeedChange(int $cardId, int $ownerId, string $visibility): void
+    {
+        if ($cardId < 1 || $ownerId < 1 || $visibility === 'private') return;
+        app(DomainEventBus::class)->publish('content.card.published', 'card', (string) $cardId, [
+            'card_id' => $cardId,
+            'owner_id' => $ownerId,
+            'visibility' => $visibility,
+        ], $ownerId);
     }
 
     private static function captureCardMentions(array $card): void

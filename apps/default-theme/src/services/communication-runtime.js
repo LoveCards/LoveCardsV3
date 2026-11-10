@@ -46,9 +46,9 @@ export function createCommunicationRuntime({
   let transportGeneration = 0;
   let settingsGeneration = 0;
 
-  function emit(topic) {
+  function emit(topic, hint = '') {
     for (const listener of listeners) {
-      try { listener(topic); } catch { /* 订阅方错误不影响调度 */ }
+      try { listener(topic, hint); } catch { /* 订阅方错误不影响调度 */ }
     }
   }
 
@@ -137,6 +137,7 @@ export function createCommunicationRuntime({
     emit(SIGNAL_NOTIFICATIONS);
     emit(SIGNAL_MESSAGES);
     emit(SIGNAL_UNREAD);
+    emit(SIGNAL_FEED, 'reconcile');
   }
 
   async function startRealtime() {
@@ -178,12 +179,16 @@ export function createCommunicationRuntime({
     source.addEventListener('signal', (event) => {
       armWatchdog(ticket.heartbeat_seconds);
       let topic = null;
+      let hint = '';
       try {
         const parsed = JSON.parse(event.data || '{}');
-        if ([SIGNAL_NOTIFICATIONS, SIGNAL_MESSAGES, SIGNAL_UNREAD, SIGNAL_FEED].includes(parsed.topic)) topic = parsed.topic;
+        if ([SIGNAL_NOTIFICATIONS, SIGNAL_MESSAGES, SIGNAL_UNREAD, SIGNAL_FEED].includes(parsed.topic)) {
+          topic = parsed.topic;
+          hint = typeof parsed.cursor === 'string' ? parsed.cursor : '';
+        }
       } catch { /* 非法信号不触发业务读取。 */ }
       if (topic === null) return;
-      emit(topic);
+      emit(topic, hint);
       if (topic === SIGNAL_NOTIFICATIONS || topic === SIGNAL_MESSAGES) emit(SIGNAL_UNREAD);
     });
     source.addEventListener('error', () => {

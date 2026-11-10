@@ -72,7 +72,9 @@ Redis、Gateway 与 Worker 的实现可以更换，但需满足既有协议、Ha
 读取：新安装默认关闭，管理员可在配置组 `redis` 设置地址、端口、数据库和密码，
 并调用 `POST /api/admin/config/redis/test` 检查当前连接。密码在管理读取中遮罩；
 旧部署若设置 `LC_REDIS_HOST`，整组连接仍由环境托管，后台拒绝修改，探测显示
-`source=env`。首版不支持 Redis TLS，不能在 Gateway 单独启用 TLS。
+`source=env`。TLS 开关和证书名称属于同一份系统连接配置，PHP 与 Gateway
+必须同时验证证书链和名称；详见 `FRONTEND-SIGNALS.md`。TLS 故障不允许
+回退到明文 Redis 连接。
 
 Gateway 经原有内部 Bearer 通道读取
 `GET /api/internal/realtime/redis-config`，取得同一份配置及不可逆的版本指纹；
@@ -86,6 +88,18 @@ Gateway 或 Event Worker。
 
 实时硬依赖包括 Redis 发布端连接、Gateway 经认证的 `lc-realtime/1` 健康协议
 与 Redis 订阅状态、Event Worker 新鲜心跳及匹配当前 Release 的 Handler Catalog。
+Worker 启动时从当前代码的 Migration Catalog 和 `system_upgrade_steps` 迁移账本
+计算 Schema 身份：每个代码迁移必须在账本中完成且 checksum 一致，账本不得有
+代码未声明的迁移；对排序后的完整 `migration_id => checksum` 映射计算 SHA-256，
+写入现有心跳 `schema_version` 字段。FPM 探测用只读账本与自身迁移目录重算
+身份，不执行 DDL，并要求心跳完全匹配；自身代码超前、未知、未完成或不一致
+均拒绝实时就绪。Worker 启动校验成功后只在该进程内缓存代码迁移目录；热循环
+仍每次只读账本以发现变化，不反复扫描迁移文件。FPM 请求不预热此缓存，继续
+校验其当前 Release 的目录。
+升级中旧 Worker 的启动快照
+不会因数据库改变而自动更新，须由部署管理器在迁移与激活后重启 Worker。
+Schema 身份验证的是受审迁移账本与代码目录的一致性，不代替升级 Verify 阶段的
+实际结构检查，也不在生产运行时生成或执行 schema diff。
 部署要求 Supervisor 时再检查该项；Scheduler 是独立诊断，不阻塞实时模式。
 实时开启前检查依赖，失败拒绝保存；运行中故障时保留 realtime/degraded，
 Eventing 暂停实时信号领取。业务 API 与站内通知生成继续运行。

@@ -8,14 +8,24 @@ namespace think\facade
 {
     class Db
     {
+        public static array $cardRows = [];
+        public static int $cardReads = 0;
         public static function startTrans(): void {}
         public static function commit(): void {}
         public static function rollback(): void {}
         public static function table(string $table): object
         {
-            return new class {
+            return new class($table) {
+                public function __construct(private string $table) {}
                 public function where(...$args): self { return $this; }
                 public function whereIn(...$args): self { return $this; }
+                public function order(...$args): self { return $this; }
+                public function lock(...$args): self { return $this; }
+                public function whereNull(...$args): self { return $this; }
+                public function select(): object { return new class($this->table === 'cards' ? Db::$cardRows[min(Db::$cardReads++, count(Db::$cardRows) - 1)] ?? [] : []) {
+                    public function __construct(private array $rows) {}
+                    public function toArray(): array { return $this->rows; }
+                }; }
                 public function field(...$args): self { return $this; }
                 public function find(): ?array { return ['status' => 0, 'deleted_at' => null]; }
                 public function delete(): int { return 1; }
@@ -75,6 +85,7 @@ namespace app\modules\Content\Infrastructure\Persistence\Model
             $this->filters[] = ['eq', $field, $value];
             return $this;
         }
+        public function onlyTrashed(): self { return $this; }
 
         public function order(string $field, string $direction): self { return $this; }
         public function lock(bool $lock): self { return $this; }
@@ -120,6 +131,8 @@ namespace app\modules\Content\Infrastructure\Persistence\Model
     {
         public static ?CardsQuery $lastQuery = null;
         public static array $rows = [];
+
+        public static function withTrashed(): CardsQuery { return new CardsQuery(); }
 
         public static function whereIn(string $field, array $values): CardsQuery
         {
@@ -240,6 +253,7 @@ namespace {
     final class CardNoticeState
     {
         public static object $issuer;
+        public static object $events;
     }
 
     if (!class_exists('FakeCommunicationPorts')) {
@@ -268,6 +282,7 @@ namespace {
     function app(string $class): object
     {
         if ($class === \app\modules\Platform\Notifications\Contract\SystemNoticeIssuer::class) return CardNoticeState::$issuer;
+        if ($class === \app\modules\Platform\Eventing\Public\DomainEventBus::class) return CardNoticeState::$events;
         if (in_array($class, ['app\\modules\\Platform\\Eventing\\Public\\RealtimeSignalPublisher', 'app\\modules\\Platform\\Notifications\\Contract\\NotificationPolicyStore'], true)) {
             return \FakeCommunicationPorts::instance($class);
         }
@@ -310,11 +325,17 @@ namespace {
 
     $reset = static function (): void {
         \app\modules\Content\Infrastructure\Persistence\Model\Cards::reset();
+        \think\facade\Db::$cardRows = [];
+        \think\facade\Db::$cardReads = 0;
         \app\shared\Infrastructure\Persistence\BulkFieldToggle::reset();
         \app\modules\Content\Mentions\Service\Mentions::$captures = 0;
         CardNoticeState::$issuer = new class {
             public array $records = [];
             public function issue(...$arguments): object { $this->records[] = $arguments; return new \stdClass(); }
+        };
+        CardNoticeState::$events = new class {
+            public array $records = [];
+            public function publish(...$arguments): object { $this->records[] = $arguments; return new \stdClass(); }
         };
     };
 
@@ -371,7 +392,33 @@ namespace {
         $approve->invoke(null, [12]);
         $assertSame(0, \app\modules\Content\Infrastructure\Persistence\Model\Cards::$rows[12]['status']);
         $assertSame(1, count(CardNoticeState::$issuer->records), 'approval notice count');
+        $assertSame(1, count(CardNoticeState::$events->records), 'approval feed event count');
+        $assertSame('content.card.published', CardNoticeState::$events->records[0][0], 'approval feed event type');
         $assertSame('moderation.card.12.approved', CardNoticeState::$issuer->records[0][1], 'approval notice key');
+    });
+
+    $test('unhide emits feed event only for a genuinely visible card', static function () use ($reset, $assertSame): void {
+        $reset();
+        \think\facade\Db::$cardRows = [
+            [['id' => 20, 'user_id' => 42, 'status' => 2, 'visibility' => 'public', 'deleted_at' => null]],
+            [['id' => 20, 'user_id' => 42, 'status' => 0, 'visibility' => 'public', 'deleted_at' => null]],
+        ];
+        \app\modules\Content\Infrastructure\Persistence\Model\Cards::$rows[20] = [
+            'id' => 20, 'user_id' => 42, 'status' => 2, 'visibility' => 'public', 'deleted_at' => null,
+        ];
+        \app\modules\Content\Cards\Service\Cards::batchOperate('unhide', [20], 1, new \app\shared\Authorization\GrantSet());
+        $assertSame(1, count(CardNoticeState::$events->records), 'unhide event count');
+        $assertSame('content.card.published', CardNoticeState::$events->records[0][0], 'unhide event type');
+    });
+
+    $test('restore emits feed event only for a genuinely visible card', static function () use ($reset, $assertSame): void {
+        $reset();
+        \think\facade\Db::$cardRows = [
+            [['id' => 21, 'user_id' => 42, 'status' => 0, 'visibility' => 'public', 'deleted_at' => '2026-11-10 00:00:00']],
+            [['id' => 21, 'user_id' => 42, 'status' => 0, 'visibility' => 'public', 'deleted_at' => null]],
+        ];
+        \app\modules\Content\Cards\Service\Cards::batchOperate('restore', [21], 1, new \app\shared\Authorization\GrantSet());
+        $assertSame(1, count(CardNoticeState::$events->records), 'restore event count');
     });
 
     $failures = 0;

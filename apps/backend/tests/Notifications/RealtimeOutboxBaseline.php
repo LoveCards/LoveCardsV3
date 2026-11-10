@@ -115,7 +115,7 @@ $assert($events->items[1]->payload() === ['reader_id' => 2, 'conversation_id' =>
 $assert($deliveries->items[1] === [2, 'realtime.message-read'], 'read event should enqueue a realtime delivery');
 
 $signalCatalog = $registry->signalCatalog();
-$assert(count($signalCatalog) === 3, 'realtime signals should derive from registered handlers');
-$assert(array_column($signalCatalog, 'key') === ['messages.new', 'messages.read', 'notifications.new'], 'realtime signal keys should be stable and ordered');
+$assert(count($signalCatalog) === 4, 'realtime signals should derive from registered handlers');
+$assert(array_column($signalCatalog, 'key') === ['feed.published', 'messages.new', 'messages.read', 'notifications.new'], 'realtime signal keys should be stable and ordered');
 
 fwrite(STDOUT, "PASS realtime outbox baseline\n");

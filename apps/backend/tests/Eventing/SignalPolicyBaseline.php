@@ -18,7 +18,7 @@ $rejects = static function (callable $operation, string $message): void {
 
 $catalog = (new HandlerRegistry())->signalCatalog();
 $keys = array_column($catalog, 'key');
-$assert($keys === ['messages.new', 'messages.read', 'notifications.new'], 'signal catalog must match registered handlers');
+$assert($keys === ['feed.published', 'messages.new', 'messages.read', 'notifications.new'], 'signal catalog must match registered handlers');
 foreach ($catalog as $entry) {
     $assert($entry['handler_key'] !== '' && $entry['topic'] !== '' && is_bool($entry['default_enabled']), 'every signal needs a handler, topic, and default');
 }

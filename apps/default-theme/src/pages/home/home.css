@@ -99,6 +99,22 @@
     margin: 0 0 18px;
   }
 
+  .home-new-content {
+    display: block;
+    margin: 0 auto 18px;
+    padding: 9px 18px;
+    border: 1px solid var(--lc-rose);
+    border-radius: 999px;
+    background: var(--lc-surface);
+    color: var(--lc-ink);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 650;
+    cursor: pointer;
+  }
+  .home-new-content:hover { background: var(--lc-surface-subtle); }
+  .home-new-content:focus-visible { outline: 2px solid var(--lc-rose); outline-offset: 2px; }
+
   .home-layout {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 260px;

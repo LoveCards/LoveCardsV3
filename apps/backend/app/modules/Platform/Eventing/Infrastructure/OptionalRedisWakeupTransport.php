@@ -19,7 +19,7 @@ final class OptionalRedisWakeupTransport implements WakeupTransport
         if (!$settings['enabled']) return;
         $redis = new \Redis();
         try {
-            if (!$redis->connect($settings['host'], $settings['port'], 0.25)) return;
+            if (!RedisConnectionSettings::connectTransport($redis, $settings)) return;
             if ($settings['password'] !== '' && !$redis->auth($settings['password'])) return;
             if (!$redis->select($settings['database'])) return;
             $redis->publish('lovecards:eventing', json_encode(array_values($deliveryIds), JSON_THROW_ON_ERROR));

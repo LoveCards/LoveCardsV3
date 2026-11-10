@@ -48,12 +48,37 @@ test('default Redis is disabled; saved password stays masked and the connection 
   await page.goto('./apps/settings/redis', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: 'Redis 服务' })).toBeVisible()
   await expect(page.getByLabel('启用 Redis 连接')).not.toBeChecked()
+  await expect(page.getByLabel('使用 TLS 加密连接并验证证书')).not.toBeChecked()
   await expect(page.getByText('已配置密码。', { exact: false })).toBeVisible()
   await expect(page.getByRole('button', { name: '保留' })).toHaveClass(/v-btn--active/)
   await expect(page.getByLabel('新密码')).toHaveCount(0)
   await page.getByRole('button', { name: '测试当前连接' }).click()
   await expect(page.getByText('连接测试未通过：尚未启用 Redis')).toBeVisible()
   expect(tests).toBe(2) // 页面加载读取来源一次，点击后实际测试一次。
+})
+
+test('TLS settings use the shared Redis config and expose certificate identity', async ({ page }) => {
+  await mockAdmin(page)
+  const writes: Array<Record<string, unknown>> = []
+  await page.route('**/api/admin/config', route => {
+    if (route.request().method() === 'POST') {
+      writes.push(route.request().postDataJSON() as Record<string, unknown>)
+      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: null }) })
+    }
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: {
+      redis: { enabled: false, host: '127.0.0.1', port: 6379, database: 0, tls: false, tls_server_name: '', password: { $secret: 'keep', configured: false } },
+    } }) })
+  })
+  await page.route('**/api/admin/config/redis/test', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
+    success: true, data: { ready: false, reason_code: 'redis-disabled', source: 'database' },
+  }) }))
+  await page.goto('./apps/settings/redis', { waitUntil: 'domcontentloaded' })
+  await page.getByLabel('使用 TLS 加密连接并验证证书').check()
+  await expect(page.getByLabel('TLS 证书名称')).toBeVisible()
+  await page.getByLabel('TLS 证书名称').fill('redis.example.test')
+  await page.getByRole('button', { name: '保存设置' }).click()
+  await expect.poll(() => writes.length).toBe(1)
+  expect(writes[0]?.redis).toMatchObject({ tls: true, tls_server_name: 'redis.example.test' })
 })
 
 test('password replacement and clearing use explicit secret operations', async ({ page }) => {

@@ -126,6 +126,34 @@ final class HandlerRegistry
             ]
         ));
         $this->register(new HandlerRegistration(
+            'content.card.published',
+            1,
+            'realtime.card-published',
+            'realtime',
+            ExecutionMode::DAEMON_REQUIRED,
+            new \app\modules\Content\Cards\Infrastructure\CardPublishedSignalHandler(),
+            100,
+            [5, 30, 300, 1800],
+            [
+                'key' => 'feed.published',
+                'topic' => 'feed',
+                'owner' => 'Content/Cards',
+                'display_name' => '信息流新内容主动提示',
+                'impact_text' => '关闭后卡片仍会正常发布，首页和关注页不会主动提示新内容。',
+                'default_enabled' => true,
+            ]
+        ));
+        $this->register(new HandlerRegistration(
+            'content.card.feed.batch.requested',
+            1,
+            'realtime.card-feed-batch',
+            'realtime',
+            ExecutionMode::DAEMON_REQUIRED,
+            new \app\modules\Content\Cards\Infrastructure\CardPublishedSignalHandler(),
+            100,
+            [5, 30, 300, 1800]
+        ));
+        $this->register(new HandlerRegistration(
             'file.purge.requested',
             1,
             'files.purge',

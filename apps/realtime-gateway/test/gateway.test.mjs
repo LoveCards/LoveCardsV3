@@ -2,6 +2,11 @@
 import assert from 'node:assert/strict'
 import http from 'node:http'
 import net from 'node:net'
+import tls from 'node:tls'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
 
 import { createApp, PROTOCOL } from '../src/app.js'
@@ -57,7 +62,7 @@ function createFakeBackend() {
     ['valid-ticket-26chars-hex', { uid: 7, cursor_seed: 'seed-1' }],
     ['second-ticket-26chars-hex', { uid: 8, cursor_seed: 'seed-2' }],
   ])
-  const redisConfig = { enabled: false, host: '', port: 0, database: 0, password: '', source: 'database', revision: 'disabled' }
+  const redisConfig = { enabled: false, host: '', port: 0, database: 0, password: '', tls: false, tls_server_name: '', source: 'database', revision: 'disabled' }
   let configAvailable = true
   const server = http.createServer(async (req, res) => {
     if (req.headers.authorization !== 'Bearer test-internal-token-1234') {
@@ -378,6 +383,41 @@ test('gateway closes old streams and waits for the new subscription after a conf
   }
 })
 
+test('gateway never reports ready when TLS is configured against a plaintext Redis endpoint', async () => {
+  const sockets = new Set()
+  const fakeRedis = net.createServer((socket) => {
+    sockets.add(socket)
+    socket.on('close', () => sockets.delete(socket))
+    socket.destroy()
+  })
+  const redisPort = await listen(fakeRedis)
+  const backend = createFakeBackend()
+  Object.assign(backend.redisConfig, { enabled: true, host: '127.0.0.1', port: redisPort,
+    database: 0, password: '', tls: true, tls_server_name: 'redis.test', source: 'database', revision: 'tls-v1' })
+  const backendPort = await listen(backend.server)
+  const app = createApp({ backendUrl: `http://127.0.0.1:${backendPort}`,
+    internalToken: 'test-internal-token-1234', redisConfigPath: '/api/internal/realtime/redis-config',
+    redisConfigRefreshMs: 40 })
+  const port = await app.start(0)
+  try {
+    const headers = { Authorization: 'Bearer test-internal-token-1234' }
+    let health
+    for (let i = 0; i < 50; i += 1) {
+      health = await readJson(await httpGet(port, '/internal/health', headers))
+      if (health.redis_config_version === 'tls-v1') break
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+    assert.equal(health.redis_config_version, 'tls-v1')
+    assert.equal(health.ready, false)
+    assert.equal(health.transport, 'disconnected')
+  } finally {
+    app.stop()
+    for (const socket of sockets) socket.destroy()
+    fakeRedis.close()
+    backend.server.close()
+  }
+})
+
 test('redis transport pushes recipient-scoped signals as SSE frames', async () => {
   let subscriberSocket = null
   const fakeRedis = net.createServer((socket) => {
@@ -410,7 +450,10 @@ test('redis transport pushes recipient-scoped signals as SSE frames', async () =
     assert.equal(stream.statusCode, 200)
     assert.match(stream.headers['content-type'], /text\/event-stream/)
     assert.equal(stream.headers['x-accel-buffering'], 'no')
-    const framePromise = collectFrames(stream, 2)
+    const framePromise = collectFrames(stream, 3)
+    const otherStream = await httpGet(port, '/stream?ticket=second-ticket-26chars-hex')
+    assert.equal(otherStream.statusCode, 200)
+    const otherFrames = collectFrames(otherStream, 3)
 
     const second = await httpGet(port, '/stream?ticket=valid-ticket-26chars-hex')
     assert.equal(second.statusCode, 401)
@@ -419,11 +462,18 @@ test('redis transport pushes recipient-scoped signals as SSE frames', async () =
     // 定向 uid 不匹配的信号必须被忽略，匹配的必须送达。
     subscriberSocket.write(encodeMessage({ topic: 'notifications', uid: 'user:9', cursor: 'x' }))
     subscriberSocket.write(encodeMessage({ topic: 'notifications', uid: 'user:7', cursor: 'cursor-r1' }))
+    subscriberSocket.write(encodeMessage({ topic: 'feed', uid: 'all', cursor: 'public' }))
+    subscriberSocket.write(encodeMessage({ topic: 'feed', uids: ['user:8', 'user:9'], cursor: 'following' }))
 
     const frames = await framePromise
     assert.equal(frames[0], 'retry: 2000')
+    assert.match(frames[2], /"topic":"feed","cursor":"public"/)
+    const scopedFrames = await otherFrames
+    assert.match(scopedFrames[1], /"topic":"feed","cursor":"public"/)
+    assert.match(scopedFrames[2], /"topic":"feed","cursor":"following"/)
     assert.match(frames[1], /^event: signal\ndata: \{"topic":"notifications","cursor":"cursor-r1"}$/)
     stream.destroy()
+    otherStream.destroy()
   } finally {
     app.stop()
     fakeRedis.close()
@@ -574,5 +624,54 @@ test('redis subscriber authenticates and selects the configured database before 
     subscriber.stop()
     socketRef?.destroy()
     fakeRedis.close()
+  }
+})
+
+test('redis TLS subscriber verifies certificate chain and server name before reporting ready', async () => {
+  const directory = mkdtempSync(join(tmpdir(), 'lc-redis-tls-'))
+  const keyPath = join(directory, 'redis.key')
+  const certPath = join(directory, 'redis.crt')
+  const openssl = process.env.OPENSSL_BIN || (process.platform === 'win32' ? 'C:\\Program Files\\Git\\usr\\bin\\openssl.exe' : 'openssl')
+  try {
+    execFileSync(openssl, ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', keyPath,
+      '-out', certPath, '-days', '1', '-subj', '/CN=redis.test', '-addext', 'subjectAltName=DNS:redis.test'], {
+      stdio: 'ignore',
+      env: { ...process.env, ...(process.platform === 'win32' ? { OPENSSL_CONF: 'C:\\Program Files\\Git\\usr\\ssl\\openssl.cnf' } : {}) },
+    })
+    const cert = readFileSync(certPath)
+    const sockets = new Set()
+    const server = tls.createServer({ key: readFileSync(keyPath), cert }, (socket) => {
+      sockets.add(socket)
+      socket.on('close', () => sockets.delete(socket))
+      socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$18\r\nlovecards:realtime\r\n:1\r\n')))
+    })
+    server.on('tlsClientError', () => {})
+    const port = await listen(server)
+    const run = async (name, trustedCa, expected) => {
+      const statuses = []
+      const subscriber = new RedisSubscriber({ host: '127.0.0.1', port, tls: true,
+        tlsServerName: name, ...(trustedCa ? { ca: cert } : {}), channel: 'lovecards:realtime',
+        onMessage: () => {}, onStatus: (status) => statuses.push(status), connectTimeoutMs: 500 })
+      try {
+        subscriber.start()
+        for (let i = 0; i < 100 && !statuses.includes(expected); i += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 10))
+        }
+        assert.equal(statuses[0], expected)
+        assert.equal(subscriber.ready, expected === 'up')
+      } finally {
+        subscriber.stop()
+      }
+    }
+    try {
+      await run('redis.test', true, 'up')
+      await run('redis.test', false, 'down')
+      await run('wrong.test', true, 'down')
+    } finally {
+      for (const socket of sockets) socket.destroy()
+      server.close()
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true })
   }
 })

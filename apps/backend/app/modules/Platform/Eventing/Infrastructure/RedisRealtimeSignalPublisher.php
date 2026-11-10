@@ -32,7 +32,7 @@ final class RedisRealtimeSignalPublisher implements RealtimeSignalPublisher
         }
         $redis = new \Redis();
         try {
-            if (!$redis->connect($settings['host'], $settings['port'], 0.25)) {
+            if (!RedisConnectionSettings::connectTransport($redis, $settings)) {
                 throw new \RuntimeException('Realtime Redis 连接失败');
             }
             if ($settings['password'] !== '' && !$redis->auth($settings['password'])) {
@@ -41,11 +41,13 @@ final class RedisRealtimeSignalPublisher implements RealtimeSignalPublisher
             if (!$redis->select($settings['database'])) {
                 throw new \RuntimeException('Realtime Redis database 选择失败');
             }
-            $subscribers = $redis->publish(self::CHANNEL, json_encode([
+            $recipients = $signal->recipientKeys();
+            $payload = [
                 'topic' => $signal->topic(),
-                'uid' => $signal->recipientKey(),
                 'cursor' => $signal->cursorHint(),
-            ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
+            ];
+            $payload[count($recipients) === 1 ? 'uid' : 'uids'] = count($recipients) === 1 ? $recipients[0] : $recipients;
+            $subscribers = $redis->publish(self::CHANNEL, json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
             if ($subscribers < 1) {
                 throw new \RuntimeException('Realtime Gateway 未订阅 Redis 信号');
             }
