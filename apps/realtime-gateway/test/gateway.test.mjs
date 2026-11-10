@@ -436,6 +436,54 @@ test('redis transport pushes recipient-scoped signals as SSE frames', async () =
   }
 })
 
+test('gateway closes a stream when an SSE write hits backpressure', async () => {
+  let subscriberSocket = null
+  const fakeRedis = net.createServer((socket) => {
+    subscriberSocket = socket
+    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$18\r\nlovecards:realtime\r\n:1\r\n')))
+  })
+  const redisPort = await listen(fakeRedis)
+  const backend = createFakeBackend()
+  const backendPort = await listen(backend.server)
+  const app = createApp({
+    backendUrl: `http://127.0.0.1:${backendPort}`,
+    internalToken: 'test-internal-token-1234',
+    redis: { host: '127.0.0.1', port: redisPort },
+  })
+  const port = await app.start(0)
+  try {
+    const headers = { Authorization: 'Bearer test-internal-token-1234' }
+    for (let i = 0; i < 50; i += 1) {
+      const health = await readJson(await httpGet(port, '/internal/health', headers))
+      if (health.ready) break
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+    assert.ok(subscriberSocket)
+    const stream = await httpGet(port, '/stream?ticket=valid-ticket-26chars-hex')
+    assert.equal(stream.statusCode, 200)
+    stream.pause()
+    stream.on('error', () => {})
+    const closed = new Promise((resolve) => stream.once('close', resolve))
+    const payload = JSON.stringify({ topic: 'notifications', uid: 'user:7', cursor: 'x'.repeat(64 * 1024) })
+    subscriberSocket.write(Buffer.from(`*3\r\n$7\r\nmessage\r\n$18\r\nlovecards:realtime\r\n$${Buffer.byteLength(payload)}\r\n${payload}\r\n`))
+    let timeout
+    try {
+      await Promise.race([closed, new Promise((_, reject) => {
+        timeout = setTimeout(() => reject(new Error('stream stayed open after backpressure')), 2000)
+      })])
+    } finally {
+      clearTimeout(timeout)
+    }
+    const health = await readJson(await httpGet(port, '/internal/health', headers))
+    assert.equal(health.connected_connections, 0)
+  } finally {
+    app.stop()
+    subscriberSocket?.destroy()
+    fakeRedis.close()
+    backend.server.close()
+  }
+})
+
 test('existing redis connections close when redis goes down without source polling', async () => {
   let subscriberSocket = null
   const fakeRedis = net.createServer((socket) => {

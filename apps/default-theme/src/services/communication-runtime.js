@@ -43,6 +43,8 @@ export function createCommunicationRuntime({
   let attempts = 0;
   let started = false;
   let destroyed = false;
+  let transportGeneration = 0;
+  let settingsGeneration = 0;
 
   function emit(topic) {
     for (const listener of listeners) {
@@ -59,6 +61,7 @@ export function createCommunicationRuntime({
   }
 
   function clearTransportScheduling() {
+    transportGeneration += 1;
     for (const handle of chainTimers.values()) clearTimeoutFn(handle);
     chainTimers.clear();
     for (const handle of timers) clearTimeoutFn(handle);
@@ -72,6 +75,7 @@ export function createCommunicationRuntime({
   }
 
   function clearScheduling() {
+    settingsGeneration += 1;
     clearTransportScheduling();
     if (settingsRefresh) { clearTimeoutFn(settingsRefresh); settingsRefresh = null; }
   }
@@ -137,6 +141,7 @@ export function createCommunicationRuntime({
 
   async function startRealtime() {
     mode = 'realtime';
+    const generation = transportGeneration;
     if (snapshot?.status !== 'ready') {
       setConnectionStatus('fault');
       return;
@@ -148,11 +153,13 @@ export function createCommunicationRuntime({
     try {
       ticket = await client.notifications.streamTicket();
     } catch {
+      if (!started || destroyed || generation !== transportGeneration || mode !== 'realtime') return;
       setConnectionStatus('fault');
       scheduleRealtimeRetry();
       return;
     }
-    if (destroyed || !started) return;
+    if (destroyed || !started || generation !== transportGeneration || mode !== 'realtime'
+      || (isHidden() && snapshot?.settings?.pause_when_hidden !== false)) return;
     const query = new URLSearchParams({ ticket: ticket.ticket });
     let source;
     try { source = eventSourceFactory(`${ticket.connect_url}?${query.toString()}`); } catch { /* 按连接故障处理。 */ }
@@ -196,8 +203,13 @@ export function createCommunicationRuntime({
       if (!started) return;
       const client = clientResolver();
       if (!client) return;
+      const generation = ++settingsGeneration;
       let next;
-      try { next = await client.communication.settings(); } catch { scheduleSettingsRefresh(); return; }
+      try { next = await client.communication.settings(); } catch {
+        if (started && !destroyed && generation === settingsGeneration) scheduleSettingsRefresh();
+        return;
+      }
+      if (!started || destroyed || generation !== settingsGeneration) return;
       const previousMode = snapshot?.desired_mode ?? snapshot?.effective_mode;
       const previousStatus = snapshot?.status;
       const nextMode = next?.desired_mode ?? next?.effective_mode;
@@ -215,15 +227,19 @@ export function createCommunicationRuntime({
   }
 
   async function start() {
-    if (started) return;
+    if (started || destroyed) return;
     started = true;
     const client = clientResolver();
     if (!client) return;
+    const generation = ++settingsGeneration;
+    let next = null;
     try {
-      snapshot = await client.communication.settings();
+      next = await client.communication.settings();
     } catch {
-      snapshot = null;
+      // 保持未知模式，等待下一次显式启动。
     }
+    if (!started || destroyed || generation !== settingsGeneration) return;
+    snapshot = next;
     clearScheduling();
     const selectedMode = snapshot?.desired_mode ?? snapshot?.effective_mode;
     if (selectedMode === 'realtime') await startRealtime();
@@ -268,8 +284,11 @@ export function createCommunicationRuntime({
         clearScheduling();
         void (async () => {
           const client = clientResolver();
-          try { if (client) snapshot = await client.communication.settings(); } catch { /* 保留旧快照 */ }
-          if (!started) return;
+          const generation = ++settingsGeneration;
+          let next = snapshot;
+          try { if (client) next = await client.communication.settings(); } catch { /* 保留旧快照 */ }
+          if (!started || destroyed || generation !== settingsGeneration || isHidden()) return;
+          snapshot = next;
           const selectedMode = snapshot?.desired_mode ?? snapshot?.effective_mode;
           if (selectedMode === 'realtime') await startRealtime();
           else if (selectedMode === 'polling') startPolling();

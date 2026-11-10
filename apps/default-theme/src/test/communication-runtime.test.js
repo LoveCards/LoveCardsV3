@@ -22,6 +22,12 @@ class FakeEventSource {
   emitError() { this.listeners.error?.({}); }
 }
 
+function deferred() {
+  let resolve;
+  const promise = new Promise((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
 describe('communication runtime', () => {
   beforeEach(() => { vi.useFakeTimers(); FakeEventSource.instances = []; });
   afterEach(() => { vi.useRealTimers(); });
@@ -223,6 +229,108 @@ describe('communication runtime', () => {
     expect(runtime.currentConnectionStatus()).toBe('idle');
     await vi.advanceTimersByTimeAsync(5_000);
     expect(seen).toContain(SIGNAL_UNREAD);
+    runtime.destroy();
+  });
+
+  it('discards a slow retry ticket after the server selects polling', async () => {
+    const client = makeClient();
+    const slowTicket = deferred();
+    let desiredMode = 'realtime';
+    let ticketCalls = 0;
+    client.communication.settings = vi.fn(async () => ({ desired_mode: desiredMode, status: 'ready', settings: { unread_interval_seconds: 5 } }));
+    client.notifications.streamTicket = vi.fn(() => {
+      ticketCalls += 1;
+      return ticketCalls === 1
+        ? Promise.resolve({ ticket: 't'.repeat(26), connect_url: 'https://gateway.test/stream', heartbeat_seconds: 15 })
+        : slowTicket.promise;
+    });
+    const runtime = createCommunicationRuntime({ clientResolver: () => client, eventSourceFactory: (url) => new FakeEventSource(url) });
+    const seen = [];
+    runtime.subscribe((topic) => seen.push(topic));
+    await runtime.start();
+    FakeEventSource.instances[0].emitError();
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(client.notifications.streamTicket).toHaveBeenCalledTimes(2);
+    desiredMode = 'polling';
+    await vi.advanceTimersByTimeAsync(28_000);
+    expect(runtime.currentMode()).toBe('polling');
+    slowTicket.resolve({ ticket: 'u'.repeat(26), connect_url: 'https://gateway.test/stream', heartbeat_seconds: 15 });
+    await Promise.resolve();
+    expect(FakeEventSource.instances).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(5_000);
+    expect(seen).toContain(SIGNAL_UNREAD);
+    runtime.destroy();
+  });
+
+  it('discards a slow ticket when the page becomes hidden', async () => {
+    const client = makeClient();
+    const slowTicket = deferred();
+    client.communication.settings = vi.fn(async () => ({ desired_mode: 'realtime', status: 'ready', settings: { pause_when_hidden: true } }));
+    client.notifications.streamTicket = vi.fn(() => slowTicket.promise);
+    let visibilityChange;
+    const documentRef = { visibilityState: 'visible', addEventListener: vi.fn((name, callback) => { if (name === 'visibilitychange') visibilityChange = callback; }) };
+    const runtime = createCommunicationRuntime({ clientResolver: () => client, documentRef, eventSourceFactory: (url) => new FakeEventSource(url) });
+    const starting = runtime.start();
+    await Promise.resolve();
+    expect(client.notifications.streamTicket).toHaveBeenCalledTimes(1);
+    documentRef.visibilityState = 'hidden';
+    visibilityChange();
+    slowTicket.resolve({ ticket: 't'.repeat(26), connect_url: 'https://gateway.test/stream', heartbeat_seconds: 15 });
+    await starting;
+    expect(FakeEventSource.instances).toHaveLength(0);
+    expect(runtime.currentConnectionStatus()).toBe('idle');
+    runtime.destroy();
+  });
+
+  it('ignores a settings response that arrives after stop', async () => {
+    const client = makeClient();
+    const slowSettings = deferred();
+    let settingsCalls = 0;
+    client.communication.settings = vi.fn(() => {
+      settingsCalls += 1;
+      return settingsCalls === 1
+        ? Promise.resolve({ desired_mode: 'polling', status: 'ready', settings: { unread_interval_seconds: 5 } })
+        : slowSettings.promise;
+    });
+    const runtime = createCommunicationRuntime({ clientResolver: () => client });
+    const seen = [];
+    runtime.subscribe((topic) => seen.push(topic));
+    await runtime.start();
+    vi.advanceTimersByTime(30_000);
+    await Promise.resolve();
+    expect(client.communication.settings).toHaveBeenCalledTimes(2);
+    runtime.stop();
+    seen.length = 0;
+    slowSettings.resolve({ desired_mode: 'polling', status: 'ready', settings: { unread_interval_seconds: 1 } });
+    await Promise.resolve();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(seen).toEqual([]);
+    expect(client.communication.settings).toHaveBeenCalledTimes(2);
+    runtime.destroy();
+  });
+
+  it('keeps realtime mode and backs off when a stream repeatedly fails before opening', async () => {
+    const client = makeClient();
+    client.communication.settings = vi.fn(async () => ({ effective_mode: 'realtime', status: 'ready', settings: { notification_interval_seconds: 1 } }));
+    const runtime = createCommunicationRuntime({ clientResolver: () => client, eventSourceFactory: (url) => new FakeEventSource(url) });
+    const seen = [];
+    runtime.subscribe((topic) => seen.push(topic));
+    await runtime.start();
+    FakeEventSource.instances[0].emitError();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(FakeEventSource.instances).toHaveLength(2);
+    FakeEventSource.instances[1].emitError();
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(FakeEventSource.instances).toHaveLength(3);
+    FakeEventSource.instances[2].emitError();
+    await vi.advanceTimersByTimeAsync(8000);
+    expect(FakeEventSource.instances).toHaveLength(4);
+    expect(runtime.currentMode()).toBe('realtime');
+    expect(runtime.currentConnectionStatus()).toBe('connecting');
+    expect(seen).toEqual([]);
+    FakeEventSource.instances[3].emitOpen();
+    expect(runtime.currentConnectionStatus()).toBe('ready');
+    expect(client.notifications.streamTicket).toHaveBeenCalledTimes(4);
     runtime.destroy();
   });
 });
