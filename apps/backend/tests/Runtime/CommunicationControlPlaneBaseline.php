@@ -60,10 +60,11 @@ final class FakeStore implements RuntimeConfigStore
     public function current(): ?array { return $this->row; }
     public function selectedModeForEnqueue(): ?string { return $this->row['desired_mode'] ?? null; }
 
-    public function compareAndSwap(int $expectedRevision, string $desiredMode, array $settings, ?int $actorId, ?callable $then = null): bool
+    public function compareAndSwap(int $expectedRevision, string $desiredMode, array $settings, ?int $actorId, ?callable $then = null, ?callable $beforeUpdate = null): bool
     {
         $this->saveCalls++;
         if ($this->row === null || (int) $this->row['revision'] !== $expectedRevision) return false;
+        if ($beforeUpdate !== null) $beforeUpdate();
         $this->row['desired_mode'] = $desiredMode;
         $this->row['settings'] = $settings;
         $this->row['revision'] = $expectedRevision + 1;
@@ -90,11 +91,11 @@ final class NamedProbe implements RuntimeProbe
 function probes(bool $workerReady = true, bool $gatewayReady = true, bool $redisReady = true): array
 {
     return [
+        new NamedProbe('event-consumer', true, null),
         new NamedProbe('realtime-redis', $redisReady, $redisReady ? null : 'redis-unreachable'),
         new NamedProbe('event-worker', $workerReady, $workerReady ? null : 'worker-heartbeat-stale'),
         new NamedProbe('realtime-gateway', $gatewayReady, $gatewayReady ? null : 'gateway-not-configured'),
         new NamedProbe('scheduler', true, null),
-        new NamedProbe('supervisor', null, 'not-required'),
     ];
 }
 
@@ -155,7 +156,7 @@ assertTrue(!array_key_exists('legacy_mode', $normalized), 'unknown stored keys d
 // ----------------------------------------------------------------
 $store = new FakeStore();
 $resolver = makeResolver($store, probes(true, true));
-$updater = new UpdateRuntimeConfig($store, $resolver);
+$updater = new UpdateRuntimeConfig($store, $resolver, static fn (): bool => true);
 $audited = 0;
 $result = $updater->apply(7, ['desired_mode' => 'realtime', 'expected_revision' => 1, 'notification_interval_seconds' => 20],
     static function (int $uid, array $payload) use (&$audited): void { $audited++; });
@@ -167,7 +168,7 @@ assertTrue($result['effective_mode'] === 'realtime' && $result['status'] === 're
 
 // 5a. 开启门禁拒绝不完整的实时链路，不修改所选模式。
 $blockedStore = new FakeStore();
-$blockedUpdater = new UpdateRuntimeConfig($blockedStore, makeResolver($blockedStore, probes(true, false)));
+$blockedUpdater = new UpdateRuntimeConfig($blockedStore, makeResolver($blockedStore, probes(true, false)), static fn (): bool => true);
 $blocked = null;
 try {
     $blockedUpdater->apply(7, ['desired_mode' => 'realtime', 'expected_revision' => 1], static function (): void {});
@@ -211,12 +212,14 @@ foreach (['Platform', 'Content', 'Theme'] as $family) {
 }
 assertTrue($offenders === [], 'no communication-mode awareness inside business modules (acceptance #6)' . ($offenders ? ' -> ' . implode(', ', array_slice($offenders, 0, 5)) : ''));
 
-// 9. Realtime hard dependency: require_supervisor policy probe honesty.
-$supervisor = new app\modules\Operations\Runtime\Infrastructure\SupervisorPolicyProbe();
-$entry = $supervisor->probe(['require_supervisor' => false]);
-assertTrue($entry['ready'] === null && $entry['reason_code'] === 'not-required', 'supervisor not-required stays non-blocking');
-$entry = $supervisor->probe(['require_supervisor' => true]);
-assertTrue($entry['ready'] === false && $entry['reason_code'] === 'supervisor-required-missing', 'required supervisor reports honestly when adapter missing');
+// 9. 持久策略行必须在通信 CAS 事务内阻止 scheduled + realtime。
+$guardedStore = new FakeStore();
+$guardedUpdater = new UpdateRuntimeConfig($guardedStore, makeResolver($guardedStore, probes()), static fn (): bool => false);
+$guardError = null;
+try { $guardedUpdater->apply(7, ['desired_mode' => 'realtime', 'expected_revision' => 1], static function (): void {}); }
+catch (ApiException $exception) { $guardError = $exception; }
+assertTrue(($guardError?->getData()['reason_code'] ?? null) === 'event-consumer-not-resident', 'transactional event mode gate blocks realtime');
+assertTrue($guardedStore->row['desired_mode'] === 'polling', 'blocked transactional gate preserves polling');
 
 echo "\n{$passCount} passed, {$failCount} failed\n";
 exit($failCount === 0 ? 0 : 1);

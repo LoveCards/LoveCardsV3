@@ -1,5 +1,7 @@
 # 事件总线、任务与投递
 
+> 状态：2026-11-11 消费策略收敛实施契约。当前工作树已接入持久模式、领取门禁及定时入口；真实数据库、升级和 dev 验收结果以最终测试报告为准。下文保留迁移前基线以解释删除条件，不将其视为现行行为。
+
 LoveCards 的系统级事件能力是一套小型、可测试的领域事件协议，不是进程内“万能广播器”，也不要求部署 RabbitMQ。它只解决跨模块事实传播和需要重试的副作用；同一模块内的直接调用仍应保持直接。
 
 ## 边界
@@ -9,7 +11,7 @@ Publisher
   -> EventEnvelope
   -> EventRecorder
   -> outbox_events + event_deliveries（与业务写入同一事务）
-  -> RequestExecutor 或 WorkerLoop
+  -> 定时一次性消费或常驻 WorkerLoop（二选一的领取策略）
   -> HandlerRegistry -> EventHandler
 ```
 
@@ -45,16 +47,25 @@ claim 使用随机 token、worker id 与 lease expiry；完成或失败更新必
 
 错误记录只保存经过 `FailureSanitizer` 清理的稳定摘要，不保存 Token、凭证或完整个人数据。管理员可在 `/apps/operations/deliveries` 查看投递、筛选失败项并填写原因重试；手工重试需要 `operations.retry` 并写审计。
 
-## 两种执行模式
+## 事件处理运行策略
 
-- `request_safe`：没有 Worker 时由受预算的 `RequestExecutor` 处理，单请求最大 jobs 在 1–20 之间；Handler 必须短、可重入、不得依赖请求结束后的内存。
-- `daemon_required`：由 `lc:eventing:work` 或 Scheduler 消费，适合发送、媒体处理和较慢任务；Worker 以 `runtime_workers` 心跳报告状态。
+管理员为站点选择 `scheduled`（定时消费，默认）或 `resident`（常驻消费）。两者共用 MySQL Outbox、`event_deliveries`、Handler Registry、领取租约、重试与幂等键；区别只在消费进程何时启动。`request_safe` 与 `daemon_required` 是现有 Handler 对执行环境的声明，**不是**站点运行策略。定时消费者运行于独立 CLI/受认证的一次性 HTTP 请求，不在用户请求内顺带处理任务；两种策略都可处理已注册队列中的相应任务，Handler 不得依赖用户 HTTP 请求上下文。
 
-队列只在 `HandlerRegistry` 注册。HTTP request drain 只从其中派生
-`request_safe` 队列；Scheduler 与 Worker 派生全部模式。当前 `notifications`
-允许 HTTP 预算兜底，`storage` 仅允许 Scheduler/Worker，不能把外部文件删除放入用户请求。
+选择的策略必须持久化。每次领取任务要在同一个 MySQL 事务内读取并锁定该策略，确认调用者的策略匹配且未暂停领取，再锁定并领取投递；仅靠管理端选项、进程配置或心跳不足以防止两个消费者同时工作。`scheduled` 与 `resident` 不自动代班；常驻 Worker 故障不会偷偷启动定时消费者。租约到期后只有当前选定的策略可以重新领取，Handler 保持至少一次执行和幂等要求。
 
-Redis `eventing.wakeup` 只减少 Worker 的轮询延迟。Redis wakeup 发布失败不回滚已经提交的 MySQL Outbox，Worker 始终可以通过 MySQL poll 找到任务。
+切换策略时，控制面先暂停新的领取，等待已领取任务完成或租约结算，确认没有在途领取后再保存目标策略并恢复领取。等待超时或持久化失败时保持原策略或明确的暂停状态并报告失败，不能把未完成切换显示为成功。并发配置变更使用 revision CAS；涉及通信模式的切换先固定锁顺序，防止相反方向同时变更。切至 `scheduled` 前须先将前端通信设为 `polling`；切至 `resident` 后还须确认 Worker、Redis、Gateway 等实时依赖才可开启 `realtime`。
+
+定时消费的 CLI 与受认证 HTTP POST 入口只是同一个有界一次性消费用例的薄适配器。`eventing_consumer_state.scheduled_trigger` 只能选择 `none`（新安装默认）、`cli` 或 `http`，一个站点只配置其中一种触发源；`scheduler_runs.trigger_source` 记录实际调用来源。HTTP 触发要求 HTTPS、独立凭据、单次并发控制和批量/耗时上限，不提供公开 GET URL。`scheduled` 未声明触发源、最近一次运行失败/超时或最近成功来源与声明不一致，管理端必须报告事件处理不可用，即使浏览器轮询仍可读取已有数据。最近成功只能证明近期运行，不能证明将来还会按时触发；部署方仍需配置并监控 cron/外部定时服务。常驻模式根据新鲜心跳、Release、Schema 和 Handler Catalog 判定消费者就绪；进程故障时 Outbox 留待恢复，不自动切到定时策略。告警依赖可靠的外部运维渠道，不能只发入故障中的同一队列。
+
+Redis 由系统配置统一管理，低于 Eventing 与通信层。它的 `eventing.wakeup` 只缩短常驻 Worker 的 MySQL 领取等待，发布失败不回滚已提交 Outbox；常驻 Worker 仍按自身策略从 MySQL 轮询任务。这不是事件处理策略回退。Redis 也可用于显式启用的 ThinkPHP 缓存用途；保存 Redis 连接不自动切全站缓存。实时通信的信号传输必须检查 Redis，数据库中的可靠投递仍以 MySQL 为准。
+
+HTTP 定时入口为 `POST /api/internal/eventing/run-once`。独立 Bearer 凭据由部署变量 `LC_EVENTING_CRON_TOKEN` 提供，长度至少 32 字符，不能写入仓库、日志或后台响应。HTTPS 判定只依据由受信反代传入 PHP-FPM 的 `HTTPS=on`、`REQUEST_SCHEME=https` 或 TLS 端口，不能信任客户端自填的 `X-Forwarded-Proto`；反代应剥除客户端原始 Forwarded 头。凭据轮换由部署方执行，后台只展示触发源声明与运行状态。
+
+未选中的常驻进程可以维持心跳并空闲，但 claim 必须被门禁拒绝；策略状态缺失时应明确失败。
+
+### 迁移前基线与完成条件
+
+截至本设计落地前，`EventingRequestDrain` 在普通请求结束时执行 `RequestExecutor`，`lc:scheduler:run-once` 也调用它，`lc:eventing:work` 另起常驻循环；尚无能在领取事务中强制互斥的站点策略。这是迁移基线，不是目标已完成。施工先接通新定时入口与持久策略、验证所有 Handler 可被定时消费，再移除用户请求自动 drain；升级前后未完成任务必须仍在原账本中，不能因迁移丢失。新增表或列进入现有 SystemLifecycle 迁移账本，并通过干净安装 schema 与旧版本迁移后 schema 一致性测试。
 
 ## 当前跨模块事件
 

@@ -1,6 +1,6 @@
 <template>
   <AdminPageContainer>
-    <AdminPageHeader title="运行状态" description="先确认通信是否正常，再查看事件处理和部署诊断。" :breadcrumbs="[{ title: '系统' }]">
+    <AdminPageHeader title="运行状态" description="分别管理事件消费和前端通信，查看当前策略与实际健康。" :breadcrumbs="[{ title: '系统' }]">
       <template #actions>
         <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="hasChanges" @click="load">刷新</v-btn>
       </template>
@@ -29,17 +29,58 @@
           </v-alert>
         </v-sheet>
 
+        <v-sheet border rounded class="pa-4 mb-5">
+          <div class="d-flex flex-wrap align-center justify-space-between ga-3">
+            <div>
+              <h2 class="text-h6 mb-2">事件处理</h2>
+              <div class="d-flex align-center flex-wrap ga-3">
+                <AdminStatusChip :status="eventProcessing?.status === 'ready' ? 'available' : 'degraded'" :label="eventProcessing?.state === 'draining' ? '切换中' : eventProcessing?.status === 'ready' ? '正常' : '需维护'" />
+                <span class="text-body-1">{{ eventModeLabel(eventProcessing?.mode) }}</span>
+              </div>
+              <div class="text-body-2 text-medium-emphasis mt-2">{{ eventProcessing?.state === 'draining' ? `正在切换到${eventModeLabel(eventProcessing.target_mode)}，等待在途任务或租约结算后继续推进。` : `状态：${reasonLabel(eventProcessing?.reason_code)}` }}</div>
+              <div v-if="eventProcessing?.mode === 'scheduled'" class="text-body-2 text-medium-emphasis mt-1">触发方式：{{ triggerLabel(eventProcessing.scheduled_trigger) }} · 最近执行：{{ eventProcessing.note?.finished_at ?? '尚无记录' }}</div>
+            </div>
+            <AdminActionGuard capability="operations.runtime.configure">
+              <v-btn :variant="eventSettingsOpen ? 'outlined' : 'flat'" :color="eventSettingsOpen ? undefined : 'primary'" @click="eventSettingsOpen = !eventSettingsOpen">{{ eventSettingsOpen ? '收起设置' : '修改事件处理' }}</v-btn>
+            </AdminActionGuard>
+          </div>
+          <v-alert v-if="eventProcessing?.status === 'degraded'" class="mt-4" type="warning" variant="tonal">
+            事件处理当前不可用：{{ reasonLabel(eventProcessing.reason_code) }}。待处理任务会保存在 MySQL，服务恢复或人工切换后继续消费。
+          </v-alert>
+          <AdminActionGuard capability="operations.runtime.configure">
+            <v-expand-transition>
+              <div v-if="eventSettingsOpen" class="mt-5">
+                <v-divider class="mb-5" />
+                <div class="text-subtitle-1 mb-3">消费策略</div>
+                <v-btn-toggle v-model="eventForm.mode" mandatory density="comfortable" class="mb-4">
+                  <v-btn value="scheduled">定时消费</v-btn>
+                  <v-btn value="resident">常驻消费</v-btn>
+                </v-btn-toggle>
+                <div class="text-body-2 text-medium-emphasis mb-4">定时消费需要外部 cron 或受认证的 HTTPS POST 定时触发；常驻消费需要 Event Worker。两种策略不会自动代班。</div>
+                <v-select v-if="eventForm.mode === 'scheduled'" v-model="eventForm.scheduled_trigger" :items="triggerOptions" item-title="title" item-value="value" label="已配置的定时触发方式" hint="此项是部署声明；还需查看最近一次执行是否成功" persistent-hint variant="outlined" density="compact" />
+                <v-alert v-if="eventForm.mode === 'scheduled' && communication.desired_mode === 'realtime'" type="info" variant="tonal" class="mb-4">请先将前端通信切换为轮询，再启用定时消费。</v-alert>
+                <div class="d-flex flex-wrap ga-2 mt-4">
+                  <v-btn color="primary" :disabled="!eventHasChanges || eventProcessing?.mode === 'unknown' || (eventForm.mode === 'scheduled' && communication.desired_mode === 'realtime')" :loading="eventApplying" @click="openEventApply">{{ eventProcessing?.state === 'draining' ? '继续切换' : '应用事件策略' }}</v-btn>
+                </div>
+              </div>
+            </v-expand-transition>
+          </AdminActionGuard>
+        </v-sheet>
+
+        <AdminDangerActionDialog v-model="eventApplyDialog" title="切换事件消费策略" action-label="确认应用" color="primary" :impact="eventApplyImpact" :loading="eventApplying" :error="eventApplyError" @confirm="doEventApply" />
+
         <section aria-labelledby="runtime-summary-title" class="mb-6">
           <div class="d-flex align-center justify-space-between mb-3">
             <h2 id="runtime-summary-title" class="text-h6">需要处理的情况</h2>
             <span v-if="!hasRuntimeAttention" class="text-body-2 text-medium-emphasis">当前没有需要处理的异常</span>
           </div>
           <v-alert v-if="hasRuntimeAttention" :type="runtime.eventing.dead ? 'error' : 'warning'" variant="tonal" icon="mdi-alert-circle-outline">
-            <div v-if="communication.status === 'degraded'">实时主动提示已暂停：{{ reasonLabel(communication.reason_code) }}。可以查看投递记录并处理故障。</div>
+            <div v-if="communication.status === 'degraded'">前端通信异常：{{ reasonLabel(communication.reason_code) }}。可以查看投递记录并处理故障。</div>
+            <div v-if="eventProcessing?.status === 'degraded'">事件消费异常：{{ reasonLabel(eventProcessing.reason_code) }}。</div>
             <div v-if="runtime.eventing.dead">有 {{ runtime.eventing.dead }} 条事件进入失败状态。</div>
             <div v-if="runtime.eventing.expired_processing">有 {{ runtime.eventing.expired_processing }} 条处理租约已过期。</div>
           </v-alert>
-          <v-sheet v-else border rounded class="pa-4 text-body-2">通信、事件处理和当前部署检查均未报告异常。</v-sheet>
+          <v-sheet v-else border rounded class="pa-4 text-body-2">事件处理与前端通信均未报告异常。</v-sheet>
         </section>
 
         <v-sheet border rounded class="pa-4 mb-6">
@@ -65,9 +106,9 @@
                 <h3 class="text-subtitle-1 mb-3">通信方式与刷新频率</h3>
                 <v-btn-toggle v-model="form.desired_mode" mandatory density="comfortable" class="mb-4">
                   <v-btn value="polling">轮询</v-btn>
-                  <v-btn value="realtime">实时</v-btn>
+                  <v-btn value="realtime" :disabled="eventProcessing?.mode !== 'resident' || eventProcessing?.state !== 'active'">实时</v-btn>
                 </v-btn-toggle>
-                <div class="text-body-2 text-medium-emphasis mb-4">实时模式依赖 Redis、Gateway 和 Event Worker；启用前必须通过检查。运行中故障不会自动切换轮询。<NuxtLink to="/apps/settings/redis">配置 Redis</NuxtLink></div>
+                <div class="text-body-2 text-medium-emphasis mb-4">实时模式要求事件处理已切换为常驻，并依赖 Redis、Gateway 和 Event Worker。运行中故障不会自动切换轮询。<NuxtLink to="/apps/settings/redis">配置 Redis</NuxtLink></div>
                 <v-row dense>
                   <v-col v-for="field in primaryNumericFields" :key="field.key" cols="12" sm="6" md="4">
                     <v-text-field v-model="form[field.key]" :label="field.label" type="number" :hint="field.hint" persistent-hint density="compact" variant="outlined" />
@@ -75,13 +116,12 @@
                   <v-col cols="12" sm="6" md="4"><v-switch v-model="form.pause_when_hidden" label="页面隐藏时暂停轮询" density="compact" hide-details /></v-col>
                 </v-row>
                 <v-expansion-panels variant="accordion" class="mt-4">
-                  <v-expansion-panel title="高级参数（诊断与部署策略）">
+                  <v-expansion-panel title="高级参数（诊断窗口）">
                     <v-expansion-panel-text>
                       <v-row dense>
                         <v-col v-for="field in advancedNumericFields" :key="field.key" cols="12" sm="6" md="4">
                           <v-text-field v-model="form[field.key]" :label="field.label" type="number" :hint="field.hint" persistent-hint density="compact" variant="outlined" />
                         </v-col>
-                        <v-col cols="12" sm="6" md="4"><v-switch v-model="form.require_supervisor" label="要求部署进程治理" hint="只表示部署要求，不会自动启动进程" persistent-hint density="compact" /></v-col>
                       </v-row>
                     </v-expansion-panel-text>
                   </v-expansion-panel>
@@ -135,7 +175,7 @@
 
 <script setup lang="ts">
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue'
-import type { OperationsRuntimeStatus, RuntimeCommunicationSnapshot, RuntimeConfigUpdate } from '@lovecards/sdk'
+import type { OperationsRuntimeStatus, RuntimeCommunicationSnapshot, RuntimeConfigUpdate, EventConsumptionUpdate } from '@lovecards/sdk'
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue'
@@ -153,6 +193,7 @@ const error = ref<string | null>(null)
 const configConflict = ref('')
 
 const communication = computed<RuntimeCommunicationSnapshot | null>(() => runtime.value?.communication ?? null)
+const eventProcessing = computed(() => runtime.value?.event_processing ?? null)
 const hasChanges = computed(() => {
   const current = communication.value
   if (!current) return false
@@ -171,7 +212,17 @@ const form = reactive({
   worker_stale_seconds: 30,
   scheduler_stale_seconds: 3600,
   gateway_stale_seconds: 15,
-  require_supervisor: false,
+})
+const eventForm = reactive<{ mode: 'scheduled' | 'resident'; scheduled_trigger: 'none' | 'cli' | 'http' }>({ mode: 'scheduled', scheduled_trigger: 'none' })
+const triggerOptions = [
+  { title: '尚未配置', value: 'none' },
+  { title: 'CLI cron', value: 'cli' },
+  { title: 'HTTPS POST 定时触发', value: 'http' },
+]
+const eventHasChanges = computed(() => {
+  const current = eventProcessing.value
+  if (!current) return false
+  return current.state === 'draining' || eventForm.mode !== current.mode || (eventForm.mode === 'scheduled' && eventForm.scheduled_trigger !== current.scheduled_trigger)
 })
 const primaryNumericFields = [
   { key: 'notification_interval_seconds', label: '通知轮询间隔（秒）', hint: '5~300' },
@@ -182,13 +233,17 @@ const advancedNumericFields = [
   { key: 'polling_backoff_factor', label: '退避倍率', hint: '1~5' },
   { key: 'polling_max_interval_seconds', label: '轮询上限间隔（秒）', hint: '60~900' },
   { key: 'worker_stale_seconds', label: 'Worker 心跳过期窗口（秒）', hint: '10~300' },
-  { key: 'scheduler_stale_seconds', label: '调度补偿台账窗口（秒）', hint: '300~86400' },
+  { key: 'scheduler_stale_seconds', label: '定时消费运行记录有效期（秒）', hint: '300~86400' },
   { key: 'gateway_stale_seconds', label: 'Gateway 探测缓存（秒）', hint: '5~120' },
 ] as const
 
 const validating = ref(false)
 const applying = ref(false)
 const reconciling = ref(false)
+const eventApplying = ref(false)
+const eventSettingsOpen = ref(false)
+const eventApplyDialog = ref(false)
+const eventApplyError = ref<string | undefined>(undefined)
 const settingsOpen = ref(false)
 const applyDialog = ref(false)
 const applyError = ref<string | undefined>(undefined)
@@ -211,6 +266,7 @@ const hasRuntimeAttention = computed(() => {
   const snapshot = communication.value
   return Boolean(
     snapshot?.status === 'degraded'
+      || eventProcessing.value?.status === 'degraded'
       || runtime.value?.eventing.dead
       || runtime.value?.eventing.expired_processing,
   )
@@ -221,6 +277,7 @@ const reasonLabels: Record<string, string> = {
   'schema-not-ready': '运行时配置表未就绪（请先执行迁移）',
   'worker-heartbeat-stale': 'Event Worker 心跳超时或未运行',
   'worker-realtime-queue-missing': 'Event Worker 未声明消费实时信号队列',
+  'worker-required-queue-missing': 'Event Worker 未覆盖全部业务任务队列',
   'worker-release-mismatch': 'Event Worker 与当前 Release 不一致',
   'gateway-not-configured': '未配置 Realtime Gateway',
   'gateway-unreachable': 'Gateway 健康检查不可达',
@@ -230,16 +287,23 @@ const reasonLabels: Record<string, string> = {
   'realtime-transport-degraded': 'Redis 实时信号通道不可用',
   'redis-not-configured': 'Redis 尚未配置',
   'redis-unreachable': 'Redis 连接不可用',
-  'supervisor-required-missing': '部署策略要求 Supervisor，但未探测到',
+  'event-consumer-unavailable': '事件消费状态表未就绪',
+  'event-consumer-draining': '事件策略切换中，等待在途任务结算',
+  'event-consumer-not-resident': '事件处理尚未切换为常驻消费',
+  'scheduler-trigger-unconfigured': '尚未声明定时触发源',
+  'scheduler-run-failed': '最近一次定时执行失败',
+  'scheduler-trigger-mismatch': '最近一次执行与声明的触发方式不一致',
   'probe-stale': '探测结果过期或从未运行',
   'probe-unavailable': '探测暂不可用',
-  'not-required': '部署策略未要求',
+  'not-required': '当前模式不要求',
 }
 function reasonLabel(code: string | null | undefined) {
   if (!code) return '运行正常'
   return reasonLabels[code] ?? '需要关注'
 }
 function modeLabel(mode: string) { return mode === 'realtime' ? '实时' : mode === 'polling' ? '轮询' : mode }
+function eventModeLabel(mode: string | null | undefined) { return mode === 'resident' ? '常驻消费' : mode === 'scheduled' ? '定时消费' : '不可用' }
+function triggerLabel(value: string | null | undefined) { return triggerOptions.find(item => item.value === value)?.title ?? '未知' }
 function formatAge(seconds: number) {
   if (seconds < 60) return `${seconds} 秒`
   const minutes = Math.floor(seconds / 60)
@@ -256,13 +320,59 @@ function capabilityLabel(item: { ready: boolean | null }) {
 }
 
 function executionModeLabel(mode: string) {
-  return mode === 'request_safe' ? '请求内处理' : mode === 'daemon_required' ? '常驻进程' : mode
+  return mode === 'request_safe' ? '短任务（Handler 声明）' : mode === 'daemon_required' ? '后台任务（Handler 声明）' : mode
 }
 
 function syncFormFromSnapshot(snapshot: RuntimeCommunicationSnapshot | null) {
   if (!snapshot) return
   form.desired_mode = snapshot.desired_mode
   Object.assign(form, snapshot.settings)
+}
+
+function syncEventForm() {
+  const current = eventProcessing.value
+  if (!current || current.mode === 'unknown') return
+  eventForm.mode = current.state === 'draining' && current.target_mode ? current.target_mode : current.mode
+  eventForm.scheduled_trigger = current.scheduled_trigger
+}
+
+const eventApplyImpact = computed(() => {
+  const current = eventProcessing.value
+  if (!current) return '事件消费状态不可用。'
+  if (current.state === 'draining') return `继续推进切换到${eventModeLabel(current.target_mode)}，在途任务或租约结算前不会启用新策略。本次操作写入审计日志。`
+  return `事件消费：${eventModeLabel(current.mode)} → ${eventModeLabel(eventForm.mode)}；定时触发：${triggerLabel(eventForm.scheduled_trigger)}。切换时暂停新任务领取，等待在途任务结算。本次操作写入审计日志。`
+})
+
+function openEventApply() {
+  eventApplyError.value = undefined
+  eventApplyDialog.value = true
+}
+
+async function doEventApply() {
+  const current = eventProcessing.value
+  if (!current) return
+  eventApplying.value = true
+  eventApplyError.value = undefined
+  try {
+    const input: EventConsumptionUpdate = {
+      mode: eventForm.mode,
+      expected_revision: current.revision,
+      scheduled_trigger: eventForm.mode === 'scheduled' ? eventForm.scheduled_trigger : undefined,
+    }
+    const result = await client.operations.applyEventConsumption(input)
+    eventApplyDialog.value = false
+    await load()
+    notifier.success(result.state === 'draining' ? '切换已开始，待在途任务结算后点击“继续切换”' : '事件消费策略已应用')
+  }
+  catch (cause) {
+    eventApplyError.value = isApiError(cause) ? cause.message : '切换事件消费策略失败'
+    if (isApiError(cause) && cause.status === 409) {
+      eventApplyDialog.value = false
+      await load()
+      configConflict.value = '事件消费状态已变化。请核对最新状态后重新操作。'
+    }
+  }
+  finally { eventApplying.value = false }
 }
 
 const applyImpact = computed(() => {
@@ -276,7 +386,6 @@ const applyImpact = computed(() => {
     [...primaryNumericFields, ...advancedNumericFields].map((field) => [field.key, field.label]),
   )
   fieldLabels.pause_when_hidden = '页面隐藏时暂停轮询'
-  fieldLabels.require_supervisor = '要求部署进程治理'
   for (const [key, value] of Object.entries(current.settings)) {
     const next = form[key as keyof typeof form]
     if (String(value) === String(next)) continue
@@ -299,7 +408,6 @@ function buildUpdate(): RuntimeConfigUpdate {
     worker_stale_seconds: Number(form.worker_stale_seconds),
     scheduler_stale_seconds: Number(form.scheduler_stale_seconds),
     gateway_stale_seconds: Number(form.gateway_stale_seconds),
-    require_supervisor: Boolean(form.require_supervisor),
   }
 }
 
@@ -371,6 +479,7 @@ async function load() {
   try {
     runtime.value = await client.operations.runtime()
     syncFormFromSnapshot(communication.value)
+    syncEventForm()
   }
   catch (cause) { error.value = isApiError(cause) ? cause.message : '无法读取运行环境' }
   finally { loading.value = false }

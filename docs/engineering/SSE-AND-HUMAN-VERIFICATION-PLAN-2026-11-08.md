@@ -1,6 +1,6 @@
 # SSE 与滑块验证收敛方案（2026-11-08）
 
-> 本文的 SSE 通信设计是历史方案；2026-11-10 起，通信模式、故障处理和信号投递以 [FRONTEND-SIGNALS.md](FRONTEND-SIGNALS.md) 为准。滑块验证部分不受此替代说明影响。
+> 本文的 SSE 通信设计是历史方案；事件消费与通信分层、故障处理和信号投递以 [EVENTING.md](EVENTING.md)、[RUNTIME-ARCHITECTURE.md](RUNTIME-ARCHITECTURE.md) 与 [FRONTEND-SIGNALS.md](FRONTEND-SIGNALS.md) 为准。以下浏览器自动回退、Gateway 回源和连接满额自动轮询均不是当前行为要求。滑块验证部分不受此替代说明影响。
 
 状态：滑块验证调用链已在 dev 分支实现，仍需 CI 与 dev 真实验收；未配置极验 ID/Key 时不得标记为在线可用。通信部分按上方新契约执行。
 

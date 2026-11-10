@@ -13,4 +13,6 @@ interface ReleaseCompatibility
     public function requiresContract(ReleaseManifest $manifest, string $releaseRoot): bool;
     public function verifyPreContractMigrationsComplete(ReleaseManifest $manifest): void;
     public function verifyMigrationsComplete(ReleaseManifest $manifest): void;
+    public function verifyEventConsumptionReady(): void;
+    public function verifyEventConsumptionOperational(string $activatedAt, string $releaseId): void;
 }

@@ -10,9 +10,10 @@ use app\modules\Operations\Runtime\Infrastructure\EventingWorkerProbe;
 use app\modules\Operations\Runtime\Infrastructure\RealtimeGatewayProbe;
 use app\modules\Operations\Runtime\Infrastructure\RedisRealtimeProbe;
 use app\modules\Operations\Runtime\Infrastructure\SchedulerRunProbe;
-use app\modules\Operations\Runtime\Infrastructure\SupervisorPolicyProbe;
+use app\modules\Operations\Runtime\Infrastructure\EventConsumerModeProbe;
 use app\modules\Operations\Runtime\Infrastructure\SystemRuntimeClock;
 use app\modules\Operations\Runtime\Infrastructure\ThinkOrmRuntimeConfigStore;
+use app\modules\Platform\Eventing\Public\EventConsumption;
 use app\shared\Observability\AuditLogger;
 
 /**
@@ -40,6 +41,17 @@ final class RuntimeCommunication
     public function snapshot(): array
     {
         return $this->resolver()->snapshot();
+    }
+
+    /** 升级健康 Gate：要求新 Release 的 Worker 心跳，不接受旧进程代答。 */
+    public function eventWorkerReadyForRelease(string $releaseId): bool
+    {
+        $row = $this->store()->current();
+        if ($row === null || $releaseId === '') return false;
+        $settings = \app\modules\Operations\Runtime\Domain\CommunicationSettings::normalize($row['settings']);
+        $settings['required_release_id'] = $releaseId;
+        $settings['require_realtime_queue'] = false;
+        return (new EventingWorkerProbe())->probe($settings)['ready'] === true;
     }
 
     /**
@@ -111,12 +123,12 @@ final class RuntimeCommunication
         return new ResolveRuntimeCommunication(
             $this->store(),
             new SystemRuntimeClock(),
-            [new RedisRealtimeProbe(), new EventingWorkerProbe(), new RealtimeGatewayProbe(), new SchedulerRunProbe(), new SupervisorPolicyProbe()]
+            [new EventConsumerModeProbe(), new RedisRealtimeProbe(), new EventingWorkerProbe(), new RealtimeGatewayProbe(), new SchedulerRunProbe()]
         );
     }
 
     private function updater(): UpdateRuntimeConfig
     {
-        return new UpdateRuntimeConfig($this->store(), $this->resolver());
+        return new UpdateRuntimeConfig($this->store(), $this->resolver(), static fn (): bool => (new EventConsumption())->lockResidentForRealtime());
     }
 }

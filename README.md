@@ -63,7 +63,7 @@ composer install
 php think run
 ```
 
-可裁剪运行时的最小部署只需要 Nginx、PHP-FPM 与 MySQL，浏览器默认轮询。服务器环境可按配置增加 Redis、Event Worker、Scheduler 和独立 SSE Gateway；开启实时模式前必须通过依赖检查，运行中故障不会自动切回轮询。业务 API 与数据契约不变。当前通信契约见 [前端变化信号与主动更新](docs/engineering/FRONTEND-SIGNALS.md)。诊断与运维入口：
+可裁剪运行时的最小 Web 部署只需要 Nginx、PHP-FPM 与 MySQL，浏览器默认轮询。异步事件还需要 cron 或受认证的外部定时触发；未配置触发源时不能报告事件处理正常。站点独立选择事件的定时/常驻消费与浏览器的轮询/实时通信，定时和常驻消费者不会互相代班。实时通信另要求常驻 Worker、Redis 和独立 SSE Gateway 就绪；故障不会自动切换模式。业务 API 与最终数据契约不变。当前运行策略见 [可裁剪运行时](docs/engineering/RUNTIME-ARCHITECTURE.md)，通信契约见 [前端变化信号与主动更新](docs/engineering/FRONTEND-SIGNALS.md)。诊断与运维入口：
 
 ```bash
 php think lc:runtime:status

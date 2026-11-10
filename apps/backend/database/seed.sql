@@ -15,6 +15,10 @@ INSERT INTO `configs` (`group`, `key`, `value`, `type`, `description`, `created_
 INSERT INTO `runtime_config_state` (`id`, `desired_mode`, `settings_json`, `revision`, `last_apply_state`, `created_at`, `updated_at`) VALUES
 (1, 'polling', '{"notification_interval_seconds":30,"message_interval_seconds":45,"unread_interval_seconds":20,"polling_backoff_factor":2,"polling_max_interval_seconds":300,"pause_when_hidden":true,"worker_stale_seconds":30,"scheduler_stale_seconds":3600,"gateway_stale_seconds":15,"require_supervisor":false}', 1, 'applied', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6));
 
+-- 事件处理独立于浏览器通信；新安装需配置外部 cron，未配置时状态为不健康。
+INSERT INTO `eventing_consumer_state` (`id`, `mode`, `state`, `target_mode`, `scheduled_trigger`, `revision`, `created_at`, `updated_at`) VALUES
+(1, 'scheduled', 'active', NULL, 'none', 1, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6));
+
 -- 主动更新目录由 Handler Registry 定义；这里只保存管理员覆盖值。
 INSERT INTO `signal_policy_state` (`id`, `revision`, `overrides_json`, `created_at`, `updated_at`) VALUES
 (1, 1, '{}', UTC_TIMESTAMP(6), UTC_TIMESTAMP(6));

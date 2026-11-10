@@ -14,9 +14,9 @@ LoveCards 以 MySQL/InnoDB 为唯一事务基线。数据库变更既服务首�
 | 举报 | `reports`、`report_events` | 状态/更新时间索引；状态变化保留事件，evidence snapshot 不依赖目标继续存在 |
 | 私信 | `conversations`、`conversation_members`、`messages` | direct key 唯一；成员未读索引；sender/client_message_id 幂等 |
 | 通知 | `notifications` | recipient、read/status、created/id 查询；dedupe key 防重复 |
-| 事件 | `outbox_events`、`event_deliveries` | event/handler 唯一投递；queue/mode/status/available_at claim 索引 |
+| 事件 | `outbox_events`、`event_deliveries`、`eventing_consumer_state`、`scheduler_runs` | event/handler 唯一投递；queue/mode/status/available_at claim 索引；单例策略行在领取事务内锁定，防定时与常驻同时 claim；定时运行台账记录触发来源与结果 |
 | 文件 | `files`、`file_references` | 稳定 hash、软删除、purge 状态；resource/purpose 与 file 反查 |
-| 运行时 | `runtime_workers`、`system_leases` | worker 心跳状态索引；具 TTL 的唯一 Lease |
+| 运行时 | `runtime_workers`、`runtime_config_state`、`system_leases` | worker 心跳、通信模式 CAS；具 TTL 的唯一 Lease |
 | 生命周期 | `schema_migrations`、`system_upgrade_steps`、`system_releases`、`system_upgrade_plans`、`system_upgrade_plan_steps`、`system_backups` | checksum、phase/cursor/revision；Release/plan/backup 唯一标识和状态索引 |
 | 审计 | `audit_logs` | actor/time 与 resource/time 索引，payload 白名单 |
 

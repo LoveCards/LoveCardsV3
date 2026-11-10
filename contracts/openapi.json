@@ -2827,6 +2827,8 @@
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
             "desired_mode": "max:16",
+            "mode": "in:scheduled,resident",
+            "scheduled_trigger": "in:none,cli,http",
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
@@ -2835,8 +2837,7 @@
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
-            "gateway_stale_seconds": "number",
-            "require_supervisor": "boolean"
+            "gateway_stale_seconds": "number"
           }
         },
         "responses": {
@@ -3204,6 +3205,8 @@
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
             "desired_mode": "max:16",
+            "mode": "in:scheduled,resident",
+            "scheduled_trigger": "in:none,cli,http",
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
@@ -3212,8 +3215,7 @@
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
-            "gateway_stale_seconds": "number",
-            "require_supervisor": "boolean"
+            "gateway_stale_seconds": "number"
           }
         },
         "responses": {
@@ -5701,6 +5703,8 @@
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
             "desired_mode": "max:16",
+            "mode": "in:scheduled,resident",
+            "scheduled_trigger": "in:none,cli,http",
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
@@ -5709,8 +5713,7 @@
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
-            "gateway_stale_seconds": "number",
-            "require_supervisor": "boolean"
+            "gateway_stale_seconds": "number"
           }
         },
         "responses": {
@@ -6207,6 +6210,337 @@
         "parameters": []
       }
     },
+    "/admin/operations/event-consumption": {
+      "get": {
+        "operationId": "operations.eventConsumption",
+        "tags": [
+          "运维"
+        ],
+        "summary": "事件消费策略",
+        "description": "事件消费策略",
+        "x-controller": "Platform.Administration/eventConsumption",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "operations.read"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "AdminEventConsumptionResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "mode",
+                        "state",
+                        "revision",
+                        "scheduled_trigger"
+                      ],
+                      "properties": {
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "scheduled",
+                            "resident"
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "draining"
+                          ]
+                        },
+                        "target_mode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "scheduled_trigger": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "cli",
+                            "http"
+                          ]
+                        },
+                        "revision": {
+                          "type": "integer"
+                        }
+                      },
+                      "x-typescript-type": "EventConsumptionSnapshot"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      },
+      "put": {
+        "operationId": "operations.applyEventConsumption",
+        "tags": [
+          "运维"
+        ],
+        "summary": "切换事件消费策略",
+        "description": "切换事件消费策略",
+        "x-controller": "Platform.Administration/applyEventConsumption",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.runtime.configure",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "operations.runtime.configure"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "AdminEventConsumptionResource",
+        "x-response-shape": "item",
+        "x-validators": [
+          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+        ],
+        "x-validator-scene": "eventConsumption",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
+            "expected_revision": "number",
+            "policies": "array",
+            "signals": "array",
+            "reason": "max:255",
+            "page": "number",
+            "list_rows": "number",
+            "actor_id": "number",
+            "status": "max:32",
+            "queue_name": "max:64",
+            "policy_decision": "in:applied,skipped,not-configured",
+            "resource_type": "max:64",
+            "worker_type": "max:64",
+            "search_value": "max:255",
+            "search_keys": "max:255",
+            "note": "max:2000",
+            "resolution": "max:255",
+            "limit": "number|between:1,200",
+            "file": "require|fileExt:zip",
+            "unread_only": "boolean",
+            "desired_mode": "max:16",
+            "mode": "in:scheduled,resident",
+            "scheduled_trigger": "in:none,cli,http",
+            "notification_interval_seconds": "number",
+            "message_interval_seconds": "number",
+            "unread_interval_seconds": "number",
+            "polling_backoff_factor": "number",
+            "polling_max_interval_seconds": "number",
+            "pause_when_hidden": "boolean",
+            "worker_stale_seconds": "number",
+            "scheduler_stale_seconds": "number",
+            "gateway_stale_seconds": "number"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "mode",
+                        "state",
+                        "revision",
+                        "scheduled_trigger"
+                      ],
+                      "properties": {
+                        "mode": {
+                          "type": "string",
+                          "enum": [
+                            "scheduled",
+                            "resident"
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "draining"
+                          ]
+                        },
+                        "target_mode": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "scheduled_trigger": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "cli",
+                            "http"
+                          ]
+                        },
+                        "revision": {
+                          "type": "integer"
+                        }
+                      },
+                      "x-typescript-type": "EventConsumptionSnapshot"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scheduled_trigger": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "cli",
+                      "http"
+                    ]
+                  },
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "scheduled",
+                      "resident"
+                    ]
+                  },
+                  "expected_revision": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "mode",
+                  "expected_revision"
+                ],
+                "additionalProperties": true,
+                "x-typescript-type": "EventConsumptionUpdate",
+                "x-typescript-params": "data: EventConsumptionUpdate",
+                "x-validators": [
+                  "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+                ],
+                "x-validator-scene": "eventConsumption"
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/operations/migrations": {
       "get": {
         "operationId": "operations.migrations",
@@ -6380,6 +6714,8 @@
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
             "desired_mode": "max:16",
+            "mode": "in:scheduled,resident",
+            "scheduled_trigger": "in:none,cli,http",
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
@@ -6388,8 +6724,7 @@
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
-            "gateway_stale_seconds": "number",
-            "require_supervisor": "boolean"
+            "gateway_stale_seconds": "number"
           }
         },
         "responses": {
@@ -6772,6 +7107,9 @@
                         },
                         "communication": {
                           "type": "object"
+                        },
+                        "event_processing": {
+                          "type": "object"
                         }
                       },
                       "x-typescript-type": "OperationsRuntimeStatus"
@@ -6993,6 +7331,8 @@
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
             "desired_mode": "max:16",
+            "mode": "in:scheduled,resident",
+            "scheduled_trigger": "in:none,cli,http",
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
@@ -7001,8 +7341,7 @@
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
-            "gateway_stale_seconds": "number",
-            "require_supervisor": "boolean"
+            "gateway_stale_seconds": "number"
           }
         },
         "responses": {
@@ -7136,9 +7475,6 @@
                   },
                   "gateway_stale_seconds": {
                     "type": "number"
-                  },
-                  "require_supervisor": {
-                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -7348,6 +7684,8 @@
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
             "desired_mode": "max:16",
+            "mode": "in:scheduled,resident",
+            "scheduled_trigger": "in:none,cli,http",
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
@@ -7356,8 +7694,7 @@
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
-            "gateway_stale_seconds": "number",
-            "require_supervisor": "boolean"
+            "gateway_stale_seconds": "number"
           }
         },
         "responses": {
@@ -7458,9 +7795,6 @@
                   },
                   "gateway_stale_seconds": {
                     "type": "number"
-                  },
-                  "require_supervisor": {
-                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -7540,6 +7874,8 @@
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
             "desired_mode": "max:16",
+            "mode": "in:scheduled,resident",
+            "scheduled_trigger": "in:none,cli,http",
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
@@ -7548,8 +7884,7 @@
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
-            "gateway_stale_seconds": "number",
-            "require_supervisor": "boolean"
+            "gateway_stale_seconds": "number"
           }
         },
         "responses": {
@@ -7801,6 +8136,8 @@
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
             "desired_mode": "max:16",
+            "mode": "in:scheduled,resident",
+            "scheduled_trigger": "in:none,cli,http",
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
@@ -7809,8 +8146,7 @@
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
-            "gateway_stale_seconds": "number",
-            "require_supervisor": "boolean"
+            "gateway_stale_seconds": "number"
           }
         },
         "responses": {
@@ -9194,6 +9530,8 @@
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
             "desired_mode": "max:16",
+            "mode": "in:scheduled,resident",
+            "scheduled_trigger": "in:none,cli,http",
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
@@ -9202,8 +9540,7 @@
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
-            "gateway_stale_seconds": "number",
-            "require_supervisor": "boolean"
+            "gateway_stale_seconds": "number"
           }
         },
         "responses": {
@@ -9401,6 +9738,8 @@
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
             "desired_mode": "max:16",
+            "mode": "in:scheduled,resident",
+            "scheduled_trigger": "in:none,cli,http",
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
@@ -9409,8 +9748,7 @@
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
-            "gateway_stale_seconds": "number",
-            "require_supervisor": "boolean"
+            "gateway_stale_seconds": "number"
           }
         },
         "responses": {
@@ -9916,6 +10254,8 @@
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
             "desired_mode": "max:16",
+            "mode": "in:scheduled,resident",
+            "scheduled_trigger": "in:none,cli,http",
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
@@ -9924,8 +10264,7 @@
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
-            "gateway_stale_seconds": "number",
-            "require_supervisor": "boolean"
+            "gateway_stale_seconds": "number"
           }
         },
         "responses": {

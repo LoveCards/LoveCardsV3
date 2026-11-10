@@ -6,12 +6,13 @@ namespace app\modules\Platform\Eventing\Infrastructure;
 
 use app\modules\Platform\Eventing\Contract\DeliveryRepository;
 use app\modules\Platform\Eventing\Contract\PolicyVersionSource;
+use app\modules\Platform\Eventing\Contract\SignalModePort;
 use app\modules\Platform\Eventing\Domain\ClaimedDelivery;
 use app\modules\Platform\Eventing\Domain\DeliveryClaim;
 use app\modules\Platform\Eventing\Domain\DeliveryDefinition;
 use app\modules\Platform\Eventing\Domain\DeliveryFailure;
 use app\modules\Platform\Eventing\Domain\DeliveryStatus;
-use app\modules\Operations\Runtime\Public\RuntimeCommunication;
+use app\modules\Platform\Eventing\Public\EventConsumptionConflict;
 use think\facade\Db;
 
 final class ThinkDbDeliveryRepository implements DeliveryRepository
@@ -35,7 +36,7 @@ final class ThinkDbDeliveryRepository implements DeliveryRepository
                 throw new \InvalidArgumentException('Delivery definition 类型不合法');
             }
             if ($definition->queueName() === 'realtime' && $signalState === null) {
-                $signalState = app(RuntimeCommunication::class)->selectedModeForEnqueue();
+                $signalState = app(SignalModePort::class)->selectedModeForEnqueue();
             }
             $skipSignal = $definition->queueName() === 'realtime' && $signalState === 'polling';
             $deliveryIds[] = (int) Db::table('event_deliveries')->insertGetId([
@@ -65,15 +66,39 @@ final class ThinkDbDeliveryRepository implements DeliveryRepository
     {
         $queues = $claim->queueNames();
         if (in_array('realtime', $queues, true)
-            && app(RuntimeCommunication::class)->signalDeliveryState() !== 'deliver') {
+            && app(SignalModePort::class)->signalDeliveryState() !== 'deliver') {
             $queues = array_values(array_diff($queues, ['realtime']));
         }
-        if ($queues === []) return [];
         $now = $claim->now()->format('Y-m-d H:i:s.u');
         $leaseUntil = $claim->leaseUntil()->format('Y-m-d H:i:s.u');
 
-        // 单条 UPDATE + claim_token 回读兼容 MySQL 5.7，不依赖 SKIP LOCKED。
-        Db::table('event_deliveries')
+        Db::startTrans();
+        try {
+            // 事件模式行先于通信模式行；切换与领取在同一 MySQL 锁下串行。
+            $state = (new ThinkDbEventConsumptionStore())->locked();
+            if ($state === null) {
+                throw new EventConsumptionConflict('state-unavailable', '事件消费状态不可用');
+            }
+            if ($state['state'] !== 'active') {
+                throw new EventConsumptionConflict('transition-draining', '事件处理模式正在等待租约结算');
+            }
+            if ($state['mode'] !== $claim->consumerMode()) {
+                throw new EventConsumptionConflict('mode-not-selected', '当前事件消费者不是已选运行模式');
+            }
+            if ($claim->consumerMode() === 'scheduled' && $state['scheduled_trigger'] !== $claim->triggerSource()) {
+                throw new EventConsumptionConflict('trigger-not-selected', '当前定时入口不是已选触发源');
+            }
+            if (in_array('realtime', $queues, true)
+                && app(SignalModePort::class)->selectedModeForEnqueue() !== 'realtime') {
+                $queues = array_values(array_diff($queues, ['realtime']));
+            }
+            if ($queues === []) {
+                Db::commit();
+                return [];
+            }
+
+            // 单条 UPDATE + claim_token 回读兼容 MySQL 5.7，不依赖 SKIP LOCKED。
+            Db::table('event_deliveries')
             ->whereIn('queue_name', $queues)
             ->whereIn('execution_mode', $claim->executionModes())
             ->where(function ($query) use ($now): void {
@@ -97,12 +122,17 @@ final class ThinkDbDeliveryRepository implements DeliveryRepository
                 'updated_at' => $now,
             ]);
 
-        $rows = Db::table('event_deliveries')
+            $rows = Db::table('event_deliveries')
             ->where('claim_token', $claim->claimToken())
             ->where('status', DeliveryStatus::PROCESSING)
             ->order('id', 'asc')
             ->select()
-            ->toArray();
+                ->toArray();
+            Db::commit();
+        } catch (\Throwable $exception) {
+            Db::rollback();
+            throw $exception;
+        }
 
         return array_map(static function (array $row): ClaimedDelivery {
             return new ClaimedDelivery(
@@ -122,7 +152,7 @@ final class ThinkDbDeliveryRepository implements DeliveryRepository
     /** 管理员切回轮询后，结算不再需要的主动提示；业务数据由 API 读取。 */
     public function settleRealtimeForPolling(): int
     {
-        if (app(RuntimeCommunication::class)->signalDeliveryState() !== 'skip') {
+        if (app(SignalModePort::class)->signalDeliveryState() !== 'skip') {
             throw new \LogicException('只能在轮询模式结算实时信号');
         }
         $now = gmdate('Y-m-d H:i:s.u');

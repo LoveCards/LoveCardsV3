@@ -1,6 +1,6 @@
 # 通信运行时实施契约（Phase 0 冻结）
 
-> 历史实施契约，保留当时的决策和差异登记。2026-11-10 起，模式故障语义、Redis 配置、Gateway 传输和 SSE 游标以 [FRONTEND-SIGNALS.md](FRONTEND-SIGNALS.md) 与 [RUNTIME-ARCHITECTURE.md](RUNTIME-ARCHITECTURE.md) 为准：实时故障保持实时并暂停信号，不自动轮询；Gateway 不回源；没有跨 topic 的 `Last-Event-ID` 续传。
+> **历史记录，不是当前实施契约。** 保留当时的决策和差异登记。当前事件处理、通信模式、故障语义、Redis 配置、Gateway 传输和 SSE 游标以 [EVENTING.md](EVENTING.md)、[RUNTIME-ARCHITECTURE.md](RUNTIME-ARCHITECTURE.md) 与 [FRONTEND-SIGNALS.md](FRONTEND-SIGNALS.md) 为准。以下 `effective_mode` 自动回落 polling、Scheduler/Worker 并行兜底及 Gateway 回源要求已经废止。
 
 - 状态：Implementation Contract / 冻结待架构复审
 - 日期：2026-11-06

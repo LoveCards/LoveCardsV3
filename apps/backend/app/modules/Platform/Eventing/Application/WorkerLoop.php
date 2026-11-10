@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace app\modules\Platform\Eventing\Application;
 
-use app\modules\Operations\Runtime\Public\WorkerHeartbeat;
-use app\modules\Operations\Runtime\Public\WorkerHeartbeatStore;
-use app\modules\Operations\Runtime\Public\WorkerState;
+use app\modules\Platform\Eventing\Contract\EventWorkerHeartbeatPort;
 use app\modules\Platform\Eventing\Contract\ClaimTokenGenerator;
 use app\modules\Platform\Eventing\Contract\Clock;
 use app\modules\Platform\Eventing\Contract\DeliveryRepository;
@@ -15,6 +13,7 @@ use app\modules\Platform\Eventing\Domain\DeliveryClaim;
 use app\modules\Platform\Eventing\Domain\ExecutionReport;
 use app\modules\Platform\Eventing\Domain\WorkerOptions;
 use app\modules\Platform\Eventing\Public\ExecutionMode;
+use app\modules\Platform\Eventing\Public\EventConsumptionConflict;
 use app\modules\Platform\Eventing\Public\HandlerRegistry;
 
 final class WorkerLoop
@@ -25,7 +24,7 @@ final class WorkerLoop
     private Clock $clock;
     private ClaimTokenGenerator $tokens;
     private Sleeper $sleeper;
-    private WorkerHeartbeatStore $heartbeats;
+    private EventWorkerHeartbeatPort $heartbeats;
 
     public function __construct(
         DeliveryRepository $deliveries,
@@ -34,7 +33,7 @@ final class WorkerLoop
         Clock $clock,
         ClaimTokenGenerator $tokens,
         Sleeper $sleeper,
-        WorkerHeartbeatStore $heartbeats
+        EventWorkerHeartbeatPort $heartbeats
     ) {
         $this->deliveries = $deliveries;
         $this->processor = $processor;
@@ -50,8 +49,8 @@ final class WorkerLoop
         $report = new ExecutionReport();
         $startedAt = $this->clock->monotonicMilliseconds();
         $lastHeartbeatAt = $startedAt;
-        $this->beat($options, WorkerState::STARTING, 0);
-        $this->beat($options, WorkerState::RUNNING, 0);
+        $this->beat($options, 'starting', 0);
+        $this->beat($options, 'running', 0);
 
         try {
             while (true) {
@@ -67,20 +66,30 @@ final class WorkerLoop
                     break;
                 }
                 if ($monotonicNow - $lastHeartbeatAt >= $options->heartbeatMilliseconds()) {
-                    $this->beat($options, WorkerState::RUNNING, $report->claimed());
+                    $this->beat($options, 'running', $report->claimed());
                     $lastHeartbeatAt = $monotonicNow;
                 }
 
                 $now = $this->clock->now();
-                $claimed = $this->deliveries->claim(new DeliveryClaim(
-                    $options->workerId(),
-                    $options->queueNames(),
-                    [ExecutionMode::REQUEST_SAFE, ExecutionMode::DAEMON_REQUIRED],
-                    1,
-                    $this->tokens->generate(),
-                    $now,
-                    $now->modify('+' . $options->leaseSeconds() . ' seconds')
-                ));
+                try {
+                    $claimed = $this->deliveries->claim(new DeliveryClaim(
+                        $options->workerId(),
+                        $options->queueNames(),
+                        [ExecutionMode::REQUEST_SAFE, ExecutionMode::DAEMON_REQUIRED],
+                        1,
+                        $this->tokens->generate(),
+                        $now,
+                        $now->modify('+' . $options->leaseSeconds() . ' seconds'),
+                        'resident'
+                    ));
+                } catch (EventConsumptionConflict $exception) {
+                    if (!in_array($exception->reasonCode(), ['mode-not-selected', 'transition-draining'], true)) {
+                        throw $exception;
+                    }
+                    // 进程可保持存活供后续切换使用，但在未选策略下绝不领取。
+                    $this->sleeper->sleepMilliseconds($options->idleSleepMilliseconds());
+                    continue;
+                }
                 if ($claimed === []) {
                     $this->sleeper->sleepMilliseconds($options->idleSleepMilliseconds());
                     continue;
@@ -90,8 +99,8 @@ final class WorkerLoop
                 $report->addOutcome($this->processor->process($claimed[0]));
             }
         } finally {
-            $this->beat($options, WorkerState::STOPPING, $report->claimed());
-            $this->beat($options, WorkerState::STOPPED, $report->claimed());
+            $this->beat($options, 'stopping', $report->claimed());
+            $this->beat($options, 'stopped', $report->claimed());
         }
 
         return $report;
@@ -99,9 +108,8 @@ final class WorkerLoop
 
     private function beat(WorkerOptions $options, string $state, int $jobsProcessed): void
     {
-        $this->heartbeats->record(new WorkerHeartbeat(
+        $this->heartbeats->record(
             $options->workerId(),
-            'eventing',
             $state,
             $options->releaseId(),
             $options->schemaVersion(),
@@ -109,6 +117,6 @@ final class WorkerLoop
             $options->queueNames(),
             $jobsProcessed,
             $this->clock->now()
-        ));
+        );
     }
 }

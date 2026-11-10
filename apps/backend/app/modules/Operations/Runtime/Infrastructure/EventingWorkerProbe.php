@@ -34,16 +34,24 @@ final class EventingWorkerProbe implements RuntimeProbe
                 ->order('heartbeat_at', 'desc')
                 ->select()
                 ->toArray();
-            $release = getenv('LC_ACTIVE_RELEASE_ID');
+            $release = $settings['required_release_id'] ?? getenv('LC_ACTIVE_RELEASE_ID');
             $expectedRelease = is_string($release) && $release !== '' ? $release : null;
-            return self::assess($rows, (new HandlerRegistry())->catalogHash(), $expectedRelease, $schemaIdentity);
+            $handlers = new HandlerRegistry();
+            $requiredQueues = $handlers->queueNamesFor([
+                \app\modules\Platform\Eventing\Public\ExecutionMode::REQUEST_SAFE,
+                \app\modules\Platform\Eventing\Public\ExecutionMode::DAEMON_REQUIRED,
+            ]);
+            if (($settings['require_realtime_queue'] ?? true) === false) {
+                $requiredQueues = array_values(array_diff($requiredQueues, ['realtime']));
+            }
+            return self::assess($rows, $handlers->catalogHash(), $expectedRelease, $schemaIdentity, $requiredQueues);
         } catch (\Throwable $ignored) {
             return ['ready' => false, 'provider' => $provider, 'reason_code' => 'probe-unavailable'];
         }
     }
 
     /** 多个 Worker 中任意一个满足全部条件即可；旧心跳无队列声明时失败关闭。 */
-    public static function assess(array $rows, string $catalogHash, ?string $expectedRelease, string $schemaIdentity): array
+    public static function assess(array $rows, string $catalogHash, ?string $expectedRelease, string $schemaIdentity, array $requiredQueues = ['realtime']): array
     {
         $provider = 'mysql-runtime_workers';
         if ($rows === []) {
@@ -58,8 +66,9 @@ final class EventingWorkerProbe implements RuntimeProbe
             $schemaMatches = preg_match('/^[a-f0-9]{64}$/', (string) ($row['schema_version'] ?? '')) === 1
                 && hash_equals($schemaIdentity, (string) $row['schema_version']);
             $queues = json_decode((string) ($row['queue_names_json'] ?? ''), true);
-            $consumesRealtime = is_array($queues) && in_array('realtime', $queues, true);
-            if ($releaseMatches && $catalogMatches && $schemaMatches && $consumesRealtime) {
+            $missingQueues = is_array($queues) ? array_diff($requiredQueues, $queues) : $requiredQueues;
+            $coversQueues = is_array($queues) && $missingQueues === [];
+            if ($releaseMatches && $catalogMatches && $schemaMatches && $coversQueues) {
                 return [
                     'ready' => true,
                     'provider' => $provider,
@@ -74,7 +83,8 @@ final class EventingWorkerProbe implements RuntimeProbe
             }
             $firstReason ??= !$releaseMatches ? 'worker-release-mismatch'
                 : (!$catalogMatches ? 'worker-catalog-mismatch'
-                    : (!$schemaMatches ? 'worker-schema-mismatch' : 'worker-realtime-queue-missing'));
+                    : (!$schemaMatches ? 'worker-schema-mismatch'
+                        : (in_array('realtime', $missingQueues, true) ? 'worker-realtime-queue-missing' : 'worker-required-queue-missing')));
         }
         return ['ready' => false, 'provider' => $provider, 'reason_code' => $firstReason ?? 'worker-heartbeat-stale'];
     }

@@ -42,6 +42,8 @@ final class Administration extends BaseController
     public function validateRuntimeConfig() { return $this->respond(Admin::validateRuntimeConfig($this->validated())); }
     public function applyRuntimeConfig() { return $this->respond(Admin::applyRuntimeConfig($this->validated(), $this->uid())); }
     public function reconcileRuntime() { return $this->respond(Admin::reconcileRuntime()); }
+    public function eventConsumption() { return $this->respond(Admin::eventConsumption()); }
+    public function applyEventConsumption() { return $this->respond(Admin::applyEventConsumption($this->validated(), $this->uid())); }
     public function deliveries() { return $this->respond(Admin::deliveries($this->validated())); }
     public function deliverySummary() { return $this->respond(Admin::deliverySummary()); }
     public function delivery(int $id) { return $this->respond(Admin::delivery($id)); }

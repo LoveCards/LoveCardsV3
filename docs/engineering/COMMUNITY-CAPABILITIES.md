@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | 草稿箱 | `Platform/Drafts`、`card_drafts` | `client.drafts.list/create/get/update/delete` | owner 过滤、软删除、updated/id cursor、version 字段 |
 | 他人主页、关注/粉丝 | `Platform/Social`、`user_follows` | `profile/follow/unfollow/followers/following/relation` | handle 公开查找；禁止自关注和重复边；关系列表需认证 |
-| 通知 | `Platform/Notifications`、`notifications` | `list/unread/read/readAll/stream` | `engagement` 仅为联合查询分类；服务端复合游标、recipient 归属、dedupe/read 状态；SSE 可回退刷新 |
+| 通知 | `Platform/Notifications`、`notifications` | `list/unread/read/readAll` | `engagement` 仅为联合查询分类；服务端复合游标、recipient 归属、dedupe/read 状态；主动变化信号由独立 Gateway 发送，浏览器读数据仍走 PHP API |
 | 私信 | `Platform/Messaging`、conversation 三表 | `conversations/list/send` | 会话成员范围、block/privacy 检查、client message 幂等 |
 | 账号恢复 | `Platform/Auth`、`security_challenges`、`auth_sessions` | `session.recovery_request/recovery_reset` | 一次性挑战、过期/尝试次数；成功后 security version 增长并撤销旧 Session |
 | 收藏与浏览历史 | `Platform/Library`、`library_items`/`view_history` | `list/save/remove/history/history_record/history_clear` | 用户+资源唯一；cursor；记录浏览累计次数 |
@@ -24,7 +24,7 @@
 - `GET /me/library`、`/me/history`、`/me/drafts`：仅可选 `cursor, limit`；
 - `DELETE /me/library`：必填 query `resource_type, resource_id`；生成方法为 `library.remove(params)`；
 - `GET /me/notifications`：可选 `cursor, limit, unread_only`；unread/read-all 无业务参数；
-- `GET /me/notifications/stream`：仅可选 `after`；响应是 `text/event-stream` raw；
+- 浏览器实时连接使用独立 Gateway 的一次性 ticket；PHP 的通知列表仍通过 `GET /me/notifications` 与未读接口读取，不恢复旧 `/me/notifications/stream` 伪端点；
 - `POST /me/notifications/read`：只要求 `ids`；
 - `GET /me/conversations`：无业务参数；消息列表只接收路径 `id` 和可选 cursor/limit；
 - `POST /me/messages`：必填 `recipient_id, body`，可选 `client_message_id`；
@@ -46,7 +46,7 @@ GET/DELETE 的非路径参数由 SDK 作为 query 发送，POST/PATCH 作为 JSO
 
 ## 通知与事件一致性
 
-关注、私信、点赞、收藏、评论/回复、提及和系统通知都先确认业务事实，再通过 MySQL Outbox 投影通知；通知自身用 dedupe key 幂等。最小环境由请求预算推进，完整环境由 Worker 推进。SSE 是读取通知的增强通道，不是通知事实来源；断线后客户端使用 `after`/未读接口恢复。
+关注、私信、点赞、收藏、评论/回复、提及和系统通知都先确认业务事实，再通过 MySQL Outbox 投影通知；通知自身用 dedupe key 幂等。最小环境由外部定时触发一次性消费者，完整环境由常驻 Worker 消费，同一站点只能有一种领取策略。SSE 只传变化信号，不是通知事实来源；实时断线时保留所选模式并显示异常，恢复连接后客户端使用通知列表/未读 API 补读，管理员可手动切通信为轮询。
 
 系统通知的强制触发条件、类型、严重级别、收件人状态、前后端边界与测试要求见
 [NOTIFICATIONS.md](NOTIFICATIONS.md)，本文件不重复维护第二份规则。

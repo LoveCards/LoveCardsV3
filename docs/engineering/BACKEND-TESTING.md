@@ -59,6 +59,8 @@
 
 数据库终态另用 `npm run test:schema:e2e` 验证：在两个一次性本地数据库分别执行干净安装与历史迁移，并比较结构和迁移账本；该命令不属于 L1 静态基线。
 
+事件处理策略变更另需覆盖三层证据：模块测试证明 `scheduled` 与 `resident` 在 claim 事务内互斥、draining 阶段拒绝新领取、有效租约结算前不能激活目标、CAS 冲突不丢设置；隔离 MySQL 测试证明并发 CLI/Worker 不会跨模式领取且失败/重试账本仍可恢复；运行验收证明定时触发缺失或最近一次失败不会显示健康、实时启用要求 active/resident 和依赖就绪。HTTP 定时触发若提供，须验证未认证、错误凭据、非 POST、并发触发和批量上限。默认虚拟主机情形必须能在无 Redis/Worker/Gateway 下经定时消费完成通知等异步任务。普通用户请求不得成为隐藏消费入口。
+
 ### L2：路由和 API 契约
 
 每条 API 路由必须同时具备稳定 `name`、`meta` 和 `contract`：
@@ -119,6 +121,8 @@ npm.cmd run test:sdk:integration
 管理端 runner 设置 `LOVECARDS_E2E_RUN_SDK_INTEGRATION=1` 与 `LOVECARDS_E2E_RUN_THEME=1` 后，会在同一个一次性数据库中依次执行 SDK integration、Admin Playwright、默认主题安装/激活和 Theme E2E。运行前应执行 `npm run package:default-theme`；该命令会先构建当前 SDK，再生成与 `theme.json` 版本一致的 ZIP。runner 只删除由本次 bootstrap 确认创建的数据库，并在同名库已经存在时拒绝复用。
 
 ### L6：签名升级与 CI 集成
+
+事件消费策略收敛后的升级 E2E 还需覆盖激活前后两个门禁：旧轮询站点没有近期有效定时触发时不得切 pointer；激活后定时模式须等新 Release 的一次成功 CLI/HTTP 运行，常驻模式须等匹配新 Release、Schema、Handler Catalog 的 Worker 心跳；选中实时通信时须同时检查 Redis/Gateway/Worker。健康失败必须保留失败 step，修复后可重试，不能把新 Release 标记为升级成功。
 
 `npm run test:upgrade:e2e` 在独立的 `lovecards_e2e_*` 数据库和临时实例根中生成真实签名 Release。它会把后端复制到系统临时目录，仅向该 Release 副本注入 E2E-only Contract migration，再通过 JWT/multipart 创建持久升级计划；测试必须验证提前批准被拒绝、计划进入 waiting、独立批准持久化、Contract SQL probe、激活、active pointer、Release header 与健康检查。工作树和生产 migration 不会被测试修改，临时数据库与 Release source 必须在 `finally` 清理。`npm run test:e2e:safety` 另覆盖 localhost fence、数据库命名限制、同名库碰撞及哨兵数据保留。
 

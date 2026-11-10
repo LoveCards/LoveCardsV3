@@ -34,9 +34,13 @@ use app\modules\Platform\Auth\Infrastructure\RecoveryStore;
 use app\shared\Transaction\TransactionManager;
 use app\shared\Infrastructure\Persistence\ThinkOrmTransactionManager;
 use app\modules\Operations\Runtime\Contract\RuntimeConfigStore;
-use app\modules\Operations\Runtime\Contract\SchedulerRunLedger;
+use app\modules\Platform\Eventing\Contract\ScheduledRunLedger;
+use app\modules\Platform\Eventing\Contract\SignalModePort;
+use app\modules\Platform\Eventing\Contract\EventWorkerHeartbeatPort;
 use app\modules\Operations\Runtime\Infrastructure\ThinkOrmRuntimeConfigStore;
-use app\modules\Operations\Runtime\Infrastructure\ThinkDbSchedulerRunLedger;
+use app\modules\Platform\Eventing\Infrastructure\ThinkDbScheduledRunLedger;
+use app\modules\Operations\Runtime\Infrastructure\EventingSignalModeAdapter;
+use app\modules\Operations\Runtime\Infrastructure\EventWorkerHeartbeatAdapter;
 use app\modules\Platform\Social\Contract\SocialGraphRepository;
 use app\modules\Platform\Social\Infrastructure\ThinkOrmSocialGraphRepository;
 use app\modules\Platform\Library\Contract\LibraryRepository;
@@ -180,6 +184,8 @@ return [
     ClaimTokenGenerator::class => SecureClaimTokenGenerator::class,
     Sleeper::class => NativeSleeper::class,
     WorkerHeartbeatStore::class => ThinkDbWorkerHeartbeatStore::class,
+    EventWorkerHeartbeatPort::class => EventWorkerHeartbeatAdapter::class,
+    SignalModePort::class => EventingSignalModeAdapter::class,
     FailureSanitizer::class => ConservativeFailureSanitizer::class,
     WakeupTransport::class => OptionalRedisWakeupTransport::class,
     RealtimeSignalPublisher::class => RedisRealtimeSignalPublisher::class,
@@ -194,5 +200,5 @@ return [
     LogContextProvider::class => LogContextScope::class,
     // 通信运行时控制面（Phase 1）
     RuntimeConfigStore::class => ThinkOrmRuntimeConfigStore::class,
-    SchedulerRunLedger::class => ThinkDbSchedulerRunLedger::class,
+    ScheduledRunLedger::class => ThinkDbScheduledRunLedger::class,
 ];

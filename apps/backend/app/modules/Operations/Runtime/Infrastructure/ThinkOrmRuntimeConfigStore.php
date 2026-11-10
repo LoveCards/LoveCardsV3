@@ -33,10 +33,12 @@ final class ThinkOrmRuntimeConfigStore implements RuntimeConfigStore
         return is_array($row) ? (string) ($row['desired_mode'] ?? '') : null;
     }
 
-    public function compareAndSwap(int $expectedRevision, string $desiredMode, array $settings, ?int $actorId, ?callable $then = null): bool
+    public function compareAndSwap(int $expectedRevision, string $desiredMode, array $settings, ?int $actorId, ?callable $then = null, ?callable $beforeUpdate = null): bool
     {
         Db::startTrans();
         try {
+            // 固定锁序：事件消费策略行先于通信配置行。
+            if ($beforeUpdate !== null) $beforeUpdate();
             $affected = Db::table('runtime_config_state')
                 ->where('id', 1)
                 ->where('revision', $expectedRevision)

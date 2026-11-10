@@ -17,10 +17,10 @@
 
 ## 平台基础设施
 
-- [可裁剪运行时](engineering/RUNTIME-ARCHITECTURE.md)
+- [可裁剪运行时：事件定时/常驻与浏览器轮询/实时](engineering/RUNTIME-ARCHITECTURE.md)
 - [前端变化信号与主动更新（当前契约）](engineering/FRONTEND-SIGNALS.md)
 - [系统生命周期、安装与升级](engineering/SYSTEM-LIFECYCLE.md)
-- [事件总线与异步投递](engineering/EVENTING.md)
+- [事件总线、互斥消费策略与异步投递](engineering/EVENTING.md)
 - [SSE 与滑块验证收敛方案（历史方案，通信部分以当前契约为准）](engineering/SSE-AND-HUMAN-VERIFICATION-PLAN-2026-11-08.md)
 - [站内通知开发规范](engineering/NOTIFICATIONS.md)
 - [观测、日志与审计](engineering/OBSERVABILITY.md)

@@ -1,6 +1,6 @@
 {
   "source": "thinkphp-runtime-route-registry",
-  "routeCount": 204,
+  "routeCount": 207,
   "routes": [
     {
       "path": "/admin/cards/:id",
@@ -1715,6 +1715,43 @@
         "request": null,
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminDeliverySummaryResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/event-consumption",
+      "method": "GET",
+      "name": "operations.eventConsumption",
+      "controller": "Platform.Administration",
+      "action": "eventConsumption",
+      "meta": {
+        "name": "事件消费策略",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminEventConsumptionResource",
           "shape": "item",
           "status": 200
         }
@@ -5977,6 +6014,32 @@
       "source": "apps/backend/app/api/route"
     },
     {
+      "path": "/internal/eventing/run-once",
+      "method": "POST",
+      "name": "internal.eventingRunOnce",
+      "controller": "System.EventingCron",
+      "action": "runOnce",
+      "meta": {
+        "name": "事件定时消费（内部）",
+        "group": "运行时",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\EventingCronTokenCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Eventing\\Transport\\Api\\ScheduledRunResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
       "path": "/internal/realtime/ticket/verify",
       "method": "POST",
       "name": "internal.realtimeTicketVerify",
@@ -6943,6 +7006,46 @@
         },
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminSignalPoliciesResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/event-consumption",
+      "method": "PUT",
+      "name": "operations.applyEventConsumption",
+      "controller": "Platform.Administration",
+      "action": "applyEventConsumption",
+      "meta": {
+        "name": "切换事件消费策略",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.runtime.configure",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "eventConsumption"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminEventConsumptionResource",
           "shape": "item",
           "status": 200
         }

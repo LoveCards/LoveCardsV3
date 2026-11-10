@@ -12,6 +12,10 @@ LoveCards 的安装、数据库迁移、Release 导入、激活和恢复属于�
 
 隔离数据库验收运行 `npm run test:schema:e2e`（先设置 `LOVECARDS_SCHEMA_E2E_ISOLATED=1` 和本地数据库环境变量）；它创建新装和旧版迁移两条路径，再用 `scripts/verify-schema-consistency.php` 比较表、列、索引和外键，忽略自增计数，不读取或输出密码。
 
+事件消费策略单例行 `eventing_consumer_state`、新装默认 `scheduled`/`scheduled_trigger=none` 及 `scheduler_runs.trigger_source` 属于结构与系统默认数据变更：新增结构必须同时进入完整安装 schema 与受审迁移账本；新装默认行进入 `seed.sql`，旧站点由向前迁移按既有通信模式初始化（既有 realtime 取 resident，其余取 scheduled/cli）。不能通过运行时 schema diff 或模块启动时的隐式 DDL 补表。旧 polling 站点切换到停止请求内消费的新 Release 前，`UpgradeCoordinator` 在 pointer 激活前调用 Eventing Public 门禁，要求声明的 CLI 或 HTTP 定时入口最近一小时有成功运行记录；旧版本 CLI 台账的 `legacy` 来源只兼容迁移后的 `cli` 声明。最近运行失败、卡住或来源不匹配时拒绝激活并保留旧 Release。近期运行不能证明未来定时服务一定持续，部署方仍须监控。
+
+旧 realtime 站点按 resident 初始化；新 Worker 无法在 pointer 激活和 reload 之前宣称与目标 Release/Schema/Catalog 匹配，因此事件消费策略门禁不把此作为激活前判定。激活后的 `health_check` 另执行事件消费运行门禁：定时模式要求激活时间之后出现来源匹配、成功且新鲜的 CLI/HTTP 运行；常驻模式要求 Worker 心跳匹配当前 Release、Schema 和 Handler Catalog。若站点选择实时通信，还须在此时通过 Redis、Gateway、Worker 等实时依赖检查。未满足时计划保持失败/待重试状态，不得报告升级成功；管理员修复后重试健康检查或按现有 pointer 恢复协议处理。
+
 ## 持久目录与不可变 Release
 
 `config/lifecycle.php` 通过 `LC_INSTANCE_ROOT` 指定实例持久目录。Release、升级包、备份、配置、密钥、运行日志和 active pointer 均位于不可变 Release 之外；未显式配置时，兼容默认值是仓库 `apps/.lovecards-instance`。生产环境应显式设置绝对路径，把它挂载到持久磁盘并纳入主机级备份。

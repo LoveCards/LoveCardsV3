@@ -1,5 +1,7 @@
 # 通信运行时 dev 预览交接（2026-11-06）
 
+> **历史验收快照，不能代表当前 dev 状态。** 本文测试了旧的自动回退行为；当前事件处理与通信契约以 [EVENTING.md](EVENTING.md)、[RUNTIME-ARCHITECTURE.md](RUNTIME-ARCHITECTURE.md) 和 [FRONTEND-SIGNALS.md](FRONTEND-SIGNALS.md) 为准。运行中故障不自动改通信或事件消费模式。
+
 ## 入口与边界
 
 - 主题：`http://45.207.204.11:20092/`

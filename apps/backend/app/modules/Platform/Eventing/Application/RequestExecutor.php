@@ -48,7 +48,9 @@ final class RequestExecutor
                 1,
                 $this->tokens->generate(),
                 $now,
-                $now->modify('+' . $budget->leaseSeconds() . ' seconds')
+                $now->modify('+' . $budget->leaseSeconds() . ' seconds'),
+                $budget->consumerMode(),
+                $budget->triggerSource()
             ));
             if ($claimed === []) {
                 break;

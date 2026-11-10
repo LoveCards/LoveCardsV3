@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace app\modules\Operations\SystemLifecycle\Application;
 
+
 use app\modules\Operations\SystemLifecycle\Contract\ReleaseCompatibility;
 use app\modules\Operations\SystemLifecycle\Contract\ReleaseMigrationExecutor;
 use app\modules\Operations\SystemLifecycle\Contract\ReleasePackageImporter;
@@ -295,7 +296,7 @@ final class UpgradeCoordinator
             UpgradeStep::DRAIN_RUNTIME => [$this->drain($stored->plan()->releaseId()), true, null],
             UpgradeStep::ACTIVATE_RELEASE => [$this->activate($stored), true, null],
             UpgradeStep::RELOAD_RUNTIME => [$this->reload($stored->plan()->releaseId()), true, null],
-            UpgradeStep::HEALTH_CHECK => [$this->health($stored->plan()->releaseId(), $manifest), true, null],
+            UpgradeStep::HEALTH_CHECK => [$this->health($stored->plan()->releaseId(), $manifest, (string) ($stored->context()['activated_at'] ?? '')), true, null],
             UpgradeStep::CONTRACT_MIGRATIONS => $this->advanceMigrationPhase($stored, $manifest, $releaseRoot, MigrationPhase::CONTRACT, $lifecycleLeaseHolder),
             default => throw new \LogicException('未知 Upgrade Step: ' . $step),
         };
@@ -395,6 +396,7 @@ final class UpgradeCoordinator
     private function activate(StoredUpgradePlan $stored): array
     {
         $this->backups->assertReady($stored->plan()->planId());
+        $this->compatibility->verifyEventConsumptionReady();
         $previous = $stored->previousReleaseId();
         $releaseId = $stored->plan()->releaseId();
         $this->pointer->activate($releaseId);
@@ -418,11 +420,12 @@ final class UpgradeCoordinator
     }
 
     /** @return array<string, mixed> */
-    private function health(string $releaseId, ReleaseManifest $manifest): array
+    private function health(string $releaseId, ReleaseManifest $manifest, string $activatedAt): array
     {
         if ($this->pointer->activeReleaseId() !== $releaseId) throw new \RuntimeException('active Release 指针与升级目标不一致');
         $this->compatibility->verifyRuntimeHandlerCatalog($manifest);
         $this->runtime->healthCheck($releaseId);
+        $this->compatibility->verifyEventConsumptionOperational($activatedAt, $releaseId);
         return ['health_checked_at' => gmdate('c')];
     }
 

@@ -5,6 +5,8 @@ namespace app\modules\Operations\Administration\Public;
 
 use app\modules\Operations\Administration\Service\AdminReadModel;
 use app\modules\Operations\SystemLifecycle\Application\SystemLifecycleCoordinator;
+use app\modules\Platform\Eventing\Public\EventConsumption;
+use app\modules\Platform\Eventing\Public\EventConsumptionConflict;
 use app\shared\Observability\AuditLogger;
 use think\facade\Db;
 
@@ -30,6 +32,30 @@ final class Administration
         );
     }
     public static function reconcileRuntime(): array { return app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->reconcile(); }
+    public static function eventConsumption(): array
+    {
+        return (new EventConsumption())->current()
+            ?? throw new \app\api\ApiException('事件消费配置未就绪', \app\api\ApiException::CODE_CONFIG_CONFLICT, ['reason_code' => 'event-consumer-unavailable']);
+    }
+
+    public static function applyEventConsumption(array $input, int $actorId): array
+    {
+        $mode = (string) ($input['mode'] ?? '');
+        $revision = (int) ($input['expected_revision'] ?? 0);
+        $trigger = isset($input['scheduled_trigger']) ? (string) $input['scheduled_trigger'] : null;
+        self::eventConsumption();
+        try {
+            return (new EventConsumption())->switchMode($mode, $revision, $actorId,
+                static function (array $before, array $after) use ($actorId): void {
+                    app(AuditLogger::class)->record($actorId, 'eventing.consumption.configure', 'eventing_consumer_state', '1',
+                        ['before' => $before, 'after' => $after]);
+                }, $trigger,
+                static fn (): bool => app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->selectedModeForEnqueue() === 'polling');
+        } catch (EventConsumptionConflict $exception) {
+            throw new \app\api\ApiException($exception->getMessage(), \app\api\ApiException::CODE_CONFIG_CONFLICT,
+                ['reason_code' => $exception->reasonCode()]);
+        }
+    }
     public static function deliveries(array $params): array { return app(AdminReadModel::class)->deliveries($params); }
     public static function deliverySummary(): array { return app(AdminReadModel::class)->deliverySummary(); }
     public static function delivery(int $id): array { return app(AdminReadModel::class)->delivery($id); }

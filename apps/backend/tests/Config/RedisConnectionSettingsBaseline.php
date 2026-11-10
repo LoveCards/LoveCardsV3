@@ -24,6 +24,7 @@ namespace app\modules\Platform\Config\Public {
 }
 
 namespace {
+    require dirname(__DIR__, 2) . '/vendor/autoload.php';
     require dirname(__DIR__, 2) . '/app/modules/Platform/Config/Public/RedisConnectionSettings.php';
 
     use app\modules\Platform\Config\Public\Config;
@@ -38,6 +39,13 @@ namespace {
     $disabled = RedisConnectionSettings::current();
     $assert($disabled['enabled'] === false && $disabled['host'] === '' && $disabled['source'] === 'database', 'new install must leave Redis unconfigured');
     $assert(RedisConnectionSettings::test()['reason_code'] === 'redis-disabled', 'disabled Redis must not attempt connection');
+    $cacheDriver = new \app\modules\Platform\Config\Infrastructure\SystemRedisCache();
+    try {
+        $cacheDriver->handler();
+        throw new \RuntimeException('disabled system Redis cache must fail closed');
+    } catch (\RuntimeException $exception) {
+        $assert(str_contains($exception->getMessage(), '未启用'), 'cache must explain disabled system Redis');
+    }
 
     Config::$values['redis']['enabled'] = true;
     Config::$values['redis']['host'] = 'localhost';

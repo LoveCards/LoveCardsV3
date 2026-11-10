@@ -3,6 +3,7 @@ const qualifiedTypeNames = 'ListResult CursorPage CreateResult Card Comment Tag 
 qualifiedTypeNames.push('CardMediaAccess')
 qualifiedTypeNames.push('OperationsDeliverySummary')
 qualifiedTypeNames.push('RuntimeCommunicationSnapshot', 'RuntimeConfigValidation', 'RuntimeConfigUpdate')
+qualifiedTypeNames.push('EventConsumptionSnapshot', 'EventConsumptionUpdate')
 qualifiedTypeNames.push('StreamTicket', 'CommunicationSettingsSnapshot')
 qualifiedTypeNames.push('NotificationPolicyCatalog', 'NotificationPolicyApplyResult', 'NotificationPolicyUpdate', 'NotificationPolicyRule')
 qualifiedTypeNames.push('SignalPolicyCatalog', 'SignalPolicyUpdate', 'SignalPolicyItem')

@@ -1,22 +1,24 @@
 <?php
 declare(strict_types=1);
 
-namespace app\modules\Operations\Runtime\Infrastructure;
+namespace app\modules\Platform\Eventing\Infrastructure;
 
-use app\modules\Operations\Runtime\Contract\SchedulerRunLedger;
+use app\modules\Platform\Eventing\Contract\ScheduledRunLedger;
 use think\facade\Db;
 
-/** MySQL 台账实现；时间统一 UTC，与 SchedulerRunProbe 的窗口比较一致。 */
-final class ThinkDbSchedulerRunLedger implements SchedulerRunLedger
+/** MySQL 运行台账；只记录实际一次性消费尝试。 */
+final class ThinkDbScheduledRunLedger implements ScheduledRunLedger
 {
-    public function startRun(string $workerId): int
+    public function startRun(string $workerId, string $triggerSource): int
     {
+        $now = gmdate('Y-m-d H:i:s');
         return (int) Db::table('scheduler_runs')->insertGetId([
             'worker_id' => $workerId,
-            'started_at' => gmdate('Y-m-d H:i:s'),
+            'trigger_source' => $triggerSource,
+            'started_at' => $now,
             'outcome' => 'running',
-            'created_at' => gmdate('Y-m-d H:i:s'),
-            'updated_at' => gmdate('Y-m-d H:i:s'),
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
     }
 

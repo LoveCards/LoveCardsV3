@@ -1,6 +1,6 @@
 # API Contract Audit
 
-- Routes inspected: 204
+- Routes inspected: 207
 - P0: 0
 - P1: 0
 - P2: 0
@@ -53,6 +53,8 @@
 | GET | `/admin/operations/deliveries/:id` | `operations.delivery` | grants:admin.access:global,communications.read:global | no | AdminDeliveryResource::make | — |
 | POST | `/admin/operations/deliveries/:id/retry` | `operations.retryDelivery` | grants:admin.access:global,operations.retry:global | no | createNoContent | — |
 | GET | `/admin/operations/deliveries/summary` | `operations.deliverySummary` | grants:admin.access:global,communications.read:global | no | AdminDeliverySummaryResource::make | — |
+| GET | `/admin/operations/event-consumption` | `operations.eventConsumption` | grants:admin.access:global,operations.read:global | no | AdminEventConsumptionResource::make | — |
+| PUT | `/admin/operations/event-consumption` | `operations.applyEventConsumption` | grants:admin.access:global,operations.runtime.configure:global | yes | AdminEventConsumptionResource::make | — |
 | GET | `/admin/operations/migrations` | `operations.migrations` | grants:admin.access:global,operations.read:global | no | AdminMigrationResource::collection | — |
 | POST | `/admin/operations/migrations/run` | `operations.runMigrations` | grants:admin.access:global,operations.migrate:global | yes | AdminMigrationResource::collection | — |
 | GET | `/admin/operations/notifications` | `operations.notificationStats` | grants:admin.access:global,communications.read:global | no | AdminNotificationStatsResource::make | — |
@@ -130,6 +132,7 @@
 | GET | `/comments/:id` | `comments.get` | public | no | CommentResource::make | — |
 | DELETE | `/comments/:id/like` | `comments.unlike` | grants:likes.delete:global | no | createNoContent | — |
 | POST | `/comments/:id/like` | `comments.like` | grants:likes.create:global | no | LikeCountResource::make | — |
+| POST | `/internal/eventing/run-once` | `internal.eventingRunOnce` | public | no | ScheduledRunResource::make | — |
 | GET | `/internal/realtime/redis-config` | `internal.realtimeRedisConfig` | public | no | InternalRedisConfigResource::make | — |
 | POST | `/internal/realtime/ticket/verify` | `internal.realtimeTicketVerify` | public | yes | InternalTicketVerifyResource::make | — |
 | GET | `/me` | `users.me.get` | grants:users.read:own | no | ProfileResource::make | — |

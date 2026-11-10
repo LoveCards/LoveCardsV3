@@ -14,6 +14,9 @@ use app\modules\Operations\SystemLifecycle\Domain\MigrationStatus;
 use app\modules\Operations\SystemLifecycle\Domain\ReleaseManifest;
 use app\modules\Operations\SystemLifecycle\Exception\ReleaseVerificationException;
 use app\modules\Operations\SystemLifecycle\Domain\HandlerCatalogHasher;
+use app\modules\Platform\Eventing\Public\EventConsumption;
+use app\modules\Platform\Eventing\Public\ScheduledEventConsumption;
+use app\modules\Operations\Runtime\Public\RuntimeCommunication;
 
 final class ReleaseCompatibilityValidator implements ReleaseCompatibility
 {
@@ -79,6 +82,47 @@ final class ReleaseCompatibilityValidator implements ReleaseCompatibility
     {
         if (!hash_equals($manifest->handlerCatalogHash(), $this->environment->handlerCatalogHash())) {
             throw new ReleaseVerificationException('激活后的运行时 Handler Catalog 与 Release 不一致');
+        }
+    }
+
+    public function verifyEventConsumptionReady(): void
+    {
+        (new EventConsumption())->assertUpgradeActivationReady();
+    }
+
+    public function verifyEventConsumptionOperational(string $activatedAt, string $releaseId): void
+    {
+        $state = (new EventConsumption())->current();
+        if ($state === null || $state['state'] !== 'active') {
+            throw new ReleaseVerificationException('激活后事件处理策略未就绪');
+        }
+        $runtime = (new RuntimeCommunication())->snapshot();
+        $capabilities = [];
+        foreach ($runtime['capabilities'] ?? [] as $entry) $capabilities[$entry['key']] = $entry;
+        if ($state['mode'] === 'resident') {
+            if (!(new RuntimeCommunication())->eventWorkerReadyForRelease($releaseId)) {
+                throw new ReleaseVerificationException('激活后 Event Worker 未就绪，请重启并验证新 Release Worker');
+            }
+        } else {
+            $latest = (new ScheduledEventConsumption())->latestRun();
+            try {
+                $finished = is_array($latest) && $latest['finished_at'] !== ''
+                    ? new \DateTimeImmutable((string) $latest['finished_at'], new \DateTimeZone('UTC')) : null;
+                $activated = $activatedAt !== '' ? new \DateTimeImmutable($activatedAt) : null;
+            } catch (\Throwable $ignored) {
+                $finished = null;
+                $activated = null;
+            }
+            if (($capabilities['scheduler']['ready'] ?? false) !== true
+                || !is_array($latest)
+                || $latest['trigger_source'] !== $state['scheduled_trigger']
+                || $latest['outcome'] !== 'ok'
+                || $finished === null || $activated === null || $finished < $activated) {
+                throw new ReleaseVerificationException('激活后尚无当前 Release 的成功定时消费，请等待 cron 执行并重试健康检查');
+            }
+        }
+        if ($runtime['desired_mode'] === 'realtime' && $runtime['status'] !== 'ready') {
+            throw new ReleaseVerificationException('激活后实时通信链路未就绪');
         }
     }
 

@@ -97,6 +97,32 @@ export interface OperationsRuntimeStatus {
     last_updated?: string | null
   }
   communication: RuntimeCommunicationSnapshot
+  event_processing: EventProcessingSnapshot
+}
+
+export interface EventConsumptionSnapshot {
+  mode: 'scheduled' | 'resident'
+  state: 'active' | 'draining'
+  target_mode: 'scheduled' | 'resident' | null
+  scheduled_trigger: 'none' | 'cli' | 'http'
+  revision: number
+}
+
+export interface EventProcessingSnapshot {
+  mode: 'scheduled' | 'resident' | 'unknown'
+  state: 'active' | 'draining' | 'unavailable'
+  target_mode: 'scheduled' | 'resident' | null
+  scheduled_trigger: 'none' | 'cli' | 'http'
+  revision: number
+  status: 'ready' | 'degraded'
+  reason_code: string | null
+  note: Record<string, unknown> | null
+}
+
+export interface EventConsumptionUpdate {
+  mode: 'scheduled' | 'resident'
+  expected_revision: number
+  scheduled_trigger?: 'none' | 'cli' | 'http'
 }
 
 export interface RuntimeCapability {
@@ -118,7 +144,6 @@ export interface RuntimeCommunicationSettings {
   worker_stale_seconds: number
   scheduler_stale_seconds: number
   gateway_stale_seconds: number
-  require_supervisor: boolean
 }
 
 export interface RuntimeCommunicationSnapshot {
@@ -146,7 +171,6 @@ export interface RuntimeConfigUpdate {
   worker_stale_seconds?: number
   scheduler_stale_seconds?: number
   gateway_stale_seconds?: number
-  require_supervisor?: boolean
 }
 
 export interface RuntimeConfigValidation {

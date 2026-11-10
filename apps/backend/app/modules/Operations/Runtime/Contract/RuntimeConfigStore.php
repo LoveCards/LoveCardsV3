@@ -24,7 +24,7 @@ interface RuntimeConfigStore
      *
      * @param array<string,mixed> $settings
      */
-    public function compareAndSwap(int $expectedRevision, string $desiredMode, array $settings, ?int $actorId, ?callable $then = null): bool;
+    public function compareAndSwap(int $expectedRevision, string $desiredMode, array $settings, ?int $actorId, ?callable $then = null, ?callable $beforeUpdate = null): bool;
 
     /** 记录校验拒绝/失败结果快照（不递增 revision）。 */
     public function recordApply(string $state, ?string $reason): void;

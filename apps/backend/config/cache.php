@@ -29,12 +29,10 @@ return [
         ],
         // 更多的缓存连接
 
-        // redis缓存
-        'redis'   =>  [
-            // 驱动方式
-            'type'   => 'redis',
-            // 服务器地址
-            'host'       => '127.0.0.1',
+        // 仅当 cache.driver=redis 显式选用时，延迟读取系统 Redis 配置。
+        'redis' => [
+            'type' => \app\modules\Platform\Config\Infrastructure\SystemRedisCache::class,
+            'prefix' => 'lc:',
         ],
     ],
 ];

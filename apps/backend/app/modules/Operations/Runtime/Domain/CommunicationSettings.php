@@ -24,14 +24,13 @@ final class CommunicationSettings
         'worker_stale_seconds' => ['type' => 'int', 'min' => 10, 'max' => 300],
         'scheduler_stale_seconds' => ['type' => 'int', 'min' => 300, 'max' => 86400],
         'gateway_stale_seconds' => ['type' => 'int', 'min' => 5, 'max' => 120],
-        'require_supervisor' => ['type' => 'bool'],
     ];
 
     /** 可经 API 提交的运行参数键（不含 desired_mode/expected_revision）。 */
     public const INPUT_KEYS = [
         'notification_interval_seconds', 'message_interval_seconds', 'unread_interval_seconds',
         'polling_backoff_factor', 'polling_max_interval_seconds', 'pause_when_hidden',
-        'worker_stale_seconds', 'scheduler_stale_seconds', 'gateway_stale_seconds', 'require_supervisor',
+        'worker_stale_seconds', 'scheduler_stale_seconds', 'gateway_stale_seconds',
     ];
 
     public static function defaults(): array
@@ -46,7 +45,6 @@ final class CommunicationSettings
             'worker_stale_seconds' => 30,
             'scheduler_stale_seconds' => 3600,
             'gateway_stale_seconds' => 15,
-            'require_supervisor' => false,
         ];
     }
 

@@ -36,8 +36,11 @@ final class AdminValidate extends Validate
         'runtimeConfig' => [
             'normal' => ['desired_mode', 'expected_revision', 'notification_interval_seconds', 'message_interval_seconds',
                 'unread_interval_seconds', 'polling_backoff_factor', 'polling_max_interval_seconds', 'pause_when_hidden',
-                'worker_stale_seconds', 'scheduler_stale_seconds', 'gateway_stale_seconds', 'require_supervisor'],
+                'worker_stale_seconds', 'scheduler_stale_seconds', 'gateway_stale_seconds'],
             'require' => ['desired_mode', 'expected_revision'], 'nonNull' => false, 'toNull' => [],
+        ],
+        'eventConsumption' => [
+            'normal' => ['scheduled_trigger'], 'require' => ['mode', 'expected_revision'], 'nonNull' => false, 'toNull' => [],
         ],
         // 通知策略 CAS 修改：结构化校验在 ManageNotificationPolicies（契约 §5.2）。
         'notificationPolicies' => [
@@ -69,6 +72,8 @@ final class AdminValidate extends Validate
         'file' => 'require|fileExt:zip',
         'unread_only' => 'boolean',
         'desired_mode' => 'max:16',
+        'mode' => 'in:scheduled,resident',
+        'scheduled_trigger' => 'in:none,cli,http',
         'expected_revision' => 'number',
         'notification_interval_seconds' => 'number',
         'message_interval_seconds' => 'number',
@@ -79,7 +84,6 @@ final class AdminValidate extends Validate
         'worker_stale_seconds' => 'number',
         'scheduler_stale_seconds' => 'number',
         'gateway_stale_seconds' => 'number',
-        'require_supervisor' => 'boolean',
     ];
 
     protected $message = [

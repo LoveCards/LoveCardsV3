@@ -1,12 +1,12 @@
 # 后端接手说明
 
-本文件面向继续开发 LoveCardsV3 后端的 Agent/工程师。当前代码是 ThinkPHP 上的模块化单体：PHP-FPM + MySQL 是最小可运行形态，Worker、Redis wakeup、Scheduler 与 SSE 是可裁剪增强；业务模块不得根据部署形态维护两套事实源。
+本文件面向继续开发 LoveCardsV3 后端的 Agent/工程师。当前代码是 ThinkPHP 上的模块化单体：PHP-FPM + MySQL 是最小 Web 形态，异步任务另需 cron/安全外部定时触发或常驻 Worker；Redis 与 SSE 只在需要实时通信时成为硬依赖。业务模块不得根据部署形态维护两套事实源。事件消费与通信模式详见 [RUNTIME-ARCHITECTURE.md](RUNTIME-ARCHITECTURE.md)。
 
 ## 已形成的公共底座
 
 - 身份与授权：JWT Session ledger、security version、capability + scope、owner/recipient/resource 范围。
 - API 契约：Route Meta/Contract -> Validate scene -> Resource -> API audit/OpenAPI -> 生成 SDK -> 主题公开 bundle。
-- 可靠异步：事务内 MySQL Outbox、显式 Handler Registry、delivery claim/retry/dead-letter；请求预算与常驻 Worker 共用处理器。
+- 可靠异步：事务内 MySQL Outbox、显式 Handler Registry、delivery claim/retry/dead-letter；定时一次性消费者与常驻 Worker 共用处理器且领取策略互斥。旧请求内预算消费是待退役的迁移基线。
 - 生命周期：安全 ZIP、签名与文件 hash、不可变 Release、迁移 phase/cursor、全局 Lease、三类备份 Gate、Contract 独立批准、原子 pointer 与受限恢复。
 - 文件媒体：`file_references`、稳定 `/media/:hash`、公开性同步、purge 状态机、本地 HEAD/Range。
 - 可观测性：PSR Logger 到 ThinkPHP 的适配、request/correlation context、统一脱敏、独立审计表。

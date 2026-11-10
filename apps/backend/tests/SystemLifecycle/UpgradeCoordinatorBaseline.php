@@ -73,12 +73,24 @@ final class UpgradeCoordinatorFakeCompatibility implements ReleaseCompatibility
     public int $stagedChecks = 0;
     public int $preContractChecks = 0;
     public int $migrationChecks = 0;
+    public bool $failEventConsumption = false;
+    public bool $failEventConsumerOperational = false;
     public function verifyEnvironment(ReleaseManifest $manifest): void { $this->environmentChecks++; }
     public function verifyStagedRelease(ReleaseManifest $manifest, string $releaseRoot): void { $this->stagedChecks++; $this->trace[] = 'schema_check'; }
     public function verifyRuntimeHandlerCatalog(ReleaseManifest $manifest): void { $this->trace[] = 'runtime_catalog'; }
     public function requiresContract(ReleaseManifest $manifest, string $releaseRoot): bool { return $this->contractRequired; }
     public function verifyPreContractMigrationsComplete(ReleaseManifest $manifest): void { $this->preContractChecks++; $this->trace[] = 'pre_contract_verified'; }
     public function verifyMigrationsComplete(ReleaseManifest $manifest): void { $this->migrationChecks++; $this->trace[] = 'contract_verified'; }
+    public function verifyEventConsumptionReady(): void
+    {
+        $this->trace[] = 'event_consumer_ready';
+        if ($this->failEventConsumption) throw new \LogicException('event consumer has no verified trigger');
+    }
+    public function verifyEventConsumptionOperational(string $activatedAt, string $releaseId): void
+    {
+        $this->trace[] = 'event_consumer_operational';
+        if ($this->failEventConsumerOperational) throw new \LogicException('event consumer unavailable after activation');
+    }
 }
 
 final class UpgradeCoordinatorFakeBackupGate implements UpgradeBackupGate
@@ -342,6 +354,35 @@ $tests['health-check failure persists a failed upgrade step'] = static function 
     $assert($current?->name() === UpgradeStep::HEALTH_CHECK, 'health failure did not remain on health_check step');
     $assert($current?->state() === UpgradeStepState::FAILED, 'health failure step is not FAILED');
     $assert($current?->failureCode() === 'logicexception', 'health failure code was not persisted');
+};
+
+$tests['event consumer gate fails before release pointer activation'] = static function () use (
+    $fixture, $source, $assert, $assertThrows
+): void {
+    $state = $fixture(false);
+    $state->compatibility->failEventConsumption = true;
+    $plan = $state->coordinator->createPlan($source, 7);
+    $planId = $plan->plan()->planId();
+    $assertThrows(static fn() => $state->coordinator->runUntilSettled($planId), 'event consumer has no verified trigger');
+    $failed = $state->coordinator->find($planId);
+    $assert($failed !== null && $failed->plan()->status() === UpgradePlan::FAILED, 'event consumer gate failure was not persisted');
+    $assert($failed->plan()->current()?->name() === UpgradeStep::ACTIVATE_RELEASE, 'event consumer gate did not stop activation');
+    $assert($state->pointer->active === 'release-old-001', 'pointer changed before event consumer gate passed');
+    $assert(!in_array('activate', $state->trace, true), 'activation occurred after the event consumer gate failed');
+};
+
+$tests['event consumer health failure cannot complete upgrade'] = static function () use (
+    $fixture, $source, $assert, $assertThrows
+): void {
+    $state = $fixture(false);
+    $state->compatibility->failEventConsumerOperational = true;
+    $plan = $state->coordinator->createPlan($source, 7);
+    $planId = $plan->plan()->planId();
+    $assertThrows(static fn() => $state->coordinator->runUntilSettled($planId), 'event consumer unavailable after activation');
+    $failed = $state->coordinator->find($planId);
+    $assert($failed !== null && $failed->plan()->status() === UpgradePlan::FAILED, 'consumer health failure was not persisted');
+    $assert($failed->plan()->current()?->name() === UpgradeStep::HEALTH_CHECK, 'consumer health did not stop health_check');
+    $assert($state->pointer->active === 'release-new-001', 'consumer health should run after pointer activation');
 };
 
 $tests['run contract flag is applied only after the explicit waiting gate'] = static function () use (

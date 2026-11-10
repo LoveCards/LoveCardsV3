@@ -15,7 +15,8 @@ final class UpdateRuntimeConfig
 {
     public function __construct(
         private RuntimeConfigStore $store,
-        private ResolveRuntimeCommunication $resolver
+        private ResolveRuntimeCommunication $resolver,
+        private ?\Closure $lockResidentForRealtime = null
     ) {}
 
     /** @return array{valid:bool,violations:array<int,array{field:string,message:string}>} */
@@ -89,7 +90,11 @@ final class UpdateRuntimeConfig
                 'revision_from' => $expected,
                 'revision_to' => $expected + 1,
             ]);
-        });
+        }, $desired === 'realtime' ? function (): void {
+            if ($this->lockResidentForRealtime !== null && !($this->lockResidentForRealtime)()) {
+                throw new ApiException('事件处理须先切换为常驻模式', ApiException::CODE_CONFIG_CONFLICT, ['reason_code' => 'event-consumer-not-resident']);
+            }
+        } : null);
         if (!$applied) {
             throw new ApiException(
                 '配置已被其他操作修改，请刷新后重试',

@@ -11,13 +11,13 @@ use app\modules\Operations\Runtime\Domain\CommunicationSettings;
 /**
  * 通信运行时 Resolver：模式来自持久化选择，probe 只派生健康状态。
  *
- * 实时硬依赖为 Redis、Event Worker、Gateway 和按策略要求的 Supervisor。
+ * 实时硬依赖为常驻事件消费、Redis、Event Worker 和 Gateway。
  * Scheduler 仅供诊断。故障时保持 realtime/degraded，不自动切换轮询。
  */
 final class ResolveRuntimeCommunication
 {
     /** realtime 能力判定顺序，第一个失败项决定 reason_code。 */
-    private const BLOCKING_KEYS = ['realtime-redis', 'event-worker', 'realtime-gateway', 'supervisor'];
+    private const BLOCKING_KEYS = ['event-consumer', 'realtime-redis', 'event-worker', 'realtime-gateway'];
 
     public function __construct(
         private RuntimeConfigStore $store,
@@ -120,8 +120,7 @@ final class ResolveRuntimeCommunication
             if ($entry === null) {
                 return 'probe-unavailable';
             }
-            // 只有可选 Supervisor 可以报告 not-required；其他硬依赖必须明确 ready。
-            if ($entry['ready'] !== true && !($key === 'supervisor' && $entry['ready'] === null)) {
+            if ($entry['ready'] !== true) {
                 return (string) ($entry['reason_code'] ?? 'probe-unavailable');
             }
         }

@@ -97,6 +97,7 @@ export interface GeneratedApiContract {
   "notifications.unread": { method: "GET"; path: "/me/notifications/unread"; request: { category?: ApiTypes.NotificationListCategory }; response: ApiTypes.NotificationUnread; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "notifications.updatePreferences": { method: "POST"; path: "/me/notifications/preferences"; request: ApiTypes.NotificationPreferencesUpdate; response: ApiTypes.NotificationPreferences; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.advanceUpgrade": { method: "POST"; path: "/admin/operations/upgrades/:planId/advance"; request: void; response: ApiTypes.OperationsUpgradePlan; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "operations.applyEventConsumption": { method: "PUT"; path: "/admin/operations/event-consumption"; request: ApiTypes.EventConsumptionUpdate; response: ApiTypes.EventConsumptionSnapshot; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.applyRuntimeConfig": { method: "PUT"; path: "/admin/operations/runtime/config"; request: ApiTypes.RuntimeConfigUpdate; response: ApiTypes.RuntimeCommunicationSnapshot; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.approveUpgradeContract": { method: "POST"; path: "/admin/operations/upgrades/:planId/approve-contract"; request: void; response: ApiTypes.OperationsUpgradePlan; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.auditLog": { method: "GET"; path: "/admin/audit-logs/:id"; request: void; response: ApiTypes.OperationsAuditLog; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
@@ -105,6 +106,7 @@ export interface GeneratedApiContract {
   "operations.deliveries": { method: "GET"; path: "/admin/operations/deliveries"; request: { page?: number; list_rows?: number; status?: string; worker_type?: string; queue_name?: string; policy_decision?: string }; response: ApiTypes.ListResult<ApiTypes.OperationsDelivery>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "operations.delivery": { method: "GET"; path: "/admin/operations/deliveries/:id"; request: void; response: ApiTypes.OperationsDelivery; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.deliverySummary": { method: "GET"; path: "/admin/operations/deliveries/summary"; request: void; response: ApiTypes.OperationsDeliverySummary; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "operations.eventConsumption": { method: "GET"; path: "/admin/operations/event-consumption"; request: void; response: ApiTypes.EventConsumptionSnapshot; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.migrations": { method: "GET"; path: "/admin/operations/migrations"; request: void; response: ApiTypes.OperationsMigration[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "operations.notificationStats": { method: "GET"; path: "/admin/operations/notifications"; request: void; response: ApiTypes.OperationsNotificationStats; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.overview": { method: "GET"; path: "/admin/operations/overview"; request: void; response: ApiTypes.OperationsOverview; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
@@ -306,6 +308,7 @@ export const generatedApiContract = {
   "notifications.unread": { method: "GET", path: "/me/notifications/unread", status: 200, shape: "item", public: false, capabilities: [] },
   "notifications.updatePreferences": { method: "POST", path: "/me/notifications/preferences", status: 200, shape: "item", public: false, capabilities: [] },
   "operations.advanceUpgrade": { method: "POST", path: "/admin/operations/upgrades/:planId/advance", status: 200, shape: "item", public: false, capabilities: ["admin.access","system.update"] },
+  "operations.applyEventConsumption": { method: "PUT", path: "/admin/operations/event-consumption", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.runtime.configure"] },
   "operations.applyRuntimeConfig": { method: "PUT", path: "/admin/operations/runtime/config", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.runtime.configure"] },
   "operations.approveUpgradeContract": { method: "POST", path: "/admin/operations/upgrades/:planId/approve-contract", status: 200, shape: "item", public: false, capabilities: ["admin.access","system.update.contract"] },
   "operations.auditLog": { method: "GET", path: "/admin/audit-logs/:id", status: 200, shape: "item", public: false, capabilities: ["admin.access","audit.read"] },
@@ -314,6 +317,7 @@ export const generatedApiContract = {
   "operations.deliveries": { method: "GET", path: "/admin/operations/deliveries", status: 200, shape: "paginated", public: false, capabilities: ["admin.access","communications.read"] },
   "operations.delivery": { method: "GET", path: "/admin/operations/deliveries/:id", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
   "operations.deliverySummary": { method: "GET", path: "/admin/operations/deliveries/summary", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
+  "operations.eventConsumption": { method: "GET", path: "/admin/operations/event-consumption", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.read"] },
   "operations.migrations": { method: "GET", path: "/admin/operations/migrations", status: 200, shape: "collection", public: false, capabilities: ["admin.access","operations.read"] },
   "operations.notificationStats": { method: "GET", path: "/admin/operations/notifications", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
   "operations.overview": { method: "GET", path: "/admin/operations/overview", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.read"] },

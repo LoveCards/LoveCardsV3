@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace app\modules\Operations\Administration\Service;
 
 use app\modules\Operations\Runtime\Application\ResolveFacilities;
+use app\modules\Platform\Eventing\Public\EventConsumption;
 use app\shared\Runtime\RuntimeFacilityCatalog;
 use think\facade\Db;
 
@@ -65,6 +66,7 @@ final class AdminReadModel
             ->order('queue_name', 'asc')
             ->select()
             ->toArray();
+        $communication = app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->snapshot();
         return [
             'facilities' => array_map(static fn ($status): array => $status->toArray(), $this->facilities->execute($this->facilityCatalog->configs())),
             'workers' => $workers,
@@ -78,8 +80,33 @@ final class AdminReadModel
                 'queues' => $queues,
                 'last_updated' => $delivery['last_updated'] ?? null,
             ],
-            // 通信运行时控制面快照（desired/effective/status/capabilities）。
-            'communication' => app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->snapshot(),
+            'communication' => $communication,
+            'event_processing' => $this->eventProcessing($communication),
+        ];
+    }
+
+    /** 事件模式与所选消费者的实际健康由同一快照展示。 */
+    private function eventProcessing(array $communication): array
+    {
+        $consumer = (new EventConsumption())->current();
+        if ($consumer === null) {
+            return ['mode' => 'unknown', 'state' => 'unavailable', 'target_mode' => null, 'revision' => 0,
+                'scheduled_trigger' => 'none', 'status' => 'degraded', 'reason_code' => 'event-consumer-unavailable', 'note' => null];
+        }
+        $mode = (string) ($consumer['mode'] ?? 'unknown');
+        $probeKey = $mode === 'scheduled' ? 'scheduler' : 'event-worker';
+        $probe = null;
+        foreach (($communication['capabilities'] ?? []) as $item) {
+            if (($item['key'] ?? null) === $probeKey) { $probe = $item; break; }
+        }
+        // Probe 缺失时保守报告不可用，不能由本模块直接调用 Runtime 内部实现。
+        $probe ??= ['ready' => false, 'reason_code' => 'probe-unavailable', 'note' => null];
+        $active = ($consumer['state'] ?? null) === 'active';
+        $ready = $active && ($probe['ready'] ?? null) === true;
+        return $consumer + [
+            'status' => $ready ? 'ready' : 'degraded',
+            'reason_code' => $ready ? null : (!$active ? 'event-consumer-draining' : ($probe['reason_code'] ?? 'probe-unavailable')),
+            'note' => $probe['note'] ?? null,
         ];
     }
 

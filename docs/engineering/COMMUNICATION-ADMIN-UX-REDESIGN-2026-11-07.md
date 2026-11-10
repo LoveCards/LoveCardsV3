@@ -1,6 +1,6 @@
 # 通信管理三页重设计（2026-11-07）
 
-> 本文保留三页信息架构和当时的验收记录。2026-11-10 起，实时故障不自动切轮询；模式、健康、主动提示目录与 Redis 配置遵循 [FRONTEND-SIGNALS.md](FRONTEND-SIGNALS.md)。以下涉及自动降级的旧示例不再作为当前行为要求。
+> **历史页面设计和验收记录。** 当前运行状态页须分别显示事件消费策略与通信模式，且实时故障不自动切轮询；以 [RUNTIME-ARCHITECTURE.md](RUNTIME-ARCHITECTURE.md)、[EVENTING.md](EVENTING.md) 和 [FRONTEND-SIGNALS.md](FRONTEND-SIGNALS.md) 为准。以下自动降级及请求内消费示例不再作为当前行为要求。
 
 ## 目标与边界
 

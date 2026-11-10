@@ -20,5 +20,5 @@ export type { SenderType, SenderMeta, SenderChannel, SenderTemplate } from './se
 export type { CaptchaDriver, CaptchaMeta, CaptchaConfig, CaptchaInstallResult, CaptchaChallenge } from './captcha'
 export type { AuthPolicy, SessionState } from './auth'
 export type { OperationsFacility, OperationsOverview, OperationsMigrationProgress, OperationsMigration, OperationsWorker, OperationsRuntimeStatus, OperationsDelivery, OperationsDeliverySummary, OperationsAuditLog, OperationsNotificationStats, OperationsCommunityInsights, OperationsUpgradeStep, OperationsUpgradePlan, AdminReportEvent, AdminReport, AdminReportEvidence, UserSecurityOverview, UserSession, RecoveryChallenge, FileUsage } from './operations'
-export type { RuntimeCapability, RuntimeCommunicationSettings, RuntimeCommunicationSnapshot, RuntimeConfigUpdate, RuntimeConfigValidation } from './operations'
+export type { RuntimeCapability, RuntimeCommunicationSettings, RuntimeCommunicationSnapshot, RuntimeConfigUpdate, RuntimeConfigValidation, EventConsumptionSnapshot, EventProcessingSnapshot, EventConsumptionUpdate } from './operations'
 export type { SignalPolicyItem, SignalPolicyCatalog, SignalPolicyUpdate } from './operations'

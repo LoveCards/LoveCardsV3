@@ -311,6 +311,17 @@ try {
   databaseCreated = true
   console.log(`[upgrade-e2e] isolated database ready: ${database}`)
 
+  // 新安装故意不预设外部 cron；升级验收须显式声明并观察一次真实 CLI 消费。
+  const configureScheduledCron = [
+    '$dsn="mysql:host=".getenv("DATABASE_HOSTNAME").";port=".getenv("DATABASE_HOSTPORT").";dbname=".getenv("DATABASE_DATABASE").";charset=utf8mb4";',
+    '$pdo=new PDO($dsn,(string)getenv("DATABASE_USERNAME"),(string)getenv("DATABASE_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);',
+    '$pdo->exec("UPDATE eventing_consumer_state SET scheduled_trigger=\'cli\',revision=revision+1 WHERE id=1 AND mode=\'scheduled\' AND scheduled_trigger=\'none\'");',
+    'if($pdo->query("SELECT scheduled_trigger FROM eventing_consumer_state WHERE id=1")->fetchColumn()!=="cli")exit(1);',
+  ].join('')
+  await run(php, ['-r', configureScheduledCron], dbEnv)
+  await run(php, [path.join('apps', 'backend', 'think'), 'lc:scheduler:run-once', '--max-jobs=1', '--max-ms=100'], dbEnv)
+  console.log('[upgrade-e2e] scheduled CLI cron declared and observed')
+
   await prepareReleaseSource(releaseSource)
   console.log('[upgrade-e2e] isolated Release source includes an E2E-only contract migration')
 
@@ -386,11 +397,17 @@ try {
   let approved = false
   let sawContractWaiting = false
   let servedRelease = false
+  let ranActivatedConsumer = false
   let previousRevision = Number(plan.revision || 0)
   const observations = []
   for (let attempt = 0; attempt < 128; attempt++) {
     if (plan.status === 'completed') break
     if (plan.status === 'failed' || plan.status === 'recovered') throw new Error(`Upgrade entered unexpected terminal state: ${plan.status}`)
+    if (plan.current_step === 'health_check' && !ranActivatedConsumer) {
+      const consumerOutput = await run(php, ['think', 'lc:scheduler:run-once'], dbEnv)
+      if (!consumerOutput.includes('claimed=')) throw new Error('Activated Release did not complete a scheduled consumer run')
+      ranActivatedConsumer = true
+    }
     if (plan.status === 'waiting') {
       if (plan.current_step !== 'contract_migrations') throw new Error(`Upgrade is waiting at unexpected step: ${plan.current_step}`)
       sawContractWaiting = true
@@ -417,6 +434,7 @@ try {
     observations.push(`${plan.current_step || 'done'}:${plan.status}`)
   }
   if (plan.status !== 'completed') throw new Error(`Upgrade did not complete after bounded advances: ${observations.slice(-10).join(', ')}`)
+  if (!ranActivatedConsumer) throw new Error('Upgrade completed without verifying the activated consumer')
 
   const detail = await api(`/admin/operations/upgrades/${planId}`, { token })
   if (detail.data?.status !== 'completed' || detail.data?.release_id !== releaseId) throw new Error('Persisted upgrade detail is inconsistent')

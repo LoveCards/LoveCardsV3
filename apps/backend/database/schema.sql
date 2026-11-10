@@ -256,6 +256,18 @@ CREATE TABLE `runtime_config_state` (
   `updated_at` datetime(6) NOT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `eventing_consumer_state` (
+  `id` tinyint(3) unsigned NOT NULL,
+  `mode` varchar(16) NOT NULL,
+  `state` varchar(16) NOT NULL DEFAULT 'active',
+  `target_mode` varchar(16) DEFAULT NULL,
+  `scheduled_trigger` varchar(16) NOT NULL DEFAULT 'none',
+  `revision` int(10) unsigned NOT NULL DEFAULT 1,
+  `updated_by` bigint(20) unsigned DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE `signal_policy_state` (
   `id` tinyint(3) unsigned NOT NULL,
   `revision` int(10) unsigned NOT NULL DEFAULT 1,
@@ -268,6 +280,7 @@ CREATE TABLE `signal_policy_state` (
 CREATE TABLE `scheduler_runs` (
   `run_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `worker_id` varchar(128) NOT NULL,
+  `trigger_source` varchar(16) NOT NULL DEFAULT 'legacy',
   `started_at` datetime(6) NOT NULL,
   `finished_at` datetime(6) DEFAULT NULL,
   `outcome` varchar(16) NOT NULL DEFAULT 'running',
