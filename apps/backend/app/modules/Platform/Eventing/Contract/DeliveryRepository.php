@@ -21,7 +21,8 @@ interface DeliveryRepository
      */
     public function claim(DeliveryClaim $claim): array;
 
-    public function complete(int $deliveryId, string $claimToken, \DateTimeImmutable $completedAt): bool;
+    /** 策略决策与完成状态必须由同一 claim token 条件更新。 */
+    public function complete(int $deliveryId, string $claimToken, \DateTimeImmutable $completedAt, ?string $policyDecision = null): bool;
 
     public function fail(
         int $deliveryId,
@@ -29,6 +30,9 @@ interface DeliveryRepository
         DeliveryFailure $failure,
         \DateTimeImmutable $failedAt
     ): bool;
+
+    /** 设施故障延后信号，撤销本次 claim 产生的 attempt 增量。 */
+    public function defer(int $deliveryId, string $claimToken, DeliveryFailure $failure, \DateTimeImmutable $deferredAt): bool;
 
     /**
      * 记录投影前策略决策（applied/skipped/not-configured，契约 §5.2 D6）。

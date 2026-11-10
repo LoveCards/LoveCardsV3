@@ -12,6 +12,7 @@ final class DeliveryContext
     private int $attempt;
     private ?int $policyRevision;
     private string $eventType;
+    private ?string $signalDecision = null;
 
     public function __construct(
         int $deliveryId,
@@ -54,6 +55,17 @@ final class DeliveryContext
     public function policyRevision(): ?int { return $this->policyRevision; }
 
     public function eventType(): string { return $this->eventType; }
+
+    /** 主动信号 Handler 在成功返回前记录最终结果，由投递完成操作原子落库。 */
+    public function markSignalDecision(string $decision): void
+    {
+        if (!in_array($decision, ['applied', 'skipped'], true) || $this->signalDecision !== null) {
+            throw new \InvalidArgumentException('Realtime signal 决策不合法或已记录');
+        }
+        $this->signalDecision = $decision;
+    }
+
+    public function signalDecision(): ?string { return $this->signalDecision; }
 
     public function idempotencyKey(): string
     {

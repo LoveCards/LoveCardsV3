@@ -10,6 +10,7 @@ use app\shared\Authorization\Scope;
 final class ConfigAccessPolicy
 {
     private const GROUP_CAPABILITIES = [
+        'redis' => 'operations.runtime.configure',
         'storage' => 'storage.read',
         'sender' => 'sender.read',
         'captcha' => 'captcha.read',
@@ -49,6 +50,16 @@ final class ConfigAccessPolicy
         }
 
         return str_starts_with(strtolower(trim($group)), 'captcha_') && $normalizedKey === 'key';
+    }
+
+    /** 既有部署通过 LC_REDIS_HOST 显式托管整组连接配置。 */
+    public static function isRedisEnvironmentManaged(): bool
+    {
+        try {
+            return trim((string) \think\facade\Env::get('LC_REDIS_HOST', '')) !== '';
+        } catch (\Throwable $ignored) {
+            return trim((string) getenv('LC_REDIS_HOST')) !== '';
+        }
     }
 
     public static function secretMarker($value): array

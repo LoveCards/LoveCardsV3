@@ -2,7 +2,7 @@
   <AdminPageContainer>
     <AdminPageHeader
       title="站点策略"
-      description="集中管理访问要求、内容发布规则和站内提醒策略。各项设置分别读取和保存。"
+      description="集中管理访问要求、内容发布规则、站内提醒和主动更新。各项设置分别读取和保存。"
       :breadcrumbs="[{ title: '站点' }]"
     />
 
@@ -21,7 +21,10 @@
         <SiteContentRulesPanel v-if="canAccessTab('content') && mountedTabs.has('content')" :active="tab === 'content'" @dirty-change="dirtyTabs.content = $event" />
       </v-window-item>
       <v-window-item value="notifications">
-        <SiteNotificationPoliciesPanel v-if="canAccessTab('notifications') && mountedTabs.has('notifications')" :active="tab === 'notifications'" @dirty-change="dirtyTabs.notifications = $event" />
+        <template v-if="canAccessTab('notifications') && mountedTabs.has('notifications')">
+          <SiteNotificationPoliciesPanel :active="tab === 'notifications'" @dirty-change="notificationDirty = $event" />
+          <SiteSignalPoliciesPanel :active="tab === 'notifications'" @dirty-change="signalDirty = $event" />
+        </template>
       </v-window-item>
     </v-window>
   </AdminPageContainer>
@@ -33,6 +36,7 @@ import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import SiteAccessPolicyPanel from '~/components/site/SiteAccessPolicyPanel.vue'
 import SiteContentRulesPanel from '~/components/site/SiteContentRulesPanel.vue'
 import SiteNotificationPoliciesPanel from '~/components/site/SiteNotificationPoliciesPanel.vue'
+import SiteSignalPoliciesPanel from '~/components/site/SiteSignalPoliciesPanel.vue'
 import { useUserStore } from '~/stores/userStore'
 
 type SitePolicyTab = 'access' | 'content' | 'notifications'
@@ -41,6 +45,9 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const dirtyTabs = reactive({ access: false, content: false, notifications: false })
+const notificationDirty = ref(false)
+const signalDirty = ref(false)
+watch([notificationDirty, signalDirty], () => { dirtyTabs.notifications = notificationDirty.value || signalDirty.value })
 const ready = ref(false)
 
 const canAccessTab = (candidate: SitePolicyTab): boolean => {

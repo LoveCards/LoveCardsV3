@@ -1,5 +1,7 @@
 # 通信运行时实施契约（Phase 0 冻结）
 
+> 历史实施契约，保留当时的决策和差异登记。2026-11-10 起，模式故障语义、Redis 配置、Gateway 传输和 SSE 游标以 [FRONTEND-SIGNALS.md](FRONTEND-SIGNALS.md) 与 [RUNTIME-ARCHITECTURE.md](RUNTIME-ARCHITECTURE.md) 为准：实时故障保持实时并暂停信号，不自动轮询；Gateway 不回源；没有跨 topic 的 `Last-Event-ID` 续传。
+
 - 状态：Implementation Contract / 冻结待架构复审
 - 日期：2026-11-06
 - 上游依据：`COMMUNICATION-RUNTIME-DESIGN-2026-11-05.md`（分支 `docs/communication-runtime-design` @ `c6cf8c0`，尚未并入 main）

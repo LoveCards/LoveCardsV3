@@ -2,17 +2,15 @@
 declare(strict_types=1);
 
 /**
- * Stream ticket 一次性语义与游标回源基线（契约 §4.4/§4.5）。
+ * Stream ticket 一次性语义基线。
  * 纯内存替身，不触碰 DB/Redis。
  */
 
 $root = dirname(__DIR__, 2);
 require $root . '/app/modules/Platform/Notifications/Contract/StreamTicketStore.php';
-require $root . '/app/modules/Platform/Notifications/Contract/RealtimePollReader.php';
 require $root . '/app/modules/Platform/Notifications/Application/ManageStreamTickets.php';
 
 use app\modules\Platform\Notifications\Application\ManageStreamTickets;
-use app\modules\Platform\Notifications\Contract\RealtimePollReader;
 use app\modules\Platform\Notifications\Contract\StreamTicketStore;
 
 if (!function_exists('env')) {
@@ -39,21 +37,10 @@ final class FakeStreamTicketStore implements StreamTicketStore
     }
 }
 
-final class FakePollReader implements RealtimePollReader
-{
-    public array $calls = [];
-    public function since(int $uid, ?string $cursor, int $limit): array
-    {
-        $this->calls[] = ['uid' => $uid, 'cursor' => $cursor, 'limit' => $limit];
-        return ['latest_cursor' => 'cursor-2', 'newer' => 2];
-    }
-}
-
 $assert = static function (bool $condition, string $message): void { if (!$condition) throw new RuntimeException($message); };
 
 $store = new FakeStreamTicketStore();
-$reader = new FakePollReader();
-$tickets = new ManageStreamTickets($store, $reader);
+$tickets = new ManageStreamTickets($store);
 
 $GLOBALS['__test_env']['LC_REALTIME_GATEWAY_PUBLIC_URL'] = 'https://rt.example.test/';
 $issued = $tickets->issue(42);
@@ -71,9 +58,5 @@ $assert($tickets->verify(str_repeat('0', 26)) === null, 'unknown tickets must be
 $GLOBALS['__test_env']['LC_REALTIME_GATEWAY_PUBLIC_URL'] = '';
 $issued2 = $tickets->issue(43);
 $assert($issued2['connect_url'] === '', 'missing gateway public url must yield an empty connect_url, never a guessed host');
-
-$polled = $tickets->poll(43, 'cursor-1', 50);
-$assert($polled === ['latest_cursor' => 'cursor-2', 'newer' => 2], 'poll must pass through the reader result');
-$assert($reader->calls[0] === ['uid' => 43, 'cursor' => 'cursor-1', 'limit' => 50], 'poll must forward uid cursor and limit');
 
 fwrite(STDOUT, "PASS stream ticket baseline\n");

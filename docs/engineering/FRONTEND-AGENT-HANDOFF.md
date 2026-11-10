@@ -49,7 +49,7 @@ await client.notifications.readAll({ category: 'engagement' })
 await client.notifications.stream({ after })
 ```
 
-`engagement` 只属于列表/未读/批量已读查询参数，返回项的 `category` 仍是 `social|message|interaction|system`。游标是不透明字符串，必须原样回传；不得分别请求三类后在前端拼接。省略 category 的 unread/readAll 仍表示全局通知。SSE 是增强能力。连接失败或运行时关闭时继续用 list/unread 刷新；已读状态以 HTTP API 为准。默认主题入口为 `/inbox` 与 `/inbox/system`。
+`engagement` 只属于列表/未读/批量已读查询参数，返回项的 `category` 仍是 `social|message|interaction|system`。游标是不透明字符串，必须原样回传；不得分别请求三类后在前端拼接。省略 category 的 unread/readAll 仍表示全局通知。默认轮询模式按配置使用 list/unread；实时模式连接失败时保留实时模式并显示同步异常，连接恢复后通过 HTTP API 补读。已读状态以 HTTP API 为准。默认主题入口为 `/inbox` 与 `/inbox/system`。
 
 `system.*` 只能由可信后端入口产生。前端只消费 SDK 返回的通知结构与安全 `action_url`，不得创建通知、解析 @提及、逐条查询 actor 或猜测跳转路由；完整边界见 [NOTIFICATIONS.md](NOTIFICATIONS.md)。
 

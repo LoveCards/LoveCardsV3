@@ -63,7 +63,7 @@ composer install
 php think run
 ```
 
-可裁剪运行时的最小部署只需要 Nginx、PHP-FPM 与 MySQL。服务器环境可按配置增加 Redis 唤醒、Event Worker、Scheduler 和 SSE；业务 API 与数据契约不变。诊断与运维入口：
+可裁剪运行时的最小部署只需要 Nginx、PHP-FPM 与 MySQL，浏览器默认轮询。服务器环境可按配置增加 Redis、Event Worker、Scheduler 和独立 SSE Gateway；开启实时模式前必须通过依赖检查，运行中故障不会自动切回轮询。业务 API 与数据契约不变。当前通信契约见 [前端变化信号与主动更新](docs/engineering/FRONTEND-SIGNALS.md)。诊断与运维入口：
 
 ```bash
 php think lc:runtime:status

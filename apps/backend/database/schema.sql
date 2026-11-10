@@ -235,6 +235,7 @@ CREATE TABLE `runtime_workers` (
   `release_id` varchar(128) NOT NULL,
   `schema_version` varchar(64) NOT NULL,
   `handler_catalog_hash` char(64) NOT NULL,
+  `queue_names_json` varchar(2048) NOT NULL DEFAULT '[]',
   `jobs_processed` bigint(20) unsigned NOT NULL DEFAULT 0,
   `heartbeat_at` datetime NOT NULL,
   `created_at` datetime NOT NULL,
@@ -250,6 +251,15 @@ CREATE TABLE `runtime_config_state` (
   `revision` int(10) unsigned NOT NULL DEFAULT 1,
   `last_apply_state` varchar(16) NOT NULL DEFAULT 'applied',
   `last_apply_reason` varchar(64) DEFAULT NULL,
+  `updated_by` bigint(20) unsigned DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `signal_policy_state` (
+  `id` tinyint(3) unsigned NOT NULL,
+  `revision` int(10) unsigned NOT NULL DEFAULT 1,
+  `overrides_json` longtext NOT NULL,
   `updated_by` bigint(20) unsigned DEFAULT NULL,
   `created_at` datetime(6) NOT NULL,
   `updated_at` datetime(6) NOT NULL,

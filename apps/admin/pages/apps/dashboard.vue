@@ -89,7 +89,7 @@
           <div class="d-flex flex-wrap align-start justify-space-between ga-3 mb-3">
             <div>
               <h2 id="runtime-title" class="text-subtitle-1 font-weight-bold">运行状态</h2>
-              <p class="text-body-2 text-medium-emphasis mt-1">基础设施和事件队列健康度。</p>
+              <p class="text-body-2 text-medium-emphasis mt-1">当前通信方式和事件队列状态。</p>
             </div>
             <v-chip v-if="runtimeStatus" size="small" variant="tonal" :color="runtimeHealthy ? 'success' : 'warning'">
               {{ runtimeHealthy ? '运行正常' : '需要关注' }}
@@ -98,18 +98,15 @@
           <v-alert v-if="runtimeError" type="error" variant="tonal">{{ runtimeError }}</v-alert>
           <v-card v-else-if="runtimeStatus">
             <v-list lines="two">
-              <template v-for="(facility, index) in runtimeStatus.facilities" :key="facility.name">
-                <v-list-item
-                  :prepend-icon="facility.healthy ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'"
-                  :title="facility.name"
-                  :subtitle="facilityReason(facility.reason_code, facility.healthy)"
-                  :base-color="facility.healthy ? 'success' : 'warning'"
-                  :to="`/apps/operations/runtime?source=dashboard&facility=${encodeURIComponent(facility.name)}`"
-                  :value="`runtime-${facility.name}`"
-                />
-                <v-divider v-if="index < runtimeStatus.facilities.length - 1" />
-              </template>
-              <v-divider v-if="runtimeStatus.facilities.length" />
+              <v-list-item
+                :prepend-icon="runtimeStatus.communication.status === 'ready' ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'"
+                title="主动更新"
+                :subtitle="communicationSummary"
+                :base-color="runtimeStatus.communication.status === 'ready' ? 'success' : 'warning'"
+                to="/apps/operations/runtime?source=dashboard&section=communication"
+                value="runtime-communication"
+              />
+              <v-divider />
               <v-list-item
                 prepend-icon="mdi-inbox-arrow-down-outline"
                 title="事件队列"
@@ -230,7 +227,17 @@ const notificationsError = ref<string | null>(null)
 
 const canReadOperations = computed(() => userStore.hasGrant('operations.read', 'global'))
 const canReadCommunications = computed(() => userStore.hasGrant('communications.read', 'global'))
-const runtimeHealthy = computed(() => Boolean(runtimeStatus.value?.facilities.length && runtimeStatus.value.facilities.every((facility) => facility.healthy)))
+const runtimeHealthy = computed(() => Boolean(
+  runtimeStatus.value?.communication.status === 'ready'
+  && runtimeStatus.value.eventing.dead === 0
+  && (runtimeStatus.value.eventing.expired_processing ?? 0) === 0,
+))
+const communicationSummary = computed(() => {
+  const communication = runtimeStatus.value?.communication
+  if (!communication) return '状态不可用'
+  const mode = communication.desired_mode === 'realtime' ? '实时' : '轮询'
+  return communication.status === 'ready' ? `当前为${mode}模式，运行正常` : `当前为${mode}模式，主动提示暂停，请检查依赖`
+})
 
 const roleDescriptions: Record<string, string> = {
   root: '负责全域治理、访问控制与系统高风险操作。',
@@ -284,14 +291,6 @@ function taskIcon(key: string) {
     deliveries_dead: 'mdi-alert-circle-outline',
     files_pending: 'mdi-file-clock-outline',
   } as Record<string, string>)[key] ?? 'mdi-clipboard-check-outline'
-}
-
-function facilityReason(reason: string | null | undefined, healthy: boolean) {
-  if (healthy) return '运行正常'
-  return ({
-    primary_not_configured: '主通道未配置',
-    provider_unknown: '服务提供方未知',
-  } as Record<string, string>)[reason || ''] ?? '需要关注'
 }
 
 const overviewMetrics = computed(() => {

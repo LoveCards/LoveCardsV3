@@ -8,8 +8,7 @@ use app\api\controller\BaseController;
 use app\modules\Platform\Notifications\Public\StreamTickets;
 
 /**
- * Realtime Gateway 的内部对账端点（InternalTokenCheck 保护，非 JWT）。
- * 只提供 ticket 消费与游标回源，不提供业务内容读取。
+ * Realtime Gateway 的内部 ticket 消费端点（InternalTokenCheck 保护，非 JWT）。
  */
 final class RealtimeInternal extends BaseController
 {
@@ -22,11 +21,4 @@ final class RealtimeInternal extends BaseController
         return $this->respond($result);
     }
 
-    public function notificationsSince()
-    {
-        $data = $this->validated();
-        $cursor = isset($data['cursor']) && $data['cursor'] !== '' ? (string) $data['cursor'] : null;
-        $limit = isset($data['limit']) ? (int) $data['limit'] : 50;
-        return $this->respond(StreamTickets::poll((int) $data['uid'], $cursor, $limit));
-    }
 }

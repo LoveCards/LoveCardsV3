@@ -67,7 +67,12 @@ Handler Registry 当前固定注册：
 - `content.comment.published@1` -> `ContentCommentPublishedNotificationHandler`；
 - `content.mentions.added@1` -> `ContentMentionsAddedNotificationHandler`；
 - `system.notification.issued@1` -> `SystemNotificationIssuedHandler`；
+- `notification.created@1` -> `NotificationCreatedSignalHandler`（`notifications.new` 主动提示）；
+- `message.sent@1` -> `MessageSentSignalHandler`（`messages.new` 主动提示；与站内提醒独立投递）；
+- `message.read@1` -> `MessageReadSignalHandler`（`messages.read` 主动提示）；
 - `file.purge.requested@1` -> `PurgeFileHandler`。
+
+`realtime` 队列只负责前端变化信号；目录项与开关以 [FRONTEND-SIGNALS.md](FRONTEND-SIGNALS.md) 为准。轮询模式的实时投递登记即标记跳过，实时故障时不领取，手动切轮询时结算未发送投递。通知记录与私信数据不因此暂停。
 
 互动通知事件与业务写入共用事务。`content.liked` 只在首次点赞时发布，携带
 `actor_id/target_type/target_id/owner_id/card_id/comment_id?`；取消点赞不发布事件。
