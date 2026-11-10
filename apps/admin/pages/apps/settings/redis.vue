@@ -7,13 +7,9 @@
     />
 
     <AdminAsyncState :loading="loading" :error="loadError" error-title="Redis 配置加载失败" @retry="load">
-      <v-alert v-if="source === 'env'" type="info" variant="tonal" class="mb-4">
-        当前连接由环境变量托管。请在部署环境修改 Redis 参数，此处仅可查看连接状态。
-      </v-alert>
       <v-alert v-if="message" :type="message.type" variant="tonal" class="mb-4">{{ message.text }}</v-alert>
 
       <AdminConfigSection
-        v-if="source !== 'env'"
         title="连接设置"
         description="这份连接供实时信号发布和事件唤醒使用；开启配置不会自动启动 Redis 或 Gateway。"
         icon="mdi-database-outline"
@@ -69,7 +65,7 @@
         <AdminActionGuard capability="operations.runtime.configure">
           <v-btn variant="outlined" prepend-icon="mdi-connection" :loading="testing" :disabled="dirty || testing" @click="testConnection">测试当前连接</v-btn>
         </AdminActionGuard>
-        <AdminActionGuard v-if="source !== 'env'" capability="config.update">
+        <AdminActionGuard capability="config.update">
           <v-btn color="primary" variant="flat" prepend-icon="mdi-content-save-outline" :loading="saving" :disabled="!canEdit || !dirty || saving || (secretAction === 'replace' && !replacementPassword)" @click="save">保存设置</v-btn>
         </AdminActionGuard>
       </AdminConfigSaveBar>
@@ -105,14 +101,13 @@ const loadError = ref('')
 const saving = ref(false)
 const testing = ref(false)
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
-const source = ref<'database' | 'env'>('database')
 const testResult = ref<TestResult | null>(null)
-const form = reactive<RedisForm>({ enabled: false, host: '127.0.0.1', port: 6379, database: 0, tls: false, tls_server_name: '' })
+const form = reactive<RedisForm>({ enabled: false, host: '', port: 6379, database: 0, tls: false, tls_server_name: '' })
 const original = ref<RedisForm>({ ...form })
 const passwordConfigured = ref(false)
 const secretAction = ref<'keep' | 'replace' | 'clear'>('keep')
 const replacementPassword = ref('')
-const canEdit = computed(() => source.value !== 'env' && userStore.hasGrant('config.update', 'global') && userStore.hasGrant('operations.runtime.configure', 'global'))
+const canEdit = computed(() => userStore.hasGrant('config.update', 'global') && userStore.hasGrant('operations.runtime.configure', 'global'))
 const dirty = computed(() => JSON.stringify(form) !== JSON.stringify(original.value) || secretAction.value !== 'keep')
 const { unsavedChangesDialog, continueEditing, discardChanges } = useAdminUnsavedChanges(dirty)
 
@@ -138,11 +133,11 @@ const load = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const [raw, test] = await Promise.all([client.config.list(), client.config.redisTest()])
+    const raw = await client.config.list()
     const redis = readObject(raw.redis)
     const values: RedisForm = {
       enabled: readBoolean(redis.enabled),
-      host: readString(redis.host, '127.0.0.1'),
+      host: readString(redis.host),
       port: readNumber(redis.port, 6379),
       database: readNumber(redis.database),
       tls: readBoolean(redis.tls),
@@ -153,7 +148,6 @@ const load = async () => {
     passwordConfigured.value = readBoolean(readObject(redis.password).configured)
     secretAction.value = 'keep'
     replacementPassword.value = ''
-    source.value = test.source === 'env' ? 'env' : 'database'
     testResult.value = null
     return true
   } catch (cause) {
@@ -187,7 +181,6 @@ const testConnection = async () => {
   message.value = null
   try {
     const raw = await client.config.redisTest()
-    source.value = raw.source === 'env' ? 'env' : 'database'
     testResult.value = parseTest(raw)
   } catch (cause) {
     message.value = { type: 'error', text: errorMessage(cause, '连接测试失败。') }

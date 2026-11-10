@@ -34,12 +34,13 @@ namespace {
         if (!$condition) throw new \RuntimeException($message);
     };
 
-    Config::$values['redis'] = ['enabled' => false, 'host' => 'localhost', 'port' => 6379, 'database' => 0, 'password' => '', 'tls' => false, 'tls_server_name' => ''];
+    Config::$values['redis'] = ['enabled' => false, 'host' => '', 'port' => 6379, 'database' => 0, 'password' => '', 'tls' => false, 'tls_server_name' => ''];
     $disabled = RedisConnectionSettings::current();
-    $assert($disabled['enabled'] === false && $disabled['source'] === 'database', 'new install must leave Redis disabled');
+    $assert($disabled['enabled'] === false && $disabled['host'] === '' && $disabled['source'] === 'database', 'new install must leave Redis unconfigured');
     $assert(RedisConnectionSettings::test()['reason_code'] === 'redis-disabled', 'disabled Redis must not attempt connection');
 
     Config::$values['redis']['enabled'] = true;
+    Config::$values['redis']['host'] = 'localhost';
     Config::$values['redis']['password'] = 'sample-secret';
     $database = RedisConnectionSettings::current();
     $assert($database['enabled'] === true && $database['password'] === 'sample-secret', 'database settings must reach PHP consumers');
@@ -59,11 +60,9 @@ namespace {
     Env::$values['LC_REDIS_PORT'] = 6380;
     Env::$values['LC_REDIS_TLS'] = 'true';
     Env::$values['LC_REDIS_TLS_SERVER_NAME'] = 'redis.internal';
-    $legacy = RedisConnectionSettings::current();
-    $assert($legacy['source'] === 'env' && $legacy['enabled'] === true, 'legacy environment connection remains explicit');
-    $assert($legacy['host'] === 'redis.internal' && $legacy['port'] === 6380, 'environment connection overrides database group');
-    $assert($legacy['tls'] === true && $legacy['tls_server_name'] === 'redis.internal', 'environment TLS settings override database group');
-    $assert($legacy['revision'] !== $database['revision'], 'configuration source participates in revision');
+    $configured = RedisConnectionSettings::current();
+    $assert($configured['source'] === 'database' && $configured['host'] === '127.0.0.1' && $configured['port'] === 6379, 'legacy environment values must not override database group');
+    $assert($configured['tls'] === true && $configured['tls_server_name'] === '', 'legacy environment TLS values must not override database group');
 
     echo "Redis connection settings baseline passed.\n";
 }

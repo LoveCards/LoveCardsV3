@@ -29,7 +29,7 @@ async function mockAdmin(page: Page) {
 
 test('default Redis is disabled; saved password stays masked and the connection test reports its result', async ({ page }) => {
   await mockAdmin(page)
-  const state: RedisState = { enabled: false, host: '127.0.0.1', port: 6379, database: 0, passwordConfigured: true }
+  const state: RedisState = { enabled: false, host: '', port: 6379, database: 0, passwordConfigured: true }
   let tests = 0
   await page.route('**/api/admin/config', route => {
     expect(route.request().method()).toBe('GET')
@@ -48,13 +48,14 @@ test('default Redis is disabled; saved password stays masked and the connection 
   await page.goto('./apps/settings/redis', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: 'Redis 服务' })).toBeVisible()
   await expect(page.getByLabel('启用 Redis 连接')).not.toBeChecked()
+  await expect(page.getByLabel('主机地址')).toHaveValue('')
   await expect(page.getByLabel('使用 TLS 加密连接并验证证书')).not.toBeChecked()
   await expect(page.getByText('已配置密码。', { exact: false })).toBeVisible()
   await expect(page.getByRole('button', { name: '保留' })).toHaveClass(/v-btn--active/)
   await expect(page.getByLabel('新密码')).toHaveCount(0)
   await page.getByRole('button', { name: '测试当前连接' }).click()
   await expect(page.getByText('连接测试未通过：尚未启用 Redis')).toBeVisible()
-  expect(tests).toBe(2) // 页面加载读取来源一次，点击后实际测试一次。
+  expect(tests).toBe(1)
 })
 
 test('TLS settings use the shared Redis config and expose certificate identity', async ({ page }) => {
@@ -122,7 +123,7 @@ test('password replacement and clearing use explicit secret operations', async (
   await expect(page.getByText('未配置密码。', { exact: false })).toBeVisible()
 })
 
-test('environment-managed Redis is read-only in the admin page', async ({ page }) => {
+test('Redis settings remain editable when a stale test response reports env source', async ({ page }) => {
   await mockAdmin(page)
   let writes = 0
   await page.route('**/api/admin/config', route => {
@@ -136,10 +137,10 @@ test('environment-managed Redis is read-only in the admin page', async ({ page }
   }) }))
 
   await page.goto('./apps/settings/redis', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByText('当前连接由环境变量托管。', { exact: false })).toBeVisible()
-  await expect(page.getByLabel('启用 Redis 连接')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: '保存设置' })).toHaveCount(0)
+  await expect(page.getByLabel('启用 Redis 连接')).toBeVisible()
   await page.getByRole('button', { name: '测试当前连接' }).click()
   await expect(page.getByText('连接测试通过。')).toBeVisible()
+  await page.getByLabel('主机地址').fill('redis.example.test')
+  await expect(page.getByRole('button', { name: '保存设置' })).toBeEnabled()
   expect(writes).toBe(0)
 })

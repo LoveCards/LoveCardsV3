@@ -31,7 +31,7 @@ PHP-FPM 每个请求都从持久化状态重新建立上下文，请求结束后
 
 | Facility | 配置 | Provider | Fallback |
 | --- | --- | --- | --- |
-| `eventing.wakeup` | `LC_EVENTING_WAKEUP_MODE`、`LC_REDIS_HOST` | `redis` | `mysql-poll` |
+| `eventing.wakeup` | `LC_EVENTING_WAKEUP_MODE`、系统 `redis` 配置组 | `redis` | `mysql-poll` |
 | `eventing.worker` | `LC_WORKER_MODE`、`LC_WORKER_ENABLED` | `php-worker` | `request` |
 | `realtime.gateway` | `LC_REALTIME_MODE`、`LC_REALTIME_GATEWAY_URL` | `external-gateway`（独立 Node 进程） | 旧字段 `polling`，不得用于当前模式判定 |
 
@@ -71,8 +71,8 @@ Redis、Gateway 与 Worker 的实现可以更换，但需满足既有协议、Ha
 与健康检查。Redis 连接统一由 `Platform/Config/Public/RedisConnectionSettings`
 读取：新安装默认关闭，管理员可在配置组 `redis` 设置地址、端口、数据库和密码，
 并调用 `POST /api/admin/config/redis/test` 检查当前连接。密码在管理读取中遮罩；
-旧部署若设置 `LC_REDIS_HOST`，整组连接仍由环境托管，后台拒绝修改，探测显示
-`source=env`。TLS 开关和证书名称属于同一份系统连接配置，PHP 与 Gateway
+新安装不预填 Redis 地址；连接只由统一配置组维护，旧 `LC_REDIS_*` 环境变量
+不再覆盖后台值。既有部署升级前须迁入连接参数。TLS 开关和证书名称属于同一份系统连接配置，PHP 与 Gateway
 必须同时验证证书链和名称；详见 `FRONTEND-SIGNALS.md`。TLS 故障不允许
 回退到明文 Redis 连接。
 

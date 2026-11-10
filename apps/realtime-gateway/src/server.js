@@ -1,5 +1,3 @@
-// 进程入口：Redis 配置经后端内部 API 同步；后端的 LC_REDIS_HOST 可作为 env 应急来源。
-
 import { createApp } from './app.js'
 
 const required = (name) => {

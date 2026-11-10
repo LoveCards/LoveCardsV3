@@ -4,7 +4,7 @@
 -- Redis 是可选系统设施，新安装默认关闭。
 INSERT INTO `configs` (`group`, `key`, `value`, `type`, `description`, `created_at`, `updated_at`) VALUES
 ('redis', 'enabled', '0', 'bool', '启用 Redis 系统连接', NOW(), NOW()),
-('redis', 'host', '127.0.0.1', 'string', 'Redis 地址', NOW(), NOW()),
+('redis', 'host', '', 'string', 'Redis 地址', NOW(), NOW()),
 ('redis', 'port', '6379', 'int', 'Redis 端口', NOW(), NOW()),
 ('redis', 'database', '0', 'int', 'Redis 数据库编号', NOW(), NOW()),
 ('redis', 'tls', '0', 'bool', '启用 Redis TLS 并验证证书', NOW(), NOW()),

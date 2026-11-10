@@ -11,22 +11,6 @@ final class RedisConnectionSettings
     /** @return array{enabled:bool,host:string,port:int,database:int,password:string,tls:bool,tls_server_name:string,source:string,revision:string} */
     public static function current(): array
     {
-        // 既有部署的 LC_REDIS_HOST 是显式环境托管；迁移期间优先保留。
-        $envHost = trim((string) Env::get('LC_REDIS_HOST', ''));
-        if ($envHost !== '') {
-            $settings = [
-                'enabled' => true,
-                'host' => $envHost,
-                'port' => (int) Env::get('LC_REDIS_PORT', 6379),
-                'database' => (int) Env::get('LC_REDIS_DATABASE', 0),
-                'password' => (string) Env::get('LC_REDIS_PASSWORD', ''),
-                'tls' => filter_var(Env::get('LC_REDIS_TLS', false), FILTER_VALIDATE_BOOLEAN),
-                'tls_server_name' => trim((string) Env::get('LC_REDIS_TLS_SERVER_NAME', '')),
-                'source' => 'env',
-            ];
-            return self::versioned($settings);
-        }
-
         $values = Config::getGroup('redis');
         $settings = [
             'enabled' => ($values['enabled'] ?? false) === true,

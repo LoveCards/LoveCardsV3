@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS `runtime_config_state` (
 
 ### 4.2 配置（env，不入 settings）
 
-`LC_REALTIME_GATEWAY_URL`（backend probe 用，未配置=能力缺失 `gateway-not-configured`）、`LC_RUNTIME_INTERNAL_TOKEN`（backend↔gateway 共享密钥）、`LC_REALTIME_GATEWAY_PUBLIC_URL`（ticket 响应里的 connect_url 前缀）、`LC_REDIS_HOST`（信号通道）。
+`LC_REALTIME_GATEWAY_URL`（backend probe 用，未配置=能力缺失 `gateway-not-configured`）、`LC_RUNTIME_INTERNAL_TOKEN`（backend↔gateway 共享密钥）、`LC_REALTIME_GATEWAY_PUBLIC_URL`（ticket 响应里的 connect_url 前缀）。信号通道的 Redis 连接由系统 `redis` 配置组维护。
 
 ### 4.3 health/capability（验收 #7：禁止只查端口）
 
