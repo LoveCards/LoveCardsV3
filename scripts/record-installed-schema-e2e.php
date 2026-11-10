@@ -12,6 +12,7 @@ if (getenv('LOVECARDS_E2E_ISOLATED') !== '1'
 $backend = __DIR__ . '/../apps/backend';
 require $backend . '/vendor/autoload.php';
 $app = new \think\App($backend . DIRECTORY_SEPARATOR);
+$app->setEnvName('e2e');
 $app->initialize();
 $app->make(\app\modules\Operations\SystemLifecycle\Application\SystemLifecycleCoordinator::class)
     ->recordInstalledSchema($backend . '/database/migrations');
