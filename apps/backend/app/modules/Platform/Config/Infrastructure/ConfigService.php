@@ -110,7 +110,7 @@ class ConfigService
 
     /**
      * 获取单个配置值
-     * 优先级：.env → 内存缓存 → CacheManager → SQL → schema 保底
+     * 优先级：.env → 内存缓存 → CacheManager → SQL → schema 保底；Redis 仅由 LC_REDIS_HOST 显式托管。
      */
     public static function get(string $key, $default = null)
     {
@@ -122,7 +122,7 @@ class ConfigService
         }
 
         // 1. .env（最高优先级）
-        if ($name !== null) {
+        if ($name !== null && $group !== 'redis') {
             $envValue = self::getEnvValue($group, $name);
             if ($envValue !== null) {
                 return self::castValue($envValue, self::getTypeFromSchema($group, $name));
@@ -163,7 +163,7 @@ class ConfigService
 
     /**
      * 获取分组配置
-     * 优先级：CacheManager → SQL → .env 覆盖 → 写入缓存
+     * 优先级：CacheManager → SQL → .env 覆盖 → 写入缓存；Redis 组跳过通用环境变量覆盖。
      */
     public static function getGroup(string $group): array
     {
@@ -190,10 +190,12 @@ class ConfigService
         }
 
         // 3. .env 覆盖
-        foreach ($result as $key => $value) {
-            $envValue = self::getEnvValue($group, $key);
-            if ($envValue !== null) {
-                $result[$key] = self::castValue($envValue, self::getTypeFromSchema($group, $key));
+        if ($group !== 'redis') {
+            foreach ($result as $key => $value) {
+                $envValue = self::getEnvValue($group, $key);
+                if ($envValue !== null) {
+                    $result[$key] = self::castValue($envValue, self::getTypeFromSchema($group, $key));
+                }
             }
         }
 
@@ -251,6 +253,7 @@ class ConfigService
     /** 配置值是否由环境变量覆盖；不返回环境变量内容。 */
     public static function isEnvironmentManaged(string $group, string $key): bool
     {
+        if ($group === 'redis') return false;
         return self::getEnvValue($group, $key) !== null;
     }
 

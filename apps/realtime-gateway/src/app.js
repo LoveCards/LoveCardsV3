@@ -2,6 +2,7 @@
 // 契约见 docs/engineering/COMMUNICATION-RUNTIME-CONTRACT-2026-11-06.md §4。
 
 import http from 'node:http'
+import net from 'node:net'
 import { RedisSubscriber } from './redis-subscriber.js'
 import { heartbeatFrame, pingComment, retryDirective, signalFrame } from './sse.js'
 
@@ -14,6 +15,12 @@ const RECONNECT_RETRY_MS = 2_000
 const REDIS_CONFIG_REFRESH_MS = 15_000
 const DEFAULT_MAX_CONNECTIONS = 100
 const BACKEND_TIMEOUT_MS = 5_000
+
+function validTlsIdentity(settings) {
+  const name = settings.tls_server_name || settings.host
+  return name.length <= 253 && net.isIP(name) === 0
+    && /^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(?:\.(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*$/.test(name)
+}
 
 function bearerOk(req, token) {
   if (!token) return false
@@ -121,6 +128,8 @@ export function createApp(config) {
     if (!settings?.enabled || typeof settings.host !== 'string' || !settings.host.trim()
       || !Number.isInteger(settings.port) || settings.port < 1 || settings.port > 65535
       || !Number.isInteger(settings.database) || settings.database < 0 || settings.database > 15
+      || typeof settings.tls !== 'boolean' || typeof settings.tls_server_name !== 'string'
+      || (settings.tls && !validTlsIdentity(settings))
       || typeof settings.password !== 'string' || typeof settings.revision !== 'string' || !settings.revision
       || !['env', 'database'].includes(settings.source)) {
       disableTransport('redis configuration unavailable')
@@ -135,11 +144,16 @@ export function createApp(config) {
         port: settings.port,
         database: settings.database,
         password: settings.password,
+        tls: settings.tls,
+        tlsServerName: settings.tls_server_name,
         channel: 'lovecards:realtime',
         onMessage: (message) => {
           // 信号载荷 {topic, uid:'user:42', cursor}；只按 recipient scope 定向推送。
+          if (message.uid === 'all' && (message.topic !== 'feed' || message.cursor !== 'public')) return
+          const recipients = Array.isArray(message.uids) && message.uids.length <= 200
+            ? new Set(message.uids.filter((uid) => typeof uid === 'string')) : null
           for (const conn of state.connections) {
-            if (conn.recipientKey !== message.uid) continue
+            if (message.uid !== 'all' && conn.recipientKey !== message.uid && !recipients?.has(conn.recipientKey)) continue
             conn.send(signalFrame({ topic: message.topic ?? 'notifications', cursor: message.cursor ?? '' }))
           }
         },
@@ -309,6 +323,7 @@ export function createApp(config) {
       } else if (redis) {
         configureRedis({ enabled: true, host: redis.host, port: redis.port ?? 6379,
           database: redis.database ?? 0, password: redis.password ?? '',
+          tls: redis.tls ?? false, tls_server_name: redis.tls_server_name ?? '',
           source: redis.source ?? 'env', revision: redis.revision ?? 'env' })
       }
       return new Promise((resolve) => {

@@ -70,6 +70,8 @@ Handler Registry 当前固定注册：
 - `notification.created@1` -> `NotificationCreatedSignalHandler`（`notifications.new` 主动提示）；
 - `message.sent@1` -> `MessageSentSignalHandler`（`messages.new` 主动提示；与站内提醒独立投递）；
 - `message.read@1` -> `MessageReadSignalHandler`（`messages.read` 主动提示）；
+- `content.card.published@1` -> `CardPublishedSignalHandler`（`feed.published` 主动提示）；
+- `content.card.feed.batch.requested@1` -> `CardPublishedSignalHandler`（每批至多 200 名关注者的续批投递）；
 - `file.purge.requested@1` -> `PurgeFileHandler`。
 
 `realtime` 队列只负责前端变化信号；目录项与开关以 [FRONTEND-SIGNALS.md](FRONTEND-SIGNALS.md) 为准。轮询模式的实时投递登记即标记跳过，实时故障时不领取，手动切轮询时结算未发送投递。通知记录与私信数据不因此暂停。

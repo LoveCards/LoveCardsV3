@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
 import { ResourceState } from '../../components/ResourceState.jsx';
@@ -7,6 +7,7 @@ import { useResource } from '../../app/use-resource.js';
 import { previewCreators, previewTrends } from '../../fixtures/feed-preview.js';
 import { getHomeFeedSnapshot, HOME_CHANNELS, loadHomeFeed } from '../../services/feed-service.js';
 import { ScopedBanner } from '../../ui/index.js';
+import { getCommunicationRuntime, SIGNAL_FEED } from '../../services/communication-runtime.js';
 
 function selectedChannel(params) {
   if (params.get('feed') === 'following') return 'following';
@@ -84,8 +85,26 @@ export function HomePage() {
   const initialData = useMemo(() => getHomeFeedSnapshot(channel), [channel]);
   const resource = useResource(loader, initialData);
   const data = resource.data || initialData;
+  const [hasNewContent, setHasNewContent] = useState(false);
+  const [needsSync, setNeedsSync] = useState(false);
   const isPreview = data.source === 'preview';
   const isBoundary = data.source === 'unavailable' || data.source === 'configuration-error';
+
+  useEffect(() => {
+    if (resource.status === 'success') { setHasNewContent(false); setNeedsSync(false); }
+  }, [resource.data, resource.status]);
+
+  useEffect(() => {
+    setHasNewContent(false);
+    const unsubscribe = getCommunicationRuntime().subscribe((topic, hint) => {
+      if (topic !== SIGNAL_FEED || data.source !== 'live') return;
+      if (hint === 'reconcile') { setNeedsSync(true); return; }
+      if (hint === 'public' && channel === 'following') return;
+      if (hint === 'following' && channel !== 'following') return;
+      setHasNewContent(true);
+    });
+    return unsubscribe;
+  }, [channel, data.source]);
 
   return (
     <AppShell>
@@ -117,6 +136,8 @@ export function HomePage() {
           title="推荐暂时不可用"
           description="已为你显示最新发布的公开内容，稍后重新进入推荐页时会再次尝试。"
         />}
+        {hasNewContent && !isBoundary && <button className="home-new-content" type="button" onClick={() => { void resource.reload(); }}>有新内容，点击刷新</button>}
+        {!hasNewContent && needsSync && !isBoundary && <button className="home-new-content" type="button" onClick={() => { void resource.reload(); }}>查看最新内容</button>}
         <div className="home-layout">
           <ResourceState status={resource.status} error={resource.error} empty={!isBoundary && !data.items?.length} onRetry={resource.reload} loadingVariant="feed" loadingClassName="home-feed" loadingLabel="首页内容加载中">
             {isBoundary ? <UnavailableFeed data={data} /> : (

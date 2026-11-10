@@ -695,6 +695,7 @@ CREATE TABLE `user_follows` (
   `created_at` datetime NOT NULL,
   PRIMARY KEY (`follower_id`,`followee_id`),
   KEY `idx_followee_created` (`followee_id`,`created_at`,`follower_id`),
+  KEY `idx_followee_follower` (`followee_id`,`follower_id`),
   CONSTRAINT `fk_follows_followee` FOREIGN KEY (`followee_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_follows_follower` FOREIGN KEY (`follower_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

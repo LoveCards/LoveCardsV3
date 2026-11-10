@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace app\modules\Operations\Runtime\Infrastructure;
 
 use app\modules\Operations\Runtime\Contract\RuntimeProbe;
+use app\modules\Operations\SystemLifecycle\Public\SchemaIdentity;
 use app\modules\Platform\Eventing\Public\HandlerRegistry;
 use think\facade\Db;
 
@@ -19,6 +20,11 @@ final class EventingWorkerProbe implements RuntimeProbe
     {
         $provider = 'mysql-runtime_workers';
         try {
+            $schemaIdentity = app(SchemaIdentity::class)->probeIdentity();
+        } catch (\Throwable $ignored) {
+            return ['ready' => false, 'provider' => $provider, 'reason_code' => 'worker-schema-unavailable'];
+        }
+        try {
             $stale = max(1, (int) ($settings['worker_stale_seconds'] ?? 30));
             $cutoff = gmdate('Y-m-d H:i:s', time() - $stale);
             $rows = Db::table('runtime_workers')
@@ -30,14 +36,14 @@ final class EventingWorkerProbe implements RuntimeProbe
                 ->toArray();
             $release = getenv('LC_ACTIVE_RELEASE_ID');
             $expectedRelease = is_string($release) && $release !== '' ? $release : null;
-            return self::assess($rows, (new HandlerRegistry())->catalogHash(), $expectedRelease);
+            return self::assess($rows, (new HandlerRegistry())->catalogHash(), $expectedRelease, $schemaIdentity);
         } catch (\Throwable $ignored) {
             return ['ready' => false, 'provider' => $provider, 'reason_code' => 'probe-unavailable'];
         }
     }
 
     /** 多个 Worker 中任意一个满足全部条件即可；旧心跳无队列声明时失败关闭。 */
-    public static function assess(array $rows, string $catalogHash, ?string $expectedRelease): array
+    public static function assess(array $rows, string $catalogHash, ?string $expectedRelease, string $schemaIdentity): array
     {
         $provider = 'mysql-runtime_workers';
         if ($rows === []) {
@@ -49,9 +55,11 @@ final class EventingWorkerProbe implements RuntimeProbe
             $releaseMatches = $expectedRelease === null
                 || hash_equals($expectedRelease, (string) ($row['release_id'] ?? ''));
             $catalogMatches = hash_equals($catalogHash, (string) ($row['handler_catalog_hash'] ?? ''));
+            $schemaMatches = preg_match('/^[a-f0-9]{64}$/', (string) ($row['schema_version'] ?? '')) === 1
+                && hash_equals($schemaIdentity, (string) $row['schema_version']);
             $queues = json_decode((string) ($row['queue_names_json'] ?? ''), true);
             $consumesRealtime = is_array($queues) && in_array('realtime', $queues, true);
-            if ($releaseMatches && $catalogMatches && $consumesRealtime) {
+            if ($releaseMatches && $catalogMatches && $schemaMatches && $consumesRealtime) {
                 return [
                     'ready' => true,
                     'provider' => $provider,
@@ -60,11 +68,13 @@ final class EventingWorkerProbe implements RuntimeProbe
                         'worker_id' => $row['worker_id'] ?? null,
                         'heartbeat_at' => $row['heartbeat_at'] ?? null,
                         'release_id' => $row['release_id'] ?? null,
+                        'schema_version' => $row['schema_version'] ?? null,
                     ],
                 ];
             }
             $firstReason ??= !$releaseMatches ? 'worker-release-mismatch'
-                : (!$catalogMatches ? 'worker-catalog-mismatch' : 'worker-realtime-queue-missing');
+                : (!$catalogMatches ? 'worker-catalog-mismatch'
+                    : (!$schemaMatches ? 'worker-schema-mismatch' : 'worker-realtime-queue-missing'));
         }
         return ['ready' => false, 'provider' => $provider, 'reason_code' => $firstReason ?? 'worker-heartbeat-stale'];
     }

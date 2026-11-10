@@ -2,6 +2,7 @@
 // 断线自动重连并汇报订阅状态；只有 SUBSCRIBE 确认后才视为可用。
 
 import net from 'node:net'
+import tls from 'node:tls'
 
 const CRLF = '\r\n'
 
@@ -67,11 +68,14 @@ export function createRespParser({ onReply }) {
 }
 
 export class RedisSubscriber {
-  constructor({ host = '127.0.0.1', port = 6379, database = 0, password = '', channel, onMessage, onStatus, connectTimeoutMs = 1000 }) {
+  constructor({ host = '127.0.0.1', port = 6379, database = 0, password = '', tls: useTls = false, tlsServerName = '', ca, channel, onMessage, onStatus, connectTimeoutMs = 1000 }) {
     this.host = host
     this.port = port
     this.database = database
     this.password = password
+    this.useTls = useTls
+    this.tlsServerName = tlsServerName
+    this.ca = ca
     this.channel = channel
     this.onMessage = onMessage
     this.onStatus = onStatus ?? (() => {})
@@ -90,7 +94,11 @@ export class RedisSubscriber {
 
   connect() {
     if (this.stopped) return
-    const socket = net.connect({ host: this.host, port: this.port })
+    // TLS 必须验证链与证书名称，握手失败后只重试 TLS，不降级到明文。
+    const socket = this.useTls
+      ? tls.connect({ host: this.host, port: this.port, servername: this.tlsServerName || this.host,
+        rejectUnauthorized: true, ...(this.ca ? { ca: this.ca } : {}) })
+      : net.connect({ host: this.host, port: this.port })
     this.socket = socket
     socket.setTimeout(this.connectTimeoutMs)
     let stage = this.password ? 'auth' : this.database > 0 ? 'select' : 'subscribe'
@@ -131,7 +139,7 @@ export class RedisSubscriber {
         }
       },
     })
-    socket.on('connect', () => {
+    socket.on(this.useTls ? 'secureConnect' : 'connect', () => {
       if (this.password) socket.write(encodeCommand(['AUTH', this.password]))
       else if (this.database > 0) select()
       else subscribe()

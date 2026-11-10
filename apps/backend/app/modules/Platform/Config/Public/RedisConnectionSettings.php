@@ -8,7 +8,7 @@ use think\facade\Env;
 /** PHP Redis 使用者共用的系统配置视图；不会返回给管理端 Resource。 */
 final class RedisConnectionSettings
 {
-    /** @return array{enabled:bool,host:string,port:int,database:int,password:string,source:string,revision:string} */
+    /** @return array{enabled:bool,host:string,port:int,database:int,password:string,tls:bool,tls_server_name:string,source:string,revision:string} */
     public static function current(): array
     {
         // 既有部署的 LC_REDIS_HOST 是显式环境托管；迁移期间优先保留。
@@ -20,6 +20,8 @@ final class RedisConnectionSettings
                 'port' => (int) Env::get('LC_REDIS_PORT', 6379),
                 'database' => (int) Env::get('LC_REDIS_DATABASE', 0),
                 'password' => (string) Env::get('LC_REDIS_PASSWORD', ''),
+                'tls' => filter_var(Env::get('LC_REDIS_TLS', false), FILTER_VALIDATE_BOOLEAN),
+                'tls_server_name' => trim((string) Env::get('LC_REDIS_TLS_SERVER_NAME', '')),
                 'source' => 'env',
             ];
             return self::versioned($settings);
@@ -32,6 +34,8 @@ final class RedisConnectionSettings
             'port' => (int) ($values['port'] ?? 0),
             'database' => (int) ($values['database'] ?? 0),
             'password' => (string) ($values['password'] ?? ''),
+            'tls' => ($values['tls'] ?? false) === true,
+            'tls_server_name' => trim((string) ($values['tls_server_name'] ?? '')),
             'source' => 'database',
         ];
         return self::versioned($settings);
@@ -48,6 +52,35 @@ final class RedisConnectionSettings
         return $settings;
     }
 
+    /** 连接传输层在所有 PHP Redis 使用者之间共用，TLS 失败绝不退回明文。 */
+    public static function connectTransport(\Redis $redis, array $settings): bool
+    {
+        if (($settings['tls'] ?? false) !== true) {
+            return $redis->connect($settings['host'], $settings['port'], 0.25);
+        }
+        if (!extension_loaded('openssl') || (extension_loaded('redis') && version_compare((string) phpversion('redis'), '5.3.0', '<'))) {
+            throw new \RuntimeException('Redis TLS 需要 OpenSSL 和 PhpRedis 5.3 或更高版本');
+        }
+        $identity = self::tlsIdentity($settings);
+        if ($identity === null) {
+            throw new \InvalidArgumentException('Redis TLS 证书名称无效');
+        }
+        return $redis->connect(
+            'tls://' . $settings['host'], $settings['port'], 0.25, null, 0, 0.25,
+            ['stream' => ['verify_peer' => true, 'verify_peer_name' => true,
+                'allow_self_signed' => false, 'peer_name' => $identity, 'SNI_enabled' => true]]
+        );
+    }
+
+    public static function tlsIdentity(array $settings): ?string
+    {
+        $name = trim((string) ($settings['tls_server_name'] ?? ''));
+        if ($name === '') $name = trim((string) ($settings['host'] ?? ''));
+        if (filter_var($name, FILTER_VALIDATE_IP) !== false) return null;
+        if (strlen($name) > 253 || preg_match('/^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(?:\.(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*$/D', $name) !== 1) return null;
+        return $name;
+    }
+
     /** @return array{ready:bool,reason_code:?string,source:string,revision:string} */
     public static function test(): array
     {
@@ -62,15 +95,23 @@ final class RedisConnectionSettings
             $result['reason_code'] = 'redis-not-configured';
             return $result;
         }
+        if ($settings['tls'] && self::tlsIdentity($settings) === null) {
+            $result['reason_code'] = 'redis-tls-name-invalid';
+            return $result;
+        }
         if (!extension_loaded('redis')) {
             $result['reason_code'] = 'redis-extension-unavailable';
+            return $result;
+        }
+        if ($settings['tls'] && (!extension_loaded('openssl') || version_compare((string) phpversion('redis'), '5.3.0', '<'))) {
+            $result['reason_code'] = 'redis-tls-extension-unsupported';
             return $result;
         }
 
         $redis = new \Redis();
         try {
-            if (!$redis->connect($settings['host'], $settings['port'], 0.25)) {
-                $result['reason_code'] = 'redis-unreachable';
+            if (!self::connectTransport($redis, $settings)) {
+                $result['reason_code'] = $settings['tls'] ? 'redis-tls-failed' : 'redis-unreachable';
                 return $result;
             }
             if ($settings['password'] !== '' && !$redis->auth($settings['password'])) {
@@ -88,7 +129,7 @@ final class RedisConnectionSettings
             $result['ready'] = true;
             return $result;
         } catch (\Throwable $ignored) {
-            $result['reason_code'] = 'redis-unreachable';
+            $result['reason_code'] = $settings['tls'] ? 'redis-tls-failed' : 'redis-unreachable';
             return $result;
         } finally {
             try { $redis->close(); } catch (\Throwable $ignored) {}

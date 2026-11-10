@@ -31,6 +31,18 @@
             <v-text-field v-model.number="form.database" label="数据库编号" type="number" min="0" max="15" variant="outlined" density="comfortable" :disabled="!canEdit || saving" />
           </v-col>
         </v-row>
+        <v-switch v-model="form.tls" label="使用 TLS 加密连接并验证证书" color="primary" :disabled="!canEdit || saving" class="mb-3" />
+        <v-text-field
+          v-if="form.tls"
+          v-model.trim="form.tls_server_name"
+          label="TLS 证书名称"
+          hint="留空时验证主机地址；连接地址为 IP 时必须填写证书上的 DNS 名称。自建 CA 请在部署环境安装。"
+          persistent-hint
+          variant="outlined"
+          density="comfortable"
+          :disabled="!canEdit || saving"
+          class="mb-3"
+        />
         <div class="text-subtitle-2 mb-2">认证密码</div>
         <div class="text-body-2 text-medium-emphasis mb-3">{{ passwordConfigured ? '已配置密码。' : '未配置密码。' }} 留空不会清除已保存的密码。</div>
         <v-btn-toggle v-model="secretAction" mandatory divided density="comfortable" class="mb-3" :disabled="!canEdit || saving">
@@ -83,7 +95,7 @@ import { isApiError, useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import { readBoolean, readNumber, readObject, readString } from '~/utils/json'
 
-type RedisForm = { enabled: boolean; host: string; port: number; database: number }
+type RedisForm = { enabled: boolean; host: string; port: number; database: number; tls: boolean; tls_server_name: string }
 type TestResult = { ready: boolean; reason_code: string | null }
 
 const client = useApi()
@@ -95,7 +107,7 @@ const testing = ref(false)
 const message = ref<{ type: 'success' | 'error'; text: string } | null>(null)
 const source = ref<'database' | 'env'>('database')
 const testResult = ref<TestResult | null>(null)
-const form = reactive<RedisForm>({ enabled: false, host: '127.0.0.1', port: 6379, database: 0 })
+const form = reactive<RedisForm>({ enabled: false, host: '127.0.0.1', port: 6379, database: 0, tls: false, tls_server_name: '' })
 const original = ref<RedisForm>({ ...form })
 const passwordConfigured = ref(false)
 const secretAction = ref<'keep' | 'replace' | 'clear'>('keep')
@@ -112,6 +124,9 @@ const reasonLabel = (reason: string | null) => ({
   'redis-unreachable': '无法连接 Redis',
   'redis-auth-failed': '认证失败',
   'redis-database-unavailable': '数据库不可用',
+  'redis-tls-name-invalid': 'TLS 证书名称无效',
+  'redis-tls-failed': 'TLS 连接或证书校验失败',
+  'redis-tls-extension-unsupported': 'PHP Redis 扩展版本过低，需要 PhpRedis 5.3 或更高版本',
 }[reason ?? ''] ?? '请检查连接参数和服务状态')
 
 const parseTest = (raw: Record<string, unknown>): TestResult => ({
@@ -130,6 +145,8 @@ const load = async () => {
       host: readString(redis.host, '127.0.0.1'),
       port: readNumber(redis.port, 6379),
       database: readNumber(redis.database),
+      tls: readBoolean(redis.tls),
+      tls_server_name: readString(redis.tls_server_name),
     }
     Object.assign(form, values)
     original.value = { ...values }

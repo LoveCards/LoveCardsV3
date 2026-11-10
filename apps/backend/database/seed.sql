@@ -7,6 +7,8 @@ INSERT INTO `configs` (`group`, `key`, `value`, `type`, `description`, `created_
 ('redis', 'host', '127.0.0.1', 'string', 'Redis 地址', NOW(), NOW()),
 ('redis', 'port', '6379', 'int', 'Redis 端口', NOW(), NOW()),
 ('redis', 'database', '0', 'int', 'Redis 数据库编号', NOW(), NOW()),
+('redis', 'tls', '0', 'bool', '启用 Redis TLS 并验证证书', NOW(), NOW()),
+('redis', 'tls_server_name', '', 'string', 'Redis TLS 证书名称；留空使用主机地址', NOW(), NOW()),
 ('redis', 'password', '', 'password', 'Redis 认证密码', NOW(), NOW());
 
 -- 通信运行时首次安装默认配置；历史实例由 20261106000001 迁移初始化。

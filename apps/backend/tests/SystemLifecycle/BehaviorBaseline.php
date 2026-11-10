@@ -38,6 +38,8 @@ final class SystemLifecycleInMemoryLedger implements MigrationLedger
         return array_values($this->records);
     }
 
+    public function allReadOnly(): array { return $this->all(); }
+
     public function find(string $migrationId): ?MigrationProgress
     {
         return $this->records[$migrationId] ?? null;

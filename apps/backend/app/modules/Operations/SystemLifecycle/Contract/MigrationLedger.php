@@ -13,6 +13,8 @@ interface MigrationLedger
 {
     /** @return MigrationProgress[] */
     public function all(): array;
+    /** 探测热路径只读；缺少账本表时抛错，不能隐式建表。@return MigrationProgress[] */
+    public function allReadOnly(): array;
     public function find(string $migrationId): ?MigrationProgress;
     public function initialize(MigrationDescriptor $descriptor): MigrationProgress;
     public function save(MigrationProgress $progress, int $expectedRevision): MigrationProgress;

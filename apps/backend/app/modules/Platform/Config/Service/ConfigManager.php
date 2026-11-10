@@ -184,6 +184,16 @@ final class ConfigManager
         if (filter_var($database, FILTER_VALIDATE_INT) === false || (int) $database < 0 || (int) $database > 15) {
             throw ApiException::validation(['redis.database' => ['Redis 数据库编号必须在 0 到 15 之间']]);
         }
+        if (array_key_exists('tls', $changes) && !is_bool($changes['tls'])) {
+            throw ApiException::validation(['redis.tls' => ['必须为布尔值']]);
+        }
+        $tlsName = trim((string) ($next['tls_server_name'] ?? ''));
+        if ($tlsName !== '' && RedisConnectionSettings::tlsIdentity(['host' => $host, 'tls_server_name' => $tlsName]) === null) {
+            throw ApiException::validation(['redis.tls_server_name' => ['TLS 证书名称必须为 DNS 主机名']]);
+        }
+        if (($next['tls'] ?? false) === true && RedisConnectionSettings::tlsIdentity(['host' => $host, 'tls_server_name' => $tlsName]) === null) {
+            throw ApiException::validation(['redis.tls_server_name' => ['使用 IP 地址连接 TLS Redis 时必须填写证书名称']]);
+        }
     }
 
     /** @return array{apply: bool, value: mixed} */

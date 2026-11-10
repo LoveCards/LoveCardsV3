@@ -11,13 +11,15 @@ final class InternalRedisConfigResource extends Resource
     public static function schema(string $variant = 'default'): array
     {
         return ['type' => 'object', 'additionalProperties' => false,
-            'required' => ['enabled', 'host', 'port', 'database', 'password', 'source', 'revision'],
+            'required' => ['enabled', 'host', 'port', 'database', 'password', 'tls', 'tls_server_name', 'source', 'revision'],
             'properties' => [
                 'enabled' => ['type' => 'boolean'],
                 'host' => ['type' => 'string'],
                 'port' => ['type' => 'integer'],
                 'database' => ['type' => 'integer'],
                 'password' => ['type' => 'string'],
+                'tls' => ['type' => 'boolean'],
+                'tls_server_name' => ['type' => 'string'],
                 'source' => ['type' => 'string', 'enum' => ['env', 'database']],
                 'revision' => ['type' => 'string'],
             ]];

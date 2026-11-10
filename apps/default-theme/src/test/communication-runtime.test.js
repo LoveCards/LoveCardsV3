@@ -89,20 +89,20 @@ describe('communication runtime', () => {
     // 让快照声明 realtime 生效。
     client.communication.settings = vi.fn(async () => ({ effective_mode: 'realtime', status: 'ready', settings: { notification_interval_seconds: 10, message_interval_seconds: 12, unread_interval_seconds: 5, polling_backoff_factor: 2, polling_max_interval_seconds: 60, pause_when_hidden: true } }));
     const topics = [];
-    runtime.subscribe((topic) => topics.push(topic));
+    runtime.subscribe((topic, hint) => topics.push([topic, hint]));
     await runtime.start();
     expect(client.notifications.streamTicket).toHaveBeenCalledTimes(1);
     expect(sources).toHaveLength(1);
     expect(sources[0].url).toContain('ticket=');
     expect(runtime.currentMode()).toBe('realtime');
     sources[0].emitSignal({ topic: 'messages', cursor: 'c1' });
-    expect(topics).toContain(SIGNAL_MESSAGES);
-    expect(topics).toContain(SIGNAL_UNREAD);
+    expect(topics).toContainEqual([SIGNAL_MESSAGES, 'c1']);
+    expect(topics).toContainEqual([SIGNAL_UNREAD, '']);
     topics.length = 0;
     sources[0].emitSignal({ topic: 'feed', cursor: 'feed-1' });
-    expect(topics).toEqual([SIGNAL_FEED]);
+    expect(topics).toEqual([[SIGNAL_FEED, 'feed-1']]);
     sources[0].emitSignal({ topic: 'unknown', cursor: 'x' });
-    expect(topics).toEqual([SIGNAL_FEED]);
+    expect(topics).toEqual([[SIGNAL_FEED, 'feed-1']]);
     runtime.destroy();
   });
 
@@ -120,7 +120,7 @@ describe('communication runtime', () => {
     expect(runtime.currentConnectionStatus()).toBe('connecting');
     FakeEventSource.instances[0].emitOpen();
     expect(runtime.currentConnectionStatus()).toBe('ready');
-    expect(seen).toEqual([SIGNAL_NOTIFICATIONS, SIGNAL_MESSAGES, SIGNAL_UNREAD]);
+    expect(seen).toEqual([SIGNAL_NOTIFICATIONS, SIGNAL_MESSAGES, SIGNAL_UNREAD, SIGNAL_FEED]);
     seen.length = 0;
     await vi.advanceTimersByTimeAsync(120_000);
     expect(seen).toEqual([]);
@@ -159,7 +159,7 @@ describe('communication runtime', () => {
     expect(FakeEventSource.instances[1].url).not.toContain('lastEventId=');
     FakeEventSource.instances[1].emitOpen();
     expect(runtime.currentConnectionStatus()).toBe('ready');
-    expect(seen).toEqual([SIGNAL_NOTIFICATIONS, SIGNAL_MESSAGES, SIGNAL_UNREAD]);
+    expect(seen).toEqual([SIGNAL_NOTIFICATIONS, SIGNAL_MESSAGES, SIGNAL_UNREAD, SIGNAL_FEED]);
     expect(runtime.currentMode()).toBe('realtime');
     runtime.destroy();
   });

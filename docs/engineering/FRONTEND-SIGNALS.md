@@ -14,7 +14,7 @@ Eventing 继续提供唯一的 Outbox、Handler Registry、投递、租约和重
 
 需要主动提示的模块通过 Eventing 的显式 Handler 注册声明 `signal_key`、`topic`、拥有模块、展示名称和影响说明。此注册是代码权威；不得另建可与 Handler Registry 漂移的动态注册表。后台只能为已注册的 `signal_key` 保存开关，不允许自行创建事件名或执行器。重复键、未知 topic、缺少 Handler 或缺少元数据在构建或启动检查时失败。
 
-首批 topic 为 `notifications`、`messages`，后续按真实业务切片加入 `feed`。首批目录项为 `notifications.new`、`messages.new` 和 `messages.read`。同一浏览器会话使用一条 SSE 连接。通知、私信、信息流各自维护读取游标；当前没有跨主题的 SSE 续传游标。topic 内 `cursor` 只是读取提示，不能冒充全局事件 ID。信号只含 topic 和不泄露业务内容的变化标识。
+topic 为 `notifications`、`messages`、`feed`。目录项为 `notifications.new`、`messages.new`、`messages.read` 和 `feed.published`。`feed.published` 只在卡片首次变为可见时记录：公开卡片对在线会话广播无内容的变化信号，关注范围卡片只向当前有权查看的关注者提示，私密卡片不提示。同一浏览器会话使用一条 SSE 连接。通知、私信、信息流各自维护读取游标；当前没有跨主题的 SSE 续传游标。topic 内 `cursor` 只是读取提示，不能冒充全局事件 ID。信号只含 topic 和不泄露业务内容的变化标识。
 
 现有通知生成策略与主动提示开关语义不同：前者决定是否生成对应站内通知，后者只决定是否尝试主动提示。两类开关必须在后台分别命名和说明。安全、审核等锁定的通知生成规则继续遵守 `NOTIFICATIONS.md`；关闭主动提示不得改变业务数据或通知记录。
 
@@ -24,7 +24,9 @@ Eventing 继续提供唯一的 Outbox、Handler Registry、投递、租约和重
 
 业务写入与业务事件同事务。通知首次生成与其变化信号的 `notification.created@1` Outbox 记录同事务。私信新消息信号复用已有 `message.sent@1` 事实；已读游标真正推进时同事务记录 `message.read@1`。业务模块不得在事务外直接发布 Redis。实时信号使用现有 `event_deliveries` 的独立 Handler 和 `realtime` 队列，不另建任务账本。通知生成、邮件、短信等其他任务不会因 Gateway 故障暂停。
 
-Redis 是实时模式的信号传输设施，默认轮询模式不要求它。Redis 发布失败必须让信号投递保留可重试状态，不能静默完成。Redis Pub/Sub 的发布成功只表示 Redis 接受了信号，不能证明 Gateway 或浏览器收到。SSE 重复信号允许出现；浏览器依据各模块业务 API 的状态去重。重连后必须分别补读通知、私信和已接入的信息流。Gateway 健康响应的 `cursor: true` 仅表示信号允许携带 topic 内读取提示；SSE 不提供跨 topic 的 `Last-Event-ID` 续传。后台不得将发布成功称为用户已收到。
+内容模块在卡片首次公开、审核通过、解除隐藏、从回收站恢复或从私密改为可见时记录 `content.card.published@1`，普通编辑和重复审核不制造提示。公开卡片以 `feed/public` 范围提示推荐和最新列表；关注列表只接受定向 `feed/following` 提示。关注范围卡片按当前关系、用户状态、屏蔽关系和主页可见性逐批确定接收者，每个现有 Outbox 投递最多处理 200 人，后续批次仍由 Eventing 记录且以确定性批次键去重。处理前重新校验卡片仍可见；信号没有卡片 ID、正文或作者信息。浏览器收到范围匹配的信号后显示“有新内容”，点击后才通过现有 Feed API 重新加载；推荐页按热度排序，新公开卡片可能尚未进入当前推荐列表。实时连接成功或恢复时只提示“查看最新内容”，不宣称确有新卡片。轮询模式不伪造新内容提示，用户仍可手动刷新列表。
+
+Redis 是实时模式的信号传输设施，默认轮询模式不要求它。Redis 发布失败必须让信号投递保留可重试状态，不能静默完成。Redis Pub/Sub 的发布成功只表示 Redis 接受了信号，不能证明 Gateway 或浏览器收到。SSE 重复信号允许出现；浏览器依据各模块业务 API 的状态去重。重连后自动补读通知和私信；信息流显示中性“查看最新内容”提示，用户点击后才重新读取 Feed API。Gateway 健康响应的 `cursor: true` 仅表示信号允许携带 topic 内读取提示；SSE 不提供跨 topic 的 `Last-Event-ID` 续传。后台不得将发布成功称为用户已收到。
 
 ## 4. 模式与故障
 
@@ -36,9 +38,11 @@ Gateway 的 Redis 断线回源和浏览器的实时自动转轮询已从当前�
 
 ## 5. 服务与系统配置
 
-LC3 通过角色协议识别 Gateway 和 Worker，不依赖它们使用的语言或进程管理器。Gateway 报告身份、协议、配置版本、Redis 订阅及连接能力；Worker 心跳记录 Release、Schema、Handler Catalog、实际消费队列和时间。实时门禁检查心跳、Catalog、`realtime` 队列，设置 `LC_ACTIVE_RELEASE_ID` 时还检查 Release 一致。当前 Worker CLI 将 Schema 标记为 `current` 占位，尚不能据此验证真实 Schema 兼容性，不能宣称已有 Schema 门禁。进程运行不等于链路就绪。
+LC3 通过角色协议识别 Gateway 和 Worker，不依赖它们使用的语言或进程管理器。Gateway 报告身份、协议、配置版本、Redis 订阅及连接能力；Worker 心跳记录 Release、Schema、Handler Catalog、实际消费队列和时间。实时门禁检查心跳、Catalog、`realtime` 队列，设置 `LC_ACTIVE_RELEASE_ID` 时还检查 Release 一致。Worker 启动时校验本地迁移目录与完整迁移账本的 ID、checksum 和完成状态，并把 SHA-256 Schema 身份写入心跳；运行时以当前代码目录和只读账本计算身份后比较。迁移后旧 Worker 需重启，缺失、未完成或漂移的迁移均不能通过实时门禁。进程运行不等于链路就绪。
 
-Redis 是默认关闭的系统基础设施配置，后台提供地址、端口、库号、密码、凭据遮罩和连接测试。`LC_REDIS_HOST` 存在时，整组连接由环境变量托管且后台拒绝修改；否则使用后台配置。Gateway 通过内部 Bearer API 读取同一份连接配置和版本指纹，每 15 秒同步；配置不可读、禁用或版本不一致时不报告就绪。首版不支持 Redis TLS。ThinkPHP 可以按明确用途复用这份连接配置作缓存，但读取系统配置不能依赖 Redis。填写配置不启动 Redis；Gateway 和 Worker 仍由部署环境托管。
+Redis 是默认关闭的系统基础设施配置，后台提供地址、端口、库号、密码、TLS 开关、证书名称、凭据遮罩和连接测试。`LC_REDIS_HOST` 存在时，整组连接由环境变量托管且后台拒绝修改；否则使用后台数据库配置，通用 `REDIS_*` 变量不会暗中覆盖后台保存值。Gateway 通过内部 Bearer API 读取同一份连接配置和版本指纹，每 15 秒同步；配置不可读、禁用或版本不一致时不报告就绪。ThinkPHP 可以按明确用途复用这份连接配置作缓存，但读取系统配置不能依赖 Redis。填写配置不启动 Redis；Gateway 和 Worker 仍由部署环境托管。
+
+TLS 仅加密 PHP 发布端、连接测试、Worker 唤醒端与 Gateway 到 Redis 的连接；启用后各端必须验证证书链和证书名称，不提供跳过验证开关。PHP 进程需要 PhpRedis 5.3 或更高版本及 OpenSSL 支持，版本过低时连接测试报告明确原因。`tls_server_name` 用于连接地址为 IP 或证书名称不同于地址的场景；留空时仅允许以 DNS 主机名作为连接地址并验证该名称。自建 CA 通过部署环境的系统信任库、PHP `openssl.cafile` 与 Node `NODE_EXTRA_CA_CERTS` 安装到各进程，不把证书文件路径或 PEM 作为数据库配置。TLS 参数必须进入连接配置版本指纹，变更后 Gateway 断开旧订阅并重新握手。证书无效、名称不符或 TLS 握手失败时，实时门禁拒绝开启或进入降级状态，不能静默回退明文连接。
 
 Gateway 默认最多接纳 100 条 SSE 连接，可由部署变量 `LC_REALTIME_MAX_CONNECTIONS` 设置正整数。满额返回 503 和重试提示，浏览器保持实时模式并显示连接异常；释放名额后可重新连接。健康接口同时报告当前连接数与上限。
 
@@ -49,7 +53,7 @@ Gateway 默认最多接纳 100 条 SSE 连接，可由部署变量 `LC_REALTIME_
 - 默认轮询不要求 Redis、Gateway、Worker；实时依赖不全时拒绝开启。
 - Redis、Gateway、Worker 任一共同依赖故障时，实时模式保持不变，信号积压，浏览器不自动轮询。
 - 恢复后各 topic 补读；重复信号不会造成重复内容或错误未读数。
-- 通知、私信共用一条 SSE；未来接入信息流时，仅在内容可见且目标范围确定后提示“有新内容”，点击才刷新列表。
+- 通知、私信和信息流共用一条 SSE；内容可见且目标范围确定后提示“有新内容”，点击才刷新列表。
 - 后台模式、设施健康、目录开关和积压来自同一状态源，清楚区分已排队、已发布、业务已读。
 
-当前工作树已改为通知创建与 Outbox 同事务、私信新消息和已读变化独立投递；Redis 发布失败延后实时投递，Gateway Redis 断线时关闭 SSE，主题端保持实时模式并提示异常。信息流仅预留 topic 契约，尚未接入内容事件；真实环境的端到端验收仍须单独记录。
+当前工作树已改为通知创建与 Outbox 同事务、私信新消息和已读变化独立投递；Redis 发布失败延后实时投递，Gateway Redis 断线时关闭 SSE，主题端保持实时模式并提示异常。信息流已接入可见卡片事件和有界关注者投递；真实环境的端到端验收仍须单独记录。
