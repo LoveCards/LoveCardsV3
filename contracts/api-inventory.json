@@ -1,5 +1,5 @@
 {
-  "routeCount": 201,
+  "routeCount": 204,
   "summary": {},
   "routes": [
     {
@@ -1497,6 +1497,155 @@
       }
     },
     {
+      "path": "/admin/communications/signals",
+      "method": "GET",
+      "name": "communications.signals",
+      "controller": "Platform.AdminCommunications",
+      "action": "signals",
+      "meta": {
+        "name": "主动更新目录",
+        "group": "通信",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminSignalPoliciesResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/AdminCommunications.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "AdminSignalPoliciesResource::make"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "AdminSignalPoliciesResource",
+        "operation": "make"
+      }
+    },
+    {
+      "path": "/admin/communications/signals",
+      "method": "PUT",
+      "name": "communications.applySignals",
+      "controller": "Platform.AdminCommunications",
+      "action": "applySignals",
+      "meta": {
+        "name": "启停主动更新",
+        "group": "通信",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.configure",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "signalPolicies"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminSignalPoliciesResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/AdminCommunications.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "AdminSignalPoliciesResource::make"
+      ],
+      "validators": [
+        "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+      ],
+      "validatorScene": "signalPolicies",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "AdminSignalPoliciesResource",
+        "operation": "make"
+      }
+    },
+    {
       "path": "/admin/community/insights",
       "method": "GET",
       "name": "community.insights",
@@ -2019,6 +2168,78 @@
         "shape": "void",
         "resource": null,
         "operation": null
+      }
+    },
+    {
+      "path": "/admin/config/redis/test",
+      "method": "POST",
+      "name": "config.redisTest",
+      "controller": "System.Config",
+      "action": "testRedis",
+      "meta": {
+        "name": "测试 Redis 连接",
+        "group": "配置",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.runtime.configure",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\RedisConnectionTestResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/System/Config.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "RedisConnectionTestResource::make"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": false,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "RedisConnectionTestResource",
+        "operation": "make"
       }
     },
     {
@@ -8665,13 +8886,13 @@
       }
     },
     {
-      "path": "/internal/realtime/notifications-since",
+      "path": "/internal/realtime/redis-config",
       "method": "GET",
-      "name": "internal.realtimeNotificationsSince",
-      "controller": "Platform.RealtimeInternal",
-      "action": "notificationsSince",
+      "name": "internal.realtimeRedisConfig",
+      "controller": "System.Config",
+      "action": "internalRedisConfig",
       "meta": {
-        "name": "通知游标回源（内部）",
+        "name": "Redis 连接配置（内部）",
         "group": "运行时",
         "access": {
           "auth": "public"
@@ -8681,12 +8902,9 @@
         "InternalTokenCheck"
       ],
       "contract": {
-        "request": {
-          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalRealtimeValidate",
-          "scene": "since"
-        },
+        "request": null,
         "response": {
-          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalNotificationsPollResource",
+          "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\InternalRedisConfigResource",
           "shape": "item",
           "status": 200
         }
@@ -8695,34 +8913,28 @@
       "file": "apps/backend/app/api/route",
       "hasContract": true,
       "contractSource": "backend",
-      "controllerFile": "apps/backend/app/api/controller/Platform/RealtimeInternal.php",
+      "controllerFile": "apps/backend/app/api/controller/System/Config.php",
       "missingController": false,
-      "validates": true,
+      "validates": false,
       "responses": [
         "createOk"
       ],
       "resources": [
-        "InternalNotificationsPollResource::make"
+        "InternalRedisConfigResource::make"
       ],
-      "validators": [
-        "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalRealtimeValidate"
-      ],
-      "validatorScene": "since",
+      "validators": [],
+      "validatorScene": null,
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
         "missingAction": false,
-        "usesValidated": true,
+        "usesValidated": false,
         "usesLegacyValidation": false,
         "usesDirectInput": false,
         "directInputKeys": [],
         "fileKeys": [],
-        "accessedFields": [
-          "cursor",
-          "limit",
-          "uid"
-        ],
-        "usesContractResponse": true,
+        "accessedFields": [],
+        "usesContractResponse": false,
         "usesRawResponse": false
       },
       "usesRawResponse": false,
@@ -8730,7 +8942,7 @@
       "response": {
         "status": 200,
         "shape": "item",
-        "resource": "InternalNotificationsPollResource",
+        "resource": "InternalRedisConfigResource",
         "operation": "make"
       }
     },

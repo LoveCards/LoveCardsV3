@@ -2809,6 +2809,7 @@
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
             "expected_revision": "number",
             "policies": "array",
+            "signals": "array",
             "reason": "max:255",
             "page": "number",
             "list_rows": "number",
@@ -2990,6 +2991,366 @@
                   "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
                 ],
                 "x-validator-scene": "notificationPolicies"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/communications/signals": {
+      "get": {
+        "operationId": "communications.signals",
+        "tags": [
+          "通信"
+        ],
+        "summary": "主动更新目录",
+        "description": "主动更新目录",
+        "x-controller": "Platform.AdminCommunications/signals",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.read",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "communications.read"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "AdminSignalPoliciesResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "revision",
+                        "signals"
+                      ],
+                      "properties": {
+                        "revision": {
+                          "type": "integer"
+                        },
+                        "signals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "key",
+                              "topic",
+                              "owner",
+                              "display_name",
+                              "impact_text",
+                              "default_enabled",
+                              "enabled",
+                              "event_type",
+                              "event_version",
+                              "handler_key"
+                            ],
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "topic": {
+                                "type": "string"
+                              },
+                              "owner": {
+                                "type": "string"
+                              },
+                              "display_name": {
+                                "type": "string"
+                              },
+                              "impact_text": {
+                                "type": "string"
+                              },
+                              "default_enabled": {
+                                "type": "boolean"
+                              },
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "event_type": {
+                                "type": "string"
+                              },
+                              "event_version": {
+                                "type": "integer"
+                              },
+                              "handler_key": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "x-typescript-type": "SignalPolicyCatalog"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      },
+      "put": {
+        "operationId": "communications.applySignals",
+        "tags": [
+          "通信"
+        ],
+        "summary": "启停主动更新",
+        "description": "启停主动更新",
+        "x-controller": "Platform.AdminCommunications/applySignals",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.configure",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "communications.configure"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "AdminSignalPoliciesResource",
+        "x-response-shape": "item",
+        "x-validators": [
+          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+        ],
+        "x-validator-scene": "signalPolicies",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
+            "expected_revision": "number",
+            "policies": "array",
+            "signals": "array",
+            "reason": "max:255",
+            "page": "number",
+            "list_rows": "number",
+            "actor_id": "number",
+            "status": "max:32",
+            "queue_name": "max:64",
+            "policy_decision": "in:applied,skipped,not-configured",
+            "resource_type": "max:64",
+            "worker_type": "max:64",
+            "search_value": "max:255",
+            "search_keys": "max:255",
+            "note": "max:2000",
+            "resolution": "max:255",
+            "limit": "number|between:1,200",
+            "file": "require|fileExt:zip",
+            "unread_only": "boolean",
+            "desired_mode": "max:16",
+            "notification_interval_seconds": "number",
+            "message_interval_seconds": "number",
+            "unread_interval_seconds": "number",
+            "polling_backoff_factor": "number",
+            "polling_max_interval_seconds": "number",
+            "pause_when_hidden": "boolean",
+            "worker_stale_seconds": "number",
+            "scheduler_stale_seconds": "number",
+            "gateway_stale_seconds": "number",
+            "require_supervisor": "boolean"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "revision",
+                        "signals"
+                      ],
+                      "properties": {
+                        "revision": {
+                          "type": "integer"
+                        },
+                        "signals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "key",
+                              "topic",
+                              "owner",
+                              "display_name",
+                              "impact_text",
+                              "default_enabled",
+                              "enabled",
+                              "event_type",
+                              "event_version",
+                              "handler_key"
+                            ],
+                            "properties": {
+                              "key": {
+                                "type": "string"
+                              },
+                              "topic": {
+                                "type": "string"
+                              },
+                              "owner": {
+                                "type": "string"
+                              },
+                              "display_name": {
+                                "type": "string"
+                              },
+                              "impact_text": {
+                                "type": "string"
+                              },
+                              "default_enabled": {
+                                "type": "boolean"
+                              },
+                              "enabled": {
+                                "type": "boolean"
+                              },
+                              "event_type": {
+                                "type": "string"
+                              },
+                              "event_version": {
+                                "type": "integer"
+                              },
+                              "handler_key": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "x-typescript-type": "SignalPolicyCatalog"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expected_revision": {
+                    "type": "number"
+                  },
+                  "signals": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "expected_revision",
+                  "signals"
+                ],
+                "additionalProperties": true,
+                "x-typescript-type": "SignalPolicyUpdate",
+                "x-typescript-params": "data: SignalPolicyUpdate",
+                "x-validators": [
+                  "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+                ],
+                "x-validator-scene": "signalPolicies"
               }
             }
           }
@@ -3665,6 +4026,118 @@
             }
           }
         ]
+      }
+    },
+    "/admin/config/redis/test": {
+      "post": {
+        "operationId": "config.redisTest",
+        "tags": [
+          "配置"
+        ],
+        "summary": "测试 Redis 连接",
+        "description": "测试 Redis 连接",
+        "x-controller": "System.Config/testRedis",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.runtime.configure",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "operations.runtime.configure"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "RedisConnectionTestResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "ready",
+                        "reason_code",
+                        "source"
+                      ],
+                      "properties": {
+                        "ready": {
+                          "type": "boolean"
+                        },
+                        "reason_code": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "env",
+                            "database"
+                          ]
+                        }
+                      },
+                      "x-typescript-type": "Record<string, unknown>"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
       }
     },
     "/admin/config/register": {
@@ -5210,6 +5683,7 @@
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
             "expected_revision": "number",
             "policies": "array",
+            "signals": "array",
             "reason": "max:255",
             "page": "number",
             "list_rows": "number",
@@ -5888,6 +6362,7 @@
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
             "expected_revision": "number",
             "policies": "array",
+            "signals": "array",
             "reason": "max:255",
             "page": "number",
             "list_rows": "number",
@@ -6500,6 +6975,7 @@
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
             "expected_revision": "number",
             "policies": "array",
+            "signals": "array",
             "reason": "max:255",
             "page": "number",
             "list_rows": "number",
@@ -6854,6 +7330,7 @@
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
             "expected_revision": "number",
             "policies": "array",
+            "signals": "array",
             "reason": "max:255",
             "page": "number",
             "list_rows": "number",
@@ -7045,6 +7522,7 @@
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
             "expected_revision": "number",
             "policies": "array",
+            "signals": "array",
             "reason": "max:255",
             "page": "number",
             "list_rows": "number",
@@ -7305,6 +7783,7 @@
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
             "expected_revision": "number",
             "policies": "array",
+            "signals": "array",
             "reason": "max:255",
             "page": "number",
             "list_rows": "number",
@@ -8697,6 +9176,7 @@
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
             "expected_revision": "number",
             "policies": "array",
+            "signals": "array",
             "reason": "max:255",
             "page": "number",
             "list_rows": "number",
@@ -8903,6 +9383,7 @@
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
             "expected_revision": "number",
             "policies": "array",
+            "signals": "array",
             "reason": "max:255",
             "page": "number",
             "list_rows": "number",
@@ -9417,6 +9898,7 @@
           "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
             "expected_revision": "number",
             "policies": "array",
+            "signals": "array",
             "reason": "max:255",
             "page": "number",
             "list_rows": "number",
@@ -18617,11 +19099,19 @@
                       "type": "object",
                       "additionalProperties": false,
                       "required": [
+                        "desired_mode",
                         "effective_mode",
                         "status",
                         "settings"
                       ],
                       "properties": {
+                        "desired_mode": {
+                          "type": "string",
+                          "enum": [
+                            "polling",
+                            "realtime"
+                          ]
+                        },
                         "effective_mode": {
                           "type": "string",
                           "enum": [

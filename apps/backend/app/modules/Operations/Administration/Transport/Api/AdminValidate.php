@@ -43,11 +43,15 @@ final class AdminValidate extends Validate
         'notificationPolicies' => [
             'normal' => ['reason'], 'require' => ['expected_revision', 'policies'], 'nonNull' => false, 'toNull' => [],
         ],
+        'signalPolicies' => [
+            'normal' => [], 'require' => ['expected_revision', 'signals'], 'nonNull' => false, 'toNull' => [],
+        ],
     ];
 
     protected $rule = [
         'expected_revision' => 'number',
         'policies' => 'array',
+        'signals' => 'array',
         'reason' => 'max:255',
         'page' => 'number',
         'list_rows' => 'number',

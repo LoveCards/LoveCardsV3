@@ -27,6 +27,12 @@ final class ThinkOrmRuntimeConfigStore implements RuntimeConfigStore
         }
     }
 
+    public function selectedModeForEnqueue(): ?string
+    {
+        $row = Db::table('runtime_config_state')->where('id', 1)->lock(true)->field('desired_mode')->find();
+        return is_array($row) ? (string) ($row['desired_mode'] ?? '') : null;
+    }
+
     public function compareAndSwap(int $expectedRevision, string $desiredMode, array $settings, ?int $actorId, ?callable $then = null): bool
     {
         Db::startTrans();

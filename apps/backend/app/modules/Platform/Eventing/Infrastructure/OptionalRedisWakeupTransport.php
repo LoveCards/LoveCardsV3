@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace app\modules\Platform\Eventing\Infrastructure;
 
+use app\modules\Platform\Config\Public\RedisConnectionSettings;
 use app\modules\Platform\Eventing\Contract\WakeupTransport;
 
 final class OptionalRedisWakeupTransport implements WakeupTransport
@@ -10,10 +11,22 @@ final class OptionalRedisWakeupTransport implements WakeupTransport
     public function publish(array $deliveryIds): void
     {
         if ($deliveryIds === [] || !extension_loaded('redis')) return;
+        try {
+            $settings = RedisConnectionSettings::current();
+        } catch (\Throwable $ignored) {
+            return;
+        }
+        if (!$settings['enabled']) return;
         $redis = new \Redis();
-        $host = (string) env('LC_REDIS_HOST', '127.0.0.1'); $port = (int) env('LC_REDIS_PORT', 6379);
-        try { if (!$redis->connect($host, $port, 0.25)) return; $redis->publish('lovecards:eventing', json_encode(array_values($deliveryIds), JSON_THROW_ON_ERROR)); }
-        catch (\Throwable $ignored) { /* MySQL remains authoritative; wakeup is best effort. */ }
-        finally { try { $redis->close(); } catch (\Throwable $ignored) {} }
+        try {
+            if (!$redis->connect($settings['host'], $settings['port'], 0.25)) return;
+            if ($settings['password'] !== '' && !$redis->auth($settings['password'])) return;
+            if (!$redis->select($settings['database'])) return;
+            $redis->publish('lovecards:eventing', json_encode(array_values($deliveryIds), JSON_THROW_ON_ERROR));
+        } catch (\Throwable $ignored) {
+            // 唤醒是尽力而为；MySQL 投递账本仍是事实源。
+        } finally {
+            try { $redis->close(); } catch (\Throwable $ignored) {}
+        }
     }
 }

@@ -2,13 +2,14 @@
 
 namespace app\modules\Platform\Notifications\Public;
 
-use app\modules\Platform\Eventing\Public\RealtimeSignalPublisher;
+use app\modules\Platform\Eventing\Public\DomainEventBus;
 use app\modules\Platform\Notifications\Application\ManageNotifications;
 use app\modules\Platform\Notifications\Application\NotificationPolicyGate;
 use app\modules\Platform\Notifications\Contract\NotificationPolicyStore;
 use app\modules\Platform\Notifications\Contract\NotificationRepository;
 use app\modules\Platform\Notifications\Domain\NotificationIntent;
 use app\shared\Resource\ResourceRef;
+use app\shared\Transaction\TransactionManager;
 
 final class Notifications
 {
@@ -16,8 +17,8 @@ final class Notifications
     {
         return new ManageNotifications(
             app(NotificationRepository::class),
-            null,
-            app(RealtimeSignalPublisher::class),
+            app(TransactionManager::class),
+            app(DomainEventBus::class),
             new NotificationPolicyGate(app(NotificationPolicyStore::class))
         );
     }

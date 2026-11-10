@@ -1,5 +1,28 @@
 import type { JsonObject } from './json'
 
+export interface SignalPolicyItem {
+  key: string
+  topic: string
+  owner: string
+  display_name: string
+  impact_text: string
+  default_enabled: boolean
+  enabled: boolean
+  event_type: string
+  event_version: number
+  handler_key: string
+}
+
+export interface SignalPolicyCatalog {
+  revision: number
+  signals: SignalPolicyItem[]
+}
+
+export interface SignalPolicyUpdate {
+  expected_revision: number
+  signals: Array<{ key: string; enabled: boolean }>
+}
+
 export interface OperationsFacility {
   name: string
   desired_mode: string

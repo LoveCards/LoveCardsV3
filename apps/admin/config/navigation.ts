@@ -253,6 +253,22 @@ const systemConfigItems = [
     actionCapabilities: ['storage.install', 'storage.test', 'config.update'],
   }),
   item({
+    path: '/apps/settings/redis',
+    canonicalPath: '/apps/settings/redis',
+    title: 'Redis 服务',
+    searchAliases: ['Redis 配置', '实时依赖'],
+    icon: 'mdi-database-outline',
+    domain: 'system',
+    section: '基础服务',
+    parentRoute: '/apps/settings/redis',
+    grants: [
+      { capability: 'config.read', scope: 'global' },
+      { capability: 'operations.runtime.configure', scope: 'global' },
+    ],
+    riskLevel: 'high',
+    actionCapabilities: ['config.update', 'operations.runtime.configure'],
+  }),
+  item({
     path: '/apps/settings/messaging',
     canonicalPath: '/apps/settings/messaging',
     legacyAliases: ['/apps/sender/config'],
@@ -339,7 +355,7 @@ const operationsItems = [
   }),
 ] as const
 
-const [siteInformation, sitePolicies, appearance, storageService, messagingService, verificationService] = systemConfigItems
+const [siteInformation, sitePolicies, appearance, storageService, redisService, messagingService, verificationService] = systemConfigItems
 const [runtimeStatus, deliveryProcessing, upgrade, auditLog] = operationsItems
 
 const accessControlItems: readonly AdminNavigationItem[] = [
@@ -408,7 +424,7 @@ export const adminNavigation: {
       title: '系统',
       icon: 'mdi-console-line',
       domain: 'system',
-      items: [runtimeStatus, deliveryProcessing, auditLog, storageService, messagingService, verificationService, upgrade],
+      items: [runtimeStatus, deliveryProcessing, auditLog, storageService, redisService, messagingService, verificationService, upgrade],
     },
   ],
 }

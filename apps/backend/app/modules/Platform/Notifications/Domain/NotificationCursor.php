@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace app\modules\Platform\Notifications\Domain;
 
 /**
- * 通知游标编解码：与列表接口 next_cursor 同一编码（契约 §4.5），
- * realtime 信号 / Gateway 帧 id / 内部回源接口共用，保证游标可直接互换。
+ * 通知列表游标编解码；主动信号只可携带读取提示，
+ * 浏览器仍以通知 PHP API 返回的游标和数据为准。
  */
 final class NotificationCursor
 {

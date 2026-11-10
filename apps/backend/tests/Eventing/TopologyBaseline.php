@@ -31,11 +31,11 @@ $assert(
     'HTTP request drain must only receive the short notifications queue'
 );
 $assert(
-    $registry->queueNamesFor([ExecutionMode::DAEMON_REQUIRED]) === ['storage'],
-    'slow storage work must be daemon-only'
+    $registry->queueNamesFor([ExecutionMode::DAEMON_REQUIRED]) === ['realtime', 'storage'],
+    'realtime signals and slow storage work must be daemon-only'
 );
 $assert(
-    $registry->queueNamesFor([ExecutionMode::REQUEST_SAFE, ExecutionMode::DAEMON_REQUIRED]) === ['notifications', 'storage'],
+    $registry->queueNamesFor([ExecutionMode::REQUEST_SAFE, ExecutionMode::DAEMON_REQUIRED]) === ['notifications', 'realtime', 'storage'],
     'Scheduler and Worker must cover every registered queue'
 );
 $assertThrows(
@@ -48,7 +48,7 @@ $schedulerBudget = new RequestExecutionBudget(
     1,
     50,
     30,
-    ['notifications', 'storage'],
+    ['notifications', 'realtime', 'storage'],
     [ExecutionMode::REQUEST_SAFE, ExecutionMode::DAEMON_REQUIRED]
 );
 $assert(

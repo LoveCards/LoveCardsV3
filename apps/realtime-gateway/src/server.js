@@ -1,4 +1,4 @@
-// 进程入口：env 见契约 §4.2。默认监听 127.0.0.1（由部署层反代出公网）。
+// 进程入口：Redis 配置经后端内部 API 同步；后端的 LC_REDIS_HOST 可作为 env 应急来源。
 
 import { createApp } from './app.js'
 
@@ -14,8 +14,8 @@ const required = (name) => {
 const app = createApp({
   backendUrl: required('LC_BACKEND_URL'),
   internalToken: required('LC_RUNTIME_INTERNAL_TOKEN'),
-  redis: process.env.LC_REDIS_HOST ? { host: process.env.LC_REDIS_HOST, port: Number(process.env.LC_REDIS_PORT ?? 6379) } : null,
-  maxConnections: Number(process.env.LC_REALTIME_GATEWAY_MAX_CONNECTIONS ?? 100),
+  redisConfigPath: '/api/internal/realtime/redis-config',
+  maxConnections: Number(process.env.LC_REALTIME_MAX_CONNECTIONS ?? 100),
   logger: (message) => console.log(`[realtime-gateway] ${message}`),
 })
 

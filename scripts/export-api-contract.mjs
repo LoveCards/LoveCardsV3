@@ -79,6 +79,7 @@ function resourceType(route) {
   map.CommunicationSettings = 'CommunicationSettingsSnapshot'
   map.AdminNotificationPolicies = 'NotificationPolicyCatalog'
   map.AdminNotificationPoliciesApply = 'NotificationPolicyApplyResult'
+  map.AdminSignalPolicies = 'SignalPolicyCatalog'
   map.InternalTicketVerify = 'RealtimeTicketVerification'
   map.InternalNotificationsPoll = 'RealtimePollSnapshot'
   const item = map[base] || 'Record<string, unknown>'
@@ -167,6 +168,7 @@ function requestSchema(route) {
   if (route.name === 'operations.applyRuntimeConfig' || route.name === 'operations.validateRuntimeConfig') schema['x-typescript-type'] = 'RuntimeConfigUpdate'
   // 通知策略 CAS 请求使用手维护契约（锁定行拒绝与 CAS 冲突在服务端 Domain）。
   if (route.name === 'communications.applyPolicies') schema['x-typescript-type'] = 'NotificationPolicyUpdate'
+  if (route.name === 'communications.applySignals') schema['x-typescript-type'] = 'SignalPolicyUpdate'
   // Gateway 回源游标查询：请求参数保持通用对象（内部接口）。
   if (route.name === 'internal.realtimeNotificationsSince') schema['x-typescript-type'] = 'RealtimePollQuery'
   for (const name of pathParams) {

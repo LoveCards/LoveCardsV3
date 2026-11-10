@@ -57,8 +57,9 @@ final class SystemNoticeDeliveries implements DeliveryRepository
     }
 
     public function claim(DeliveryClaim $claim): array { return []; }
-    public function complete(int $deliveryId, string $claimToken, \DateTimeImmutable $completedAt): bool { return true; }
+    public function complete(int $deliveryId, string $claimToken, \DateTimeImmutable $completedAt, ?string $policyDecision = null): bool { return true; }
     public function fail(int $deliveryId, string $claimToken, DeliveryFailure $failure, \DateTimeImmutable $failedAt): bool { return true; }
+    public function defer(int $deliveryId, string $claimToken, DeliveryFailure $failure, \DateTimeImmutable $deferredAt): bool { return true; }
     public function notePolicyDecision(int $deliveryId, string $decision): void {}
 }
 

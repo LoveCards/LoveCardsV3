@@ -5,6 +5,7 @@ namespace app\modules\Platform\Config\Service;
 use app\api\ApiException;
 use app\modules\Platform\Config\Public\Config as ConfigService;
 use app\modules\Platform\Captcha\Public\Captcha;
+use app\modules\Platform\Config\Public\RedisConnectionSettings;
 use app\shared\Authorization\GrantSet;
 
 /**
@@ -55,6 +56,14 @@ final class ConfigManager
         ));
     }
 
+    /** @return array{ready:bool,reason_code:?string,source:string} */
+    public function testRedis(GrantSet $grants): array
+    {
+        ConfigAccessPolicy::assertOperation($grants, 'operations.runtime.configure');
+        $result = RedisConnectionSettings::test();
+        return ['ready' => $result['ready'], 'reason_code' => $result['reason_code'], 'source' => $result['source']];
+    }
+
     public function update(array $params, GrantSet $grants): void
     {
         ConfigAccessPolicy::assertOperation($grants, 'config.update');
@@ -66,6 +75,9 @@ final class ConfigManager
             }
 
             ConfigAccessPolicy::assertGroup($grants, $group, '修改');
+            if ($group === 'redis' && ConfigAccessPolicy::isRedisEnvironmentManaged()) {
+                throw ApiException::badRequest('Redis 连接由环境变量托管，不能在管理端修改');
+            }
             $schema = ConfigService::getSchema($group);
             $validated = [];
             foreach ($config as $key => $value) {
@@ -81,6 +93,9 @@ final class ConfigManager
                 }
             }
             if (!empty($validated)) {
+                if ($group === 'redis') {
+                    $this->validateRedisUpdate($validated, ConfigService::getGroup('redis'));
+                }
                 $pending[$group] = $validated;
             }
         }
@@ -110,6 +125,9 @@ final class ConfigManager
     {
         ConfigAccessPolicy::assertOperation($grants, 'config.register');
         ConfigAccessPolicy::assertGroup($grants, $group, '注册');
+        if ($group === 'redis') {
+            throw ApiException::badRequest('Redis 配置定义由发行版管理');
+        }
         return ConfigService::register($group, $schema);
     }
 
@@ -126,6 +144,7 @@ final class ConfigManager
     {
         ConfigAccessPolicy::assertOperation($grants, 'config.deleteKey');
         ConfigAccessPolicy::assertGroup($grants, $group, '删除');
+        if ($group === 'redis') throw ApiException::badRequest('Redis 系统配置组不能删除');
         ConfigService::deleteGroup($group);
     }
 
@@ -133,6 +152,7 @@ final class ConfigManager
     {
         ConfigAccessPolicy::assertOperation($grants, 'config.deleteKey');
         ConfigAccessPolicy::assertGroup($grants, $group, '删除');
+        if ($group === 'redis') throw ApiException::badRequest('Redis 系统配置项不能删除');
         ConfigService::deleteKey($group, $key);
     }
 
@@ -144,6 +164,26 @@ final class ConfigManager
             }
         }
         return $values;
+    }
+
+    private function validateRedisUpdate(array $changes, array $current): void
+    {
+        $next = array_merge($current, $changes);
+        if (array_key_exists('enabled', $changes) && !is_bool($changes['enabled'])) {
+            throw ApiException::validation(['redis.enabled' => ['必须为布尔值']]);
+        }
+        $host = trim((string) ($next['host'] ?? ''));
+        $port = $next['port'] ?? null;
+        $database = $next['database'] ?? null;
+        if ($host === '' || strlen($host) > 253 || preg_match('/[\s\/:]/', $host) === 1) {
+            throw ApiException::validation(['redis.host' => ['Redis 地址无效']]);
+        }
+        if (filter_var($port, FILTER_VALIDATE_INT) === false || (int) $port < 1 || (int) $port > 65535) {
+            throw ApiException::validation(['redis.port' => ['Redis 端口无效']]);
+        }
+        if (filter_var($database, FILTER_VALIDATE_INT) === false || (int) $database < 0 || (int) $database > 15) {
+            throw ApiException::validation(['redis.database' => ['Redis 数据库编号必须在 0 到 15 之间']]);
+        }
     }
 
     /** @return array{apply: bool, value: mixed} */

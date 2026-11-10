@@ -50,11 +50,9 @@ use app\modules\Platform\Safety\Infrastructure\ThinkDbAdminReportRepository;
 use app\modules\Platform\Notifications\Contract\NotificationRepository;
 use app\modules\Platform\Eventing\Contract\PolicyVersionSource;
 use app\modules\Platform\Notifications\Contract\NotificationPolicyStore;
-use app\modules\Platform\Notifications\Contract\RealtimePollReader;
 use app\modules\Platform\Notifications\Contract\StreamTicketStore;
 use app\modules\Platform\Notifications\Infrastructure\ThinkDbNotificationPolicyStore;
 use app\modules\Platform\Notifications\Infrastructure\ThinkDbNotificationPolicyVersionSource;
-use app\modules\Platform\Notifications\Infrastructure\ThinkDbRealtimePollReader;
 use app\modules\Platform\Notifications\Infrastructure\ThinkDbStreamTicketStore;
 use app\modules\Platform\Notifications\Contract\SystemNoticeIssuer;
 use app\modules\Platform\Notifications\Infrastructure\ThinkOrmNotificationRepository;
@@ -122,7 +120,7 @@ use app\modules\Platform\Eventing\Infrastructure\OptionalRedisWakeupTransport;
 use app\modules\Platform\Eventing\Infrastructure\RedisRealtimeSignalPublisher;
 use app\modules\Platform\Eventing\Public\RealtimeSignalPublisher;
 use app\shared\Runtime\FacilityProbe;
-use app\shared\Runtime\NativeFacilityProbe;
+use app\modules\Operations\Runtime\Infrastructure\ConfiguredFacilityProbe;
 use app\shared\Observability\AuditLogger;
 use app\shared\Observability\ThinkDbAuditLogger;
 use app\shared\Observability\LogContextScope;
@@ -185,13 +183,12 @@ return [
     FailureSanitizer::class => ConservativeFailureSanitizer::class,
     WakeupTransport::class => OptionalRedisWakeupTransport::class,
     RealtimeSignalPublisher::class => RedisRealtimeSignalPublisher::class,
-    // 通信运行时（Phase 2）：一次性 stream ticket 与 Gateway 回源读取
+    // 通信运行时：一次性 stream ticket
     StreamTicketStore::class => ThinkDbStreamTicketStore::class,
-    RealtimePollReader::class => ThinkDbRealtimePollReader::class,
     // 通信运行时（Phase 3）：通知策略目录与版本冻结
     NotificationPolicyStore::class => ThinkDbNotificationPolicyStore::class,
     PolicyVersionSource::class => ThinkDbNotificationPolicyVersionSource::class,
-    FacilityProbe::class => NativeFacilityProbe::class,
+    FacilityProbe::class => ConfiguredFacilityProbe::class,
     AuditLogger::class => ThinkDbAuditLogger::class,
     LogContextScope::class => LogContextScope::class,
     LogContextProvider::class => LogContextScope::class,

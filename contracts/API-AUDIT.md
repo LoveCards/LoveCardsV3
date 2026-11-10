@@ -1,6 +1,6 @@
 # API Contract Audit
 
-- Routes inspected: 201
+- Routes inspected: 204
 - P0: 0
 - P1: 0
 - P2: 0
@@ -29,6 +29,8 @@
 | POST | `/admin/comments/batch` | `comments.batchManaged` | grants:admin.access:global | yes | createNoContent | — |
 | GET | `/admin/communications/policies` | `communications.policies` | grants:admin.access:global,communications.read:global | no | AdminNotificationPoliciesResource::make | — |
 | PUT | `/admin/communications/policies` | `communications.applyPolicies` | grants:admin.access:global,communications.configure:global | yes | AdminNotificationPoliciesApplyResource::make | — |
+| GET | `/admin/communications/signals` | `communications.signals` | grants:admin.access:global,communications.read:global | no | AdminSignalPoliciesResource::make | — |
+| PUT | `/admin/communications/signals` | `communications.applySignals` | grants:admin.access:global,communications.configure:global | yes | AdminSignalPoliciesResource::make | — |
 | GET | `/admin/community/insights` | `community.insights` | grants:admin.access:global,community.insights.read:global | no | AdminCommunityInsightsResource::make | — |
 | DELETE | `/admin/config` | `config.delete` | grants:admin.access:global,config.deleteKey:global | yes | createNoContent | — |
 | GET | `/admin/config` | `config.list` | grants:admin.access:global,config.read:global | yes | ConfigResource::make | — |
@@ -36,6 +38,7 @@
 | GET | `/admin/config/groups` | `config.groups` | grants:admin.access:global,config.read:global | no | ConfigResource::make | — |
 | POST | `/admin/config/init` | `config.init` | grants:admin.access:global,config.init:global | no | ConfigResource::make | — |
 | DELETE | `/admin/config/key` | `config.deleteKey` | grants:admin.access:global,config.deleteKey:global | yes | createNoContent | — |
+| POST | `/admin/config/redis/test` | `config.redisTest` | grants:admin.access:global,operations.runtime.configure:global | no | RedisConnectionTestResource::make | — |
 | POST | `/admin/config/register` | `config.register` | grants:admin.access:global,config.register:global | yes | ConfigResource::make | — |
 | POST | `/admin/config/reload` | `config.reload` | grants:admin.access:global,config.reload:global | yes | createNoContent | — |
 | GET | `/admin/dashboard` | `dashboard.index` | grants:admin.access:global,dashboard.read:global | no | DashboardResource::make | — |
@@ -127,7 +130,7 @@
 | GET | `/comments/:id` | `comments.get` | public | no | CommentResource::make | — |
 | DELETE | `/comments/:id/like` | `comments.unlike` | grants:likes.delete:global | no | createNoContent | — |
 | POST | `/comments/:id/like` | `comments.like` | grants:likes.create:global | no | LikeCountResource::make | — |
-| GET | `/internal/realtime/notifications-since` | `internal.realtimeNotificationsSince` | public | yes | InternalNotificationsPollResource::make | — |
+| GET | `/internal/realtime/redis-config` | `internal.realtimeRedisConfig` | public | no | InternalRedisConfigResource::make | — |
 | POST | `/internal/realtime/ticket/verify` | `internal.realtimeTicketVerify` | public | yes | InternalTicketVerifyResource::make | — |
 | GET | `/me` | `users.me.get` | grants:users.read:own | no | ProfileResource::make | — |
 | PATCH | `/me` | `users.me.update` | grants:users.update:own | yes | ProfileResource::make | — |

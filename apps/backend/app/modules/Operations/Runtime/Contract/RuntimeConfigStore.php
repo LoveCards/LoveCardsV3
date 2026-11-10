@@ -16,6 +16,9 @@ interface RuntimeConfigStore
      */
     public function current(): ?array;
 
+    /** 仅供业务事务内入队判定；锁住模式行直到该事务提交。 */
+    public function selectedModeForEnqueue(): ?string;
+
     /**
      * CAS 写入。$then 在同一事务内执行（用于同事务审计）。
      *

@@ -1,17 +1,17 @@
-// Realtime Gateway 核心：ticket 鉴权 → SSE 供流；Redis 信号缺失时自动 source-poll 回源。
+// Realtime Gateway 核心：ticket 鉴权 → SSE 供流；Redis 不可用时停止供流。
 // 契约见 docs/engineering/COMMUNICATION-RUNTIME-CONTRACT-2026-11-06.md §4。
 
 import http from 'node:http'
 import { RedisSubscriber } from './redis-subscriber.js'
-import { heartbeatFrame, pingComment, resyncFrame, retryDirective, signalFrame } from './sse.js'
+import { heartbeatFrame, pingComment, retryDirective, signalFrame } from './sse.js'
 
 export const PROTOCOL = 'lc-realtime/1'
 export const VERSION = '0.1.0'
 
 const HEARTBEAT_MS = 15_000
 const MAX_LIFETIME_MS = 900_000
-const DEFAULT_POLL_INTERVAL_MS = 5_000
 const RECONNECT_RETRY_MS = 2_000
+const REDIS_CONFIG_REFRESH_MS = 15_000
 const DEFAULT_MAX_CONNECTIONS = 100
 const BACKEND_TIMEOUT_MS = 5_000
 
@@ -50,32 +50,39 @@ export function createApp(config) {
     backendUrl,
     internalToken,
     redis = null,
-    fetchImpl = globalThis.fetch,
-    logger = () => {},
-    pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
+    redisConfigPath = null,
+    redisConfigRefreshMs = REDIS_CONFIG_REFRESH_MS,
     maxConnections = DEFAULT_MAX_CONNECTIONS,
     backendTimeoutMs = BACKEND_TIMEOUT_MS,
+    fetchImpl = globalThis.fetch,
+    logger = () => {},
   } = config
   if (!backendUrl || !internalToken) {
     throw new Error('gateway requires backendUrl and internalToken')
   }
   if (!Number.isInteger(maxConnections) || maxConnections < 1) {
-    throw new Error('gateway maxConnections must be a positive integer')
+    throw new RangeError('gateway maxConnections must be a positive integer')
   }
 
-  // transport 状态机：redis 订阅断开时退回 source-poll，恢复后回到 redis。
   const state = {
-    transport: redis ? 'redis' : 'source-poll',
+    transport: 'disconnected',
+    redisConfigVersion: null,
+    redisConfigSource: null,
     connections: new Set(),
-    pendingConnections: 0,
   }
+  let subscriber = null
+  let configTimer = null
+  let configRefreshPending = false
+  let stopped = false
+  let pendingConnections = 0
 
   const backendFetch = async (path, init = {}) => {
     const response = await fetchImpl(new URL(path, backendUrl), {
       ...init,
-      signal: AbortSignal.timeout(backendTimeoutMs),
+      signal: init.signal ?? AbortSignal.timeout(backendTimeoutMs),
       headers: { Authorization: `Bearer ${internalToken}`, Accept: 'application/json', ...(init.headers ?? {}) },
     })
+    if (response.status >= 500) throw new Error('backend unavailable')
     if (response.status !== 200) return null
     try {
       const payload = await response.json()
@@ -87,62 +94,9 @@ export function createApp(config) {
     }
   }
 
-  const startSourcePoll = (conn, uid) => {
-    if (conn.poll || !pollIntervalMs) return
-    conn.poll = setInterval(async () => {
-      if (conn.polling) return
-      conn.polling = true
-      try {
-        const result = await backendFetch(
-          `/api/internal/realtime/notifications-since?uid=${uid}&limit=50${conn.cursor ? `&cursor=${encodeURIComponent(conn.cursor)}` : ''}`,
-        )
-        if (!state.connections.has(conn) || !result || !result.newer || !result.latest_cursor || result.latest_cursor === conn.cursor) return
-        conn.cursor = result.latest_cursor
-        conn.send(signalFrame({ id: conn.cursor, topic: 'notifications', cursor: conn.cursor }))
-      } catch {
-        // 本次回源失败，下一轮继续；浏览器自身会补读。
-      } finally {
-        conn.polling = false
-      }
-    }, pollIntervalMs)
-  }
-
-  const stopSourcePoll = (conn) => {
-    if (!conn.poll) return
-    clearInterval(conn.poll)
-    conn.poll = null
-  }
-
-  const subscriber = redis
-    ? new RedisSubscriber({
-        host: redis.host,
-        port: redis.port,
-        channel: 'lovecards:realtime',
-        onMessage: (message) => {
-          // 信号载荷 {topic, uid:'user:42', cursor}；只按 recipient scope 定向推送。
-          for (const conn of state.connections) {
-            if (conn.recipientKey !== message.uid) continue
-            conn.send(signalFrame({ id: message.cursor || conn.cursor, topic: message.topic ?? 'notifications', cursor: message.cursor || conn.cursor }))
-          }
-        },
-        onStatus: (status) => {
-          if (status === 'down' && state.transport !== 'source-poll') {
-            state.transport = 'source-poll'
-            for (const conn of state.connections) startSourcePoll(conn, conn.uid)
-            logger('redis down, falling back to source-poll')
-          }
-          if (status === 'up' && redis) {
-            state.transport = 'redis'
-            for (const conn of state.connections) stopSourcePoll(conn)
-          }
-        },
-      })
-    : null
-
   const closeConnection = (conn, reason = 'closed') => {
     if (!state.connections.delete(conn)) return
     clearInterval(conn.heartbeat)
-    stopSourcePoll(conn)
     clearTimeout(conn.lifetime)
     try {
       conn.res.end()
@@ -152,14 +106,88 @@ export function createApp(config) {
     logger(`connection ${reason}`)
   }
 
-  const openStream = async (req, res, ticket, lastEventId) => {
-    if (state.connections.size + state.pendingConnections >= maxConnections) {
-      res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '2' })
-      res.end(JSON.stringify({ error: 'gateway at capacity' }))
+  const disableTransport = (reason) => {
+    const old = subscriber
+    subscriber = null
+    old?.stop()
+    state.transport = 'disconnected'
+    state.redisConfigVersion = null
+    state.redisConfigSource = null
+    for (const conn of [...state.connections]) closeConnection(conn, reason)
+  }
+
+  const configureRedis = (settings) => {
+    if (!settings?.enabled || typeof settings.host !== 'string' || !settings.host.trim()
+      || !Number.isInteger(settings.port) || settings.port < 1 || settings.port > 65535
+      || !Number.isInteger(settings.database) || settings.database < 0 || settings.database > 15
+      || typeof settings.password !== 'string' || typeof settings.revision !== 'string' || !settings.revision
+      || !['env', 'database'].includes(settings.source)) {
+      disableTransport('redis configuration unavailable')
       return
     }
-    state.pendingConnections += 1
+    if (subscriber && state.redisConfigVersion === settings.revision) return
+    disableTransport('redis configuration changed')
+    state.redisConfigVersion = settings.revision
+    state.redisConfigSource = settings.source
+    const instance = new RedisSubscriber({
+        host: settings.host,
+        port: settings.port,
+        database: settings.database,
+        password: settings.password,
+        channel: 'lovecards:realtime',
+        onMessage: (message) => {
+          // 信号载荷 {topic, uid:'user:42', cursor}；只按 recipient scope 定向推送。
+          for (const conn of state.connections) {
+            if (conn.recipientKey !== message.uid) continue
+            conn.send(signalFrame({ topic: message.topic ?? 'notifications', cursor: message.cursor ?? '' }))
+          }
+        },
+        onStatus: (status) => {
+          if (subscriber !== instance) return
+          if (status === 'down') {
+            state.transport = 'disconnected'
+            for (const conn of [...state.connections]) closeConnection(conn, 'redis disconnected')
+            logger('redis disconnected, realtime stream paused')
+          } else if (status === 'up') {
+            state.transport = 'redis'
+          }
+        },
+      })
+    subscriber = instance
+    instance.start()
+  }
+
+  const refreshRedisConfig = async () => {
+    if (!redisConfigPath || stopped || configRefreshPending) return
+    configRefreshPending = true
+    try {
+      const settings = await backendFetch(redisConfigPath, { signal: AbortSignal.timeout(2_000) })
+      if (!stopped) configureRedis(settings)
+    } catch {
+      if (!stopped) disableTransport('redis configuration unavailable')
+    } finally {
+      configRefreshPending = false
+    }
+  }
+
+  const openStream = async (req, res, ticket) => {
+    if (state.transport !== 'redis') {
+      res.writeHead(503, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: 'realtime transport unavailable' }))
+      return
+    }
+    const rejectFull = () => {
+      res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '5' })
+      res.end(JSON.stringify({ error: 'realtime connection capacity reached' }))
+    }
+    if (state.connections.size + pendingConnections >= maxConnections) {
+      rejectFull()
+      return
+    }
+    // 验证 ticket 会等待后端；预留名额阻止同时通过验证的请求超出上限。
+    pendingConnections += 1
     let verified
+    let backendUnavailable = false
     try {
       verified = await backendFetch('/api/internal/realtime/ticket/verify', {
         method: 'POST',
@@ -167,17 +195,31 @@ export function createApp(config) {
         body: JSON.stringify({ ticket }),
       })
     } catch {
-      res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '2' })
+      backendUnavailable = true
+    } finally {
+      pendingConnections -= 1
+    }
+    if (res.destroyed || req.destroyed) return
+    if (backendUnavailable) {
+      res.writeHead(503, { 'Content-Type': 'application/json', 'Retry-After': '5' })
       res.end(JSON.stringify({ error: 'backend unavailable' }))
       return
-    } finally {
-      state.pendingConnections -= 1
     }
     if (!verified || typeof verified.uid !== 'number' || verified.uid < 1) {
       res.writeHead(401, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ success: false, error: { code: 1005, message: 'invalid stream ticket' } }))
       return
     }
+    if (state.transport !== 'redis') {
+      res.writeHead(503, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: 'realtime transport unavailable' }))
+      return
+    }
+    if (state.connections.size >= maxConnections) {
+      rejectFull()
+      return
+    }
+
     res.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache',
@@ -188,8 +230,6 @@ export function createApp(config) {
 
     const conn = {
       recipientKey: `user:${verified.uid}`,
-      uid: verified.uid,
-      cursor: lastEventId || verified.cursor_seed || null,
       res,
       send(frame) {
         try {
@@ -201,16 +241,8 @@ export function createApp(config) {
     }
     state.connections.add(conn)
 
-    // Last-Event-ID 携带的游标若与后端当前游标无法对齐（跨进程无状态），以 seed 为准；
-    // 客户端凭游标 API 回源补齐，信号只负责加速。
-    if (lastEventId && verified.cursor_seed && lastEventId !== verified.cursor_seed) {
-      conn.send(resyncFrame())
-    }
-
     conn.heartbeat = setInterval(() => { conn.send(pingComment()); conn.send(heartbeatFrame()) }, HEARTBEAT_MS)
     conn.lifetime = setTimeout(() => closeConnection(conn, 'max lifetime'), MAX_LIFETIME_MS)
-
-    if (state.transport === 'source-poll') startSourcePoll(conn, verified.uid)
 
     req.on('close', () => closeConnection(conn, 'client closed'))
   }
@@ -227,13 +259,14 @@ export function createApp(config) {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({
         protocol: PROTOCOL,
-        ready: state.connections.size + state.pendingConnections < maxConnections,
+        ready: state.transport === 'redis',
         cursor: true,
         auth: ['ticket'],
         version: VERSION,
         transport: state.transport,
-        connections: state.connections.size,
-        pending_connections: state.pendingConnections,
+        redis_config_version: state.redisConfigVersion,
+        redis_config_source: state.redisConfigSource,
+        connected_connections: state.connections.size,
         max_connections: maxConnections,
       }))
       return
@@ -246,7 +279,7 @@ export function createApp(config) {
         res.end(JSON.stringify({ error: 'invalid ticket' }))
         return
       }
-      await openStream(req, res, ticket, url.searchParams.get('lastEventId') ?? req.headers['last-event-id'] ?? null)
+      await openStream(req, res, ticket)
       return
     }
 
@@ -264,14 +297,24 @@ export function createApp(config) {
     server,
     state,
     start(port, host = '127.0.0.1') {
-      subscriber?.start()
+      stopped = false
+      if (redisConfigPath) {
+        void refreshRedisConfig()
+        configTimer = setInterval(() => void refreshRedisConfig(), redisConfigRefreshMs)
+      } else if (redis) {
+        configureRedis({ enabled: true, host: redis.host, port: redis.port ?? 6379,
+          database: redis.database ?? 0, password: redis.password ?? '',
+          source: redis.source ?? 'env', revision: redis.revision ?? 'env' })
+      }
       return new Promise((resolve) => {
         server.listen(port, host, () => resolve(server.address().port))
       })
     },
     stop() {
-      subscriber?.stop()
-      for (const conn of [...state.connections]) closeConnection(conn, 'shutdown')
+      stopped = true
+      if (configTimer) clearInterval(configTimer)
+      configTimer = null
+      disableTransport('shutdown')
       server.close()
     },
   }
