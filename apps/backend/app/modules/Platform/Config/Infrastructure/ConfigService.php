@@ -110,7 +110,7 @@ class ConfigService
 
     /**
      * 获取单个配置值
-     * 优先级：.env → 内存缓存 → CacheManager → SQL → schema 保底；Redis 仅由 LC_REDIS_HOST 显式托管。
+     * 优先级：.env → 内存缓存 → CacheManager → SQL → schema 保底；Redis 组只从 SQL 或 schema 读取。
      */
     public static function get(string $key, $default = null)
     {

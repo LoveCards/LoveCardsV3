@@ -187,11 +187,16 @@ namespace {
 
     $test('redis settings require runtime permission and mask credentials', static function () use ($grants, $assertSame, $expectApi): void {
         Config::reset();
+        Config::$values['redis']['host'] = '';
         $manager = new ConfigManager();
         $granted = $grants('admin.access', 'config.read', 'config.update', 'operations.runtime.configure');
         $result = $manager->get(['redis'], $granted);
         $assertSame(['$secret' => 'keep', 'configured' => true], $result['redis']['password'], 'redis password must be redacted');
         $expectApi(403, static fn() => $manager->get(['redis'], $grants('admin.access', 'config.read')), 'redis group must require runtime permission');
+        $manager->update(['redis' => ['enabled' => false, 'host' => '']], $granted);
+        $assertSame([['redis', ['enabled' => false, 'host' => '']]], Config::$writes, 'disabled Redis may keep an empty host');
+        Config::$writes = [];
+        $expectApi(422, static fn() => $manager->update(['redis' => ['enabled' => true]], $granted), 'enabled Redis requires a host');
         $manager->update(['redis' => ['enabled' => true, 'host' => 'redis.example.test', 'port' => 6380]], $granted);
         $assertSame([['redis', ['enabled' => true, 'host' => 'redis.example.test', 'port' => 6380]]], Config::$writes, 'valid redis update should use existing config path');
         Config::$writes = [];

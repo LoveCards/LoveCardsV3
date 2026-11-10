@@ -74,9 +74,6 @@ final class ConfigManager
             }
 
             ConfigAccessPolicy::assertGroup($grants, $group, '修改');
-            if ($group === 'redis' && ConfigAccessPolicy::isRedisEnvironmentManaged()) {
-                throw ApiException::badRequest('Redis 连接由环境变量托管，不能在管理端修改');
-            }
             $schema = ConfigService::getSchema($group);
             $validated = [];
             foreach ($config as $key => $value) {
@@ -164,7 +161,8 @@ final class ConfigManager
         $host = trim((string) ($next['host'] ?? ''));
         $port = $next['port'] ?? null;
         $database = $next['database'] ?? null;
-        if ($host === '' || strlen($host) > 253 || preg_match('/[\s\/:]/', $host) === 1) {
+        if (($host === '' && ($next['enabled'] ?? false) === true)
+            || strlen($host) > 253 || ($host !== '' && preg_match('/[\s\/:]/', $host) === 1)) {
             throw ApiException::validation(['redis.host' => ['Redis 地址无效']]);
         }
         if (filter_var($port, FILTER_VALIDATE_INT) === false || (int) $port < 1 || (int) $port > 65535) {
@@ -180,7 +178,8 @@ final class ConfigManager
         if ($tlsName !== '' && RedisConnectionSettings::tlsIdentity(['host' => $host, 'tls_server_name' => $tlsName]) === null) {
             throw ApiException::validation(['redis.tls_server_name' => ['TLS 证书名称必须为 DNS 主机名']]);
         }
-        if (($next['tls'] ?? false) === true && RedisConnectionSettings::tlsIdentity(['host' => $host, 'tls_server_name' => $tlsName]) === null) {
+        if (($next['enabled'] ?? false) === true && ($next['tls'] ?? false) === true
+            && RedisConnectionSettings::tlsIdentity(['host' => $host, 'tls_server_name' => $tlsName]) === null) {
             throw ApiException::validation(['redis.tls_server_name' => ['使用 IP 地址连接 TLS Redis 时必须填写证书名称']]);
         }
     }
