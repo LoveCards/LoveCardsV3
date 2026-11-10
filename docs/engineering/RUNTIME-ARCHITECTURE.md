@@ -1,6 +1,6 @@
 # 可裁剪运行时
 
-> 状态：2026-11-11 事件消费与通信分层实施契约。本轮工作树已移除普通请求的 EventingRequestDrain，并将定时/常驻领取门禁接入 Eventing；部署与 E2E 验收仍以最终测试报告为准。旧 Facility fallback 只是诊断字段，不是模式事实；假 Supervisor 探测已从实时门禁移除。
+> 状态：2026-11-11 事件消费与通信分层实施契约。当前代码已移除普通请求的 `EventingRequestDrain`，并将定时/常驻领取门禁接入 Eventing；`lc:runtime:status` 已与管理端共用两份模式快照。部署与 E2E 验收仍以最终测试报告为准。假 Supervisor 探测已从实时门禁移除。
 
 LoveCards 的最小 Web 运行单元是 Nginx + PHP-FPM + MySQL。事件处理和前端通信是两种独立的运行策略：事件选择 `scheduled`（定时消费）或 `resident`（常驻消费）；通信选择 `polling`（浏览器轮询）或 `realtime`（SSE）。业务模块统一写 MySQL Outbox、读取 PHP API，不识别部署形态。两种形态下业务操作、API 数据与最终结果一致；处理时延和提示形式可以不同。定时事件处理还需要 cron 或安全的外部定时触发，不能仅凭 Web 服务运行就宣称异步任务健康。
 
@@ -32,17 +32,13 @@ ThinkPHP 缓存默认仍为 file。只有部署方显式选择 `cache.driver=red
 
 不要求把 ThinkPHP Web Host 改造成常驻内存 Web。FPM 继续处理 HTTP，Worker 是独立 CLI 进程；这样既保留请求隔离，也避免每个请求承担全部异步工作。
 
-## 旧 Facility 解析（迁移中，非策略事实）
+## 唯一模式状态与诊断
 
-`config/runtime.php` 定义三项当前设施，`FacilityResolver` 将 `mode + configured + probe` 解析成 enabled/provider/fallback 状态：
+Eventing 的 `eventing_consumer_state` 保存 `scheduled/resident`；Runtime 的 `runtime_config_state` 保存 `polling/realtime`。`RuntimeCommunication::statusSnapshot()` 组合 `event_processing` 和 `communication` 两份快照：前者结合定时运行记录或 Worker 心跳判定健康，后者检查实时依赖。管理端 `/apps/operations/runtime`、管理 API 与 `php think lc:runtime:status` 使用同一投影。状态中的 `mode`/`desired_mode` 是选择，`status` 与 `reason_code` 是探测结果；探测故障不修改选择。CLI 输出为一个 JSON 对象，包含 `event_processing` 与 `communication`，不再输出 `request/polling` fallback。
 
-| Facility | 配置 | Provider | Fallback |
-| --- | --- | --- | --- |
-| `eventing.wakeup` | `LC_EVENTING_WAKEUP_MODE`、系统 `redis` 配置组 | `redis` | `mysql-poll` |
-| `eventing.worker` | `LC_WORKER_MODE`、`LC_WORKER_ENABLED` | `php-worker` | `request` |
-| `realtime.gateway` | `LC_REALTIME_MODE`、`LC_REALTIME_GATEWAY_URL` | `external-gateway`（独立 Node 进程） | 旧字段 `polling`，不得用于当前模式判定 |
+管理 API 的旧 `facilities` 字段暂时返回空数组，概览 API 的旧 `runtime` 字段也返回空数组，以保留现有响应形状。旧 `config/runtime.php`、`FacilityResolver`、配套探测类及 `fallback` 逻辑已从当前代码删除；不得为了填充兼容空字段恢复第二套模式判断。
 
-业务模块只能依赖能力接口或稳定用例，不判断 Redis 扩展、不自行启动进程。旧 `fallback` 字段不得用于切换任何策略。Redis wakeup 不可用时，选定的常驻消费者仍从 MySQL 领取任务；实时变化信号暂停投递并显示故障，通信不自动切轮询。不能把 Redis 当可靠队列。
+业务模块只能依赖能力接口或稳定用例，不判断 Redis 扩展、不自行启动进程。Redis wakeup 不可用时，选定的常驻消费者仍从 MySQL 领取任务；实时变化信号暂停投递并显示故障，通信不自动切轮询。不能把 Redis 当可靠队列。
 
 ## 定时与常驻消费者规则
 
@@ -66,7 +62,7 @@ php think lc:eventing:work --max-jobs=0
 php think lc:scheduler:run-once
 ```
 
-`--max-jobs=0` 表示常驻循环；发布、维护或内存基线要求定期重启时可设置有限任务数。管理端 `/apps/operations/runtime` 展示**事件处理模式与健康**、**通信模式与健康**、Redis 配置入口及相应依赖；模式选择和探测结果分开。旧 Facility fallback 仅用于迁移前诊断，不得作为策略状态源。`supervisor` 旧字段只曾表示管理员期望，没有真实 systemd/supervisord 探测；从实时硬门禁和可保存设置移除，进程托管是否存在由部署方核实，不能伪装成探测成功。
+`--max-jobs=0` 表示常驻循环；发布、维护或内存基线要求定期重启时可设置有限任务数。`lc:runtime:status`、管理端和管理 API 均展示**事件处理模式与健康**、**通信模式与健康**；模式选择和探测结果分开。`supervisor` 旧字段只曾表示管理员期望，没有真实 systemd/supervisord 探测；从实时硬门禁和可保存设置移除，进程托管是否存在由部署方核实，不能伪装成探测成功。
 
 ## 前端变化信号运行时（2026-11-11 收敛契约）
 

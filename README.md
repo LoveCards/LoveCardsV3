@@ -73,6 +73,8 @@ php think lc:system:migrate
 php think lc:system:upgrade --help
 ```
 
+`lc:runtime:status` 输出与管理端相同的两份模式快照：`event_processing` 和 `communication`。其中模式选择与健康状态分别显示；诊断故障不会自动改为另一模式。
+
 ## 开始改动前
 
 1. 阅读 [AGENTS.md](AGENTS.md) 和 `docs/engineering/`。

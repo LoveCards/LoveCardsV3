@@ -54,7 +54,7 @@ Module/
 - Eventing 只认识 EventEnvelope、Registry 与 Port；业务 Handler 位于拥有副作用的目标模块 Infrastructure。
 - Eventing 拥有事件消费策略与 MySQL 领取门禁；定时和常驻是同一投递用例的互斥调用方式，业务模块只提交事件和实现 Handler。Operations/Runtime 负责通信模式及跨能力就绪门禁，只通过 Eventing Public 查询/切换消费策略；Redis 由 Config Public 统一管理，不能被两模块各自维护一份连接配置。
 - SystemLifecycle 通过 Contract 操作 Release、Migration、Backup、Lease、Pointer 和 Runtime，Domain 不依赖 ZIP、PDO、文件系统或 ThinkPHP。
-- Installer Host 处理首次连接、持久配置、密钥、默认数据和安装锁；结构来自 `database/schema.sql`，默认数据来自 `database/seed.sql`。干净安装在 SystemLifecycle 账本中记录历史迁移为 `complete`，旧版本才执行迁移内容。当前 Host 仍直接调用 RBAC 种子和 JWT 密钥校验，后续切片应改为模块公开入口。
+- Installer Host 处理首次连接、持久配置、密钥、默认数据和安装锁；空库导入结构来自 `database/schema.sql`，默认数据来自 `database/seed.sql`。导入后经 SystemLifecycle Public 记录并校验绑定当前 schema 文件与迁移目录的 `CleanInstallReceipt`，才可把历史迁移账本记为 `complete`；安装锁还要求凭据和账本均完整。旧版本升级执行受审迁移内容，不能借新装凭据跳过。当前 Host 仍直接调用 RBAC 种子和 JWT 密钥校验，后续切片应改为模块公开入口。
 - Content 的跨 Cards/Comments/Tags/Likes 一致性由 Content 协调用例负责，禁止子模块互相直接写对方 Model。
 - 前台主题只返回 Shell 和启动上下文，页面数据统一由浏览器 SDK 请求 API。
 - Dashboard 是跨模块只读组合，不直接读取其他模块 Model。

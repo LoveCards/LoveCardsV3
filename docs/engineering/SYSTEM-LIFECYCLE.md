@@ -6,7 +6,7 @@ LoveCards 的安装、数据库迁移、Release 导入、激活和恢复属于�
 
 新安装的输入固定为 `database/schema.sql` 与 `database/seed.sql`：前者是发行版声明的完整目标结构，后者只包含系统默认数据。安装 Host 不再导入旧的组合数据文件，也不在运行时比较两个 schema 或根据 diff 猜测 SQL。
 
-干净安装导入完整目标结构后，`Operations/SystemLifecycle` 在同一 Migration Catalog 中核对 migration id、checksum 和顺序，并用共享 Lease 将这些历史迁移记为 `complete`；安装过程不重新执行历史 SQL。写入安装锁前再次确认账本全部完成。旧版本升级仍通过账本推进 phase/cursor、记录失败并由 `UpgradeCoordinator` 编排。在线更新源目前尚未实现；未来接入时必须走同一入口。
+干净安装在导入前断言目标数据库没有数据表；显式 `force` 路径会先执行原有清空操作，再进行同一空库断言。`schema.sql` 和 `seed.sql` 均导入成功后，安装 Host 调用 `Operations/SystemLifecycle/Public/CleanInstallReceipt`，在现有 `schema_migrations` 表以 `__clean_install_schema__` 为键记录当前 `schema.sql` 文件 SHA-256 与按 ID 排序的受审迁移目录 `id => checksum` 映射的组合指纹。已有相同凭据可幂等复用；已有不同凭据或非空 `system_upgrade_steps` 时拒绝补记。SystemLifecycle 获取共享 Lease 后先校验凭据与当前包完全匹配，再将历史迁移记为 `complete`；凭据缺失、文件或目录变化、账本不一致时失败。安装锁写入前再次校验凭据与完整迁移账本。凭据只绑定“安装 Host 已完成本次导入流程”与包文件身份，**不检查数据库的实际结构**；它不执行运行时 schema diff，也不能代替发行阶段干净安装与历史迁移终态一致性测试。旧版本升级仍通过账本推进 phase/cursor、记录失败并由 `UpgradeCoordinator` 编排。在线更新源目前尚未实现；未来接入时必须走同一入口。
 
 发行构建阶段可运行 `node scripts/generate-schema-diff-candidate.mjs --from <old-schema.sql> --to <schema.sql> --output <candidate.json>` 生成结构变更候选清单。工具只输出表、列、索引和外键的 added/removed/changed 记录，明确标记 `review_required`，不生成 SQL、不连接数据库、不写迁移账本，也不被生产安装器调用。字段重命名、数据转换、拆表、合表、删除和其他语义变化必须由维护者写成明确迁移步骤；该候选清单不能直接执行。干净安装与旧版本迁移后的 schema 一致性由隔离数据库验证固定；安装、迁移和健康检查失败不得标记成功。
 

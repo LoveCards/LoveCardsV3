@@ -65,7 +65,7 @@ HTTP 定时入口为 `POST /api/internal/eventing/run-once`。独立 Bearer 凭�
 
 ### 迁移前基线与完成条件
 
-截至本设计落地前，`EventingRequestDrain` 在普通请求结束时执行 `RequestExecutor`，`lc:scheduler:run-once` 也调用它，`lc:eventing:work` 另起常驻循环；尚无能在领取事务中强制互斥的站点策略。这是迁移基线，不是目标已完成。施工先接通新定时入口与持久策略、验证所有 Handler 可被定时消费，再移除用户请求自动 drain；升级前后未完成任务必须仍在原账本中，不能因迁移丢失。新增表或列进入现有 SystemLifecycle 迁移账本，并通过干净安装 schema 与旧版本迁移后 schema 一致性测试。
+迁移前，`EventingRequestDrain` 在普通请求结束时执行 `RequestExecutor`，`lc:scheduler:run-once` 也调用它，`lc:eventing:work` 另起常驻循环；当时没有领取事务内的互斥站点策略。本轮代码已接通持久策略与定时入口，移除普通请求自动 drain；`RequestExecutor` 仍是定时一次性消费内部复用的处理器，不能把类名解读为仍在用户请求内执行。升级前后未完成任务仍留在原账本；新增结构进入 SystemLifecycle 迁移账本，并由干净安装 schema 与迁移后 schema 的隔离数据库测试验证。`lc:runtime:status` 现在显示事件处理与通信两份权威模式快照。
 
 ## 当前跨模块事件
 

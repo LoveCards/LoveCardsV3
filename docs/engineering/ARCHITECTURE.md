@@ -77,7 +77,7 @@ Auth 的 `UserRepository` 返回只读 `AuthUser`，不会把 ThinkORM Model 带
 ## 当前架构基线
 
 - `app/common` 已删除；公共技术能力统一归入 `app/shared`，业务能力归入所属模块。
-- 安装的结构变更与升级共用 `Operations/SystemLifecycle`。`app/system` 只做 Installer Host；新安装读取 `database/schema.sql` 和 `database/seed.sql`，不维护第二套迁移执行器或升级状态机。首次配置、默认数据和锁仍由现有 Installer 代码处理。
+- 安装的结构变更与升级共用 `Operations/SystemLifecycle`。`app/system` 只做 Installer Host；新安装在空库导入 `database/schema.sql` 和 `database/seed.sql`，随后由 SystemLifecycle 的 `CleanInstallReceipt` 绑定 schema 文件与迁移目录身份、核对账本，再允许写安装锁。不维护第二套迁移执行器或升级状态机，运行时不比较 schema diff。首次配置、默认数据和锁仍由现有 Installer 代码处理。
 - 后端业务层采用两档结构。Auth、Files、Drafts、Library、Social、Safety、Messaging、Notifications、Eventing 和 SystemLifecycle 已按复杂度使用 Application/Domain/Contract；普通模块保持简单 Service。
 - MySQL 是最小运行时的可靠状态源；Redis、Worker、定时触发和 SSE 不进入业务模块依赖。事件处理策略（`scheduled`/`resident`）与前端通信模式（`polling`/`realtime`）独立选择；只有定时+轮询、常驻+轮询、常驻+实时合法。定时策略的异步完整性依赖外部 cron 或安全定时触发。
 - 系统迁移、不可变 Release、签名校验、备份、激活与恢复由 SystemLifecycle 统一。首次安装导入经发行版审核的完整 schema 和默认数据；Host 不得自行覆盖 Release 文件或执行动态生成的 SQL。
@@ -90,7 +90,7 @@ Auth 的 `UserRepository` 返回只读 `AuthUser`，不会把 ThinkORM Model 带
 - RBAC：capability 清单和系统角色策略位于 `modules/Platform/Rbac/Domain`，Service 负责事务、ORM 写入和 API 错误映射。
 - Content/Cards：发布状态和批处理状态转换位于 `modules/Content/Cards/Domain`，Cards Service 保留当前 CRUD 与事务编排。
 - Community：草稿、收藏/历史、社交图、隐私/举报、私信和通知按数据归属拆分模块，HTTP 聚合 Controller 不持有业务状态。
-- Eventing：EventEnvelope、Handler Registry 与 MySQL Outbox 提供至少一次投递；定时一次性消费者与常驻 Worker 共用处理器协议，站点同一时刻只允许选定策略在领取事务中 claim。迁移前的 HTTP 请求内消费属于待退役基线，不能当作默认环境的长期保障。
+- Eventing：EventEnvelope、Handler Registry 与 MySQL Outbox 提供至少一次投递；定时一次性消费者与常驻 Worker 共用处理器协议，站点同一时刻只允许选定策略在领取事务中 claim。普通请求自动消费已从当前代码移除；`request_safe/daemon_required` 是 Handler 执行特征，不是当前消费模式。
 - SystemLifecycle：签名 Release、持久升级计划、迁移 phase/cursor、Lease、备份 Gate、Contract 批准和恢复形成完整状态机。
 - Observability：业务依赖 PSR Logger，ThinkPHP Adapter 统一 request/correlation context 与脱敏；高风险审计进入独立表。
 
