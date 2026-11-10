@@ -5,7 +5,7 @@ declare(strict_types=1);
 // LoveCardsV3 — Communication Runtime Control Plane Baseline
 //
 // Independent PHP script, no PHPUnit, no real database.
-// 冻结通信运行时控制面行为：默认 polling/ready、能力派生降级、
+// 冻结通信运行时控制面行为：默认 polling/ready、实时故障不回退、
 // CAS 乐观并发、白名单校验、业务模块禁止感知通信模式。
 //
 // Usage: @php tests/Runtime/CommunicationControlPlaneBaseline.php
@@ -58,6 +58,7 @@ final class FakeStore implements RuntimeConfigStore
     }
 
     public function current(): ?array { return $this->row; }
+    public function selectedModeForEnqueue(): ?string { return $this->row['desired_mode'] ?? null; }
 
     public function compareAndSwap(int $expectedRevision, string $desiredMode, array $settings, ?int $actorId, ?callable $then = null): bool
     {
@@ -86,9 +87,10 @@ final class NamedProbe implements RuntimeProbe
     public function probe(array $settings): array { return ['ready' => $this->ready, 'provider' => 'fake', 'reason_code' => $this->reason]; }
 }
 
-function probes(bool $workerReady = true, bool $gatewayReady = true): array
+function probes(bool $workerReady = true, bool $gatewayReady = true, bool $redisReady = true): array
 {
     return [
+        new NamedProbe('realtime-redis', $redisReady, $redisReady ? null : 'redis-unreachable'),
         new NamedProbe('event-worker', $workerReady, $workerReady ? null : 'worker-heartbeat-stale'),
         new NamedProbe('realtime-gateway', $gatewayReady, $gatewayReady ? null : 'gateway-not-configured'),
         new NamedProbe('scheduler', true, null),
@@ -108,18 +110,21 @@ $snapshot = makeResolver(new FakeStore(), probes(false, false))->snapshot();
 assertTrue($snapshot['desired_mode'] === 'polling', 'default desired is polling');
 assertTrue($snapshot['effective_mode'] === 'polling' && $snapshot['status'] === 'ready', 'polling stays ready without worker/gateway (acceptance #1)');
 assertTrue($snapshot['reason_code'] === null, 'polling/ready has no reason code');
-assertTrue(count($snapshot['capabilities']) === 4, 'four capabilities listed');
+assertTrue(count($snapshot['capabilities']) === 5, 'five capabilities listed');
 
 // ----------------------------------------------------------------
-// 2. desired=realtime with missing capabilities -> degraded + polling fallback.
+// 2. desired=realtime with missing capabilities -> degraded, preserving selected mode.
 // ----------------------------------------------------------------
 $realtimeRow = ['desired_mode' => 'realtime', 'settings' => CommunicationSettings::defaults(), 'revision' => 2, 'last_apply_state' => 'applied', 'last_apply_reason' => null];
 $snapshot = makeResolver(new FakeStore($realtimeRow), probes(true, false))->snapshot();
-assertTrue($snapshot['effective_mode'] === 'polling' && $snapshot['status'] === 'degraded', 'realtime desired without gateway degrades to polling (acceptance #2)');
+assertTrue($snapshot['effective_mode'] === 'realtime' && $snapshot['status'] === 'degraded', 'realtime fault does not switch transport');
 assertTrue($snapshot['reason_code'] === 'gateway-not-configured', 'degraded snapshot carries gateway reason');
 
 $snapshot = makeResolver(new FakeStore($realtimeRow), probes(false, true))->snapshot();
 assertTrue($snapshot['reason_code'] === 'worker-heartbeat-stale', 'worker blocks realtime before gateway');
+
+$snapshot = makeResolver(new FakeStore($realtimeRow), probes(true, true, false))->snapshot();
+assertTrue($snapshot['effective_mode'] === 'realtime' && $snapshot['reason_code'] === 'redis-unreachable', 'redis outage pauses realtime without polling fallback');
 
 $snapshot = makeResolver(new FakeStore($realtimeRow), probes(true, true))->snapshot();
 assertTrue($snapshot['effective_mode'] === 'realtime' && $snapshot['status'] === 'ready', 'realtime takes effect only when all capabilities ready');
@@ -149,7 +154,7 @@ assertTrue(!array_key_exists('legacy_mode', $normalized), 'unknown stored keys d
 // 5. Apply: CAS success path writes audit through the same-transaction sink.
 // ----------------------------------------------------------------
 $store = new FakeStore();
-$resolver = makeResolver($store, probes(true, false));
+$resolver = makeResolver($store, probes(true, true));
 $updater = new UpdateRuntimeConfig($store, $resolver);
 $audited = 0;
 $result = $updater->apply(7, ['desired_mode' => 'realtime', 'expected_revision' => 1, 'notification_interval_seconds' => 20],
@@ -158,7 +163,18 @@ assertTrue($audited === 1, 'apply records exactly one audit entry');
 assertTrue($store->row['revision'] === 2 && $store->row['desired_mode'] === 'realtime', 'CAS bumps revision and stores desired');
 assertTrue($store->row['settings']['notification_interval_seconds'] === 20, 'provided settings merged');
 assertTrue($store->row['settings']['message_interval_seconds'] === CommunicationSettings::defaults()['message_interval_seconds'], 'unprovided settings preserved');
-assertTrue($result['effective_mode'] === 'polling' && $result['status'] === 'degraded', 'apply realtime without gateway still derives polling/degraded (acceptance #2/#3)');
+assertTrue($result['effective_mode'] === 'realtime' && $result['status'] === 'ready', 'apply realtime only after readiness passes');
+
+// 5a. 开启门禁拒绝不完整的实时链路，不修改所选模式。
+$blockedStore = new FakeStore();
+$blockedUpdater = new UpdateRuntimeConfig($blockedStore, makeResolver($blockedStore, probes(true, false)));
+$blocked = null;
+try {
+    $blockedUpdater->apply(7, ['desired_mode' => 'realtime', 'expected_revision' => 1], static function (): void {});
+} catch (ApiException $exception) { $blocked = $exception; }
+assertTrue(($blocked?->getData()['reason_code'] ?? null) === 'gateway-not-configured', 'gateway failure blocks enabling realtime');
+assertTrue($blockedStore->row['desired_mode'] === 'polling' && $blockedStore->saveCalls === 0, 'rejected enable preserves polling');
+assertTrue($blockedUpdater->validate(['desired_mode' => 'realtime', 'expected_revision' => 1])['valid'] === false, 'validation reports missing realtime dependency');
 
 // 6. CAS conflict -> 409/9016 stale-revision, row untouched (acceptance #3).
 $before = $store->row;
@@ -188,7 +204,7 @@ foreach (['Platform', 'Content', 'Theme'] as $family) {
     foreach ($iterator as $file) {
         if (!$file->isFile() || $file->getExtension() !== 'php') continue;
         $source = (string) file_get_contents($file->getPathname());
-        foreach (['desired_mode', 'effective_mode', "'realtime'", '"realtime"'] as $needle) {
+        foreach (['desired_mode', 'effective_mode'] as $needle) {
             if (str_contains($source, $needle)) $offenders[] = $file->getPathname() . ':' . $needle;
         }
     }

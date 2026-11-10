@@ -10,6 +10,8 @@ final class HandlerRegistry
     private array $byKey = [];
     /** @var array<string, HandlerRegistration[]> */
     private array $byEvent = [];
+    /** @var array<string, true> */
+    private array $signalKeys = [];
 
     public function __construct()
     {
@@ -28,6 +30,42 @@ final class HandlerRegistry
             'notifications',
             ExecutionMode::REQUEST_SAFE,
             new \app\modules\Platform\Notifications\Infrastructure\MessageSentNotificationHandler()
+        ));
+        $this->register(new HandlerRegistration(
+            'message.sent',
+            1,
+            'realtime.message-sent',
+            'realtime',
+            ExecutionMode::DAEMON_REQUIRED,
+            new \app\modules\Platform\Messaging\Infrastructure\MessageSentSignalHandler(),
+            100,
+            [5, 30, 300, 1800],
+            [
+                'key' => 'messages.new',
+                'topic' => 'messages',
+                'owner' => 'Messaging',
+                'display_name' => '新私信主动提示',
+                'impact_text' => '关闭后私信仍可发送和读取，浏览器不主动提示新私信。',
+                'default_enabled' => true,
+            ]
+        ));
+        $this->register(new HandlerRegistration(
+            'message.read',
+            1,
+            'realtime.message-read',
+            'realtime',
+            ExecutionMode::DAEMON_REQUIRED,
+            new \app\modules\Platform\Messaging\Infrastructure\MessageReadSignalHandler(),
+            100,
+            [5, 30, 300, 1800],
+            [
+                'key' => 'messages.read',
+                'topic' => 'messages',
+                'owner' => 'Messaging',
+                'display_name' => '私信已读状态主动提示',
+                'impact_text' => '关闭后已读状态照常保存，浏览器不主动提示会话已读变化。',
+                'default_enabled' => true,
+            ]
         ));
         $this->register(new HandlerRegistration(
             'content.liked',
@@ -70,6 +108,52 @@ final class HandlerRegistry
             new \app\modules\Platform\Notifications\Infrastructure\SystemNotificationIssuedHandler()
         ));
         $this->register(new HandlerRegistration(
+            'notification.created',
+            1,
+            'realtime.notification-created',
+            'realtime',
+            ExecutionMode::DAEMON_REQUIRED,
+            new \app\modules\Platform\Notifications\Infrastructure\NotificationCreatedSignalHandler(),
+            100,
+            [5, 30, 300, 1800],
+            [
+                'key' => 'notifications.new',
+                'topic' => 'notifications',
+                'owner' => 'Notifications',
+                'display_name' => '新站内通知主动提示',
+                'impact_text' => '关闭后站内通知照常生成和读取，浏览器不主动提示新通知。',
+                'default_enabled' => true,
+            ]
+        ));
+        $this->register(new HandlerRegistration(
+            'content.card.published',
+            1,
+            'realtime.card-published',
+            'realtime',
+            ExecutionMode::DAEMON_REQUIRED,
+            new \app\modules\Content\Cards\Infrastructure\CardPublishedSignalHandler(),
+            100,
+            [5, 30, 300, 1800],
+            [
+                'key' => 'feed.published',
+                'topic' => 'feed',
+                'owner' => 'Content/Cards',
+                'display_name' => '信息流新内容主动提示',
+                'impact_text' => '关闭后卡片仍会正常发布，首页和关注页不会主动提示新内容。',
+                'default_enabled' => true,
+            ]
+        ));
+        $this->register(new HandlerRegistration(
+            'content.card.feed.batch.requested',
+            1,
+            'realtime.card-feed-batch',
+            'realtime',
+            ExecutionMode::DAEMON_REQUIRED,
+            new \app\modules\Content\Cards\Infrastructure\CardPublishedSignalHandler(),
+            100,
+            [5, 30, 300, 1800]
+        ));
+        $this->register(new HandlerRegistration(
             'file.purge.requested',
             1,
             'files.purge',
@@ -86,6 +170,13 @@ final class HandlerRegistry
         $key = $registration->handlerKey();
         if (isset($this->byKey[$key])) {
             throw new \LogicException("Event Handler 重复注册：{$key}");
+        }
+        $signal = $registration->signal();
+        if ($signal !== null) {
+            if (isset($this->signalKeys[$signal['key']])) {
+                throw new \LogicException("Realtime signal 重复注册：{$signal['key']}");
+            }
+            $this->signalKeys[$signal['key']] = true;
         }
 
         $eventKey = $this->eventKey($registration->eventType(), $registration->eventVersion());
@@ -154,6 +245,23 @@ final class HandlerRegistry
             $catalog[] = $registration->catalogData();
         }
 
+        return $catalog;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function signalCatalog(): array
+    {
+        $catalog = [];
+        foreach ($this->byKey as $registration) {
+            $signal = $registration->signal();
+            if ($signal === null) continue;
+            $catalog[] = $signal + [
+                'event_type' => $registration->eventType(),
+                'event_version' => $registration->eventVersion(),
+                'handler_key' => $registration->handlerKey(),
+            ];
+        }
+        usort($catalog, static fn(array $a, array $b): int => strcmp($a['key'], $b['key']));
         return $catalog;
     }
 

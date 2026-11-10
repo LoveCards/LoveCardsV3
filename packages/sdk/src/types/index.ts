@@ -21,3 +21,4 @@ export type { CaptchaDriver, CaptchaMeta, CaptchaConfig, CaptchaInstallResult, C
 export type { AuthPolicy, SessionState } from './auth'
 export type { OperationsFacility, OperationsOverview, OperationsMigrationProgress, OperationsMigration, OperationsWorker, OperationsRuntimeStatus, OperationsDelivery, OperationsDeliverySummary, OperationsAuditLog, OperationsNotificationStats, OperationsCommunityInsights, OperationsUpgradeStep, OperationsUpgradePlan, AdminReportEvent, AdminReport, AdminReportEvidence, UserSecurityOverview, UserSession, RecoveryChallenge, FileUsage } from './operations'
 export type { RuntimeCapability, RuntimeCommunicationSettings, RuntimeCommunicationSnapshot, RuntimeConfigUpdate, RuntimeConfigValidation } from './operations'
+export type { SignalPolicyItem, SignalPolicyCatalog, SignalPolicyUpdate } from './operations'

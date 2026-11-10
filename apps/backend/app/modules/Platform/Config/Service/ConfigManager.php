@@ -4,6 +4,7 @@ namespace app\modules\Platform\Config\Service;
 
 use app\api\ApiException;
 use app\modules\Platform\Config\Public\Config as ConfigService;
+use app\modules\Platform\Config\Public\RedisConnectionSettings;
 use app\shared\Authorization\GrantSet;
 
 /**
@@ -54,6 +55,14 @@ final class ConfigManager
         ));
     }
 
+    /** @return array{ready:bool,reason_code:?string,source:string} */
+    public function testRedis(GrantSet $grants): array
+    {
+        ConfigAccessPolicy::assertOperation($grants, 'operations.runtime.configure');
+        $result = RedisConnectionSettings::test();
+        return ['ready' => $result['ready'], 'reason_code' => $result['reason_code'], 'source' => $result['source']];
+    }
+
     public function update(array $params, GrantSet $grants): void
     {
         ConfigAccessPolicy::assertOperation($grants, 'config.update');
@@ -80,6 +89,9 @@ final class ConfigManager
                 }
             }
             if (!empty($validated)) {
+                if ($group === 'redis') {
+                    $this->validateRedisUpdate($validated, ConfigService::getGroup('redis'));
+                }
                 $pending[$group] = $validated;
             }
         }
@@ -99,6 +111,9 @@ final class ConfigManager
     {
         ConfigAccessPolicy::assertOperation($grants, 'config.register');
         ConfigAccessPolicy::assertGroup($grants, $group, '注册');
+        if ($group === 'redis') {
+            throw ApiException::badRequest('Redis 配置定义由发行版管理');
+        }
         return ConfigService::register($group, $schema);
     }
 
@@ -115,6 +130,7 @@ final class ConfigManager
     {
         ConfigAccessPolicy::assertOperation($grants, 'config.deleteKey');
         ConfigAccessPolicy::assertGroup($grants, $group, '删除');
+        if ($group === 'redis') throw ApiException::badRequest('Redis 系统配置组不能删除');
         ConfigService::deleteGroup($group);
     }
 
@@ -122,6 +138,7 @@ final class ConfigManager
     {
         ConfigAccessPolicy::assertOperation($grants, 'config.deleteKey');
         ConfigAccessPolicy::assertGroup($grants, $group, '删除');
+        if ($group === 'redis') throw ApiException::badRequest('Redis 系统配置项不能删除');
         ConfigService::deleteKey($group, $key);
     }
 
@@ -133,6 +150,38 @@ final class ConfigManager
             }
         }
         return $values;
+    }
+
+    private function validateRedisUpdate(array $changes, array $current): void
+    {
+        $next = array_merge($current, $changes);
+        if (array_key_exists('enabled', $changes) && !is_bool($changes['enabled'])) {
+            throw ApiException::validation(['redis.enabled' => ['必须为布尔值']]);
+        }
+        $host = trim((string) ($next['host'] ?? ''));
+        $port = $next['port'] ?? null;
+        $database = $next['database'] ?? null;
+        if (($host === '' && ($next['enabled'] ?? false) === true)
+            || strlen($host) > 253 || ($host !== '' && preg_match('/[\s\/:]/', $host) === 1)) {
+            throw ApiException::validation(['redis.host' => ['Redis 地址无效']]);
+        }
+        if (filter_var($port, FILTER_VALIDATE_INT) === false || (int) $port < 1 || (int) $port > 65535) {
+            throw ApiException::validation(['redis.port' => ['Redis 端口无效']]);
+        }
+        if (filter_var($database, FILTER_VALIDATE_INT) === false || (int) $database < 0 || (int) $database > 15) {
+            throw ApiException::validation(['redis.database' => ['Redis 数据库编号必须在 0 到 15 之间']]);
+        }
+        if (array_key_exists('tls', $changes) && !is_bool($changes['tls'])) {
+            throw ApiException::validation(['redis.tls' => ['必须为布尔值']]);
+        }
+        $tlsName = trim((string) ($next['tls_server_name'] ?? ''));
+        if ($tlsName !== '' && RedisConnectionSettings::tlsIdentity(['host' => $host, 'tls_server_name' => $tlsName]) === null) {
+            throw ApiException::validation(['redis.tls_server_name' => ['TLS 证书名称必须为 DNS 主机名']]);
+        }
+        if (($next['enabled'] ?? false) === true && ($next['tls'] ?? false) === true
+            && RedisConnectionSettings::tlsIdentity(['host' => $host, 'tls_server_name' => $tlsName]) === null) {
+            throw ApiException::validation(['redis.tls_server_name' => ['使用 IP 地址连接 TLS Redis 时必须填写证书名称']]);
+        }
     }
 
     /** @return array{apply: bool, value: mixed} */

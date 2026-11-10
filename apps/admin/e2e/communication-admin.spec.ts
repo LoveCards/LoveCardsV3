@@ -1,6 +1,21 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 const adminOrigin = process.env.LOVECARDS_DEV_ADMIN_ORIGIN || 'http://127.0.0.1:3000'
+
+async function mockSignalCatalog(page: Page) {
+  await page.route('**/api/admin/communications/signals', route => {
+    expect(route.request().method()).toBe('GET')
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: {
+      revision: 2,
+      signals: [{
+        key: 'notifications.new', topic: 'notifications', owner: 'Platform/Notifications',
+        display_name: '新站内通知', impact_text: '提示用户读取新的站内通知。',
+        default_enabled: true, enabled: true, event_type: 'notification.created', event_version: 1,
+        handler_key: 'notification.created.signal',
+      }],
+    } }) })
+  })
+}
 
 test.use({
   storageState: {
@@ -11,6 +26,7 @@ test.use({
 
 test('policy switch creates a reviewable change and sends the canonical event name', async ({ page }) => {
   test.setTimeout(90_000)
+  await mockSignalCatalog(page)
   const policies = [
     { event_type: 'content.liked', event_version: 1, rule_key: 'notify', enabled: true, display_name: '点赞提醒', impact_text: '关闭后不生成点赞提醒。', notification_type: 'content.card_liked', recipient_rule: 'handler', user_disableable: true, locked: false, policy_revision: 6 },
     { event_type: 'system.notification.issued', event_version: 1, rule_key: 'notify', enabled: true, display_name: '系统安全与审核通知', impact_text: '必须始终开启。', notification_type: 'system.moderation', recipient_rule: 'handler', user_disableable: false, locked: true, policy_revision: 6 },
@@ -53,6 +69,7 @@ test('policy switch creates a reviewable change and sends the canonical event na
 
 test('communications readers can inspect policy catalog without mutation controls', async ({ page }) => {
   test.setTimeout(90_000)
+  await mockSignalCatalog(page)
   const policies = [
     { event_type: 'content.liked', event_version: 1, rule_key: 'notify', enabled: true, display_name: '点赞提醒', impact_text: '关闭后不生成点赞提醒。', notification_type: 'content.card_liked', recipient_rule: 'handler', user_disableable: true, locked: false, policy_revision: 6 },
     { event_type: 'system.notification.issued', event_version: 1, rule_key: 'notify', enabled: true, display_name: '系统安全与审核通知', impact_text: '必须始终开启。', notification_type: 'system.moderation', recipient_rule: 'handler', user_disableable: false, locked: true, policy_revision: 6 },
@@ -73,9 +90,13 @@ test('communications readers can inspect policy catalog without mutation control
   await expect(likedRow).toContainText('已开启', { timeout: 30_000 })
   await expect(likedRow.locator('input[type=checkbox]')).toHaveCount(0)
   await expect(page.getByRole('button', { name: '审阅并保存' })).toHaveCount(0)
+  const signalRow = page.getByRole('row', { name: /新站内通知/ })
+  await expect(signalRow).toContainText('已开启')
+  await expect(signalRow.locator('input[type=checkbox]')).toHaveCount(0)
 })
 
 test('policy revision conflict keeps the draft for explicit review', async ({ page }) => {
+  await mockSignalCatalog(page)
   const liked = { event_type: 'content.liked', event_version: 1, rule_key: 'notify', enabled: true, display_name: '点赞提醒', impact_text: '关闭后不生成点赞提醒。', notification_type: 'content.card_liked', recipient_rule: 'handler', user_disableable: true, locked: false, policy_revision: 6 }
   const followed = { ...liked, event_type: 'social.followed', display_name: '新关注提醒', impact_text: '关闭后不生成关注提醒。' }
   let getCount = 0

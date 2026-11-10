@@ -16,4 +16,8 @@ final class AdminCommunications extends BaseController
     public function policies() { return $this->respond(CommunicationsManagement::policies()); }
 
     public function applyPolicies() { return $this->respond(CommunicationsManagement::applyPolicies($this->validated(), $this->uid())); }
+
+    public function signals() { return $this->respond(CommunicationsManagement::signals()); }
+
+    public function applySignals() { return $this->respond(CommunicationsManagement::applySignals($this->validated(), $this->uid())); }
 }

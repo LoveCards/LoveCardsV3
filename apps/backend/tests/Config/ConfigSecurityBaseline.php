@@ -12,13 +12,14 @@ namespace app\modules\Platform\Config\Public {
 
         public static function reset(): void
         {
-            self::$groups = ['core', 'storage', 'storage_cos', 'sender_smtp', 'captcha_geetest_v4'];
+            self::$groups = ['core', 'storage', 'storage_cos', 'sender_smtp', 'captcha_geetest_v4', 'redis'];
             self::$values = [
                 'core' => ['name' => 'LoveCards'],
                 'storage' => ['default' => 'cos'],
                 'storage_cos' => ['bucket' => 'assets', 'secret_id' => 'id-value', 'secret_key' => 'key-value'],
                 'sender_smtp' => ['host' => 'smtp.example.test', 'pass' => 'mail-secret'],
                 'captcha_geetest_v4' => ['id' => 'captcha-id', 'key' => 'captcha-secret'],
+                'redis' => ['enabled' => false, 'host' => '127.0.0.1', 'port' => 6379, 'database' => 0, 'password' => 'redis-secret', 'tls' => false, 'tls_server_name' => ''],
             ];
             self::$schemas = [
                 'core' => ['name' => ['type' => 'string']],
@@ -35,6 +36,12 @@ namespace app\modules\Platform\Config\Public {
                 'captcha_geetest_v4' => [
                     'id' => ['type' => 'string'],
                     'key' => ['type' => 'string'],
+                ],
+                'redis' => [
+                    'enabled' => ['type' => 'bool'], 'host' => ['type' => 'string'],
+                    'port' => ['type' => 'int'], 'database' => ['type' => 'int'],
+                    'tls' => ['type' => 'bool'], 'tls_server_name' => ['type' => 'string'],
+                    'password' => ['type' => 'password', 'sensitive' => true],
                 ],
             ];
             self::$environmentManaged = [];
@@ -69,6 +76,7 @@ namespace {
     require $root . '/app/shared/Authorization/GrantSet.php';
     require $root . '/app/api/ApiException.php';
     require $root . '/app/modules/Platform/Config/Service/ConfigAccessPolicy.php';
+    require $root . '/app/modules/Platform/Config/Public/RedisConnectionSettings.php';
     require $root . '/app/modules/Platform/Config/Service/ConfigManager.php';
 
     use app\api\ApiException;
@@ -120,6 +128,7 @@ namespace {
             'storage_cos' => 'storage.read',
             'sender_smtp' => 'sender.read',
             'captcha_geetest_v4' => 'captcha.read',
+            'redis' => 'operations.runtime.configure',
         ] as $group => $capability) {
             $expectApi(
                 403,
@@ -141,6 +150,7 @@ namespace {
         foreach ([
             'sender_smtp' => ['host' => 'changed.example.test'],
             'captcha_geetest_v4' => ['id' => 'changed-id'],
+            'redis' => ['host' => 'changed.example.test'],
         ] as $group => $payload) {
             $expectApi(
                 403,
@@ -173,6 +183,27 @@ namespace {
         $assert($result['storage_cos']['bucket'] === 'assets', 'non-sensitive values must remain readable');
         $assert(!str_contains(json_encode($result, JSON_THROW_ON_ERROR), 'key-value'), 'serialized response must not contain storage secret');
         $assert(!str_contains(json_encode($result, JSON_THROW_ON_ERROR), 'mail-secret'), 'serialized response must not contain sender secret');
+    });
+
+    $test('redis settings require runtime permission and mask credentials', static function () use ($grants, $assertSame, $expectApi): void {
+        Config::reset();
+        Config::$values['redis']['host'] = '';
+        $manager = new ConfigManager();
+        $granted = $grants('admin.access', 'config.read', 'config.update', 'operations.runtime.configure');
+        $result = $manager->get(['redis'], $granted);
+        $assertSame(['$secret' => 'keep', 'configured' => true], $result['redis']['password'], 'redis password must be redacted');
+        $expectApi(403, static fn() => $manager->get(['redis'], $grants('admin.access', 'config.read')), 'redis group must require runtime permission');
+        $manager->update(['redis' => ['enabled' => false, 'host' => '']], $granted);
+        $assertSame([['redis', ['enabled' => false, 'host' => '']]], Config::$writes, 'disabled Redis may keep an empty host');
+        Config::$writes = [];
+        $expectApi(422, static fn() => $manager->update(['redis' => ['enabled' => true]], $granted), 'enabled Redis requires a host');
+        $manager->update(['redis' => ['enabled' => true, 'host' => 'redis.example.test', 'port' => 6380]], $granted);
+        $assertSame([['redis', ['enabled' => true, 'host' => 'redis.example.test', 'port' => 6380]]], Config::$writes, 'valid redis update should use existing config path');
+        Config::$writes = [];
+        $manager->update(['redis' => ['tls' => true, 'tls_server_name' => 'redis.example.test']], $granted);
+        $assertSame([['redis', ['tls' => true, 'tls_server_name' => 'redis.example.test']]], Config::$writes, 'TLS update should use the same config path');
+        $expectApi(422, static fn() => $manager->update(['redis' => ['host' => '127.0.0.1', 'tls' => true, 'tls_server_name' => '']], $granted), 'TLS with IP address must require certificate name');
+        $expectApi(400, static fn() => $manager->deleteGroup('redis', $grants('admin.access', 'config.deleteKey', 'operations.runtime.configure')), 'built-in redis group cannot be deleted');
     });
 
     $test('secret keep replace and clear have explicit behavior', static function () use ($grants, $assertSame): void {

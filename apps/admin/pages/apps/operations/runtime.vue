@@ -14,15 +14,15 @@
             <div>
               <h2 class="text-h6 mb-2">当前通信</h2>
               <div class="d-flex align-center flex-wrap ga-3">
-                <AdminStatusChip :status="communication.status === 'ready' ? 'available' : 'degraded'" :label="communication.status === 'ready' ? '正常' : '已降级'" />
-                <span class="text-body-1">浏览器通过{{ modeLabel(communication.effective_mode) }}获取更新</span>
+                <AdminStatusChip :status="communication.status === 'ready' ? 'available' : 'degraded'" :label="communication.status === 'ready' ? '正常' : '故障'" />
+                <span class="text-body-1">已选择{{ modeLabel(communication.desired_mode) }}获取主动更新</span>
               </div>
               <div class="text-body-2 text-medium-emphasis mt-2">最近检查：{{ communication.checked_at }} · 配置版本 {{ communication.revision }}</div>
             </div>
             <v-btn to="/apps/operations/deliveries" variant="text" append-icon="mdi-arrow-right">查看通知处理</v-btn>
           </div>
           <v-alert v-if="communication.status === 'degraded'" class="mt-4" type="warning" variant="tonal" icon="mdi-alert-outline">
-            已选择{{ modeLabel(communication.desired_mode) }}，当前实际使用{{ modeLabel(communication.effective_mode) }}。{{ reasonLabel(communication.reason_code) }}。请核对下方诊断。
+            {{ modeLabel(communication.desired_mode) }}模式暂不可用：{{ reasonLabel(communication.reason_code) }}。主动提示已暂停；业务数据仍可手动刷新。请核对下方诊断或手动切换轮询。
           </v-alert>
           <v-alert v-if="communication.last_apply_state && communication.last_apply_state !== 'applied'" class="mt-4" type="info" variant="tonal">
             最近一次配置操作未生效：{{ communication.last_apply_state === 'rejected' ? '参数被拒绝' : '执行失败' }}{{ communication.last_apply_reason ? `（${communication.last_apply_reason}）` : '' }}。
@@ -35,7 +35,7 @@
             <span v-if="!hasRuntimeAttention" class="text-body-2 text-medium-emphasis">当前没有需要处理的异常</span>
           </div>
           <v-alert v-if="hasRuntimeAttention" :type="runtime.eventing.dead ? 'error' : 'warning'" variant="tonal" icon="mdi-alert-circle-outline">
-            <div v-if="communication.status === 'degraded'">通信已降级：{{ reasonLabel(communication.reason_code) }}。可以先查看通知处理记录。</div>
+            <div v-if="communication.status === 'degraded'">实时主动提示已暂停：{{ reasonLabel(communication.reason_code) }}。可以查看投递记录并处理故障。</div>
             <div v-if="runtime.eventing.dead">有 {{ runtime.eventing.dead }} 条事件进入失败状态。</div>
             <div v-if="runtime.eventing.expired_processing">有 {{ runtime.eventing.expired_processing }} 条处理租约已过期。</div>
           </v-alert>
@@ -46,7 +46,7 @@
           <div class="d-flex flex-wrap align-center justify-space-between ga-3">
             <div>
               <div class="text-subtitle-1 font-weight-medium">通信方式</div>
-              <div class="text-body-2 text-medium-emphasis mt-1">当前生效：{{ modeLabel(communication.effective_mode) }} · 已选择：{{ modeLabel(communication.desired_mode) }}</div>
+              <div class="text-body-2 text-medium-emphasis mt-1">已选择：{{ modeLabel(communication.desired_mode) }} · 状态：{{ communication.status === 'ready' ? '正常' : '故障' }}</div>
             </div>
             <AdminActionGuard capability="operations.runtime.configure">
               <v-btn :color="settingsOpen ? undefined : 'primary'" :variant="settingsOpen ? 'outlined' : 'flat'" @click="settingsOpen = !settingsOpen">{{ settingsOpen ? '收起设置' : '修改通信设置' }}</v-btn>
@@ -67,7 +67,7 @@
                   <v-btn value="polling">轮询</v-btn>
                   <v-btn value="realtime">实时</v-btn>
                 </v-btn-toggle>
-                <div class="text-body-2 text-medium-emphasis mb-4">实时模式依赖 Gateway 和 Event Worker；探测不可用时，系统会继续使用轮询。</div>
+                <div class="text-body-2 text-medium-emphasis mb-4">实时模式依赖 Redis、Gateway 和 Event Worker；启用前必须通过检查。运行中故障不会自动切换轮询。<NuxtLink to="/apps/settings/redis">配置 Redis</NuxtLink></div>
                 <v-row dense>
                   <v-col v-for="field in primaryNumericFields" :key="field.key" cols="12" sm="6" md="4">
                     <v-text-field v-model="form[field.key]" :label="field.label" type="number" :hint="field.hint" persistent-hint density="compact" variant="outlined" />
@@ -110,16 +110,6 @@
                 <v-data-table :headers="capabilityHeaders" :items="communication.capabilities" item-value="key" :items-per-page="-1" hide-default-footer>
                   <template #item.ready="{ item }"><AdminStatusChip :status="capabilityStatus(item)" :label="capabilityLabel(item)" /></template>
                   <template #item.reason="{ item }">{{ reasonLabel(item.reason_code) }}</template>
-                </v-data-table>
-              </AdminResourceTableShell>
-              <h3 class="text-subtitle-1 mb-3">设施</h3>
-              <AdminResourceTableShell class="mb-6">
-                <v-data-table :headers="facilityHeaders" :items="runtime.facilities" item-value="name" :items-per-page="-1" hide-default-footer>
-                  <template #item.name="{ item }"><strong>{{ facilityLabel(item.name) }}</strong><div class="text-caption text-medium-emphasis">{{ item.effective_provider || '未选择服务提供方' }}</div></template>
-                  <template #item.mode="{ item }">{{ modeLabel(item.desired_mode) }}</template>
-                  <template #item.status="{ item }"><AdminStatusChip :status="facilityStatus(item)" :label="facilityLabelForStatus(item)" /></template>
-                  <template #item.reason="{ item }">{{ facilityReason(item.reason_code, item.ready) }}</template>
-                  <template #item.checked="{ item }">{{ item.checked_at }}</template>
                 </v-data-table>
               </AdminResourceTableShell>
               <h3 class="text-subtitle-1 mb-3">处理进程</h3>
@@ -208,10 +198,6 @@ const capabilityHeaders = [
   { title: '能力', key: 'key' }, { title: '状态', key: 'ready' }, { title: 'Provider', key: 'provider' },
   { title: '原因', key: 'reason' }, { title: '检查时间', key: 'checked_at' },
 ]
-const facilityHeaders = [
-  { title: '设施', key: 'name' }, { title: '期望模式', key: 'mode' }, { title: '状态', key: 'status' },
-  { title: '原因', key: 'reason' }, { title: '检查时间', key: 'checked' },
-]
 const workerHeaders = [
   { title: 'Worker', key: 'worker_id' }, { title: '类型', key: 'worker_type' }, { title: '状态', key: 'state' },
   { title: '已处理', key: 'jobs_processed' }, { title: '心跳时间', key: 'heartbeat_at' },
@@ -234,12 +220,16 @@ const reasonLabels: Record<string, string> = {
   'config-locked': '环境变量已锁定运行模式',
   'schema-not-ready': '运行时配置表未就绪（请先执行迁移）',
   'worker-heartbeat-stale': 'Event Worker 心跳超时或未运行',
+  'worker-realtime-queue-missing': 'Event Worker 未声明消费实时信号队列',
+  'worker-release-mismatch': 'Event Worker 与当前 Release 不一致',
   'gateway-not-configured': '未配置 Realtime Gateway',
   'gateway-unreachable': 'Gateway 健康检查不可达',
   'gateway-protocol-mismatch': 'Gateway 协议版本或游标能力不匹配',
   'gateway-auth-unavailable': 'Gateway 鉴权凭证不可用',
   'gateway-not-ready': 'Gateway 自报未就绪',
-  'realtime-transport-degraded': '实时信号通道降级（Gateway 已回源轮询）',
+  'realtime-transport-degraded': 'Redis 实时信号通道不可用',
+  'redis-not-configured': 'Redis 尚未配置',
+  'redis-unreachable': 'Redis 连接不可用',
   'supervisor-required-missing': '部署策略要求 Supervisor，但未探测到',
   'probe-stale': '探测结果过期或从未运行',
   'probe-unavailable': '探测暂不可用',
@@ -263,35 +253,6 @@ function capabilityStatus(item: { ready: boolean | null }) {
 function capabilityLabel(item: { ready: boolean | null }) {
   if (item.ready === null) return '不适用'
   return item.ready ? '可用' : '不可用'
-}
-
-function facilityReason(reason: string | null | undefined, ready: boolean) {
-  if (ready) return '运行正常'
-  return ({
-    primary_not_configured: '主通道未配置',
-    provider_unknown: '服务提供方未知',
-  } as Record<string, string>)[reason || ''] ?? '需要关注'
-}
-
-function facilityLabel(name: string) {
-  return ({
-    eventing: '事件处理',
-    realtime_gateway: '实时连接服务',
-    scheduler: '定时任务',
-    supervisor: '进程治理',
-  } as Record<string, string>)[name] ?? name
-}
-
-function facilityStatus(item: OperationsRuntimeStatus['facilities'][number]) {
-  if (item.ready) return 'available'
-  if (!item.enabled || item.reason_code === 'not-required') return 'disabled'
-  return 'degraded'
-}
-
-function facilityLabelForStatus(item: OperationsRuntimeStatus['facilities'][number]) {
-  if (item.ready) return '正常'
-  if (!item.enabled || item.reason_code === 'not-required') return '不需要'
-  return '需要关注'
 }
 
 function executionModeLabel(mode: string) {
@@ -322,7 +283,7 @@ const applyImpact = computed(() => {
     const display = (item: unknown) => typeof item === 'boolean' ? (item ? '是' : '否') : String(item)
     changes.push(`${fieldLabels[key] ?? key}：${display(value)} → ${display(next)}`)
   }
-  return `${changes.join('；')}。生效模式由服务端探测实时判定，Gateway 或 Worker 不可用时将自动保持轮询。本次操作写入审计日志。`
+  return `${changes.join('；')}。开启实时需通过依赖检查，运行中故障会暂停主动提示，不会自动切换轮询。本次操作写入审计日志。`
 })
 
 function buildUpdate(): RuntimeConfigUpdate {

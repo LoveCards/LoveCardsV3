@@ -235,6 +235,7 @@ CREATE TABLE `runtime_workers` (
   `release_id` varchar(128) NOT NULL,
   `schema_version` varchar(64) NOT NULL,
   `handler_catalog_hash` char(64) NOT NULL,
+  `queue_names_json` varchar(2048) NOT NULL DEFAULT '[]',
   `jobs_processed` bigint(20) unsigned NOT NULL DEFAULT 0,
   `heartbeat_at` datetime NOT NULL,
   `created_at` datetime NOT NULL,
@@ -250,6 +251,15 @@ CREATE TABLE `runtime_config_state` (
   `revision` int(10) unsigned NOT NULL DEFAULT 1,
   `last_apply_state` varchar(16) NOT NULL DEFAULT 'applied',
   `last_apply_reason` varchar(64) DEFAULT NULL,
+  `updated_by` bigint(20) unsigned DEFAULT NULL,
+  `created_at` datetime(6) NOT NULL,
+  `updated_at` datetime(6) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE `signal_policy_state` (
+  `id` tinyint(3) unsigned NOT NULL,
+  `revision` int(10) unsigned NOT NULL DEFAULT 1,
+  `overrides_json` longtext NOT NULL,
   `updated_by` bigint(20) unsigned DEFAULT NULL,
   `created_at` datetime(6) NOT NULL,
   `updated_at` datetime(6) NOT NULL,
@@ -527,7 +537,7 @@ CREATE TABLE `file_references` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_file_reference` (`file_id`,`resource_type`,`resource_id`,`purpose`),
   KEY `idx_file_reference_resource` (`resource_type`,`resource_id`,`file_id`),
-  CONSTRAINT `fk_file_references_file` FOREIGN KEY (`file_id`) REFERENCES `files` (`id`)
+  CONSTRAINT `fk_file_references_file` FOREIGN KEY (`file_id`) REFERENCES `files` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE `library_items` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -649,7 +659,7 @@ CREATE TABLE `role_grants` (
   `created_at` datetime NOT NULL,
   PRIMARY KEY (`role_id`,`capability`,`scope`),
   KEY `idx_role_grants_capability` (`capability`),
-  CONSTRAINT `fk_role_grants_capability` FOREIGN KEY (`capability`) REFERENCES `capabilities` (`capability`),
+  CONSTRAINT `fk_role_grants_capability` FOREIGN KEY (`capability`) REFERENCES `capabilities` (`capability`) ON DELETE RESTRICT,
   CONSTRAINT `fk_role_grants_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE `role_permissions` (
@@ -685,6 +695,7 @@ CREATE TABLE `user_follows` (
   `created_at` datetime NOT NULL,
   PRIMARY KEY (`follower_id`,`followee_id`),
   KEY `idx_followee_created` (`followee_id`,`created_at`,`follower_id`),
+  KEY `idx_followee_follower` (`followee_id`,`follower_id`),
   CONSTRAINT `fk_follows_followee` FOREIGN KEY (`followee_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_follows_follower` FOREIGN KEY (`follower_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -694,7 +705,7 @@ CREATE TABLE `user_roles` (
   `created_at` datetime NOT NULL,
   PRIMARY KEY (`user_id`,`role_id`),
   KEY `idx_user_roles_role` (`role_id`),
-  CONSTRAINT `fk_user_roles_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`),
+  CONSTRAINT `fk_user_roles_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `fk_user_roles_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE `user_safety_relations` (

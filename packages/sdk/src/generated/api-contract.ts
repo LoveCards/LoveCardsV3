@@ -46,13 +46,16 @@ export interface GeneratedApiContract {
   "comments.unpinManaged": { method: "DELETE"; path: "/admin/cards/:id/pinned-comment"; request: {  }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "communication.settings": { method: "GET"; path: "/me/communication/settings"; request: void; response: ApiTypes.CommunicationSettingsSnapshot; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "communications.applyPolicies": { method: "PUT"; path: "/admin/communications/policies"; request: ApiTypes.NotificationPolicyUpdate; response: ApiTypes.NotificationPolicyApplyResult; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "communications.applySignals": { method: "PUT"; path: "/admin/communications/signals"; request: ApiTypes.SignalPolicyUpdate; response: ApiTypes.SignalPolicyCatalog; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "communications.policies": { method: "GET"; path: "/admin/communications/policies"; request: void; response: ApiTypes.NotificationPolicyCatalog; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "communications.signals": { method: "GET"; path: "/admin/communications/signals"; request: void; response: ApiTypes.SignalPolicyCatalog; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "community.insights": { method: "GET"; path: "/admin/community/insights"; request: void; response: ApiTypes.OperationsCommunityInsights; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "config.delete": { method: "DELETE"; path: "/admin/config"; request: { group: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "config.deleteKey": { method: "DELETE"; path: "/admin/config/key"; request: { group: string; key: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "config.groups": { method: "GET"; path: "/admin/config/groups"; request: void; response: ApiTypes.ConfigData; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "config.init": { method: "POST"; path: "/admin/config/init"; request: void; response: ApiTypes.ConfigData; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "config.list": { method: "GET"; path: "/admin/config"; request: { group?: string }; response: ApiTypes.ConfigData; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "config.redisTest": { method: "POST"; path: "/admin/config/redis/test"; request: void; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "config.register": { method: "POST"; path: "/admin/config/register"; request: { group: string; schema: Record<string, unknown> }; response: ApiTypes.ConfigData; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "config.reload": { method: "POST"; path: "/admin/config/reload"; request: { group?: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "config.update": { method: "POST"; path: "/admin/config"; request: Record<string, unknown>; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
@@ -252,13 +255,16 @@ export const generatedApiContract = {
   "comments.unpinManaged": { method: "DELETE", path: "/admin/cards/:id/pinned-comment", status: 204, shape: "void", public: false, capabilities: ["admin.access","comments.pin"] },
   "communication.settings": { method: "GET", path: "/me/communication/settings", status: 200, shape: "item", public: false, capabilities: [] },
   "communications.applyPolicies": { method: "PUT", path: "/admin/communications/policies", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.configure"] },
+  "communications.applySignals": { method: "PUT", path: "/admin/communications/signals", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.configure"] },
   "communications.policies": { method: "GET", path: "/admin/communications/policies", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
+  "communications.signals": { method: "GET", path: "/admin/communications/signals", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
   "community.insights": { method: "GET", path: "/admin/community/insights", status: 200, shape: "item", public: false, capabilities: ["admin.access","community.insights.read"] },
   "config.delete": { method: "DELETE", path: "/admin/config", status: 204, shape: "void", public: false, capabilities: ["admin.access","config.deleteKey"] },
   "config.deleteKey": { method: "DELETE", path: "/admin/config/key", status: 204, shape: "void", public: false, capabilities: ["admin.access","config.deleteKey"] },
   "config.groups": { method: "GET", path: "/admin/config/groups", status: 200, shape: "item", public: false, capabilities: ["admin.access","config.read"] },
   "config.init": { method: "POST", path: "/admin/config/init", status: 200, shape: "item", public: false, capabilities: ["admin.access","config.init"] },
   "config.list": { method: "GET", path: "/admin/config", status: 200, shape: "item", public: false, capabilities: ["admin.access","config.read"] },
+  "config.redisTest": { method: "POST", path: "/admin/config/redis/test", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.runtime.configure"] },
   "config.register": { method: "POST", path: "/admin/config/register", status: 200, shape: "item", public: false, capabilities: ["admin.access","config.register"] },
   "config.reload": { method: "POST", path: "/admin/config/reload", status: 204, shape: "void", public: false, capabilities: ["admin.access","config.reload"] },
   "config.update": { method: "POST", path: "/admin/config", status: 204, shape: "void", public: false, capabilities: ["admin.access","config.update"] },

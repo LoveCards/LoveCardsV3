@@ -14,6 +14,7 @@ final class InstalledSchemaLedger implements MigrationLedger
 {
     public array $rows = [];
     public function all(): array { return array_values($this->rows); }
+    public function allReadOnly(): array { return $this->all(); }
     public function find(string $id): ?MigrationProgress { return $this->rows[$id] ?? null; }
     public function initialize(MigrationDescriptor $descriptor): MigrationProgress
     {

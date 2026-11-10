@@ -1,7 +1,8 @@
 // 极简 Redis RESP2 订阅器（仅 SUBSCRIBE + message 推送解析），零第三方依赖。
-// 断线自动重连并汇报状态；Gateway 依据状态在 redis/source-poll 两种 transport 间切换。
+// 断线自动重连并汇报订阅状态；只有 SUBSCRIBE 确认后才视为可用。
 
 import net from 'node:net'
+import tls from 'node:tls'
 
 const CRLF = '\r\n'
 
@@ -67,9 +68,14 @@ export function createRespParser({ onReply }) {
 }
 
 export class RedisSubscriber {
-  constructor({ host = '127.0.0.1', port = 6379, channel, onMessage, onStatus, connectTimeoutMs = 1000 }) {
+  constructor({ host = '127.0.0.1', port = 6379, database = 0, password = '', tls: useTls = false, tlsServerName = '', ca, channel, onMessage, onStatus, connectTimeoutMs = 1000 }) {
     this.host = host
     this.port = port
+    this.database = database
+    this.password = password
+    this.useTls = useTls
+    this.tlsServerName = tlsServerName
+    this.ca = ca
     this.channel = channel
     this.onMessage = onMessage
     this.onStatus = onStatus ?? (() => {})
@@ -77,6 +83,8 @@ export class RedisSubscriber {
     this.socket = null
     this.stopped = false
     this.retryMs = 500
+    this.ready = false
+    this.retryTimer = null
   }
 
   start() {
@@ -86,14 +94,42 @@ export class RedisSubscriber {
 
   connect() {
     if (this.stopped) return
-    const socket = net.connect({ host: this.host, port: this.port })
+    // TLS 必须验证链与证书名称，握手失败后只重试 TLS，不降级到明文。
+    const socket = this.useTls
+      ? tls.connect({ host: this.host, port: this.port, servername: this.tlsServerName || this.host,
+        rejectUnauthorized: true, ...(this.ca ? { ca: this.ca } : {}) })
+      : net.connect({ host: this.host, port: this.port })
     this.socket = socket
     socket.setTimeout(this.connectTimeoutMs)
+    let stage = this.password ? 'auth' : this.database > 0 ? 'select' : 'subscribe'
+    const subscribe = () => socket.write(encodeCommand(['SUBSCRIBE', this.channel]))
+    const select = () => socket.write(encodeCommand(['SELECT', this.database]))
     const parser = createRespParser({
       onReply: (reply) => {
-        if (Array.isArray(reply) && reply.length === 3 && Buffer.isBuffer(reply[2])) {
+        if (Array.isArray(reply) && reply[0] === true) {
+          socket.destroy()
+          return
+        }
+        if (stage === 'auth' && reply === 'OK') {
+          stage = this.database > 0 ? 'select' : 'subscribe'
+          if (stage === 'select') select(); else subscribe()
+          return
+        }
+        if (stage === 'select' && reply === 'OK') {
+          stage = 'subscribe'
+          subscribe()
+          return
+        }
+        if (Array.isArray(reply) && reply.length === 3) {
           const kind = reply[0]?.toString?.() ?? ''
-          if (kind === 'message') {
+          if (stage === 'subscribe' && kind === 'subscribe' && reply[1]?.toString?.() === this.channel && !this.ready) {
+            this.ready = true
+            socket.setTimeout(0)
+            this.retryMs = 500
+            this.onStatus('up')
+            return
+          }
+          if (this.ready && kind === 'message' && Buffer.isBuffer(reply[2])) {
             try {
               this.onMessage(JSON.parse(reply[2].toString('utf8')))
             } catch {
@@ -103,25 +139,30 @@ export class RedisSubscriber {
         }
       },
     })
-    socket.on('connect', () => {
-      socket.setTimeout(0)
-      socket.write(encodeCommand(['SUBSCRIBE', this.channel]))
-      this.retryMs = 500
-      this.onStatus('up')
+    socket.on(this.useTls ? 'secureConnect' : 'connect', () => {
+      if (this.password) socket.write(encodeCommand(['AUTH', this.password]))
+      else if (this.database > 0) select()
+      else subscribe()
     })
     socket.on('data', (chunk) => parser.push(chunk))
+    socket.on('timeout', () => socket.destroy())
     socket.on('error', () => {})
     socket.on('close', () => {
       if (this.stopped) return
+      this.ready = false
       this.onStatus('down')
       const delay = this.retryMs
       this.retryMs = Math.min(30_000, this.retryMs * 2)
-      setTimeout(() => this.connect(), delay).unref?.()
+      this.retryTimer = setTimeout(() => { this.retryTimer = null; this.connect() }, delay)
+      this.retryTimer.unref?.()
     })
   }
 
   stop() {
     this.stopped = true
+    this.ready = false
+    if (this.retryTimer) clearTimeout(this.retryTimer)
+    this.retryTimer = null
     this.socket?.destroy()
   }
 }

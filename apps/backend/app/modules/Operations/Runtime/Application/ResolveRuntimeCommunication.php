@@ -9,16 +9,15 @@ use app\modules\Operations\Runtime\Contract\RuntimeProbe;
 use app\modules\Operations\Runtime\Domain\CommunicationSettings;
 
 /**
- * 通信运行时 Resolver：每次读取经 probe 派生 effective_mode。
+ * 通信运行时 Resolver：模式来自持久化选择，probe 只派生健康状态。
  *
- * 硬依赖规则（契约 §4.6）：realtime 生效 ⇔ event-worker 且 realtime-gateway
- * （require_supervisor 时再叠加 supervisor）。Scheduler 为 advisory，不阻塞。
- * desired=polling 时不因 worker/gateway 缺失降级（默认安装 polling/ready）。
+ * 实时硬依赖为 Redis、Event Worker、Gateway 和按策略要求的 Supervisor。
+ * Scheduler 仅供诊断。故障时保持 realtime/degraded，不自动切换轮询。
  */
 final class ResolveRuntimeCommunication
 {
     /** realtime 能力判定顺序，第一个失败项决定 reason_code。 */
-    private const BLOCKING_KEYS = ['event-worker', 'realtime-gateway', 'supervisor'];
+    private const BLOCKING_KEYS = ['realtime-redis', 'event-worker', 'realtime-gateway', 'supervisor'];
 
     public function __construct(
         private RuntimeConfigStore $store,
@@ -50,8 +49,47 @@ final class ResolveRuntimeCommunication
         }
 
         $settings = CommunicationSettings::normalize($row['settings']);
+        $capabilities = $this->probeCapabilities($settings, $checkedAt);
+        $desired = in_array($row['desired_mode'], CommunicationSettings::MODES, true) ? $row['desired_mode'] : 'polling';
+        $locked = self::envLockedToPolling();
+        $blockingReason = self::blockingReason($capabilities);
+
+        if ($desired === 'realtime' && $locked) {
+            $status = 'degraded';
+            $reason = 'config-locked';
+        } elseif ($desired === 'realtime' && $blockingReason !== null) {
+            $status = 'degraded';
+            $reason = $blockingReason;
+        } else {
+            $status = 'ready';
+            $reason = $desired === 'polling' && $locked ? 'config-locked' : null;
+        }
+
+        return [
+            'desired_mode' => $desired,
+            // 兼容既有 API；该字段只表示实际选择，不再派生另一种通信模式。
+            'effective_mode' => $desired,
+            'status' => $status,
+            'revision' => (int) $row['revision'],
+            'reason_code' => $reason,
+            'checked_at' => $this->stamp($checkedAt),
+            'settings' => $settings,
+            'last_apply_state' => $row['last_apply_state'] ?? null,
+            'last_apply_reason' => $row['last_apply_reason'] ?? null,
+            'capabilities' => $capabilities,
+        ];
+    }
+
+    /** 开启实时前使用提交后的设置检查硬依赖。 */
+    public function realtimeBlockingReason(array $settings): ?string
+    {
+        if (self::envLockedToPolling()) return 'config-locked';
+        return self::blockingReason($this->probeCapabilities($settings, $this->clock->nowUtc()));
+    }
+
+    private function probeCapabilities(array $settings, \DateTimeImmutable $checkedAt): array
+    {
         $capabilities = [];
-        $byKey = [];
         foreach ($this->probes as $probe) {
             try {
                 $result = $probe->probe($settings);
@@ -69,56 +107,25 @@ final class ResolveRuntimeCommunication
                 'checked_at' => $this->stamp($checkedAt),
             ];
             $capabilities[] = $entry;
-            $byKey[$entry['key']] = $entry;
         }
+        return $capabilities;
+    }
 
-        $desired = in_array($row['desired_mode'], CommunicationSettings::MODES, true) ? $row['desired_mode'] : 'polling';
-        $locked = self::envLockedToPolling();
-
-        $blockingReason = null;
+    private static function blockingReason(array $capabilities): ?string
+    {
+        $byKey = [];
+        foreach ($capabilities as $entry) $byKey[$entry['key']] = $entry;
         foreach (self::BLOCKING_KEYS as $key) {
             $entry = $byKey[$key] ?? null;
             if ($entry === null) {
-                $blockingReason = 'probe-unavailable';
-                break;
+                return 'probe-unavailable';
             }
-            // ready=null 表示"不适用"（如 not-required），不参与阻断判定。
-            if ($entry['ready'] === false) {
-                $blockingReason = (string) ($entry['reason_code'] ?? 'probe-unavailable');
-                break;
+            // 只有可选 Supervisor 可以报告 not-required；其他硬依赖必须明确 ready。
+            if ($entry['ready'] !== true && !($key === 'supervisor' && $entry['ready'] === null)) {
+                return (string) ($entry['reason_code'] ?? 'probe-unavailable');
             }
         }
-
-        if ($desired === 'realtime' && $locked) {
-            $effective = 'polling';
-            $status = 'degraded';
-            $reason = 'config-locked';
-        } elseif ($desired === 'realtime' && $blockingReason === null) {
-            $effective = 'realtime';
-            $status = 'ready';
-            $reason = null;
-        } elseif ($desired === 'realtime') {
-            $effective = 'polling';
-            $status = 'degraded';
-            $reason = $blockingReason;
-        } else {
-            $effective = 'polling';
-            $status = 'ready';
-            $reason = $locked ? 'config-locked' : null;
-        }
-
-        return [
-            'desired_mode' => $desired,
-            'effective_mode' => $effective,
-            'status' => $status,
-            'revision' => (int) $row['revision'],
-            'reason_code' => $reason,
-            'checked_at' => $this->stamp($checkedAt),
-            'settings' => $settings,
-            'last_apply_state' => $row['last_apply_state'] ?? null,
-            'last_apply_reason' => $row['last_apply_reason'] ?? null,
-            'capabilities' => $capabilities,
-        ];
+        return null;
     }
 
     private function stamp(\DateTimeImmutable $moment): string

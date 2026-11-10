@@ -10,6 +10,7 @@ const routes = [
   '/apps/access/permissions',
   '/apps/settings/storage/files',
   '/apps/settings/storage',
+  '/apps/settings/redis',
   '/apps/settings/messaging',
   '/apps/settings/verification',
   '/apps/settings/site',
@@ -31,6 +32,7 @@ const expectedHeadings: Record<string, string> = {
   '/apps/settings/community-rules': '站点策略',
   '/apps/operations/upgrade': '系统升级',
   '/apps/operations/runtime': '运行状态',
+  '/apps/settings/redis': 'Redis 服务',
 }
 
 const legacyAliases = [
@@ -313,7 +315,7 @@ for (const [legacyPath, canonicalPath] of legacyDetailAliases) {
   test(`legacy detail route redirects to canonical path: ${legacyPath}`, async ({ page }) => {
     await page.goto(`.${legacyPath}?source=legacy#detail-alias`, { waitUntil: 'domcontentloaded' })
     await expect(page).toHaveURL(new RegExp(`/admin${canonicalPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?`), {
-      timeout: legacyPath === '/apps/sender/config/smtp' ? 20_000 : 5_000,
+      timeout: 20_000,
     })
 
     const url = new URL(page.url())

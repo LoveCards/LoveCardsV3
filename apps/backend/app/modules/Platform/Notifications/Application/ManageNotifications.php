@@ -2,11 +2,9 @@
 
 namespace app\modules\Platform\Notifications\Application;
 
-use app\modules\Platform\Eventing\Public\RealtimeSignal;
-use app\modules\Platform\Eventing\Public\RealtimeSignalPublisher;
+use app\modules\Platform\Eventing\Public\DomainEventBus;
 use app\modules\Platform\Notifications\Contract\NotificationRepository;
 use app\modules\Platform\Notifications\Contract\NotificationTypeCatalog;
-use app\modules\Platform\Notifications\Domain\NotificationCursor;
 use app\modules\Platform\Notifications\Domain\NotificationIntent;
 use app\shared\Transport\Http\CursorPage;
 use app\api\ApiException;
@@ -17,7 +15,7 @@ final class ManageNotifications
     public function __construct(
         private NotificationRepository $repository,
         private ?TransactionManager $transactions = null,
-        private ?RealtimeSignalPublisher $signals = null,
+        private ?DomainEventBus $events = null,
         private ?NotificationPolicyGate $policies = null
     ) {
     }
@@ -41,14 +39,21 @@ final class ManageNotifications
                 return 0;
             }
         }
-        [$id, $firstInsert, $createdAt] = $this->repository->create($intent);
-        // 信号只由“首次 insert 成功”触发；去重命中不重复唤醒（契约 §4.5）。
-        if ($id > 0 && $firstInsert && $this->signals !== null) {
-            $topic = $intent->type() === 'message' ? 'messages' : 'notifications';
-            $cursorHint = $createdAt !== null && $createdAt !== '' ? NotificationCursor::encode($createdAt, $id) : '';
-            $this->signals->publish(new RealtimeSignal($topic, 'user:' . $intent->recipientId(), $cursorHint));
-        }
-        return $id;
+        $persist = function () use ($intent): int {
+            [$id, $firstInsert, $createdAt] = $this->repository->create($intent);
+            if ($id > 0 && $firstInsert && $this->events !== null) {
+                if ($createdAt === null || $createdAt === '') {
+                    throw new \UnexpectedValueException('新通知缺少创建时间');
+                }
+                $this->events->publish('notification.created', 'notification', (string) $id, [
+                    'recipient_id' => $intent->recipientId(),
+                    'notification_id' => $id,
+                    'created_at' => $createdAt,
+                ]);
+            }
+            return $id;
+        };
+        return $this->transactions !== null ? $this->transactions->run($persist) : $persist();
     }
 
     /** @return array{data: array<int, mixed>, next_cursor: ?string, has_more: bool} */
