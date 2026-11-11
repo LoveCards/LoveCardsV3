@@ -2,6 +2,8 @@
 
 > 完整实施设计与状态账本：[平台事件、通信与生命周期收敛](engineering/PLATFORM-CONVERGENCE-2026-11-11.md)。
 
+dev 实际部署、测试证据和人工验收步骤见 [2026-11-12 dev 验收记录](engineering/DEV-ACCEPTANCE-2026-11-12.md)。
+
 ## 架构与模块
 
 - [总体架构](engineering/ARCHITECTURE.md)

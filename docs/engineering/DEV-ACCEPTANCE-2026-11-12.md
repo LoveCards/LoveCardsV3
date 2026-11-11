@@ -1,0 +1,28 @@
+# dev 部署与验收记录
+
+日期：2026-11-12。范围：平台事件、前端通信、安装与升级生命周期收敛。部署提交 `beb304e0`，服务器分支 `dev-sse-preview`。未碰生产站点、未改防火墙、未重启 6001/20080/20088/20089。
+
+## 已完成
+
+- 本地根 `npm run check` 通过：后端 111/111、Gateway 18/18、默认主题 308/308，架构、路由、管理授权、SDK 生成和类型门禁全绿；136 个受影响 PHP 文件 lint 无错误；管理端生产构建通过。
+- 隔离 MariaDB：干净安装与旧版迁移终态 schema 一致；签名 Release 升级 E2E 完成 22 次逐单元推进、Contract 独立批准、Pointer 激活和最终健康；冷启动数据库备份和安装 root 密码持久化测试通过。
+- 隔离 SDK 集成 169/169；管理端全量浏览器 179 项中，178 项首跑通过、1 项 Nuxt 文档请求超时后重试通过，最终 0 失败。重试属于测试服务不响应，未发现对应页面断言失败。
+- dev 部署前检查为 `cc8b36fc`，唯一既有未提交文件是 `packages/sdk/test/TEST_REPORT.md`。暂停现有 cron、`lovecards-dev-event-worker.service` 和 `lovecards-dev-realtime-gateway.service` 后，通过 HTTPS fetch 快进到 `beb304e0`；服务与 cron 已恢复。
+- dev 使用现有 `LocalBackupArtifactStore` 生成并校验升级前数据库备份，Artifact 位于实例持久目录 `shared/backups/dev-pre-convergence-20261111174655.sql`，大小 1,042,019 字节，SHA-256 为 `cee9489a54110bf57b9b00485538cdcf00999d3787b50ff6b54ab53ff6060b246`。数据库恢复仍需经运维流程人工执行。
+- dev 迁移文件 49 份、账本 49 条，全部 `complete`，checksum 逐文件一致，失败数 0；定时消费者手动运行成功（本次领取 0）。`lc:runtime:status` 显示事件 `scheduled/ready`、通信 `polling/ready`，Redis、Worker、Gateway、Scheduler 探测均就绪。API 6001 的公开认证策略返回 200、受保护通信配置返回 401；主题 20088 和管理端 `/admin/` 20089 返回 200。20080 在 localhost 无匹配 Host 时返回 421，未作为业务健康证明。
+- 服务器原有 `TEST_REPORT.md` 未被覆盖，部署前后 SHA-256 都是 `9733d2af7b2cb9d007ee26a45a151fa3c278160a7677e74b41785facd6b0bffe`。本地相同路径的既有未提交内容曾被第一次 SDK 集成运行误覆盖，原文无法恢复；它未提交和部署，后续集成通过 `LOVECARDS_SDK_TEST_SKIP_REPORT=1` 禁止再写报告。
+
+## 手工使用与验证
+
+1. 打开现有 dev 管理端 `/admin/`。在「系统设置 → Redis」维护连接；保存配置不会自动启动 Redis。事件处理页 `/admin/apps/operations/eventing` 查看定时/常驻策略、触发来源、积压和 Worker 健康；前端通信页 `/admin/apps/operations/communication` 查看轮询/实时选择、Gateway 与 Redis 就绪。
+2. 默认保持 `scheduled + polling` 时，用两个普通账号互发私信、触发通知和关注信息流，确认消息及小红点在轮询周期内更新；刷新页面后最终数据仍由 PHP API 读取。异步事件由现有 cron `lc:scheduler:run-once` 处理，不能仅靠浏览器轮询替代。
+3. 需要试实时模式时，先在事件处理页切到 `resident`，等待 Worker 显示目标版本与目录兼容且心跳新鲜；再在通信页检查 Redis 与 Gateway 就绪并明确切到 `realtime`。两个账号分别打开浏览器，发私信、读私信、触发通知与关注信息流提示；验证新消息即时提示、已读更新、信息流点击刷新后拉取新内容。发送和列表仍走 PHP API。
+4. 故障演练只能在安排好的 dev 维护窗口进行：停止 Gateway 或断开 Redis 后，所选实时模式应显示故障，浏览器不得自动切为业务轮询；API 手动刷新仍应读到持久数据。恢复依赖后确认原模式恢复。退出常驻前先在通信页手动切回轮询，再在事件处理页切回定时并确认 cron 新鲜运行。
+5. 升级页 `/admin/apps/operations/upgrade` 只接收签名 ZIP，通过同一 `UpgradeCoordinator` 单步推进；Contract 需要独立权限与批准。Pointer 恢复不等于数据库自动回滚，升级前备份须保留。
+
+## 未完成边界
+
+- dev 尚未由两个真实浏览器完成实时模式、断链故障注入和公共同源 Gateway 反代验收；上述步骤是待执行的人工验收，不记作已通过。
+- dev 此次是源码工作树快进及受审独立迁移 CLI，不是通过签名 ZIP 在该站点跑 `UpgradeCoordinator`；统一升级路径已在隔离 E2E 验证。
+- S11 旧表中 `system`、`permissions`、`role_permissions`、`role_capabilities` 非空。逐行语义映射和授权等价性未证明，未执行 DROP 或历史数据清理。新装只停止向前三张旧表播种无用数据。
+- 默认配置仍是 `scheduled + polling`；没有把「Redis/Gateway 已就绪」误报为「实时通信已开启」。
