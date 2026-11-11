@@ -3,7 +3,7 @@
     <AdminPageHeader title="通知处理" description="检查站内提醒对应事件的处理结果。处理完成不代表用户已阅读。" :breadcrumbs="[{ title: '系统' }]">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="loadAll">刷新</v-btn></template>
     </AdminPageHeader>
-    <p class="mb-4 text-body-2">仅显示通知处理队列。<NuxtLink to="/apps/operations/runtime">运行状态</NuxtLink> · <NuxtLink to="/apps/operations/notification-policies">通知策略</NuxtLink></p>
+    <p class="mb-4 text-body-2">仅显示通知处理队列。<NuxtLink to="/apps/operations/eventing">事件处理</NuxtLink> · <NuxtLink to="/apps/operations/notification-policies">通知策略</NuxtLink></p>
     <v-sheet v-if="summary" border rounded class="mb-4 pa-4">
       <div class="d-flex flex-wrap ga-5">
         <span>失败 <strong>{{ summary.dead }}</strong></span><span>待处理 <strong>{{ summary.pending }}</strong></span>

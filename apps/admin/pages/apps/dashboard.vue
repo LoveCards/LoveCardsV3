@@ -103,7 +103,7 @@
                 title="主动更新"
                 :subtitle="communicationSummary"
                 :base-color="runtimeStatus.communication.status === 'ready' ? 'success' : 'warning'"
-                to="/apps/operations/runtime?source=dashboard&section=communication"
+                to="/apps/operations/communication?source=dashboard"
                 value="runtime-communication"
               />
               <v-divider />
@@ -111,7 +111,7 @@
                 prepend-icon="mdi-inbox-arrow-down-outline"
                 title="事件队列"
                 :subtitle="`${runtimeStatus.eventing.pending} 待处理 · ${runtimeStatus.eventing.dead} 死信`"
-                to="/apps/operations/runtime?source=dashboard&section=eventing"
+                to="/apps/operations/eventing?source=dashboard"
                 value="runtime-eventing"
               />
             </v-list>
@@ -268,7 +268,8 @@ const responsibilityLinks = computed(() => [
   { key: 'reports', label: '举报处理', description: '核对证据、状态和处理历史。', icon: 'mdi-flag-outline', to: '/apps/community/reports' },
   { key: 'insights', label: '社区洞察', description: '查看隐私安全的聚合指标。', icon: 'mdi-chart-line', to: '/apps/community/insights' },
   { key: 'users', label: '用户', description: '查看获授权的用户和账号安全状态。', icon: 'mdi-shield-account-outline', to: '/apps/users' },
-  { key: 'runtime', label: '运行健康', description: '检查设施、事件队列和降级状态。', icon: 'mdi-heart-pulse', to: '/apps/operations/runtime' },
+  { key: 'eventing', label: '事件处理', description: '检查事件消费策略、队列和 Worker。', icon: 'mdi-inbox-arrow-down-outline', to: '/apps/operations/eventing' },
+  { key: 'communication', label: '前端通信', description: '检查轮询或实时通信及其依赖。', icon: 'mdi-access-point-network', to: '/apps/operations/communication' },
   { key: 'deliveries', label: '通知处理', description: '检查提醒事件的处理结果和失败原因。', icon: 'mdi-send-check-outline', to: '/apps/operations/deliveries' },
   { key: 'storage', label: '存储服务', description: '维护文件渠道和基础设施配置。', icon: 'mdi-database-cog-outline', to: '/apps/settings/storage' },
   { key: 'upgrade', label: '升级与迁移', description: '检查升级计划和迁移状态。', icon: 'mdi-package-up', to: '/apps/operations/upgrade' },

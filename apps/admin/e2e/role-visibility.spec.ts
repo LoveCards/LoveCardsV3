@@ -24,7 +24,7 @@ const roleCases: RoleCase[] = [
       globalGrant('config.read'), globalGrant('captcha.read'), globalGrant('operations.read'),
       globalGrant('audit.read'), globalGrant('roles.read'), globalGrant('permissions.read'),
     ],
-    visible: ['卡片', '用户管理', '站点信息', '站点策略', '运行状态', '审计日志', '角色管理', '权限目录'],
+    visible: ['卡片', '用户管理', '站点信息', '站点策略', '事件处理', '前端通信', '审计日志', '角色管理', '权限目录'],
     hidden: [],
   },
   {
@@ -73,7 +73,7 @@ const roleCases: RoleCase[] = [
     slug: 'operations_admin',
     name: '运维管理员',
     grants: [...common, globalGrant('operations.read'), globalGrant('communications.read'), allGrant('files.read')],
-    visible: ['文件管理', '站点策略', '运行状态', '通知处理', '升级与迁移'],
+    visible: ['文件管理', '站点策略', '事件处理', '前端通信', '通知处理', '升级与迁移'],
     hidden: ['站点信息', '用户管理', '举报处理', '角色管理'],
   },
   {
@@ -81,7 +81,7 @@ const roleCases: RoleCase[] = [
     name: '通知只读员',
     grants: [...common, globalGrant('communications.read')],
     visible: ['站点策略', '通知处理'],
-    hidden: ['站点信息', '运行状态', '验证服务'],
+    hidden: ['站点信息', '事件处理', '前端通信', '验证服务'],
   },
   {
     slug: 'auditor',

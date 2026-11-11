@@ -181,6 +181,7 @@ test('runtime validates before review and keeps the draft after a revision confl
   }) }))
   await page.route('**/api/admin/operations/runtime', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
     success: true, data: { facilities: [], workers: [], eventing: { pending: 0, processing: 0, dead: 0 },
+      event_processing: { mode: 'scheduled', state: 'active', target_mode: null, scheduled_trigger: 'cli', revision: 1, status: 'ready', reason_code: null, note: null },
       communication: { desired_mode: 'polling', effective_mode: 'polling', status: 'ready', revision,
         reason_code: null, checked_at: '2026-11-07 10:00:00', settings: { ...settings, notification_interval_seconds: revision === 3 ? 20 : 25 },
         last_apply_state: null, last_apply_reason: null, capabilities: [] } },
@@ -198,7 +199,7 @@ test('runtime validates before review and keeps the draft after a revision confl
     return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: { code: 9016, message: '配置已变化' } }) })
   })
 
-  await page.goto('./apps/operations/runtime', { waitUntil: 'domcontentloaded' })
+  await page.goto('./apps/operations/communication', { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: '修改通信设置' }).click()
   const field = page.getByLabel('通知轮询间隔（秒）')
   await field.fill('21')

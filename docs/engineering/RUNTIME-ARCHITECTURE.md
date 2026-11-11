@@ -34,7 +34,7 @@ ThinkPHP 缓存默认仍为 file。只有部署方显式选择 `cache.driver=red
 
 ## 唯一模式状态与诊断
 
-Eventing 的 `eventing_consumer_state` 保存 `scheduled/resident`；Runtime 的 `runtime_config_state` 保存 `polling/realtime`。`RuntimeCommunication::statusSnapshot()` 组合 `event_processing` 和 `communication` 两份快照：前者结合定时运行记录或 Worker 心跳判定健康，后者检查实时依赖。管理端 `/apps/operations/runtime`、管理 API 与 `php think lc:runtime:status` 使用同一投影。状态中的 `mode`/`desired_mode` 是选择，`status` 与 `reason_code` 是探测结果；探测故障不修改选择。CLI 输出为一个 JSON 对象，包含 `event_processing` 与 `communication`，不再输出 `request/polling` fallback。
+Eventing 的 `eventing_consumer_state` 保存 `scheduled/resident`；Runtime 的 `runtime_config_state` 保存 `polling/realtime`。`RuntimeCommunication::statusSnapshot()` 组合 `event_processing` 和 `communication` 两份快照：前者结合定时运行记录或 Worker 心跳判定健康，后者检查实时依赖。管理端 `/apps/operations/eventing` 与 `/apps/operations/communication`、管理 API 与 `php think lc:runtime:status` 使用同一投影；页面分别负责事件消费和浏览器通信配置。旧 `/apps/operations/runtime` 是书签兼容跳转，不承载第三套运行逻辑。状态中的 `mode`/`desired_mode` 是选择，`status` 与 `reason_code` 是探测结果；探测故障不修改选择。CLI 输出为一个 JSON 对象，包含 `event_processing` 与 `communication`，不再输出 `request/polling` fallback。
 
 管理 API 的旧 `facilities` 字段暂时返回空数组，概览 API 的旧 `runtime` 字段也返回空数组，以保留现有响应形状。旧 `config/runtime.php`、`FacilityResolver`、配套探测类及 `fallback` 逻辑已从当前代码删除；不得为了填充兼容空字段恢复第二套模式判断。
 
