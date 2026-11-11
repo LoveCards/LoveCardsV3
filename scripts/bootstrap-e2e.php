@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 $mode = $argv[1] ?? 'create';
 $database = $argv[2] ?? '';
-if (!in_array($mode, ['create', 'create-legacy', 'drop'], true)) {
+if (!in_array($mode, ['create', 'create-legacy-prior', 'drop'], true)) {
     fwrite(STDERR, "Unsupported E2E database mode\n");
     exit(2);
 }
@@ -129,7 +129,7 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     ]);
     $databasePdo->exec("SET NAMES utf8mb4 COLLATE {$collation}");
-    $installFiles = $mode === 'create-legacy'
+    $installFiles = $mode === 'create-legacy-prior'
         ? [__DIR__ . '/../apps/backend/data.sql']
         : [__DIR__ . '/../apps/backend/database/schema.sql', __DIR__ . '/../apps/backend/database/seed.sql'];
     foreach ($installFiles as $installFile) {
@@ -160,14 +160,20 @@ try {
                 throw new RuntimeException('E2E install ledger failed: ' . implode("\n", $lines));
             }
         }
-        // 历史库一次只推进一个 phase；按迁移数量给出有界预算。
+        // 旧版库只应用已发布迁移；S11、S12 留给真实签名包升级计划。
         for ($attempt = 0; $attempt < $expectedMigrations * 8 + 1 && !$complete; $attempt++) {
-            if ($mode !== 'create-legacy') break;
+            if ($mode !== 'create-legacy-prior') break;
+            $ledgerExists = (int) $databasePdo->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'system_upgrade_steps'")->fetchColumn() === 1;
+            if ($ledgerExists) {
+                $settledOthers = (int) $databasePdo->query("SELECT COUNT(*) FROM `system_upgrade_steps` WHERE `migration_id` NOT IN ('20261112000001', '20261112000002') AND `status` = 'complete'")->fetchColumn();
+                $newCount = (int) $databasePdo->query("SELECT COUNT(*) FROM `system_upgrade_steps` WHERE `migration_id` IN ('20261112000001', '20261112000002')")->fetchColumn();
+                if ($settledOthers === $expectedMigrations - 2 && $newCount === 0) {
+                    $complete = true;
+                    break;
+                }
+            }
             $lines = [];
-            // This database is disposable and isolated. Complete the full
-            // schema, including contract phases, so the subsequent E2E suite
-            // starts from a terminal runtime state. Production migration
-            // approval remains explicit through the release coordinator.
+            // 已发布迁移保留原有 CLI 行为；此旧版账本必须尚无 S11。
             $command = $php . ' ' . $think . ' lc:system:migrate --contract';
             exec($command, $lines, $exitCode);
             if ($exitCode !== 0) {

@@ -436,10 +436,37 @@ if (preg_match($insertPattern, $dataSql)) {
 // ────────────────────────────────────────────────────────────
 echo "\n--- 5. Prohibited Statements ---\n";
 
-$allSql = $dataSql . "\n" . $migrationCombined;
-// Strip comments before checking for prohibited statements
-$allSqlNoComments = stripSqlComments($allSql);
-$migrationNoComments = stripSqlComments($migrationCombined);
+$migrationNoComments = '';
+$s11Name = '20261112000001.sql';
+$s11ApprovedDrop = '/\bDROP\s+TABLE\s+`role_permissions`\s*,\s*`permissions`\s*,\s*`role_capabilities`\s*,\s*`system`\s*;/i';
+foreach ($migrationSqls as $name => $sql) {
+    $body = stripSqlComments($sql);
+    if ($name === $s11Name) {
+        $phases = preg_split('/^\s*--\s*@lc-phase\s+contract\s*$/mi', $sql, 2);
+        if (preg_match('/^\s*--\s*@lc-requires-upgrade-contract\s*$/mi', $sql) !== 1
+            || count($phases ?: []) !== 2
+            || preg_match('/' . substr($s11ApprovedDrop, 1, -2) . '\s*$/i', trim(stripSqlComments($phases[1]))) !== 1
+            || preg_match_all($s11ApprovedDrop, $body, $matches) !== 1) {
+            fail('S11 Contract 最后一条语句必须是受控四表 DROP');
+        } else {
+            pass('S11 Contract 以受控四表 DROP 结束');
+            $body = preg_replace($s11ApprovedDrop, '', $body, 1);
+        }
+    } elseif ($name === '20261112000002.sql') {
+        $phases = preg_split('/^\s*--\s*@lc-phase\s+contract\s*$/mi', $sql, 2);
+        if (preg_match('/^\s*--\s*@lc-requires-upgrade-contract\s*$/mi', $sql) !== 1
+            || count($phases ?: []) !== 2
+            || !str_contains($phases[1], 'LoveCards:20261112000001:legacy-seed-v1')
+            || !str_contains($phases[1], 'ROUTINE_COMMENT')
+            || preg_match('/DROP\s+PROCEDURE\s+`lc_s11_assert_legacy_seed`/i', $phases[1]) !== 1) {
+            fail('S11 cleanup 仅在受控 Contract 中核验所有权并清理过程');
+        } else {
+            pass('S11 cleanup 受控 Contract 核验过程所有权');
+        }
+    }
+    $migrationNoComments .= "\n" . $body;
+}
+$allSqlNoComments = stripSqlComments($dataSql) . "\n" . $migrationNoComments;
 
 $prohibited = [
     '/\bDROP\s+TABLE\b/i'               => 'DROP TABLE',
@@ -528,7 +555,7 @@ if ($migrationCombined !== '') {
     // 7f. Check migration doesn't contain destructive operations. DROP INDEX is
     // allowed for rebuilding a legacy index after a column rename; it does not
     // delete user data and is covered by the compatibility migration checks.
-    // Strip comments first to avoid matching DROP in SQL comments
+    // 注释已移除，S11 的唯一受审多表 DROP 已单独核验并排除。
     $destructiveDrops = $migrationNoComments;
     // Exempt DROP PROCEDURE (allowed)
     $destructiveDrops = preg_replace('/DROP\s+PROCEDURE\s+IF\s+EXISTS/i', '', $destructiveDrops);
