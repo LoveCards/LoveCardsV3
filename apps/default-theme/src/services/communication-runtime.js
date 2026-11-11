@@ -45,6 +45,7 @@ export function createCommunicationRuntime({
   let destroyed = false;
   let transportGeneration = 0;
   let settingsGeneration = 0;
+  let controlAvailable = false;
 
   function emit(topic, hint = '') {
     for (const listener of listeners) {
@@ -80,6 +81,20 @@ export function createCommunicationRuntime({
     if (settingsRefresh) { clearTimeoutFn(settingsRefresh); settingsRefresh = null; }
   }
 
+  function validSnapshot(value) {
+    const selected = value?.desired_mode ?? value?.effective_mode;
+    return ['polling', 'realtime'].includes(selected)
+      && ['ready', 'degraded'].includes(value?.status)
+      && value?.settings !== null && typeof value?.settings === 'object' && !Array.isArray(value.settings);
+  }
+
+  function pauseForControlFailure() {
+    controlAvailable = false;
+    clearTransportScheduling();
+    // 保留最后已知选择供展示；没有可信配置时只重试控制面，不启动任何业务调度。
+    setConnectionStatus('fault');
+  }
+
   function isHidden() {
     return Boolean(documentRef && documentRef.visibilityState === 'hidden');
   }
@@ -108,7 +123,7 @@ export function createCommunicationRuntime({
   }
 
   function scheduleRealtimeRetry() {
-    if (!started || mode !== 'realtime' || reconnectDelay) return;
+    if (!started || !controlAvailable || mode !== 'realtime' || reconnectDelay) return;
     attempts += 1;
     const delay = Math.min(REALTIME_RETRY_MAX_MS, REALTIME_RETRY_BASE_MS * 2 ** Math.min(attempts - 1, 8));
     reconnectDelay = setTimeoutFn(() => {
@@ -174,9 +189,11 @@ export function createCommunicationRuntime({
       refreshAfterConnection();
     });
     source.addEventListener('heartbeat', () => {
+      if (eventSource !== source) return;
       armWatchdog(ticket.heartbeat_seconds);
     });
     source.addEventListener('signal', (event) => {
+      if (eventSource !== source) return;
       armWatchdog(ticket.heartbeat_seconds);
       let topic = null;
       let hint = '';
@@ -207,11 +224,16 @@ export function createCommunicationRuntime({
       settingsRefresh = null;
       if (!started) return;
       const client = clientResolver();
-      if (!client) return;
       const generation = ++settingsGeneration;
       let next;
-      try { next = await client.communication.settings(); } catch {
-        if (started && !destroyed && generation === settingsGeneration) scheduleSettingsRefresh();
+      try {
+        next = await client?.communication.settings();
+        if (!validSnapshot(next)) throw new Error('Invalid communication settings');
+      } catch {
+        if (started && !destroyed && generation === settingsGeneration) {
+          pauseForControlFailure();
+          scheduleSettingsRefresh();
+        }
         return;
       }
       if (!started || destroyed || generation !== settingsGeneration) return;
@@ -219,8 +241,10 @@ export function createCommunicationRuntime({
       const previousStatus = snapshot?.status;
       const nextMode = next?.desired_mode ?? next?.effective_mode;
       const pollingSettingsChanged = POLLING_SETTING_KEYS.some((key) => next?.settings?.[key] !== snapshot?.settings?.[key]);
+      const recovered = !controlAvailable;
       snapshot = next;
-      if (nextMode !== previousMode || (nextMode === 'realtime' && next?.status !== previousStatus) || (nextMode === 'polling' && pollingSettingsChanged)) {
+      controlAvailable = true;
+      if (recovered || nextMode !== previousMode || (nextMode === 'realtime' && next?.status !== previousStatus) || (nextMode === 'polling' && pollingSettingsChanged)) {
         clearTransportScheduling();
         attempts = 0;
         if (nextMode === 'realtime') await startRealtime();
@@ -235,16 +259,21 @@ export function createCommunicationRuntime({
     if (started || destroyed) return;
     started = true;
     const client = clientResolver();
-    if (!client) return;
     const generation = ++settingsGeneration;
-    let next = null;
+    let next;
     try {
-      next = await client.communication.settings();
+      next = await client?.communication.settings();
+      if (!validSnapshot(next)) throw new Error('Invalid communication settings');
     } catch {
-      // 保持未知模式，等待下一次显式启动。
+      if (started && !destroyed && generation === settingsGeneration) {
+        pauseForControlFailure();
+        scheduleSettingsRefresh();
+      }
+      return;
     }
     if (!started || destroyed || generation !== settingsGeneration) return;
     snapshot = next;
+    controlAvailable = true;
     clearScheduling();
     const selectedMode = snapshot?.desired_mode ?? snapshot?.effective_mode;
     if (selectedMode === 'realtime') await startRealtime();
@@ -290,10 +319,20 @@ export function createCommunicationRuntime({
         void (async () => {
           const client = clientResolver();
           const generation = ++settingsGeneration;
-          let next = snapshot;
-          try { if (client) next = await client.communication.settings(); } catch { /* 保留旧快照 */ }
+          let next;
+          try {
+            next = await client?.communication.settings();
+            if (!validSnapshot(next)) throw new Error('Invalid communication settings');
+          } catch {
+            if (started && !destroyed && generation === settingsGeneration && !isHidden()) {
+              pauseForControlFailure();
+              scheduleSettingsRefresh();
+            }
+            return;
+          }
           if (!started || destroyed || generation !== settingsGeneration || isHidden()) return;
           snapshot = next;
+          controlAvailable = true;
           const selectedMode = snapshot?.desired_mode ?? snapshot?.effective_mode;
           if (selectedMode === 'realtime') await startRealtime();
           else if (selectedMode === 'polling') startPolling();

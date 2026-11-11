@@ -34,7 +34,7 @@
 | GET | `/admin/community/insights` | `community.insights` | grants:admin.access:global,community.insights.read:global | no | AdminCommunityInsightsResource::make | — |
 | DELETE | `/admin/config` | `config.delete` | grants:admin.access:global,config.deleteKey:global | yes | createNoContent | — |
 | GET | `/admin/config` | `config.list` | grants:admin.access:global,config.read:global | yes | ConfigResource::make | — |
-| POST | `/admin/config` | `config.update` | grants:admin.access:global,config.update:global | yes | createNoContent | — |
+| POST | `/admin/config` | `config.update` | grants:admin.access:global,config.update:global | yes | ConfigResource::make | — |
 | GET | `/admin/config/groups` | `config.groups` | grants:admin.access:global,config.read:global | no | ConfigResource::make | — |
 | POST | `/admin/config/init` | `config.init` | grants:admin.access:global,config.init:global | no | ConfigResource::make | — |
 | DELETE | `/admin/config/key` | `config.deleteKey` | grants:admin.access:global,config.deleteKey:global | yes | createNoContent | — |

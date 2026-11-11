@@ -256,8 +256,13 @@
                             <ul class="mdui-m-t-1">
                                 <li> 默认超管账户</li>
                                 <li> 超管账号：admin@lovecards.cn</li>
-                                <li> 超管密码：123456</li>
+                                <li> 请设置仅你知道的超管密码，完成安装后即可登录</li>
                             </ul>
+                            <div class="mdui-textfield">
+                                <label class="mdui-textfield-label">初始管理员密码（至少 12 个字符）</label>
+                                <input type="password" maxlength="128" autocomplete="new-password" class="mdui-textfield-input"
+                                    v-model="req.InstallLock.admin_password">
+                            </div>
                             <ul>
                                 <li> 💡问题反馈：<a href="https://forum.lovecards.cn/t/AskAndHelp"
                                         target="_blank">由LoveCards社区提供</a></li>

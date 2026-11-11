@@ -34,12 +34,13 @@ $assert(str_contains($repository, 'Db::startTrans()') && str_contains($repositor
 $assert(str_contains($repository, '$claim->triggerSource()'), 'claim must enforce one selected scheduled trigger');
 $assert(str_contains($store, "'draining'") && str_contains($store, "'lease_expires_at'"), 'transition must stop claims until live leases settle');
 $assert(str_contains($store, "($" . "before['mode'] === 'scheduled' && $" . "trigger !== $" . "before['scheduled_trigger'])"), 'scheduled trigger change must drain old source leases');
-$assert(str_contains($scheduled, "GET_LOCK('lc:eventing:scheduled'") && str_contains($scheduled, "RELEASE_LOCK('lc:eventing:scheduled'"), 'one-shot adapters share a MySQL overlap lock');
+$assert(str_contains($scheduled, "GET_LOCK(?, 0)") && str_contains($scheduled, "RELEASE_LOCK(?)") && str_contains($scheduled, "DeploymentNamespace::current()->scheduledLock()"), 'one-shot adapters share a MySQL overlap lock');
 $assert(!str_contains($middleware, 'EventingRequestDrain'), 'ordinary requests must not claim event work');
 $assert(!str_contains($store, 'runtime_config_state'), 'Eventing must not query Runtime private tables');
 $worker = (string) file_get_contents($root . '/app/modules/Platform/Eventing/Application/WorkerLoop.php');
-$assert(str_contains($worker, "['mode-not-selected', 'transition-draining']")
-    && str_contains($worker, 'sleepMilliseconds'), 'resident worker idles without claiming when scheduled or draining');
+$assert(str_contains($worker, "'mode-not-selected'") && str_contains($worker, "'transition-draining'")
+    && str_contains($worker, "'lifecycle-not-qualified'")
+    && str_contains($worker, 'sleepMilliseconds'), 'resident worker idles without claiming when mode or lifecycle disallows it');
 $cronGuard = (string) file_get_contents($root . '/app/api/middleware/EventingCronTokenCheck.php');
 $assert(!str_contains($cronGuard, '->isSsl()') && !str_contains($cronGuard, 'X_FORWARDED_PROTO')
     && str_contains($cronGuard, "strlen($" . "expected) < 32")

@@ -137,7 +137,7 @@ import AdminConfigSection from '~/components/shared/admin/AdminConfigSection.vue
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
-import { isApiError, useApi } from '~/lib/api'
+import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import CommonUtils from '~/utils/common'
 import { readObject, readString } from '~/utils/json'
@@ -157,6 +157,7 @@ interface SiteConfig {
 type ActionMessage = { type: 'success' | 'error'; text: string }
 
 const client = useApi()
+const configSnapshot = useConfigSnapshot(client)
 const userStore = useUserStore()
 const loading = ref(false)
 const loadError = ref('')
@@ -205,13 +206,13 @@ const toBackendSite = (config: SiteConfig): JsonObject => ({
     copyright: config.system.siteCopyright,
   },
 })
-const errorMessage = (cause: unknown, fallback: string) => isApiError(cause) ? cause.message : fallback
+const errorMessage = configSnapshot.errorMessage
 
 const loadConfig = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const converted = toFrontendFormat(await client.config.list())
+    const converted = toFrontendFormat(await configSnapshot.list())
     siteConfig.value = CommonUtils.deepClone(converted)
     originConfig.value = CommonUtils.deepClone(converted)
   } catch (cause) {
@@ -225,7 +226,8 @@ const saveSite = async () => {
   siteSaving.value = true
   siteMessage.value = null
   try {
-    await client.config.update(toBackendSite(siteConfig.value))
+    const committed = await configSnapshot.update(toBackendSite(siteConfig.value))
+    siteConfig.value = toFrontendFormat(committed)
     originConfig.value = CommonUtils.deepClone(siteConfig.value)
     siteMessage.value = { type: 'success', text: '站点信息已保存。' }
   } catch (cause) {

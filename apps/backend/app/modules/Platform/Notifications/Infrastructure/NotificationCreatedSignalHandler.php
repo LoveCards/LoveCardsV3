@@ -29,10 +29,6 @@ final class NotificationCreatedSignalHandler implements EventHandler
         if ($recipientId < 1 || $notificationId < 1 || !is_string($createdAt) || $createdAt === '') {
             throw new \UnexpectedValueException('Realtime 通知事件载荷无效');
         }
-        if (!SignalPolicies::enabled('notifications.new')) {
-            $context->markSignalDecision('skipped');
-            return;
-        }
         $state = app(RuntimeCommunication::class)->signalDeliveryState();
         if ($state === 'skip') {
             $context->markSignalDecision('skipped');
@@ -40,6 +36,11 @@ final class NotificationCreatedSignalHandler implements EventHandler
         }
         if ($state !== 'deliver') throw new SignalTransportUnavailable('Realtime 信号链路不可用');
         $cursor = NotificationCursor::encode($createdAt, $notificationId);
+        if (!SignalPolicies::authorize('notifications.new', $context)) {
+            $context->markSignalDecision('skipped');
+            return;
+        }
+        $context->assertSignalWindow();
         app(RealtimeSignalPublisher::class)->publish(new RealtimeSignal('notifications', 'user:' . $recipientId, $cursor));
         $context->markSignalDecision('applied');
     }

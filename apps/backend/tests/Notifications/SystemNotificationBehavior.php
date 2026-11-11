@@ -115,7 +115,7 @@ $transactions = new SystemNoticeTransactions($outbox);
 $context = new LogContextScope();
 $context->set(LogContext::start('system-notice-test', 'system-notice-correlation'));
 $bus = new DomainEventBus(
-    new EventRecorder($outbox, new SystemNoticeDeliveries(), new HandlerRegistry(), new SystemNoticeClock()),
+    new EventRecorder($outbox, new SystemNoticeDeliveries(), \app\EventHandlers::create(), new SystemNoticeClock()),
     $context
 );
 $notifications = new SystemNotifications($bus, $transactions);
@@ -162,7 +162,7 @@ $assert($projected->data() === [
 $failedOutbox = new SystemNoticeOutbox();
 $failedTransactions = new SystemNoticeTransactions($failedOutbox);
 $failedBus = new DomainEventBus(
-    new EventRecorder($failedOutbox, new SystemNoticeDeliveries(true), new HandlerRegistry(), new SystemNoticeClock()),
+    new EventRecorder($failedOutbox, new SystemNoticeDeliveries(true), \app\EventHandlers::create(), new SystemNoticeClock()),
     $context
 );
 $assertThrows(

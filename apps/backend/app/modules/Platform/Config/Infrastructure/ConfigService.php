@@ -1,373 +1,228 @@
 <?php
 
+declare(strict_types=1);
+
 namespace app\modules\Platform\Config\Infrastructure;
 
+use app\api\ApiException;
 use think\facade\Db;
-use app\shared\Infrastructure\Cache\CacheManager;
 
+/** 配置控制路径直接读取 SQL，不依赖由本模块管理的缓存连接。 */
 class ConfigService
 {
-    protected static array $cache = [];
-    protected static array $schema = [];
+    private const REVISION_KEY = '__revision';
 
-    // ═══════════════════════════════
-    //  注册接口
-    // ═══════════════════════════════
-
-    /**
-     * 扫描 config/apps/*.php 并批量注册
-     * 安装时调用一次
-     */
     public static function init(): array
     {
         $results = [];
-        $files = glob(config_path() . 'apps/*.php');
-
-        foreach ($files as $file) {
-            $group = pathinfo($file, PATHINFO_FILENAME);
-
+        foreach (glob(config_path() . 'apps/*.php') as $file) {
             $schema = include $file;
-            if (!is_array($schema)) continue;
-
-            $results[$group] = self::register($group, $schema, false);
+            if (is_array($schema)) $results[pathinfo($file, PATHINFO_FILENAME)] = self::register(pathinfo($file, PATHINFO_FILENAME), $schema);
         }
-
-        CacheManager::clearDomain('config');
-
         return $results;
     }
 
-    /**
-     * 注册 schema + seed SQL
-     * 安装/升级时调用，运行时不调用
-     *
-     * @param string $group  配置组名
-     * @param array  $schema ['key' => ['type' => 'string', 'default' => '', 'description' => '']]
-     * @param bool   $clearCache 是否立即清除缓存（init 批量调用时传 false）
-     * @return array ['group', 'seeded', 'skipped']
-     */
     public static function register(string $group, array $schema, bool $clearCache = true): array
     {
-        self::$schema[$group] = $schema;
-
-        $seeded = [];
-        $skipped = [];
-
-        foreach ($schema as $key => $def) {
-            $exists = Db::table('configs')
-                ->where('group', $group)
-                ->where('key', $key)
-                ->find();
-
-            if ($exists) {
-                $skipped[] = "{$group}.{$key}";
-                continue;
+        self::assertKeys($schema);
+        return Db::transaction(static function () use ($group, $schema): array {
+            $revision = self::lockRevision($group, true);
+            $seeded = [];
+            $skipped = [];
+            foreach ($schema as $key => $definition) {
+                $query = Db::table('configs')->where('group', $group)->where('key', $key);
+                if ($query->find() !== null) { $skipped[] = "{$group}.{$key}"; continue; }
+                self::insertValue($group, $key, $definition['default'] ?? '', $definition['type'] ?? 'string', $definition['description'] ?? '');
+                $seeded[] = "{$group}.{$key}";
             }
-
-            Db::table('configs')->insert([
-                'group'       => $group,
-                'key'         => $key,
-                'value'       => (string)($def['default'] ?? ''),
-                'type'        => $def['type'] ?? 'string',
-                'description' => $def['description'] ?? '',
-                'created_at'  => date('Y-m-d H:i:s'),
-                'updated_at'  => date('Y-m-d H:i:s'),
-            ]);
-            $seeded[] = "{$group}.{$key}";
-        }
-
-        unset(self::$cache[$group]);
-        if ($clearCache) {
-            CacheManager::clearDomain('config');
-        }
-
-        return ['group' => $group, 'seeded' => $seeded, 'skipped' => $skipped];
+            if ($seeded !== []) self::advanceRevision($group, $revision);
+            return ['group' => $group, 'seeded' => $seeded, 'skipped' => $skipped];
+        });
     }
 
     public static function fillDefaults(string $group, array $schema): array
     {
-        $filled = [];
-        foreach ($schema as $key => $definition) {
-            if (!array_key_exists('default', $definition)) continue;
-            $row = Db::table('configs')->where('group', $group)->where('key', $key)->find();
-            if (!$row || ($row['value'] ?? null) !== '') continue;
-            Db::table('configs')->where('group', $group)->where('key', $key)->update([
-                'value' => (string) $definition['default'],
-                'updated_at' => date('Y-m-d H:i:s'),
-            ]);
-            $filled[] = "{$group}.{$key}";
-        }
-        if ($filled) {
-            unset(self::$cache[$group]);
-            CacheManager::clearDomain('config');
-        }
-        return $filled;
+        self::assertKeys($schema);
+        return Db::transaction(static function () use ($group, $schema): array {
+            $revision = self::lockRevision($group, true);
+            $filled = [];
+            foreach ($schema as $key => $definition) {
+                if (!array_key_exists('default', $definition)) continue;
+                $row = Db::table('configs')->where('group', $group)->where('key', $key)->find();
+                if ($row === null || ($row['value'] ?? null) !== '') continue;
+                self::writeValue($group, $key, $definition['default']);
+                $filled[] = "{$group}.{$key}";
+            }
+            if ($filled !== []) self::advanceRevision($group, $revision);
+            return $filled;
+        });
     }
 
-    // ═══════════════════════════════
-    //  读取接口
-    // ═══════════════════════════════
-
-    /**
-     * 获取单个配置值
-     * 优先级：.env → 内存缓存 → CacheManager → SQL → schema 保底；Redis 组只从 SQL 或 schema 读取。
-     */
     public static function get(string $key, $default = null)
     {
-        if (strpos($key, '.') === false) {
-            $group = $key;
-            $name = null;
-        } else {
-            [$group, $name] = explode('.', $key, 2);
+        if (!str_contains($key, '.')) return self::getGroup($key);
+        [$group, $name] = explode('.', $key, 2);
+        if ($name === self::REVISION_KEY) return $default;
+        if ($group !== 'redis' && ($value = self::getEnvValue($group, $name)) !== null) {
+            return self::castValue($value, self::getTypeFromSchema($group, $name));
         }
-
-        // 1. .env（最高优先级）
-        if ($name !== null && $group !== 'redis') {
-            $envValue = self::getEnvValue($group, $name);
-            if ($envValue !== null) {
-                return self::castValue($envValue, self::getTypeFromSchema($group, $name));
-            }
-        }
-
-        // 2. 内存缓存
-        $cacheKey = $name !== null ? "{$group}.{$name}" : $group;
-        if (isset(self::$cache[$cacheKey])) {
-            return self::$cache[$cacheKey];
-        }
-
-        // 3. 无 name 时读取整个 group
-        if ($name === null) {
-            return self::getGroup($group);
-        }
-
-        // 4. SQL 查询
-        $row = Db::table('configs')
-            ->where('group', $group)
-            ->where('key', $name)
-            ->find();
-
-        if ($row) {
-            $value = self::castValue($row['value'], $row['type']);
-            self::$cache[$cacheKey] = $value;
-            return $value;
-        }
-
-        // 5. Schema 保底
-        $schema = self::getSchema($group);
-        if (isset($schema[$name])) {
-            return self::castValue($schema[$name]['default'] ?? '', $schema[$name]['type'] ?? 'string');
-        }
-
-        return $default;
+        $row = Db::table('configs')->where('group', $group)->where('key', $name)->find();
+        return $row === null ? $default : self::castValue($row['value'], $row['type'] ?? 'string');
     }
 
-    /**
-     * 获取分组配置
-     * 优先级：CacheManager → SQL → .env 覆盖 → 写入缓存；Redis 组跳过通用环境变量覆盖。
-     */
     public static function getGroup(string $group): array
     {
-        // 1. CacheManager
-        // Redis 组含凭据，且必须及时反映后台修改；不写入通用文件缓存。
-        $cached = $group === 'redis' ? null : CacheManager::get('config', "group:{$group}");
-        if ($cached !== null) {
-            return $cached;
-        }
-
-        // 2. SQL 读取
-        $rows = Db::table('configs')
-            ->where('group', $group)
-            ->select()
-            ->toArray();
-
-        if (empty($rows)) {
-            return [];
-        }
-
-        $result = [];
-        foreach ($rows as $row) {
-            $result[$row['key']] = self::castValue($row['value'], $row['type']);
-        }
-
-        // 3. .env 覆盖
-        if ($group !== 'redis') {
-            foreach ($result as $key => $value) {
-                $envValue = self::getEnvValue($group, $key);
-                if ($envValue !== null) {
-                    $result[$key] = self::castValue($envValue, self::getTypeFromSchema($group, $key));
-                }
-            }
-        }
-
-        // 4. 写入 CacheManager
-        if ($group !== 'redis') {
-            CacheManager::set('config', "group:{$group}", $result, CacheManager::TTL_DAY);
-        }
-
-        return $result;
+        return self::getSnapshot($group)['values'];
     }
 
-    /**
-     * 获取分组 schema
-     * 从 SQL 读取该 group 的字段定义
-     */
+    /** 单次 SQL 查询取得值和版本，避免管理表单读到跨版本组合。 */
+    public static function getSnapshot(string $group): array
+    {
+        $rows = Db::table('configs')->where('group', $group)->order('key', 'asc')->select()->toArray();
+        $values = [];
+        $revision = null;
+        foreach ($rows as $row) {
+            if ($row['key'] === self::REVISION_KEY) { $revision = (int) $row['value']; continue; }
+            $value = $row['value'];
+            if ($group !== 'redis') $value = self::getEnvValue($group, $row['key']) ?? $value;
+            $values[$row['key']] = self::castValue($value, $row['type'] ?? 'string');
+        }
+        return ['values' => $values, 'revision' => $revision];
+    }
+
     public static function getSchema(string $group): array
     {
-        if (isset(self::$schema[$group])) {
-            return self::$schema[$group];
-        }
-
-        $rows = Db::table('configs')
-            ->where('group', $group)
-            ->select()
-            ->toArray();
-
         $schema = [];
-        foreach ($rows as $row) {
-            $schema[$row['key']] = [
-                'type'        => $row['type'] ?? 'string',
-                'default'     => $row['value'] ?? '',
-                'description' => $row['description'] ?? '',
-            ];
+        foreach (Db::table('configs')->where('group', $group)->select()->toArray() as $row) {
+            if ($row['key'] === self::REVISION_KEY) continue;
+            $schema[$row['key']] = ['type' => $row['type'] ?? 'string', 'default' => $row['value'] ?? '', 'description' => $row['description'] ?? ''];
         }
-
-        if (!empty($schema)) {
-            self::$schema[$group] = $schema;
-        }
-
         return $schema;
     }
 
-    /**
-     * 列出所有已注册的 group
-     */
     public static function getSchemaGroups(): array
     {
-        $rows = Db::table('configs')
-            ->distinct(true)
-            ->column('group');
-
-        return $rows;
+        return Db::table('configs')->where('key', '<>', self::REVISION_KEY)->distinct(true)->column('group');
     }
 
-    /** 配置值是否由环境变量覆盖；不返回环境变量内容。 */
     public static function isEnvironmentManaged(string $group, string $key): bool
     {
-        if ($group === 'redis') return false;
-        return self::getEnvValue($group, $key) !== null;
+        return $group !== 'redis' && self::getEnvValue($group, $key) !== null;
     }
 
-    // ═══════════════════════════════
-    //  写入接口
-    // ═══════════════════════════════
-
-    /**
-     * 设置单个配置值
-     */
     public static function set(string $key, $value): bool
     {
-        if (strpos($key, '.') === false) {
-            throw new \InvalidArgumentException("Config key must be 'group.name', got: {$key}");
-        }
-
+        if (!str_contains($key, '.')) throw new \InvalidArgumentException("Config key must be 'group.name'");
         [$group, $name] = explode('.', $key, 2);
-
-        $exists = Db::table('configs')
-            ->where('group', $group)
-            ->where('key', $name)
-            ->find();
-
-        if ($exists) {
-            $result = Db::table('configs')
-                ->where('group', $group)
-                ->where('key', $name)
-                ->update([
-                    'value'      => (string) $value,
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ]);
-        } else {
-            $result = Db::table('configs')->insert([
-                'group'       => $group,
-                'key'         => $name,
-                'value'       => (string) $value,
-                'type'        => self::detectType($value),
-                'description' => '',
-                'created_at'  => date('Y-m-d H:i:s'),
-                'updated_at'  => date('Y-m-d H:i:s'),
-            ]);
-        }
-
-        unset(self::$cache["{$group}.{$name}"]);
-        unset(self::$cache[$group]);
-        CacheManager::clearDomain('config');
-
-        return (bool) $result;
+        return self::setGroup($group, [$name => $value]);
     }
 
-    /**
-     * 批量设置配置
-     */
     public static function setGroup(string $group, array $config): bool
     {
-        foreach ($config as $key => $value) {
-            self::set("{$group}.{$key}", $value);
-        }
+        self::assertKeys($config);
+        Db::transaction(static function () use ($group, $config): void {
+            $revision = self::lockRevision($group, true);
+            foreach ($config as $key => $value) self::writeValue($group, $key, $value);
+            if ($config !== []) self::advanceRevision($group, $revision);
+        });
         return true;
     }
 
-    /**
-     * 删除配置组
-     */
+    /** 所有管理组在同一事务提交，返回锁内捕获的确定快照。 */
+    public static function compareAndSwapGroups(array $groups, array $expectedRevisions, ?callable $validate = null): array
+    {
+        ksort($groups, SORT_STRING);
+        foreach ($groups as $config) self::assertKeys($config);
+        return Db::transaction(static function () use ($groups, $expectedRevisions, $validate): array {
+            $revisions = [];
+            foreach ($groups as $group => $config) {
+                $revision = self::lockRevision($group, false);
+                if (($expectedRevisions[$group] ?? null) !== $revision) {
+                    throw new ApiException('配置已被其他操作修改，请重新加载后重试', ApiException::CODE_CONFIG_CONFLICT, ['reason_code' => 'stale-config-revision']);
+                }
+                $revisions[$group] = $revision;
+            }
+            if ($validate !== null) $validate();
+            $result = [];
+            foreach ($groups as $group => $config) {
+                foreach ($config as $key => $value) self::writeValue($group, $key, $value);
+                if ($config !== []) self::advanceRevision($group, $revisions[$group]);
+                $result[$group] = self::getSnapshot($group);
+            }
+            return $result;
+        });
+    }
+
     public static function deleteGroup(string $group): bool
     {
-        Db::table('configs')->where('group', $group)->delete();
-        unset(self::$cache[$group]);
-        unset(self::$cache["group:" . $group]);
-        unset(self::$schema[$group]);
-        CacheManager::clearDomain('config');
+        Db::transaction(static function () use ($group): void {
+            $revision = self::lockRevision($group, true);
+            Db::table('configs')->where('group', $group)->where('key', '<>', self::REVISION_KEY)->delete();
+            self::advanceRevision($group, $revision);
+        });
         return true;
     }
 
-    /**
-     * 删除配置键
-     */
     public static function deleteKey(string $group, string $key): bool
     {
-        Db::table('configs')->where('group', $group)->where('key', $key)->delete();
-        unset(self::$cache["{$group}.{$key}"]);
-        unset(self::$cache[$group]);
-        unset(self::$schema[$group]);
-        CacheManager::clearDomain('config');
+        self::assertKeys([$key => null]);
+        Db::transaction(static function () use ($group, $key): void {
+            $revision = self::lockRevision($group, true);
+            $deleted = Db::table('configs')->where('group', $group)->where('key', $key)->delete();
+            if ($deleted > 0) self::advanceRevision($group, $revision);
+        });
         return true;
     }
 
-    // ═══════════════════════════════
-    //  管理接口
-    // ═══════════════════════════════
+    /** 权威配置不再缓存；保留已有公开重载接口，无需访问受管理 Redis。 */
+    public static function reload(?string $group = null): void {}
 
-    /**
-     * 重载配置缓存
-     */
-    public static function reload(?string $group = null): void
+    private static function assertKeys(array $config): void
     {
-        if ($group === null) {
-            self::$cache = [];
-            self::$schema = [];
-        } else {
-            unset(self::$cache[$group]);
-            unset(self::$cache["group:{$group}"]);
-            unset(self::$schema[$group]);
-        }
-        CacheManager::clearDomain('config');
+        if (array_key_exists(self::REVISION_KEY, $config)) throw new \InvalidArgumentException('配置版本为保留元数据，不能直接修改');
     }
 
-    // ═══════════════════════════════
-    //  内部方法
-    // ═══════════════════════════════
+    private static function lockRevision(string $group, bool $initialize): int
+    {
+        $query = Db::table('configs')->where('group', $group)->where('key', self::REVISION_KEY);
+        $row = $query->lock(true)->find();
+        if ($row === null && $initialize) {
+            self::insertValue($group, self::REVISION_KEY, 1, 'int', '内部配置组版本');
+            return 1;
+        }
+        $revision = $row === null ? 0 : filter_var($row['value'], FILTER_VALIDATE_INT);
+        if ($revision === false || $revision < 1) throw ApiException::capabilityUnavailable('配置版本未就绪，请先完成数据库迁移', 'config-revision-unavailable');
+        return $revision;
+    }
 
-    /**
-     * 从 .env 读取值
-     */
+    private static function advanceRevision(string $group, int $revision): void
+    {
+        Db::table('configs')->where('group', $group)->where('key', self::REVISION_KEY)->update([
+            'value' => (string) ($revision + 1), 'updated_at' => gmdate('Y-m-d H:i:s'),
+        ]);
+    }
+
+    private static function writeValue(string $group, string $key, mixed $value): void
+    {
+        $query = Db::table('configs')->where('group', $group)->where('key', $key);
+        $row = $query->find();
+        if ($row === null) { self::insertValue($group, $key, $value, self::detectType($value)); return; }
+        $query->update(['value' => self::encodeValue($value), 'updated_at' => gmdate('Y-m-d H:i:s')]);
+    }
+
+    private static function insertValue(string $group, string $key, mixed $value, string $type, string $description = ''): void
+    {
+        Db::table('configs')->insert(['group' => $group, 'key' => $key, 'value' => self::encodeValue($value),
+            'type' => $type, 'description' => $description, 'created_at' => gmdate('Y-m-d H:i:s'), 'updated_at' => gmdate('Y-m-d H:i:s')]);
+    }
+
+    private static function encodeValue(mixed $value): string
+    {
+        if (is_array($value)) return json_encode($value, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        if (is_bool($value)) return $value ? '1' : '0';
+        return (string) $value;
+    }
+
     protected static function getEnvValue(string $group, string $name): ?string
     {
         $tryKeys = [
@@ -383,7 +238,9 @@ class ConfigService
         foreach ($tryKeys as $tryKey) {
             $val = env($tryKey);
             if ($val !== null && $val !== '') {
-                return $val;
+                if (is_bool($val)) return $val ? '1' : '0';
+                if (is_int($val) || is_float($val) || is_string($val)) return (string) $val;
+                throw new \RuntimeException('环境配置值必须是标量：' . $tryKey);
             }
         }
 

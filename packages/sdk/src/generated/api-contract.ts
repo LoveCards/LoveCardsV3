@@ -58,7 +58,7 @@ export interface GeneratedApiContract {
   "config.redisTest": { method: "POST"; path: "/admin/config/redis/test"; request: void; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "config.register": { method: "POST"; path: "/admin/config/register"; request: { group: string; schema: Record<string, unknown> }; response: ApiTypes.ConfigData; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "config.reload": { method: "POST"; path: "/admin/config/reload"; request: { group?: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "config.update": { method: "POST"; path: "/admin/config"; request: Record<string, unknown>; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "config.update": { method: "POST"; path: "/admin/config"; request: Record<string, unknown>; response: ApiTypes.ConfigData; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "dashboard.index": { method: "GET"; path: "/admin/dashboard"; request: void; response: ApiTypes.DashboardData; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "drafts.create": { method: "POST"; path: "/me/drafts"; request: { title?: string; content?: string; payload?: Record<string, unknown> }; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "drafts.delete": { method: "DELETE"; path: "/me/drafts/:id"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
@@ -269,7 +269,7 @@ export const generatedApiContract = {
   "config.redisTest": { method: "POST", path: "/admin/config/redis/test", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.runtime.configure"] },
   "config.register": { method: "POST", path: "/admin/config/register", status: 200, shape: "item", public: false, capabilities: ["admin.access","config.register"] },
   "config.reload": { method: "POST", path: "/admin/config/reload", status: 204, shape: "void", public: false, capabilities: ["admin.access","config.reload"] },
-  "config.update": { method: "POST", path: "/admin/config", status: 204, shape: "void", public: false, capabilities: ["admin.access","config.update"] },
+  "config.update": { method: "POST", path: "/admin/config", status: 200, shape: "item", public: false, capabilities: ["admin.access","config.update"] },
   "dashboard.index": { method: "GET", path: "/admin/dashboard", status: 200, shape: "item", public: false, capabilities: ["admin.access","dashboard.read"] },
   "drafts.create": { method: "POST", path: "/me/drafts", status: 200, shape: "item", public: false, capabilities: [] },
   "drafts.delete": { method: "DELETE", path: "/me/drafts/:id", status: 204, shape: "void", public: false, capabilities: [] },

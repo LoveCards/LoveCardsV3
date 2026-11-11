@@ -21,14 +21,18 @@ final class CommunicationsManagement
     /** @return array{revision: int, policies: array<int, array<string, mixed>>} */
     public static function applyPolicies(array $input, int $actorId): array
     {
-        $result = NotificationPolicies::apply($input, $actorId);
-        app(AuditLogger::class)->record($actorId, 'communications.policies.update', 'notification_policies', (string) $result['revision'], [
-            'before' => $result['before'],
-            'after' => $result['policies'],
-            'revision' => $result['revision'],
-            'reason' => $input['reason'] ?? null,
-            '_ip' => request()->ip(),
-        ]);
+        $ip = request()->ip();
+        $result = NotificationPolicies::apply($input, $actorId,
+            static function (array $before, array $after, int $revision) use ($actorId, $input, $ip): void {
+                app(AuditLogger::class)->record($actorId, 'communications.policies.update', 'notification_policies', (string) $revision, [
+                    'before' => $before,
+                    'after' => $after,
+                    'revision' => $revision,
+                    'reason' => $input['reason'] ?? null,
+                    '_ip' => $ip,
+                ]);
+            }
+        );
         unset($result['before']);
         return $result;
     }

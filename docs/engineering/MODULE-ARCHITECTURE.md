@@ -1,5 +1,7 @@
 # LoveCards 模块架构
 
+> 2026-11-11 收敛见 [实施设计](PLATFORM-CONVERGENCE-2026-11-11.md)。通用票据已迁至 Operations/Runtime（会话校验通过 Auth Public）。HandlerRegistry 组装与 Administration 投递重试边界的验收状态见实施设计；不得据旧目录推断已完成收束。
+
 ## 目标
 
 后端按模块组织。模块目录是能力边界；模块内部再按职责分层。API、前台和安装器只是 Host，不承载业务实现。
@@ -90,3 +92,7 @@ npm run check:architecture
 后端行为/数据库/Theme/安装基线
 真实 API 与 Theme HTTP 检查
 ```
+
+## 事件 Handler 的模块归属与装配（2026-11-11）
+
+各业务模块在自身 `Public/EventHandlers.php` 显式返回 `HandlerRegistration`，`app/EventHandlers.php` 是唯一组合根，`HandlerRegistry` 只做登记、校验和查询。Web、CLI、Scheduler、Worker 和健康探测均由容器取得该装配；离线测试也调用同一纯 PHP 组合根。首轮拆分保持 13 个现有登记、目录 JSON 与 SHA-256 完全一致，存量投递的 handler_key、queue、execution_mode 不发生变化。模块间依赖仍通过 Public/Contract；架构检查同时识别 use 和全限定类名引用。新模块添加 Handler 时须在组合根显式接入并更新目录契约测试。

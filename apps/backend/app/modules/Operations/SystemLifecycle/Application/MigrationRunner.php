@@ -28,6 +28,9 @@ final class MigrationRunner
             throw DirtyMigrationException::forId($descriptor->id());
         }
         if ($progress->isComplete()) return $progress;
+        if ($progress->status() === MigrationStatus::RUNNING) {
+            throw new \LogicException('迁移上次执行未确认结束；必须核实 SQL/子进程并受控处置，禁止自动重放');
+        }
         // A failed migration is a deliberate operator stop. Retrying it from
         // the scheduler would create an unbounded failure loop and can repeat
         // non-idempotent expand/backfill work. Require an explicit reset or

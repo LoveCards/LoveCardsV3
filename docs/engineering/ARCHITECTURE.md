@@ -1,5 +1,7 @@
 # 架构约束与目标
 
+> 2026-11-11 深审缺口、兼容约束和完成状态见 [收敛设计](PLATFORM-CONVERGENCE-2026-11-11.md)。目标架构与既有基线不能代替并发、故障和升级恢复验收。
+
 ## 总体判断
 
 当前代码以模块化单体为边界：Route/Transport 适配 HTTP，简单业务使用 Service，复杂状态与副作用使用 Application/Domain/Contract/Infrastructure。目标不是把所有模块套进同一层级模板，而是让依赖方向、事务边界和可执行契约保持一致。

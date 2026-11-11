@@ -31,20 +31,33 @@ final class ThinkDbDeliveryRepository implements DeliveryRepository
         // 登记时冻结当时的全局策略版本；无目录返回 null（not-configured）。
         $frozenRevision = $this->policyVersions?->currentRevision();
         $signalState = null;
+        $signalStates = [];
+        // 必须在插入任何 delivery 前取得所有控制锁，含混合业务/信号的事件。
+        foreach ($definitions as $definition) {
+            if (!$definition instanceof DeliveryDefinition) throw new \InvalidArgumentException('Delivery definition 类型不合法');
+            if ($definition->queueName() !== 'realtime') continue;
+            $signalState ??= app(SignalModePort::class)->selectedModeForEnqueue();
+            if (!in_array($signalState, ['polling', 'realtime'], true)) throw new \RuntimeException('通信模式不可用');
+            if ($definition->signal() === null) throw new \LogicException('Realtime 投递缺少信号注册');
+            $signalStates[$definition->handlerKey()] = (new ThinkDbSignalPolicyStore())->registrationState($definition->signal());
+        }
         foreach ($definitions as $definition) {
             if (!$definition instanceof DeliveryDefinition) {
                 throw new \InvalidArgumentException('Delivery definition 类型不合法');
             }
-            if ($definition->queueName() === 'realtime' && $signalState === null) {
-                $signalState = app(SignalModePort::class)->selectedModeForEnqueue();
-            }
-            $skipSignal = $definition->queueName() === 'realtime' && $signalState === 'polling';
+            $eligibility = $signalStates[$definition->handlerKey()] ?? null;
+            $origin = $definition->signalOrigin();
+            if ($origin !== null && ($origin['key'] ?? null) !== ($eligibility['key'] ?? null)) throw new \LogicException('续批信号身份不匹配');
+            $generation = $origin['generation'] ?? ($eligibility['generation'] ?? null);
+            $skipSignal = $eligibility !== null && ($signalState === 'polling' || !$eligibility['enabled'] || $generation !== $eligibility['generation']);
             $deliveryIds[] = (int) Db::table('event_deliveries')->insertGetId([
                 'event_id' => $eventId,
                 'handler_key' => $definition->handlerKey(),
                 'queue_name' => $definition->queueName(),
                 'execution_mode' => $definition->executionMode(),
                 'policy_revision' => $frozenRevision,
+                'signal_key' => $eligibility['key'] ?? null,
+                'signal_generation' => $generation,
                 'status' => $skipSignal ? DeliveryStatus::COMPLETED : DeliveryStatus::PENDING,
                 'policy_decision' => $skipSignal ? 'skipped' : null,
                 'attempt_count' => 0,
@@ -74,6 +87,12 @@ final class ThinkDbDeliveryRepository implements DeliveryRepository
 
         Db::startTrans();
         try {
+            // 生命周期计划锁必须先于事件模式锁。旧代码身份、Contract 执行中都不得领取。
+            try {
+                app(\app\modules\Operations\SystemLifecycle\Public\SchemaIdentity::class)->assertCanConsume();
+            } catch (\Throwable $exception) {
+                throw new EventConsumptionConflict('lifecycle-not-qualified', '当前消费者不具备升级阶段运行资格');
+            }
             // 事件模式行先于通信模式行；切换与领取在同一 MySQL 锁下串行。
             $state = (new ThinkDbEventConsumptionStore())->locked();
             if ($state === null) {
@@ -144,31 +163,58 @@ final class ThinkDbDeliveryRepository implements DeliveryRepository
                 (int) $row['attempt_count'],
                 (string) $row['claim_token'],
                 new \DateTimeImmutable((string) $row['lease_expires_at'], new \DateTimeZone('UTC')),
-                isset($row['policy_revision']) && $row['policy_revision'] !== null ? (int) $row['policy_revision'] : null
+                isset($row['policy_revision']) && $row['policy_revision'] !== null ? (int) $row['policy_revision'] : null,
+                isset($row['retry_attempt_limit']) ? (int) $row['retry_attempt_limit'] : null
             );
         }, $rows);
+    }
+
+    /** 仅增加下一次尝试授权；不直接执行，领取仍走唯一 claim 门禁。 */
+    public function retryDead(int $deliveryId, callable $audit): bool
+    {
+        if ($deliveryId < 1) return false;
+        return Db::transaction(static function () use ($deliveryId, $audit): bool {
+            $before = Db::table('event_deliveries')->where('id', $deliveryId)->lock(true)->find();
+            if (!is_array($before) || $before['status'] !== DeliveryStatus::DEAD
+                || ($before['policy_decision'] ?? null) === 'skipped') return false;
+            $attempts = (int) $before['attempt_count'];
+            if ($attempts >= 4294967295) throw new \RuntimeException('投递尝试计数已达到存储上限');
+            $changes = [
+                'status' => DeliveryStatus::PENDING,
+                'retry_attempt_limit' => $attempts + 1,
+                'available_at' => gmdate('Y-m-d H:i:s.u'),
+                'claim_token' => null, 'claimed_by' => null, 'lease_expires_at' => null,
+                'completed_at' => null, 'updated_at' => gmdate('Y-m-d H:i:s.u'),
+            ];
+            // 保留累计次数、冻结策略和最近错误；错误快照随授权审计长期保留。
+            Db::table('event_deliveries')->where('id', $deliveryId)->update($changes);
+            $audit($before, array_replace($before, $changes));
+            return true;
+        });
     }
 
     /** 管理员切回轮询后，结算不再需要的主动提示；业务数据由 API 读取。 */
     public function settleRealtimeForPolling(): int
     {
-        if (app(SignalModePort::class)->signalDeliveryState() !== 'skip') {
-            throw new \LogicException('只能在轮询模式结算实时信号');
-        }
-        $now = gmdate('Y-m-d H:i:s.u');
-        return Db::table('event_deliveries')
-            ->where('queue_name', 'realtime')
-            ->whereIn('status', [DeliveryStatus::PENDING, DeliveryStatus::PROCESSING])
-            ->update([
-                'status' => DeliveryStatus::COMPLETED,
-                'policy_decision' => 'skipped',
-                'claim_token' => null,
-                'claimed_by' => null,
-                'lease_expires_at' => null,
-                'last_error' => null,
-                'completed_at' => $now,
-                'updated_at' => $now,
-            ]);
+        return Db::transaction(static function (): int {
+            if (app(SignalModePort::class)->selectedModeForEnqueue() !== 'polling') {
+                throw new \LogicException('只能在轮询模式结算实时信号');
+            }
+            $now = gmdate('Y-m-d H:i:s.u');
+            return Db::table('event_deliveries')
+                ->where('queue_name', 'realtime')
+                ->whereIn('status', [DeliveryStatus::PENDING, DeliveryStatus::PROCESSING])
+                ->update([
+                    'status' => DeliveryStatus::COMPLETED,
+                    'policy_decision' => 'skipped',
+                    'claim_token' => null,
+                    'claimed_by' => null,
+                    'lease_expires_at' => null,
+                    'last_error' => null,
+                    'completed_at' => $now,
+                    'updated_at' => $now,
+                ]);
+        });
     }
 
     public function notePolicyDecision(int $deliveryId, string $decision): void

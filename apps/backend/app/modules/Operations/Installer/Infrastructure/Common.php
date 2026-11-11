@@ -3,13 +3,20 @@
 namespace app\modules\Operations\Installer\Infrastructure;
 
 use app\shared\SystemPaths\SystemPaths;
+use app\modules\Platform\Config\Public\DeploymentNamespace;
+use think\facade\Env;
 
 class Common
 {
     public static function InstallLock(?SystemPaths $paths = null): bool
     {
         $paths = PersistentFile::paths($paths);
-        PersistentFile::write($paths->stateRoot(), 'install.lock', "LoveCards.cn\n", 0600);
+        if (self::CheckInstallLock($paths)) throw new \RuntimeException('系统已安装，禁止覆盖安装锁');
+        $native = getenv('LC_DEPLOYMENT_ID');
+        $configured = $native !== false ? $native : (function_exists('app') ? Env::get('LC_DEPLOYMENT_ID', '') : '');
+        $id = is_string($configured) && $configured !== '' ? $configured : bin2hex(random_bytes(16));
+        DeploymentNamespace::fromId($id);
+        PersistentFile::writeOnce($paths->stateRoot(), 'install.lock', "LoveCards.cn\nLC_DEPLOYMENT_ID={$id}\n", 0600);
         return true;
     }
 

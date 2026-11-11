@@ -19,7 +19,7 @@ Route::group('admin/config', function () {
 
     Route::post('', 'System.Config/update')
     ->name('config.update')
-    ->setOption('contract', ['request' => ['validate' => ConfigValidate::class, 'scene' => 'update'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
+    ->setOption('contract', ['request' => ['validate' => ConfigValidate::class, 'scene' => 'update'], 'response' => ['resource' => 'app\\modules\\Platform\\Config\\Transport\\Api\\ConfigResource', 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => '保存配置', 'group' => '配置', 'access' => ['auth' => 'required', 'allOf' => [['capability' => 'admin.access', 'scope' => 'global'], ['capability' => 'config.update', 'scope' => 'global']]]]);
 
     Route::get('groups', 'System.Config/groups')

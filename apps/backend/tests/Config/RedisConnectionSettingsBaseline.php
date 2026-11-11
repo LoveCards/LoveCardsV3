@@ -24,6 +24,9 @@ namespace app\modules\Platform\Config\Public {
 }
 
 namespace {
+    if (!class_exists('Redis')) {
+        class Redis { public function connect(...$arguments): bool { return true; } }
+    }
     require dirname(__DIR__, 2) . '/vendor/autoload.php';
     require dirname(__DIR__, 2) . '/app/modules/Platform/Config/Public/RedisConnectionSettings.php';
 
@@ -35,11 +38,30 @@ namespace {
         if (!$condition) throw new \RuntimeException($message);
     };
 
+    $transport = new class extends \Redis {
+        public array $arguments = [];
+        public function connect(...$arguments): bool { $this->arguments = $arguments; return true; }
+    };
+    RedisConnectionSettings::connectTransport($transport, ['host' => 'localhost', 'port' => 6379, 'tls' => false]);
+    $assert(($transport->arguments[2] ?? 0) > 0 && ($transport->arguments[5] ?? 0) > 0,
+        'plaintext Redis must bound both connection and command reads');
+    if (extension_loaded('openssl') && (!extension_loaded('redis') || version_compare((string) phpversion('redis'), '5.3.0', '>='))) {
+        RedisConnectionSettings::connectTransport($transport, ['host' => 'localhost', 'port' => 6379, 'tls' => true, 'tls_server_name' => 'localhost']);
+        $assert(($transport->arguments[2] ?? 0) > 0 && ($transport->arguments[5] ?? 0) > 0,
+            'TLS Redis must use the same bounded connection and command reads');
+    } else {
+        echo "SKIP TLS transport argument check: OpenSSL/PhpRedis prerequisites unavailable.\n";
+    }
+
     Config::$values['redis'] = ['enabled' => false, 'host' => '', 'port' => 6379, 'database' => 0, 'password' => '', 'tls' => false, 'tls_server_name' => ''];
     $disabled = RedisConnectionSettings::current();
     $assert($disabled['enabled'] === false && $disabled['host'] === '' && $disabled['source'] === 'database', 'new install must leave Redis unconfigured');
     $assert(RedisConnectionSettings::test()['reason_code'] === 'redis-disabled', 'disabled Redis must not attempt connection');
+    putenv('LC_DEPLOYMENT_ID=fixture-redis-settings-0001');
     $cacheDriver = new \app\modules\Platform\Config\Infrastructure\SystemRedisCache(['prefix' => 'lc:cache:']);
+    $cacheOptions = (new \ReflectionProperty(\think\cache\driver\Redis::class, 'options'))->getValue($cacheDriver);
+    $assert($cacheOptions['prefix'] === \app\modules\Platform\Config\Public\DeploymentNamespace::current()->cachePrefix(), 'Redis cache keys must use the site namespace');
+    $assert($cacheOptions['tag_prefix'] === $cacheOptions['prefix'] . 'tag:', 'Redis cache tag keys must use the same site namespace');
     try {
         $cacheDriver->handler();
         throw new \RuntimeException('disabled system Redis cache must fail closed');
@@ -50,10 +72,18 @@ namespace {
     Config::$values['redis']['enabled'] = true;
     Config::$values['redis']['host'] = 'localhost';
     Config::$values['redis']['password'] = 'sample-secret';
+    putenv('LC_DEPLOYMENT_ID=');
+    $assert(RedisConnectionSettings::test()['reason_code'] === 'deployment-identity-required', 'enabled Redis without identity must fail closed');
+    putenv('LC_DEPLOYMENT_ID=fixture-redis-settings-0001');
     $database = RedisConnectionSettings::current();
     $assert($database['enabled'] === true && $database['password'] === 'sample-secret', 'database settings must reach PHP consumers');
+    $assert($database['channel'] === \app\modules\Platform\Config\Public\DeploymentNamespace::current()->realtimeChannel(), 'Gateway and publisher must receive the same site channel');
     $assert($database['revision'] !== $disabled['revision'], 'revision must change with connection settings');
     $assert(!str_contains($database['revision'], 'sample-secret'), 'revision must not expose password');
+    putenv('LC_DEPLOYMENT_ID=fixture-redis-settings-0002');
+    $otherSite = RedisConnectionSettings::current();
+    $assert($otherSite['channel'] !== $database['channel'] && $otherSite['revision'] !== $database['revision'], 'same Redis server must separate cloned sites');
+    putenv('LC_DEPLOYMENT_ID=fixture-redis-settings-0001');
 
     Config::$values['redis']['tls'] = true;
     Config::$values['redis']['tls_server_name'] = 'redis.example.test';

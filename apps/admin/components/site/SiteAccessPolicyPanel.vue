@@ -115,7 +115,7 @@ import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminConfigSaveBar from '~/components/shared/admin/AdminConfigSaveBar.vue'
 import AdminConfigSection from '~/components/shared/admin/AdminConfigSection.vue'
 import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
-import { isApiError, useApi } from '~/lib/api'
+import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import CommonUtils from '~/utils/common'
 import { readBoolean, readObject, readString } from '~/utils/json'
@@ -134,6 +134,7 @@ interface Service {
 type Feedback = { type: 'success' | 'error'; text: string }
 
 const client = useApi()
+const configSnapshot = useConfigSnapshot(client)
 const userStore = useUserStore()
 const props = withDefaults(defineProps<{ active?: boolean }>(), { active: true })
 const emit = defineEmits<{ 'dirty-change': [dirty: boolean] }>()
@@ -162,13 +163,13 @@ const blockingDependency = computed(() => (
   (settings.value.emailVerify && !origin.value.emailVerify && (!service.value.codeEnabled || service.value.codeChannel !== 'smtp'))
   || (settings.value.humanVerify && !origin.value.humanVerify && !service.value.humanReady)
 ))
-const errorMessage = (cause: unknown, fallback: string) => isApiError(cause) ? cause.message : fallback
+const errorMessage = configSnapshot.errorMessage
 
 async function loadConfig() {
   loading.value = true
   loadError.value = ''
   try {
-    const [raw, captchaStatus] = await Promise.all([client.config.list(), client.captcha.config()])
+    const [raw, captchaStatus] = await Promise.all([configSnapshot.list(), client.captcha.config()])
     const core = readObject(raw.core)
     const user = readObject(raw.user)
     if (!raw.captcha) {
@@ -207,7 +208,10 @@ async function saveSettings() {
   if (settings.value.emailVerify !== origin.value.emailVerify) update.user = { captcha: settings.value.emailVerify }
   if (humanChanged.value) update.captcha = { captcha_enabled: settings.value.humanVerify }
   try {
-    await client.config.update(update)
+    const committed = await configSnapshot.update(update)
+    if (committed.core) settings.value.visitorMode = readBoolean(readObject(committed.core).visitor_mode)
+    if (committed.user) settings.value.emailVerify = readBoolean(readObject(committed.user).captcha)
+    if (committed.captcha) settings.value.humanVerify = readBoolean(readObject(committed.captcha).captcha_enabled)
     origin.value = CommonUtils.deepClone(settings.value)
     message.value = { type: 'success', text: '访问与验证设置已保存。' }
   } catch (cause) {

@@ -1,5 +1,7 @@
 # 可裁剪运行时
 
+> 2026-11-11 复审：当前基线仍有配置读取失败被解释为轮询、健康口径不一、阶段运行资格未闭合等缺口；孤立 Redis wakeup 已退役。目标和完成证据见 [收敛设计](PLATFORM-CONVERGENCE-2026-11-11.md)，下文不得视为这些缺口已验收。
+
 > 状态：2026-11-11 事件消费与通信分层实施契约。当前代码已移除普通请求的 `EventingRequestDrain`，并将定时/常驻领取门禁接入 Eventing；`lc:runtime:status` 已与管理端共用两份模式快照。部署与 E2E 验收仍以最终测试报告为准。假 Supervisor 探测已从实时门禁移除。
 
 LoveCards 的最小 Web 运行单元是 Nginx + PHP-FPM + MySQL。事件处理和前端通信是两种独立的运行策略：事件选择 `scheduled`（定时消费）或 `resident`（常驻消费）；通信选择 `polling`（浏览器轮询）或 `realtime`（SSE）。业务模块统一写 MySQL Outbox、读取 PHP API，不识别部署形态。两种形态下业务操作、API 数据与最终结果一致；处理时延和提示形式可以不同。定时事件处理还需要 cron 或安全的外部定时触发，不能仅凭 Web 服务运行就宣称异步任务健康。
@@ -16,7 +18,7 @@ PHP-FPM 每个请求都从持久化状态重新建立上下文，请求结束后
                 +-> 完整环境：lc:eventing:work 常驻领取任务
 ```
 
-可靠状态始终在 MySQL；Redis 可做最佳努力的 Worker 唤醒和实时模式的瞬时信号传输，Worker 内存只保存本轮循环状态。因此 Worker 重启、Redis 不可用或 FPM 请求结束不会丢失待处理事件。Redis Pub/Sub 不是业务事实或可靠投递账本。Redis 是系统 Config 管理的可选基础设施，位于事件与通信能力之下；设置连接不会自动开启缓存或启动服务，使用 Redis 的功能在启用时检查它。
+可靠状态始终在 MySQL；Redis 用于实时模式的瞬时信号传输，Worker 内存只保存本轮循环状态。因此 Worker 重启、Redis 不可用或 FPM 请求结束不会丢失待处理事件。Redis Pub/Sub 不是业务事实或可靠投递账本。Redis 是系统 Config 管理的可选基础设施，位于事件与通信能力之下；设置连接不会自动开启缓存或启动服务，使用 Redis 的功能在启用时检查它。
 
 ThinkPHP 缓存默认仍为 file。只有部署方显式选择 `cache.driver=redis` 时，`Platform/Config/Infrastructure/SystemRedisCache` 才延迟读取同一份系统 Redis 连接配置并建立连接；长驻进程最多每 5 秒重新读取连接配置，版本变化后重连。配置未启用或连接失败时报告错误，不静默切回 file。系统配置的 `redis` 分组本身跳过通用缓存，以免出现配置读取递归。后台 Redis 配置页管理连接和测试，缓存驱动选择仍属于部署配置，不因保存 Redis 连接自动改变。
 
@@ -38,7 +40,7 @@ Eventing 的 `eventing_consumer_state` 保存 `scheduled/resident`；Runtime 的
 
 管理 API 的旧 `facilities` 字段暂时返回空数组，概览 API 的旧 `runtime` 字段也返回空数组，以保留现有响应形状。旧 `config/runtime.php`、`FacilityResolver`、配套探测类及 `fallback` 逻辑已从当前代码删除；不得为了填充兼容空字段恢复第二套模式判断。
 
-业务模块只能依赖能力接口或稳定用例，不判断 Redis 扩展、不自行启动进程。Redis wakeup 不可用时，选定的常驻消费者仍从 MySQL 领取任务；实时变化信号暂停投递并显示故障，通信不自动切轮询。不能把 Redis 当可靠队列。
+业务模块只能依赖能力接口或稳定用例，不判断 Redis 扩展、不自行启动进程。选定的常驻消费者按自身循环间隔从 MySQL 领取任务；实时变化信号暂停投递并显示故障，通信不自动切轮询。不能把 Redis 当可靠队列。
 
 ## 定时与常驻消费者规则
 
@@ -120,6 +122,15 @@ Eventing 暂停实时信号领取。业务 API 与已提交的业务事实继续
 `communication-runtime` 是唯一取数节奏调度器；实时模式故障时不启动轮询。
 Gateway 由独立进程提供 SSE，PHP-FPM 不承载长连接；浏览器凭一次性 ticket
 连接 Gateway。通知、私信和信息流信号共用连接，数据仍通过各自 PHP API 读取。
+
+票据签发、存储、消费和传输资源归属 `Operations/Runtime`，通过 Auth Public
+`SessionAccess` 复用现有登录会话、用户状态与安全版本检查。`stream_tickets.session_public_id`
+绑定签发请求当前会话；消费时复核会话和所选实时模式，旧的未绑定票据拒绝。
+外部 `notifications.streamTicket` URL/SDK 操作名暂保留，内部 `cursor_seed` 固定 null，
+不再查询通知业务。内部验证必返 `connection_ttl_seconds`（1—60），Gateway 将单次
+连接限制为该期限并扣除验证耗时；缺少期限拒绝连接。撤销、封禁、安全版本变化对
+已连 SSE 的失效窗口最多 60 秒，不承诺即时踢下线。到期重签票据、重连及 API 补读
+使用现有通信调度器，不开启业务轮询。健康协议必须声明整数 `session_ttl_max_seconds`（1—60）；探测拒绝未声明或超限的旧 Gateway。部署须同步更新 Gateway。
 
 `COMMUNICATION-RUNTIME-CONTRACT-2026-11-06.md` 保留为历史实施契约，
 其中自动轮询回退与 Gateway `source-poll` 规定已被本节取代。

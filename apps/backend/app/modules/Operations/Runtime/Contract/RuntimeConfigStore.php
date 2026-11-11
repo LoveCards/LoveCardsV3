@@ -7,7 +7,7 @@ namespace app\modules\Operations\Runtime\Contract;
  * 运行时通信配置的持久化端口。
  *
  * 单例行（id=1）乐观并发：compareAndSwap 以 revision 为 CAS 凭据，
- * 表缺失或不可读时 current() 返回 null（Resolver 走 fail-safe 派生）。
+ * 表缺失、损坏或不可读时 current() 返回 null，Resolver 报告不可用，不派生默认模式。
  */
 interface RuntimeConfigStore
 {

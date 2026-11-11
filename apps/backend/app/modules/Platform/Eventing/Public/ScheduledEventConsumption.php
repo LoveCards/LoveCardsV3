@@ -7,6 +7,7 @@ use app\modules\Platform\Eventing\Contract\ScheduledRunLedger;
 use app\modules\Platform\Eventing\Application\RequestExecutor;
 use app\modules\Platform\Eventing\Domain\RequestExecutionBudget;
 use think\facade\Db;
+use app\modules\Platform\Config\Public\DeploymentNamespace;
 
 /** CLI cron 与受认证 HTTP cron 共用的唯一一次性消费用例。 */
 final class ScheduledEventConsumption
@@ -26,8 +27,9 @@ final class ScheduledEventConsumption
         }
 
         // 两个 Host 共用同一 MySQL 命名锁，不依赖 FPM/CLI 进程内状态。
+        $lockName = DeploymentNamespace::current()->scheduledLock();
         $connection = Db::connect();
-        $lock = $connection->query("SELECT GET_LOCK('lc:eventing:scheduled', 0) AS acquired");
+        $lock = $connection->query("SELECT GET_LOCK(?, 0) AS acquired", [$lockName]);
         if ((int) ($lock[0]['acquired'] ?? 0) !== 1) {
             throw new EventConsumptionConflict('already-running', '已有一次性消费者正在运行');
         }
@@ -54,7 +56,7 @@ final class ScheduledEventConsumption
             $ledger->finishRun($runId, 'ok', $report->claimed());
             return $report->claimed();
         } finally {
-            $connection->query("SELECT RELEASE_LOCK('lc:eventing:scheduled')");
+            $connection->query("SELECT RELEASE_LOCK(?)", [$lockName]);
         }
     }
 
@@ -68,6 +70,7 @@ final class ScheduledEventConsumption
             if (!is_array($row)) return null;
             return [
                 'trigger_source' => (string) ($row['trigger_source'] ?? ''),
+                'release_id' => (string) ($row['release_id'] ?? ''),
                 'outcome' => (string) ($row['outcome'] ?? ''),
                 'finished_at' => (string) ($row['finished_at'] ?? ''),
                 'started_at' => (string) ($row['started_at'] ?? ''),

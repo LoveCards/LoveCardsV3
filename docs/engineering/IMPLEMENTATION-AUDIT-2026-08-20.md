@@ -28,7 +28,7 @@
 ### 公共基础设施
 
 - SystemLifecycle：离线签名 Release Builder、安全 ZIP 导入、不可变 Release、持久升级计划、Lease、备份 Gate、迁移 phase/cursor、Contract 独立批准、原子 current pointer 与恢复。
-- Runtime：PHP-FPM/MySQL 最小形态，Redis wakeup、Worker、Scheduler、SSE 可裁剪；MySQL 是可靠状态源。
+- Runtime：PHP-FPM/MySQL 最小形态，Redis 实时信号、Worker、Scheduler、SSE 按所选策略启用；MySQL 是可靠状态源。
 - Eventing：EventEnvelope、显式 Handler Registry、Outbox/delivery 状态机、claim lease、retry/dead-letter、request-safe/worker 双执行模式。
 - Observability：PSR Logger -> ThinkPHP Adapter，request/correlation context、统一脱敏和独立 MySQL 审计。
 - API/SDK：Route Meta/Contract -> Validate scene -> Resource -> audit/OpenAPI -> 25 个生成 Resource -> SDK dist -> 主题公开 bundle。

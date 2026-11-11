@@ -8,7 +8,6 @@ use app\modules\Operations\SystemLifecycle\Application\SystemLifecycleCoordinato
 use app\modules\Platform\Eventing\Public\EventConsumption;
 use app\modules\Platform\Eventing\Public\EventConsumptionConflict;
 use app\shared\Observability\AuditLogger;
-use think\facade\Db;
 
 final class Administration
 {
@@ -67,21 +66,17 @@ final class Administration
 
     public static function retryDelivery(int $deliveryId, int $actorId, string $ipAddress): void
     {
-        self::withAudit(function () use ($deliveryId, $actorId, $ipAddress): void {
-            $updated = Db::table('event_deliveries')->where('id', $deliveryId)->where('status', 'dead')->update([
-                'status' => 'pending', 'available_at' => date('Y-m-d H:i:s.u'), 'claim_token' => null,
-                'claimed_by' => null, 'lease_expires_at' => null, 'last_error' => null, 'completed_at' => null,
-                'updated_at' => date('Y-m-d H:i:s.u'),
-            ]);
-            if ($updated !== 1) throw \app\api\ApiException::notFound('投递记录不存在或当前不可重试');
-            app(AuditLogger::class)->record($actorId, 'eventing.delivery.retry', 'event_delivery', (string) $deliveryId, ['_ip' => $ipAddress]);
-        });
-    }
-
-    private static function withAudit(callable $callback): void
-    {
-        Db::startTrans();
-        try { $callback(); Db::commit(); }
-        catch (\Throwable $exception) { Db::rollback(); throw $exception; }
+        $retried = \app\modules\Platform\Eventing\Public\DeliveryRetries::retry($deliveryId,
+            static function (array $before, array $after) use ($deliveryId, $actorId, $ipAddress): void {
+                app(AuditLogger::class)->record($actorId, 'eventing.delivery.retry', 'event_delivery', (string) $deliveryId, [
+                    'attempt_count' => (int) $before['attempt_count'],
+                    'previous_retry_attempt_limit' => $before['retry_attempt_limit'] ?? null,
+                    'retry_attempt_limit' => $after['retry_attempt_limit'],
+                    'previous_error' => $before['last_error'] ?? null,
+                    'policy_revision' => $before['policy_revision'] ?? null,
+                    '_ip' => $ipAddress,
+                ]);
+            });
+        if (!$retried) throw \app\api\ApiException::notFound('投递记录不存在或当前不可重试');
     }
 }

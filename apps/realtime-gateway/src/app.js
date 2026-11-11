@@ -10,7 +10,7 @@ export const PROTOCOL = 'lc-realtime/1'
 export const VERSION = '0.1.0'
 
 const HEARTBEAT_MS = 15_000
-const MAX_LIFETIME_MS = 900_000
+const MAX_LIFETIME_MS = 60_000
 const RECONNECT_RETRY_MS = 2_000
 const REDIS_CONFIG_REFRESH_MS = 15_000
 const DEFAULT_MAX_CONNECTIONS = 100
@@ -130,6 +130,7 @@ export function createApp(config) {
       || !Number.isInteger(settings.database) || settings.database < 0 || settings.database > 15
       || typeof settings.tls !== 'boolean' || typeof settings.tls_server_name !== 'string'
       || (settings.tls && !validTlsIdentity(settings))
+      || typeof settings.channel !== 'string' || !/^lc:[a-f0-9]{32}:realtime$/.test(settings.channel)
       || typeof settings.password !== 'string' || typeof settings.revision !== 'string' || !settings.revision
       || !['env', 'database'].includes(settings.source)) {
       disableTransport('redis configuration unavailable')
@@ -146,7 +147,7 @@ export function createApp(config) {
         password: settings.password,
         tls: settings.tls,
         tlsServerName: settings.tls_server_name,
-        channel: 'lovecards:realtime',
+        channel: settings.channel,
         onMessage: (message) => {
           // 信号载荷 {topic, uid:'user:42', cursor}；只按 recipient scope 定向推送。
           if (message.uid === 'all' && (message.topic !== 'feed' || message.cursor !== 'public')) return
@@ -202,6 +203,7 @@ export function createApp(config) {
     // 验证 ticket 会等待后端；预留名额阻止同时通过验证的请求超出上限。
     pendingConnections += 1
     let verified
+    const verifyStartedAt = performance.now()
     let backendUnavailable = false
     try {
       verified = await backendFetch('/api/internal/realtime/ticket/verify', {
@@ -220,7 +222,10 @@ export function createApp(config) {
       res.end(JSON.stringify({ error: 'backend unavailable' }))
       return
     }
-    if (!verified || typeof verified.uid !== 'number' || verified.uid < 1) {
+    // 后端必须显式提供会话期限；减去整次验证耗时，避免网络延迟延长授权。
+    const lifetimeMs = Number.isInteger(verified?.connection_ttl_seconds)
+      ? Math.min(MAX_LIFETIME_MS, verified.connection_ttl_seconds * 1000) - (performance.now() - verifyStartedAt) : 0
+    if (!verified || !Number.isInteger(verified.uid) || verified.uid < 1 || lifetimeMs <= 0) {
       res.writeHead(401, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ success: false, error: { code: 1005, message: 'invalid stream ticket' } }))
       return
@@ -261,7 +266,7 @@ export function createApp(config) {
     state.connections.add(conn)
 
     conn.heartbeat = setInterval(() => { conn.send(pingComment()); conn.send(heartbeatFrame()) }, HEARTBEAT_MS)
-    conn.lifetime = setTimeout(() => closeConnection(conn, 'max lifetime'), MAX_LIFETIME_MS)
+    conn.lifetime = setTimeout(() => closeConnection(conn, 'session lifetime'), lifetimeMs)
 
     req.on('close', () => closeConnection(conn, 'client closed'))
   }
@@ -278,6 +283,7 @@ export function createApp(config) {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({
         protocol: PROTOCOL,
+        session_ttl_max_seconds: MAX_LIFETIME_MS / 1000,
         ready: state.transport === 'redis',
         cursor: true,
         auth: ['ticket'],
@@ -324,7 +330,7 @@ export function createApp(config) {
         configureRedis({ enabled: true, host: redis.host, port: redis.port ?? 6379,
           database: redis.database ?? 0, password: redis.password ?? '',
           tls: redis.tls ?? false, tls_server_name: redis.tls_server_name ?? '',
-          source: redis.source ?? 'env', revision: redis.revision ?? 'env' })
+          channel: redis.channel, source: redis.source ?? 'env', revision: redis.revision ?? 'env' })
       }
       return new Promise((resolve) => {
         server.listen(port, host, () => resolve(server.address().port))

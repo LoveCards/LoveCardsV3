@@ -261,6 +261,7 @@ const databaseCollation = await detectUtf8mb4Collation(php, {
   DATABASE_PASSWORD: databasePassword,
 })
 const dbEnv = {
+  LC_DEPLOYMENT_ID: `upgrade-e2e-${database}`,
   LOVECARDS_E2E_ISOLATED: '1',
   LOVECARDS_E2E_DB_HOST: databaseHost,
   LOVECARDS_E2E_DB_PORT: databasePort,
@@ -307,6 +308,7 @@ try {
     RANDFILE: randFile,
   })
   const trustedKeys = JSON.stringify({ 'upgrade-e2e-key': publicKey })
+  dbEnv.LC_RUNTIME_DRAIN_COMMAND_JSON = JSON.stringify([php, path.join(root, 'scripts/assert-e2e-consumers-stopped.php')])
 
   await run(php, ['scripts/bootstrap-e2e.php', 'create', database], dbEnv)
   databaseCreated = true
@@ -364,7 +366,9 @@ try {
     LOVECARDS_DEV_PHP_UPLOAD_MAX_FILESIZE: process.env.LOVECARDS_UPGRADE_E2E_PHP_UPLOAD_MAX_FILESIZE
       || process.env.LOVECARDS_DEV_PHP_UPLOAD_MAX_FILESIZE
       || '512M',
-    LOVECARDS_DEV_PHP_INI: process.env.LOVECARDS_UPGRADE_E2E_PHP_INI || process.env.LOVECARDS_DEV_PHP_INI || '',
+    // PHP 8.4 加载第三方库时会产生废弃提示；避免污染 JSON 响应，
+    // 错误仍写入服务端日志。
+    LOVECARDS_DEV_PHP_INI: process.env.LOVECARDS_UPGRADE_E2E_PHP_INI || process.env.LOVECARDS_DEV_PHP_INI || '{"display_errors":"0"}',
     LOVECARDS_E2E_ISOLATED: '1',
     LOVECARDS_ALLOW_UNSUPPORTED_PHP: process.env.LOVECARDS_ALLOW_UNSUPPORTED_PHP || '0',
   }, 'inherit', true)
@@ -375,7 +379,9 @@ try {
     json: { account: adminAccount, password: adminPassword },
   })
   const token = login.data?.token
-  if (typeof token !== 'string' || token === '') throw new Error('Admin login did not return a JWT')
+  if (typeof token !== 'string' || token === '') {
+    throw new Error(`Admin login did not return a JWT (${login.response.status}, ${login.response.headers.get('content-type')}, ${String(login.payload?.error?.message ?? 'no API error')})`)
+  }
 
   const form = new FormData()
   form.set('file', await openAsBlob(releaseZip, { type: 'application/zip' }), 'release.zip')
@@ -399,6 +405,7 @@ try {
   let sawContractWaiting = false
   let servedRelease = false
   let ranActivatedConsumer = false
+  let ranFinalConsumer = false
   let previousRevision = Number(plan.revision || 0)
   const observations = []
   for (let attempt = 0; attempt < 128; attempt++) {
@@ -408,6 +415,11 @@ try {
       const consumerOutput = await run(php, [path.join('apps', 'backend', 'think'), 'lc:scheduler:run-once', '--max-jobs=1', '--max-ms=100'], dbEnv)
       if (!consumerOutput.includes('claimed=')) throw new Error('Activated Release did not complete a scheduled consumer run')
       ranActivatedConsumer = true
+    }
+    if (plan.current_step === 'final_health' && !ranFinalConsumer) {
+      const consumerOutput = await run(php, [path.join('apps', 'backend', 'think'), 'lc:scheduler:run-once', '--max-jobs=1', '--max-ms=100'], dbEnv)
+      if (!consumerOutput.includes('claimed=')) throw new Error('Final health did not observe a post-Contract consumer run')
+      ranFinalConsumer = true
     }
     if (plan.status === 'waiting') {
       if (plan.current_step !== 'contract_migrations') throw new Error(`Upgrade is waiting at unexpected step: ${plan.current_step}`)
@@ -435,14 +447,15 @@ try {
     observations.push(`${plan.current_step || 'done'}:${plan.status}`)
   }
   if (plan.status !== 'completed') throw new Error(`Upgrade did not complete after bounded advances: ${observations.slice(-10).join(', ')}`)
-  if (!ranActivatedConsumer) throw new Error('Upgrade completed without verifying the activated consumer')
+  if (!ranActivatedConsumer || !ranFinalConsumer) throw new Error('Upgrade completed without both activated and final consumer runs')
 
   const detail = await api(`/admin/operations/upgrades/${planId}`, { token })
   if (detail.data?.status !== 'completed' || detail.data?.release_id !== releaseId) throw new Error('Persisted upgrade detail is inconsistent')
   const activation = detail.data.steps?.find((step) => step.name === 'activate_release')
   const health = detail.data.steps?.find((step) => step.name === 'health_check')
   const contract = detail.data.steps?.find((step) => step.name === 'contract_migrations')
-  if (activation?.state !== 'succeeded' || health?.state !== 'succeeded') throw new Error('Activation and health steps were not durably completed')
+  const finalHealth = detail.data.steps?.find((step) => step.name === 'final_health')
+  if (activation?.state !== 'succeeded' || health?.state !== 'succeeded' || finalHealth?.state !== 'succeeded') throw new Error('Activation and health steps were not durably completed')
   if (!sawContractWaiting || !approved || detail.data?.contract_approved !== true) throw new Error('Contract migration did not pass through explicit waiting and approval')
   if (contract?.state !== 'succeeded' || typeof detail.data?.milestones?.contract_executed_at !== 'string') {
     throw new Error('Contract migration did not persist its successful execution milestone')

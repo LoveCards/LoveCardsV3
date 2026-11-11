@@ -1,5 +1,5 @@
 // 仅由已经通过隔离环境检查的 SDK 集成套件调用。
-export async function cardAccessAudit({ admin, user, anonymous, cardId, mediaUrl, origin, test, assert, assertApiError }) {
+export async function cardAccessAudit({ admin, user, anonymous, cardId, mediaUrl, origin, test, assert, assertApiError, fetchComplete }) {
   await test('audit: restricted card denies anonymous/stranger reads and writes', async () => {
     const owner = await admin.users.me()
     const reader = await user.users.me()
@@ -13,28 +13,28 @@ export async function cardAccessAudit({ admin, user, anonymous, cardId, mediaUrl
     await assertApiError(() => user.cards.like(cardId), 404)
     await assertApiError(() => user.comments.create(cardId, { content: 'must not persist' }), 404)
     await assertApiError(() => user.library.save({ resource_type: 'card', resource_id: String(cardId) }), 404)
-    assert((await fetch(origin + mediaUrl)).status === 404, 'old public hash must be revoked')
+    assert((await fetchComplete(origin + mediaUrl)).status === 404, 'old public hash must be revoked')
     const grant = await admin.cards.mediaAccess(cardId)
     assert(grant.media.length === 1 && grant.expires_in === 300, 'typed grant should contain real media')
     assert(grant.cover_url === grant.media[0].url, 'covered media should use the same protected grant URL')
     const url = origin + grant.media[0].url
-    const response = await fetch(url)
+    const response = await fetchComplete(url)
     assert(response.status === 200 && response.headers.get('cache-control').includes('no-store'), 'owner private media must stream without cache')
-    assert((await fetch(url, { method: 'HEAD' })).status === 200, 'authorized HEAD')
-    const range = await fetch(url, { headers: { Range: 'bytes=0-3' } })
-    assert(range.status === 206 && (await range.arrayBuffer()).byteLength === 4, 'authorized range')
-    assert((await fetch(url.replace(/grant=.*/, 'grant=invalid'))).status === 404, 'bad grant must not read media')
+    assert((await fetchComplete(url, { method: 'HEAD' })).status === 200, 'authorized HEAD')
+    const range = await fetchComplete(url, { headers: { Range: 'bytes=0-3' } })
+    assert(range.status === 206 && range.byteLength === 4, 'authorized range')
+    assert((await fetchComplete(url.replace(/grant=.*/, 'grant=invalid'))).status === 404, 'bad grant must not read media')
     await admin.cards.update(cardId, { visibility: 'followers' })
     await assertApiError(() => user.cards.get(cardId), 404)
     await user.social.follow(owner.uid)
     assert((await user.cards.get(cardId)).id === cardId, 'real follower must read card')
     const followerGrant = await user.cards.mediaAccess(cardId)
     const followerUrl = origin + followerGrant.media[0].url
-    const followerResponse = await fetch(followerUrl)
+    const followerResponse = await fetchComplete(followerUrl)
     assert(followerResponse.status === 200, 'real follower must read media')
     await user.social.unfollow(owner.uid)
-    assert((await fetch(followerUrl, { headers: { 'If-None-Match': followerResponse.headers.get('etag') } })).status === 404, 'revocation must precede 304')
-    assert((await fetch(followerUrl, { headers: { Range: 'bytes=0-3' } })).status === 404, 'revocation must precede range')
+    assert((await fetchComplete(followerUrl, { headers: { 'If-None-Match': followerResponse.headers.get('etag') } })).status === 404, 'revocation must precede 304')
+    assert((await fetchComplete(followerUrl, { headers: { Range: 'bytes=0-3' } })).status === 404, 'revocation must precede range')
     await admin.cards.update(cardId, { visibility: 'public' })
     await user.safety.block(owner.uid)
     await assertApiError(() => user.cards.get(cardId), 404)
@@ -143,9 +143,9 @@ export async function cardAccessAudit({ admin, user, anonymous, cardId, mediaUrl
     await admin.cards.updateManaged(siblingId, { status: 0, visibility: 'public' })
     try {
       await admin.cards.update(cardId, { visibility: 'private' })
-      assert((await fetch(origin + mediaUrl)).status === 200, 'public sibling reference must keep shared media public')
+      assert((await fetchComplete(origin + mediaUrl)).status === 200, 'public sibling reference must keep shared media public')
       await admin.cards.update(siblingId, { visibility: 'private' })
-      assert((await fetch(origin + mediaUrl)).status === 404, 'shared media must be revoked when every reference is restricted')
+      assert((await fetchComplete(origin + mediaUrl)).status === 404, 'shared media must be revoked when every reference is restricted')
     } finally {
       await admin.cards.update(cardId, { visibility: 'public' })
       try {

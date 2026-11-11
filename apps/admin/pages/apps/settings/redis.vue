@@ -87,7 +87,7 @@ import AdminConfigSection from '~/components/shared/admin/AdminConfigSection.vue
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
-import { isApiError, useApi } from '~/lib/api'
+import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import { readBoolean, readNumber, readObject, readString } from '~/utils/json'
 
@@ -95,6 +95,7 @@ type RedisForm = { enabled: boolean; host: string; port: number; database: numbe
 type TestResult = { ready: boolean; reason_code: string | null }
 
 const client = useApi()
+const configSnapshot = useConfigSnapshot(client)
 const userStore = useUserStore()
 const loading = ref(true)
 const loadError = ref('')
@@ -111,8 +112,9 @@ const canEdit = computed(() => userStore.hasGrant('config.update', 'global') && 
 const dirty = computed(() => JSON.stringify(form) !== JSON.stringify(original.value) || secretAction.value !== 'keep')
 const { unsavedChangesDialog, continueEditing, discardChanges } = useAdminUnsavedChanges(dirty)
 
-const errorMessage = (cause: unknown, fallback: string) => isApiError(cause) ? cause.message : fallback
+const errorMessage = configSnapshot.errorMessage
 const reasonLabel = (reason: string | null) => ({
+  'deployment-identity-required': '部署环境尚未配置有效的站点身份，请联系部署管理员',
   'redis-disabled': '尚未启用 Redis',
   'redis-not-configured': '连接参数无效',
   'redis-extension-unavailable': 'PHP Redis 扩展不可用',
@@ -129,26 +131,30 @@ const parseTest = (raw: Record<string, unknown>): TestResult => ({
   reason_code: typeof raw.reason_code === 'string' ? raw.reason_code : null,
 })
 
+const applySnapshot = (raw: JsonObject) => {
+  const redis = readObject(raw.redis)
+  const values: RedisForm = {
+    enabled: readBoolean(redis.enabled),
+    host: readString(redis.host),
+    port: readNumber(redis.port, 6379),
+    database: readNumber(redis.database),
+    tls: readBoolean(redis.tls),
+    tls_server_name: readString(redis.tls_server_name),
+  }
+  Object.assign(form, values)
+  original.value = { ...values }
+  passwordConfigured.value = readBoolean(readObject(redis.password).configured)
+  secretAction.value = 'keep'
+  replacementPassword.value = ''
+  testResult.value = null
+}
+
 const load = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const raw = await client.config.list()
-    const redis = readObject(raw.redis)
-    const values: RedisForm = {
-      enabled: readBoolean(redis.enabled),
-      host: readString(redis.host),
-      port: readNumber(redis.port, 6379),
-      database: readNumber(redis.database),
-      tls: readBoolean(redis.tls),
-      tls_server_name: readString(redis.tls_server_name),
-    }
-    Object.assign(form, values)
-    original.value = { ...values }
-    passwordConfigured.value = readBoolean(readObject(redis.password).configured)
-    secretAction.value = 'keep'
-    replacementPassword.value = ''
-    testResult.value = null
+    const raw = await configSnapshot.list()
+    applySnapshot(raw)
     return true
   } catch (cause) {
     loadError.value = errorMessage(cause, '无法加载 Redis 配置。')
@@ -166,8 +172,8 @@ const save = async () => {
     const redis: JsonObject = { ...form }
     if (secretAction.value === 'replace') redis.password = { $secret: 'replace', value: replacementPassword.value }
     if (secretAction.value === 'clear') redis.password = { $secret: 'clear' }
-    await client.config.update({ redis })
-    if (await load()) message.value = { type: 'success', text: 'Redis 配置已保存。请测试连接，再检查实时模式依赖。' }
+    applySnapshot(await configSnapshot.update({ redis }))
+    message.value = { type: 'success', text: 'Redis 配置已保存。请测试连接，再检查实时模式依赖。' }
   } catch (cause) {
     message.value = { type: 'error', text: errorMessage(cause, 'Redis 配置保存失败。') }
   } finally {

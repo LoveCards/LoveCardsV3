@@ -69,9 +69,13 @@ try {
     $publicPem = (string) ($details['key'] ?? '');
     $write($keyPath, $privatePem);
 
-    $registry = new HandlerRegistry();
+    $registry = \app\EventHandlers::create();
+    // 目标源码导出自己的目录；fixture 不加载当前构建器的模块。
+    $targetCatalog = $registry->catalog();
+    $targetCatalog[0]['max_attempts'] = 37;
+    $write($source . '/vendor/autoload.php', '<?php namespace app; final class EventHandlers { public static function create() { return new class { public function catalog(): array { return ' . var_export($targetCatalog, true) . '; } }; } }');
     $limits = new ReleaseArchiveLimits(8 * 1024 * 1024, 100, 2 * 1024 * 1024, 4 * 1024 * 1024, 1024 * 1024);
-    $builder = new SignedReleaseBuilder($registry, $limits);
+    $builder = new SignedReleaseBuilder($limits);
     $result = $builder->build(
         $source,
         $output,
@@ -109,8 +113,8 @@ try {
         if (($manifest['handler_catalog_hash'] ?? '') !== HandlerCatalogHasher::hashArray($catalog)) {
             throw new RuntimeException('catalog file hash contract mismatch');
         }
-        if ($registry->catalogHash() !== HandlerCatalogHasher::hashArray($catalog)) {
-            throw new RuntimeException('runtime and release catalog hash algorithms diverge');
+        if (HandlerCatalogHasher::hashArray($targetCatalog) !== HandlerCatalogHasher::hashArray($catalog) || $registry->catalogHash() === HandlerCatalogHasher::hashArray($catalog)) {
+            throw new RuntimeException('builder must sign target source catalog instead of its running registry');
         }
         if (($manifest['migration_checksums']['20260819000003'] ?? '') !== hash('sha256', $migration)) {
             throw new RuntimeException('migration checksum mismatch');
@@ -148,6 +152,10 @@ try {
         $sourceKey,
         'test-key', 'bad-key', '1.0.1', 'bad', 2
     ));
+
+    $write($source . '/vendor/autoload.php', '<?php throw new RuntimeException("broken target catalog");');
+    $throws(static fn() => $builder->build($source, $tmp . '/broken.zip', $keyPath, 'test-key', 'broken', '1.0.1', 'bad', 2));
+    if (is_file($tmp . '/broken.zip')) throw new RuntimeException('failed catalog export must not publish an artifact');
 
     fwrite(STDOUT, "PASS signed builder produces an importer-compatible artifact without runtime secrets\n");
     fwrite(STDOUT, "PASS handler catalog uses one canonical hash at build, import and runtime\n");

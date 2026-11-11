@@ -195,7 +195,8 @@ try {
         $e2ePassword = (string) (getenv('LOVECARDS_E2E_ADMIN_PASSWORD') ?: '');
         // SDK 全量套件覆盖 root 专属能力；普通 UI 验收使用 admin + user，
         // 以便路由夹具通过真实用户接口创建卡片和评论。
-        $e2eRoleId = getenv('LOVECARDS_E2E_RUN_SDK_INTEGRATION') === '1' ? 1 : 2;
+        $e2eRoleId = (getenv('LOVECARDS_E2E_RUN_SDK_INTEGRATION') === '1'
+            || getenv('LOVECARDS_E2E_ROOT_ADMIN') === '1') ? 1 : 2;
         $e2eRoleIds = $e2eRoleId === 2 ? [2, 3] : [1];
         if ($e2eAccount !== '' && $e2ePassword !== '') {
             $e2eEmail = filter_var($e2eAccount, FILTER_VALIDATE_EMAIL) ? $e2eAccount : 'e2e-admin@example.test';

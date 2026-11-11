@@ -2832,8 +2832,6 @@
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
-            "polling_backoff_factor": "number",
-            "polling_max_interval_seconds": "number",
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
@@ -3210,8 +3208,6 @@
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
-            "polling_backoff_factor": "number",
-            "polling_max_interval_seconds": "number",
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
@@ -3699,8 +3695,8 @@
           "JwtAuthCheck",
           "PermissionCheck"
         ],
-        "x-resource": null,
-        "x-response-shape": "void",
+        "x-resource": "ConfigResource",
+        "x-response-shape": "item",
         "x-validators": [
           "app\\modules\\Platform\\Config\\Transport\\Api\\Config"
         ],
@@ -3714,8 +3710,37 @@
           }
         },
         "responses": {
-          "204": {
-            "description": "No content"
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": true,
+                      "x-typescript-type": "ConfigData"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
           },
           "default": {
             "description": "API error",
@@ -3742,6 +3767,16 @@
                 "type": "object",
                 "additionalProperties": {
                   "type": "object",
+                  "properties": {
+                    "__revision": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "description": "管理读取时的配置组版本，仅用于并发校验，不是业务配置"
+                    }
+                  },
+                  "required": [
+                    "__revision"
+                  ],
                   "additionalProperties": true
                 },
                 "x-typescript-params": "data?: Record<string, unknown>",
@@ -5708,8 +5743,6 @@
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
-            "polling_backoff_factor": "number",
-            "polling_max_interval_seconds": "number",
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
@@ -6401,8 +6434,6 @@
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
-            "polling_backoff_factor": "number",
-            "polling_max_interval_seconds": "number",
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
@@ -6719,8 +6750,6 @@
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
-            "polling_backoff_factor": "number",
-            "polling_max_interval_seconds": "number",
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
@@ -7336,8 +7365,6 @@
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
-            "polling_backoff_factor": "number",
-            "polling_max_interval_seconds": "number",
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
@@ -7456,12 +7483,6 @@
                     "type": "number"
                   },
                   "unread_interval_seconds": {
-                    "type": "number"
-                  },
-                  "polling_backoff_factor": {
-                    "type": "number"
-                  },
-                  "polling_max_interval_seconds": {
                     "type": "number"
                   },
                   "pause_when_hidden": {
@@ -7689,8 +7710,6 @@
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
-            "polling_backoff_factor": "number",
-            "polling_max_interval_seconds": "number",
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
@@ -7776,12 +7795,6 @@
                     "type": "number"
                   },
                   "unread_interval_seconds": {
-                    "type": "number"
-                  },
-                  "polling_backoff_factor": {
-                    "type": "number"
-                  },
-                  "polling_max_interval_seconds": {
                     "type": "number"
                   },
                   "pause_when_hidden": {
@@ -7879,8 +7892,6 @@
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
-            "polling_backoff_factor": "number",
-            "polling_max_interval_seconds": "number",
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
@@ -7922,6 +7933,18 @@
                         "properties": {
                           "plan_id": {
                             "type": "string"
+                          },
+                          "plan_version": {
+                            "type": "integer"
+                          },
+                          "legacy_plan": {
+                            "type": "boolean"
+                          },
+                          "service_recovered": {
+                            "type": "boolean"
+                          },
+                          "execution_uncertain": {
+                            "type": "boolean"
                           },
                           "release_id": {
                             "type": "string"
@@ -8141,8 +8164,6 @@
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
-            "polling_backoff_factor": "number",
-            "polling_max_interval_seconds": "number",
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
@@ -8182,6 +8203,18 @@
                       "properties": {
                         "plan_id": {
                           "type": "string"
+                        },
+                        "plan_version": {
+                          "type": "integer"
+                        },
+                        "legacy_plan": {
+                          "type": "boolean"
+                        },
+                        "service_recovered": {
+                          "type": "boolean"
+                        },
+                        "execution_uncertain": {
+                          "type": "boolean"
                         },
                         "release_id": {
                           "type": "string"
@@ -8414,6 +8447,18 @@
                         "plan_id": {
                           "type": "string"
                         },
+                        "plan_version": {
+                          "type": "integer"
+                        },
+                        "legacy_plan": {
+                          "type": "boolean"
+                        },
+                        "service_recovered": {
+                          "type": "boolean"
+                        },
+                        "execution_uncertain": {
+                          "type": "boolean"
+                        },
                         "release_id": {
                           "type": "string"
                         },
@@ -8627,6 +8672,18 @@
                       "properties": {
                         "plan_id": {
                           "type": "string"
+                        },
+                        "plan_version": {
+                          "type": "integer"
+                        },
+                        "legacy_plan": {
+                          "type": "boolean"
+                        },
+                        "service_recovered": {
+                          "type": "boolean"
+                        },
+                        "execution_uncertain": {
+                          "type": "boolean"
                         },
                         "release_id": {
                           "type": "string"
@@ -8842,6 +8899,18 @@
                         "plan_id": {
                           "type": "string"
                         },
+                        "plan_version": {
+                          "type": "integer"
+                        },
+                        "legacy_plan": {
+                          "type": "boolean"
+                        },
+                        "service_recovered": {
+                          "type": "boolean"
+                        },
+                        "execution_uncertain": {
+                          "type": "boolean"
+                        },
                         "release_id": {
                           "type": "string"
                         },
@@ -9055,6 +9124,18 @@
                       "properties": {
                         "plan_id": {
                           "type": "string"
+                        },
+                        "plan_version": {
+                          "type": "integer"
+                        },
+                        "legacy_plan": {
+                          "type": "boolean"
+                        },
+                        "service_recovered": {
+                          "type": "boolean"
+                        },
+                        "execution_uncertain": {
+                          "type": "boolean"
                         },
                         "release_id": {
                           "type": "string"
@@ -9535,8 +9616,6 @@
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
-            "polling_backoff_factor": "number",
-            "polling_max_interval_seconds": "number",
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
@@ -9743,8 +9822,6 @@
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
-            "polling_backoff_factor": "number",
-            "polling_max_interval_seconds": "number",
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",
@@ -10259,8 +10336,6 @@
             "notification_interval_seconds": "number",
             "message_interval_seconds": "number",
             "unread_interval_seconds": "number",
-            "polling_backoff_factor": "number",
-            "polling_max_interval_seconds": "number",
             "pause_when_hidden": "boolean",
             "worker_stale_seconds": "number",
             "scheduler_stale_seconds": "number",

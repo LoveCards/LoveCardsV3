@@ -33,7 +33,13 @@ final class EventingWorker extends Command
             'eventing-' . getmypid(), $queues, 300, 1000, 10000,
             (int) $input->getOption('max-jobs'), 0, $releaseId, $schemaIdentity
         );
-        $report = app(WorkerLoop::class)->run($options, static fn(): bool => false);
+        $stopping = false;
+        if (function_exists('pcntl_async_signals') && function_exists('pcntl_signal')) {
+            pcntl_async_signals(true);
+            pcntl_signal(SIGTERM, static function () use (&$stopping): void { $stopping = true; });
+            pcntl_signal(SIGINT, static function () use (&$stopping): void { $stopping = true; });
+        }
+        $report = app(WorkerLoop::class)->run($options, static function () use (&$stopping): bool { return $stopping; });
         $output->writeln('claimed=' . $report->claimed());
         return 0;
     }

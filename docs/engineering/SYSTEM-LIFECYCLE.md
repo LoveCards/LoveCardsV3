@@ -1,5 +1,7 @@
 # 系统生命周期、安装与升级
 
+> 2026-11-11 收敛：安装密钥与初始管理员凭据终结校验、显式失败重试、v2 阶段资格/Contract 暂停/最终健康和恢复结果区分已在本地实现；隔离 MariaDB 的 schema、备份及升级 E2E 已通过，dev 真实进程停止和运行验收仍须完成。完整状态见 [收敛设计](PLATFORM-CONVERGENCE-2026-11-11.md)，不能用本地基线替代部署证据。
+
 LoveCards 的安装、数据库迁移、Release 导入、激活和恢复属于同一个系统生命周期。当前安装 Host 仍负责首次数据库连接、配置与密钥写入、目标 schema 和默认数据导入及安装锁；历史迁移身份由 SystemLifecycle 记入账本，旧版本结构变更由该模块执行。后续升级不得通过“解压覆盖当前目录 + 临时执行 SQL”绕过账本、签名、备份和恢复协议。
 
 ## 安装输入与 Schema 一致性
@@ -15,6 +17,8 @@ LoveCards 的安装、数据库迁移、Release 导入、激活和恢复属于�
 事件消费策略单例行 `eventing_consumer_state`、新装默认 `scheduled`/`scheduled_trigger=none` 及 `scheduler_runs.trigger_source` 属于结构与系统默认数据变更：新增结构必须同时进入完整安装 schema 与受审迁移账本；新装默认行进入 `seed.sql`，旧站点由向前迁移按既有通信模式初始化（既有 realtime 取 resident，其余取 scheduled/cli）。不能通过运行时 schema diff 或模块启动时的隐式 DDL 补表。旧 polling 站点切换到停止请求内消费的新 Release 前，`UpgradeCoordinator` 在 pointer 激活前调用 Eventing Public 门禁，要求声明的 CLI 或 HTTP 定时入口最近一小时有成功运行记录；旧版本 CLI 台账的 `legacy` 来源只兼容迁移后的 `cli` 声明。最近运行失败、卡住或来源不匹配时拒绝激活并保留旧 Release。近期运行不能证明未来定时服务一定持续，部署方仍须监控。
 
 旧 realtime 站点按 resident 初始化；新 Worker 无法在 pointer 激活和 reload 之前宣称与目标 Release/Schema/Catalog 匹配，因此事件消费策略门禁不把此作为激活前判定。激活后的 `health_check` 另执行事件消费运行门禁：定时模式要求激活时间之后出现来源匹配、成功且新鲜的 CLI/HTTP 运行；常驻模式要求 Worker 心跳匹配当前 Release、Schema 和 Handler Catalog。若站点选择实时通信，还须在此时通过 Redis、Gateway、Worker 等实时依赖检查。未满足时计划保持失败/待重试状态，不得报告升级成功；管理员修复后重试健康检查或按现有 pointer 恢复协议处理。
+
+新装种子中的 root 账号仅有不可登录的密码占位值；安装向导在创建安装锁前要求管理员输入 12 至 128 字符的新密码，由 Auth 公开入口核对账号启用状态与 root 角色后写入实际哈希并增加凭据版本。缺失密码、角色或写入失败时安装锁不得创建。旧站点已安装账号不由该步骤修改。
 
 ## 持久目录与不可变 Release
 
@@ -75,10 +79,21 @@ environment_probe
 -> activate_release
 -> reload_runtime      # 无常驻运行时时可跳过
 -> health_check
--> contract_migrations   # 仅需 Contract 且显式批准时执行
+-> contract_migrations   # 仅需 Contract 且显式批准、全部消费者已停时执行
+-> final_health          # v2：完整迁移身份、目标消费者和通信健康通过才完成
 ```
 
 升级以 MySQL Lease 串行化，默认 TTL 为 900 秒并在长步骤前后续租。计划仓储会对全部未完成记录做全局判定，创建第二个计划、交错推进/批准/恢复另一个计划都会被拒绝，不依赖“最近若干条”扫描。升级计划和手动迁移共享 `system.lifecycle.upgrade` lease；手动入口在取得同一 Lease 后再次检查活动计划，关闭“先检查、后加锁”的竞态窗口。升级计划执行迁移时复用并续租外层 holder，不做会自冲突的嵌套 Lease 获取。存在未完成升级计划时不能手动迁移，避免两条迁移账本并发。失败会持久化当前 step、attempts 和稳定 failure code；不会因为 HTTP 请求结束而把计划伪装成成功。
+
+### 失败迁移的显式重试（S3）
+
+管理员再次调用失败计划的 `advance`，或部署操作者显式执行 `lc:system:upgrade advance/run <plan-id>`，表示授权当前失败步骤的一次迁移重试。授权只在调用开始时步骤已经为 `failed` 时生效，经同一个 `UpgradeCoordinator`、Lease 和迁移执行器传递；不保留到下一次调用。迁移保留 ID、checksum、原 phase/cursor 及累计 attempts；Contract 仍必须先经原批准 Gate，独立 `lc:system:migrate --retry-failed` 不得绕过未完成升级计划。
+
+如果进程中断造成计划仍为 `running`、迁移账本已为 `failed`，第一次推进只将计划标记失败并停止，不复位账本；之后明确重试才再次执行。迁移再次失败会立即终止当前 `run`，不会在同一循环中自动反复重试。
+
+HTTP 和 CLI 的推进均在持有生命周期 Lease、尚未修改计划或迁移进度时，使用现有 `AuditLogger` 写入 `system.upgrade.advance.requested`。记录包含调用前计划 ID/Release/revision、步骤及状态、由同一选步规则读取的迁移 ID/checksum/phase/status/cursor/attempts/revision、是否授予失败重试，以及 `http`/`cli` 来源；CLI 操作者为部署身份，`actor_id=null`。审计失败时计划和迁移均不复位；成功审计代表执行意图，实际结果仍以计划及账本为准。HTTP 原有完成审计继续保留。本切片不新增升级状态机，也不代表阶段运行资格、Contract 最终健康和长步骤排他已经完成。
+
+本地回归由 `UpgradeCoordinatorBaseline.php`（失败重试、RUNNING/FAILED中断窗口、审计失败不推进）、`BehaviorBaseline.php`（真实迁移适配链与精确只读选步）和 `UpgradeAuditHosts.php`（CLI advance/run 与 HTTP 审计传递）覆盖；真实 MySQL 与升级 E2E 证据须另行记录。
 
 ## 数据库迁移与 Contract Gate
 
@@ -97,6 +112,7 @@ Contract 批准是独立权限 `system.update.contract`；普通升级权限不�
 `backup_gate` 必须为数据库、默认文件存储和 active pointer 各生成并校验一个 Artifact，并在激活前再次断言 ready。当前 `LocalBackupArtifactStore` 的能力边界是：
 
 - 数据库：PHP 逻辑 SQL 备份，可校验完整结束标记；应用内没有自动 SQL 导入能力；
+- 数据库备份会先建立实际 PDO 连接；冷启动 CLI 中未执行过查询时仍必须能完成并校验 Artifact；
 - 默认本地存储：带逐文件 hash Manifest 的 ZIP 备份，并提供原子目录交换的恢复原语；
 - pointer：普通文件 Artifact，恢复前重新检查根目录、checksum 与 Release ID；
 - 非本地默认存储：没有对应云厂商快照适配器时 fail-closed，升级不会继续。
@@ -203,6 +219,21 @@ multipart body；诊断依赖请求的 `Content-Length` 与当前 PHP 指令。�
 
 2026-08-20 的历史验收记录为根质量门禁通过、后端递归基线 39/39；它不代表当前分支的测试数量或结果。独立的 localhost/一次性数据库升级 E2E 使用 Builder 生成真实签名 ZIP，经真实 JWT multipart 上传后由 HTTP API 逐单元推进，验证 active pointer、后续响应的 `X-LoveCards-Release-Id` 和持久化 `health_check` 成功状态。`/_lc/release-health` 的路由识别与 Release 标识由持久运行时基线覆盖。
 
-当前迁移目录已有 `contract` phase。E2E 仍在系统临时目录复制 Release source，并仅向该副本注入独立分段测试迁移，验证提前批准被拒、计划等待批准、批准持久化和 Contract SQL probe；这不能代替对每个实际 Contract 迁移的数据量、锁影响与恢复演练。激活后、Contract 前只能恢复一次由 `UpgradeCoordinatorBaseline`、`BehaviorBaseline` 与 `RecoveryBaseline` 的状态机测试保护；生产变更仍需在可丢弃的旧版本数据副本上演练。
+当前迁移目录已有 `contract` phase。E2E 仍在系统临时目录复制 Release source，并仅向该副本注入独立分段测试迁移，验证提前批准被拒、计划等待批准、批准持久化和 Contract SQL probe；隔离 E2E 的 drain 夹具只确认本机临时数据库无在途消费记录，不能证明真实部署的 Worker、cron/HTTP 触发器和自动重启入口已停止，也不能代替对每个实际 Contract 迁移的数据量、锁影响与恢复演练。激活后、Contract 前只能恢复一次由 `UpgradeCoordinatorBaseline`、`BehaviorBaseline` 与 `RecoveryBaseline` 的状态机测试保护；生产变更仍需在可丢弃的旧版本数据副本上演练。
 
 对中大型实例，当前 PHP 逻辑数据库备份与本地文件 ZIP 是正确性基线，不代表无限容量方案。上线前应按真实数据量测量备份时长、临时磁盘、锁/快照影响和恢复时间目标；达到阈值后，应通过 `BackupArtifactStore` 接入数据库原生备份及对象存储快照，而不是绕过 `backup_gate`。
+
+
+Release Builder 在目标源码目录内启动有 30 秒与 1 MiB 输出预算的 PHP 导出进程，从目标 `app/EventHandlers.php` 导出目录。目标源码无法导出、目录为空或进程失败时拒绝生成包；构建器自身运行时目录不能代替目标目录。签名与导入仍用现有 `handler_catalog_hash` 定义，不静默更改哈希算法。目标源码本身需要可信的构建环境，源码导出会执行其 PHP 组合根；发行构建应在隔离构建机执行。
+
+### v2 阶段运行资格与执行排他（2026-11-11）
+
+新计划在现有 context 保存 `plan_version=2` 和目标受审迁移 checksum 集；v1无版本计划保留旧步骤形状，管理协议标记 `legacy_plan`，不静默添加步骤。v1可按其旧形状受控完成或恢复，但不能获得v2阶段资格；若旧计划被完整身份门禁卡住，应通过受审桥接/恢复处理，不能修改账本伪造完成。
+
+`SchemaIdentity` 的通用身份仍要求全部 complete。仅运行时入口可接受唯一v2计划的目标Release：Pointer、进程Release、目标完整checksum集合相同；verify已完成；所有账本只可能complete或contract/waiting。该资格用于reload、health及contract批准前等待。健康步骤失败可以保留修复依赖所需的目标资格；迁移失败、指针恢复、身份漂移、Contract running/failed撤销资格。claim在同一事务先锁当前计划，再锁消费模式并重新核验资格，不永久缓存许可。
+
+Contract开始后全部新领取暂停。Native runtime必须有部署者配置的drain命令；命令须在实际停止并核实 Worker、cron/HTTP 定时触发及自动重启入口后，以 stdout 返回 `{"workers_stopped":true,"scheduled_trigger_stopped":true,"restart_disabled":true}`。仅退出码零或过期心跳/租约不是停机证明。命令成功后仍核验无 processing 投递、running 定时记录和未 stopped Worker；旧版本 Worker 若已被 OS 确认退出但留下 running 心跳行，应由受审 drain 脚本在核对进程身份后封存为 stopped，不能只按过期时间批量改写。新 Worker 在支持 pcntl 的 CLI 环境接收 SIGTERM/SIGINT 后退出循环并写 stopped。无法提供此证据的部署方式保守拒绝 Contract。Contract 后 v2 进入 final_health；配置了 reload_command 时调用它，否则由部署方启动目标消费者，随后验证完整迁移身份与事件/通信健康。
+
+现有Lease增加数据库名隔离的MySQL会话GET_LOCK，获取不等待，续租同时验证连接ID及锁所有者；900秒TTL过期不能让第二个活会话执行同一步。计划在副作用前持久化execution_in_progress；进程崩溃/失联且无法确认结算时禁止凭TTL重放，迁移账本遗留running同样拒绝自动继续。外部备份/部署子进程可能在MySQL连接中断后仍存活，当前没有通用跨进程fencing或自动处置工具：操作者必须核实SQL、子进程及文件结果后按受审恢复流程处置，不允许直接清标记后盲重试。
+
+恢复先持久化pointer_restored_at和service_recovered=false；旧Release完整事件健康验证通过后才写recovered_at。扩展账本导致旧代码失权时，恢复仅代表文件指针已回切，服务仍未恢复。管理协议明确暴露两个结果；不得删除新账本来让旧代码通过。历史未实现claim门禁的旧Worker必须由部署drain停止或先部署桥接版本，新PHP代码不能隔空撤销其已运行逻辑。

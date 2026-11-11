@@ -11,6 +11,14 @@ import { cardAccessAudit } from './card-access-audit.mjs'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const ADMIN_ACCOUNT = process.env.LOVECARDS_SDK_TEST_ADMIN_ACCOUNT
 const ADMIN_PASSWORD = process.env.LOVECARDS_SDK_TEST_ADMIN_PASSWORD
+let adminLoginAccount = ADMIN_ACCOUNT
+let adminEmail = ''
+
+const fetchComplete = async (input, init) => {
+  const response = await fetch(input, init)
+  const body = await response.arrayBuffer()
+  return { status: response.status, ok: response.ok, headers: response.headers, byteLength: body.byteLength }
+}
 
 // ═══════════════════════════════════════════════
 //  Phase 0: Bootstrap
@@ -64,7 +72,11 @@ await test('communications policies match registered notification events', async
 })
 
 await test('configure disposable auth fixtures', async () => {
-  await adminClient.config.update({ user: { captcha: false }, captcha: { captcha_enabled: false } })
+  const configSnapshot = await adminClient.config.list()
+  await adminClient.config.update({
+    user: { captcha: false, __revision: configSnapshot.user.__revision },
+    captcha: { captcha_enabled: false, __revision: configSnapshot.captcha.__revision },
+  })
   const policy = await adminClient.session.policy()
   assert(policy.guest.enabled, 'guest mode must be enabled for isolated permission tests')
   assert(!policy.human_verification.enabled, 'human verification must be disabled for disposable account creation')
@@ -290,11 +302,14 @@ await test('GET /users/me → users.me()', async () => {
   assert(!('password' in r), 'Should NOT have password field')
   userId = r.id
   adminUid = r.uid
+  adminEmail = typeof r.email === 'string' ? r.email.trim() : ''
   return r
 })
 
 await test('PATCH /users/me → users.updateMe()', async () => {
   await adminClient.users.updateMe({ username: 'TestAdmin' })
+  adminLoginAccount = adminEmail || 'TestAdmin'
+  assert((await adminClient.users.me()).username === 'TestAdmin', 'updated username should be visible')
   return true
 })
 
@@ -308,27 +323,27 @@ await test('POST /users/me/password → users.updatePassword()', async () => {
     changed = true
     await assertApiError(() => adminClient.session.check(), 401)
 
-    const temporaryLogin = await makeClient(null).session.login({ account: ADMIN_ACCOUNT, password: temporaryPassword })
+    const temporaryLogin = await makeClient(null).session.login({ account: adminLoginAccount, password: temporaryPassword })
     const temporaryClient = makeClient(temporaryLogin.token)
     await temporaryClient.users.updatePassword({ current_password: temporaryPassword, new_password: ADMIN_PASSWORD })
     restored = true
     await assertApiError(() => temporaryClient.session.check(), 401)
 
-    const refreshed = await makeClient(null).session.login({ account: ADMIN_ACCOUNT, password: ADMIN_PASSWORD })
+    const refreshed = await makeClient(null).session.login({ account: adminLoginAccount, password: ADMIN_PASSWORD })
     adminToken = refreshed.token
     adminClient = makeClient(adminToken)
     return true
   } finally {
     if (changed && !restored) {
       try {
-        const recoveryLogin = await makeClient(null).session.login({ account: ADMIN_ACCOUNT, password: temporaryPassword })
+        const recoveryLogin = await makeClient(null).session.login({ account: adminLoginAccount, password: temporaryPassword })
         await makeClient(recoveryLogin.token).users.updatePassword({ current_password: temporaryPassword, new_password: ADMIN_PASSWORD })
         restored = true
       } catch {}
     }
     if (changed) {
       try {
-        const refreshed = await makeClient(null).session.login({ account: ADMIN_ACCOUNT, password: ADMIN_PASSWORD })
+        const refreshed = await makeClient(null).session.login({ account: adminLoginAccount, password: ADMIN_PASSWORD })
         adminToken = refreshed.token
         adminClient = makeClient(adminToken)
       } catch {}
@@ -352,10 +367,10 @@ await test('GET /users/me/comments → comments.listOwn()', async () => {
 await test('POST /session/logout → session.logout()', async () => {
   // Create a fresh client for logout test
   const lc = makeClient(null)
-  const loginResult = await lc.session.login({ account: ADMIN_ACCOUNT, password: ADMIN_PASSWORD })
+  const loginResult = await lc.session.login({ account: adminLoginAccount, password: ADMIN_PASSWORD })
   const logoutClient = makeClient(loginResult.token)
   await logoutClient.session.logout()
-  const refreshed = await lc.session.login({ account: ADMIN_ACCOUNT, password: ADMIN_PASSWORD })
+  const refreshed = await lc.session.login({ account: adminLoginAccount, password: ADMIN_PASSWORD })
   adminToken = refreshed.token
   adminClient = makeClient(adminToken)
   return true
@@ -742,14 +757,18 @@ await test('GET /config/groups → config.groups()', async () => {
 })
 
 await test('POST /config → config.update()', async () => {
-  // config.update expects { group: { key: value } } structure
-  // Just verify the method works with a no-op update
+  // 使用读取时的版本保存；成功返回本次提交快照，旧版本必须冲突。
   const groups = await adminClient.config.groups()
   if (groups.length > 0) {
     const g = groups[0]
     const current = await adminClient.config.list()
     if (current[g]) {
-      await adminClient.config.update({ [g]: current[g] })
+      const committed = await adminClient.config.update({ [g]: current[g] })
+      assert(committed[g].__revision === current[g].__revision + 1, 'Should return committed revision')
+      let staleRejected = false
+      try { await adminClient.config.update({ [g]: current[g] }) }
+      catch (error) { staleRejected = error.status === 409 }
+      assert(staleRejected, 'Stale config revision must be rejected')
     }
   }
   return true
@@ -865,7 +884,7 @@ await test('card media_file_ids produce ordered stable media metadata', async ()
   assert(card.media[0].type === 'image' && card.media[0].mime_type === 'image/png', 'typed media should retain MIME semantics')
   assert(card.media[0].position === 1 && card.media[0].url.startsWith('/media/'), 'typed media should be ordered and use a stable URL')
   mediaPublicUrl = card.media[0].url
-  const response = await fetch(`${BASE_URL.replace(/\/api\/?$/, '')}${mediaPublicUrl}`)
+  const response = await fetchComplete(`${BASE_URL.replace(/\/api\/?$/, '')}${mediaPublicUrl}`)
   assert(response.ok && response.headers.get('content-type')?.startsWith('image/'), 'stable media URL should stream the public file')
   return card
 })
@@ -874,15 +893,15 @@ await test('hiding a card revokes its stable public media URL', async () => {
   if (!mediaCardId || !mediaPublicUrl) throw new Error('Typed media fixture is missing')
   await adminClient.cards.updateManaged(mediaCardId, { status: 2 })
   await assertApiError(() => pc.cards.get(mediaCardId), 404)
-  const hiddenMedia = await fetch(`${BASE_URL.replace(/\/api\/?$/, '')}${mediaPublicUrl}`)
+  const hiddenMedia = await fetchComplete(`${BASE_URL.replace(/\/api\/?$/, '')}${mediaPublicUrl}`)
   assert(hiddenMedia.status === 404, `hidden card media should return 404, got ${hiddenMedia.status}`)
   await adminClient.cards.updateManaged(mediaCardId, { status: 0 })
-  const restoredMedia = await fetch(`${BASE_URL.replace(/\/api\/?$/, '')}${mediaPublicUrl}`)
+  const restoredMedia = await fetchComplete(`${BASE_URL.replace(/\/api\/?$/, '')}${mediaPublicUrl}`)
   assert(restoredMedia.ok, 'restored card media should be public again')
   return true
 })
 
-await cardAccessAudit({ admin: adminClient, user: userClient, anonymous: pc, cardId: mediaCardId, mediaUrl: mediaPublicUrl, origin: BASE_URL.replace(/\/api\/?$/, ''), test, assert, assertApiError })
+await cardAccessAudit({ admin: adminClient, user: userClient, anonymous: pc, cardId: mediaCardId, mediaUrl: mediaPublicUrl, origin: BASE_URL.replace(/\/api\/?$/, ''), test, assert, assertApiError, fetchComplete })
 
 await test('PUT /theme/config → theme.updateConfig()', async () => {
   const current = await adminClient.theme.config()
@@ -1321,7 +1340,7 @@ setPhase('Phase 8: Lifecycle Hooks')
 await test('hook: ctor: beforeRequest+afterResponse fire on request', async () => {
   const calls = []
   const c = makeClient(null)
-  const login = await c.session.login({ account: ADMIN_ACCOUNT, password: ADMIN_PASSWORD })
+  const login = await c.session.login({ account: adminLoginAccount, password: ADMIN_PASSWORD })
   const hc = createClient({
     apiUrl: BASE_URL,
     tokenStore: { get: () => login.token, set: () => {}, clear: () => {} },
@@ -1380,7 +1399,7 @@ await test('hook: beforeRequest can add header', async () => {
       afterResponse: (ctx) => { calls.push(ctx.status) },
     },
   })
-  const login = await hc.session.login({ account: ADMIN_ACCOUNT, password: ADMIN_PASSWORD })
+  const login = await hc.session.login({ account: adminLoginAccount, password: ADMIN_PASSWORD })
   assert(calls.length >= 1, 'afterResponse should fire')
 })
 
@@ -1441,9 +1460,9 @@ await test('audit: revoking a user session invalidates its protected media grant
   const grant = await client.cards.mediaAccess(mediaCardId)
   assert(Array.isArray(grant.media) && grant.media.length > 0, 'fresh session must receive a protected media grant')
   const url = `${BASE_URL.replace(/\/api\/?$/, '')}${grant.media[0].url}`
-  assert((await fetch(url)).status === 200, 'grant must work before revocation')
+  assert((await fetchComplete(url)).status === 200, 'grant must work before revocation')
   await adminClient.users.revokeSessions(registeredUserId)
-  assert((await fetch(url)).status === 404, 'grant must stop working after its owning session is revoked')
+  assert((await fetchComplete(url)).status === 404, 'grant must stop working after its owning session is revoked')
   return true
 })
 
@@ -1512,8 +1531,10 @@ await test('cleanup: delete test role', async () => {
 
 const data = summary()
 const report = generateReport(data)
-const reportPath = path.join(__dirname, 'TEST_REPORT.md')
-fs.writeFileSync(reportPath, report, 'utf-8')
-console.log(`Report saved to: ${reportPath}`)
+if (process.env.LOVECARDS_SDK_TEST_SKIP_REPORT !== '1') {
+  const reportPath = path.join(__dirname, 'TEST_REPORT.md')
+  fs.writeFileSync(reportPath, report, 'utf-8')
+  console.log(`Report saved to: ${reportPath}`)
+}
 
 process.exit(data.failed > 0 ? 1 : 0)

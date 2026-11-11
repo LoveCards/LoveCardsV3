@@ -53,8 +53,8 @@ class Config extends BaseController
 
     public function update()
     {
-        $this->config->update($this->validated(), request()->auth->grants());
-        return ApiResponse::createNoContent();
+        $snapshot = $this->config->update($this->validated(), request()->auth->grants());
+        return ApiResponse::createOk(ConfigResource::make($snapshot));
     }
 
     public function init()

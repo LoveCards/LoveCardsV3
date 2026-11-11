@@ -38,10 +38,6 @@ final class CardPublishedSignalHandler implements EventHandler
             || !in_array($publishedVisibility, [CardVisibilityPolicy::PUBLIC, CardVisibilityPolicy::FOLLOWERS], true)) {
             throw new \UnexpectedValueException('信息流信号事件载荷无效');
         }
-        if (!SignalPolicies::enabled('feed.published')) {
-            $context->markSignalDecision('skipped');
-            return;
-        }
         $state = app(RuntimeCommunication::class)->signalDeliveryState();
         if ($state === 'skip') {
             $context->markSignalDecision('skipped');
@@ -62,7 +58,12 @@ final class CardPublishedSignalHandler implements EventHandler
         }
 
         $publisher = app(RealtimeSignalPublisher::class);
+        if (!SignalPolicies::authorize('feed.published', $context)) {
+            $context->markSignalDecision('skipped');
+            return;
+        }
         if ($first && $publishedVisibility === CardVisibilityPolicy::PUBLIC) {
+            $context->assertSignalWindow();
             $publisher->publish(new RealtimeSignal('feed', 'all', 'public'));
         }
         if (!$this->profileAllowsFollowing($ownerId)) {
@@ -72,6 +73,7 @@ final class CardPublishedSignalHandler implements EventHandler
         $followers = $this->eligibleFollowerIds($ownerId, $afterId);
         $batch = array_slice($followers, 0, self::BATCH_SIZE);
         if ($batch !== []) {
+            $context->assertSignalWindow();
             $publisher->publish(new RealtimeSignal(
                 'feed',
                 array_map(static fn(int $followerId): string => 'user:' . $followerId, $batch),
@@ -80,7 +82,7 @@ final class CardPublishedSignalHandler implements EventHandler
         }
         if (count($followers) > self::BATCH_SIZE) {
             $nextAfter = (int) end($batch);
-            $this->recordContinuation($rootId, $cardId, $ownerId, $publishedVisibility, $nextAfter, $context->deliveryId());
+            $this->recordContinuation($rootId, $cardId, $ownerId, $publishedVisibility, $nextAfter, $context);
         }
         $context->markSignalDecision('applied');
     }
@@ -109,24 +111,16 @@ final class CardPublishedSignalHandler implements EventHandler
         return array_map(static fn(array $row): int => (int) $row['follower_id'], $rows);
     }
 
-    /** 同一个父投递加锁，并按根事件与游标去重续批。 */
-    private function recordContinuation(int $rootId, int $cardId, int $ownerId, string $visibility, int $afterId, int $deliveryId): void
+    /** Eventing 统一处理锁序和资格；业务只提供游标与载荷。 */
+    private function recordContinuation(int $rootId, int $cardId, int $ownerId, string $visibility, int $afterId, DeliveryContext $context): void
     {
         $key = $rootId . ':' . $afterId;
-        Db::transaction(static function () use ($key, $rootId, $cardId, $ownerId, $visibility, $afterId, $deliveryId): void {
-            Db::table('event_deliveries')->where('id', $deliveryId)->lock(true)->find();
-            $exists = Db::table('outbox_events')
-                ->where('event_type', self::CONTINUATION)
-                ->where('aggregate_key', $key)
-                ->find();
-            if ($exists) return;
-            app(DomainEventBus::class)->publish(self::CONTINUATION, 'card-feed-batch', $key, [
+            app(DomainEventBus::class)->publishSignalContinuation($context, 'feed.published', self::CONTINUATION, 'card-feed-batch', $key, [
                 'card_id' => $cardId,
                 'owner_id' => $ownerId,
                 'visibility' => $visibility,
                 'root_event_id' => $rootId,
                 'after_follower_id' => $afterId,
             ], $ownerId);
-        });
     }
 }

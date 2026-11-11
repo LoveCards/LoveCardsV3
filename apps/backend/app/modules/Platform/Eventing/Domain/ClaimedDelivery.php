@@ -27,11 +27,13 @@ final class ClaimedDelivery
         int $attemptCount,
         string $claimToken,
         \DateTimeImmutable $leaseExpiresAt,
-        ?int $policyRevision = null
+        ?int $policyRevision = null,
+        private ?int $retryAttemptLimit = null
     ) {
         if ($id < 1 || $eventId < 1 || $attemptCount < 1) {
             throw new \InvalidArgumentException('ClaimedDelivery 数值必须为正整数');
         }
+        if ($retryAttemptLimit !== null && $retryAttemptLimit < 1) throw new \InvalidArgumentException('人工重试尝试上限无效');
         ExecutionMode::assert($executionMode);
         $this->id = $id;
         $this->eventId = $eventId;
@@ -50,6 +52,8 @@ final class ClaimedDelivery
     public function queueName(): string { return $this->queueName; }
     public function executionMode(): string { return $this->executionMode; }
     public function attemptCount(): int { return $this->attemptCount; }
+    /** 人工授权的绝对尝试上限；NULL 保留 Handler 默认预算。 */
+    public function retryAttemptLimit(): ?int { return $this->retryAttemptLimit; }
     public function claimToken(): string { return $this->claimToken; }
     public function leaseExpiresAt(): \DateTimeImmutable { return $this->leaseExpiresAt; }
 

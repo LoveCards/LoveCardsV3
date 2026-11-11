@@ -368,7 +368,7 @@ const operationsItems = [
 ] as const
 
 const [siteInformation, sitePolicies, appearance, storageService, redisService, messagingService, verificationService] = systemConfigItems
-const [runtimeStatus, deliveryProcessing, upgrade, auditLog] = operationsItems
+const [eventProcessing, frontendCommunication, deliveryProcessing, upgrade, auditLog] = operationsItems
 
 const accessControlItems: readonly AdminNavigationItem[] = [
   item({
@@ -436,7 +436,7 @@ export const adminNavigation: {
       title: '系统',
       icon: 'mdi-console-line',
       domain: 'system',
-      items: [runtimeStatus, deliveryProcessing, auditLog, storageService, redisService, messagingService, verificationService, upgrade],
+      items: [eventProcessing, frontendCommunication, deliveryProcessing, auditLog, storageService, redisService, messagingService, verificationService, upgrade],
     },
   ],
 }

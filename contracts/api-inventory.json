@@ -1906,9 +1906,9 @@
           "scene": "update"
         },
         "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
+          "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\ConfigResource",
+          "shape": "item",
+          "status": 200
         }
       },
       "source": "apps/backend/app/api/route",
@@ -1919,9 +1919,11 @@
       "missingController": false,
       "validates": true,
       "responses": [
-        "createNoContent"
+        "createOk"
       ],
-      "resources": [],
+      "resources": [
+        "ConfigResource::make"
+      ],
       "validators": [
         "app\\modules\\Platform\\Config\\Transport\\Api\\Config"
       ],
@@ -1942,10 +1944,10 @@
       "usesRawResponse": false,
       "issues": [],
       "response": {
-        "status": 204,
-        "shape": "void",
-        "resource": null,
-        "operation": null
+        "status": 200,
+        "shape": "item",
+        "resource": "ConfigResource",
+        "operation": "make"
       }
     },
     {
@@ -9174,11 +9176,11 @@
       ],
       "contract": {
         "request": {
-          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalRealtimeValidate",
+          "validate": "app\\modules\\Operations\\Runtime\\Transport\\Api\\InternalRealtimeValidate",
           "scene": "verify"
         },
         "response": {
-          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalTicketVerifyResource",
+          "resource": "app\\modules\\Operations\\Runtime\\Transport\\Api\\InternalTicketVerifyResource",
           "shape": "item",
           "status": 200
         }
@@ -9197,7 +9199,7 @@
         "InternalTicketVerifyResource::make"
       ],
       "validators": [
-        "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalRealtimeValidate"
+        "app\\modules\\Operations\\Runtime\\Transport\\Api\\InternalRealtimeValidate"
       ],
       "validatorScene": "verify",
       "hasApiResponse": true,
@@ -12235,7 +12237,7 @@
       "contract": {
         "request": null,
         "response": {
-          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\StreamTicketResource",
+          "resource": "app\\modules\\Operations\\Runtime\\Transport\\Api\\StreamTicketResource",
           "shape": "item",
           "status": 200
         }

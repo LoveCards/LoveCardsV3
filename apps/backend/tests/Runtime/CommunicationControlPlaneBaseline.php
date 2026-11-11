@@ -41,6 +41,7 @@ final class FakeStore implements RuntimeConfigStore
     public ?array $row;
     public array $audits = [];
     public int $saveCalls = 0;
+    public bool $readFails = false;
 
     public function __construct(?array $row = [])
     {
@@ -57,7 +58,11 @@ final class FakeStore implements RuntimeConfigStore
         $this->row = $row;
     }
 
-    public function current(): ?array { return $this->row; }
+    public function current(): ?array
+    {
+        if ($this->readFails) throw new \RuntimeException('simulated storage failure');
+        return $this->row;
+    }
     public function selectedModeForEnqueue(): ?string { return $this->row['desired_mode'] ?? null; }
 
     public function compareAndSwap(int $expectedRevision, string $desiredMode, array $settings, ?int $actorId, ?callable $then = null, ?callable $beforeUpdate = null): bool
@@ -131,12 +136,24 @@ $snapshot = makeResolver(new FakeStore($realtimeRow), probes(true, true))->snaps
 assertTrue($snapshot['effective_mode'] === 'realtime' && $snapshot['status'] === 'ready', 'realtime takes effect only when all capabilities ready');
 
 // ----------------------------------------------------------------
-// 3. Fail-safe: missing config table -> polling/degraded/schema-not-ready.
+// 3. 运行期配置不可读或损坏不能伪造默认模式。
 // ----------------------------------------------------------------
-$snapshot = makeResolver(new FakeStore(null), probes(true, true))->snapshot();
-// phpcs:ignore - sentinel covered above
-assertTrue($snapshot['status'] === 'degraded' && $snapshot['reason_code'] === 'schema-not-ready', 'fail-safe derives polling when store unavailable');
-assertTrue($snapshot['effective_mode'] === 'polling', 'fail-safe never claims realtime');
+$invalidStores = [
+    'missing row' => new FakeStore(null),
+    'invalid mode' => new FakeStore(array_replace($realtimeRow, ['desired_mode' => 'unknown'])),
+    'invalid settings' => new FakeStore(array_replace($realtimeRow, ['settings' => ['notification_interval_seconds' => 0]])),
+    'invalid revision' => new FakeStore(array_replace($realtimeRow, ['revision' => 0])),
+    'read failure' => new FakeStore($realtimeRow),
+];
+$invalidStores['read failure']->readFails = true;
+foreach ($invalidStores as $case => $invalidStore) {
+    $caught = null;
+    try { makeResolver($invalidStore, probes(true, true))->snapshot(); }
+    catch (\Throwable $exception) { $caught = $exception; }
+    assertTrue($caught instanceof ApiException && $caught->getHttpStatus() === 503
+        && ($caught->getData()['reason_code'] ?? null) === 'runtime-config-unavailable',
+        "{$case} reports unavailable without a fabricated polling snapshot");
+}
 
 // ----------------------------------------------------------------
 // 4. Settings whitelist and ranges.
@@ -220,6 +237,38 @@ try { $guardedUpdater->apply(7, ['desired_mode' => 'realtime', 'expected_revisio
 catch (ApiException $exception) { $guardError = $exception; }
 assertTrue(($guardError?->getData()['reason_code'] ?? null) === 'event-consumer-not-resident', 'transactional event mode gate blocks realtime');
 assertTrue($guardedStore->row['desired_mode'] === 'polling', 'blocked transactional gate preserves polling');
+
+// 10. 持久化适配器不能把损坏 JSON 或缺失选择转换成空默认设置。
+$database = new class {
+    public ?array $row = null;
+    public bool $readFails = false;
+    public function table(string $table): self { return $this; }
+    public function where(string $field, $value): self { return $this; }
+    public function find(): ?array
+    {
+        if ($this->readFails) throw new \RuntimeException('simulated database failure');
+        return $this->row;
+    }
+};
+\think\Container::getInstance()->instance(\think\DbManager::class, $database);
+$persistentStore = new \app\modules\Operations\Runtime\Infrastructure\ThinkOrmRuntimeConfigStore();
+foreach (['{broken', 'null', '[]', '"polling"'] as $json) {
+    $database->row = ['desired_mode' => 'realtime', 'settings_json' => $json, 'revision' => 1];
+    assertTrue($persistentStore->current() === null, "invalid stored settings {$json} remain unavailable");
+}
+$database->row = ['settings_json' => '{}', 'revision' => 1];
+assertTrue($persistentStore->current() === null, 'missing persisted selection is not defaulted to polling');
+$database->row = ['desired_mode' => 'realtime', 'settings_json' => '{}', 'revision' => 1];
+assertTrue($persistentStore->current()['desired_mode'] === 'realtime', 'valid persisted selection survives empty settings object');
+$database->readFails = true;
+assertTrue($persistentStore->current() === null, 'database read failure is represented as unavailable');
+
+// 11. 未曾生效的参数不再出现在快照，旧输入明确拒绝。
+foreach (['polling_backoff_factor', 'polling_max_interval_seconds', 'require_supervisor'] as $retiredKey) {
+    assertTrue(!array_key_exists($retiredKey, CommunicationSettings::defaults()), "retired setting {$retiredKey} absent from defaults");
+    assertTrue(!array_key_exists($retiredKey, CommunicationSettings::normalize([$retiredKey => 2])), "retired setting {$retiredKey} ignored in old storage");
+    assertTrue(CommunicationSettings::validateInput([$retiredKey => 2]) !== [], "retired setting {$retiredKey} rejected from new writes");
+}
 
 echo "\n{$passCount} passed, {$failCount} failed\n";
 exit($failCount === 0 ? 0 : 1);

@@ -6,6 +6,7 @@ use app\api\ApiException;
 use app\modules\Platform\Config\Public\Config as ConfigService;
 use app\modules\Platform\Captcha\Public\Captcha;
 use app\modules\Platform\Config\Public\RedisConnectionSettings;
+use app\modules\Platform\Config\Public\DeploymentNamespace;
 use app\shared\Authorization\GrantSet;
 
 /**
@@ -37,11 +38,12 @@ final class ConfigManager
             $group = trim((string) $group);
             if ($group !== '' && in_array($group, $allowed, true)) {
                 ConfigAccessPolicy::assertGroup($grants, $group, '读取');
+                $snapshot = ConfigService::getSnapshot($group);
                 $result[$group] = $this->redactGroup(
                     $group,
-                    ConfigService::getGroup($group),
+                    $snapshot['values'],
                     ConfigService::getSchema($group)
-                );
+                ) + ['__revision' => $snapshot['revision']];
             }
         }
         return $result;
@@ -64,11 +66,13 @@ final class ConfigManager
         return ['ready' => $result['ready'], 'reason_code' => $result['reason_code'], 'source' => $result['source']];
     }
 
-    public function update(array $params, GrantSet $grants): void
+    public function update(array $params, GrantSet $grants): array
     {
         ConfigAccessPolicy::assertOperation($grants, 'config.update');
         $allowed = $this->allowedGroups();
         $pending = [];
+        $expected = [];
+        $schemas = [];
         foreach ($params as $group => $config) {
             if (!in_array($group, $allowed, true) || !is_array($config)) {
                 continue;
@@ -76,6 +80,7 @@ final class ConfigManager
 
             ConfigAccessPolicy::assertGroup($grants, $group, '修改');
             $schema = ConfigService::getSchema($group);
+            $schemas[$group] = $schema;
             $validated = [];
             foreach ($config as $key => $value) {
                 if (isset($schema[$key])) {
@@ -94,6 +99,11 @@ final class ConfigManager
                     $this->validateRedisUpdate($validated, ConfigService::getGroup('redis'));
                 }
                 $pending[$group] = $validated;
+                $revision = $config['__revision'] ?? null;
+                if (!is_int($revision) || $revision < 1) {
+                    throw ApiException::validation(["{$group}.__revision" => ['请先加载配置并提交读取时的版本']], '配置版本缺失或无效', 'config-revision-required');
+                }
+                $expected[$group] = $revision;
             }
         }
 
@@ -107,9 +117,16 @@ final class ConfigManager
             }
         }
 
-        foreach ($pending as $group => $validated) {
-            ConfigService::setGroup($group, $validated);
+        $snapshots = ConfigService::compareAndSwapGroups($pending, $expected, function () use ($pending): void {
+            // 取得所有版本锁之后复核跨字段规则，不能把锁前的组合当提交依据。
+            if (isset($pending['redis'])) $this->validateRedisUpdate($pending['redis'], ConfigService::getGroup('redis'));
+        });
+        $result = [];
+        foreach ($snapshots as $group => $snapshot) {
+            $result[$group] = $this->redactGroup($group, $snapshot['values'], $schemas[$group])
+                + ['__revision' => $snapshot['revision']];
         }
+        return $result;
     }
 
     public function init(GrantSet $grants)
@@ -122,6 +139,7 @@ final class ConfigManager
     {
         ConfigAccessPolicy::assertOperation($grants, 'config.register');
         ConfigAccessPolicy::assertGroup($grants, $group, '注册');
+        if (array_key_exists('__revision', $schema)) throw ApiException::badRequest('配置版本为保留元数据，不能注册为配置项');
         if ($group === 'redis') {
             throw ApiException::badRequest('Redis 配置定义由发行版管理');
         }
@@ -149,6 +167,7 @@ final class ConfigManager
     {
         ConfigAccessPolicy::assertOperation($grants, 'config.deleteKey');
         ConfigAccessPolicy::assertGroup($grants, $group, '删除');
+        if ($key === '__revision') throw ApiException::badRequest('配置版本为保留元数据，不能删除');
         if ($group === 'redis') throw ApiException::badRequest('Redis 系统配置项不能删除');
         ConfigService::deleteKey($group, $key);
     }
@@ -168,6 +187,12 @@ final class ConfigManager
         $next = array_merge($current, $changes);
         if (array_key_exists('enabled', $changes) && !is_bool($changes['enabled'])) {
             throw ApiException::validation(['redis.enabled' => ['必须为布尔值']]);
+        }
+        if (($next['enabled'] ?? false) === true) {
+            try { DeploymentNamespace::current(); }
+            catch (\InvalidArgumentException $exception) {
+                throw ApiException::validation(['redis.enabled' => [$exception->getMessage()]], '部署身份未配置', 'deployment-identity-required');
+            }
         }
         $host = trim((string) ($next['host'] ?? ''));
         $port = $next['port'] ?? null;

@@ -1,5 +1,7 @@
 # 站内通知开发规范
 
+> 2026-11-11 策略修订：完整规则身份、事务快照与审计按 [收敛设计](PLATFORM-CONVERGENCE-2026-11-11.md) 实施。历史 NULL 版本与非 NULL 冻结快照读取失败须分开；后者不得解释为未配置并放行。
+
 本文是 LoveCards 站内通知的唯一设计规则源。任何新增或修改会影响用户权益、账号安全、内容审核、互动提醒或站内公告的用例，都必须先按本文完成通知判定；具体事件投递机制见 [EVENTING.md](EVENTING.md)。
 
 ## 1. 通知的职责
@@ -78,6 +80,8 @@
 | `system.notice` | 中性平台告知或待办 | `info`、`success`、`warning` | 服务变更、任务完成、站内公告 |
 | `system.security` | 凭证、Session、权限或账号风险 | `warning`、`critical` | 改密、角色变化、撤销 Session |
 | `system.moderation` | 审核、举报和账号/内容治理结果 | `info`、`success`、`warning`、`critical` | 审核通过、举报结果、封禁或恢复 |
+
+`system.notification.issued` 的冻结策略快照以 `system.*` 表示上述系统通知类型集合；现行规则行中的 `system.moderation` 是历史默认实例类型。两者的已知差异在策略更新前按这一条明确映射核验，不改写历史快照，也不放宽其他事件或类型漂移的校验。
 
 严重级别表达影响程度，不表达投递优先级：
 

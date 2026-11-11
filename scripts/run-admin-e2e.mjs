@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises'
 import net from 'node:net'
@@ -15,6 +16,10 @@ const adminPort = Number(process.env.LOVECARDS_E2E_ADMIN_PORT || 3000)
 const database = process.env.LOVECARDS_E2E_DB_NAME || `lovecards_e2e_${Date.now()}`
 const adminAccount = process.env.LOVECARDS_E2E_ADMIN_ACCOUNT || process.env.LOVECARDS_SDK_TEST_ADMIN_ACCOUNT || ''
 const adminPassword = process.env.LOVECARDS_E2E_ADMIN_PASSWORD || process.env.LOVECARDS_SDK_TEST_ADMIN_PASSWORD || ''
+// SDK 套件会修改隔离管理员的用户名；浏览器继续使用 bootstrap 固定的邮箱登录。
+const browserAdminAccount = process.env.LOVECARDS_E2E_RUN_SDK_INTEGRATION === '1' && !adminAccount.includes('@')
+  ? 'e2e-admin@example.test'
+  : adminAccount
 const databaseHost = process.env.LOVECARDS_E2E_DB_HOST || '127.0.0.1'
 const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm'
 const managedGroups = new WeakSet()
@@ -174,6 +179,7 @@ const databaseEnv = {
 const databaseCollation = await detectUtf8mb4Collation(php, databaseEnv)
 const dbEnv = {
   LOVECARDS_E2E_DB_NAME: database,
+  LC_DEPLOYMENT_ID: `e2e-${createHash('sha256').update(database).digest('hex').slice(0, 32)}`,
   DATABASE_DRIVER: 'mysql',
   DATABASE_TYPE: 'mysql',
   DATABASE_HOSTNAME: databaseHost,
@@ -269,6 +275,7 @@ try {
   await waitFor(`http://127.0.0.1:${adminPort}/admin/login`)
   const test = start(process.execPath, ['node_modules/playwright/cli.js', 'test', '--config', 'apps/admin/playwright.config.ts', ...process.argv.slice(2)], {
     ...dbEnv,
+    LOVECARDS_E2E_ADMIN_ACCOUNT: browserAdminAccount,
     LOVECARDS_E2E_ISOLATED: '1',
     LOVECARDS_E2E_MANAGED_SERVERS: '1',
     LOVECARDS_E2E_AUTH_FILE: path.join(temporaryRoot, 'admin-auth.json'),

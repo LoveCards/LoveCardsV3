@@ -12,6 +12,7 @@ use app\modules\Operations\Installer\Infrastructure\Rsa;
 use app\modules\Operations\SystemLifecycle\Infrastructure\NativeReleaseRuntime;
 use app\shared\SystemPaths\PersistentConfiguration;
 use app\shared\SystemPaths\SystemPaths;
+use app\modules\Platform\Config\Public\DeploymentNamespace;
 
 $tests = [];
 $test = static function (string $name, callable $callback) use (&$tests): void { $tests[$name] = $callback; };
@@ -93,7 +94,7 @@ $test('bad, traversing and mismatched pointers fail closed', static function () 
     $assertThrows(static fn() => ReleaseBootstrap::resolve($source), '不一致');
 });
 
-$test('installer persists database, keys and lock without modifying active code', static function () use ($root, $tmp, $assert): void {
+$test('installer persists database, keys and lock without modifying active code', static function () use ($root, $tmp, $assert, $assertThrows): void {
     $managed = $tmp . DIRECTORY_SEPARATOR . 'installer-instance';
     $paths = new SystemPaths($managed, $root);
     $tracked = [$root . '/config/database.php', $root . '/config/jwt.php'];
@@ -115,11 +116,30 @@ $test('installer persists database, keys and lock without modifying active code'
     $assert(Common::InstallLock($paths), 'persistent install lock failed');
     $assert(Common::CheckInstallLock($paths), 'persistent install lock was not detected');
     $assert(is_file($paths->stateRoot() . '/install.lock'), 'install lock is outside shared state');
+    $lock = (string) file_get_contents($paths->stateRoot() . '/install.lock');
+    $assert(preg_match('/^LoveCards\.cn\nLC_DEPLOYMENT_ID=[a-f0-9]{32}\n$/D', $lock) === 1, 'clean installer must persist one stable deployment identity in its existing lock');
+    preg_match('/LC_DEPLOYMENT_ID=([a-f0-9]{32})/', $lock, $match);
+    $assert(DeploymentNamespace::current($paths)->scheduledLock() === DeploymentNamespace::fromId($match[1])->scheduledLock(), 'installed identity must come from the persisted lock');
+    $assertThrows(static fn() => Common::InstallLock($paths), '已安装');
+    $assert(file_get_contents($paths->stateRoot() . '/install.lock') === $lock, 'install retry must not rotate the deployment identity');
 
     $after = array_map(static fn(string $path): string => (string) hash_file('sha256', $path), $tracked);
     $assert($before === $after, 'installer modified active release configuration');
     $leftovers = glob($paths->configRoot() . '/*.next.*') ?: [];
     $assert($leftovers === [], 'atomic config temporary file was left behind');
+});
+
+$test('legacy install locks derive a stable identity from the persistent instance root', static function () use ($root, $tmp, $assert): void {
+    putenv('LC_DEPLOYMENT_ID=');
+    $paths = new SystemPaths($tmp . DIRECTORY_SEPARATOR . 'legacy-instance', $root);
+    if (!mkdir($paths->stateRoot(), 0700, true) && !is_dir($paths->stateRoot())) throw new RuntimeException('cannot create legacy state root');
+    file_put_contents($paths->stateRoot() . DIRECTORY_SEPARATOR . 'install.lock', "LoveCards.cn\n");
+    $identity = DeploymentNamespace::current($paths);
+    $assert($identity->realtimeChannel() === DeploymentNamespace::current($paths)->realtimeChannel(), 'legacy identity must not rotate on each read');
+    $other = new SystemPaths($tmp . DIRECTORY_SEPARATOR . 'other-legacy-instance', $root);
+    if (!mkdir($other->stateRoot(), 0700, true) && !is_dir($other->stateRoot())) throw new RuntimeException('cannot create other legacy state root');
+    file_put_contents($other->stateRoot() . DIRECTORY_SEPARATOR . 'install.lock', "LoveCards.cn\n");
+    $assert($identity->realtimeChannel() !== DeploymentNamespace::current($other)->realtimeChannel(), 'different legacy instance roots must not share a Redis channel');
 });
 
 $test('ThinkPHP config consumes persistent database and JWT state', static function () use ($root, $tmp, $assert): void {
@@ -141,10 +161,10 @@ $test('ThinkPHP config consumes persistent database and JWT state', static funct
     $assert(($jwt['publicKey'] ?? null) === $managed . DIRECTORY_SEPARATOR . 'shared' . DIRECTORY_SEPARATOR . 'keys' . DIRECTORY_SEPARATOR . 'public.pem', 'persistent JWT public key was not selected');
 });
 
-$test('runtime capabilities are trimmed by configuration and commands bypass a shell', static function () use ($tmp, $assert): void {
+$test('runtime capabilities are trimmed by configuration and commands bypass a shell', static function () use ($tmp, $assert, $assertThrows): void {
     $marker = $tmp . DIRECTORY_SEPARATOR . 'worker marker.txt';
     $runtime = new NativeReleaseRuntime([
-        'drain_command' => [PHP_BINARY, '-r', 'file_put_contents($argv[1], $argv[2]);', $marker, '{release_id}'],
+        'drain_command' => [PHP_BINARY, '-r', 'file_put_contents($argv[1], $argv[2]); echo json_encode(["workers_stopped"=>true,"scheduled_trigger_stopped"=>true,"restart_disabled"=>true]);', $marker, '{release_id}'],
         'reload_command' => '[]',
         'command_timeout_seconds' => 10,
     ], 'cli');
@@ -152,6 +172,16 @@ $test('runtime capabilities are trimmed by configuration and commands bypass a s
     $assert(!$runtime->canReload(), 'unconfigured reload capability was enabled');
     $runtime->drain('release-worker-1');
     $assert(file_get_contents($marker) === 'release-worker-1', 'release placeholder was not passed as one argv value');
+    $bad = new NativeReleaseRuntime(['drain_command' => [PHP_BINARY, '-r', 'echo "ok";']], 'cli');
+    $assertThrows(static fn() => $bad->drain('release-worker-1'), '未提供');
+    foreach (['workers_stopped', 'scheduled_trigger_stopped', 'restart_disabled'] as $missing) {
+        $proof = ['workers_stopped' => true, 'scheduled_trigger_stopped' => true, 'restart_disabled' => true];
+        $proof[$missing] = false;
+        $partial = new NativeReleaseRuntime([
+            'drain_command' => [PHP_BINARY, '-r', 'echo $argv[1];', json_encode($proof, JSON_THROW_ON_ERROR)],
+        ], 'cli');
+        $assertThrows(static fn() => $partial->drain('release-worker-1'), '未提供');
+    }
 });
 
 $test('FPM health requires the request to be served by the target release', static function () use ($assert, $assertThrows): void {

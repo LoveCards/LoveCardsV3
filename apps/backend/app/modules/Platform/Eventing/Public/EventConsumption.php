@@ -9,6 +9,14 @@ use think\facade\Db;
 /** 事件消费策略公开入口；通信控制面只依赖此入口。 */
 final class EventConsumption
 {
+    public static function assertQuiescent(): void
+    {
+        if (Db::table('event_deliveries')->where('status', 'processing')->count() > 0
+            || Db::table('scheduler_runs')->where('outcome', 'running')->count() > 0) {
+            throw new \RuntimeException('存在未结算的事件处理或定时运行，禁止 Contract；不能仅凭租约过期忽略');
+        }
+    }
+
     public function current(): ?array
     {
         return $this->store()->current();

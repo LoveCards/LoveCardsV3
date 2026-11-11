@@ -211,6 +211,7 @@ final class SystemLifecycleFakeUpgradePlans implements UpgradePlanRepository
     public function create(StoredUpgradePlan $plan): StoredUpgradePlan { throw new LogicException('not used'); }
     public function find(string $planId): ?StoredUpgradePlan { return null; }
     public function recent(int $limit = 50): array { return []; }
+    public function unsettled(bool $lock = false): ?StoredUpgradePlan { foreach ($this->recent() as $stored) if (!in_array($stored->status(), [UpgradePlan::COMPLETED, StoredUpgradePlan::RECOVERED], true)) return $stored; return null; }
     public function existsUnsettled(?string $excludingPlanId = null): bool { return $this->unsettled; }
     public function save(StoredUpgradePlan $plan, int $expectedRevision): StoredUpgradePlan { throw new LogicException('not used'); }
 }
@@ -270,6 +271,18 @@ $withSqlFile = static function (string $source, callable $callback): mixed {
         }
     }
 };
+
+$test('MigrationRunner refuses ambiguous running ledger without replaying side effects', static function () use ($assertSame): void {
+    $ledger = new SystemLifecycleInMemoryLedger();
+    $migration = new SystemLifecycleFakeMigration('20991230000001');
+    $initial = $ledger->initialize($migration->descriptor());
+    $ledger->save($initial->started(), $initial->revision());
+    $rejected = false;
+    try { (new MigrationRunner($ledger))->runNext($migration, false, true); }
+    catch (LogicException $e) { $rejected = str_contains($e->getMessage(), '未确认结束'); }
+    $assertSame(true, $rejected);
+    $assertSame(0, $migration->preflightCalls);
+});
 
 $test('MigrationRunner advances one phase per call and preserves CAS revisions', static function () use ($assertSame): void {
     $ledger = new SystemLifecycleInMemoryLedger();
@@ -476,6 +489,41 @@ $test('Manual coordinator rejects an unsettled upgrade plan inside the lifecycle
         '未完成的升级计划'
     );
     $assertSame(0, $migration->preflightCalls, 'manual phase execution must stop before migration work');
+});
+
+$test('Release migration adapter preserves the plan fence and retries only with explicit authority', static function () use ($assertSame, $assertThrows): void {
+    $ledger = new SystemLifecycleInMemoryLedger();
+    $migration = new class('20261111000100_retry') extends SystemLifecycleFakeMigration {
+        public bool $broken = true;
+        public function expand(): void {
+            parent::expand();
+            if ($this->broken) throw new RuntimeException('temporary expand failure');
+        }
+    };
+    $coordinator = new SystemLifecycleCoordinator(
+        new MigrationPlanner($ledger), new MigrationRunner($ledger),
+        new SystemLifecycleInMemorySource([$migration]), new SystemLifecycleInMemoryLease(),
+        new SystemLifecycleFakeUpgradePlans(true)
+    );
+    $adapter = new \app\modules\Operations\SystemLifecycle\Infrastructure\SystemLifecycleMigrationExecutor($coordinator);
+    $adapter->advancePhase('/not-used', MigrationPhase::PREFLIGHT, false, 'plan-holder');
+    $assertThrows(RuntimeException::class, static fn() => $adapter->advancePhase('/not-used', MigrationPhase::EXPAND, false, 'plan-holder'), 'temporary expand failure');
+    $failed = $ledger->find($migration->descriptor()->id());
+    $assertSame(MigrationStatus::FAILED, $failed->status());
+    $assertSame($failed->toArray(), $adapter->inspectPhase('/not-used', MigrationPhase::EXPAND), 'audit preview must use actual failed ledger identity');
+    $assertSame($failed->revision(), $ledger->find($migration->descriptor()->id())->revision(), 'audit preview must not reset failed ledger');
+    $migration->broken = false;
+    $row = $adapter->advancePhase('/not-used', MigrationPhase::EXPAND, false, 'plan-holder');
+    $assertSame(MigrationStatus::FAILED, $row['status'], 'ordinary advances cannot reset a failed ledger');
+    $assertSame(1, $migration->expandCalls);
+    $assertThrows(UnsettledUpgradePlanException::class, static fn() => $coordinator->run('/not-used', false, true));
+    $row = $adapter->advancePhase('/not-used', MigrationPhase::EXPAND, false, 'plan-holder', true);
+    $assertSame(MigrationPhase::BACKFILL, $row['phase']);
+    $assertSame(2, $migration->expandCalls);
+    $assertSame($failed->attempts() + 1, $row['attempts']);
+    $assertSame($failed->checksum(), $row['checksum']);
+    $assertSame(null, $adapter->inspectPhase('/not-used', MigrationPhase::EXPAND), 'completed phase preview must not select another phase');
+    $assertThrows(LogicException::class, static fn() => $adapter->advancePhase('/not-used', MigrationPhase::CONTRACT, false, 'plan-holder', true), '显式批准');
 });
 
 $test('SqlFileMigration treats an unmarked legacy file as expand SQL', static function () use ($assertSame, $readSqlPhases, $withSqlFile): void {

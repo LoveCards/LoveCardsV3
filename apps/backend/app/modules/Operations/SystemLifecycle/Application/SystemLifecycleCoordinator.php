@@ -8,6 +8,7 @@ use app\modules\Operations\SystemLifecycle\Contract\UpgradeLease;
 use app\modules\Operations\SystemLifecycle\Contract\UpgradePlanRepository;
 use app\modules\Operations\SystemLifecycle\Domain\MigrationPhase;
 use app\modules\Operations\SystemLifecycle\Domain\MigrationPlanStep;
+use app\modules\Operations\SystemLifecycle\Domain\MigrationProgress;
 use app\modules\Operations\SystemLifecycle\Domain\LifecycleLease;
 use app\modules\Operations\SystemLifecycle\Exception\UnsettledUpgradePlanException;
 use app\modules\Operations\SystemLifecycle\Exception\UpgradeLeaseUnavailableException;
@@ -80,11 +81,21 @@ final class SystemLifecycleCoordinator
         string $directory,
         string $phase,
         bool $allowContract,
-        string $lifecycleLeaseHolder
+        string $lifecycleLeaseHolder,
+        bool $retryFailed = false
     ): array {
         $this->assertExecutablePhase($phase, $allowContract);
         if ($lifecycleLeaseHolder === '') throw new \InvalidArgumentException('Lifecycle Lease holder 不能为空');
-        return $this->advanceOne($directory, $allowContract, $lifecycleLeaseHolder, $phase);
+        return $this->advanceOne($directory, $allowContract, $lifecycleLeaseHolder, $phase, $retryFailed);
+    }
+
+    /** 调用方须持有生命周期 Lease；不初始化或复位迁移进度。 */
+    public function inspectPhase(string $directory, string $phase): ?array
+    {
+        MigrationPhase::assertValid($phase);
+        $step = $this->nextStep($this->source->discover($directory), true, $phase);
+        return $step === null ? null
+            : ($step->progress() ?? MigrationProgress::pending($step->descriptor()))->toArray();
     }
 
     /**
@@ -164,12 +175,8 @@ final class SystemLifecycleCoordinator
             throw new UpgradeLeaseUnavailableException('系统迁移 Lease 已丢失');
         }
         $migrations = $this->source->discover($directory);
-        $plan = $this->planner->plan($migrations);
-        foreach ($plan->steps() as $step) {
-            if ($step->state() === MigrationPlanStep::COMPLETE) continue;
-            $phase = $step->progress()?->phase() ?? MigrationPhase::PREFLIGHT;
-            if ($requiredPhase !== null && $phase !== $requiredPhase) continue;
-            if ($step->state() === MigrationPlanStep::WAITING && !$allowContract) continue;
+        $step = $this->nextStep($migrations, $allowContract, $requiredPhase);
+        if ($step !== null) {
             foreach ($migrations as $migration) {
                 if ($migration->descriptor()->id() === $step->descriptor()->id()) {
                     $progress = $this->runner->runNext($migration, $allowContract, $retryFailed);
@@ -181,6 +188,19 @@ final class SystemLifecycleCoordinator
             }
         }
         return [];
+    }
+
+    /** 审计与执行共用选步规则，防止审计上一项却重试下一项。 */
+    private function nextStep(array $migrations, bool $allowContract, ?string $requiredPhase): ?MigrationPlanStep
+    {
+        foreach ($this->planner->plan($migrations)->steps() as $step) {
+            if ($step->state() === MigrationPlanStep::COMPLETE) continue;
+            $phase = $step->progress()?->phase() ?? MigrationPhase::PREFLIGHT;
+            if ($requiredPhase !== null && $phase !== $requiredPhase) continue;
+            if ($step->state() === MigrationPlanStep::WAITING && !$allowContract) continue;
+            return $step;
+        }
+        return null;
     }
 
     private function assertNoUnsettledUpgradePlan(): void

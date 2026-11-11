@@ -22,6 +22,8 @@ final class StoredUpgradePlan
         if ($createdBy !== null && $createdBy < 1) throw new \InvalidArgumentException('Upgrade Plan actor 不合法');
     }
 
+    public function planVersion(): int { return (int) ($this->context['plan_version'] ?? 1); }
+
     public function plan(): UpgradePlan { return $this->plan; }
     public function previousReleaseId(): ?string { return $this->previousReleaseId; }
     public function contractApproved(): bool { return $this->contractApproved; }
@@ -54,6 +56,8 @@ final class StoredUpgradePlan
     {
         $data = $this->plan->toArray();
         $data['status'] = $this->status();
+        $data['plan_version'] = $this->planVersion();
+        $data['legacy_plan'] = $this->planVersion() === 1;
         return $data + [
             'previous_release_id' => $this->previousReleaseId,
             'contract_approved' => $this->contractApproved,

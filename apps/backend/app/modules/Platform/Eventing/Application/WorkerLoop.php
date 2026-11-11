@@ -83,7 +83,7 @@ final class WorkerLoop
                         'resident'
                     ));
                 } catch (EventConsumptionConflict $exception) {
-                    if (!in_array($exception->reasonCode(), ['mode-not-selected', 'transition-draining'], true)) {
+                    if (!in_array($exception->reasonCode(), ['mode-not-selected', 'transition-draining', 'lifecycle-not-qualified'], true)) {
                         throw $exception;
                     }
                     // 进程可保持存活供后续切换使用，但在未选策略下绝不领取。

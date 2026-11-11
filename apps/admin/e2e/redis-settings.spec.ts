@@ -34,7 +34,7 @@ test('default Redis is disabled; saved password stays masked and the connection 
   await page.route('**/api/admin/config', route => {
     expect(route.request().method()).toBe('GET')
     return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: {
-      redis: { ...state, password: { $secret: 'keep', configured: state.passwordConfigured } },
+      redis: { __revision: 1, ...state, password: { $secret: 'keep', configured: state.passwordConfigured } },
     } }) })
   })
   await page.route('**/api/admin/config/redis/test', route => {
@@ -64,10 +64,12 @@ test('TLS settings use the shared Redis config and expose certificate identity',
   await page.route('**/api/admin/config', route => {
     if (route.request().method() === 'POST') {
       writes.push(route.request().postDataJSON() as Record<string, unknown>)
-      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: null }) })
+      const saved = route.request().postDataJSON().redis
+      expect(saved.__revision).toBe(writes.length)
+      return route.fulfill({ json: { success: true, data: { redis: { ...saved, __revision: writes.length + 1, password: { $secret: 'keep', configured: false } } } } })
     }
     return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: {
-      redis: { enabled: false, host: '127.0.0.1', port: 6379, database: 0, tls: false, tls_server_name: '', password: { $secret: 'keep', configured: false } },
+      redis: { __revision: 1, enabled: false, host: '127.0.0.1', port: 6379, database: 0, tls: false, tls_server_name: '', password: { $secret: 'keep', configured: false } },
     } }) })
   })
   await page.route('**/api/admin/config/redis/test', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
@@ -86,6 +88,7 @@ test('password replacement and clearing use explicit secret operations', async (
   await mockAdmin(page)
   const state: RedisState = { enabled: false, host: '127.0.0.1', port: 6379, database: 0, passwordConfigured: false }
   const writes: Array<Record<string, unknown>> = []
+  let reads = 0
   await page.route('**/api/admin/config', route => {
     if (route.request().method() === 'POST') {
       const data = route.request().postDataJSON() as { redis: Record<string, unknown> }
@@ -94,10 +97,13 @@ test('password replacement and clearing use explicit secret operations', async (
       if (secret?.$secret === 'replace') state.passwordConfigured = true
       if (secret?.$secret === 'clear') state.passwordConfigured = false
       state.enabled = data.redis.enabled === true
-      return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: null }) })
+      const saved = route.request().postDataJSON().redis
+      expect(saved.__revision).toBe(writes.length)
+      return route.fulfill({ json: { success: true, data: { redis: { ...saved, __revision: writes.length + 1, password: { $secret: 'keep', configured: state.passwordConfigured } } } } })
     }
+    reads++
     return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: {
-      redis: { ...state, password: { $secret: 'keep', configured: state.passwordConfigured } },
+      redis: { __revision: 1, ...state, password: { $secret: 'keep', configured: state.passwordConfigured } },
     } }) })
   })
   await page.route('**/api/admin/config/redis/test', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
@@ -121,6 +127,7 @@ test('password replacement and clearing use explicit secret operations', async (
   await expect.poll(() => writes.length).toBe(2)
   expect(writes[1]?.redis).toMatchObject({ password: { $secret: 'clear' } })
   await expect(page.getByText('未配置密码。', { exact: false })).toBeVisible()
+  expect(reads).toBe(1)
 })
 
 test('Redis settings remain editable when a stale test response reports env source', async ({ page }) => {
@@ -129,7 +136,7 @@ test('Redis settings remain editable when a stale test response reports env sour
   await page.route('**/api/admin/config', route => {
     if (route.request().method() !== 'GET') writes++
     return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: {
-      redis: { enabled: true, host: 'redis.internal', port: 6379, database: 0, password: { $secret: 'keep', configured: true } },
+      redis: { __revision: 1, enabled: true, host: 'redis.internal', port: 6379, database: 0, password: { $secret: 'keep', configured: true } },
     } }) })
   })
   await page.route('**/api/admin/config/redis/test', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
@@ -137,10 +144,34 @@ test('Redis settings remain editable when a stale test response reports env sour
   }) }))
 
   await page.goto('./apps/settings/redis', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByLabel('启用 Redis 连接')).toBeVisible()
+  await expect(page.getByLabel('启用 Redis 连接')).toBeVisible({ timeout: 15_000 })
   await page.getByRole('button', { name: '测试当前连接' }).click()
   await expect(page.getByText('连接测试通过。')).toBeVisible()
   await page.getByLabel('主机地址').fill('redis.example.test')
   await expect(page.getByRole('button', { name: '保存设置' })).toBeEnabled()
   expect(writes).toBe(0)
+})
+
+
+test('config conflict preserves edits and never refreshes the loaded revision before saving', async ({ page }) => {
+  await mockAdmin(page)
+  let reads = 0
+  const writes: Array<Record<string, unknown>> = []
+  await page.route('**/api/admin/config', route => {
+    if (route.request().method() === 'POST') {
+      const body = route.request().postDataJSON()
+      writes.push(body.redis)
+      return route.fulfill({ status: 409, json: { success: false, code: 9016, message: '配置版本冲突', details: { reason: 'stale-config-revision' } } })
+    }
+    reads++
+    return route.fulfill({ json: { success: true, data: { redis: { __revision: 7, enabled: false, host: 'old.invalid', port: 6379, database: 0, password: { $secret: 'keep', configured: false } } } } })
+  })
+  await page.goto('./apps/settings/redis', { waitUntil: 'domcontentloaded' })
+  await page.getByLabel('主机地址').fill('edited.invalid')
+  await page.getByRole('button', { name: '保存设置' }).click()
+  await expect(page.getByText('配置已被其他管理员修改。当前编辑已保留，请重新加载并核对后再保存。')).toBeVisible()
+  await expect(page.getByLabel('主机地址')).toHaveValue('edited.invalid')
+  expect(writes).toHaveLength(1)
+  expect(writes[0]).toMatchObject({ __revision: 7, host: 'edited.invalid' })
+  expect(reads).toBe(1)
 })

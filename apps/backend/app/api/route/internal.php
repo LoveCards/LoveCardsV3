@@ -4,8 +4,8 @@ declare(strict_types=1);
 use think\facade\Route;
 use app\api\middleware\InternalTokenCheck;
 use app\api\middleware\EventingCronTokenCheck;
-use app\modules\Platform\Notifications\Transport\Api\InternalRealtimeValidate;
-use app\modules\Platform\Notifications\Transport\Api\InternalTicketVerifyResource;
+use app\modules\Operations\Runtime\Transport\Api\InternalRealtimeValidate;
+use app\modules\Operations\Runtime\Transport\Api\InternalTicketVerifyResource;
 use app\modules\Platform\Config\Transport\Api\InternalRedisConfigResource;
 use app\modules\Platform\Eventing\Transport\Api\ScheduledRunResource;
 

@@ -1,5 +1,7 @@
 # 管理端架构规范
 
+> 2026-11-11 收敛见 [平台设计](PLATFORM-CONVERGENCE-2026-11-11.md)。UI 不得把读取失败显示为切轮询，不得把 Pointer 回切显示为整站恢复；重试与配置成功须以持久事务结果为准。
+
 ## 边界
 
 `apps/admin` 是 Nuxt SPA。它只通过 `@lovecards/sdk` 调用后端，不直接导入 Axios、fetch 或后端源码。
@@ -45,6 +47,8 @@ apps/admin/
 ## 动态 schema
 
 Storage、Sender、Captcha 和 Theme 的驱动配置使用 SDK 的 `FieldDefinition`、`JsonObject` 和 `JsonValue`。动态字段不能伪造固定 TypeScript 字段，也不能退化为显式 `any`。
+
+系统 Config 页面统一复用页面级 `useConfigSnapshot`：加载时保存各组 `__revision`，提交时携带该版本；禁止保存前重新 GET 获取新版本来绕过冲突。成功响应使用本次事务返回的脱敏快照更新表单和版本，不通过二次 GET 推断本次保存结果。HTTP 409 保留当前编辑并提示重新加载核对；不静默重试、合并或覆盖其他管理员的修改。页面不建立第二个全局配置仓库。Theme 自有配置端点不属于系统 Config 分组协议。
 
 数据库 JSON 的序列化和响应归一化属于后端 Resource/SDK 契约。页面不再为同一业务字段维护字符串和数组两套格式。
 

@@ -35,7 +35,7 @@ final class AdminValidate extends Validate
         // 这里只做类型与存在性防线。
         'runtimeConfig' => [
             'normal' => ['desired_mode', 'expected_revision', 'notification_interval_seconds', 'message_interval_seconds',
-                'unread_interval_seconds', 'polling_backoff_factor', 'polling_max_interval_seconds', 'pause_when_hidden',
+                'unread_interval_seconds', 'pause_when_hidden',
                 'worker_stale_seconds', 'scheduler_stale_seconds', 'gateway_stale_seconds'],
             'require' => ['desired_mode', 'expected_revision'], 'nonNull' => false, 'toNull' => [],
         ],
@@ -78,8 +78,6 @@ final class AdminValidate extends Validate
         'notification_interval_seconds' => 'number',
         'message_interval_seconds' => 'number',
         'unread_interval_seconds' => 'number',
-        'polling_backoff_factor' => 'number',
-        'polling_max_interval_seconds' => 'number',
         'pause_when_hidden' => 'boolean',
         'worker_stale_seconds' => 'number',
         'scheduler_stale_seconds' => 'number',

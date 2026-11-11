@@ -5,6 +5,9 @@ namespace app\modules\Operations\SystemLifecycle\Contract;
 
 interface ReleaseMigrationExecutor
 {
+    /** 调用方持有生命周期 Lease 时，读取本阶段下一项的原始身份与进度供执行前审计。 */
+    public function inspectPhase(string $directory, string $phase): ?array;
+
     /**
      * Advance at most one migration work unit in the requested phase.
      *
@@ -18,6 +21,7 @@ interface ReleaseMigrationExecutor
         string $directory,
         string $phase,
         bool $allowContract,
-        string $lifecycleLeaseHolder
+        string $lifecycleLeaseHolder,
+        bool $retryFailed = false
     ): ?array;
 }

@@ -36,7 +36,7 @@ final class EventingWorkerProbe implements RuntimeProbe
                 ->toArray();
             $release = $settings['required_release_id'] ?? getenv('LC_ACTIVE_RELEASE_ID');
             $expectedRelease = is_string($release) && $release !== '' ? $release : null;
-            $handlers = new HandlerRegistry();
+            $handlers = app(HandlerRegistry::class);
             $requiredQueues = $handlers->queueNamesFor([
                 \app\modules\Platform\Eventing\Public\ExecutionMode::REQUEST_SAFE,
                 \app\modules\Platform\Eventing\Public\ExecutionMode::DAEMON_REQUIRED,

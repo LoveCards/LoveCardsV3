@@ -130,10 +130,10 @@ import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminSecretConfigField from '~/components/shared/admin/AdminSecretConfigField.vue'
 import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
-import { isApiError, useApi } from '~/lib/api'
+import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import CommonUtils from '~/utils/common'
-import { isSecretConfigEnvelope, normalizeSecretConfig, settleSecretConfig, type SecretConfigEnvelope } from '~/utils/configSecrets'
+import { isSecretConfigEnvelope, normalizeSecretConfig, type SecretConfigEnvelope } from '~/utils/configSecrets'
 
 type DriverField = FieldDefinition & { key: string; label: string }
 type Feedback = { type: 'success' | 'error'; text: string }
@@ -141,6 +141,7 @@ type FieldValue = string | number | boolean | null | SecretConfigEnvelope
 type FormConfig = Record<string, FieldValue>
 
 const client = useApi()
+const configSnapshot = useConfigSnapshot(client)
 const route = useRoute()
 const userStore = useUserStore()
 const slug = String(route.params.slug)
@@ -160,7 +161,7 @@ const canUpdateConfig = computed(() => {
 const configChanged = computed(() => JSON.stringify(config.value) !== JSON.stringify(originConfig.value))
 const { unsavedChangesDialog, continueEditing, discardChanges } = useAdminUnsavedChanges(configChanged)
 const isDriverField = (field: FieldDefinition): field is DriverField => typeof field.key === 'string' && typeof field.label === 'string'
-const errorMessage = (cause: unknown, fallback: string) => isApiError(cause) ? cause.message : fallback
+const errorMessage = configSnapshot.errorMessage
 const fieldValue = (value: unknown): FieldValue => {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null ? value : ''
 }
@@ -179,7 +180,7 @@ const loadPage = async () => {
   loadError.value = ''
   saveMessage.value = null
   try {
-    const [drivers, rawConfig] = await Promise.all([client.captcha.drivers(), client.config.list()])
+    const [drivers, rawConfig] = await Promise.all([client.captcha.drivers(), configSnapshot.list()])
     const driver = drivers.find((item: CaptchaDriver) => item.slug === slug)
     if (!driver) {
       loadError.value = '未找到该验证驱动，请返回列表重新扫描。'
@@ -214,10 +215,13 @@ const save = async () => {
   saveLoading.value = true
   saveMessage.value = null
   try {
-    await client.config.update({ [group]: { ...config.value } })
+    const committed = await configSnapshot.update({ [group]: { ...config.value } })
+    const saved = committed[group] as Record<string, unknown>
     const settled = CommonUtils.deepClone(config.value)
     for (const field of fields.value) {
-      if (isSecretField(field)) settled[field.key] = settleSecretConfig(secretValue(field.key))
+      settled[field.key] = isSecretField(field)
+        ? normalizeSecretConfig(saved[field.key])
+        : fieldValue(saved[field.key] ?? field.default ?? '')
     }
     config.value = settled
     originConfig.value = CommonUtils.deepClone(settled)

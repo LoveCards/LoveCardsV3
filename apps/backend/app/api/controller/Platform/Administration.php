@@ -86,8 +86,11 @@ final class Administration extends BaseController
     {
         $coordinator = app(UpgradeCoordinator::class);
         if ($coordinator->find($planId) === null) throw ApiException::notFound('升级计划不存在');
-        $this->auditUpgrade('system.upgrade.advance.requested', $planId);
-        try { $plan = $coordinator->advance($planId); }
+        try {
+            $plan = $coordinator->advance($planId, function (array $metadata) use ($planId): void {
+                $this->auditUpgrade('system.upgrade.advance.requested', $planId, $metadata + ['source' => 'http']);
+            });
+        }
         catch (\LogicException|\InvalidArgumentException $exception) { throw ApiException::badRequest($exception->getMessage()); }
         $this->auditUpgrade('system.upgrade.advanced', $planId, ['status' => $plan->plan()->status(), 'revision' => $plan->plan()->revision()]);
         return $this->respond($plan->toArray());

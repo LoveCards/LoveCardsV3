@@ -24,7 +24,8 @@ createApp({
                 CreateRsa: {
                     public: "",
                     private: ""
-                }
+                },
+                InstallLock: { admin_password: "" }
             },
             //步骤
             step: {
@@ -171,10 +172,14 @@ createApp({
                     return true;
                 }
             } else if (this.tab.activeIndex === 4) {
+                if (this.req.InstallLock.admin_password.length < 12) {
+                    BaseEntity.commonFunctions.snackbar('请设置至少 12 个字符的管理员密码');
+                    return false;
+                }
                 this.setInstallLock().then(() => {
                     BaseEntity.commonFunctions.snackbar('安装锁创建成功，正在前往首页');
                     BaseEntity.JumpUrl('/');
-                })
+                }).catch((error) => BaseEntity.AxiosErrorHandling(error));
             } else {
                 false;
             }
@@ -199,7 +204,7 @@ createApp({
             });
         },
         setInstallLock() {
-            return BaseEntity.RequestApiUrl('post', 'SystemInstallSetInstallLock');
+            return BaseEntity.RequestApiUrl('post', 'SystemInstallSetInstallLock', {}, this.req.InstallLock);
         },
         postCreateRsa() {
             return BaseEntity.RequestApiUrl('post', 'SystemInstallCreateRsa', {

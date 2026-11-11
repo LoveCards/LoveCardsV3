@@ -20,6 +20,7 @@ use app\modules\Platform\Eventing\Infrastructure\ThinkDbDeliveryRepository;
 use app\modules\Platform\Eventing\Infrastructure\ThinkDbSignalPolicyStore;
 use app\modules\Platform\Eventing\Public\ExecutionMode;
 use app\modules\Platform\Eventing\Public\HandlerRegistry;
+use app\modules\Platform\Eventing\Public\DeliveryContext;
 use think\facade\Db;
 
 $assert = static function (bool $condition, string $message): void {
@@ -52,6 +53,7 @@ try {
 Db::startTrans();
 try {
     Db::table('runtime_config_state')->where('id', 1)->update(['desired_mode' => 'polling']);
+    Db::table('eventing_consumer_state')->where('id', 1)->update(['mode' => 'resident', 'state' => 'active']);
     $eventId = (int) Db::table('outbox_events')->insertGetId([
         'event_type' => 'signal.test', 'event_version' => 1,
         'aggregate_type' => 'test', 'aggregate_key' => '1',
@@ -59,7 +61,7 @@ try {
     ]);
     $repository = new ThinkDbDeliveryRepository();
     [$signalId, $businessId] = $repository->enqueue($eventId, [
-        new DeliveryDefinition('test.signal', 'realtime', ExecutionMode::DAEMON_REQUIRED),
+        DeliveryDefinition::fromRegistration(\app\EventHandlers::create()->find('realtime.message-sent')),
         new DeliveryDefinition('test.business', 'storage', ExecutionMode::DAEMON_REQUIRED),
     ], $now);
     $signal = Db::table('event_deliveries')->where('id', $signalId)->find();
@@ -68,7 +70,7 @@ try {
     $assert($business['status'] === 'pending', 'polling must retain independent business work');
 
     $claim = new DeliveryClaim('test-worker', ['realtime', 'storage'], [ExecutionMode::DAEMON_REQUIRED], 10,
-        str_repeat('a', 32), $now->modify('+1 second'), $now->modify('+1 minute'));
+        str_repeat('a', 32), $now->modify('+1 second'), $now->modify('+1 minute'), 'resident');
     $claimed = $repository->claim($claim);
     $assert(count($claimed) === 1 && $claimed[0]->id() === $businessId, 'polling claim must exclude realtime without blocking business work');
 
@@ -94,12 +96,12 @@ try {
     Db::table('runtime_config_state')->where('id', 1)->update(['desired_mode' => 'realtime']);
     Db::table('event_deliveries')->where('id', $signalId)->update(['status' => 'pending', 'policy_decision' => null, 'completed_at' => null]);
     $paused = $repository->claim(new DeliveryClaim('test-worker', ['realtime'], [ExecutionMode::DAEMON_REQUIRED], 10,
-        str_repeat('c', 32), $now->modify('+1 second'), $now->modify('+1 minute')));
+        str_repeat('c', 32), $now->modify('+1 second'), $now->modify('+1 minute'), 'resident'));
     $assert($paused === [], 'unready realtime chain must not claim signal work');
     $assert(Db::table('event_deliveries')->where('id', $signalId)->value('status') === 'pending', 'paused signal must remain queued');
 
     $store = new ThinkDbSignalPolicyStore();
-    $catalog = (new HandlerRegistry())->signalCatalog();
+    $catalog = \app\EventHandlers::create()->signalCatalog();
     $revision = $store->catalog($catalog)['revision'];
     $audits = 0;
     $updated = $store->applyChanges($catalog, [['key' => 'messages.new', 'enabled' => false]], $revision, 7,
@@ -127,7 +129,74 @@ try {
     $assert($auditFailure, 'audit failure must reject policy update');
     $assert($store->catalog($catalog)['revision'] === $revision + 1 && $store->enabled('messages.new', $catalog) === false,
         'audit failure must roll back the policy row');
+
+    $registry = \app\EventHandlers::create();
+    $signals = array_column($catalog, null, 'key');
+    $enqueue = static function (string $handler, ?array $origin = null) use ($registry, $repository, $stamp, $now): int {
+        $id = (int) Db::table('outbox_events')->insertGetId([
+            'event_type' => 'signal.test', 'event_version' => 1, 'aggregate_type' => 'test',
+            'aggregate_key' => bin2hex(random_bytes(8)), 'payload' => '{}', 'occurred_at' => $stamp, 'created_at' => $stamp,
+        ]);
+        return $repository->enqueue($id, [DeliveryDefinition::fromRegistration($registry->find($handler), $origin)], $now)[0];
+    };
+    $claimContext = static function (int $id): DeliveryContext {
+        $row = Db::table('event_deliveries')->where('id', $id)->find();
+        Db::table('event_deliveries')->where('id', $id)->update(['status' => 'processing', 'claim_token' => str_repeat('f', 32),
+            'lease_expires_at' => gmdate('Y-m-d H:i:s', time() + 60)]);
+        return new DeliveryContext($id, (int) $row['event_id'], $row['handler_key'], 1, null, 'signal.test', str_repeat('f', 32));
+    };
+    $change = static function (string $key, bool $enabled) use ($store, $catalog): void {
+        $store->applyChanges($catalog, [['key' => $key, 'enabled' => $enabled]], $store->catalog($catalog)['revision'], 1, static function (): void {});
+    };
+    $change('messages.new', true);
+    $root = $enqueue('realtime.card-published');
+    $unrelated = $enqueue('realtime.message-sent');
+    $context = $claimContext($root);
+    $assert($store->authorize($signals['feed.published'], $context), 'root obtains original generation eligibility');
+    $origin = $store->continueSignal($signals['feed.published'], $context, static fn(array $origin): array => $origin);
+    $child = $enqueue('realtime.card-feed-batch', $origin);
+    $change('feed.published', false);
+    $disabledRoot = $enqueue('realtime.card-published');
+    $context->assertSignalWindow();
+    $assert($store->continueSignal($signals['feed.published'], $context, static fn(): bool => true) === null,
+        'disabled key cannot create continuation even from previously authorized root');
+    $change('feed.published', true);
+    $assert(!$store->authorize($signals['feed.published'], $claimContext($root)), 'reopen cannot revive old root');
+    $assert(!$store->authorize($signals['feed.published'], $claimContext($child)), 'reopen cannot revive old continuation');
+    $assert(!$store->authorize($signals['feed.published'], $claimContext($disabledRoot)), 'disabled registration remains skipped');
+    $assert($store->authorize($signals['messages.new'], $claimContext($unrelated)), 'unrelated key retains its generation');
+    $fresh = $enqueue('realtime.card-published');
+    $assert($store->authorize($signals['feed.published'], $claimContext($fresh)), 'newly registered generation may send');
+    $other->exec('SET innodb_lock_wait_timeout = 1');
+    $locked = false;
+    try { $other->exec("UPDATE signal_policy_state SET revision = revision + 1 WHERE id = 1"); }
+    catch (PDOException $exception) { $locked = (int) ($exception->errorInfo[1] ?? 0) === 1205; }
+    $assert($locked, 'signal switch must wait for transaction holding original eligibility lock');
     Db::rollback();
+
+    // 仅隔离库：模拟多步 DDL 在中间失败，复用生产解析器重放受审迁移。
+    $legacyIds = [];
+    foreach (['pending', 'processing', 'dead'] as $status) {
+        Db::startTrans();
+        $legacyId = $enqueue('realtime.card-published');
+        Db::table('event_deliveries')->where('id', $legacyId)->update(['status' => $status, 'policy_decision' => null]);
+        Db::commit();
+        $legacyIds[] = $legacyId;
+    }
+    Db::execute('ALTER TABLE event_deliveries DROP COLUMN signal_generation');
+    Db::execute('ALTER TABLE signal_policy_state MODIFY COLUMN generations_json LONGTEXT NULL');
+    Db::table('signal_policy_state')->where('id', 1)->update(['generations_json' => null]);
+    $migration = file_get_contents($backend . '/database/migrations/20261111000005.sql');
+    \app\shared\Infrastructure\Persistence\SqlStatementExecutor::execute($migration);
+    \app\shared\Infrastructure\Persistence\SqlStatementExecutor::execute($migration);
+    $assert(Db::table('signal_policy_state')->where('id', 1)->value('generations_json') === '{}', 'partial DDL replay initializes generation metadata');
+    $column = Db::query("SELECT IS_NULLABLE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'signal_policy_state' AND COLUMN_NAME = 'generations_json'");
+    $assert(($column[0]['IS_NULLABLE'] ?? null) === 'NO', 'partial DDL replay completes not-null constraint');
+    foreach ($legacyIds as $legacyId) {
+        $legacy = Db::table('event_deliveries')->where('id', $legacyId)->find();
+        $assert($legacy['status'] === 'completed' && $legacy['policy_decision'] === 'skipped' && $legacy['claim_token'] === null,
+            'unknown historical eligibility must be permanently skipped');
+    }
     fwrite(STDOUT, "PASS isolated signal delivery and policy CAS E2E\n");
 } catch (Throwable $exception) {
     Db::rollback();

@@ -24,6 +24,13 @@ use app\shared\Observability\AuditLogger;
  */
 final class RuntimeCommunication
 {
+    public static function assertWorkersStopped(): void
+    {
+        if (\think\facade\Db::table('runtime_workers')->where('worker_type', 'eventing')->where('state', '<>', 'stopped')->count() > 0) {
+            throw new \RuntimeException('仍有未确认停止的 Event Worker，禁止 Contract；过期心跳不能证明进程已退出');
+        }
+    }
+
     /** 事务内读取模式，禁止触发外部设施探测。 */
     public function selectedMode(): string
     {
@@ -99,8 +106,6 @@ final class RuntimeCommunication
                 'notification_interval_seconds' => (int) $settings['notification_interval_seconds'],
                 'message_interval_seconds' => (int) $settings['message_interval_seconds'],
                 'unread_interval_seconds' => (int) $settings['unread_interval_seconds'],
-                'polling_backoff_factor' => (float) $settings['polling_backoff_factor'],
-                'polling_max_interval_seconds' => (int) $settings['polling_max_interval_seconds'],
                 'pause_when_hidden' => (bool) $settings['pause_when_hidden'],
             ],
         ];

@@ -166,8 +166,8 @@ test('runtime validates before review and keeps the draft after a revision confl
   test.setTimeout(90_000)
   const settings = {
     notification_interval_seconds: 20, message_interval_seconds: 45, unread_interval_seconds: 20,
-    polling_backoff_factor: 2, polling_max_interval_seconds: 300, pause_when_hidden: true,
-    worker_stale_seconds: 30, scheduler_stale_seconds: 3600, gateway_stale_seconds: 15, require_supervisor: false,
+    pause_when_hidden: true,
+    worker_stale_seconds: 30, scheduler_stale_seconds: 3600, gateway_stale_seconds: 15,
   }
   let revision = 3
   let validations = 0

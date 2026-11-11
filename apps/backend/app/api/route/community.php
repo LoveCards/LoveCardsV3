@@ -8,7 +8,7 @@ use app\modules\Platform\Community\Transport\Api\Community as CommunityValidate;
 use app\modules\Platform\Notifications\Transport\Api\NotificationCursorPageResource;
 use app\modules\Platform\Notifications\Transport\Api\NotificationUnreadResource;
 use app\modules\Operations\Runtime\Transport\Api\CommunicationSettingsResource;
-use app\modules\Platform\Notifications\Transport\Api\StreamTicketResource;
+use app\modules\Operations\Runtime\Transport\Api\StreamTicketResource;
 use app\shared\Transport\Http\CursorPageResource;
 use app\modules\Platform\Safety\Transport\Api\PrivacyPreferencesResource;
 use app\modules\Platform\Safety\Transport\Api\BlockedUserCursorPageResource;

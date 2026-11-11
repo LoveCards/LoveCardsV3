@@ -68,7 +68,7 @@ $assert = static function (bool $condition, string $message): void {
 };
 
 $handler = new RecoveryHandler();
-$registry = new HandlerRegistry();
+$registry = \app\EventHandlers::create();
 $reflection = new ReflectionClass($registry);
 foreach (['byKey', 'byEvent'] as $propertyName) {
     $property = $reflection->getProperty($propertyName);
@@ -120,13 +120,37 @@ $assert($handler->calls === 0, 'a poison delivery must not execute its handler a
 $assert($deliveries->failure?->terminal() === true, 'reclaimed poison delivery must use terminal failure state');
 $assert($deliveries->completed === false, 'reclaimed poison delivery must not be marked completed');
 
+// 已耗尽默认预算仍可执行一次明确授权；累计次数和原投递身份保持不变。
+$authorized = $processor->process(new ClaimedDelivery(
+    1, 1, 'eventing.recovery-test', 'notifications', ExecutionMode::REQUEST_SAFE,
+    3, str_repeat('b', 32), new DateTimeImmutable('2026-08-21T00:05:00Z'), 7, 3
+));
+$assert($authorized === DeliveryOutcome::COMPLETED && $handler->calls === 1, 'manual budget must really execute an exhausted delivery');
+$overBudget = $processor->process(new ClaimedDelivery(
+    1, 1, 'eventing.recovery-test', 'notifications', ExecutionMode::REQUEST_SAFE,
+    4, str_repeat('c', 32), new DateTimeImmutable('2026-08-21T00:05:00Z'), 7, 3
+));
+$assert($overBudget === DeliveryOutcome::DEAD && $handler->calls === 1, 'manual budget cannot permit a second unapproved attempt');
+
+$oneAttemptHandler = new class implements EventHandler {
+    public int $calls = 0;
+    public function handle(EventEnvelope $event, DeliveryContext $context): void { $this->calls++; throw new RuntimeException('still broken'); }
+};
+$registry->register(new HandlerRegistration('eventing.recovery.test', 1, 'test.manual-one', 'notifications', ExecutionMode::REQUEST_SAFE, $oneAttemptHandler, 10));
+$oneAttempt = $processor->process(new ClaimedDelivery(
+    2, 1, 'test.manual-one', 'notifications', ExecutionMode::REQUEST_SAFE,
+    2, str_repeat('d', 32), new DateTimeImmutable('2026-08-21T00:05:00Z'), 7, 2
+));
+$assert($oneAttempt === DeliveryOutcome::DEAD && $oneAttemptHandler->calls === 1,
+    'explicit single retry must not revive the larger default budget after failure');
+
 $transportHandler = new class implements EventHandler {
     public function handle(EventEnvelope $event, DeliveryContext $context): void
     {
         throw new SignalTransportUnavailable('gateway unavailable');
     }
 };
-$transportRegistry = new HandlerRegistry();
+$transportRegistry = \app\EventHandlers::create();
 $reflection = new ReflectionClass($transportRegistry);
 foreach (['byKey', 'byEvent'] as $propertyName) {
     $property = $reflection->getProperty($propertyName);
@@ -155,7 +179,7 @@ foreach (['skipped', 'applied'] as $decision) {
         public function __construct(private string $decision) {}
         public function handle(EventEnvelope $event, DeliveryContext $context): void { $context->markSignalDecision($this->decision); }
     };
-    $signalRegistry = new HandlerRegistry();
+    $signalRegistry = \app\EventHandlers::create();
     $signalRegistry->register(new HandlerRegistration(
         'eventing.recovery.test', 1, 'test.signal-decision', 'realtime',
         ExecutionMode::DAEMON_REQUIRED, $signalHandler, 2, [5],
@@ -178,7 +202,7 @@ foreach (['skipped', 'applied'] as $decision) {
 $missingDecisionHandler = new class implements EventHandler {
     public function handle(EventEnvelope $event, DeliveryContext $context): void {}
 };
-$missingDecisionRegistry = new HandlerRegistry();
+$missingDecisionRegistry = \app\EventHandlers::create();
 $missingDecisionRegistry->register(new HandlerRegistration(
     'eventing.recovery.test', 1, 'test.missing-decision', 'realtime',
     ExecutionMode::DAEMON_REQUIRED, $missingDecisionHandler, 2, [5],

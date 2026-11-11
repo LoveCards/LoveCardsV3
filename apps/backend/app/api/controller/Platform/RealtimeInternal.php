@@ -5,7 +5,7 @@ namespace app\api\controller\Platform;
 
 use app\api\ApiException;
 use app\api\controller\BaseController;
-use app\modules\Platform\Notifications\Public\StreamTickets;
+use app\modules\Operations\Runtime\Public\StreamTickets;
 
 /**
  * Realtime Gateway 的内部 ticket 消费端点（InternalTokenCheck 保护，非 JWT）。

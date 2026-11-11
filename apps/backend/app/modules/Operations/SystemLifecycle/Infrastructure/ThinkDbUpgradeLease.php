@@ -9,8 +9,46 @@ use think\facade\Db;
 final class ThinkDbUpgradeLease implements UpgradeLease
 {
     private bool $bootstrapped = false;
+    /** 会话锁覆盖整个副作用执行区间；TTL 只用于账本，不授权并行重放。 */
+    private array $executionLocks = [];
 
     public function acquire(string $leaseName, \DateTimeImmutable $now, int $ttlSeconds): ?string
+    {
+        $leaseName = $this->leaseName($leaseName);
+        if (isset($this->executionLocks[$leaseName])) return null;
+        $connection = Db::connect();
+        $identity = $connection->query('SELECT CONNECTION_ID() AS id, DATABASE() AS db')[0] ?? [];
+        $lockName = 'lc:lifecycle:' . substr(hash('sha256', (string) ($identity['db'] ?? '') . ':' . $leaseName), 0, 48);
+        // GET_LOCK 对同一连接可重入；另一服务实例不能凭共享连接二次取得执行资格。
+        $existing = $connection->query('SELECT IS_USED_LOCK(?) AS owner', [$lockName]);
+        if (($existing[0]['owner'] ?? null) !== null) return null;
+        $row = $connection->query('SELECT GET_LOCK(?, 0) AS acquired', [$lockName]);
+        if ((int) ($row[0]['acquired'] ?? 0) !== 1) return null;
+        try {
+            $token = $this->acquireLease($leaseName, $now, $ttlSeconds);
+            if ($token === null) {
+                $connection->query('SELECT RELEASE_LOCK(?)', [$lockName]);
+                return null;
+            }
+            $this->executionLocks[$leaseName] = ['connection'=>$connection, 'id'=>(int) $identity['id'], 'name'=>$lockName, 'token'=>$token];
+            return $token;
+        } catch (\Throwable $exception) {
+            $connection->query('SELECT RELEASE_LOCK(?)', [$lockName]);
+            throw $exception;
+        }
+    }
+
+    private function ownsExecution(string $leaseName, string $token): bool
+    {
+        $lock = $this->executionLocks[$leaseName] ?? null;
+        if ($lock === null || !hash_equals($lock['token'], $token)) return false;
+        try {
+            $row = $lock['connection']->query('SELECT CONNECTION_ID() AS id, IS_USED_LOCK(?) AS owner', [$lock['name']])[0] ?? [];
+            return (int) ($row['id'] ?? 0) === $lock['id'] && (int) ($row['owner'] ?? 0) === $lock['id'];
+        } catch (\Throwable $ignored) { return false; }
+    }
+
+    private function acquireLease(string $leaseName, \DateTimeImmutable $now, int $ttlSeconds): ?string
     {
         $leaseName = $this->leaseName($leaseName);
         if ($ttlSeconds < 5 || $ttlSeconds > 3600) {
@@ -64,12 +102,14 @@ final class ThinkDbUpgradeLease implements UpgradeLease
         if (!preg_match('/^[a-f0-9]{64}$/', $holderToken)) {
             throw new \InvalidArgumentException('System Lease holder token 不合法');
         }
-        $this->bootstrap();
-
-        Db::table('system_leases')
-            ->where('lease_name', $leaseName)
-            ->where('holder_token', $holderToken)
-            ->delete();
+        $lock = $this->executionLocks[$leaseName] ?? null;
+        if (!$this->ownsExecution($leaseName, $holderToken)) return;
+        try {
+            Db::table('system_leases')->where('lease_name', $leaseName)->where('holder_token', $holderToken)->delete();
+        } finally {
+            $lock['connection']->query('SELECT RELEASE_LOCK(?)', [$lock['name']]);
+            unset($this->executionLocks[$leaseName]);
+        }
     }
 
     public function renew(
@@ -85,6 +125,7 @@ final class ThinkDbUpgradeLease implements UpgradeLease
         if ($ttlSeconds < 5 || $ttlSeconds > 3600) {
             throw new \InvalidArgumentException('System Lease TTL 必须为 5..3600 秒');
         }
+        if (!$this->ownsExecution($leaseName, $holderToken)) return false;
         $this->bootstrap();
 
         $timestamp = $now->format('Y-m-d H:i:s.u');

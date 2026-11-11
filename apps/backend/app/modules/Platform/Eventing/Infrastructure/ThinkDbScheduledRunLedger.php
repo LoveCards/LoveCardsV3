@@ -15,6 +15,7 @@ final class ThinkDbScheduledRunLedger implements ScheduledRunLedger
         return (int) Db::table('scheduler_runs')->insertGetId([
             'worker_id' => $workerId,
             'trigger_source' => $triggerSource,
+            'release_id' => (string) (getenv('LC_ACTIVE_RELEASE_ID') ?: ''),
             'started_at' => $now,
             'outcome' => 'running',
             'created_at' => $now,

@@ -220,7 +220,7 @@ import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
-import { isApiError, useApi } from '~/lib/api'
+import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import CommonUtils from '~/utils/common'
 import { readNumber, readObject, readString } from '~/utils/json'
@@ -235,6 +235,7 @@ interface StorageSettings {
 }
 
 const client = useApi()
+const configSnapshot = useConfigSnapshot(client)
 const router = useRouter()
 const userStore = useUserStore()
 const tab = ref('channels')
@@ -256,7 +257,7 @@ const canInstallStorage = computed(() => userStore.hasGrant('storage.install', '
 const settingsChanged = computed(() => JSON.stringify(settings.value) !== JSON.stringify(originSettings.value))
 const channelOptions = computed(() => channelList.value.map(channel => ({ title: channel.name, value: channel.slug })))
 const channelLimit = (slug: string) => readNumber(channels.value[slug]?.max_file_size)
-const errorMessage = (cause: unknown, fallback: string) => isApiError(cause) ? cause.message : fallback
+const errorMessage = configSnapshot.errorMessage
 
 const loadPage = async () => {
   loading.value = true
@@ -264,7 +265,7 @@ const loadPage = async () => {
   try {
     const [availableChannels, rawConfig, channelStats] = await Promise.all([
       client.storage.channels(),
-      client.config.list(),
+      configSnapshot.list(),
       client.storage.channelStats(),
     ])
     channelList.value = availableChannels
@@ -291,9 +292,9 @@ const setDefault = async (slug: string) => {
   changingDefault.value = slug
   actionMessage.value = null
   try {
-    await client.config.update({ storage: { default: slug } })
-    settings.value.default = slug
-    originSettings.value.default = slug
+    const committed = await configSnapshot.update({ storage: { default: slug } })
+    settings.value.default = readString(readObject(committed.storage).default)
+    originSettings.value.default = settings.value.default
     actionMessage.value = { type: 'success', text: `已将 ${slug} 设为新上传文件的默认渠道。` }
   } catch (cause) {
     actionMessage.value = { type: 'error', text: errorMessage(cause, '默认存储渠道切换失败，请稍后重试。') }
@@ -309,7 +310,14 @@ const saveSettings = async () => {
   settingsSaving.value = true
   settingsMessage.value = null
   try {
-    await client.config.update({ storage: settings.value })
+    const committed = await configSnapshot.update({ storage: settings.value })
+    const saved = readObject(committed.storage)
+    settings.value = {
+      default: readString(saved.default),
+      rate_limit_max: readNumber(saved.rate_limit_max, 10),
+      rate_limit_window: readNumber(saved.rate_limit_window, 60),
+      direct_upload_expire: readNumber(saved.direct_upload_expire, 3600),
+    }
     originSettings.value = CommonUtils.deepClone(settings.value)
     settingsMessage.value = { type: 'success', text: '存储设置已保存。' }
   } catch (cause) {

@@ -73,6 +73,8 @@ final class UpgradeCoordinator
                     $previous,
                     false,
                     [
+                        'plan_version' => 2,
+                        'target_migration_checksums' => $manifest->migrationChecksums(),
                         'package' => $package->toArray(),
                         'manifest_checksum' => $manifest->documentChecksum(),
                         'target_version' => $manifest->version(),
@@ -141,7 +143,7 @@ final class UpgradeCoordinator
         }
     }
 
-    public function advance(string $planId): StoredUpgradePlan
+    public function advance(string $planId, ?callable $beforeAdvance = null): StoredUpgradePlan
     {
         $holder = $this->lease->acquire(LifecycleLease::NAME, $this->now(), LifecycleLease::TTL_SECONDS);
         if ($holder === null) throw new UpgradeLeaseUnavailableException('已有系统升级正在执行');
@@ -149,15 +151,21 @@ final class UpgradeCoordinator
             $stored = $this->requiredPlan($planId);
             $this->assertExclusivePlan($planId);
             $this->assertCurrentPlanShape($stored);
-            if ($stored->status() === StoredUpgradePlan::RECOVERED) {
-                throw new \LogicException('已恢复的 Upgrade Plan 不能继续推进');
+            if (isset($stored->context()['pointer_restored_at']) || $stored->status() === StoredUpgradePlan::RECOVERED) {
+                throw new \LogicException('已恢复指针的 Upgrade Plan 不能继续推进');
             }
             $current = $stored->plan()->current();
             if ($current === null) return $stored;
+            if (($stored->context()['execution_in_progress'] ?? false) === true) {
+                throw new \LogicException('上次升级执行未确认结束；必须先核实 SQL/子进程已停止并受控处置，禁止凭 Lease 到期重放');
+            }
             if ($current->state() === UpgradeStepState::WAITING && !$stored->contractApproved()) return $stored;
 
             $manifest = $this->manifest($stored);
             $releaseRoot = $this->paths->releaseRoot($stored->plan()->releaseId());
+
+            // 审计在同一 Lease 下捕获实际目标，必须先成功，之后才改变计划或迁移状态。
+            if ($beforeAdvance !== null) $beforeAdvance($this->advanceAuditMetadata($stored, $releaseRoot));
 
             if ($this->needsContractApproval($current, $stored, $manifest, $releaseRoot)) {
                 return $this->plans->save(
@@ -172,7 +180,8 @@ final class UpgradeCoordinator
             }
 
             $started = $this->plans->save(
-                $stored->withPlan($stored->plan()->start($current->name())),
+                $stored->withContext(array_replace($stored->context(), ['execution_in_progress' => true]))
+                    ->withPlan($stored->plan()->start($current->name())),
                 $stored->plan()->revision()
             );
             if (!$this->lease->renew(LifecycleLease::NAME, $holder, $this->now(), LifecycleLease::TTL_SECONDS)) {
@@ -184,12 +193,13 @@ final class UpgradeCoordinator
                     $current->name(),
                     $manifest,
                     $releaseRoot,
-                    $holder
+                    $holder,
+                    $current->state() === UpgradeStepState::FAILED
                 );
                 if (!$this->lease->renew(LifecycleLease::NAME, $holder, $this->now(), LifecycleLease::TTL_SECONDS)) {
                     throw new UpgradeLeaseUnavailableException('系统升级 Lease 已丢失');
                 }
-                $context = array_replace($started->context(), $contextPatch);
+                $context = array_replace($started->context(), $contextPatch, ['execution_in_progress' => false]);
                 $nextPlan = $settled
                     ? $started->plan()->succeed($current->name())
                     : $started->plan()->checkpoint($current->name(), $cursor);
@@ -201,7 +211,13 @@ final class UpgradeCoordinator
                 $failedPlan = $started->withPlan(
                     $started->plan()->fail($current->name(), $this->failureCode($exception))
                 );
-                try { $this->plans->save($started->withContext($started->context())->withPlan($failedPlan->plan()), $started->plan()->revision()); } catch (\Throwable $ignored) {}
+                try { $stillOwned = $this->lease->renew(LifecycleLease::NAME, $holder, $this->now(), LifecycleLease::TTL_SECONDS); }
+                catch (\Throwable $ignored) { $stillOwned = false; }
+                $failureContext = array_replace($started->context(), [
+                    'execution_in_progress' => !$stillOwned || $exception instanceof UpgradeLeaseUnavailableException
+                        || $exception instanceof \app\modules\Operations\SystemLifecycle\Exception\ExecutionUncertainException,
+                ]);
+                try { $this->plans->save($started->withContext($failureContext)->withPlan($failedPlan->plan()), $started->plan()->revision()); } catch (\Throwable $ignored) {}
                 throw $exception;
             }
         } finally {
@@ -209,7 +225,7 @@ final class UpgradeCoordinator
         }
     }
 
-    public function runUntilSettled(string $planId, bool $allowContract = false, int $maximumAdvances = 1000): StoredUpgradePlan
+    public function runUntilSettled(string $planId, bool $allowContract = false, int $maximumAdvances = 1000, ?callable $beforeAdvance = null): StoredUpgradePlan
     {
         if ($maximumAdvances < 1 || $maximumAdvances > 10000) throw new \InvalidArgumentException('升级最大推进次数不合法');
         $stored = $this->requiredPlan($planId);
@@ -220,10 +236,34 @@ final class UpgradeCoordinator
                 $stored = $this->approveContract($planId);
             }
             $revision = $stored->plan()->revision();
-            $stored = $this->advance($planId);
+            $stored = $this->advance($planId, $beforeAdvance);
             if ($stored->plan()->revision() === $revision) return $stored;
         }
         throw new \RuntimeException('升级推进次数超过安全上限');
+    }
+
+    private function advanceAuditMetadata(StoredUpgradePlan $stored, string $releaseRoot): array
+    {
+        $step = $stored->plan()->current();
+        $phase = match ($step?->name()) {
+            UpgradeStep::PREFLIGHT_MIGRATIONS => MigrationPhase::PREFLIGHT,
+            UpgradeStep::EXPAND_MIGRATIONS => MigrationPhase::EXPAND,
+            UpgradeStep::BACKFILL => MigrationPhase::BACKFILL,
+            UpgradeStep::VERIFY_MIGRATIONS => MigrationPhase::VERIFY,
+            UpgradeStep::CONTRACT_MIGRATIONS => MigrationPhase::CONTRACT,
+            default => null,
+        };
+        $migration = $phase === null ? null : $this->migrations->inspectPhase(
+            rtrim($releaseRoot, '/\\') . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'migrations', $phase
+        );
+        return [
+            'plan_id' => $stored->plan()->planId(),
+            'release_id' => $stored->plan()->releaseId(),
+            'revision' => $stored->plan()->revision(),
+            'step' => $step?->toArray(),
+            'migration' => $migration,
+            'retry_failed_migration' => $step?->state() === UpgradeStepState::FAILED && ($migration['status'] ?? null) === 'failed',
+        ];
     }
 
     public function recover(string $planId): StoredUpgradePlan
@@ -239,6 +279,9 @@ final class UpgradeCoordinator
             }
             if (!isset($stored->context()['activated_at'])) {
                 throw new \LogicException('Release 尚未激活，不能执行指针恢复');
+            }
+            if (($stored->context()['execution_in_progress'] ?? false) === true) {
+                throw new \LogicException('升级执行尚未确认结束，不能恢复 Pointer');
             }
             if ($stored->previousReleaseId() === null) {
                 throw new \LogicException('Upgrade Plan 没有可恢复的旧 Release');
@@ -260,14 +303,26 @@ final class UpgradeCoordinator
                 throw new \RuntimeException('指针备份与 Upgrade Plan 的旧 Release 不一致');
             }
             $this->releases->rollback($stored->plan()->releaseId(), $restored);
-            if ($this->runtime->canReload()) $this->runtime->reload($restored);
-            $this->runtime->healthCheck($restored);
             $this->backupRepository->markRestored((string) $backup['backup_id']);
             $context = array_replace($stored->context(), [
-                'recovered_at' => gmdate('c'),
+                'pointer_restored_at' => $stored->context()['pointer_restored_at'] ?? gmdate('c'),
                 'restored_release_id' => $restored,
+                'service_recovered' => false,
             ]);
-            return $this->plans->save($stored->withContext($context), $stored->plan()->revision());
+            $stored = $this->plans->save($stored->withContext($context), $stored->plan()->revision());
+            try {
+                if ($this->runtime->canReload()) $this->runtime->reload($restored);
+                $this->runtime->healthCheck($restored);
+                $this->compatibility->verifyEventConsumptionOperational((string) $context['pointer_restored_at'], $restored);
+            } catch (\Throwable $exception) {
+                $this->plans->save($stored->withContext(array_replace($stored->context(), [
+                    'recovery_failure_code' => $this->failureCode($exception),
+                ])), $stored->plan()->revision());
+                throw $exception;
+            }
+            return $this->plans->save($stored->withContext(array_replace($stored->context(), [
+                'recovered_at' => gmdate('c'), 'service_recovered' => true, 'recovery_failure_code' => null,
+            ])), $stored->plan()->revision());
         } finally {
             $this->lease->release(LifecycleLease::NAME, $holder);
         }
@@ -279,7 +334,8 @@ final class UpgradeCoordinator
         string $step,
         ReleaseManifest $manifest,
         string $releaseRoot,
-        string $lifecycleLeaseHolder
+        string $lifecycleLeaseHolder,
+        bool $retryFailedMigration = false
     ): array {
         $package = $this->package($stored);
         return match ($step) {
@@ -288,16 +344,17 @@ final class UpgradeCoordinator
             UpgradeStep::VERIFY_RELEASE => [$this->verifyRelease($package, $manifest), true, null],
             UpgradeStep::STAGE_RELEASE => [$this->stageRelease($package, $manifest), true, null],
             UpgradeStep::SCHEMA_CHECK => [$this->schemaCheck($manifest, $releaseRoot), true, null],
-            UpgradeStep::PREFLIGHT_MIGRATIONS => $this->advanceMigrationPhase($stored, $manifest, $releaseRoot, MigrationPhase::PREFLIGHT, $lifecycleLeaseHolder),
-            UpgradeStep::EXPAND_MIGRATIONS => $this->advanceMigrationPhase($stored, $manifest, $releaseRoot, MigrationPhase::EXPAND, $lifecycleLeaseHolder),
-            UpgradeStep::BACKFILL => $this->advanceMigrationPhase($stored, $manifest, $releaseRoot, MigrationPhase::BACKFILL, $lifecycleLeaseHolder),
-            UpgradeStep::VERIFY_MIGRATIONS => $this->advanceMigrationPhase($stored, $manifest, $releaseRoot, MigrationPhase::VERIFY, $lifecycleLeaseHolder),
+            UpgradeStep::PREFLIGHT_MIGRATIONS => $this->advanceMigrationPhase($stored, $manifest, $releaseRoot, MigrationPhase::PREFLIGHT, $lifecycleLeaseHolder, $retryFailedMigration),
+            UpgradeStep::EXPAND_MIGRATIONS => $this->advanceMigrationPhase($stored, $manifest, $releaseRoot, MigrationPhase::EXPAND, $lifecycleLeaseHolder, $retryFailedMigration),
+            UpgradeStep::BACKFILL => $this->advanceMigrationPhase($stored, $manifest, $releaseRoot, MigrationPhase::BACKFILL, $lifecycleLeaseHolder, $retryFailedMigration),
+            UpgradeStep::VERIFY_MIGRATIONS => $this->advanceMigrationPhase($stored, $manifest, $releaseRoot, MigrationPhase::VERIFY, $lifecycleLeaseHolder, $retryFailedMigration),
             UpgradeStep::BACKUP_GATE => [$this->backupGate($stored), true, null],
             UpgradeStep::DRAIN_RUNTIME => [$this->drain($stored->plan()->releaseId()), true, null],
             UpgradeStep::ACTIVATE_RELEASE => [$this->activate($stored), true, null],
             UpgradeStep::RELOAD_RUNTIME => [$this->reload($stored->plan()->releaseId()), true, null],
             UpgradeStep::HEALTH_CHECK => [$this->health($stored->plan()->releaseId(), $manifest, (string) ($stored->context()['activated_at'] ?? '')), true, null],
-            UpgradeStep::CONTRACT_MIGRATIONS => $this->advanceMigrationPhase($stored, $manifest, $releaseRoot, MigrationPhase::CONTRACT, $lifecycleLeaseHolder),
+            UpgradeStep::FINAL_HEALTH => [$this->finalHealth($stored, $manifest), true, null],
+            UpgradeStep::CONTRACT_MIGRATIONS => $this->advanceMigrationPhase($stored, $manifest, $releaseRoot, MigrationPhase::CONTRACT, $lifecycleLeaseHolder, $retryFailedMigration),
             default => throw new \LogicException('未知 Upgrade Step: ' . $step),
         };
     }
@@ -349,7 +406,8 @@ final class UpgradeCoordinator
         ReleaseManifest $manifest,
         string $releaseRoot,
         string $phase,
-        string $lifecycleLeaseHolder
+        string $lifecycleLeaseHolder,
+        bool $retryFailed = false
     ): array
     {
         $directory = rtrim($releaseRoot, '/\\') . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'migrations';
@@ -357,13 +415,20 @@ final class UpgradeCoordinator
         if ($allowContract && !$stored->contractApproved()) {
             throw new \LogicException('Contract Migration 尚未获准执行');
         }
+        if ($allowContract) $this->runtime->assertQuiescent($stored->plan()->releaseId());
         $row = $this->migrations->advancePhase(
             $directory,
             $phase,
             $allowContract,
-            $lifecycleLeaseHolder
+            $lifecycleLeaseHolder,
+            $retryFailed
         );
         $prefix = str_replace('-', '_', $phase);
+        // 账本失败必须停止计划，不能把它当作可继续轮询的普通游标。
+        // 下一次操作者显式 advance 失败步骤才获得一次重试资格。
+        if (($row['status'] ?? null) === 'failed') {
+            throw new \LogicException('当前迁移已失败，请修复原因后显式重试升级步骤');
+        }
         if ($row === null) {
             if ($phase === MigrationPhase::VERIFY) {
                 $this->compatibility->verifyPreContractMigrationsComplete($manifest);
@@ -429,6 +494,16 @@ final class UpgradeCoordinator
         return ['health_checked_at' => gmdate('c')];
     }
 
+    private function finalHealth(StoredUpgradePlan $stored, ReleaseManifest $manifest): array
+    {
+        $this->compatibility->verifyMigrationsComplete($manifest);
+        // Contract 停掉的消费者需要由目标 Release 重新启动，随后验证完整健康。
+        $releaseId = $stored->plan()->releaseId();
+        if ($this->runtime->canReload()) $this->runtime->reload($releaseId);
+        $this->health($releaseId, $manifest, (string) ($stored->context()['contract_migrations_completed_at'] ?? $stored->context()['activated_at'] ?? ''));
+        return ['final_health_checked_at' => gmdate('c')];
+    }
+
     private function needsContractApproval(
         UpgradePlanStep $step,
         StoredUpgradePlan $stored,
@@ -473,7 +548,7 @@ final class UpgradeCoordinator
     private function assertCurrentPlanShape(StoredUpgradePlan $stored): void
     {
         $actual = array_map(static fn(UpgradePlanStep $step): string => $step->name(), $stored->plan()->steps());
-        if ($actual !== UpgradeStep::ordered()) {
+        if ($actual !== UpgradeStep::ordered($stored->planVersion())) {
             throw new \LogicException('旧版 Upgrade Plan 不符合当前安全状态机，请重新创建升级计划');
         }
     }

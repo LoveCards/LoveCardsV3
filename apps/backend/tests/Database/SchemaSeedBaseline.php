@@ -29,6 +29,9 @@ $assert(str_contains($schema, '`policy_decision` varchar(24) DEFAULT NULL'), 'ev
 $assert(str_contains($seed, 'INSERT INTO `runtime_config_state`'), 'seed.sql must initialize runtime configuration');
 $assert(str_contains($seed, 'INSERT INTO `notification_policy_versions`'), 'seed.sql must initialize notification policy version');
 $assert(str_contains($seed, "'content.comment.published'"), 'seed.sql must use canonical notification event names');
+foreach (['permissions', 'role_permissions', 'system'] as $legacyTable) {
+    $assert(!str_contains($seed, 'INSERT INTO `' . $legacyTable . '`'), 'seed.sql must not repopulate legacy ' . $legacyTable);
+}
 $assert(str_contains($install, "databaseRoot . 'schema.sql'"), 'Installer must import schema.sql');
 $assert(str_contains($install, "databaseRoot . 'seed.sql'"), 'Installer must import seed.sql');
 $assert(!str_contains($install, "'data.sql'"), 'Installer must not import legacy data.sql');

@@ -1,5 +1,7 @@
 # LoveCards 文档索引
 
+> 完整实施设计与状态账本：[平台事件、通信与生命周期收敛](engineering/PLATFORM-CONVERGENCE-2026-11-11.md)。
+
 ## 架构与模块
 
 - [总体架构](engineering/ARCHITECTURE.md)
@@ -44,3 +46,6 @@
 
 - [管理端驱动三域架构导读](engineering/ADMIN-DRIVERS.md) —— Agent 理解总结，仅限参考，不作为改动依据
 
+
+- [系统配置与共享基础设施](engineering/CONFIGURATION.md)：Config 原子版本与 Redis 管理边界。
+- [数据库权威来源与留存治理](engineering/DATABASE-GOVERNANCE-2026-11-11.md)：旧表退役阻断条件与审计。

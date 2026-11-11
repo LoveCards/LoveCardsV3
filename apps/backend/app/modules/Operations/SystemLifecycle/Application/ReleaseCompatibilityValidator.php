@@ -117,6 +117,7 @@ final class ReleaseCompatibilityValidator implements ReleaseCompatibility
                 || !is_array($latest)
                 || $latest['trigger_source'] !== $state['scheduled_trigger']
                 || $latest['outcome'] !== 'ok'
+                || !hash_equals($releaseId, (string) ($latest['release_id'] ?? ''))
                 || $finished === null || $activated === null || $finished < $activated) {
                 throw new ReleaseVerificationException('激活后尚无当前 Release 的成功定时消费，请等待 cron 执行并重试健康检查');
             }

@@ -2,10 +2,9 @@
 
 declare(strict_types=1);
 
-namespace app\modules\Platform\Notifications\Infrastructure;
+namespace app\modules\Operations\Runtime\Infrastructure;
 
-use app\modules\Platform\Notifications\Contract\StreamTicketStore;
-use app\modules\Platform\Notifications\Domain\NotificationCursor;
+use app\modules\Operations\Runtime\Contract\StreamTicketStore;
 use think\facade\Db;
 
 /**
@@ -15,7 +14,7 @@ final class ThinkDbStreamTicketStore implements StreamTicketStore
 {
     private const TTL_SECONDS = 60;
 
-    public function issue(int $uid, string $ticketPlain): bool
+    public function issue(int $uid, string $sessionPublicId, string $ticketPlain): bool
     {
         if ($uid < 1 || strlen($ticketPlain) < 16) {
             return false;
@@ -25,6 +24,7 @@ final class ThinkDbStreamTicketStore implements StreamTicketStore
         return Db::table('stream_tickets')->insert([
             'ticket_hash' => hash('sha256', $ticketPlain),
             'uid' => $uid,
+            'session_public_id' => $sessionPublicId,
             'expires_at' => $expires,
             'used_at' => null,
             'created_at' => $now,
@@ -51,21 +51,6 @@ final class ThinkDbStreamTicketStore implements StreamTicketStore
         if (!is_array($row) || (int) ($row['uid'] ?? 0) < 1) {
             return null;
         }
-        return ['uid' => (int) $row['uid'], 'cursor_seed' => $this->latestCursor((int) $row['uid'])];
-    }
-
-    /** 该用户最新通知的游标（与列表 next_cursor 同编码）；无通知返回 null。 */
-    private function latestCursor(int $uid): ?string
-    {
-        $row = Db::table('notifications')
-            ->where('recipient_id', $uid)
-            ->field('id,created_at')
-            ->order('created_at', 'desc')
-            ->order('id', 'desc')
-            ->find();
-        if (!is_array($row)) {
-            return null;
-        }
-        return NotificationCursor::encode((string) $row['created_at'], (int) $row['id']);
+        return ['uid' => (int) $row['uid'], 'session_public_id' => $row['session_public_id'] ?? null];
     }
 }

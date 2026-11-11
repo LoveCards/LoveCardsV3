@@ -1,5 +1,7 @@
 # 通信管理三页重设计（2026-11-07）
 
+> 2026-11-11 退役说明：下文保留的 `polling_backoff_factor`、`polling_max_interval_seconds`、`require_supervisor` 与 `eventing.wakeup` 均不再属于当前实现或有效配置。前两项从未参与浏览器调度；Supervisor 没有真实探测；Worker wakeup 没有生产调用/订阅链。当前运行约束见 [Runtime 架构](RUNTIME-ARCHITECTURE.md) 和 [收敛设计](PLATFORM-CONVERGENCE-2026-11-11.md)。
+
 > **历史页面设计和验收记录。** 当前运行状态页须分别显示事件消费策略与通信模式，且实时故障不自动切轮询；以 [RUNTIME-ARCHITECTURE.md](RUNTIME-ARCHITECTURE.md)、[EVENTING.md](EVENTING.md) 和 [FRONTEND-SIGNALS.md](FRONTEND-SIGNALS.md) 为准。以下自动降级及请求内消费示例不再作为当前行为要求。
 
 ## 目标与边界

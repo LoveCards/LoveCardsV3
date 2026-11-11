@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace app\modules\Platform\Config\Infrastructure;
 
 use app\modules\Platform\Config\Public\RedisConnectionSettings;
+use app\modules\Platform\Config\Public\DeploymentNamespace;
 use think\cache\driver\Redis;
 
 /** ThinkPHP Redis 缓存只在显式选用时连接后台保存的系统 Redis。 */
@@ -15,9 +16,9 @@ final class SystemRedisCache extends Redis
 
     public function __construct(array $options = [])
     {
-        if (($options['prefix'] ?? '') === '') {
-            throw new \InvalidArgumentException('系统 Redis 缓存必须使用独立 key 前缀');
-        }
+        $prefix = DeploymentNamespace::current()->cachePrefix();
+        $options['prefix'] = $prefix;
+        $options['tag_prefix'] = $prefix . 'tag:';
         parent::__construct($options);
     }
 

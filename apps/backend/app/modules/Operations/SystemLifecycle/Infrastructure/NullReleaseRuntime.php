@@ -12,4 +12,5 @@ final class NullReleaseRuntime implements ReleaseRuntime
     public function canReload(): bool { return false; }
     public function reload(string $releaseId): void { throw new \LogicException('当前运行时不支持 reload'); }
     public function healthCheck(string $releaseId): void {}
+    public function assertQuiescent(string $releaseId): void { throw new \LogicException('当前运行时无法确认消费者已停止，禁止 Contract'); }
 }

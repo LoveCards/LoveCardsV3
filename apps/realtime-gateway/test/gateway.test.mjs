@@ -62,7 +62,7 @@ function createFakeBackend() {
     ['valid-ticket-26chars-hex', { uid: 7, cursor_seed: 'seed-1' }],
     ['second-ticket-26chars-hex', { uid: 8, cursor_seed: 'seed-2' }],
   ])
-  const redisConfig = { enabled: false, host: '', port: 0, database: 0, password: '', tls: false, tls_server_name: '', source: 'database', revision: 'disabled' }
+  const redisConfig = { channel: 'lc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime', enabled: false, host: '', port: 0, database: 0, password: '', tls: false, tls_server_name: '', source: 'database', revision: 'disabled' }
   let configAvailable = true
   const server = http.createServer(async (req, res) => {
     if (req.headers.authorization !== 'Bearer test-internal-token-1234') {
@@ -82,7 +82,7 @@ function createFakeBackend() {
       }
       tickets.delete(body.ticket) // one-time semantics
       res.writeHead(200, { 'Content-Type': 'application/json' })
-      res.end(JSON.stringify({ success: true, data: { uid: ticket.uid, cursor_seed: ticket.cursor_seed } }))
+      res.end(JSON.stringify({ success: true, data: { uid: ticket.uid, cursor_seed: ticket.cursor_seed, connection_ttl_seconds: 60 } }))
       return
     }
     if (req.method === 'GET' && req.url === '/api/internal/realtime/redis-config') {
@@ -106,6 +106,7 @@ test('health endpoint enforces internal token and frozen protocol body', async (
     assert.equal(denied.error, 'unauthorized')
     const health = await readJson(await httpGet(port, '/internal/health', { Authorization: 'Bearer test-internal-token-1234' }))
     assert.equal(health.protocol, PROTOCOL)
+    assert.equal(health.session_ttl_max_seconds, 60)
     assert.equal(health.ready, false)
     assert.equal(health.cursor, true)
     assert.deepEqual(health.auth, ['ticket'])
@@ -123,13 +124,13 @@ test('gateway rejects excess connections without consuming tickets and accepts t
   const sockets = []
   const fakeRedis = net.createServer((socket) => {
     sockets.push(socket)
-    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$18\r\nlovecards:realtime\r\n:1\r\n')))
+    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n:1\r\n')))
   })
   const redisPort = await listen(fakeRedis)
   const backend = createFakeBackend()
   const backendPort = await listen(backend.server)
   const app = createApp({ backendUrl: `http://127.0.0.1:${backendPort}`,
-    internalToken: 'test-internal-token-1234', redis: { host: '127.0.0.1', port: redisPort }, maxConnections: 1 })
+    internalToken: 'test-internal-token-1234', redis: { channel: 'lc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime', host: '127.0.0.1', port: redisPort }, maxConnections: 1 })
   const port = await app.start(0)
   const headers = { Authorization: 'Bearer test-internal-token-1234' }
   try {
@@ -173,7 +174,7 @@ test('pending ticket verification reserves capacity against concurrent connectio
   const sockets = []
   const fakeRedis = net.createServer((socket) => {
     sockets.push(socket)
-    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$18\r\nlovecards:realtime\r\n:1\r\n')))
+    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n:1\r\n')))
   })
   const redisPort = await listen(fakeRedis)
   const backend = createFakeBackend()
@@ -183,7 +184,7 @@ test('pending ticket verification reserves capacity against concurrent connectio
   const verificationGate = new Promise((resolve) => { releaseVerification = resolve })
   const started = new Promise((resolve) => { verificationStarted = resolve })
   const app = createApp({ backendUrl: `http://127.0.0.1:${backendPort}`,
-    internalToken: 'test-internal-token-1234', redis: { host: '127.0.0.1', port: redisPort }, maxConnections: 1,
+    internalToken: 'test-internal-token-1234', redis: { channel: 'lc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime', host: '127.0.0.1', port: redisPort }, maxConnections: 1,
     fetchImpl: async (url, init) => {
       if (url.pathname.endsWith('/ticket/verify')) {
         verificationStarted()
@@ -219,13 +220,13 @@ test('ticket verification timeout releases reserved capacity', async () => {
   const sockets = []
   const fakeRedis = net.createServer((socket) => {
     sockets.push(socket)
-    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$18\r\nlovecards:realtime\r\n:1\r\n')))
+    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n:1\r\n')))
   })
   const redisPort = await listen(fakeRedis)
   const app = createApp({
     backendUrl: 'http://127.0.0.1:1',
     internalToken: 'test-internal-token-1234',
-    redis: { host: '127.0.0.1', port: redisPort },
+    redis: { channel: 'lc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime', host: '127.0.0.1', port: redisPort },
     maxConnections: 1,
     backendTimeoutMs: 20,
     fetchImpl: async (_url, init) => new Promise((_resolve, reject) => {
@@ -274,7 +275,7 @@ test('gateway becomes ready only after redis confirms the subscription', async (
   const app = createApp({
     backendUrl: `http://127.0.0.1:${backendPort}`,
     internalToken: 'test-internal-token-1234',
-    redis: { host: '127.0.0.1', port: redisPort },
+    redis: { channel: 'lc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime', host: '127.0.0.1', port: redisPort },
   })
   const port = await app.start(0)
   try {
@@ -285,7 +286,7 @@ test('gateway becomes ready only after redis confirms the subscription', async (
     const denied = await httpGet(port, '/stream?ticket=valid-ticket-26chars-hex')
     assert.equal(denied.statusCode, 503)
     await readJson(denied)
-    subscriberSocket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$18\r\nlovecards:realtime\r\n:1\r\n'))
+    subscriberSocket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n:1\r\n'))
     await new Promise((resolve) => setTimeout(resolve, 10))
     const after = await readJson(await httpGet(port, '/internal/health', headers))
     assert.equal(after.ready, true)
@@ -301,7 +302,7 @@ test('gateway reloads backend redis config and pauses streams when config become
   const sockets = []
   const fakeRedis = net.createServer((socket) => {
     sockets.push(socket)
-    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$18\r\nlovecards:realtime\r\n:1\r\n')))
+    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n:1\r\n')))
   })
   const redisPort = await listen(fakeRedis)
   const backend = createFakeBackend()
@@ -365,7 +366,7 @@ test('gateway closes old streams and waits for the new subscription after a conf
   const secondSockets = []
   const firstRedis = net.createServer((socket) => {
     firstSockets.push(socket)
-    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$18\r\nlovecards:realtime\r\n:1\r\n')))
+    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n:1\r\n')))
   })
   const secondRedis = net.createServer((socket) => { secondSockets.push(socket) })
   const firstPort = await listen(firstRedis)
@@ -401,7 +402,7 @@ test('gateway closes old streams and waits for the new subscription after a conf
     assert.equal(health.redis_config_version, 'config-v2')
     assert.equal(health.ready, false)
     assert.equal(secondSockets.length, 1)
-    secondSockets[0].write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$18\r\nlovecards:realtime\r\n:1\r\n'))
+    secondSockets[0].write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n:1\r\n'))
     for (let i = 0; i < 20; i += 1) {
       health = await readJson(await httpGet(port, '/internal/health', headers))
       if (health.ready) break
@@ -457,7 +458,7 @@ test('redis transport pushes recipient-scoped signals as SSE frames', async () =
   const fakeRedis = net.createServer((socket) => {
     subscriberSocket = socket
     socket.on('data', () => {
-      socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$18\r\nlovecards:realtime\r\n:1\r\n'))
+      socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n:1\r\n'))
     })
   })
   const redisPort = await listen(fakeRedis)
@@ -467,7 +468,7 @@ test('redis transport pushes recipient-scoped signals as SSE frames', async () =
   const app = createApp({
     backendUrl: `http://127.0.0.1:${backendPort}`,
     internalToken: 'test-internal-token-1234',
-    redis: { host: '127.0.0.1', port: redisPort },
+    redis: { channel: 'lc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime', host: '127.0.0.1', port: redisPort },
   })
   const port = await app.start(0)
   try {
@@ -495,6 +496,7 @@ test('redis transport pushes recipient-scoped signals as SSE frames', async () =
 
     // 定向 uid 不匹配的信号必须被忽略，匹配的必须送达。
     subscriberSocket.write(encodeMessage({ topic: 'notifications', uid: 'user:9', cursor: 'x' }))
+    subscriberSocket.write(encodeMessage({ topic: 'notifications', uid: 'user:7', cursor: 'other-site' }, 'lc:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb:realtime'))
     subscriberSocket.write(encodeMessage({ topic: 'notifications', uid: 'user:7', cursor: 'cursor-r1' }))
     subscriberSocket.write(encodeMessage({ topic: 'feed', uid: 'all', cursor: 'public' }))
     subscriberSocket.write(encodeMessage({ topic: 'feed', uids: ['user:8', 'user:9'], cursor: 'following' }))
@@ -514,9 +516,9 @@ test('redis transport pushes recipient-scoped signals as SSE frames', async () =
     backend.server.close()
   }
 
-  function encodeMessage(payload) {
+  function encodeMessage(payload, channel = 'lc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime') {
     const body = JSON.stringify(payload)
-    return Buffer.from(`*3\r\n$7\r\nmessage\r\n$18\r\nlovecards:realtime\r\n$${Buffer.byteLength(body)}\r\n${body}\r\n`, 'utf8')
+    return Buffer.from(`*3\r\n$7\r\nmessage\r\n$${Buffer.byteLength(channel)}\r\n${channel}\r\n$${Buffer.byteLength(body)}\r\n${body}\r\n`, 'utf8')
   }
 })
 
@@ -524,7 +526,7 @@ test('gateway closes a stream when an SSE write hits backpressure', async () => 
   let subscriberSocket = null
   const fakeRedis = net.createServer((socket) => {
     subscriberSocket = socket
-    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$18\r\nlovecards:realtime\r\n:1\r\n')))
+    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n:1\r\n')))
   })
   const redisPort = await listen(fakeRedis)
   const backend = createFakeBackend()
@@ -532,7 +534,7 @@ test('gateway closes a stream when an SSE write hits backpressure', async () => 
   const app = createApp({
     backendUrl: `http://127.0.0.1:${backendPort}`,
     internalToken: 'test-internal-token-1234',
-    redis: { host: '127.0.0.1', port: redisPort },
+    redis: { channel: 'lc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime', host: '127.0.0.1', port: redisPort },
   })
   const port = await app.start(0)
   try {
@@ -549,7 +551,7 @@ test('gateway closes a stream when an SSE write hits backpressure', async () => 
     stream.on('error', () => {})
     const closed = new Promise((resolve) => stream.once('close', resolve))
     const payload = JSON.stringify({ topic: 'notifications', uid: 'user:7', cursor: 'x'.repeat(64 * 1024) })
-    subscriberSocket.write(Buffer.from(`*3\r\n$7\r\nmessage\r\n$18\r\nlovecards:realtime\r\n$${Buffer.byteLength(payload)}\r\n${payload}\r\n`))
+    subscriberSocket.write(Buffer.from(`*3\r\n$7\r\nmessage\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n$${Buffer.byteLength(payload)}\r\n${payload}\r\n`))
     let timeout
     try {
       await Promise.race([closed, new Promise((_, reject) => {
@@ -572,7 +574,7 @@ test('existing redis connections close when redis goes down without source polli
   let subscriberSocket = null
   const fakeRedis = net.createServer((socket) => {
     subscriberSocket = socket
-    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$18\r\nlovecards:realtime\r\n:1\r\n')))
+    socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n:1\r\n')))
   })
   const redisPort = await listen(fakeRedis)
   const backend = createFakeBackend()
@@ -580,7 +582,7 @@ test('existing redis connections close when redis goes down without source polli
   const app = createApp({
     backendUrl: `http://127.0.0.1:${backendPort}`,
     internalToken: 'test-internal-token-1234',
-    redis: { host: '127.0.0.1', port: redisPort },
+    redis: { channel: 'lc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime', host: '127.0.0.1', port: redisPort },
   })
   const port = await app.start(0)
   try {
@@ -615,9 +617,9 @@ test('sse frames use real newline bytes and exact frame shape', () => {
 test('resp parser handles chunked replies and nested arrays', () => {
   const replies = []
   const parser = createRespParser({ onReply: (reply) => replies.push(reply) })
-  const full = encodeCommand(['SUBSCRIBE', 'lovecards:realtime'])
-  assert.equal(full, '*2\r\n$9\r\nSUBSCRIBE\r\n$18\r\nlovecards:realtime\r\n')
-  const push = Buffer.from('*3\r\n$7\r\nmessage\r\n$18\r\nlovecards:realtime\r\n$2\r\nhi\r\n', 'utf8')
+  const full = encodeCommand(['SUBSCRIBE', 'lc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime'])
+  assert.equal(full, '*2\r\n$9\r\nSUBSCRIBE\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n')
+  const push = Buffer.from('*3\r\n$7\r\nmessage\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n$2\r\nhi\r\n', 'utf8')
   parser.push(push.subarray(0, 5))
   parser.push(push.subarray(5, 20))
   parser.push(push.subarray(20))
@@ -635,14 +637,14 @@ test('redis subscriber authenticates and selects the configured database before 
       const args = reply.map((value) => value.toString())
       commands.push(args)
       if (args[0] === 'AUTH' || args[0] === 'SELECT') socket.write('+OK\r\n')
-      if (args[0] === 'SUBSCRIBE') socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$18\r\nlovecards:realtime\r\n:1\r\n'))
+      if (args[0] === 'SUBSCRIBE') socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n:1\r\n'))
     } })
     socket.on('data', (chunk) => parser.push(chunk))
   })
   const port = await listen(fakeRedis)
   const statuses = []
   const subscriber = new RedisSubscriber({
-    host: '127.0.0.1', port, database: 2, password: 'test-secret', channel: 'lovecards:realtime',
+    host: '127.0.0.1', port, database: 2, password: 'test-secret', channel: 'lc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime',
     onMessage: () => {}, onStatus: (status) => statuses.push(status),
   })
   try {
@@ -651,9 +653,46 @@ test('redis subscriber authenticates and selects the configured database before 
     assert.deepEqual(commands, [
       ['AUTH', 'test-secret'],
       ['SELECT', '2'],
-      ['SUBSCRIBE', 'lovecards:realtime'],
+      ['SUBSCRIBE', 'lc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime'],
     ])
     assert.deepEqual(statuses, ['up'])
+  } finally {
+    subscriber.stop()
+    socketRef?.destroy()
+    fakeRedis.close()
+  }
+})
+
+test('redis subscriber detects a half-open subscription and accepts matching PONG replies', async () => {
+  let socketRef
+  let respondToPing = true
+  let pingCount = 0
+  const fakeRedis = net.createServer((socket) => {
+    socketRef = socket
+    const parser = createRespParser({ onReply: (reply) => {
+      const args = reply.map((value) => value.toString())
+      if (args[0] === 'SUBSCRIBE') socket.write('*3\r\n$9\r\nsubscribe\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n:1\r\n')
+      if (args[0] === 'PING') {
+        pingCount += 1
+        if (respondToPing) socket.write(encodeCommand(['pong', args[1]]))
+      }
+    } })
+    socket.on('data', (chunk) => parser.push(chunk))
+  })
+  const port = await listen(fakeRedis)
+  const statuses = []
+  const subscriber = new RedisSubscriber({ host: '127.0.0.1', port, channel: 'lc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime',
+    heartbeatIntervalMs: 20, pongTimeoutMs: 40,
+    onMessage: () => {}, onStatus: (status) => statuses.push(status) })
+  try {
+    subscriber.start()
+    for (let i = 0; i < 50 && pingCount < 2; i += 1) await new Promise((resolve) => setTimeout(resolve, 10))
+    assert.ok(pingCount >= 2, 'the subscription must actively verify liveness')
+    assert.equal(subscriber.ready, true)
+    respondToPing = false
+    for (let i = 0; i < 50 && !statuses.includes('down'); i += 1) await new Promise((resolve) => setTimeout(resolve, 10))
+    assert.deepEqual(statuses, ['up', 'down'])
+    assert.equal(subscriber.ready, false)
   } finally {
     subscriber.stop()
     socketRef?.destroy()
@@ -677,14 +716,14 @@ test('redis TLS subscriber verifies certificate chain and server name before rep
     const server = tls.createServer({ key: readFileSync(keyPath), cert }, (socket) => {
       sockets.add(socket)
       socket.on('close', () => sockets.delete(socket))
-      socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$18\r\nlovecards:realtime\r\n:1\r\n')))
+      socket.on('data', () => socket.write(Buffer.from('*3\r\n$9\r\nsubscribe\r\n$44\r\nlc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime\r\n:1\r\n')))
     })
     server.on('tlsClientError', () => {})
     const port = await listen(server)
     const run = async (name, trustedCa, expected) => {
       const statuses = []
       const subscriber = new RedisSubscriber({ host: '127.0.0.1', port, tls: true,
-        tlsServerName: name, ...(trustedCa ? { ca: cert } : {}), channel: 'lovecards:realtime',
+        tlsServerName: name, ...(trustedCa ? { ca: cert } : {}), channel: 'lc:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:realtime',
         onMessage: () => {}, onStatus: (status) => statuses.push(status), connectTimeoutMs: 500 })
       try {
         subscriber.start()

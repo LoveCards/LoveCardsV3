@@ -63,7 +63,7 @@ test.beforeEach(async ({ page }) => {
       contentType: 'application/json',
       body: JSON.stringify({
         success: true,
-        data: { sender_smtp: { host: 'smtp.example.test', port: 465, type: 'smtp' } },
+        data: { sender_smtp: { __revision: 1, host: 'smtp.example.test', port: 465, type: 'smtp' } },
       }),
     })
   })

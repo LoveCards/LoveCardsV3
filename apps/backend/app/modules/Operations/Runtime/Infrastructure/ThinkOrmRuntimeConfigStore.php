@@ -14,10 +14,11 @@ final class ThinkOrmRuntimeConfigStore implements RuntimeConfigStore
         try {
             $row = Db::table('runtime_config_state')->where('id', 1)->find();
             if (!is_array($row)) return null;
-            $settings = json_decode((string) ($row['settings_json'] ?? ''), true);
+            $settings = json_decode((string) ($row['settings_json'] ?? ''), false, 512, JSON_THROW_ON_ERROR);
+            if (!$settings instanceof \stdClass || !is_string($row['desired_mode'] ?? null)) return null;
             return [
-                'desired_mode' => (string) ($row['desired_mode'] ?? 'polling'),
-                'settings' => is_array($settings) ? $settings : [],
+                'desired_mode' => $row['desired_mode'],
+                'settings' => (array) $settings,
                 'revision' => (int) ($row['revision'] ?? 0),
                 'last_apply_state' => $row['last_apply_state'] ?? null,
                 'last_apply_reason' => $row['last_apply_reason'] ?? null,

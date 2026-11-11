@@ -118,6 +118,9 @@ final class UpgradeCoordinatorFakeMigrations implements ReleaseMigrationExecutor
     private array $units;
     /** @var array<int, array{string, bool, string}> */
     public array $calls = [];
+    public bool $failNextExpand = false;
+    public bool $expandFailed = false;
+    public array $retryRequests = [];
 
     public function __construct(private array &$trace)
     {
@@ -137,13 +140,32 @@ final class UpgradeCoordinatorFakeMigrations implements ReleaseMigrationExecutor
         string $directory,
         string $phase,
         bool $allowContract,
-        string $lifecycleLeaseHolder
+        string $lifecycleLeaseHolder,
+        bool $retryFailed = false
     ): ?array {
         $this->calls[] = [$phase, $allowContract, $lifecycleLeaseHolder];
+        $this->retryRequests[] = $retryFailed;
+        if ($phase === MigrationPhase::EXPAND && $this->failNextExpand) {
+            $this->failNextExpand = false;
+            $this->expandFailed = true;
+            throw new LogicException('fixture migration failed');
+        }
+        if ($phase === MigrationPhase::EXPAND && $this->expandFailed) {
+            if (!$retryFailed) return ['id' => '20260819000003', 'phase' => $phase, 'status' => 'failed'];
+            $this->expandFailed = false;
+        }
         $row = array_shift($this->units[$phase]);
         if ($row === null) return null;
         $this->trace[] = 'migration:' . $phase;
         return $row;
+    }
+
+    public function inspectPhase(string $directory, string $phase): ?array
+    {
+        if (($this->units[$phase] ?? []) === [] && !($phase === MigrationPhase::EXPAND && $this->expandFailed)) return null;
+        return ['id' => '20260819000003', 'checksum' => str_repeat('a', 64), 'phase' => $phase,
+            'status' => $phase === MigrationPhase::EXPAND && $this->expandFailed ? 'failed' : 'pending',
+            'cursor' => null, 'attempts' => $this->expandFailed ? 2 : 0, 'revision' => 3];
     }
 }
 
@@ -161,6 +183,8 @@ final class UpgradeCoordinatorFakeRuntime implements ReleaseRuntime
 {
     public function __construct(private array &$trace) {}
     public bool $failHealth = false;
+    public bool $failQuiescence = false;
+    public function assertQuiescent(string $releaseId): void { if ($this->failQuiescence) throw new LogicException('consumer still running'); $this->trace[] = 'quiescent'; }
     public function canDrain(): bool { return true; }
     public function drain(string $releaseId): void { $this->trace[] = 'drain'; }
     public function canReload(): bool { return true; }
@@ -179,6 +203,7 @@ final class UpgradeCoordinatorFakePlanRepository implements UpgradePlanRepositor
     public function create(StoredUpgradePlan $plan): StoredUpgradePlan { $this->rows[$plan->plan()->planId()] = $plan; return $plan; }
     public function find(string $planId): ?StoredUpgradePlan { return $this->rows[$planId] ?? null; }
     public function recent(int $limit = 50): array { return array_values($this->rows); }
+    public function unsettled(bool $lock = false): ?StoredUpgradePlan { foreach ($this->recent() as $stored) if (!in_array($stored->status(), [UpgradePlan::COMPLETED, StoredUpgradePlan::RECOVERED], true)) return $stored; return null; }
     public function existsUnsettled(?string $excludingPlanId = null): bool
     {
         foreach ($this->rows as $planId => $stored) {
@@ -256,6 +281,63 @@ $migrationTraceCount = static fn(array $trace): int => count(array_filter(
     static fn(string $entry): bool => str_starts_with($entry, 'migration:')
 ));
 $tests = [];
+$tests['running plan with failed ledger stops once before explicit retry'] = static function () use ($fixture, $source, $assert, $assertThrows): void {
+    $state = $fixture();
+    $plan = $state->coordinator->createPlan($source, 7);
+    $id = $plan->plan()->planId();
+    while ($plan->plan()->current()?->name() !== UpgradeStep::EXPAND_MIGRATIONS) $plan = $state->coordinator->advance($id);
+    $state->plans->save($plan->withPlan($plan->plan()->start(UpgradeStep::EXPAND_MIGRATIONS)), $plan->plan()->revision());
+    $state->migrations->expandFailed = true;
+    $assertThrows(static fn() => $state->coordinator->advance($id), '当前迁移已失败');
+    $assert(end($state->migrations->retryRequests) === false, 'running plan cannot authorize ledger retry');
+    $assert($state->coordinator->find($id)->plan()->current()?->state() === UpgradeStepState::FAILED, 'failed ledger must settle the plan as failed');
+    $state->coordinator->advance($id);
+    $assert(end($state->migrations->retryRequests) === true, 'second explicit advance must authorize retry');
+};
+$tests['audit captures the exact failed migration before changing either state'] = static function () use ($fixture, $source, $assert, $assertThrows): void {
+    $state = $fixture();
+    $plan = $state->coordinator->createPlan($source, 7);
+    $id = $plan->plan()->planId();
+    while ($plan->plan()->current()?->name() !== UpgradeStep::EXPAND_MIGRATIONS) $plan = $state->coordinator->advance($id);
+    $state->migrations->failNextExpand = true;
+    $assertThrows(static fn() => $state->coordinator->advance($id), 'fixture migration failed');
+    $before = $state->coordinator->find($id)->toArray();
+    $calls = count($state->migrations->calls);
+    $captured = null;
+    $audit = static function (array $metadata) use (&$captured): void { $captured = $metadata; throw new LogicException('fixture audit unavailable'); };
+    $assertThrows(static fn() => $state->coordinator->advance($id, $audit), 'fixture audit unavailable');
+    $assert($state->coordinator->find($id)->toArray() === $before, 'failed audit changed the plan');
+    $assert(count($state->migrations->calls) === $calls && $state->migrations->expandFailed, 'failed audit reset or ran the migration');
+    $assert(($captured['plan_id'] ?? null) === $id && ($captured['revision'] ?? null) === $before['revision'], 'audit must capture the original plan identity');
+    $assert(($captured['step']['name'] ?? null) === UpgradeStep::EXPAND_MIGRATIONS && ($captured['step']['state'] ?? null) === 'failed', 'audit must capture original step');
+    $assert(($captured['migration']['id'] ?? null) === '20260819000003'
+        && ($captured['migration']['checksum'] ?? null) === str_repeat('a', 64)
+        && ($captured['migration']['status'] ?? null) === 'failed'
+        && ($captured['retry_failed_migration'] ?? false), 'audit must capture exact retry identity');
+    $state->coordinator->advance($id, static function (array $metadata) use ($captured, $assert): void {
+        $assert($metadata === $captured, 'retry snapshot changed without any mutation');
+    });
+    $assert(!$state->migrations->expandFailed, 'successful audit must permit one retry');
+};
+$tests['explicit advance retries a failed migration once using the existing plan lease'] = static function () use ($fixture, $source, $assert, $assertThrows): void {
+    $state = $fixture();
+    $plan = $state->coordinator->createPlan($source, 7);
+    $planId = $plan->plan()->planId();
+    for ($i = 0; $i < 30 && $plan->plan()->current()?->name() !== UpgradeStep::EXPAND_MIGRATIONS; $i++) {
+        $plan = $state->coordinator->advance($planId);
+    }
+    $state->migrations->failNextExpand = true;
+    $assertThrows(static fn() => $state->coordinator->advance($planId), 'fixture migration failed');
+    $assert($state->coordinator->find($planId)->plan()->status() === UpgradePlan::FAILED, 'migration failure must stop the plan');
+    $beforeCalls = count($state->migrations->calls);
+    $plan = $state->coordinator->advance($planId);
+    $assert(end($state->migrations->retryRequests) === true, 'explicit retry must reach the migration ledger');
+    $assert(count($state->migrations->calls) === $beforeCalls + 1, 'retry must execute one work unit');
+    $assert(($plan->context()['last_migration_advance']['phase'] ?? null) === MigrationPhase::BACKFILL, 'retry must advance the failed migration');
+    $assert($plan->plan()->current()?->attempts() === 2, 'step retry must retain attempts');
+    $state->coordinator->advance($planId);
+    $assert(end($state->migrations->retryRequests) === false, 'retry authority must not leak into following advances');
+};
 $tests['each HTTP advance executes at most one migration unit and contract runs after activation health'] = static function () use (
     $fixture, $source, $assert, $assertThrows, $migrationTraceCount
 ): void {
@@ -421,6 +503,56 @@ $tests['only one unsettled upgrade plan may exist or advance'] = static function
         static fn() => $state->coordinator->advance($firstId),
         '存在其他未完成的 Upgrade Plan'
     );
+};
+
+$tests['v2 final health and quiescence are mandatory, legacy shape is explicit'] = static function () use ($fixture,$source,$assert,$assertThrows): void {
+    $state=$fixture(); $plan=$state->coordinator->createPlan($source,7); $id=$plan->plan()->planId();
+    $assert($plan->planVersion()===2 && $plan->toArray()['legacy_plan']===false,'new plans must use v2');
+    $state->coordinator->runUntilSettled($id);
+    $state->coordinator->approveContract($id);
+    $state->runtime->failQuiescence=true;
+    $assertThrows(fn()=>$state->coordinator->advance($id),'consumer still running');
+    $assert(!in_array('migration:contract',$state->trace,true),'contract must not run without stop evidence');
+    $state->runtime->failQuiescence=false;
+    do { $plan=$state->coordinator->advance($id); } while ($plan->plan()->current()?->name()!==UpgradeStep::FINAL_HEALTH);
+    $assert($plan->status()!==UpgradePlan::COMPLETED,'contract completion is not upgrade completion');
+    $state->runtime->failHealth=true;
+    $assertThrows(fn()=>$state->coordinator->advance($id),'fixture health failure');
+    $assert($state->coordinator->find($id)->plan()->current()->name()===UpgradeStep::FINAL_HEALTH,'final health failure must remain final health');
+    $state->runtime->failHealth=false;
+    $assert($state->coordinator->advance($id)->status()===UpgradePlan::COMPLETED,'healthy final target completes');
+    $legacy=new StoredUpgradePlan(UpgradePlan::create('legacy','release-new-001',UpgradeStep::ordered(1)),null,false,[]);
+    $assert($legacy->planVersion()===1 && $legacy->toArray()['legacy_plan']===true,'persisted unversioned plans must remain explicitly legacy');
+};
+$tests['recovery records pointer restoration even when service recovery fails'] = static function () use ($fixture,$source,$assert,$assertThrows): void {
+    $state=$fixture(); $plan=$state->coordinator->createPlan($source,7); $id=$plan->plan()->planId();
+    $state->coordinator->runUntilSettled($id);
+    $state->runtime->failHealth=true;
+    $assertThrows(fn()=>$state->coordinator->recover($id),'fixture health failure');
+    $failed=$state->coordinator->find($id);
+    $assert(isset($failed->context()['pointer_restored_at']) && $failed->context()['service_recovered']===false,'pointer result must persist separately');
+    $assert($failed->status()!==StoredUpgradePlan::RECOVERED,'failed health cannot report service recovered');
+    $assertThrows(fn()=>$state->coordinator->advance($id),'不能继续推进');
+    $state->runtime->failHealth=false;
+    $assert($state->coordinator->recover($id)->status()===StoredUpgradePlan::RECOVERED,'operator may retry service recovery');
+};
+$tests['uncertain execution cannot be replayed on a renewed lease'] = static function () use ($fixture,$source,$assertThrows): void {
+    $state=$fixture(); $plan=$state->coordinator->createPlan($source,7); $id=$plan->plan()->planId();
+    $state->plans->save($plan->withContext(array_replace($plan->context(),['execution_in_progress'=>true]))->withPlan($plan->plan()->start($plan->plan()->current()->name())),$plan->plan()->revision());
+    $assertThrows(fn()=>$state->coordinator->advance($id),'上次升级执行未确认结束');
+};
+
+$tests['v2 no-contract releases still require final health and v1 retains its old shape'] = static function () use ($fixture,$source,$assert): void {
+    $state=$fixture(false);$plan=$state->coordinator->createPlan($source,7);$id=$plan->plan()->planId();
+    $done=$state->coordinator->runUntilSettled($id);
+    $assert($done->status()===UpgradePlan::COMPLETED && isset($done->context()['final_health_checked_at']),'no-contract still requires final health');
+    $state=$fixture(false);$plan=$state->coordinator->createPlan($source,7);$id=$plan->plan()->planId();
+    $context=$plan->context();unset($context['plan_version']);
+    $legacy=$plan->withContext($context)->withPlan(UpgradePlan::create($id,$plan->plan()->releaseId(),UpgradeStep::ordered(1)));
+    $state->plans->save($legacy,0);
+    $done=$state->coordinator->runUntilSettled($id);
+    $assert($done->status()===UpgradePlan::COMPLETED && $done->planVersion()===1,'legacy shape can be explicitly continued');
+    $assert(!isset($done->context()['final_health_checked_at']),'legacy plan must not silently append v2 steps');
 };
 
 $failures = 0;

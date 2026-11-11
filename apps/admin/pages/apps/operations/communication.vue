@@ -139,8 +139,6 @@ const form = reactive({
   notification_interval_seconds: 30,
   message_interval_seconds: 45,
   unread_interval_seconds: 20,
-  polling_backoff_factor: 2,
-  polling_max_interval_seconds: 300,
   pause_when_hidden: true,
   worker_stale_seconds: 30,
   scheduler_stale_seconds: 3600,
@@ -152,8 +150,6 @@ const primaryNumericFields = [
   { key: 'unread_interval_seconds', label: '未读数轮询间隔（秒）', hint: '5~120' },
 ] as const
 const advancedNumericFields = [
-  { key: 'polling_backoff_factor', label: '退避倍率', hint: '1~5' },
-  { key: 'polling_max_interval_seconds', label: '轮询上限间隔（秒）', hint: '60~900' },
   { key: 'worker_stale_seconds', label: 'Worker 心跳过期窗口（秒）', hint: '10~300' },
   { key: 'scheduler_stale_seconds', label: '定时消费运行记录有效期（秒）', hint: '300~86400' },
   { key: 'gateway_stale_seconds', label: 'Gateway 探测缓存（秒）', hint: '5~120' },
@@ -208,8 +204,6 @@ function buildUpdate(): RuntimeConfigUpdate {
     notification_interval_seconds: Number(form.notification_interval_seconds),
     message_interval_seconds: Number(form.message_interval_seconds),
     unread_interval_seconds: Number(form.unread_interval_seconds),
-    polling_backoff_factor: Number(form.polling_backoff_factor),
-    polling_max_interval_seconds: Number(form.polling_max_interval_seconds),
     pause_when_hidden: Boolean(form.pause_when_hidden),
     worker_stale_seconds: Number(form.worker_stale_seconds),
     scheduler_stale_seconds: Number(form.scheduler_stale_seconds),

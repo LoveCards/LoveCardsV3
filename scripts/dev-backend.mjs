@@ -54,7 +54,10 @@ if (await isListening()) {
   setInterval(() => {}, 1000)
 } else {
   const php = await findPhp()
-  const phpIniArgs = phpUploadIniArgs(process.env)
+  const phpIniArgs = [
+    ...phpUploadIniArgs(process.env),
+    ...(process.env.LOVECARDS_E2E_ISOLATED === '1' ? ['-d', 'display_errors=0'] : []),
+  ]
   const phpIniSummary = phpUploadIniSummary(process.env)
   console.log(`Backend PHP upload limits: post_max_size=${phpIniSummary.post_max_size}, upload_max_filesize=${phpIniSummary.upload_max_filesize}`)
   const backendRoot = path.join(root, 'apps', 'backend')

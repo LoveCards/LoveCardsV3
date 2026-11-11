@@ -101,8 +101,6 @@ export interface CommunicationSettingsSnapshot {
     notification_interval_seconds: number
     message_interval_seconds: number
     unread_interval_seconds: number
-    polling_backoff_factor: number
-    polling_max_interval_seconds: number
     pause_when_hidden: boolean
   }
 }

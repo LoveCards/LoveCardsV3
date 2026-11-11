@@ -54,10 +54,10 @@ use app\modules\Platform\Safety\Infrastructure\ThinkDbAdminReportRepository;
 use app\modules\Platform\Notifications\Contract\NotificationRepository;
 use app\modules\Platform\Eventing\Contract\PolicyVersionSource;
 use app\modules\Platform\Notifications\Contract\NotificationPolicyStore;
-use app\modules\Platform\Notifications\Contract\StreamTicketStore;
+use app\modules\Operations\Runtime\Contract\StreamTicketStore;
 use app\modules\Platform\Notifications\Infrastructure\ThinkDbNotificationPolicyStore;
 use app\modules\Platform\Notifications\Infrastructure\ThinkDbNotificationPolicyVersionSource;
-use app\modules\Platform\Notifications\Infrastructure\ThinkDbStreamTicketStore;
+use app\modules\Operations\Runtime\Infrastructure\ThinkDbStreamTicketStore;
 use app\modules\Platform\Notifications\Contract\SystemNoticeIssuer;
 use app\modules\Platform\Notifications\Infrastructure\ThinkOrmNotificationRepository;
 use app\modules\Platform\Notifications\Public\SystemNotifications;
@@ -118,9 +118,6 @@ use app\modules\Operations\Runtime\Public\WorkerHeartbeatStore;
 use app\modules\Operations\Runtime\Infrastructure\ThinkDbWorkerHeartbeatStore;
 use app\modules\Platform\Eventing\Contract\FailureSanitizer;
 use app\modules\Platform\Eventing\Infrastructure\ConservativeFailureSanitizer;
-use app\modules\Platform\Eventing\Contract\WakeupTransport;
-use app\modules\Platform\Eventing\Infrastructure\NullWakeupTransport;
-use app\modules\Platform\Eventing\Infrastructure\OptionalRedisWakeupTransport;
 use app\modules\Platform\Eventing\Infrastructure\RedisRealtimeSignalPublisher;
 use app\modules\Platform\Eventing\Public\RealtimeSignalPublisher;
 use app\shared\Observability\AuditLogger;
@@ -128,8 +125,11 @@ use app\shared\Observability\ThinkDbAuditLogger;
 use app\shared\Observability\LogContextScope;
 use app\shared\Observability\LogContextProvider;
 
+use app\modules\Platform\Eventing\Public\HandlerRegistry;
+
 // 容器Provider定义文件
 return [
+    HandlerRegistry::class => static fn(): HandlerRegistry => \app\EventHandlers::create(),
     'think\exception\Handle' => ExceptionHandle::class,
     CapabilityProvider::class => RbacCapabilityProvider::class,
     UserRepository::class => ThinkOrmUserRepository::class,
@@ -185,7 +185,6 @@ return [
     EventWorkerHeartbeatPort::class => EventWorkerHeartbeatAdapter::class,
     SignalModePort::class => EventingSignalModeAdapter::class,
     FailureSanitizer::class => ConservativeFailureSanitizer::class,
-    WakeupTransport::class => OptionalRedisWakeupTransport::class,
     RealtimeSignalPublisher::class => RedisRealtimeSignalPublisher::class,
     // 通信运行时：一次性 stream ticket
     StreamTicketStore::class => ThinkDbStreamTicketStore::class,

@@ -3,7 +3,7 @@ import { createCommunicationRuntime, SIGNAL_FEED, SIGNAL_MESSAGES, SIGNAL_NOTIFI
 
 function makeClient(settings = {}) {
   return {
-    communication: { settings: vi.fn(async () => ({ effective_mode: 'polling', status: 'ready', settings: { notification_interval_seconds: 10, message_interval_seconds: 12, unread_interval_seconds: 5, polling_backoff_factor: 2, polling_max_interval_seconds: 60, pause_when_hidden: true, ...settings } })) },
+    communication: { settings: vi.fn(async () => ({ effective_mode: 'polling', status: 'ready', settings: { notification_interval_seconds: 10, message_interval_seconds: 12, unread_interval_seconds: 5, pause_when_hidden: true, ...settings } })) },
     notifications: { streamTicket: vi.fn(async () => ({ ticket: 't'.repeat(26), expires_in: 60, connect_url: 'https://gateway.test/stream', heartbeat_seconds: 15 })) },
   };
 }
@@ -87,7 +87,7 @@ describe('communication runtime', () => {
       eventSourceFactory: (url) => { const source = new FakeEventSource(url); sources.push(source); return source; },
     });
     // 让快照声明 realtime 生效。
-    client.communication.settings = vi.fn(async () => ({ effective_mode: 'realtime', status: 'ready', settings: { notification_interval_seconds: 10, message_interval_seconds: 12, unread_interval_seconds: 5, polling_backoff_factor: 2, polling_max_interval_seconds: 60, pause_when_hidden: true } }));
+    client.communication.settings = vi.fn(async () => ({ effective_mode: 'realtime', status: 'ready', settings: { notification_interval_seconds: 10, message_interval_seconds: 12, unread_interval_seconds: 5, pause_when_hidden: true } }));
     const topics = [];
     runtime.subscribe((topic, hint) => topics.push([topic, hint]));
     await runtime.start();
@@ -138,7 +138,7 @@ describe('communication runtime', () => {
       clientResolver: () => client,
       eventSourceFactory: (url) => new FakeEventSource(url),
     });
-    client.communication.settings = vi.fn(async () => ({ effective_mode: 'realtime', status: 'ready', settings: { notification_interval_seconds: 10, message_interval_seconds: 12, unread_interval_seconds: 5, polling_backoff_factor: 2, polling_max_interval_seconds: 60, pause_when_hidden: true } }));
+    client.communication.settings = vi.fn(async () => ({ effective_mode: 'realtime', status: 'ready', settings: { notification_interval_seconds: 10, message_interval_seconds: 12, unread_interval_seconds: 5, pause_when_hidden: true } }));
     const seen = [];
     runtime.subscribe((topic) => seen.push(topic));
     await runtime.start();
@@ -168,7 +168,7 @@ describe('communication runtime', () => {
     const client = makeClient();
     client.notifications.streamTicket = vi.fn(async () => { throw new Error('gateway down'); });
     const runtime = createCommunicationRuntime({ clientResolver: () => client, eventSourceFactory: () => new FakeEventSource('x') });
-    client.communication.settings = vi.fn(async () => ({ effective_mode: 'realtime', status: 'ready', settings: { notification_interval_seconds: 2, message_interval_seconds: 3, unread_interval_seconds: 1, polling_backoff_factor: 2, polling_max_interval_seconds: 4, pause_when_hidden: true } }));
+    client.communication.settings = vi.fn(async () => ({ effective_mode: 'realtime', status: 'ready', settings: { notification_interval_seconds: 2, message_interval_seconds: 3, unread_interval_seconds: 1, pause_when_hidden: true } }));
     const seen = [];
     runtime.subscribe((topic) => seen.push(topic));
     await runtime.start();
@@ -190,7 +190,105 @@ describe('communication runtime', () => {
     await runtime.start();
     await vi.advanceTimersByTimeAsync(60_000);
     expect(runtime.currentMode()).toBe(null);
+    expect(runtime.currentConnectionStatus()).toBe('fault');
     expect(seen).toEqual([]);
+    runtime.destroy();
+  });
+
+  it.each(['polling', 'realtime'])('pauses %s on a control read failure and resumes the same mode after recovery', async (selectedMode) => {
+    const client = makeClient();
+    let available = true;
+    client.communication.settings = vi.fn(async () => {
+      if (!available) throw new Error('control store unavailable');
+      return { desired_mode: selectedMode, status: 'ready', settings: { unread_interval_seconds: 5 } };
+    });
+    const runtime = createCommunicationRuntime({ clientResolver: () => client, eventSourceFactory: (url) => new FakeEventSource(url) });
+    const seen = [];
+    runtime.subscribe((topic) => seen.push(topic));
+    await runtime.start();
+    FakeEventSource.instances[0]?.emitOpen();
+    available = false;
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(runtime.currentMode()).toBe(selectedMode);
+    expect(runtime.currentConnectionStatus()).toBe('fault');
+    if (selectedMode === 'realtime') expect(FakeEventSource.instances[0].closed).toBe(true);
+    seen.length = 0;
+    const ticketCalls = client.notifications.streamTicket.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(seen).toEqual([]);
+    expect(client.notifications.streamTicket).toHaveBeenCalledTimes(ticketCalls);
+    available = true;
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(runtime.currentMode()).toBe(selectedMode);
+    if (selectedMode === 'realtime') {
+      expect(FakeEventSource.instances).toHaveLength(2);
+      FakeEventSource.instances[1].emitOpen();
+      expect(runtime.currentConnectionStatus()).toBe('ready');
+      expect(seen).toContain(SIGNAL_MESSAGES);
+    } else {
+      expect(runtime.currentConnectionStatus()).toBe('idle');
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(seen).toContain(SIGNAL_UNREAD);
+    }
+    runtime.destroy();
+  });
+
+  it('rejects an unknown control mode without replacing the selected mode', async () => {
+    const client = makeClient();
+    let selectedMode = 'realtime';
+    client.communication.settings = vi.fn(async () => ({ desired_mode: selectedMode, status: 'ready', settings: {} }));
+    const runtime = createCommunicationRuntime({ clientResolver: () => client, eventSourceFactory: (url) => new FakeEventSource(url) });
+    await runtime.start();
+    selectedMode = 'unknown';
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(runtime.currentMode()).toBe('realtime');
+    expect(runtime.currentConnectionStatus()).toBe('fault');
+    expect(FakeEventSource.instances[0].closed).toBe(true);
+    runtime.destroy();
+  });
+
+  it('does not restore a stale snapshot when visibility refresh fails', async () => {
+    const client = makeClient();
+    let available = true;
+    client.communication.settings = vi.fn(async () => {
+      if (!available) throw new Error('control store unavailable');
+      return { desired_mode: 'realtime', status: 'ready', settings: { pause_when_hidden: true } };
+    });
+    let visibilityChange;
+    const documentRef = { visibilityState: 'visible', addEventListener: vi.fn((name, callback) => { if (name === 'visibilitychange') visibilityChange = callback; }) };
+    const runtime = createCommunicationRuntime({ clientResolver: () => client, documentRef, eventSourceFactory: (url) => new FakeEventSource(url) });
+    await runtime.start();
+    documentRef.visibilityState = 'hidden';
+    visibilityChange();
+    available = false;
+    documentRef.visibilityState = 'visible';
+    visibilityChange();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(runtime.currentMode()).toBe('realtime');
+    expect(runtime.currentConnectionStatus()).toBe('fault');
+    expect(client.notifications.streamTicket).toHaveBeenCalledTimes(1);
+    available = true;
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(client.notifications.streamTicket).toHaveBeenCalledTimes(2);
+    runtime.destroy();
+  });
+
+  it('ignores late stream signals after control failure pauses the transport', async () => {
+    const client = makeClient();
+    let available = true;
+    client.communication.settings = vi.fn(async () => {
+      if (!available) throw new Error('control store unavailable');
+      return { desired_mode: 'realtime', status: 'ready', settings: {} };
+    });
+    const runtime = createCommunicationRuntime({ clientResolver: () => client, eventSourceFactory: (url) => new FakeEventSource(url) });
+    const seen = [];
+    runtime.subscribe((topic) => seen.push(topic));
+    await runtime.start();
+    available = false;
+    await vi.advanceTimersByTimeAsync(30_000);
+    FakeEventSource.instances[0].emitSignal({ topic: 'messages' });
+    expect(seen).toEqual([]);
+    expect(runtime.currentConnectionStatus()).toBe('fault');
     runtime.destroy();
   });
 

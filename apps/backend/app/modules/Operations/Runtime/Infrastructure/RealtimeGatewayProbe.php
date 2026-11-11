@@ -91,7 +91,9 @@ final class RealtimeGatewayProbe implements RuntimeProbe
             return ['ready' => false, 'provider' => 'realtime-gateway', 'reason_code' => 'gateway-protocol-mismatch'];
         }
         // cursor=true 只表示 topic 内读取提示，不代表跨 topic 的 SSE 续传游标。
-        if (($payload['protocol'] ?? null) !== self::PROTOCOL || ($payload['cursor'] ?? null) !== true) {
+        $sessionTtl = $payload['session_ttl_max_seconds'] ?? null;
+        if (($payload['protocol'] ?? null) !== self::PROTOCOL || ($payload['cursor'] ?? null) !== true
+            || !is_int($sessionTtl) || $sessionTtl < 1 || $sessionTtl > 60) {
             return ['ready' => false, 'provider' => 'realtime-gateway', 'reason_code' => 'gateway-protocol-mismatch'];
         }
         $auth = $payload['auth'] ?? [];

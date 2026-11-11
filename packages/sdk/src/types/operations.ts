@@ -138,8 +138,6 @@ export interface RuntimeCommunicationSettings {
   notification_interval_seconds: number
   message_interval_seconds: number
   unread_interval_seconds: number
-  polling_backoff_factor: number
-  polling_max_interval_seconds: number
   pause_when_hidden: boolean
   worker_stale_seconds: number
   scheduler_stale_seconds: number
@@ -165,8 +163,6 @@ export interface RuntimeConfigUpdate {
   notification_interval_seconds?: number
   message_interval_seconds?: number
   unread_interval_seconds?: number
-  polling_backoff_factor?: number
-  polling_max_interval_seconds?: number
   pause_when_hidden?: boolean
   worker_stale_seconds?: number
   scheduler_stale_seconds?: number

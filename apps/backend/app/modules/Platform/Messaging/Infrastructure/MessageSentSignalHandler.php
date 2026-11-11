@@ -25,16 +25,17 @@ final class MessageSentSignalHandler implements EventHandler
         if ($recipientId < 1) {
             throw new \UnexpectedValueException('Realtime 私信收件人无效');
         }
-        if (!SignalPolicies::enabled('messages.new')) {
-            $context->markSignalDecision('skipped');
-            return;
-        }
         $state = app(RuntimeCommunication::class)->signalDeliveryState();
         if ($state === 'skip') {
             $context->markSignalDecision('skipped');
             return;
         }
         if ($state !== 'deliver') throw new SignalTransportUnavailable('Realtime 信号链路不可用');
+        if (!SignalPolicies::authorize('messages.new', $context)) {
+            $context->markSignalDecision('skipped');
+            return;
+        }
+        $context->assertSignalWindow();
         app(RealtimeSignalPublisher::class)->publish(new RealtimeSignal('messages', 'user:' . $recipientId));
         $context->markSignalDecision('applied');
     }

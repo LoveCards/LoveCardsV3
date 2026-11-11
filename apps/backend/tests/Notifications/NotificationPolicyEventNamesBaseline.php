@@ -16,11 +16,11 @@ $assert = static function (bool $condition, string $message): void {
     if (!$condition) throw new RuntimeException($message);
 };
 
-$registry = file_get_contents($root . '/app/modules/Platform/Eventing/Public/HandlerRegistry.php');
-if ($registry === false) throw new RuntimeException('handler registry is unreadable');
+require $root . '/vendor/autoload.php';
+$registeredTypes = array_column(\app\EventHandlers::create()->catalog(), 'event_type');
 
 foreach (['library.saved', 'content.comment.published', 'content.mentions.added'] as $eventType) {
-    $assert(str_contains($registry, "'{$eventType}'"), "handler registry must emit {$eventType}");
+    $assert(in_array($eventType, $registeredTypes, true), "handler registry must emit {$eventType}");
     $assert(str_contains($migration, "'{$eventType}'"), "normalization migration must produce {$eventType}");
 }
 

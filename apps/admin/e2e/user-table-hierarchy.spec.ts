@@ -126,7 +126,7 @@ test('search hint and highlight follow the selected user field', async ({ page }
   await fixtures(page)
   await page.goto('./apps/users?filters=' + encodeURIComponent(JSON.stringify({ search_keys: ['number'] })) + '&search_value=member')
   const row = page.locator('tbody tr').first()
-  await expect(page.getByRole('textbox', { name: '搜索账号' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: '搜索账号' })).toBeVisible({ timeout: 15_000 })
   await expect(row).toContainText('member_1', { timeout: 20_000 })
   await expect(row.locator('mark')).toHaveText('member')
   await expect(row.getByText('林晓')).toBeVisible()

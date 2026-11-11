@@ -8,7 +8,8 @@ use think\facade\Env;
 /** PHP Redis 使用者共用的系统配置视图；不会返回给管理端 Resource。 */
 final class RedisConnectionSettings
 {
-    /** @return array{enabled:bool,host:string,port:int,database:int,password:string,tls:bool,tls_server_name:string,source:string,revision:string} */
+    private const IO_TIMEOUT_SECONDS = 0.25;
+    /** @return array{enabled:bool,host:string,port:int,database:int,password:string,tls:bool,tls_server_name:string,source:string,revision:string,channel:string} */
     public static function current(): array
     {
         $values = Config::getGroup('redis');
@@ -21,6 +22,7 @@ final class RedisConnectionSettings
             'tls' => ($values['tls'] ?? false) === true,
             'tls_server_name' => trim((string) ($values['tls_server_name'] ?? '')),
             'source' => 'database',
+            'channel' => ($values['enabled'] ?? false) === true ? DeploymentNamespace::current()->realtimeChannel() : '',
         ];
         return self::versioned($settings);
     }
@@ -40,7 +42,7 @@ final class RedisConnectionSettings
     public static function connectTransport(\Redis $redis, array $settings): bool
     {
         if (($settings['tls'] ?? false) !== true) {
-            return $redis->connect($settings['host'], $settings['port'], 0.25);
+            return $redis->connect($settings['host'], $settings['port'], self::IO_TIMEOUT_SECONDS, null, 0, self::IO_TIMEOUT_SECONDS);
         }
         if (!extension_loaded('openssl') || (extension_loaded('redis') && version_compare((string) phpversion('redis'), '5.3.0', '<'))) {
             throw new \RuntimeException('Redis TLS 需要 OpenSSL 和 PhpRedis 5.3 或更高版本');
@@ -50,7 +52,7 @@ final class RedisConnectionSettings
             throw new \InvalidArgumentException('Redis TLS 证书名称无效');
         }
         return $redis->connect(
-            'tls://' . $settings['host'], $settings['port'], 0.25, null, 0, 0.25,
+            'tls://' . $settings['host'], $settings['port'], self::IO_TIMEOUT_SECONDS, null, 0, self::IO_TIMEOUT_SECONDS,
             ['stream' => ['verify_peer' => true, 'verify_peer_name' => true,
                 'allow_self_signed' => false, 'peer_name' => $identity, 'SNI_enabled' => true]]
         );
@@ -68,7 +70,11 @@ final class RedisConnectionSettings
     /** @return array{ready:bool,reason_code:?string,source:string,revision:string} */
     public static function test(): array
     {
-        $settings = self::current();
+        try {
+            $settings = self::current();
+        } catch (\InvalidArgumentException $exception) {
+            return ['ready' => false, 'reason_code' => 'deployment-identity-required', 'source' => 'database', 'revision' => ''];
+        }
         $result = ['ready' => false, 'reason_code' => null, 'source' => $settings['source'], 'revision' => $settings['revision']];
         if (!$settings['enabled']) {
             $result['reason_code'] = 'redis-disabled';

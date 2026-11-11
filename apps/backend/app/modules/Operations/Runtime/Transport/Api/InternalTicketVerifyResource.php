@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace app\modules\Platform\Notifications\Transport\Api;
+namespace app\modules\Operations\Runtime\Transport\Api;
 
 use app\shared\Transport\Http\Resource;
 
@@ -13,9 +13,10 @@ final class InternalTicketVerifyResource extends Resource
         return [
             'type' => 'object',
             'additionalProperties' => false,
-            'required' => ['uid', 'cursor_seed'],
+            'required' => ['uid', 'cursor_seed', 'connection_ttl_seconds'],
             'properties' => [
                 'uid' => ['type' => 'integer'],
+                'connection_ttl_seconds' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 60],
                 'cursor_seed' => ['type' => ['string', 'null']],
             ],
         ];
@@ -27,6 +28,7 @@ final class InternalTicketVerifyResource extends Resource
         $data = is_array($data) ? $data : (array) $data;
         return [
             'uid' => (int) ($data['uid'] ?? 0),
+            'connection_ttl_seconds' => (int) ($data['connection_ttl_seconds'] ?? 0),
             'cursor_seed' => isset($data['cursor_seed']) ? (string) $data['cursor_seed'] : null,
         ];
     }

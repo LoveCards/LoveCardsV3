@@ -176,7 +176,7 @@ import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
-import { isApiError, useApi } from '~/lib/api'
+import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import CommonUtils from '~/utils/common'
 import { readBoolean, readObject, readString } from '~/utils/json'
@@ -189,6 +189,7 @@ interface DriverGroup {
 type Feedback = { type: 'success' | 'error'; text: string }
 
 const client = useApi()
+const configSnapshot = useConfigSnapshot(client)
 const router = useRouter()
 const userStore = useUserStore()
 const tab = ref('drivers')
@@ -209,13 +210,13 @@ const settingsChanged = computed(() => JSON.stringify(settings.value) !== JSON.s
 const switchItems = [{ title: '开启', value: true }, { title: '关闭', value: false }]
 const channelItems = [{ title: '邮箱（SMTP）', value: 'smtp' }, { title: '短信（SMS）', value: 'sms' }]
 const groupTitle = (type: string) => type === 'code' ? '验证码' : type === 'captcha' ? '人机验证' : type
-const errorMessage = (cause: unknown, fallback: string) => isApiError(cause) ? cause.message : fallback
+const errorMessage = configSnapshot.errorMessage
 
 const loadPage = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const [drivers, rawConfig] = await Promise.all([client.captcha.drivers(), client.config.list()])
+    const [drivers, rawConfig] = await Promise.all([client.captcha.drivers(), configSnapshot.list()])
     const captchaConfig = readObject(rawConfig.captcha)
     const groups: Record<string, CaptchaDriver[]> = {}
     for (const driver of drivers) {
@@ -245,8 +246,8 @@ const setDefault = async (type: string, slug: string) => {
   changingDefault.value = `${type}:${slug}`
   actionMessage.value = null
   try {
-    await client.config.update({ captcha: { [`default_${type}_driver`]: slug } })
-    const saved = readObject((await client.config.list()).captcha)
+    const committed = await configSnapshot.update({ captcha: { [`default_${type}_driver`]: slug } })
+    const saved = readObject(committed.captcha)
     if (readString(saved[`default_${type}_driver`]) !== slug) throw new Error('默认驱动未保存')
     driverGroups.value = driverGroups.value.map(group => group.type === type ? { ...group, defaultSlug: slug } : group)
     actionMessage.value = { type: 'success', text: `已将 ${slug} 设为${groupTitle(type)}默认驱动。` }
@@ -264,12 +265,14 @@ const saveSettings = async () => {
   settingsSaving.value = true
   settingsMessage.value = null
   try {
-    await client.config.update({
+    const committed = await configSnapshot.update({
       captcha: {
         code_enabled: settings.value.code_enabled,
         code_channel: settings.value.code_channel,
       },
     })
+    const saved = readObject(committed.captcha)
+    settings.value = { code_enabled: readBoolean(saved.code_enabled, true), code_channel: readString(saved.code_channel, 'smtp') }
     originSettings.value = CommonUtils.deepClone(settings.value)
     settingsMessage.value = { type: 'success', text: '验证设置已保存。' }
   } catch (cause) {

@@ -25,7 +25,11 @@ $assertThrows = static function (callable $callback, string $message): void {
     throw new RuntimeException($message);
 };
 
-$registry = new HandlerRegistry();
+$registry = \app\EventHandlers::create();
+$assert($registry->catalogHash() === '905a15da233afefb98bd8c8524b189e73846449e650e6611956be25de3de3f11', 'composition migration must preserve the signed catalog exactly');
+$assert(count($registry->catalog()) === 13, 'composition must include every owning module');
+$bindings = require $root . '/app/provider.php';
+$assert($bindings[HandlerRegistry::class]()->catalog() === $registry->catalog(), 'container and standalone composition must be identical');
 $assert(
     $registry->queueNamesFor([ExecutionMode::REQUEST_SAFE]) === ['notifications'],
     'request-safe handler metadata must identify the short notifications queue'

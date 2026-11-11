@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace app\modules\Operations\Runtime\Application;
 
+use app\api\ApiException;
 use app\modules\Operations\Runtime\Contract\RuntimeClock;
 use app\modules\Operations\Runtime\Contract\RuntimeConfigStore;
 use app\modules\Operations\Runtime\Contract\RuntimeProbe;
@@ -32,25 +33,23 @@ final class ResolveRuntimeCommunication
     public function snapshot(): array
     {
         $checkedAt = $this->clock->nowUtc();
-        $row = $this->store->current();
-        if ($row === null) {
-            return [
-                'desired_mode' => 'polling',
-                'effective_mode' => 'polling',
-                'status' => 'degraded',
-                'revision' => 0,
-                'reason_code' => 'schema-not-ready',
-                'checked_at' => $this->stamp($checkedAt),
-                'settings' => CommunicationSettings::defaults(),
-                'last_apply_state' => null,
-                'last_apply_reason' => null,
-                'capabilities' => [],
-            ];
+        try {
+            $row = $this->store->current();
+        } catch (\Throwable $ignored) {
+            $row = null;
+        }
+        // 默认选择由安装持久初始化。运行期缺失或损坏不能变成管理员选择了轮询。
+        if ($row === null || !in_array($row['desired_mode'] ?? null, CommunicationSettings::MODES, true)
+            || !is_array($row['settings'] ?? null) || (int) ($row['revision'] ?? 0) < 1
+            || CommunicationSettings::validateInput(array_intersect_key(
+                $row['settings'], array_flip(CommunicationSettings::INPUT_KEYS)
+            )) !== []) {
+            throw ApiException::capabilityUnavailable('通信配置暂不可用，请稍后重试', 'runtime-config-unavailable');
         }
 
         $settings = CommunicationSettings::normalize($row['settings']);
         $capabilities = $this->probeCapabilities($settings, $checkedAt);
-        $desired = in_array($row['desired_mode'], CommunicationSettings::MODES, true) ? $row['desired_mode'] : 'polling';
+        $desired = $row['desired_mode'];
         $locked = self::envLockedToPolling();
         $blockingReason = self::blockingReason($capabilities);
 

@@ -41,12 +41,20 @@ namespace think\facade {
 }
 
 namespace app\modules\Platform\Eventing\Public {
-    final class SignalPolicies { public static bool $enabled = true; public static function enabled(string $key): bool { return self::$enabled; } }
+    final class SignalPolicies {
+        public static bool $enabled = true;
+        public static function authorize(string $key, DeliveryContext $context): bool {
+            if (!self::$enabled) return false;
+            $context->grantSignal($key, 1, 5);
+            return true;
+        }
+    }
     final class DomainEventBus
     {
         public array $published = [];
-        public function publish(string $type, string $aggregateType, string $aggregateKey, array $payload, ?int $actorId = null): object
+        public function publishSignalContinuation(DeliveryContext $parent, string $signalKey, string $type, string $aggregateType, string $aggregateKey, array $payload, ?int $actorId = null): ?object
         {
+            if (isset(\think\facade\Db::$continuations[$aggregateKey])) return null;
             $this->published[] = [$type, $aggregateKey, $payload];
             \think\facade\Db::$continuations[$aggregateKey] = ['aggregate_key' => $aggregateKey];
             return new \stdClass();

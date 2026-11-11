@@ -105,7 +105,7 @@ import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
-import { isApiError, useApi } from '~/lib/api'
+import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import { readObject, readString } from '~/utils/json'
 
@@ -117,6 +117,7 @@ interface ChannelGroup {
 type Feedback = { type: 'success' | 'error'; text: string }
 
 const client = useApi()
+const configSnapshot = useConfigSnapshot(client)
 const router = useRouter()
 const userStore = useUserStore()
 const channelGroups = shallowRef<ChannelGroup[]>([])
@@ -128,7 +129,7 @@ const actionMessage = ref<Feedback | null>(null)
 const changingDefault = ref('')
 const canUpdateConfig = computed(() => userStore.hasGrant('config.update', 'global'))
 const canInstallSender = computed(() => userStore.hasGrant('sender.install', 'global'))
-const errorMessage = (cause: unknown, fallback: string) => isApiError(cause) ? cause.message : fallback
+const errorMessage = configSnapshot.errorMessage
 const groupTitle = (type: string) => {
   const normalized = type.toLowerCase()
   if (normalized.includes('mail')) return '邮件渠道'
@@ -140,7 +141,7 @@ const loadChannels = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const [channels, rawConfig] = await Promise.all([client.sender.channels(), client.config.list()])
+    const [channels, rawConfig] = await Promise.all([client.sender.channels(), configSnapshot.list()])
     const senderConfig = readObject(rawConfig.sender)
     const groups: Record<string, SenderChannel[]> = {}
     for (const channel of channels) {
@@ -164,9 +165,9 @@ const setDefault = async (channelType: string, slug: string) => {
   changingDefault.value = `${channelType}:${slug}`
   actionMessage.value = null
   try {
-    await client.config.update({ sender: { [`default_${channelType}`]: slug } })
+    const committed = await configSnapshot.update({ sender: { [`default_${channelType}`]: slug } })
     const group = channelGroups.value.find(item => item.channelType === channelType)
-    if (group) group.defaultSlug = slug
+    if (group) group.defaultSlug = readString(readObject(committed.sender)[`default_${channelType}`])
     actionMessage.value = { type: 'success', text: `已将 ${slug} 设为默认${groupTitle(channelType)}。` }
   } catch (cause) {
     actionMessage.value = { type: 'error', text: errorMessage(cause, '默认消息渠道切换失败，请稍后重试。') }

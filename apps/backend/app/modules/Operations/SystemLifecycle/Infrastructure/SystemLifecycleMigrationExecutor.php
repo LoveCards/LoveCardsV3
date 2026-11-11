@@ -10,17 +10,24 @@ final class SystemLifecycleMigrationExecutor implements ReleaseMigrationExecutor
 {
     public function __construct(private SystemLifecycleCoordinator $coordinator) {}
 
+    public function inspectPhase(string $directory, string $phase): ?array
+    {
+        return $this->coordinator->inspectPhase($directory, $phase);
+    }
+
     public function advancePhase(
         string $directory,
         string $phase,
         bool $allowContract,
-        string $lifecycleLeaseHolder
+        string $lifecycleLeaseHolder,
+        bool $retryFailed = false
     ): ?array {
         $rows = $this->coordinator->runPhaseWithLease(
             $directory,
             $phase,
             $allowContract,
-            $lifecycleLeaseHolder
+            $lifecycleLeaseHolder,
+            $retryFailed
         );
         return $rows[0] ?? null;
     }

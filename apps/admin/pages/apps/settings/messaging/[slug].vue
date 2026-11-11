@@ -171,10 +171,10 @@ import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminSecretConfigField from '~/components/shared/admin/AdminSecretConfigField.vue'
 import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
-import { isApiError, useApi } from '~/lib/api'
+import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import CommonUtils from '~/utils/common'
-import { isSecretConfigEnvelope, normalizeSecretConfig, settleSecretConfig, type SecretConfigEnvelope } from '~/utils/configSecrets'
+import { isSecretConfigEnvelope, normalizeSecretConfig, type SecretConfigEnvelope } from '~/utils/configSecrets'
 
 type DriverField = FieldDefinition & { key: string; label: string }
 type Feedback = { type: 'success' | 'error'; text: string }
@@ -182,6 +182,7 @@ type FieldValue = string | number | boolean | null | SecretConfigEnvelope
 type FormConfig = Record<string, FieldValue>
 
 const client = useApi()
+const configSnapshot = useConfigSnapshot(client)
 const route = useRoute()
 const userStore = useUserStore()
 const slug = String(route.params.slug)
@@ -206,7 +207,7 @@ const canTestChannel = computed(() => userStore.hasGrant('sender.test', 'global'
 const configChanged = computed(() => JSON.stringify(config.value) !== JSON.stringify(originConfig.value))
 const { unsavedChangesDialog, continueEditing, discardChanges } = useAdminUnsavedChanges(configChanged)
 const isDriverField = (field: FieldDefinition): field is DriverField => typeof field.key === 'string' && typeof field.label === 'string'
-const errorMessage = (cause: unknown, fallback: string) => isApiError(cause) ? cause.message : fallback
+const errorMessage = configSnapshot.errorMessage
 const fieldValue = (value: unknown): FieldValue => {
   return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null ? value : ''
 }
@@ -225,7 +226,7 @@ const loadPage = async () => {
   loadError.value = ''
   saveMessage.value = null
   try {
-    const [channels, rawConfig] = await Promise.all([client.sender.channels(), client.config.list()])
+    const [channels, rawConfig] = await Promise.all([client.sender.channels(), configSnapshot.list()])
     const channel = channels.find((item: SenderChannel) => item.slug === slug)
     if (!channel) {
       loadError.value = '未找到该消息渠道，请返回列表重新扫描。'
@@ -262,10 +263,13 @@ const save = async () => {
   const configToSave = { ...config.value }
   delete configToSave.type
   try {
-    await client.config.update({ [configGroup]: configToSave })
+    const committed = await configSnapshot.update({ [configGroup]: configToSave })
+    const saved = committed[configGroup] as Record<string, unknown>
     const settled = CommonUtils.deepClone(config.value)
     for (const field of fields.value) {
-      if (isSecretField(field)) settled[field.key] = settleSecretConfig(secretValue(field.key))
+      settled[field.key] = isSecretField(field)
+        ? normalizeSecretConfig(saved[field.key])
+        : fieldValue(saved[field.key] ?? field.default ?? '')
     }
     config.value = settled
     originConfig.value = CommonUtils.deepClone(settled)

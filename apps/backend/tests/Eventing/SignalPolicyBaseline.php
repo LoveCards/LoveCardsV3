@@ -16,7 +16,7 @@ $rejects = static function (callable $operation, string $message): void {
     throw new RuntimeException($message);
 };
 
-$catalog = (new HandlerRegistry())->signalCatalog();
+$catalog = (\app\EventHandlers::create())->signalCatalog();
 $keys = array_column($catalog, 'key');
 $assert($keys === ['feed.published', 'messages.new', 'messages.read', 'notifications.new'], 'signal catalog must match registered handlers');
 foreach ($catalog as $entry) {

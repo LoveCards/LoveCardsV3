@@ -6,6 +6,7 @@ test('verification driver selection reads and writes the configured key', async 
   test.setTimeout(120_000)
   await page.addInitScript(() => localStorage.setItem('token', 'verification-default-fixture'))
   let selected = 'gd_image'
+  let revision = 1
   const writes: unknown[] = []
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname
@@ -13,12 +14,14 @@ test('verification driver selection reads and writes the configured key', async 
     if (route.request().method() !== 'GET') {
       const body = route.request().postDataJSON()
       writes.push(body)
+      expect(body.captcha.__revision).toBe(revision)
       selected = body.captcha?.default_captcha_driver ?? selected
-      return route.fulfill({ status: 204, body: '' })
+      revision++
+      return route.fulfill({ json: { success: true, data: { captcha: { __revision: revision, default_captcha_driver: selected, captcha_enabled: false, code_enabled: true, code_channel: 'smtp' } } } })
     }
     const data: Record<string, unknown> = {
       '/api/me': { id: 9001, username: '界面验收', roles: [], grants: ['admin.access', 'config.read', 'config.update', 'captcha.read'].map(capability => ({ capability, scope: 'global' })), status: 0 },
-      '/api/admin/config': { captcha: { default_captcha_driver: selected, captcha_enabled: false, code_enabled: true, code_channel: 'smtp' } },
+      '/api/admin/config': { captcha: { __revision: revision, default_captcha_driver: selected, captcha_enabled: false, code_enabled: true, code_channel: 'smtp' } },
       '/api/admin/captcha/drivers': [
         { slug: 'geetest_v4', type: 'captcha', name: '极验验证 v4', fields: [] },
         { slug: 'gd_image', type: 'captcha', name: '图片验证码', fields: [] },
@@ -33,6 +36,6 @@ test('verification driver selection reads and writes the configured key', async 
   const geetestCard = page.locator('.v-card').filter({ hasText: '极验验证 v4' })
   await geetestCard.getByRole('button', { name: '设为默认' }).click()
   await expect(geetestCard.getByText('默认', { exact: true })).toBeVisible()
-  expect(writes).toEqual([{ captcha: { default_captcha_driver: 'geetest_v4' } }])
+  expect(writes).toEqual([{ captcha: { __revision: 1, default_captcha_driver: 'geetest_v4' } }])
 
 })

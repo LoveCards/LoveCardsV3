@@ -1,5 +1,7 @@
 # 后端测试与 API 契约工程规范
 
+> 2026-11-11 新验收矩阵见 [收敛设计](PLATFORM-CONVERGENCE-2026-11-11.md)。源码字符串断言、替身测试和最终 schema 比较不能替代真实并发、故障注入及包含 Contract 的升级恢复链。
+
 本文定义 LoveCards 后端改动如何被验证，以及验证结果如何沿着 API 契约传递到 SDK 和管理端。目标不是追求“测试文件数量”，而是保证每次接口变更都能回答三件事：业务行为是否正确、公开契约是否稳定、SDK 是否仍可安全生成和使用。
 
 ## 1. 唯一质量链路
@@ -196,6 +198,8 @@ Ubuntu CI 同时承担可移植性门禁：generated resource 文件名与 impor
 
 ## 7. 覆盖边界
 
+安装终结新增 `InitialRootPasswordBaseline.php` 与 `InstallFinalizeKeys.php`：种子 root 密码不可登录，且管理员密码未成功设置前不能生成安装锁。隔离数据库写入可用 `LC_TEST_DB_ISOLATED=1` 运行 `php scripts/check-install-root-db.php`，它只创建并删除随机 `lovecards_e2e_install_root_*` 库；不得指向共享或生产数据库。同一隔离标记下的 `php scripts/check-backup-cold-connection.php` 验证新 CLI 进程从未查询数据库时，Backup Gate 仍能建立连接、生成并校验逻辑备份；两项脚本均只创建并清理随机前缀测试库。
+
 自动化检查可以证明当前声明的行为和契约一致，但不能证明所有业务需求都已被声明。新增功能时，开发者仍须根据业务风险补充场景。以下情况必须增加独立测试，而不能只依赖生成器：
 
 - 新的状态流转、事务或补偿逻辑；
@@ -205,3 +209,17 @@ Ubuntu CI 同时承担可移植性门禁：generated resource 文件名与 impor
 - 会改变 SDK 方法语义、后台页面状态或搜索/筛选行为的接口变化。
 
 通知触发还必须按 [NOTIFICATIONS.md](NOTIFICATIONS.md) 覆盖真实状态转换、no-op、重复消费、事务回滚、自通知、收件人状态、资源失效与安全链接；只有列表接口返回 200 不能证明通知链路正确。
+
+### 通信会话期限回归（2026-11-11）
+
+- `php tests/Runtime/StreamTicketBaseline.php`：真实票据用例与 Auth Public 会话检查，覆盖撤销、过期、轮换、封禁、删除、模式切换、旧票据与存储故障。
+- `php tests/Runtime/GatewaySessionHealthBaseline.php`：真实本机 HTTP 探测，拒绝不声明会话期限或期限非法的 Gateway。
+- `npm test --workspace @lovecards/realtime-gateway`：包括真实 SSE 在授权期限到达时结束、缺少期限拒绝连接。
+- 数据库迁移与浏览器重连仍须在 dev 验证；上述内存替身不代替 MySQL 会话查询验收。
+
+### 升级阶段资格与恢复回归（2026-11-11）
+
+- `php tests/Runtime/SchemaQualificationBaseline.php`：目标计划/Pointer/checksum/账本的pre-contract资格及撤销，完整身份接口仍严格要求complete。
+- `php tests/SystemLifecycle/UpgradeCoordinatorBaseline.php`：v2最终健康、停机证据失败禁止Contract、指针恢复与服务恢复分开、执行不确定禁止重放。
+- `php tests/SystemLifecycle/BehaviorBaseline.php`：遗留running迁移必须受控处置，显式retry_failed不授权重放未知执行。
+- `php tests/SystemLifecycle/ExecutionLeaseDatabase.php`：真实隔离数据库、两独立会话和同会话服务实例，验证跨TTL排他、断线失权及迁移04重复执行；凭据通过LC_TEST_DB_*环境提供，仅创建并清理随机lovecards_e2e_lease_*库。本机MariaDB已通过，dev仍须验证真实drain停止旧Worker/cron。内存替身不能证明旧进程实际退出。

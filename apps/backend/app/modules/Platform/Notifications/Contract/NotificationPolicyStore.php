@@ -12,7 +12,7 @@ interface NotificationPolicyStore
 {
     /**
      * 某版本的全量策略快照：event_type => {enabled, locked, user_disableable, notification_type}。
-     * 版本不存在（未迁移/历史）返回 null = not-configured。
+     * 非空冻结版本读取失败或损坏时抛错；不存在返回 null，由调用方报告不可用。
      *
      * @return array<string, array{enabled: bool, locked: bool, user_disableable: bool, notification_type: ?string}>|null
      */
@@ -32,7 +32,8 @@ interface NotificationPolicyStore
      * CAS 批量修改并生成新 revision（同事务）。
      *
      * @param array<int, array{event_type: string, event_version: int, rule_key: string, enabled: bool}> $changes
-     * @return array{revision: int, policies: array<int, array<string, mixed>>}
+     * @param callable(array,array,int):void $audit 在当前事务内记录确定的 before/after/revision。
+     * @return array{revision: int, policies: array<int, array<string, mixed>>, before: array<int, array<string, mixed>>}
      */
-    public function applyChanges(array $changes, int $expectedRevision, ?int $actorId, ?string $reason): array;
+    public function applyChanges(array $changes, int $expectedRevision, ?int $actorId, ?string $reason, callable $audit): array;
 }

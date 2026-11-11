@@ -16,7 +16,7 @@ use app\modules\Operations\Installer\Infrastructure\Database;
 use app\modules\Operations\Installer\Infrastructure\Environment;
 use app\modules\Operations\Installer\Infrastructure\Rsa;
 
-use app\modules\Platform\Auth\Infrastructure\Jwt;
+use app\modules\Platform\Auth\Public\SigningKeys;
 use app\modules\Operations\SystemLifecycle\Application\SystemLifecycleCoordinator;
 
 class Install
@@ -177,7 +177,20 @@ class Install
             return Export::Create(null, 500, '系统角色能力初始化失败：' . $e->getMessage());
         }
 
-        // 配置初始化成功后再创建安装锁（标记安装完成）
+        // 终结时重新读取实际持久密钥，不能依赖前端已调用过生成密钥步骤。
+        try {
+            SigningKeys::assertReady();
+        } catch (\Throwable $e) {
+            return Export::Create(null, 500, '签名密钥未就绪：' . $e->getMessage());
+        }
+
+        try {
+            \app\modules\Platform\Auth\Public\InstallationAccount::setRootPassword((string) Request::param('admin_password', ''));
+        } catch (\Throwable $e) {
+            return Export::Create(null, 500, '初始管理员密码设置失败：' . $e->getMessage());
+        }
+
+        // 配置、账本、签名密钥及管理员凭据均就绪后再创建安装锁。
         // InstallLock() 返回 bool，失败时抛出 RuntimeException
         try {
             Common::InstallLock();
@@ -222,7 +235,7 @@ class Install
         }
 
         //校验是否可用
-        if (!Jwt::VerifyRsa($key['public'], $key['private'])) {
+        if (!SigningKeys::verifyPair((string) $key['public'], (string) $key['private'])) {
             return Export::Create(null, 500, '密钥对不可用');
         }
 

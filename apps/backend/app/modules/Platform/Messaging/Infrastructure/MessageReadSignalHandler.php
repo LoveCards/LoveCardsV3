@@ -29,10 +29,6 @@ final class MessageReadSignalHandler implements EventHandler
         if ($readerId < 1 || $conversationId < 1 || $messageId < 1) {
             throw new \UnexpectedValueException('Realtime 已读事件载荷无效');
         }
-        if (!SignalPolicies::enabled('messages.read')) {
-            $context->markSignalDecision('skipped');
-            return;
-        }
         $state = app(RuntimeCommunication::class)->signalDeliveryState();
         if ($state === 'skip') {
             $context->markSignalDecision('skipped');
@@ -43,7 +39,12 @@ final class MessageReadSignalHandler implements EventHandler
         if (!in_array($readerId, $participants, true)) {
             throw new \UnexpectedValueException('Realtime 已读用户不是会话成员');
         }
+        if (!SignalPolicies::authorize('messages.read', $context)) {
+            $context->markSignalDecision('skipped');
+            return;
+        }
         foreach ($participants as $recipientId) {
+            $context->assertSignalWindow();
             app(RealtimeSignalPublisher::class)->publish(new RealtimeSignal('messages', 'user:' . $recipientId));
         }
         $context->markSignalDecision('applied');

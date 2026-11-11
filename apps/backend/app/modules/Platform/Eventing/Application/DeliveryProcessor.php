@@ -61,7 +61,7 @@ final class DeliveryProcessor
                 $delivery,
                 null,
                 new \RuntimeException('当前 Release 未注册对应 Event Handler'),
-                $delivery->attemptCount() >= 5
+                $delivery->attemptCount() >= ($delivery->retryAttemptLimit() ?? 5)
             );
         }
         if (!$registration->matches($event)
@@ -74,7 +74,8 @@ final class DeliveryProcessor
                 true
             );
         }
-        if ($delivery->attemptCount() > $registration->maxAttempts()) {
+        $attemptLimit = $delivery->retryAttemptLimit() ?? $registration->maxAttempts();
+        if ($delivery->attemptCount() > $attemptLimit) {
             return $this->fail(
                 $delivery,
                 $registration,
@@ -97,14 +98,15 @@ final class DeliveryProcessor
             $delivery->handlerKey(),
             $delivery->attemptCount(),
             $delivery->policyRevision(),
-            $event->eventType()
+            $event->eventType(),
+            $delivery->claimToken()
         );
         try {
             $registration->handler()->handle(
                 $event,
                 $context
             );
-            if ($registration->signal() !== null && $context->signalDecision() === null) {
+            if ($registration->queueName() === 'realtime' && $context->signalDecision() === null) {
                 throw new \UnexpectedValueException('Realtime signal Handler 未记录投递决策');
             }
         } catch (SignalTransportUnavailable $exception) {
@@ -114,7 +116,7 @@ final class DeliveryProcessor
                 $delivery,
                 $registration,
                 $exception,
-                $delivery->attemptCount() >= $registration->maxAttempts()
+                $delivery->attemptCount() >= $attemptLimit
             );
         } finally {
             $this->logContext->clear();

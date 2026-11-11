@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace app\modules\Platform\Notifications\Infrastructure;
 
 use app\modules\Platform\Eventing\Contract\PolicyVersionSource;
-use think\facade\Db;
 
 /**
  * 读取 notification_policy_versions 的最大版本：Outbox 登记时冻结到投递行。
@@ -14,12 +13,7 @@ final class ThinkDbNotificationPolicyVersionSource implements PolicyVersionSourc
 {
     public function currentRevision(): ?int
     {
-        try {
-            $revision = Db::table('notification_policy_versions')->max('policy_revision');
-        } catch (\Throwable $exception) {
-            // 表尚未迁移（expand 前）：视为无策略目录，绝不阻断事件登记。
-            return null;
-        }
-        return $revision === null ? null : (int) $revision;
+        // 读取错误必须随业务事务失败，不能新建被误认作历史未配置的 NULL 投递。
+        return (new ThinkDbNotificationPolicyStore())->currentRevision();
     }
 }

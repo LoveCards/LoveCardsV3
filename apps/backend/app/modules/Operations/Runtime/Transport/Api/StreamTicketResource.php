@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace app\modules\Platform\Notifications\Transport\Api;
+namespace app\modules\Operations\Runtime\Transport\Api;
 
 use app\shared\Transport\Http\Resource;
 

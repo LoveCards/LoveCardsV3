@@ -34,23 +34,37 @@ final class SchedulerRunProbe implements RuntimeProbe
             $stale = max(1, (int) ($settings['scheduler_stale_seconds'] ?? 3600));
             $cutoff = gmdate('Y-m-d H:i:s', time() - $stale);
             $latest = (new ScheduledEventConsumption())->latestRun();
-            if (!is_array($latest) || (string) ($latest['finished_at'] ?? '') === '') {
-                return ['ready' => false, 'provider' => $provider, 'reason_code' => 'probe-stale', 'note' => ['ran' => false, 'trigger_source' => $trigger]];
-            }
-            if (($latest['trigger_source'] ?? null) !== $trigger) {
-                return ['ready' => false, 'provider' => $provider, 'reason_code' => 'scheduler-trigger-mismatch',
-                    'note' => ['finished_at' => $latest['finished_at'], 'outcome' => $latest['outcome'] ?? null, 'trigger_source' => $latest['trigger_source'] ?? null]];
-            }
-            $fresh = (string) $latest['finished_at'] > $cutoff;
-            $successful = (string) ($latest['outcome'] ?? '') === 'ok';
-            return [
-                'ready' => $fresh && $successful,
-                'provider' => $provider,
-                'reason_code' => !$fresh ? 'probe-stale' : ($successful ? null : 'scheduler-run-failed'),
-                'note' => ['finished_at' => $latest['finished_at'], 'outcome' => $latest['outcome'] ?? null, 'jobs_processed' => $latest['jobs_processed'] ?? null, 'trigger_source' => $trigger],
-            ];
+            $expectedRelease = $settings['required_release_id'] ?? getenv('LC_ACTIVE_RELEASE_ID');
+            return self::assessLatest($latest, $trigger, $cutoff, is_string($expectedRelease) ? $expectedRelease : '');
         } catch (\Throwable $ignored) {
             return ['ready' => false, 'provider' => $provider, 'reason_code' => 'probe-unavailable'];
         }
     }
+    /** 按实际启动 Release 判断一次性消费者，不能用结束时间代替执行身份。 */
+    public static function assessLatest(?array $latest, string $trigger, string $cutoff, string $expectedRelease): array
+    {
+        $provider = 'mysql-scheduler_runs';
+        if (!is_array($latest) || (string) ($latest['finished_at'] ?? '') === '') {
+            return ['ready' => false, 'provider' => $provider, 'reason_code' => 'probe-stale', 'note' => ['ran' => false, 'trigger_source' => $trigger]];
+        }
+        if (($latest['trigger_source'] ?? null) !== $trigger) {
+            return ['ready' => false, 'provider' => $provider, 'reason_code' => 'scheduler-trigger-mismatch',
+                'note' => ['finished_at' => $latest['finished_at'], 'outcome' => $latest['outcome'] ?? null, 'trigger_source' => $latest['trigger_source'] ?? null]];
+        }
+        if ($expectedRelease !== '' && !hash_equals($expectedRelease, (string) ($latest['release_id'] ?? ''))) {
+            return ['ready' => false, 'provider' => $provider, 'reason_code' => 'scheduler-release-mismatch',
+                'note' => ['release_id' => $latest['release_id'] ?? null, 'expected_release_id' => $expectedRelease]];
+        }
+        $fresh = (string) $latest['finished_at'] > $cutoff;
+        $successful = (string) ($latest['outcome'] ?? '') === 'ok';
+        return [
+            'ready' => $fresh && $successful,
+            'provider' => $provider,
+            'reason_code' => !$fresh ? 'probe-stale' : ($successful ? null : 'scheduler-run-failed'),
+            'note' => ['finished_at' => $latest['finished_at'], 'outcome' => $latest['outcome'] ?? null,
+                'jobs_processed' => $latest['jobs_processed'] ?? null, 'trigger_source' => $trigger,
+                'release_id' => $latest['release_id'] ?? null],
+        ];
+    }
+
 }

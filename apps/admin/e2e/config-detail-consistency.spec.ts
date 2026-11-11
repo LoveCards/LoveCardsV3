@@ -6,7 +6,7 @@ async function fixture(page: Page, readonly = false) {
   await page.addInitScript(() => localStorage.setItem('token', 'config-detail-fixture'))
   const writes: string[] = []
   const fields = [{ key: 'host', label: '服务地址', type: 'text' }, { key: 'secret', label: '访问密钥', type: 'password' }]
-  const params = { host: 'fixture.invalid', secret: { $secret: 'keep', configured: true } }
+  const params = { __revision: 1, host: 'fixture.invalid', secret: { $secret: 'keep', configured: true } }
   await page.route('**/api/**', async route => {
     // 开发服务的模块路径也可能包含 /api/；只拦截真正的后端请求。
     if (!new URL(route.request().url()).pathname.startsWith('/api/')) return route.continue()
@@ -19,7 +19,7 @@ async function fixture(page: Page, readonly = false) {
     capabilities.push('communications.read')
     const values: Record<string, unknown> = {
       '/api/me': { id: 9001, username: '界面验收', roles: [], grants: capabilities.map(capability => ({ capability, scope: 'global' })), status: 0 },
-      '/api/admin/config': { core: { name: '测试站点', url: 'https://fixture.invalid', visitor_mode: false }, user: { captcha: false }, captcha: { captcha_enabled: false, code_enabled: true, code_channel: 'smtp', default_captcha_driver: 'gd_image' }, sender_demo: params, storage_demo: params, captcha_demo: params },
+      '/api/admin/config': { core: { __revision: 1, name: '测试站点', url: 'https://fixture.invalid', visitor_mode: false }, user: { __revision: 1, captcha: false }, captcha: { __revision: 1, captcha_enabled: false, code_enabled: true, code_channel: 'smtp', default_captcha_driver: 'gd_image' }, sender_demo: params, storage_demo: params, captcha_demo: params },
       '/api/captcha/config': { captcha_geetest_v4: { status: false }, captcha_enabled: false },
       '/api/admin/sender/channels': [{ slug: 'demo', name: '测试消息渠道', fields }],
       '/api/admin/storage/channels': [{ slug: 'demo', name: '测试存储渠道', fields }],
