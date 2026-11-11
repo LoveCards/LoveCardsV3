@@ -74,12 +74,11 @@
           <v-expansion-panel title="高级诊断" elevation="0" border>
             <v-expansion-panel-text>
               <p class="text-body-2 text-medium-emphasis mb-4">以下信息用于定位事件消费与部署问题。</p>
-              <h3 class="text-subtitle-1 mb-3">处理进程</h3>
-              <AdminResourceTableShell class="mb-6">
-                <v-data-table :headers="workerHeaders" :items="runtime.workers" item-value="worker_id" items-per-page-text="每页行数">
-                  <template #item.state="{ item }"><AdminStatusChip :status="item.online ? 'active' : item.state" :label="item.online ? '在线' : '离线'" /></template>
-                </v-data-table>
-              </AdminResourceTableShell>
+              <div class="d-flex flex-wrap align-center ga-3 mb-6">
+                <h3 class="text-subtitle-1">Event Worker</h3>
+                <AdminStatusChip :status="onlineWorkerCount ? 'available' : 'degraded'" :label="onlineWorkerCount ? `在线（${onlineWorkerCount}）` : '离线'" />
+                <span v-if="eventProcessing?.mode === 'scheduled'" class="text-body-2 text-medium-emphasis">当前为定时消费，在线 Worker 不领取任务。</span>
+              </div>
               <h3 class="text-subtitle-1 mb-3">队列分布</h3>
               <AdminResourceTableShell v-if="runtime.eventing.queues?.length">
                 <v-data-table :headers="queueHeaders" :items="runtime.eventing.queues" item-value="queue_name" :items-per-page="-1" hide-default-footer>
@@ -136,10 +135,7 @@ const hasUnsavedChanges = computed(() => {
   return form.mode !== (current.state === 'draining' && current.target_mode ? current.target_mode : current.mode)
     || (form.mode === 'scheduled' && form.scheduled_trigger !== current.scheduled_trigger)
 })
-const workerHeaders = [
-  { title: 'Worker', key: 'worker_id' }, { title: '类型', key: 'worker_type' }, { title: '状态', key: 'state' },
-  { title: '已处理', key: 'jobs_processed' }, { title: '心跳时间', key: 'heartbeat_at' },
-]
+const onlineWorkerCount = computed(() => runtime.value?.workers.filter(worker => worker.worker_type === 'eventing' && worker.online).length ?? 0)
 const queueHeaders = [
   { title: '队列', key: 'queue_name' }, { title: '执行模式', key: 'execution_mode' },
   { title: '待处理', key: 'pending' }, { title: '处理中', key: 'processing' }, { title: '死信', key: 'dead' },
