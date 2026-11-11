@@ -4,6 +4,8 @@
 
 2026-11-11 dev 预检：分支 `dev-sse-preview`、HEAD `cc8b36fc`，已有未提交 `packages/sdk/test/TEST_REPORT.md`；`system_upgrade_steps` 44 条均 complete，44 个迁移源文件 checksum 与账本一致。候选表行数：`good=0`、`images=0`、`system=11`、`permissions=66`、`role_permissions=117`、`role_capabilities=152`、`card_comment_pins=0`。另有 `users=31`、`files=8`、`cards=31`、`event_deliveries=90`，其中 `users.roles_id` 非 NULL 2 条、`files.ref_id` 非 NULL 3 条。此结果明确阻断旧表/字段的直接删除；尚未核验非空记录的逐行转换及授权等价性。
 
+2026-11-12 补充只读核验：dev 的 `system` 11 行、`permissions` 66 行、`role_permissions` 117 行与原始 `data.sql` 种子逐字段 SHA-256 指纹完全一致；`role_capabilities` 的 152 个 `(role_id, capability)` 与 `20260727000001.sql`、`20260728000001.sql` 生成集合一致。比较时 `system.value` 只计算哈希，未打印明文；`role_capabilities.id` 不参与集合比较，因为 `INSERT ... SELECT` 的自增顺序不是业务语义。`role_permissions` 中 14 条关联不到 `permissions`，其 `permission_id` 为原始种子中的 67–80，属于已存在的孤儿记录。以上证明 dev 四表没有额外的自定义旧行，但不能推广到其他安装实例。`role_capabilities` 只在历史迁移时一次性回填到 `role_grants`，此后不是双写投影；现时差异可能是授权撤销，不能把旧行重新灌回。删除前仍须明确这些孤儿记录的历史处置和当前授权等价性，并在迁移中阻断其他实例的未知数据。
+
 ## 1. 七张旧表的退役判定
 
 对 `app` 中直接 Db 引用、模型与模块入口的审阅未发现以下七表的当前运行时读写。该结论不能证明部署侧脚本或未迁移数据不存在，不能仅凭代码无引用删除。
