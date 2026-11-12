@@ -27,5 +27,5 @@
 
 - dev 公共同源 Gateway 反代、SSE 私信/通知信号和 Gateway 停机故障注入已通过接口级实测；两个独立浏览器的私信即时到达、已读游标推进、信息流提示与点击刷新、浏览器断线提示和管理端模式切换已通过 UI/数据库实测。当前私信界面不展示对方“已读”标记，因此本次验证的是已读游标及新信号驱动刷新，不宣称可见的对方已读徽标。
 - dev 此次是源码工作树快进及受审独立迁移 CLI，不是通过签名 ZIP 在该站点跑 `UpgradeCoordinator`；统一升级路径已在隔离 E2E 验证。
-- S11 的 `system`、`permissions`、`role_permissions`、`role_capabilities` 已在 dev 只读逐行核对为历史原始种子，当前权限读取 `role_grants`；未在 dev 执行 DROP。候选分支已新增受控退役与过程清理两份迁移，并从目标 schema 移除四表；本地签名包升级经独立 Contract 批准、失败修复重试后与干净安装 schema 一致。dev 仍为 Git 工作树直跑，缺少托管 Release pointer；直接快进含新迁移的代码会使目录与 49 条完整账本不一致，事件消费失权。应先决定是否将 dev 切换为托管 Release，并准备真实 drain、签名公钥与健康探测；保留直跑开发形态时不在共享 dev 执行 S11 Contract。
+- S11 的 `system`、`permissions`、`role_permissions`、`role_capabilities` 已在 dev 只读逐行核对为历史原始种子，当前权限读取 `role_grants`；未在 dev 执行 DROP。候选分支已新增受控退役与过程清理两份迁移，并从目标 schema 移除四表；本地签名包升级经独立 Contract 批准、失败修复重试后与干净安装 schema 一致。用户已决定 dev 保持 Git 工作树直接开发，S11 仅在隔离环境验收。不得将含新迁移的候选分支直接拉入共享 dev：目录与 49 条完整账本不一致会使事件消费失权。将来在托管 Release 环境落地 S11 时，仍须准备真实 drain、签名公钥、健康探测与受控 Contract 升级。
 - 默认配置仍是 `scheduled + polling`；没有把「Redis/Gateway 已就绪」误报为「实时通信已开启」。
