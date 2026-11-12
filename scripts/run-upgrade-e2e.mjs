@@ -703,12 +703,16 @@ try {
       }
     }
     if (currentPlan.status === 'waiting') {
-      if (currentPlan.current_step !== 'contract_migrations' || currentApproved) throw new Error('Unexpected current Release wait')
-      currentPlan = (await api(`/admin/operations/upgrades/${currentPlanId}/approve-contract`, {
-        token: currentToken, method: 'POST',
-      })).data
-      currentApproved = true
-      continue
+      if (currentPlan.current_step !== 'contract_migrations') throw new Error('Unexpected current Release wait')
+      if (!currentApproved) {
+        currentPlan = (await api(`/admin/operations/upgrades/${currentPlanId}/approve-contract`, {
+          token: currentToken, method: 'POST',
+        })).data
+        if (currentPlan?.contract_approved !== true) throw new Error('Current Release contract approval was not persisted')
+        currentApproved = true
+        continue
+      }
+      if (currentPlan.contract_approved !== true) throw new Error('Current Release lost contract approval')
     }
     if (currentPlan.current_step === 'health_check' || currentPlan.current_step === 'final_health') {
       const consumerOutput = await run(php, [path.join('apps', 'backend', 'think'), 'lc:scheduler:run-once', '--max-jobs=1', '--max-ms=100'], dbEnv)
