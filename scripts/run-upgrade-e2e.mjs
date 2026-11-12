@@ -322,7 +322,7 @@ try {
   const connectScript = '$dsn="mysql:host=".getenv("DATABASE_HOSTNAME").";port=".getenv("DATABASE_HOSTPORT").";dbname=".getenv("DATABASE_DATABASE").";charset=utf8mb4";$pdo=new PDO($dsn,(string)getenv("DATABASE_USERNAME"),(string)getenv("DATABASE_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);'
   await run(php, ['-r', connectScript
     + '$pdo->exec("CREATE PROCEDURE lc_s11_assert_legacy_seed() COMMENT \'e2e-custom-procedure\' SELECT 1");'
-    + '$pdo->exec("UPDATE system SET value=\'e2e-custom-value\' WHERE id=1");'], dbEnv)
+    + '$pdo->exec("UPDATE `system` SET value=\'e2e-custom-value\' WHERE id=1");'], dbEnv)
 
   // 旧版夹具的账本尚无 S11，当前代码身份不能领取任务。这里写入
   // 旧部署最近一次 cron 运行的历史状态夹具；激活后再真实执行
@@ -453,7 +453,7 @@ try {
         negativeStage = 'unknown'
         console.log('[upgrade-e2e] custom procedure collision rejected without overwrite')
       } else {
-        await run(php, ['-r', connectScript + '$pdo->exec("UPDATE system SET value=\'lovecards.cn\' WHERE id=1");'], dbEnv)
+        await run(php, ['-r', connectScript + '$pdo->exec("UPDATE `system` SET value=\'lovecards.cn\' WHERE id=1");'], dbEnv)
         negativeStage = 'done'
         console.log('[upgrade-e2e] unknown legacy row rejected and repaired for explicit retry')
       }
@@ -484,7 +484,7 @@ try {
       if (plan?.contract_approved !== true) throw new Error('Approved waiting plan lost its contract approval')
     }
     if (plan.current_step === 'contract_migrations' && approved && contractGuardStage === 'inject') {
-      await run(php, ['-r', connectScript + '$pdo->exec("UPDATE system SET value=\'changed-after-approval\' WHERE id=1");'], dbEnv)
+      await run(php, ['-r', connectScript + '$pdo->exec("UPDATE `system` SET value=\'changed-after-approval\' WHERE id=1");'], dbEnv)
       await api(`/admin/operations/upgrades/${planId}/advance`, { token, method: 'POST', expected: [500] })
       plan = (await api(`/admin/operations/upgrades/${planId}`, { token })).data
       if (plan.status !== 'failed' || plan.current_step !== 'contract_migrations') {
@@ -494,7 +494,7 @@ try {
         + '$status=$pdo->query("SELECT status FROM system_upgrade_steps WHERE migration_id=\'20261112000001\'")->fetchColumn();'
         + 'if($status!=="failed")exit(1);'
         + 'foreach(["system","permissions","role_permissions","role_capabilities"] as $table){$q=$pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?");$q->execute([$table]);if((int)$q->fetchColumn()!==1)exit(1);}'
-        + '$pdo->exec("UPDATE system SET value=\'lovecards.cn\' WHERE id=1");'], dbEnv)
+        + '$pdo->exec("UPDATE `system` SET value=\'lovecards.cn\' WHERE id=1");'], dbEnv)
       contractGuardStage = 'retry'
       previousRevision = Number(plan.revision)
       console.log('[upgrade-e2e] post-approval data change rejected before DROP; repaired for explicit retry')
