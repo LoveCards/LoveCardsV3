@@ -138,13 +138,6 @@ jobs:
         env:
           LOVECARDS_E2E_DB_SAFETY_LIVE: '1'
           LOVECARDS_E2E_DB_SAFETY_NAME: lovecards_e2e_collision_ci_${{ github.run_id }}_${{ github.run_attempt }}
-      - name: Run SDK, Admin and Theme E2E in one isolated database
-        run: npm run test:admin:e2e
-        env:
-          LOVECARDS_E2E_ISOLATED: '1'
-          LOVECARDS_E2E_DB_NAME: lovecards_e2e_community_ci_${{ github.run_id }}_${{ github.run_attempt }}
-          LOVECARDS_E2E_RUN_SDK_INTEGRATION: '1'
-          LOVECARDS_E2E_RUN_THEME: '1'
       - name: Verify clean-install and migrated schemas match
         run: npm run test:schema:e2e
         env:
@@ -155,6 +148,13 @@ jobs:
           LOVECARDS_UPGRADE_E2E_ISOLATED: '1'
           LOVECARDS_UPGRADE_E2E_DB_NAME: lovecards_e2e_upgrade_ci_${{ github.run_id }}_${{ github.run_attempt }}
           LOVECARDS_UPGRADE_E2E_PORT: '16003'
+      - name: Run SDK, Admin and Theme E2E in one isolated database
+        run: npm run test:admin:e2e
+        env:
+          LOVECARDS_E2E_ISOLATED: '1'
+          LOVECARDS_E2E_DB_NAME: lovecards_e2e_community_ci_${{ github.run_id }}_${{ github.run_attempt }}
+          LOVECARDS_E2E_RUN_SDK_INTEGRATION: '1'
+          LOVECARDS_E2E_RUN_THEME: '1'
       - run: npm run build
       - name: Upload integration failure artifacts
         if: failure()
