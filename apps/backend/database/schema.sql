@@ -166,8 +166,8 @@ CREATE TABLE `images` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE `likes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `aid` int(11) NOT NULL COMMENT '应用ID (legacy)',
-  `pid` int(11) NOT NULL COMMENT '条目ID (legacy)',
+  `aid` int(11) DEFAULT NULL COMMENT '应用ID (legacy)',
+  `pid` int(11) DEFAULT NULL COMMENT '条目ID (legacy)',
   `ref_type` varchar(32) NOT NULL COMMENT '内容类型: card, comment',
   `ref_id` int(11) NOT NULL COMMENT '内容ID',
   `uid` int(11) NOT NULL,
