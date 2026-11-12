@@ -228,9 +228,15 @@ try {
             if ($e2eUserId === 0) {
                 $e2eNumber = 'e2e' . bin2hex(random_bytes(12));
                 $e2eUid = (string) random_int(100000000000, 999999999999);
-                $insert = $databasePdo->prepare('INSERT INTO `users` (`uid`,`number`,`avatar`,`email`,`phone`,`username`,`password`,`status`,`roles_id`,`security_version`,`created_at`,`updated_at`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
+                $legacyRolesColumn = $mode === 'create-legacy-prior';
+                $insert = $databasePdo->prepare($legacyRolesColumn
+                    ? 'INSERT INTO `users` (`uid`,`number`,`avatar`,`email`,`phone`,`username`,`password`,`status`,`roles_id`,`security_version`,`created_at`,`updated_at`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+                    : 'INSERT INTO `users` (`uid`,`number`,`avatar`,`email`,`phone`,`username`,`password`,`status`,`security_version`,`created_at`,`updated_at`) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
                 $now = date('Y-m-d H:i:s');
-                $insert->execute([$e2eUid, $e2eNumber, '', $e2eEmail, '', $e2eUsername, password_hash($e2ePassword, PASSWORD_DEFAULT), 0, json_encode($e2eRoleIds), 1, $now, $now]);
+                $values = [$e2eUid, $e2eNumber, '', $e2eEmail, '', $e2eUsername, password_hash($e2ePassword, PASSWORD_DEFAULT), 0];
+                if ($legacyRolesColumn) $values[] = json_encode($e2eRoleIds);
+                array_push($values, 1, $now, $now);
+                $insert->execute($values);
                 $e2eUserId = (int) $databasePdo->lastInsertId();
                 $registry = $databasePdo->prepare('INSERT INTO `user_uid_registry` (`uid`,`user_id`,`issued_at`) VALUES (?,?,?)');
                 $registry->execute([$e2eUid, $e2eUserId, $now]);
