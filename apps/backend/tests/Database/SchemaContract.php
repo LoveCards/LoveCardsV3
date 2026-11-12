@@ -458,7 +458,7 @@ foreach ($migrationSqls as $name => $sql) {
             || count($phases ?: []) !== 2
             || !str_contains($phases[1], 'LoveCards:20261112000001:legacy-seed-v1')
             || !str_contains($phases[1], 'ROUTINE_COMMENT')
-            || preg_match('/DROP\s+PROCEDURE\s+`lc_s11_assert_legacy_seed`/i', $phases[1]) !== 1) {
+            || preg_match('/DROP\s+PROCEDURE\s+(?:IF\s+EXISTS\s+)?`lc_s11_assert_legacy_seed`/i', $phases[1]) !== 1) {
             fail('S11 cleanup 仅在受控 Contract 中核验所有权并清理过程');
         } else {
             pass('S11 cleanup 受控 Contract 核验过程所有权');
