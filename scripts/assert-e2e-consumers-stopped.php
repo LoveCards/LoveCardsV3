@@ -8,6 +8,15 @@ if (getenv('LOVECARDS_E2E_ISOLATED') !== '1'
     fwrite(STDERR, "Refusing non-isolated drain fixture\n");
     exit(2);
 }
+$phase = (string) ($argv[1] ?? '');
+// The reviewed compatibility Release predates phase substitution. During
+// R2 activation it passes this placeholder literally; only the new Release
+// may supply an actual contract phase and prove Web requests are quiesced.
+if ($phase === '{phase}') $phase = 'activation';
+if (!in_array($phase, ['activation', 'contract'], true)) {
+    fwrite(STDERR, "Invalid isolated drain phase\n");
+    exit(2);
+}
 $dsn = 'mysql:host=' . getenv('DATABASE_HOSTNAME') . ';port=' . getenv('DATABASE_HOSTPORT')
     . ';dbname=' . getenv('DATABASE_DATABASE') . ';charset=utf8mb4';
 $pdo = new PDO($dsn, (string) getenv('DATABASE_USERNAME'), (string) getenv('DATABASE_PASSWORD'),
@@ -20,4 +29,7 @@ foreach (["SELECT COUNT(*) FROM event_deliveries WHERE status = 'processing'",
         exit(1);
     }
 }
-echo json_encode(['workers_stopped' => true, 'scheduled_trigger_stopped' => true, 'restart_disabled' => true], JSON_THROW_ON_ERROR), PHP_EOL;
+$proof = ['workers_stopped' => true, 'scheduled_trigger_stopped' => true, 'restart_disabled' => true];
+// 隔离 E2E 没有外部 Web 流量；此证明仅用于覆盖 Contract 门禁协议。
+if ($phase === 'contract') $proof['web_requests_quiesced'] = true;
+echo json_encode($proof, JSON_THROW_ON_ERROR), PHP_EOL;

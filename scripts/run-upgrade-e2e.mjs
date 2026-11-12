@@ -27,6 +27,9 @@ const releaseCopyExcludedRoots = new Set([
 ])
 const contractProbeTable = 'e2e_upgrade_contract_probe'
 const contractProbeMigration = '20991231235959_e2e_contract_probe.sql'
+// The reviewed compatibility Release is deliberately built from its committed source.
+// The current Release deletes legacy likes columns and requires this predecessor.
+const compatibilityCommit = '034ce0a0'
 
 if (process.env.LOVECARDS_UPGRADE_E2E_ISOLATED !== '1') {
   throw new Error('Refusing upgrade E2E: set LOVECARDS_UPGRADE_E2E_ISOLATED=1')
@@ -215,7 +218,20 @@ async function prepareReleaseSource(destination) {
       return true
     },
   })
+}
 
+async function prepareCompatibilitySource(destination, php, temporaryRoot) {
+  const archive = path.join(temporaryRoot, 'compatibility-source.zip')
+  const extractRoot = path.join(temporaryRoot, 'compatibility-source')
+  await run('git', ['archive', '--format=zip', `--output=${archive}`, compatibilityCommit, 'apps/backend'])
+  const extract = '$zip=new ZipArchive();if($zip->open($argv[1])!==true||!$zip->extractTo($argv[2]))exit(1);$zip->close();'
+  await run(php, ['-r', extract, archive, extractRoot])
+  await cp(path.join(extractRoot, 'apps', 'backend'), destination, { recursive: true })
+  // Composer dependencies are installed by CI and intentionally absent from Git.
+  await cp(path.join(backendRoot, 'vendor'), path.join(destination, 'vendor'), { recursive: true })
+}
+
+async function addContractProbe(destination) {
   const migration = [
     '-- E2E-only migration injected into the disposable Release source.',
     '-- @lc-phase preflight',
@@ -247,10 +263,13 @@ const { binary: php } = resolveSupportedPhp()
 const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'lovecards-upgrade-e2e-'))
 const instanceRoot = path.join(temporaryRoot, 'instance')
 const releaseSource = path.join(temporaryRoot, 'release-source')
+const currentReleaseSource = path.join(temporaryRoot, 'current-release-source')
 const privateKey = path.join(temporaryRoot, 'release-private.pem')
 const publicKey = path.join(temporaryRoot, 'release-public.pem')
 const releaseZip = path.join(temporaryRoot, 'release.zip')
+const currentReleaseZip = path.join(temporaryRoot, 'current-release.zip')
 const releaseId = `upgrade-e2e-${Date.now()}`
+const currentReleaseId = `${releaseId}-current`
 const bundledOpenSsl = path.join(path.dirname(php), 'extras', 'ssl', 'openssl.cnf')
 const openSslConfig = process.env.OPENSSL_CONF || (existsSync(bundledOpenSsl) ? bundledOpenSsl : '')
 const randFile = path.join(temporaryRoot, 'openssl.rand')
@@ -310,7 +329,7 @@ try {
     RANDFILE: randFile,
   })
   const trustedKeys = JSON.stringify({ 'upgrade-e2e-key': publicKey })
-  dbEnv.PHP_LC_RUNTIME_DRAIN_COMMAND_JSON = JSON.stringify([php, path.join(root, 'scripts/assert-e2e-consumers-stopped.php')])
+  dbEnv.PHP_LC_RUNTIME_DRAIN_COMMAND_JSON = JSON.stringify([php, path.join(root, 'scripts/assert-e2e-consumers-stopped.php'), 'contract'])
 
   await run(php, ['scripts/bootstrap-e2e.php', 'create-legacy-prior', database], dbEnv)
   databaseCreated = true
@@ -339,8 +358,8 @@ try {
   await run(php, ['-r', configureScheduledCron], dbEnv)
   console.log('[upgrade-e2e] previous Release cron evidence prepared')
 
-  await prepareReleaseSource(releaseSource)
-  console.log('[upgrade-e2e] isolated Release source includes an E2E-only contract migration')
+  await prepareCompatibilitySource(releaseSource, php, temporaryRoot)
+  console.log('[upgrade-e2e] isolated compatibility Release source prepared from reviewed commit')
 
   const buildOutput = await run(php, [
     path.join('apps', 'backend', 'think'), 'lc:release:build', releaseZip,
@@ -562,15 +581,6 @@ try {
   servedRelease ||= finalHeader === releaseId
   if (!servedRelease) throw new Error('No HTTP response proved that the activated Release served subsequent requests')
 
-  const probeScript = [
-    '$dsn="mysql:host=".getenv("DATABASE_HOSTNAME").";port=".getenv("DATABASE_HOSTPORT").";dbname=".getenv("DATABASE_DATABASE").";charset=utf8mb4";',
-    '$pdo=new PDO($dsn,(string)getenv("DATABASE_USERNAME"),(string)getenv("DATABASE_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);',
-    `$value=$pdo->query("SELECT contract_marker FROM ${contractProbeTable} WHERE id=1")->fetchColumn();`,
-    'if($value!=="contract-complete"){fwrite(STDERR,"contract probe mismatch\\n");exit(1);}echo $value;',
-  ].join('')
-  const contractProbe = await run(php, ['-r', probeScript], dbEnv)
-  if (contractProbe !== 'contract-complete') throw new Error('Contract migration fixture result is invalid')
-
   const s11Script = [
     '$dsn="mysql:host=".getenv("DATABASE_HOSTNAME").";port=".getenv("DATABASE_HOSTPORT").";dbname=".getenv("DATABASE_DATABASE").";charset=utf8mb4";',
     '$pdo=new PDO($dsn,(string)getenv("DATABASE_USERNAME"),(string)getenv("DATABASE_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);',
@@ -583,9 +593,150 @@ try {
     'if(!is_array($state)||$state["status"]!=="complete"){fwrite(STDERR,"S11 cleanup ledger not complete");exit(1);}',
     '$routine=$pdo->query("SELECT COUNT(*) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA=DATABASE() AND ROUTINE_NAME=\'lc_s11_assert_legacy_seed\'")->fetchColumn();',
     'if((int)$routine!==0){fwrite(STDERR,"S11 procedure remains");exit(1);}',
-    '$pdo->exec("DROP TABLE e2e_upgrade_contract_probe");echo "S11 contracts complete";',
+    'echo "S11 contracts complete";',
   ].join('')
   console.log(`[upgrade-e2e] ${await run(php, ['-r', s11Script], dbEnv)}`)
+
+  // R2 is a separate signed Release. Its source range starts at the reviewed
+  // compatibility migration; it must never be advertised as a direct upgrade
+  // from the pre-S11 fixture.
+  await prepareReleaseSource(currentReleaseSource)
+  await addContractProbe(currentReleaseSource)
+  const currentBuildOutput = await run(php, [
+    path.join('apps', 'backend', 'think'), 'lc:release:build', currentReleaseZip,
+    '--source', currentReleaseSource,
+    '--release-id', currentReleaseId,
+    '--release-version', '99.0.1-e2e',
+    '--build', currentReleaseId,
+    '--sequence', '2',
+    '--source-schema-min', '20261112000003',
+    '--private-key', privateKey,
+    '--key-id', 'upgrade-e2e-key',
+    '--optional-facilities', 'redis,worker',
+  ], { ...dbEnv, LC_RELEASE_TRUSTED_KEYS_JSON: trustedKeys, PHP_LC_RELEASE_TRUSTED_KEYS_JSON: trustedKeys })
+  if (!currentBuildOutput.includes(currentReleaseId) || (await stat(currentReleaseZip)).size < 1) {
+    throw new Error('Current signed Release builder returned an invalid artifact')
+  }
+  console.log(`[upgrade-e2e] signed current Release built: ${currentReleaseId}`)
+
+  await stop(backend)
+  dbEnv.PHP_LC_RUNTIME_DRAIN_COMMAND_JSON = JSON.stringify([php, path.join(root, 'scripts/assert-e2e-consumers-stopped.php'), '{phase}'])
+  backend = start(process.execPath, ['scripts/dev-backend.mjs'], {
+    ...dbEnv,
+    LC_RELEASE_TRUSTED_KEYS_JSON: trustedKeys,
+    PHP_LC_RELEASE_TRUSTED_KEYS_JSON: trustedKeys,
+    LOVECARDS_DEV_BACKEND_PORT: String(backendPort),
+    LOVECARDS_DEV_PHP_POST_MAX_SIZE: process.env.LOVECARDS_UPGRADE_E2E_PHP_POST_MAX_SIZE || '768M',
+    LOVECARDS_DEV_PHP_UPLOAD_MAX_FILESIZE: process.env.LOVECARDS_UPGRADE_E2E_PHP_UPLOAD_MAX_FILESIZE || '512M',
+    LOVECARDS_DEV_PHP_INI: process.env.LOVECARDS_UPGRADE_E2E_PHP_INI || '{"display_errors":"0"}',
+    LOVECARDS_E2E_ISOLATED: '1',
+    LOVECARDS_ALLOW_UNSUPPORTED_PHP: process.env.LOVECARDS_ALLOW_UNSUPPORTED_PHP || '0',
+  }, 'inherit', true)
+  await waitFor(`http://127.0.0.1:${backendPort}/api/cards?list_rows=1`)
+  const currentLogin = await api('/session/login', { method: 'POST', json: { account: adminAccount, password: adminPassword } })
+  const currentToken = currentLogin.data?.token
+  if (typeof currentToken !== 'string' || currentToken === '') throw new Error('Current Release admin login failed')
+
+  const currentForm = new FormData()
+  currentForm.set('file', await openAsBlob(currentReleaseZip, { type: 'application/zip' }), 'release.zip')
+  let currentPlan = (await api('/admin/operations/upgrades', {
+    token: currentToken, method: 'POST', body: currentForm, expected: [201],
+  })).data
+  if (currentPlan?.release_id !== currentReleaseId || typeof currentPlan?.plan_id !== 'string') {
+    throw new Error('Current Release plan creation failed')
+  }
+  const currentPlanId = currentPlan.plan_id
+  let currentApproved = false
+  const negativeContracts = [
+    {
+      id: '20261113000008', label: 'nonempty images',
+      inject: '$pdo->exec("INSERT INTO images (aid,pid,user_id,url,created_at) VALUES (0,0,0,\'e2e-legacy-image\',UTC_TIMESTAMP())");',
+      repair: '$pdo->exec("DELETE FROM images WHERE url=\'e2e-legacy-image\'");',
+    },
+    {
+      id: '20261113000010', label: 'nonzero tags_map.status',
+      inject: '$pdo->exec("INSERT INTO tags_map (aid,pid,tag_id,status) VALUES (0,-999999,0,1)");',
+      repair: '$pdo->exec("DELETE FROM tags_map WHERE pid=-999999 AND status=1");',
+    },
+    {
+      id: '20261113000011', label: 'custom recipient_rule',
+      inject: '$pdo->exec("UPDATE notification_policies SET recipient_rule=\'e2e-custom\' ORDER BY id LIMIT 1");',
+      repair: '$pdo->exec("UPDATE notification_policies SET recipient_rule=\'handler\' WHERE recipient_rule=\'e2e-custom\'");',
+    },
+  ]
+  let negativeIndex = 0
+  for (let attempt = 0; attempt < 128 && currentPlan.status !== 'completed'; attempt++) {
+    if (currentPlan.status === 'failed' || currentPlan.status === 'recovered') {
+      throw new Error(`Current Release entered terminal state: ${currentPlan.status}`)
+    }
+    // The coordinator advances one migration at a time. Read the durable
+    // ledger to inject only when the target migration is next in verify.
+    if (currentPlan.current_step === 'verify_migrations' && negativeIndex < negativeContracts.length) {
+      const scenario = negativeContracts[negativeIndex]
+      const nextId = await run(php, ['-r', connectScript
+        + 'echo $pdo->query("SELECT migration_id FROM system_upgrade_steps WHERE phase=\'verify\' AND status<>\'complete\' ORDER BY migration_id LIMIT 1")->fetchColumn() ?: "";'], dbEnv)
+      if (nextId !== '' && nextId > scenario.id) throw new Error(`Missed negative verify fixture for ${scenario.id}`)
+      if (nextId === scenario.id) {
+        await run(php, ['-r', connectScript + scenario.inject], dbEnv)
+        await api(`/admin/operations/upgrades/${currentPlanId}/advance`, {
+          token: currentToken, method: 'POST', expected: [500],
+        })
+        currentPlan = (await api(`/admin/operations/upgrades/${currentPlanId}`, { token: currentToken })).data
+        if (currentPlan.status !== 'failed' || currentPlan.current_step !== 'verify_migrations') {
+          throw new Error(`${scenario.label} did not block current Release verify`)
+        }
+        const inspect = connectScript
+          + `$state=$pdo->query("SELECT status FROM system_upgrade_steps WHERE migration_id='${scenario.id}'")->fetchColumn();`
+          + 'if($state!=="failed")exit(1);'
+        await run(php, ['-r', inspect + scenario.repair], dbEnv)
+        currentPlan = (await api(`/admin/operations/upgrades/${currentPlanId}/advance`, {
+          token: currentToken, method: 'POST',
+        })).data
+        if (currentPlan.status === 'failed' || currentPlan.current_step !== 'verify_migrations') {
+          throw new Error(`${scenario.label} failed to resume after explicit retry`)
+        }
+        console.log(`[upgrade-e2e] ${scenario.label} rejected, repaired and explicitly retried`)
+        negativeIndex++
+        continue
+      }
+    }
+    if (currentPlan.status === 'waiting') {
+      if (currentPlan.current_step !== 'contract_migrations' || currentApproved) throw new Error('Unexpected current Release wait')
+      currentPlan = (await api(`/admin/operations/upgrades/${currentPlanId}/approve-contract`, {
+        token: currentToken, method: 'POST',
+      })).data
+      currentApproved = true
+      continue
+    }
+    if (currentPlan.current_step === 'health_check' || currentPlan.current_step === 'final_health') {
+      const consumerOutput = await run(php, [path.join('apps', 'backend', 'think'), 'lc:scheduler:run-once', '--max-jobs=1', '--max-ms=100'], dbEnv)
+      if (!consumerOutput.includes('claimed=')) throw new Error('Current Release consumer check failed')
+    }
+    currentPlan = (await api(`/admin/operations/upgrades/${currentPlanId}/advance`, {
+      token: currentToken, method: 'POST',
+    })).data
+  }
+  if (currentPlan.status !== 'completed' || !currentApproved || negativeIndex !== negativeContracts.length) {
+    throw new Error('Current Release upgrade did not complete all guarded scenarios')
+  }
+  const currentDetail = (await api(`/admin/operations/upgrades/${currentPlanId}`, { token: currentToken })).data
+  if (currentDetail?.status !== 'completed' || currentDetail?.release_id !== currentReleaseId
+    || currentDetail?.steps?.find((step) => step.name === 'contract_migrations')?.state !== 'succeeded') {
+    throw new Error('Current Release durable plan is inconsistent')
+  }
+  const currentPointer = (await readFile(path.join(instanceRoot, 'current'), 'utf8')).trim()
+  if (!currentPointer.includes(currentReleaseId)) throw new Error('Current Release pointer was not activated')
+  const probeScript = [
+    '$dsn="mysql:host=".getenv("DATABASE_HOSTNAME").";port=".getenv("DATABASE_HOSTPORT").";dbname=".getenv("DATABASE_DATABASE").";charset=utf8mb4";',
+    '$pdo=new PDO($dsn,(string)getenv("DATABASE_USERNAME"),(string)getenv("DATABASE_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);',
+    `$value=$pdo->query("SELECT contract_marker FROM ${contractProbeTable} WHERE id=1")->fetchColumn();`,
+    'if($value!=="contract-complete"){fwrite(STDERR,"contract probe mismatch\\n");exit(1);}',
+    'foreach(["images"] as $table){$q=$pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?");$q->execute([$table]);if((int)$q->fetchColumn()!==0)exit(1);}',
+    'foreach([["tags_map","status"],["notification_policies","recipient_rule"],["likes","aid"],["likes","pid"]] as [$table,$column]){$q=$pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=? AND COLUMN_NAME=?");$q->execute([$table,$column]);if((int)$q->fetchColumn()!==0)exit(1);}',
+    'foreach(["20261113000001","20261113000002","20261113000003","20261113000004","20261113000005","20261113000008","20261113000009","20261113000010","20261113000011"] as $id){$q=$pdo->prepare("SELECT status FROM system_upgrade_steps WHERE migration_id=?");$q->execute([$id]);if($q->fetchColumn()!=="complete")exit(1);}',
+    `$pdo->exec("DROP TABLE ${contractProbeTable}");echo "current contracts complete";`,
+  ].join('')
+  console.log(`[upgrade-e2e] ${await run(php, ['-r', probeScript], dbEnv)}`)
 
   await run(php, ['scripts/bootstrap-e2e.php', 'create', cleanDatabase], {
     ...dbEnv,
@@ -599,7 +750,7 @@ try {
     LC_SCHEMA_COMPARE_PASSWORD: databasePassword,
   }))
 
-  console.log(`[upgrade-e2e] PASS legacy S11, signed package, approval, schema consistency, activation and health (${observations.length} advances)`)
+  console.log(`[upgrade-e2e] PASS compatibility and current signed Releases, guarded retries, approval, schema consistency, activation and health (${observations.length} R1 advances)`)
   exitCode = 0
 } finally {
   await stop(backend)

@@ -153,6 +153,13 @@ try {
         if ($expectedMigrations < 1) {
             throw new RuntimeException('No database migrations found for E2E bootstrap');
         }
+        $priorMigrationIds = array_values(array_filter(array_map(
+            static fn(string $file): string => pathinfo($file, PATHINFO_FILENAME),
+            $migrationFiles
+        ), static fn(string $id): bool => strcmp($id, '20261112000001') < 0));
+        if ($mode === 'create-legacy-prior' && $priorMigrationIds === []) {
+            throw new RuntimeException('No prior migrations found before S11');
+        }
         if ($mode === 'create') {
             $lines = [];
             exec($php . ' ' . escapeshellarg(__DIR__ . '/record-installed-schema-e2e.php'), $lines, $exitCode);
@@ -160,16 +167,27 @@ try {
                 throw new RuntimeException('E2E install ledger failed: ' . implode("\n", $lines));
             }
         }
-        // 旧版库只应用已发布迁移；S11、S12 留给真实签名包升级计划。
+        // 旧版库只应用 S11 之前的迁移；之后所有迁移留给真实签名包升级计划。
         for ($attempt = 0; $attempt < $expectedMigrations * 8 + 1 && !$complete; $attempt++) {
             if ($mode !== 'create-legacy-prior') break;
             $ledgerExists = (int) $databasePdo->query("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'system_upgrade_steps'")->fetchColumn() === 1;
             if ($ledgerExists) {
-                $settledOthers = (int) $databasePdo->query("SELECT COUNT(*) FROM `system_upgrade_steps` WHERE `migration_id` NOT IN ('20261112000001', '20261112000002') AND `status` = 'complete'")->fetchColumn();
-                $newCount = (int) $databasePdo->query("SELECT COUNT(*) FROM `system_upgrade_steps` WHERE `migration_id` IN ('20261112000001', '20261112000002')")->fetchColumn();
-                if ($settledOthers === $expectedMigrations - 2 && $newCount === 0) {
+                $rows = $databasePdo->query('SELECT `migration_id`, `status` FROM `system_upgrade_steps`')->fetchAll(PDO::FETCH_KEY_PAIR);
+                $settledPrior = count($rows) === count($priorMigrationIds);
+                foreach ($priorMigrationIds as $id) {
+                    if (($rows[$id] ?? null) !== 'complete') {
+                        $settledPrior = false;
+                        break;
+                    }
+                }
+                if ($settledPrior) {
                     $complete = true;
                     break;
+                }
+                foreach (array_keys($rows) as $id) {
+                    if (strcmp((string) $id, '20261112000001') >= 0) {
+                        throw new RuntimeException('Prior-version E2E bootstrap crossed the S11 migration boundary');
+                    }
                 }
             }
             $lines = [];
@@ -180,11 +198,7 @@ try {
                 throw new RuntimeException('E2E migration failed: ' . implode("\n", $lines));
             }
 
-            // 每次 CLI 调用只推进一个 phase；不能仅根据本次输出的
-            // 单条记录判断全库完成。必须以账本全表和迁移文件数量交叉确认。
-            $ledgerCount = (int) $databasePdo->query('SELECT COUNT(*) FROM `system_upgrade_steps`')->fetchColumn();
-            $openCount = (int) $databasePdo->query("SELECT COUNT(*) FROM `system_upgrade_steps` WHERE `status` <> 'complete'")->fetchColumn();
-            $complete = $ledgerCount >= $expectedMigrations && $openCount === 0;
+            // 下一轮在执行任何新 phase 前重新核对全部 prior 身份与状态。
         }
         if ($mode === 'create') {
             $ledgerCount = (int) $databasePdo->query('SELECT COUNT(*) FROM `system_upgrade_steps`')->fetchColumn();
