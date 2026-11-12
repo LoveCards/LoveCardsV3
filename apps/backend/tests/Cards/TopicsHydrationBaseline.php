@@ -81,7 +81,7 @@ namespace {
     $assert(in_array(['where', 'tm.aid', 1], Db::$lastQuery?->calls ?? [], true), 'topic hydration must scope mapping rows to the active application');
     $assert(in_array(['where', 't.aid', 1], Db::$lastQuery?->calls ?? [], true), 'topic hydration must scope tags to the active application');
     $assert(in_array(['where', 't.status', 0], Db::$lastQuery?->calls ?? [], true), 'topic hydration must include active tags only');
-    $assert(in_array(['where', 'tm.status', 0], Db::$lastQuery?->calls ?? [], true), 'topic hydration must include active mappings only');
+    $assert(!in_array(['where', 'tm.status', 0], Db::$lastQuery?->calls ?? [], true), 'topic hydration must not query the retired mapping status');
     $assert(in_array(['whereNull', 'tm.deleted_at'], Db::$lastQuery?->calls ?? [], true), 'topic hydration must exclude deleted mappings');
     $assert(in_array(['whereNull', 't.deleted_at'], Db::$lastQuery?->calls ?? [], true), 'topic hydration must exclude deleted tags');
 

@@ -14,10 +14,8 @@ class Likes extends Model
 
     protected $schema = [
         'id' => 'int',
-        'aid' => 'int',       // legacy: app id
-        'pid' => 'int',       // legacy: content id
-        'ref_type' => 'string', // new: content type (card, comment)
-        'ref_id' => 'int',      // new: content id
+        'ref_type' => 'string', // 内容类型：card 或 comment
+        'ref_id' => 'int',      // 内容 ID
         'uid' => 'int',
         'ip' => 'varchar',
         'created_at' => 'timestamp',

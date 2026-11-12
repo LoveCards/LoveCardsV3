@@ -439,6 +439,11 @@ echo "\n--- 5. Prohibited Statements ---\n";
 $migrationNoComments = '';
 $s11Name = '20261112000001.sql';
 $s11ApprovedDrop = '/\bDROP\s+TABLE\s+`role_permissions`\s*,\s*`permissions`\s*,\s*`role_capabilities`\s*,\s*`system`\s*;/i';
+$approvedRetirements = [
+    '20261113000002.sql' => 'good',
+    '20261113000003.sql' => 'card_comment_pins',
+    '20261113000008.sql' => 'images',
+];
 foreach ($migrationSqls as $name => $sql) {
     $body = stripSqlComments($sql);
     if ($name === $s11Name) {
@@ -451,6 +456,19 @@ foreach ($migrationSqls as $name => $sql) {
         } else {
             pass('S11 Contract 以受控四表 DROP 结束');
             $body = preg_replace($s11ApprovedDrop, '', $body, 1);
+        }
+    } elseif (isset($approvedRetirements[$name])) {
+        $table = preg_quote($approvedRetirements[$name], '/');
+        $drop = '/\bDROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?`' . $table . '`\s*;/i';
+        $phases = preg_split('/^\s*--\s*@lc-phase\s+contract\s*$/mi', $sql, 2);
+        if (preg_match('/^\s*--\s*@lc-requires-upgrade-contract\s*$/mi', $sql) !== 1
+            || count($phases ?: []) !== 2
+            || preg_match('/\bDROP\s+TABLE\s+(?:IF\s+EXISTS\s+)?`' . $table . '`\s*;\s*$/i', trim(stripSqlComments($phases[1]))) !== 1
+            || preg_match_all($drop, $body) !== 1) {
+            fail("{$name} 必须以独立受控 {$approvedRetirements[$name]} DROP 结束");
+        } else {
+            pass("{$name} 独立受控 {$approvedRetirements[$name]} DROP");
+            $body = preg_replace($drop, '', $body, 1);
         }
     } elseif ($name === '20261112000002.sql') {
         $phases = preg_split('/^\s*--\s*@lc-phase\s+contract\s*$/mi', $sql, 2);
@@ -555,7 +573,7 @@ if ($migrationCombined !== '') {
     // 7f. Check migration doesn't contain destructive operations. DROP INDEX is
     // allowed for rebuilding a legacy index after a column rename; it does not
     // delete user data and is covered by the compatibility migration checks.
-    // 注释已移除，S11 的唯一受审多表 DROP 已单独核验并排除。
+    // 注释已移除，受审多表与独立退役 DROP 已逐项核验并排除。
     $destructiveDrops = $migrationNoComments;
     // Exempt DROP PROCEDURE (allowed)
     $destructiveDrops = preg_replace('/DROP\s+PROCEDURE\s+IF\s+EXISTS/i', '', $destructiveDrops);

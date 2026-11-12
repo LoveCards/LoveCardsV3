@@ -28,14 +28,14 @@ INSERT INTO `signal_policy_state` (`id`, `revision`, `overrides_json`, `generati
 INSERT INTO `notification_policy_versions` (`policy_revision`, `snapshot_json`, `source`, `reason`, `created_by`, `created_at`) VALUES
 (1, '{"content.comment.published":{"enabled":true,"locked":false,"user_disableable":true,"notification_type":"comment.reply"},"content.liked":{"enabled":true,"locked":false,"user_disableable":true,"notification_type":"content.card_liked"},"library.saved":{"enabled":true,"locked":false,"user_disableable":true,"notification_type":"library.saved"},"content.mentions.added":{"enabled":true,"locked":false,"user_disableable":true,"notification_type":"content.mentioned"},"message.sent":{"enabled":true,"locked":false,"user_disableable":true,"notification_type":"message"},"social.followed":{"enabled":true,"locked":false,"user_disableable":true,"notification_type":"social.followed"},"system.notification.issued":{"enabled":true,"locked":true,"user_disableable":false,"notification_type":"system.*"}}', 'seed', '通信运行时初始策略目录', NULL, UTC_TIMESTAMP(6));
 
-INSERT INTO `notification_policies` (`event_type`, `event_version`, `rule_key`, `enabled`, `notification_type`, `recipient_rule`, `user_disableable`, `locked`, `policy_revision`, `updated_by`, `created_at`, `updated_at`) VALUES
-('content.comment.published', 1, 'notify', 1, 'comment.reply', 'handler', 1, 0, 1, NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
-('content.liked', 1, 'notify', 1, 'content.card_liked', 'handler', 1, 0, 1, NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
-('library.saved', 1, 'notify', 1, 'library.saved', 'handler', 1, 0, 1, NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
-('content.mentions.added', 1, 'notify', 1, 'content.mentioned', 'handler', 1, 0, 1, NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
-('message.sent', 1, 'notify', 1, 'message', 'handler', 1, 0, 1, NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
-('social.followed', 1, 'notify', 1, 'social.followed', 'handler', 1, 0, 1, NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
-('system.notification.issued', 1, 'notify', 1, 'system.moderation', 'handler', 0, 1, 1, NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6));
+INSERT INTO `notification_policies` (`event_type`, `event_version`, `rule_key`, `enabled`, `notification_type`, `user_disableable`, `locked`, `policy_revision`, `updated_by`, `created_at`, `updated_at`) VALUES
+('content.comment.published', 1, 'notify', 1, 'comment.reply', 1, 0, 1, NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
+('content.liked', 1, 'notify', 1, 'content.card_liked', 1, 0, 1, NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
+('library.saved', 1, 'notify', 1, 'library.saved', 1, 0, 1, NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
+('content.mentions.added', 1, 'notify', 1, 'content.mentioned', 1, 0, 1, NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
+('message.sent', 1, 'notify', 1, 'message', 1, 0, 1, NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
+('social.followed', 1, 'notify', 1, 'social.followed', 1, 0, 1, NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6)),
+('system.notification.issued', 1, 'notify', 1, 'system.moderation', 0, 1, 1, NULL, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6));
 
 -- System role seed (is_system=1 for all 4 system roles)
 INSERT INTO `roles` (`id`, `name`, `slug`, `is_system`, `description`, `created_at`, `updated_at`, `deleted_at`) VALUES
@@ -58,8 +58,8 @@ INSERT INTO `roles` (`name`, `slug`, `is_system`, `description`, `created_at`, `
 -- ============================================================
 --  Initial Root User Seed
 -- ============================================================
-INSERT INTO `users` (`id`, `uid`, `number`, `avatar`, `email`, `phone`, `username`, `password`, `status`, `roles_id`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, '000100000000', '1000000000', '', 'admin@lovecards.cn', '', '超级管理员', '!', 0, '[1, 2, 3]', '2023-12-06 20:09:26', '2025-08-01 20:50:25', NULL);
+INSERT INTO `users` (`id`, `uid`, `number`, `avatar`, `email`, `phone`, `username`, `password`, `status`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, '000100000000', '1000000000', '', 'admin@lovecards.cn', '', '超级管理员', '!', 0, '2023-12-06 20:09:26', '2025-08-01 20:50:25', NULL);
 
 INSERT INTO `user_roles` (`user_id`, `role_id`, `created_at`) VALUES
 (1, 1, '2025-08-01 20:50:25'),

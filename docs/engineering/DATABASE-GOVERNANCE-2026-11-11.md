@@ -12,15 +12,15 @@
 
 | 候选表 | 所属与当前权威来源 | 历史迁移引用 | 退役前必须验证 | 当前处理 |
 |---|---|---|---|---|
-| `good` | Content/Likes；当前点赞事实在 `likes` | `20260727000001` 显式转换 good→likes，校验重复与旧字段冲突 | 旧迁移 complete/checksum 一致；每条源记录按 card/ref_id/uid 与 likes 对账，aid/ip/created_at 冲突不能吞掉；需考虑后续业务删除，不能重新全量补写已删点赞 | 保留；经升级前备份、差异处理和 Contract 批准后另写退役迁移 |
-| `images` | 旧内容媒体关联；当前 Files + `file_references`，卡片还存在旧 URL 表达 | 无已登记的 images 转换 SQL | 记录 aid/pid、URL、用户、软删除状态；确认文件对象可达、归属和公开性映射。仅有 URL 无法自动猜出存储驱动或文件身份 | 映射未明确或数据未核实即阻断 DROP |
+| `good` | Content/Likes；当前点赞事实在 `likes` | `20260727000001` 显式转换 good→likes，校验重复与旧字段冲突 | 旧迁移 complete/checksum 一致；非空旧表不能重新全量补写，以免复活已取消的点赞；须单独审定差异 | `20261113000002.sql` 只允许历史结构匹配的空表经独立 Contract 退役；非空实例阻断 |
+| `images` | 旧内容媒体关联；当前 Files + `file_references`，卡片还存在旧 URL 表达 | 历史迁移无 images 转换 SQL；11 月 13 日新增空表退役候选 `20261113000008.sql` | 非空数据仍需记录 aid/pid、URL、用户、软删除状态，确认文件对象可达、归属和公开性映射。仅有 URL 无法自动猜出文件身份 | 仅空表且结构匹配时允许受审 Contract；非空实例阻断，不隐式归档或转换 |
 | `system` | 旧站点键值；当前 Platform/Config 的 `configs` 与部署配置 | 无已登记的 system 转换 SQL | dev 11 行均为原始种子；其他实例存在非种子值时须人工审定配置归属、类型和秘密语义，不能自动覆盖新配置 | S11 候选 Contract 只允许精确原始种子；未知值阻断 |
 | `permissions` | 旧路由权限；当前 Platform/Rbac 的 capability + scope 模型 | 无已登记的逐路由权限转换 SQL | dev 66 行均为原始种子；自定义 slug/path/method 不能猜测为现 capability/scope | S11 候选 Contract 只允许精确原始种子；未知值阻断 |
 | `role_permissions` | 旧角色→路由权限；当前 `role_grants` | 无已登记转换 SQL；当前有到 roles 的外键 | dev 117 行均为原始种子，其中 14 行原本即指向不存在的权限 67–80；自定义关联须先审定 | S11 候选 Contract 在同一受审多表 DROP 中退役关联与 permissions；未知值阻断 |
 | `role_capabilities` | 旧无 scope 授权；当前 `role_grants`，目录在 `capabilities` | `20260727000001`、`20260728000001` 建表/种子，`20260804000001` 规范 capability 后转 role_grants | dev 152 个角色/能力对均为历史迁移原始集合；旧表此后不再同步，不能重灌以免复活已撤销权限 | S11 候选 Contract 只允许历史集合；未知值阻断 |
-| `card_comment_pins` | 旧卡片置顶关系；当前 `cards.pinned_comment_id` | `20260824000002` 从 comments.is_top 汇入；`20260824000003` 汇入 cards 指针 | 迁移只处理可见、未删除卡片/评论；现时指针可能已被用户修改。核验历史转换及异常记录，不能盲目要求两表当前完全相等或覆盖新选择；pinned_by/pinned_at 如需追溯须归档 | 保留；旧数据处理决定与备份验收后另行退役 |
+| `card_comment_pins` | 旧卡片置顶关系；当前 `cards.pinned_comment_id` | `20260824000002` 从 comments.is_top 汇入；`20260824000003` 汇入 cards 指针 | 现时指针可能已被用户修改，不能用旧行覆盖；Verify/Contract 核验当前指针及旧表身份。pinned_by/pinned_at 的历史值由升级前备份保存 | `20261113000003.sql` 经独立 Contract 才退役；需隔离升级验收与备份恢复演练 |
 
-S11 已在候选分支把 `system`、`permissions`、`role_permissions`、`role_capabilities` 从完整 `schema.sql` 移除，并新增 `20261112000001.sql` 的受控退役 Contract 与 `20261112000002.sql` 的独立过程清理 Contract；`good`、`images`、`card_comment_pins` 仍在目标 schema 中。其他候选获准退役时，也须在同一切片修改新装 schema 与新增迁移，保持干净安装和历史升级结果一致；历史 SQL、checksum 和迁移账本不改写。
+S11 已在候选分支把 `system`、`permissions`、`role_permissions`、`role_capabilities` 从完整 `schema.sql` 移除，并新增 `20261112000001.sql` 的受控退役 Contract 与 `20261112000002.sql` 的独立过程清理 Contract。当时 `good`、`images`、`card_comment_pins` 仍在目标 schema；后续 11 月 13 日切片另行处理。其他候选获准退役时，也须在同一切片修改新装 schema 与新增迁移，保持干净安装和历史升级结果一致；历史 SQL、checksum 和迁移账本不改写。
 
 干净安装与旧版本升级的**表、列、索引和外键**须一致；结构一致性测试不等于业务数据一致。`SchemaSeedBaseline` 阻止遗留种子回流，隔离数据库 `test:schema:e2e` 从旧版数据和 49 条已完成迁移出发，经真实签名包 UpgradeCoordinator、Backup Gate、Contract 批准执行 S11，再与干净安装比较终态。测试还覆盖同名自定义过程、未知旧行及批准后数据变化的阻断与显式修复重试。其他安装实例的自定义配置、授权或权限若不能精确证明可退役，前置校验必须失败，不能让表结构相同掩盖数据丢失。
 
@@ -62,3 +62,13 @@ S11 已在候选分支把 `system`、`permissions`、`role_permissions`、`role_
 本次检查 HEAD 中 44 份历史迁移：规范换行后的内容均未修改，`git diff --name-only -- apps/backend/database/migrations` 没有已跟踪 SQL 变更；本轮只新增迁移。
 
 但当前 Windows checkout 的 `core.autocrlf=true`，41 份历史 SQL 的工作树原始字节与 Git LF blob 不同。`MigrationDescriptor::fromSource` 对原始源码做 SHA-256，因此“Git 内容未修改”不等于“本机包 checksum 与 Linux 已部署账本相同”。发布必须使用确定的源码字节，并对照现网已应用 checksum。建议单独约束迁移 SQL 的发布换行和来源；不得直接改 checksum 算法、更新旧账本或忽略冲突以掩盖差异。本次新增 `.gitattributes`，将 `database/migrations/*.sql` 固定为 LF checkout，并把当前 Windows 工作树中的 41 份旧迁移从 CRLF 恢复为 Git blob 的 LF 字节；未更改旧迁移的 Git 内容或账本。跨平台一致性仍需用目标部署的实际账本 checksum 验证，不能仅凭本地规范化推断现网匹配。
+
+## 6. 2026-11-13 后续收束候选
+
+本节描述当前分支新增的受审迁移内容，**不表示已在共享 dev 或任何生产实例执行 Contract**。`20261113000008.sql` 仅允许空且符合旧结构的 `images` 表退役；非空实例须另行审定媒体映射，不能用文件名或 URL 猜测 `files` 身份。`20261113000009.sql` 清理 `library_items` 与 `view_history` 中和主键完全重复的 `UNIQUE(id)`，同名索引结构异常时阻断。`20261113000010.sql` 只允许所有历史值均为 `0` 的 `tags_map.status` 退役；非零值不能被新查询解释为有效映射。`20261113000011.sql` 只允许固定 `handler` 值的 `notification_policies.recipient_rule` 退役，管理 API 保留相同字段并从固定协议值派生；自定义规则阻断。
+
+R1 兼容源码是引入 `20261112000003` 的已提交版本（本地原始提交 `034ce0a0`），先发布并完成该迁移；R2 才停止写旧点赞列并执行删除。R2 构建器将 `source_schema_range.min` 限制为该前驱迁移，隔离升级 E2E 从 R1 Git 源码构建签名包再升级 R2。**这个构建检查只验证所声明的 schema 范围，不能证明线上活动 Release 的代码身份。**生产操作必须核验当前 Release pointer 与受审 R1 包身份、迁移账本 checksum 及备份，不能仅手工跑前驱 SQL 后从更早代码直接执行 R2 Contract。
+
+`20261113000003.sql` 与 `20261113000004.sql` 分别处理旧置顶关系和 `comments.is_top`。旧 `card_comment_pins` 行可非空且可能滞后于当前 `cards.pinned_comment_id`，不做相等校验、不回灌；`pinned_by/pinned_at` 仅由 Backup Gate 已核验的数据库备份保存，独立 Contract 获批后才可删除。当前指针自身指向异常评论时 Verify/Contract 必须阻断。`20261113000005.sql` 处理 `users.roles_id` 数据库列；旧 JSON 不回灌 `user_roles`，避免恢复已撤销的角色。上述候选均须隔离数据库执行并确认终态一致，不能据源文件存在声称 dev 已退役。
+
+四项都在 Verify 检查，并在受控 Contract 前重查；新装 `schema.sql` 与 `seed.sql` 同步收束。`card_drafts.version`、`user_uid_registry.retired_at`、`comments.data`、`view_history` 时间列和 `cards.views` 尚需独立的产品语义及实例数据核验，当前不随这批 Contract 删除。`files.ref_type/ref_id`、`cards.tags`、`messages.deleted_at` 仍有运行时读写，不能因外观相似归入冗余字段。

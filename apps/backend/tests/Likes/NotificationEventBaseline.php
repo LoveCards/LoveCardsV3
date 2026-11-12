@@ -280,6 +280,9 @@ namespace
     Comments::$rows[20] = ['id' => 20, 'pid' => 10, 'status' => 0, 'user_id' => 4, 'goods' => 0];
 
     $assert(Likes::like('card', 10, 1, '127.0.0.1') === 1, 'first card like should be created');
+    $assert(!array_key_exists('aid', \app\modules\Content\Infrastructure\Persistence\Model\Likes::$rows['card:10:1'])
+        && !array_key_exists('pid', \app\modules\Content\Infrastructure\Persistence\Model\Likes::$rows['card:10:1']),
+        'new likes must persist only canonical content references');
     $assert(count(LikeEventContainer::$events->events) === 1, 'first card like should publish one event');
     $cardEvent = LikeEventContainer::$events->events[0];
     $assert($cardEvent['type'] === 'content.liked', 'like event type mismatch');

@@ -153,13 +153,29 @@ try {
         'test-key', 'bad-key', '1.0.1', 'bad', 2
     ));
 
+    $write($source . '/database/migrations/20261112000003.sql', "-- @lc-phase expand\nSELECT 1;\n");
+    $write($source . '/database/migrations/20261113000001.sql', "-- @lc-phase verify\nSELECT 1;\n");
+    try {
+        $builder->build($source, $tmp . '/bad-r2.zip', $keyPath, 'test-key', 'bad-r2', '2.0.0', 'bad', 2);
+        throw new RuntimeException('R2 build accepted a source schema before its compatibility release');
+    } catch (RuntimeException $e) {
+        if (!str_contains($e->getMessage(), '20261112000003')) throw $e;
+    }
+    if (is_file($tmp . '/bad-r2.zip')) throw new RuntimeException('rejected R2 build published an artifact');
+    $r2 = $builder->build(
+        $source, $tmp . '/r2.zip', $keyPath, 'test-key', 'r2', '2.0.0', 'r2', 2,
+        '20261112000003'
+    );
+    if (!is_file($r2['path'])) throw new RuntimeException('R2 build rejected the compatible source schema');
+
     $write($source . '/vendor/autoload.php', '<?php throw new RuntimeException("broken target catalog");');
     $throws(static fn() => $builder->build($source, $tmp . '/broken.zip', $keyPath, 'test-key', 'broken', '1.0.1', 'bad', 2));
     if (is_file($tmp . '/broken.zip')) throw new RuntimeException('failed catalog export must not publish an artifact');
 
     fwrite(STDOUT, "PASS signed builder produces an importer-compatible artifact without runtime secrets\n");
     fwrite(STDOUT, "PASS handler catalog uses one canonical hash at build, import and runtime\n");
-    fwrite(STDOUT, "PASS builder rejects in-tree outputs and signing keys\n3 Release builder tests passed.\n");
+    fwrite(STDOUT, "PASS builder rejects in-tree outputs and signing keys\n");
+    fwrite(STDOUT, "PASS R2 requires the published compatibility schema\n4 Release builder tests passed.\n");
 } finally {
     $cleanup($tmp);
 }

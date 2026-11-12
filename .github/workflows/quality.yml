@@ -119,6 +119,8 @@ jobs:
       LOVECARDS_E2E_ADMIN_PASSWORD: '123456'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # upgrade E2E archives the committed compatibility Release
       - uses: actions/setup-node@v4
         with:
           node-version: 24

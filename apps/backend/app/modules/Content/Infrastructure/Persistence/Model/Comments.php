@@ -22,7 +22,6 @@ class Comments extends Model
         'aid' => 'INT',
         'pid' => 'INT',
         'parent_id' => 'INT',
-        'is_top' => 'INT',
         'status' => 'INT',
         'user_id' => 'INT',
         'data' => 'JSON',
