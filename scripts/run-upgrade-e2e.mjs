@@ -27,9 +27,9 @@ const releaseCopyExcludedRoots = new Set([
 ])
 const contractProbeTable = 'e2e_upgrade_contract_probe'
 const contractProbeMigration = '20991231235959_e2e_contract_probe.sql'
-// The reviewed compatibility Release is deliberately built from its committed source.
-// The current Release deletes legacy likes columns and requires this predecessor.
-const compatibilityCommit = '034ce0a0'
+// The compatibility Release is built from the commit that introduced its
+// reviewed migration. This also works when a Git host recreates commit IDs.
+const compatibilityMigration = 'apps/backend/database/migrations/20261112000003.sql'
 
 if (process.env.LOVECARDS_UPGRADE_E2E_ISOLATED !== '1') {
   throw new Error('Refusing upgrade E2E: set LOVECARDS_UPGRADE_E2E_ISOLATED=1')
@@ -223,6 +223,8 @@ async function prepareReleaseSource(destination) {
 async function prepareCompatibilitySource(destination, php, temporaryRoot) {
   const archive = path.join(temporaryRoot, 'compatibility-source.zip')
   const extractRoot = path.join(temporaryRoot, 'compatibility-source')
+  const compatibilityCommit = await run('git', ['log', '-1', '--format=%H', '--', compatibilityMigration])
+  if (!/^[a-f0-9]{40}$/.test(compatibilityCommit)) throw new Error('Reviewed compatibility commit is unavailable')
   await run('git', ['archive', '--format=zip', `--output=${archive}`, compatibilityCommit, 'apps/backend'])
   const extract = '$zip=new ZipArchive();if($zip->open($argv[1])!==true||!$zip->extractTo($argv[2]))exit(1);$zip->close();'
   await run(php, ['-r', extract, archive, extractRoot])

@@ -67,7 +67,7 @@ S11 已在候选分支把 `system`、`permissions`、`role_permissions`、`role_
 
 本节描述当前分支新增的受审迁移内容，**不表示已在共享 dev 或任何生产实例执行 Contract**。`20261113000008.sql` 仅允许空且符合旧结构的 `images` 表退役；非空实例须另行审定媒体映射，不能用文件名或 URL 猜测 `files` 身份。`20261113000009.sql` 清理 `library_items` 与 `view_history` 中和主键完全重复的 `UNIQUE(id)`，同名索引结构异常时阻断。`20261113000010.sql` 只允许所有历史值均为 `0` 的 `tags_map.status` 退役；非零值不能被新查询解释为有效映射。`20261113000011.sql` 只允许固定 `handler` 值的 `notification_policies.recipient_rule` 退役，管理 API 保留相同字段并从固定协议值派生；自定义规则阻断。
 
-R1 兼容源码固定为提交 `034ce0a0`，先发布并完成 `20261112000003`；R2 才停止写旧点赞列并执行删除。R2 构建器将 `source_schema_range.min` 限制为该前驱迁移，隔离升级 E2E 从 R1 Git 源码构建签名包再升级 R2。**这个构建检查只验证所声明的 schema 范围，不能证明线上活动 Release 的代码身份。**生产操作必须核验当前 Release pointer 与受审 R1 包身份、迁移账本 checksum 及备份，不能仅手工跑前驱 SQL 后从更早代码直接执行 R2 Contract。
+R1 兼容源码是引入 `20261112000003` 的已提交版本（本地原始提交 `034ce0a0`），先发布并完成该迁移；R2 才停止写旧点赞列并执行删除。R2 构建器将 `source_schema_range.min` 限制为该前驱迁移，隔离升级 E2E 从 R1 Git 源码构建签名包再升级 R2。**这个构建检查只验证所声明的 schema 范围，不能证明线上活动 Release 的代码身份。**生产操作必须核验当前 Release pointer 与受审 R1 包身份、迁移账本 checksum 及备份，不能仅手工跑前驱 SQL 后从更早代码直接执行 R2 Contract。
 
 `20261113000003.sql` 与 `20261113000004.sql` 分别处理旧置顶关系和 `comments.is_top`。旧 `card_comment_pins` 行可非空且可能滞后于当前 `cards.pinned_comment_id`，不做相等校验、不回灌；`pinned_by/pinned_at` 仅由 Backup Gate 已核验的数据库备份保存，独立 Contract 获批后才可删除。当前指针自身指向异常评论时 Verify/Contract 必须阻断。`20261113000005.sql` 处理 `users.roles_id` 数据库列；旧 JSON 不回灌 `user_roles`，避免恢复已撤销的角色。上述候选均须隔离数据库执行并确认终态一致，不能据源文件存在声称 dev 已退役。
 
