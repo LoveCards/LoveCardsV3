@@ -8,9 +8,25 @@ on:
 jobs:
   frontend:
     runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     env:
       NUXT_PUBLIC_APP_ENV: production
       NUXT_PUBLIC_API_BASE: /api
+      LC_TEST_DB_HOST: 127.0.0.1
+      LC_TEST_DB_PORT: '3306'
+      LC_TEST_DB_USER: root
+      LC_TEST_DB_PASSWORD: root
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,6 +52,23 @@ jobs:
     strategy:
       matrix:
         php-version: ['8.1', '8.2']
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      LC_TEST_DB_HOST: 127.0.0.1
+      LC_TEST_DB_PORT: '3306'
+      LC_TEST_DB_USER: root
+      LC_TEST_DB_PASSWORD: root
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
