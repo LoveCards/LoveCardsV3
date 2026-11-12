@@ -59,7 +59,7 @@
 
 这层优先使用内存替身或最小框架替身，测试 Domain、Application、Service 和 Resource 的确定性行为。涉及真实 HTTP、真实数据库和 SDK 序列化的场景不能只停留在本层。
 
-数据库终态另用 `npm run test:schema:e2e` 验证：在两个一次性本地数据库分别执行干净安装与历史迁移，并比较结构和迁移账本；干净安装路径必须先记录与当前包匹配的 `CleanInstallReceipt` 才能标记历史迁移完成。该命令不属于 L1 静态基线。单元基线另需覆盖空库拒绝已有表、凭据缺失/指纹漂移拒绝账本补记、安装锁要求凭据和完整账本；凭据测试不代替真实数据库结构比较。
+数据库终态另用 `npm run test:schema:e2e` 验证：它复用签名升级 E2E，在一次性本地旧版库应用历史迁移，再由 `UpgradeCoordinator` 执行受控 S11 Contract；另一一次性库执行干净安装，最后比较表、列、索引和外键结构，并分别核验迁移账本已完成。干净安装路径必须先记录与当前包匹配的 `CleanInstallReceipt` 才能标记历史迁移完成。该命令不属于 L1 静态基线。单元基线另需覆盖空库拒绝已有表、凭据缺失/指纹漂移拒绝账本补记、安装锁要求凭据和完整账本；凭据测试不代替真实数据库结构比较。
 
 事件处理策略变更另需覆盖三层证据：模块测试证明 `scheduled` 与 `resident` 在 claim 事务内互斥、draining 阶段拒绝新领取、有效租约结算前不能激活目标、CAS 冲突不丢设置；隔离 MySQL 测试证明并发 CLI/Worker 不会跨模式领取且失败/重试账本仍可恢复；运行验收证明定时触发缺失或最近一次失败不会显示健康、实时启用要求 active/resident 和依赖就绪。HTTP 定时触发若提供，须验证未认证、错误凭据、非 POST、并发触发和批量上限。默认虚拟主机情形必须能在无 Redis/Worker/Gateway 下经定时消费完成通知等异步任务。普通用户请求不得成为隐藏消费入口。
 
@@ -126,7 +126,7 @@ npm.cmd run test:sdk:integration
 
 事件消费策略收敛后的升级 E2E 还需覆盖激活前后两个门禁：旧轮询站点没有近期有效定时触发时不得切 pointer；激活后定时模式须等新 Release 的一次成功 CLI/HTTP 运行，常驻模式须等匹配新 Release、Schema、Handler Catalog 的 Worker 心跳；选中实时通信时须同时检查 Redis/Gateway/Worker。健康失败必须保留失败 step，修复后可重试，不能把新 Release 标记为升级成功。
 
-`npm run test:upgrade:e2e` 在独立的 `lovecards_e2e_*` 数据库和临时实例根中生成真实签名 Release。它会把后端复制到系统临时目录，仅向该 Release 副本注入 E2E-only Contract migration，再通过 JWT/multipart 创建持久升级计划；测试必须验证提前批准被拒绝、计划进入 waiting、独立批准持久化、Contract SQL probe、激活、active pointer、Release header 与健康检查。工作树和生产 migration 不会被测试修改，临时数据库与 Release source 必须在 `finally` 清理。`npm run test:e2e:safety` 另覆盖 localhost fence、数据库命名限制、同名库碰撞及哨兵数据保留。
+`npm run test:upgrade:e2e` 在独立的 `lovecards_e2e_*` 数据库和临时实例根中生成真实签名 Release。旧版库从 `data.sql` 和 S11 之前的受审迁移构建；Release 副本另注入 E2E-only Contract probe，再通过 JWT/multipart 创建持久升级计划。测试验证提前批准被拒、计划等待和独立批准、真实 S11 四表退役及 Contract probe、激活、active pointer、Release header、最终健康，并与干净安装终态比较。负例包含未知旧行、同名自定义过程和审批后数据变化，修复后须显式重试；测试夹具构造的旧 cron 记录不等于真实旧部署运行证据。工作树和生产 migration 不会被测试修改，临时数据库与 Release source 必须在 `finally` 清理。`npm run test:e2e:safety` 另覆盖 localhost fence、数据库命名限制、同名库碰撞及哨兵数据保留。
 
 GitHub Actions 的 `integration` 作业使用 MySQL 8 和 Playwright Chromium，按“构建 SDK/打包主题 → 碰撞安全 → 组合 SDK/Admin/Theme E2E → 签名 Upgrade E2E → 全仓 build”的顺序运行。失败时上传 Playwright 报告、trace、截图、视频和 SDK 测试报告；长驻测试进程使用可回收的进程树，并有超时强制清理。
 

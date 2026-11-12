@@ -1,6 +1,6 @@
 # 系统生命周期、安装与升级
 
-> 2026-11-11 收敛：安装密钥与初始管理员凭据终结校验、显式失败重试、v2 阶段资格/Contract 暂停/最终健康和恢复结果区分已在本地实现；隔离 MariaDB 的 schema、备份及升级 E2E 已通过，dev 真实进程停止和运行验收仍须完成。完整状态见 [收敛设计](PLATFORM-CONVERGENCE-2026-11-11.md)，不能用本地基线替代部署证据。
+> 2026-11-12 状态：安装密钥与初始管理员凭据终结校验、显式失败重试、v2 阶段资格/Contract 暂停/最终健康和恢复结果区分已实现；隔离 MariaDB 的 schema、备份及签名升级 E2E 已通过。dev 已在源码工作树部署时验证旧 Worker/cron 停止与恢复，但该站点尚未通过签名包执行破坏性 Contract。完整状态见 [收敛设计](PLATFORM-CONVERGENCE-2026-11-11.md)，本地基线不能代替部署证据。
 
 LoveCards 的安装、数据库迁移、Release 导入、激活和恢复属于同一个系统生命周期。当前安装 Host 仍负责首次数据库连接、配置与密钥写入、目标 schema 和默认数据导入及安装锁；历史迁移身份由 SystemLifecycle 记入账本，旧版本结构变更由该模块执行。后续升级不得通过“解压覆盖当前目录 + 临时执行 SQL”绕过账本、签名、备份和恢复协议。
 
@@ -127,6 +127,8 @@ Contract 批准是独立权限 `system.update.contract`；普通升级权限不�
 
 这里的“恢复”当前是 **Release pointer 恢复**，不是整站自动回滚：普通恢复请求不会导入数据库 SQL，也不会调用文件 ZIP 的恢复原语。数据库回滚必须在维护窗口由受审计的 DBA/运维流程执行；文件恢复原语也应由明确的灾备编排调用。Contract 一旦进入 running/failed/succeeded，禁止仅回切代码，以免旧代码读取已经收缩的 schema。
 
+S11 的四张旧表退役使用新增受审迁移：`20261112000001.sql` 的 `preflight` 和 `verify` 逐行核对历史原始种子，`contract` 在执行前再次核对，并以单条多表 `DROP TABLE` 作为该迁移最后一条 SQL；`20261112000002.sql` 在独立 Contract 单元清理校验过程，过程缺失可重试完成，同名但非本迁移所有则拒绝。遇到自定义旧配置或授权即失败，必须先明确转换或归档。受控标记使独立 `lc:system:migrate --contract` 无权执行这两项清理，只有持有升级计划 Lease 的 `UpgradeCoordinator` 能在 Backup Gate、目标 Release 健康、消费者停机和独立批准后推进。MySQL/MariaDB 不承诺通用 DDL 回滚；若执行状态不确定，账本保留 running/failed，禁止自动重放或仅恢复 Release pointer。运维须停止消费者，核实实际表状态和备份 Artifact，在维护窗口按受审计的数据库恢复流程处理，再决定计划处置。
+
 ## Release 构建与上传限制
 
 签名 Release 由构建机执行，不能在 Web 请求中生成私钥或把私钥放入代码目录：
@@ -219,7 +221,7 @@ multipart body；诊断依赖请求的 `Content-Length` 与当前 PHP 指令。�
 
 2026-08-20 的历史验收记录为根质量门禁通过、后端递归基线 39/39；它不代表当前分支的测试数量或结果。独立的 localhost/一次性数据库升级 E2E 使用 Builder 生成真实签名 ZIP，经真实 JWT multipart 上传后由 HTTP API 逐单元推进，验证 active pointer、后续响应的 `X-LoveCards-Release-Id` 和持久化 `health_check` 成功状态。`/_lc/release-health` 的路由识别与 Release 标识由持久运行时基线覆盖。
 
-当前迁移目录已有 `contract` phase。E2E 仍在系统临时目录复制 Release source，并仅向该副本注入独立分段测试迁移，验证提前批准被拒、计划等待批准、批准持久化和 Contract SQL probe；隔离 E2E 的 drain 夹具只确认本机临时数据库无在途消费记录，不能证明真实部署的 Worker、cron/HTTP 触发器和自动重启入口已停止，也不能代替对每个实际 Contract 迁移的数据量、锁影响与恢复演练。激活后、Contract 前只能恢复一次由 `UpgradeCoordinatorBaseline`、`BehaviorBaseline` 与 `RecoveryBaseline` 的状态机测试保护；生产变更仍需在可丢弃的旧版本数据副本上演练。
+当前迁移目录已有 `contract` phase。E2E 在系统临时目录复制 Release source，向副本注入独立分段测试迁移，并从旧版数据与既有迁移账本出发验证真实 S11：同名自定义过程、未知旧行和审批后数据变化均须阻断删除；四表删除后的过程清理若遇同名外部过程须独立失败，移除后显式重试可完成。独立批准、四表 Contract、两份迁移账本完成、最终健康及与干净安装 schema 一致均通过。旧版近期 cron 记录由测试夹具构造，不能宣称旧部署定时器真实运行；激活后的消费者运行由真实 CLI 验证。隔离 E2E 的 drain 夹具只确认本机临时数据库无在途消费记录，不能证明真实部署的 Worker、cron/HTTP 触发器和自动重启入口已停止，也不能代替生产数据量、锁影响与恢复演练。激活后、Contract 前只能恢复一次由 `UpgradeCoordinatorBaseline`、`BehaviorBaseline` 与 `RecoveryBaseline` 的状态机测试保护；生产变更仍需在可丢弃的旧版本数据副本上演练。
 
 对中大型实例，当前 PHP 逻辑数据库备份与本地文件 ZIP 是正确性基线，不代表无限容量方案。上线前应按真实数据量测量备份时长、临时磁盘、锁/快照影响和恢复时间目标；达到阈值后，应通过 `BackupArtifactStore` 接入数据库原生备份及对象存储快照，而不是绕过 `backup_gate`。
 

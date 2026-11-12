@@ -12,6 +12,7 @@ import { detectUtf8mb4Collation } from './lib/mysql-collation.mjs'
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
 const backendRoot = path.join(root, 'apps', 'backend')
 const database = process.env.LOVECARDS_UPGRADE_E2E_DB_NAME || `lovecards_e2e_upgrade_${Date.now()}`
+const cleanDatabase = `${database}_clean`
 const databaseHost = process.env.LOVECARDS_E2E_DB_HOST || '127.0.0.1'
 const databasePort = process.env.LOVECARDS_E2E_DB_PORT || '3306'
 const databaseUser = process.env.LOVECARDS_E2E_DB_USER || 'root'
@@ -295,6 +296,7 @@ const dbEnv = {
 
 let backend
 let databaseCreated = false
+let cleanDatabaseCreated = false
 let exitCode = 1
 try {
   const keyScript = [
@@ -308,22 +310,34 @@ try {
     RANDFILE: randFile,
   })
   const trustedKeys = JSON.stringify({ 'upgrade-e2e-key': publicKey })
-  dbEnv.LC_RUNTIME_DRAIN_COMMAND_JSON = JSON.stringify([php, path.join(root, 'scripts/assert-e2e-consumers-stopped.php')])
+  dbEnv.PHP_LC_RUNTIME_DRAIN_COMMAND_JSON = JSON.stringify([php, path.join(root, 'scripts/assert-e2e-consumers-stopped.php')])
 
-  await run(php, ['scripts/bootstrap-e2e.php', 'create', database], dbEnv)
+  await run(php, ['scripts/bootstrap-e2e.php', 'create-legacy-prior', database], dbEnv)
   databaseCreated = true
-  console.log(`[upgrade-e2e] isolated database ready: ${database}`)
+  console.log(`[upgrade-e2e] isolated prior-version database ready before S11: ${database}`)
 
-  // 新安装故意不预设外部 cron；升级验收须显式声明并观察一次真实 CLI 消费。
+  // 签名升级前注入同名自定义过程和未映射旧数据：第一次 preflight
+  // 不得覆盖自定义过程；显式移除后第二次仍须因旧数据失败；
+  // 修复数据后由操作者显式重试并完成升级。
+  const connectScript = '$dsn="mysql:host=".getenv("DATABASE_HOSTNAME").";port=".getenv("DATABASE_HOSTPORT").";dbname=".getenv("DATABASE_DATABASE").";charset=utf8mb4";$pdo=new PDO($dsn,(string)getenv("DATABASE_USERNAME"),(string)getenv("DATABASE_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);'
+  await run(php, ['-r', connectScript
+    + '$pdo->exec("CREATE PROCEDURE lc_s11_assert_legacy_seed() COMMENT \'e2e-custom-procedure\' SELECT 1");'
+    + '$pdo->exec("UPDATE `system` SET value=\'e2e-custom-value\' WHERE id=1");'], dbEnv)
+
+  // 旧版夹具的账本尚无 S11，当前代码身份不能领取任务。这里写入
+  // 旧部署最近一次 cron 运行的历史状态夹具；激活后再真实执行
+  // 新 Release 的 CLI 消费，不能将该夹具当作旧进程运行验收。
   const configureScheduledCron = [
     '$dsn="mysql:host=".getenv("DATABASE_HOSTNAME").";port=".getenv("DATABASE_HOSTPORT").";dbname=".getenv("DATABASE_DATABASE").";charset=utf8mb4";',
     '$pdo=new PDO($dsn,(string)getenv("DATABASE_USERNAME"),(string)getenv("DATABASE_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);',
     '$pdo->exec("UPDATE eventing_consumer_state SET scheduled_trigger=\'cli\',revision=revision+1 WHERE id=1 AND mode=\'scheduled\' AND scheduled_trigger=\'none\'");',
     'if($pdo->query("SELECT scheduled_trigger FROM eventing_consumer_state WHERE id=1")->fetchColumn()!=="cli")exit(1);',
+    '$now=gmdate("Y-m-d H:i:s");',
+    '$insert=$pdo->prepare("INSERT INTO scheduler_runs (worker_id,trigger_source,started_at,finished_at,outcome,jobs_processed,release_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)");',
+    '$insert->execute(["previous-release-cron","cli",$now,$now,"ok",0,"legacy",$now,$now]);',
   ].join('')
   await run(php, ['-r', configureScheduledCron], dbEnv)
-  await run(php, [path.join('apps', 'backend', 'think'), 'lc:scheduler:run-once', '--max-jobs=1', '--max-ms=100'], dbEnv)
-  console.log('[upgrade-e2e] scheduled CLI cron declared and observed')
+  console.log('[upgrade-e2e] previous Release cron evidence prepared')
 
   await prepareReleaseSource(releaseSource)
   console.log('[upgrade-e2e] isolated Release source includes an E2E-only contract migration')
@@ -407,10 +421,45 @@ try {
   let ranActivatedConsumer = false
   let ranFinalConsumer = false
   let previousRevision = Number(plan.revision || 0)
+  let negativeStage = 'collision'
+  let contractGuardStage = 'inject'
+  let cleanupStage = 'pending'
   const observations = []
   for (let attempt = 0; attempt < 128; attempt++) {
     if (plan.status === 'completed') break
-    if (plan.status === 'failed' || plan.status === 'recovered') throw new Error(`Upgrade entered unexpected terminal state: ${plan.status}`)
+    if (plan.status === 'failed' && ((plan.current_step === 'preflight_migrations' && negativeStage !== 'finished')
+      || (plan.current_step === 'contract_migrations' && (contractGuardStage === 'retry' || cleanupStage === 'retry')))) {
+      // 清除失败原因后，由下一次 advance 显式重试。
+    } else if (plan.status === 'failed' || plan.status === 'recovered') {
+      throw new Error(`Upgrade entered unexpected terminal state: ${plan.status}`)
+    }
+    if (plan.current_step === 'preflight_migrations' && ['collision', 'unknown'].includes(negativeStage)) {
+      await api(`/admin/operations/upgrades/${planId}/advance`, { token, method: 'POST', expected: [500] })
+      plan = (await api(`/admin/operations/upgrades/${planId}`, { token })).data
+      if (plan.status !== 'failed' || plan.current_step !== 'preflight_migrations') {
+        throw new Error(`S11 ${negativeStage} did not fail the preflight plan step`)
+      }
+      const expectedComment = negativeStage === 'collision'
+        ? 'e2e-custom-procedure' : 'LoveCards:20261112000001:legacy-seed-v1'
+      const inspect = connectScript
+        + '$comment=$pdo->query("SELECT ROUTINE_COMMENT FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA=DATABASE() AND ROUTINE_NAME=\'lc_s11_assert_legacy_seed\'")->fetchColumn();'
+        + `if($comment!==${JSON.stringify(expectedComment)}){fwrite(STDERR,"unexpected routine owner");exit(1);}`
+        + '$status=$pdo->query("SELECT status FROM system_upgrade_steps WHERE migration_id=\'20261112000001\'")->fetchColumn();'
+        + 'if($status!=="failed"){fwrite(STDERR,"S11 failure was not durable");exit(1);}'
+        + 'foreach(["system","permissions","role_permissions","role_capabilities"] as $table){$q=$pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?");$q->execute([$table]);if((int)$q->fetchColumn()!==1)exit(1);}'
+      await run(php, ['-r', inspect], dbEnv)
+      if (negativeStage === 'collision') {
+        await run(php, ['-r', connectScript + '$pdo->exec("DROP PROCEDURE lc_s11_assert_legacy_seed");'], dbEnv)
+        negativeStage = 'unknown'
+        console.log('[upgrade-e2e] custom procedure collision rejected without overwrite')
+      } else {
+        await run(php, ['-r', connectScript + '$pdo->exec("UPDATE `system` SET value=\'lovecards.cn\' WHERE id=1");'], dbEnv)
+        negativeStage = 'done'
+        console.log('[upgrade-e2e] unknown legacy row rejected and repaired for explicit retry')
+      }
+      previousRevision = Number(plan.revision)
+      continue
+    }
     if (plan.current_step === 'health_check' && !ranActivatedConsumer) {
       const consumerOutput = await run(php, [path.join('apps', 'backend', 'think'), 'lc:scheduler:run-once', '--max-jobs=1', '--max-ms=100'], dbEnv)
       if (!consumerOutput.includes('claimed=')) throw new Error('Activated Release did not complete a scheduled consumer run')
@@ -434,11 +483,56 @@ try {
       }
       if (plan?.contract_approved !== true) throw new Error('Approved waiting plan lost its contract approval')
     }
+    if (plan.current_step === 'contract_migrations' && approved && contractGuardStage === 'inject') {
+      await run(php, ['-r', connectScript + '$pdo->exec("UPDATE `system` SET value=\'changed-after-approval\' WHERE id=1");'], dbEnv)
+      await api(`/admin/operations/upgrades/${planId}/advance`, { token, method: 'POST', expected: [500] })
+      plan = (await api(`/admin/operations/upgrades/${planId}`, { token })).data
+      if (plan.status !== 'failed' || plan.current_step !== 'contract_migrations') {
+        throw new Error('S11 Contract did not reject legacy data changed after approval')
+      }
+      await run(php, ['-r', connectScript
+        + '$status=$pdo->query("SELECT status FROM system_upgrade_steps WHERE migration_id=\'20261112000001\'")->fetchColumn();'
+        + 'if($status!=="failed")exit(1);'
+        + 'foreach(["system","permissions","role_permissions","role_capabilities"] as $table){$q=$pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?");$q->execute([$table]);if((int)$q->fetchColumn()!==1)exit(1);}'
+        + '$pdo->exec("UPDATE `system` SET value=\'lovecards.cn\' WHERE id=1");'], dbEnv)
+      contractGuardStage = 'retry'
+      previousRevision = Number(plan.revision)
+      console.log('[upgrade-e2e] post-approval data change rejected before DROP; repaired for explicit retry')
+      continue
+    }
+    if (plan.current_step === 'contract_migrations' && approved && cleanupStage === 'pending') {
+      const s11Complete = await run(php, ['-r', connectScript
+        + '$state=$pdo->query("SELECT status FROM system_upgrade_steps WHERE migration_id=\'20261112000001\'")->fetchColumn();'
+        + 'echo $state==="complete"?"yes":"no";'], dbEnv)
+      if (s11Complete === 'yes') {
+        // S11 已提交四表删除；用同名外部过程验证清理单元的所有权门禁。
+        await run(php, ['-r', connectScript
+          + '$pdo->exec("DROP PROCEDURE lc_s11_assert_legacy_seed");'
+          + '$pdo->exec("CREATE PROCEDURE lc_s11_assert_legacy_seed() COMMENT \'e2e-custom-cleanup\' SELECT 1");'], dbEnv)
+        await api(`/admin/operations/upgrades/${planId}/advance`, { token, method: 'POST', expected: [500] })
+        plan = (await api(`/admin/operations/upgrades/${planId}`, { token })).data
+        if (plan.status !== 'failed' || plan.current_step !== 'contract_migrations') {
+          throw new Error('S11 cleanup did not reject a foreign procedure')
+        }
+        await run(php, ['-r', connectScript
+          + '$state=$pdo->query("SELECT status FROM system_upgrade_steps WHERE migration_id=\'20261112000002\'")->fetchColumn();'
+          + '$comment=$pdo->query("SELECT ROUTINE_COMMENT FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA=DATABASE() AND ROUTINE_NAME=\'lc_s11_assert_legacy_seed\'")->fetchColumn();'
+          + 'if($state!=="failed"||$comment!=="e2e-custom-cleanup")exit(1);'
+          + '$pdo->exec("DROP PROCEDURE lc_s11_assert_legacy_seed");'], dbEnv)
+        cleanupStage = 'retry'
+        previousRevision = Number(plan.revision)
+        console.log('[upgrade-e2e] cleanup rejected foreign procedure; absent procedure ready for explicit retry')
+        continue
+      }
+    }
 
     const result = await api(`/admin/operations/upgrades/${planId}/advance`, {
       token, method: 'POST',
     })
     plan = result.data
+    if (negativeStage === 'done') negativeStage = 'finished'
+    if (contractGuardStage === 'retry') contractGuardStage = 'done'
+    if (cleanupStage === 'retry') cleanupStage = 'done'
     const headerRelease = result.response.headers.get('x-lovecards-release-id')
       || result.response.headers.get('x-lovecards-release')
     if (headerRelease === releaseId) servedRelease = true
@@ -477,10 +571,46 @@ try {
   const contractProbe = await run(php, ['-r', probeScript], dbEnv)
   if (contractProbe !== 'contract-complete') throw new Error('Contract migration fixture result is invalid')
 
-  console.log(`[upgrade-e2e] PASS upload, waiting, explicit contract approval, contract SQL, activation, runtime switch and health (${observations.length} advances)`)
+  const s11Script = [
+    '$dsn="mysql:host=".getenv("DATABASE_HOSTNAME").";port=".getenv("DATABASE_HOSTPORT").";dbname=".getenv("DATABASE_DATABASE").";charset=utf8mb4";',
+    '$pdo=new PDO($dsn,(string)getenv("DATABASE_USERNAME"),(string)getenv("DATABASE_PASSWORD"),[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);',
+    'foreach(["system","permissions","role_permissions","role_capabilities"] as $table){',
+    '$statement=$pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?");',
+    '$statement->execute([$table]);if((int)$statement->fetchColumn()!==0){fwrite(STDERR,"S11 old table remains: ".$table);exit(1);}}',
+    '$state=$pdo->query("SELECT phase,status FROM system_upgrade_steps WHERE migration_id=\'20261112000001\'")->fetch(PDO::FETCH_ASSOC);',
+    'if(!is_array($state)||$state["status"]!=="complete"){fwrite(STDERR,"S11 ledger not complete");exit(1);}',
+    '$state=$pdo->query("SELECT phase,status FROM system_upgrade_steps WHERE migration_id=\'20261112000002\'")->fetch(PDO::FETCH_ASSOC);',
+    'if(!is_array($state)||$state["status"]!=="complete"){fwrite(STDERR,"S11 cleanup ledger not complete");exit(1);}',
+    '$routine=$pdo->query("SELECT COUNT(*) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA=DATABASE() AND ROUTINE_NAME=\'lc_s11_assert_legacy_seed\'")->fetchColumn();',
+    'if((int)$routine!==0){fwrite(STDERR,"S11 procedure remains");exit(1);}',
+    '$pdo->exec("DROP TABLE e2e_upgrade_contract_probe");echo "S11 contracts complete";',
+  ].join('')
+  console.log(`[upgrade-e2e] ${await run(php, ['-r', s11Script], dbEnv)}`)
+
+  await run(php, ['scripts/bootstrap-e2e.php', 'create', cleanDatabase], {
+    ...dbEnv,
+    LC_INSTANCE_ROOT: path.join(temporaryRoot, 'clean-instance'),
+  })
+  cleanDatabaseCreated = true
+  const dsn = (name) => `mysql:host=${databaseHost};port=${databasePort};dbname=${name};charset=utf8mb4`
+  console.log(await run(php, ['scripts/verify-schema-consistency.php', dsn(cleanDatabase), dsn(database)], {
+    ...dbEnv,
+    LC_SCHEMA_COMPARE_USER: databaseUser,
+    LC_SCHEMA_COMPARE_PASSWORD: databasePassword,
+  }))
+
+  console.log(`[upgrade-e2e] PASS legacy S11, signed package, approval, schema consistency, activation and health (${observations.length} advances)`)
   exitCode = 0
 } finally {
   await stop(backend)
+  if (cleanDatabaseCreated) {
+    try {
+      await run(php, ['scripts/bootstrap-e2e.php', 'drop', cleanDatabase], dbEnv)
+    } catch (error) {
+      console.error(`[upgrade-e2e] clean database cleanup failed: ${error.message}`)
+      exitCode = 1
+    }
+  }
   if (databaseCreated) {
     try {
       await run(php, ['scripts/bootstrap-e2e.php', 'drop', database], dbEnv)

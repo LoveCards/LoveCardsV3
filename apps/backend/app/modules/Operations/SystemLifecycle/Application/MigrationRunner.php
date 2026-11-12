@@ -20,7 +20,7 @@ final class MigrationRunner
 
     public function __construct(MigrationLedger $ledger) { $this->ledger = $ledger; }
 
-    public function runNext(Migration $migration, bool $allowContract = false, bool $retryFailed = false): MigrationProgress
+    public function runNext(Migration $migration, bool $allowContract = false, bool $retryFailed = false, bool $upgradeControlled = false): MigrationProgress
     {
         $descriptor = $migration->descriptor();
         $progress = $this->ledger->find($descriptor->id()) ?? $this->ledger->initialize($descriptor);
@@ -45,6 +45,10 @@ final class MigrationRunner
         if ($progress->phase() === MigrationPhase::CONTRACT && !$allowContract) {
             if ($progress->status() === MigrationStatus::WAITING) return $progress;
             return $this->ledger->save($progress->waitForContract(), $progress->revision());
+        }
+        if ($progress->phase() === MigrationPhase::CONTRACT
+            && $descriptor->requiresUpgradeContract() && !$upgradeControlled) {
+            throw new \LogicException('此破坏性 Contract Migration 必须通过已备份并获批的 UpgradeCoordinator 执行');
         }
 
         $running = $this->ledger->save($progress->started(), $progress->revision());

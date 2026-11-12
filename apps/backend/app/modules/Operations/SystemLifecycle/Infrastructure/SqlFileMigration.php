@@ -21,11 +21,16 @@ final class SqlFileMigration implements Migration
         $source = file_get_contents($path);
         if ($source === false) throw new \RuntimeException('无法读取迁移文件: ' . $path);
         $this->phases = $this->splitPhases($source);
+        $requiresUpgradeContract = preg_match('/^\s*--\s*@lc-requires-upgrade-contract\s*$/mi', $source) === 1;
+        if ($requiresUpgradeContract && trim($this->phases['contract']) === '') {
+            throw new \InvalidArgumentException('受控升级标记必须包含 Contract SQL');
+        }
         $this->descriptor = MigrationDescriptor::fromSource(
             $id,
             $description,
             $source,
-            trim($this->phases['contract']) !== ''
+            trim($this->phases['contract']) !== '',
+            $requiresUpgradeContract
         );
         $this->path = $path;
     }
