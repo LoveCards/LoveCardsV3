@@ -24,6 +24,12 @@ final class LikeResource extends Resource
             unset($like[$field]);
         }
 
+        // 旧响应字段是 ref_id 的投影；升级前后均不依赖旧数据库列的值。
+        if (isset($like['ref_id'])) {
+            $like['aid'] = 1;
+            $like['pid'] = (int) $like['ref_id'];
+        }
+
         $fields = ['id', 'aid', 'pid', 'ref_type', 'ref_id', 'uid', 'created_at'];
         $result = [];
         foreach ($fields as $field) {
