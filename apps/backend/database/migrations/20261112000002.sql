@@ -18,13 +18,4 @@ SELECT IF(EXISTS (
       AND NOT (BINARY `ROUTINE_COMMENT` = BINARY 'LoveCards:20261112000001:legacy-seed-v1')
 ), 1, 2);
 DROP TEMPORARY TABLE `lc_s12_owner_guard`;
-SET @lc_s12_cleanup = IF(EXISTS (
-    SELECT 1 FROM information_schema.ROUTINES
-    WHERE `ROUTINE_SCHEMA` = DATABASE()
-      AND `ROUTINE_NAME` = 'lc_s11_assert_legacy_seed'
-      AND `ROUTINE_TYPE` = 'PROCEDURE'
-      AND BINARY `ROUTINE_COMMENT` = BINARY 'LoveCards:20261112000001:legacy-seed-v1'
-), 'DROP PROCEDURE `lc_s11_assert_legacy_seed`', 'SELECT 1');
-PREPARE lc_s12_cleanup_stmt FROM @lc_s12_cleanup;
-EXECUTE lc_s12_cleanup_stmt;
-DEALLOCATE PREPARE lc_s12_cleanup_stmt;
+DROP PROCEDURE IF EXISTS `lc_s11_assert_legacy_seed`;

@@ -12,13 +12,7 @@ final class SqlStatementExecutor
     {
         if (trim($sql) === '') throw new \InvalidArgumentException('SQL 文件为空');
         foreach (self::splitStatements($sql) as $statement) {
-            $pdo = Db::connect()->getPdo();
-            // MySQL 不允许通过预处理协议执行 PREPARE/EXECUTE/DEALLOCATE。
-            if (preg_match('/^(?:PREPARE|EXECUTE|DEALLOCATE)\b/i', $statement)) {
-                $pdo->exec($statement);
-                continue;
-            }
-            $pdoStatement = $pdo->prepare($statement);
+            $pdoStatement = Db::connect()->getPdo()->prepare($statement);
             $pdoStatement->execute();
             $pdoStatement->closeCursor();
         }

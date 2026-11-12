@@ -2,20 +2,21 @@
 -- 自定义配置或授权必须先明确转换或归档，不能猜测后删除。
 -- @lc-requires-upgrade-contract
 -- @lc-phase preflight
--- 仅重建由本迁移创建的校验过程；同名自定义过程交给 CREATE 拒绝。
-SET @lc_s11_owned = (
-    SELECT BINARY `ROUTINE_COMMENT` = BINARY 'LoveCards:20261112000001:legacy-seed-v1'
+-- 同名外部过程先阻断；缺失或本迁移创建的过程才允许重建。
+DROP TEMPORARY TABLE IF EXISTS `lc_s11_owner_guard`;
+CREATE TEMPORARY TABLE `lc_s11_owner_guard` (`id` tinyint NOT NULL PRIMARY KEY);
+INSERT INTO `lc_s11_owner_guard` (`id`) VALUES (1);
+INSERT INTO `lc_s11_owner_guard` (`id`)
+SELECT IF(EXISTS (
+    SELECT 1
     FROM information_schema.ROUTINES
     WHERE `ROUTINE_SCHEMA` = DATABASE()
       AND `ROUTINE_NAME` = 'lc_s11_assert_legacy_seed'
       AND `ROUTINE_TYPE` = 'PROCEDURE'
-    LIMIT 1
-);
-SET @lc_s11_reset = IF(COALESCE(@lc_s11_owned, 0) = 1,
-    'DROP PROCEDURE `lc_s11_assert_legacy_seed`', 'SELECT 1');
-PREPARE lc_s11_reset_stmt FROM @lc_s11_reset;
-EXECUTE lc_s11_reset_stmt;
-DEALLOCATE PREPARE lc_s11_reset_stmt;
+      AND NOT (BINARY `ROUTINE_COMMENT` = BINARY 'LoveCards:20261112000001:legacy-seed-v1')
+), 1, 2);
+DROP TEMPORARY TABLE `lc_s11_owner_guard`;
+DROP PROCEDURE IF EXISTS `lc_s11_assert_legacy_seed`;
 DELIMITER //
 CREATE PROCEDURE `lc_s11_assert_legacy_seed`()
 COMMENT 'LoveCards:20261112000001:legacy-seed-v1'
