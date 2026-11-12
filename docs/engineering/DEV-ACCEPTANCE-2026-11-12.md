@@ -5,7 +5,8 @@
 ## 已完成
 
 - 本地根 `npm run check` 通过：后端 111/111、Gateway 18/18、默认主题 308/308，架构、路由、管理授权、SDK 生成和类型门禁全绿；136 个受影响 PHP 文件 lint 无错误；管理端生产构建通过。
-- 隔离 MariaDB：干净安装与旧版迁移终态 schema 一致；签名 Release 升级 E2E 完成 22 次逐单元推进、Contract 独立批准、Pointer 激活和最终健康；冷启动数据库备份和安装 root 密码持久化测试通过。
+- 先前隔离 MariaDB 基线：干净安装与旧版迁移终态 schema 一致；签名 Release 升级 E2E 完成 22 次逐单元推进、Contract 独立批准、Pointer 激活和最终健康；冷启动数据库备份和安装 root 密码持久化测试通过。
+- S11 候选 PR #57 的 GitHub CI [43177057837](https://github.com/LoveCards/LoveCardsV3/actions/runs/43177057837) 全绿：MySQL 8 的新装/升级终态 schema 对比、签名升级 E2E、PHP 8.1/8.2、前端综合检查、管理端构建、SDK/管理端/主题 E2E 和根构建均通过。S11 只在隔离环境验证，未部署共享 dev。
 - 隔离 SDK 集成 169/169；管理端全量浏览器 179 项中，178 项首跑通过、1 项 Nuxt 文档请求超时后重试通过，最终 0 失败。重试属于测试服务不响应，未发现对应页面断言失败。
 - dev 部署前检查为 `cc8b36fc`，唯一既有未提交文件是 `packages/sdk/test/TEST_REPORT.md`。暂停现有 cron、`lovecards-dev-event-worker.service` 和 `lovecards-dev-realtime-gateway.service` 后，通过 HTTPS fetch 快进到 `beb304e0`；服务与 cron 已恢复。
 - dev 使用现有 `LocalBackupArtifactStore` 生成并校验升级前数据库备份，Artifact 位于实例持久目录 `shared/backups/dev-pre-convergence-20261111174655.sql`，大小 1,042,019 字节，SHA-256 为 `cee9489a54110bf57b9b00485538cdcf00999d3787b50ff6b54ab53ff6060b246`。数据库恢复仍需经运维流程人工执行。
