@@ -82,7 +82,7 @@ jobs:
       LOVECARDS_E2E_DB_PORT: '3306'
       LOVECARDS_E2E_DB_USER: root
       LOVECARDS_E2E_DB_PASSWORD: root
-      LOVECARDS_E2E_ADMIN_ACCOUNT: admin@lovecards.cn
+      LOVECARDS_E2E_ADMIN_ACCOUNT: e2e-admin@example.test
       LOVECARDS_E2E_ADMIN_PASSWORD: '123456'
     steps:
       - uses: actions/checkout@v4
