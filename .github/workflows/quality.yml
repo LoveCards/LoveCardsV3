@@ -98,6 +98,13 @@ jobs:
       - run: npm ci
       - run: composer install --no-interaction --prefer-dist --no-progress
         working-directory: apps/backend
+      - name: Verify database execution lease in isolated MySQL
+        run: php apps/backend/tests/SystemLifecycle/ExecutionLeaseDatabase.php
+        env:
+          LC_TEST_DB_HOST: ${{ env.LOVECARDS_E2E_DB_HOST }}
+          LC_TEST_DB_PORT: ${{ env.LOVECARDS_E2E_DB_PORT }}
+          LC_TEST_DB_USER: ${{ env.LOVECARDS_E2E_DB_USER }}
+          LC_TEST_DB_PASSWORD: ${{ env.LOVECARDS_E2E_DB_PASSWORD }}
       - run: npx playwright install --with-deps chromium
       - run: npm run package:default-theme
       - name: Verify live E2E database collision guard
