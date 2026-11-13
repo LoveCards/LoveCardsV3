@@ -308,7 +308,9 @@ try {
     RANDFILE: randFile,
   })
   const trustedKeys = JSON.stringify({ 'upgrade-e2e-key': publicKey })
-  dbEnv.LC_RUNTIME_DRAIN_COMMAND_JSON = JSON.stringify([php, path.join(root, 'scripts/assert-e2e-consumers-stopped.php')])
+  const drainCommand = JSON.stringify([php, path.join(root, 'scripts/assert-e2e-consumers-stopped.php')])
+  dbEnv.LC_RUNTIME_DRAIN_COMMAND_JSON = drainCommand
+  dbEnv.PHP_LC_RUNTIME_DRAIN_COMMAND_JSON = drainCommand
 
   await run(php, ['scripts/bootstrap-e2e.php', 'create', database], dbEnv)
   databaseCreated = true
