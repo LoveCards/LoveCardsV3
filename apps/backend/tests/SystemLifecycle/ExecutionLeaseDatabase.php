@@ -8,8 +8,12 @@ use app\shared\Infrastructure\Persistence\SqlStatementExecutor;
 use think\Container;
 use think\DbManager;
 
-// 仅使用独立临时库；连接凭据从环境读取，不输出。
-$host=getenv('LC_TEST_DB_HOST') ?: '127.0.0.1';
+// 仅在显式提供隔离 MySQL 连接时运行；连接凭据从环境读取，不输出。
+$host=getenv('LC_TEST_DB_HOST');
+if (!is_string($host) || trim($host)==='') {
+    echo "SKIP real database execution lease (LC_TEST_DB_HOST not configured)\n";
+    return;
+}
 $port=(int)(getenv('LC_TEST_DB_PORT') ?: 13307);
 $user=getenv('LC_TEST_DB_USER') ?: 'root';
 $password=getenv('LC_TEST_DB_PASSWORD') ?: '';

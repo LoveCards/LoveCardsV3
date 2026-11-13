@@ -1,9 +1,9 @@
 <template>
   <AdminPageContainer>
-    <AdminPageHeader title="通知处理" description="检查站内提醒对应事件的处理结果。处理完成不代表用户已阅读。" :breadcrumbs="[{ title: '系统' }]">
+    <AdminPageHeader title="通知投递" description="检查站内提醒对应事件的处理结果。处理完成不代表用户已阅读。" :breadcrumbs="[{ title: '系统' }]">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="loadAll">刷新</v-btn></template>
     </AdminPageHeader>
-    <p class="mb-4 text-body-2">仅显示通知处理队列。<NuxtLink to="/apps/operations/eventing">事件处理</NuxtLink> · <NuxtLink to="/apps/operations/notification-policies">通知策略</NuxtLink></p>
+    <p class="mb-4 text-body-2">仅显示通知投递队列。<NuxtLink to="/apps/operations/eventing">事件处理</NuxtLink> · <NuxtLink to="/apps/operations/notification-policies">通知策略</NuxtLink></p>
     <v-sheet v-if="summary" border rounded class="mb-4 pa-4">
       <div class="d-flex flex-wrap ga-5">
         <span>失败 <strong>{{ summary.dead }}</strong></span><span>待处理 <strong>{{ summary.pending }}</strong></span>
@@ -90,7 +90,7 @@ async function loadDeliveries() {
     deliveries.value = result.data
     totalItems.value = result.pagination?.totalItems ?? result.data.length
   } catch (cause) {
-    if (requestId === latestDeliveryRequest) error.value = isApiError(cause) ? cause.message : '无法加载通知处理记录'
+    if (requestId === latestDeliveryRequest) error.value = isApiError(cause) ? cause.message : '无法加载通知投递记录'
   } finally { if (requestId === latestDeliveryRequest) loading.value = false }
 }
 async function loadSummary() {

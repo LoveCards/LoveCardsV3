@@ -160,9 +160,9 @@
           <div class="d-flex flex-wrap align-start justify-space-between ga-3 mb-3">
             <div>
               <h2 id="notifications-title" class="text-subtitle-1 font-weight-bold">站内通知统计</h2>
-              <p class="text-body-2 text-medium-emphasis mt-1">已生成的用户通知累计数据；处理异常请查看通知处理。</p>
+              <p class="text-body-2 text-medium-emphasis mt-1">已生成的用户通知累计数据；处理异常请查看通知投递。</p>
             </div>
-            <v-btn to="/apps/operations/deliveries" variant="text" color="primary" append-icon="mdi-arrow-right">查看通知处理</v-btn>
+            <v-btn to="/apps/operations/deliveries" variant="text" color="primary" append-icon="mdi-arrow-right">查看通知投递</v-btn>
           </div>
           <v-card v-if="notificationStats">
             <v-list>
@@ -270,9 +270,9 @@ const responsibilityLinks = computed(() => [
   { key: 'users', label: '用户', description: '查看获授权的用户和账号安全状态。', icon: 'mdi-shield-account-outline', to: '/apps/users' },
   { key: 'eventing', label: '事件处理', description: '检查事件消费策略、队列和 Worker。', icon: 'mdi-inbox-arrow-down-outline', to: '/apps/operations/eventing' },
   { key: 'communication', label: '前端通信', description: '检查轮询或实时通信及其依赖。', icon: 'mdi-access-point-network', to: '/apps/operations/communication' },
-  { key: 'deliveries', label: '通知处理', description: '检查提醒事件的处理结果和失败原因。', icon: 'mdi-send-check-outline', to: '/apps/operations/deliveries' },
-  { key: 'storage', label: '存储服务', description: '维护文件渠道和基础设施配置。', icon: 'mdi-database-cog-outline', to: '/apps/settings/storage' },
-  { key: 'upgrade', label: '升级与迁移', description: '检查升级计划和迁移状态。', icon: 'mdi-package-up', to: '/apps/operations/upgrade' },
+  { key: 'deliveries', label: '通知投递', description: '检查提醒事件的处理结果和失败原因。', icon: 'mdi-send-check-outline', to: '/apps/operations/deliveries' },
+  { key: 'storage', label: '文件存储', description: '维护文件渠道和基础设施配置。', icon: 'mdi-database-cog-outline', to: '/apps/settings/storage' },
+  { key: 'upgrade', label: '系统升级', description: '检查升级计划和迁移状态。', icon: 'mdi-package-up', to: '/apps/operations/upgrade' },
   { key: 'audit', label: '审计记录', description: '追溯管理动作、资源变化和请求链路。', icon: 'mdi-clipboard-text-clock-outline', to: '/apps/operations/audit' },
   { key: 'roles', label: '角色与权限', description: '管理角色和 capability grants。', icon: 'mdi-shield-lock-outline', to: '/apps/access/roles' },
 ].filter((link) => userStore.canAccessPath(link.to)))

@@ -32,55 +32,55 @@ const roleCases: RoleCase[] = [
     name: '管理员',
     grants: [...common, allGrant('cards.read'), allGrant('comments.read'), allGrant('users.read')],
     visible: ['卡片', '评论', '用户管理'],
-    hidden: ['升级与迁移', '审计日志', '角色管理'],
+    hidden: ['系统升级', '审计日志', '角色管理'],
   },
   {
     slug: 'site_editor',
     name: '站点编辑',
     grants: [...common, globalGrant('config.read'), globalGrant('config.update')],
     visible: ['站点信息', '站点策略'],
-    hidden: ['验证服务', '通知处理'],
+    hidden: ['验证服务', '通知投递'],
   },
   {
     slug: 'content_operator',
     name: '内容运营',
     grants: [...common, allGrant('cards.read'), allGrant('comments.read'), allGrant('tags.read')],
     visible: ['卡片', '评论', '标签'],
-    hidden: ['存储服务', '角色管理'],
+    hidden: ['文件存储', '角色管理'],
   },
   {
     slug: 'community_operator',
     name: '社区运营',
     grants: [...common, allGrant('comments.read'), globalGrant('reports.read'), globalGrant('community.insights.read')],
     visible: ['评论', '举报处理', '社区洞察'],
-    hidden: ['用户管理', '升级与迁移', '权限目录'],
+    hidden: ['用户管理', '系统升级', '权限目录'],
   },
   {
     slug: 'reviewer',
     name: '审核员',
     grants: [...common, allGrant('cards.read'), allGrant('comments.read'), globalGrant('reports.read')],
     visible: ['卡片', '评论', '举报处理'],
-    hidden: ['站点信息', '站点策略', '通知处理', '角色管理'],
+    hidden: ['站点信息', '站点策略', '通知投递', '角色管理'],
   },
   {
     slug: 'security_admin',
     name: '安全管理员',
     grants: [...common, allGrant('users.read'), globalGrant('users.recovery.read'), globalGrant('audit.read')],
     visible: ['用户管理', '审计日志'],
-    hidden: ['卡片', '存储服务', '升级与迁移'],
+    hidden: ['卡片', '文件存储', '系统升级'],
   },
   {
     slug: 'operations_admin',
     name: '运维管理员',
     grants: [...common, globalGrant('operations.read'), globalGrant('communications.read'), allGrant('files.read')],
-    visible: ['文件管理', '站点策略', '事件处理', '前端通信', '通知处理', '升级与迁移'],
+    visible: ['文件管理', '站点策略', '事件处理', '前端通信', '通知投递', '系统升级'],
     hidden: ['站点信息', '用户管理', '举报处理', '角色管理'],
   },
   {
     slug: 'notification_reader',
     name: '通知只读员',
     grants: [...common, globalGrant('communications.read')],
-    visible: ['站点策略', '通知处理'],
+    visible: ['站点策略', '通知投递'],
     hidden: ['站点信息', '事件处理', '前端通信', '验证服务'],
   },
   {
@@ -152,7 +152,7 @@ test('a privileged role name cannot reveal pages without matching grants', async
   await page.goto('./apps/dashboard', { waitUntil: 'domcontentloaded' })
   const navigation = page.getByRole('navigation')
   await expect(navigation.getByRole('link', { name: '角色管理', exact: true })).toHaveCount(0)
-  await expect(navigation.getByRole('link', { name: '升级与迁移', exact: true })).toHaveCount(0)
+  await expect(navigation.getByRole('link', { name: '系统升级', exact: true })).toHaveCount(0)
 })
 
 test('the workbench is direct and only the current task group expands automatically', async ({ page }) => {

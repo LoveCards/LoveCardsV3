@@ -95,7 +95,7 @@
                 </v-data-table>
               </AdminResourceTableShell>
               <div class="d-flex ga-2 mt-4">
-                <v-btn to="/apps/settings/redis" variant="text">Redis 服务</v-btn>
+                <v-btn to="/apps/settings/redis" variant="text">Redis 连接</v-btn>
                 <v-btn to="/apps/operations/eventing" variant="text">事件处理</v-btn>
               </div>
             </v-expansion-panel-text>

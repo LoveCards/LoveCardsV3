@@ -1,7 +1,7 @@
 <template>
   <AdminPageContainer>
     <AdminPageHeader
-      title="消息渠道"
+      title="站外发送"
       description="管理通知使用的发信渠道。密钥仅在详情页编辑，扫描和默认渠道切换均由服务端校验权限。"
       :breadcrumbs="[{ title: '系统' }]"
     >
@@ -29,11 +29,11 @@
 
     <AdminAsyncState
       :empty="channelGroups.length === 0"
-      empty-description="扫描消息渠道后，可在这里选择默认渠道并进入详细配置。"
+      empty-description="扫描发送渠道后，可在这里选择默认渠道并进入详细配置。"
       empty-icon="mdi-email-off-outline"
-      empty-title="尚未发现消息渠道"
+      empty-title="尚未发现发送渠道"
       :error="loadError"
-      error-title="消息渠道加载失败"
+      error-title="站外发送加载失败"
       :loading="loading"
       skeleton-type="heading, article@3"
       @retry="loadChannels"
@@ -155,7 +155,7 @@ const loadChannels = async () => {
       defaultSlug: readString(senderConfig[`default_${channelType}`], groupChannels[0]?.slug ?? ''),
     }))
   } catch (cause) {
-    loadError.value = errorMessage(cause, '无法加载消息渠道，请稍后重试。')
+    loadError.value = errorMessage(cause, '无法加载站外发送，请稍后重试。')
   } finally {
     loading.value = false
   }
@@ -170,7 +170,7 @@ const setDefault = async (channelType: string, slug: string) => {
     if (group) group.defaultSlug = readString(readObject(committed.sender)[`default_${channelType}`])
     actionMessage.value = { type: 'success', text: `已将 ${slug} 设为默认${groupTitle(channelType)}。` }
   } catch (cause) {
-    actionMessage.value = { type: 'error', text: errorMessage(cause, '默认消息渠道切换失败，请稍后重试。') }
+    actionMessage.value = { type: 'error', text: errorMessage(cause, '默认发送渠道切换失败，请稍后重试。') }
   } finally {
     changingDefault.value = ''
   }
@@ -185,9 +185,9 @@ const scanChannels = async () => {
   try {
     await client.sender.install()
     await loadChannels()
-    scanMessage.value = { type: 'success', text: '消息渠道扫描完成，列表已刷新。' }
+    scanMessage.value = { type: 'success', text: '发送渠道扫描完成，列表已刷新。' }
   } catch (cause) {
-    scanMessage.value = { type: 'error', text: errorMessage(cause, '消息渠道扫描失败，请稍后重试。') }
+    scanMessage.value = { type: 'error', text: errorMessage(cause, '发送渠道扫描失败，请稍后重试。') }
   } finally {
     scanning.value = false
   }
