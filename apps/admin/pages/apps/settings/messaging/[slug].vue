@@ -2,8 +2,8 @@
   <AdminPageContainer>
     <AdminPageHeader
       :title="`${channelName} 配置`"
-      description="管理消息渠道参数，并使用已保存的配置发送测试消息。"
-      :breadcrumbs="[{ title: '系统' }, { title: '消息渠道', to: '/apps/settings/messaging' }, { title: channelName }]"
+      description="管理发送渠道参数，并使用已保存的配置发送测试消息。"
+      :breadcrumbs="[{ title: '系统' }, { title: '站外发送', to: '/apps/settings/messaging' }, { title: channelName }]"
     />
 
     <v-row>
@@ -17,7 +17,7 @@
           <template #actions><v-chip size="small" variant="outlined">{{ slug }}</v-chip></template>
             <AdminAsyncState
               :empty="fields.length === 0"
-              empty-description="该消息渠道没有提供可编辑参数。"
+              empty-description="该发送渠道没有提供可编辑参数。"
               empty-icon="mdi-email-check-outline"
               empty-title="无需配置"
               :error="loadError"
@@ -229,7 +229,7 @@ const loadPage = async () => {
     const [channels, rawConfig] = await Promise.all([client.sender.channels(), configSnapshot.list()])
     const channel = channels.find((item: SenderChannel) => item.slug === slug)
     if (!channel) {
-      loadError.value = '未找到该消息渠道，请返回列表重新扫描。'
+      loadError.value = '未找到该发送渠道，请返回列表重新扫描。'
       fields.value = []
       return
     }
@@ -251,7 +251,7 @@ const loadPage = async () => {
     config.value = CommonUtils.deepClone(nextConfig)
     originConfig.value = CommonUtils.deepClone(nextConfig)
   } catch (cause) {
-    loadError.value = errorMessage(cause, '无法加载消息渠道配置，请稍后重试。')
+    loadError.value = errorMessage(cause, '无法加载发送渠道配置，请稍后重试。')
   } finally {
     loading.value = false
   }
@@ -273,9 +273,9 @@ const save = async () => {
     }
     config.value = settled
     originConfig.value = CommonUtils.deepClone(settled)
-    saveMessage.value = { type: 'success', text: '消息渠道配置已保存。' }
+    saveMessage.value = { type: 'success', text: '发送渠道配置已保存。' }
   } catch (cause) {
-    saveMessage.value = { type: 'error', text: errorMessage(cause, '消息渠道配置保存失败，请稍后重试。') }
+    saveMessage.value = { type: 'error', text: errorMessage(cause, '发送渠道配置保存失败，请稍后重试。') }
   } finally {
     saveLoading.value = false
   }

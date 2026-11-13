@@ -34,7 +34,10 @@ const expectedHeadings: Record<string, string> = {
   '/apps/operations/upgrade': '系统升级',
   '/apps/operations/eventing': '事件处理',
   '/apps/operations/communication': '前端通信',
-  '/apps/settings/redis': 'Redis 服务',
+  '/apps/settings/redis': 'Redis 连接',
+  '/apps/settings/storage': '文件存储',
+  '/apps/settings/messaging': '站外发送',
+  '/apps/operations/deliveries': '通知投递',
 }
 
 const legacyAliases = [

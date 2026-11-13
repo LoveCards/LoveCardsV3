@@ -1,7 +1,7 @@
 <template>
   <AdminPageContainer>
     <AdminPageHeader
-      title="Redis 服务"
+      title="Redis 连接"
       description="管理系统共用的 Redis 连接。默认关闭；实时主动更新启用前会检查连接和常驻服务。"
       :breadcrumbs="[{ title: '系统' }]"
     />

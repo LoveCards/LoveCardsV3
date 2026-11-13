@@ -59,7 +59,7 @@
         <v-sheet border rounded class="pa-4 mb-5">
           <div class="d-flex flex-wrap align-center justify-space-between ga-3">
             <h2 class="text-h6">事件队列</h2>
-            <v-btn to="/apps/operations/deliveries" variant="text" append-icon="mdi-arrow-right">查看通知处理</v-btn>
+            <v-btn to="/apps/operations/deliveries" variant="text" append-icon="mdi-arrow-right">查看通知投递</v-btn>
           </div>
           <div class="d-flex flex-wrap ga-6 mt-3 text-body-2">
             <span>待处理 <strong>{{ runtime.eventing.pending }}</strong></span>

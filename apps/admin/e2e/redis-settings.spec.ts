@@ -46,7 +46,7 @@ test('default Redis is disabled; saved password stays masked and the connection 
   })
 
   await page.goto('./apps/settings/redis', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('heading', { name: 'Redis 服务' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Redis 连接' })).toBeVisible()
   await expect(page.getByLabel('启用 Redis 连接')).not.toBeChecked()
   await expect(page.getByLabel('主机地址')).toHaveValue('')
   await expect(page.getByLabel('使用 TLS 加密连接并验证证书')).not.toBeChecked()
