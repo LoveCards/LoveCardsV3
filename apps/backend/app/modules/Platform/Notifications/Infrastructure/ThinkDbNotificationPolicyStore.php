@@ -73,17 +73,22 @@ final class ThinkDbNotificationPolicyStore implements NotificationPolicyStore
 
     private function normalizeRows(array $rows): array
     {
-        return array_map(static fn(array $row): array => [
-            'event_type' => (string) $row['event_type'],
-            'event_version' => (int) $row['event_version'],
-            'rule_key' => (string) $row['rule_key'],
-            'enabled' => (bool) $row['enabled'],
-            'notification_type' => isset($row['notification_type']) && $row['notification_type'] !== null ? (string) $row['notification_type'] : null,
-            'recipient_rule' => (string) $row['recipient_rule'],
-            'user_disableable' => (bool) $row['user_disableable'],
-            'locked' => (bool) $row['locked'],
-            'policy_revision' => (int) $row['policy_revision'],
-        ], $rows);
+        return array_map(static function (array $row): array {
+            if (array_key_exists('recipient_rule', $row) && (string) $row['recipient_rule'] !== 'handler') {
+                throw new \RuntimeException('通知收件规则包含未支持的历史值');
+            }
+            return [
+                'event_type' => (string) $row['event_type'],
+                'event_version' => (int) $row['event_version'],
+                'rule_key' => (string) $row['rule_key'],
+                'enabled' => (bool) $row['enabled'],
+                'notification_type' => isset($row['notification_type']) && $row['notification_type'] !== null ? (string) $row['notification_type'] : null,
+                'recipient_rule' => 'handler',
+                'user_disableable' => (bool) $row['user_disableable'],
+                'locked' => (bool) $row['locked'],
+                'policy_revision' => (int) $row['policy_revision'],
+            ];
+        }, $rows);
     }
 
     public function applyChanges(array $changes, int $expectedRevision, ?int $actorId, ?string $reason, callable $audit): array

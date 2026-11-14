@@ -11,7 +11,6 @@ final class UserProfileStats
     {
         $query = Db::table('likes')->alias('l')
             ->join('cards c', 'c.id = l.ref_id')
-            ->where('l.aid', 1)
             ->where('l.ref_type', 'card')
             ->where('c.user_id', $userId)
             ->where('c.status', 0)

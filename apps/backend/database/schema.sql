@@ -25,14 +25,6 @@ CREATE TABLE `capabilities` (
   `risk_level` tinyint(3) unsigned NOT NULL DEFAULT 0,
   PRIMARY KEY (`capability`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-CREATE TABLE `card_comment_pins` (
-  `card_id` int(11) NOT NULL,
-  `comment_id` int(11) NOT NULL,
-  `pinned_by` int(11) NOT NULL DEFAULT 0,
-  `pinned_at` datetime NOT NULL,
-  PRIMARY KEY (`card_id`),
-  UNIQUE KEY `uq_card_comment_pins_comment` (`comment_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE `cards` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `is_top` int(11) NOT NULL DEFAULT 0,
@@ -60,7 +52,6 @@ CREATE TABLE `comments` (
   `aid` int(11) NOT NULL DEFAULT 0,
   `pid` int(11) NOT NULL DEFAULT 0,
   `parent_id` int(11) DEFAULT 0,
-  `is_top` int(11) NOT NULL DEFAULT 0,
   `status` int(11) NOT NULL DEFAULT 0,
   `user_id` int(11) NOT NULL DEFAULT 0,
   `data` JSON DEFAULT NULL,
@@ -144,30 +135,8 @@ CREATE TABLE `files` (
   KEY `idx_pending_expire` (`upload_status`,`expire_at`),
   KEY `idx_files_purge` (`purge_status`,`updated_at`,`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-CREATE TABLE `good` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `aid` int(11) NOT NULL COMMENT '应用ID',
-  `pid` int(11) NOT NULL COMMENT '条目ID',
-  `uid` int(11) NOT NULL,
-  `ip` varchar(32) NOT NULL COMMENT '发布IP',
-  `created_at` timestamp NULL DEFAULT NULL COMMENT '发布时间',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-CREATE TABLE `images` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `aid` int(11) NOT NULL COMMENT '应用ID',
-  `pid` int(11) NOT NULL COMMENT '条目ID',
-  `user_id` int(11) NOT NULL,
-  `url` varchar(256) NOT NULL,
-  `created_at` datetime NOT NULL,
-  `updated_at` datetime DEFAULT NULL,
-  `deleted_at` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE `likes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `aid` int(11) NOT NULL COMMENT '应用ID (legacy)',
-  `pid` int(11) NOT NULL COMMENT '条目ID (legacy)',
   `ref_type` varchar(32) NOT NULL COMMENT '内容类型: card, comment',
   `ref_id` int(11) NOT NULL COMMENT '内容ID',
   `uid` int(11) NOT NULL,
@@ -398,7 +367,6 @@ CREATE TABLE `tags_map` (
   `aid` int(11) NOT NULL,
   `pid` int(11) NOT NULL,
   `tag_id` int(11) NOT NULL,
-  `status` int(11) NOT NULL DEFAULT 0,
   `created_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -432,7 +400,6 @@ CREATE TABLE `users` (
   `birth_date` date DEFAULT NULL,
   `password` varchar(255) NOT NULL,
   `status` int(11) NOT NULL,
-  `roles_id` JSON DEFAULT NULL,
   `created_at` datetime NOT NULL,
   `updated_at` datetime NOT NULL,
   `deleted_at` datetime DEFAULT NULL,
@@ -536,7 +503,6 @@ CREATE TABLE `library_items` (
   `resource_id` varchar(128) NOT NULL,
   `created_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `id` (`id`),
   UNIQUE KEY `uk_library_resource` (`user_id`,`resource_type`,`resource_id`),
   KEY `idx_library_user_created` (`user_id`,`created_at`,`resource_id`),
   CONSTRAINT `fk_library_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
@@ -570,7 +536,6 @@ CREATE TABLE `notification_policies` (
   `rule_key` varchar(128) NOT NULL,
   `enabled` tinyint(1) NOT NULL DEFAULT 1,
   `notification_type` varchar(64) DEFAULT NULL,
-  `recipient_rule` varchar(64) NOT NULL DEFAULT 'handler',
   `user_disableable` tinyint(1) NOT NULL DEFAULT 1,
   `locked` tinyint(1) NOT NULL DEFAULT 0,
   `policy_revision` int(10) unsigned NOT NULL,
@@ -717,7 +682,6 @@ CREATE TABLE `view_history` (
   `viewed_at` datetime NOT NULL,
   `created_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `id` (`id`),
   UNIQUE KEY `uk_history_resource` (`user_id`,`resource_type`,`resource_id`),
   KEY `idx_history_user_time` (`user_id`,`last_viewed_at`,`resource_id`),
   KEY `idx_history_user_viewed` (`user_id`,`viewed_at`,`id`),

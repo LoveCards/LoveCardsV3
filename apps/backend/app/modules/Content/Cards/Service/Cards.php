@@ -686,7 +686,6 @@ class Cards
             ->where('t.aid', 1)
             ->where('t.status', 3)
             ->where('t.name', $name)
-            ->where('tm.status', 0)
             ->whereNull('tm.deleted_at')
             ->whereNull('t.deleted_at')
             ->field('tm.tag_id')
@@ -986,8 +985,7 @@ class Cards
         } else {
             $query->where('t.status', 0);
         }
-        $rows = $query->where('tm.status', 0)
-            ->whereNull('tm.deleted_at')
+        $rows = $query->whereNull('tm.deleted_at')
             ->whereNull('t.deleted_at')
             ->field('tm.pid, t.id, t.name')
             ->order('tm.id', 'asc')
