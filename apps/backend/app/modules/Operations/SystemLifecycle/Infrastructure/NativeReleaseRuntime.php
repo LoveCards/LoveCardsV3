@@ -21,7 +21,10 @@ final class NativeReleaseRuntime implements ReleaseRuntime
     public function assertQuiescent(string $releaseId): void
     {
         if (!$this->canDrain()) throw new \LogicException('Contract 需要配置可确认全部消费者停止的 drain_command');
-        $this->drain($releaseId);
+        $proof = $this->drainWithPhase($releaseId, 'contract');
+        if (($proof['web_requests_quiesced'] ?? null) !== true) {
+            throw new \RuntimeException('drain_command 未证明旧 Web 请求已排空，禁止 Contract');
+        }
         // drain 成功代表部署侧确认进程退出；过期租约/过期心跳不能代替该证据。
         \app\modules\Platform\Eventing\Public\EventConsumption::assertQuiescent();
         \app\modules\Operations\Runtime\Public\RuntimeCommunication::assertWorkersStopped();
@@ -29,7 +32,13 @@ final class NativeReleaseRuntime implements ReleaseRuntime
 
     public function drain(string $releaseId): void
     {
-        $proof = trim($this->run('drain_command', $releaseId));
+        $this->drainWithPhase($releaseId, 'activation');
+    }
+
+    /** @return array<string,mixed> */
+    private function drainWithPhase(string $releaseId, string $phase): array
+    {
+        $proof = trim($this->run('drain_command', $releaseId, $phase));
         try { $result = json_decode($proof, true, 8, JSON_THROW_ON_ERROR); }
         catch (\JsonException) { $result = null; }
         if (!is_array($result) || ($result['workers_stopped'] ?? null) !== true
@@ -37,6 +46,7 @@ final class NativeReleaseRuntime implements ReleaseRuntime
             || ($result['restart_disabled'] ?? null) !== true) {
             throw new \RuntimeException('drain_command 未提供 Worker、定时触发及自动重启入口全部停止的有效证明');
         }
+        return $result;
     }
 
     public function canReload(): bool
@@ -76,14 +86,14 @@ final class NativeReleaseRuntime implements ReleaseRuntime
         }
     }
 
-    private function run(string $name, string $releaseId): string
+    private function run(string $name, string $releaseId, string $phase = ''): string
     {
         $this->assertReleaseId($releaseId);
         $command = $this->command($name);
         if ($command === []) throw new \LogicException('当前运行时未配置 ' . $name);
         if (!function_exists('proc_open')) throw new \RuntimeException('当前 PHP 禁用了 proc_open，无法管理 worker');
         $command = array_map(
-            static fn(string $argument): string => str_replace('{release_id}', $releaseId, $argument),
+            static fn(string $argument): string => str_replace(['{release_id}', '{phase}'], [$releaseId, $phase], $argument),
             $command
         );
         $descriptors = [

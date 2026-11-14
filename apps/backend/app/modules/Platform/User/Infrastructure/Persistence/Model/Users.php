@@ -31,7 +31,6 @@ class Users extends Model
         'birth_date' => 'date',
         'password' => 'string',
         'status' => 'int',
-        'roles_id' => 'json',
         'security_version' => 'int',
         'credentials_changed_at' => 'timestamp',
         'created_at' => 'timestamp',

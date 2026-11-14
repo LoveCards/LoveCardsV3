@@ -85,6 +85,11 @@ final class SignedReleaseBuilder
         ksort($fileHashes, SORT_STRING);
         ksort($migrationChecksums, SORT_STRING);
         if ($migrationChecksums === []) throw new \RuntimeException('Release 必须包含至少一个数据库迁移');
+        // 点赞删列必须以已发布的可空列/派生响应兼容 Release 为前驱。
+        if (isset($migrationChecksums['20261113000001'])
+            && strcmp($sourceSchemaMin, '20261112000003') < 0) {
+            throw new \RuntimeException('点赞删列 Release 的 source_schema_range.min 必须包含兼容前驱 20261112000003');
+        }
         $targetSchema = (string) array_key_last($migrationChecksums);
         $sourceSchemaMax ??= $targetSchema;
 

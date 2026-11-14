@@ -47,6 +47,9 @@ $commentPinMigration = file_get_contents(__DIR__ . '/../../database/migrations/2
 $userValidator = file_get_contents(__DIR__ . '/../../app/modules/Platform/User/Transport/Api/Users.php');
 $tagService = file_get_contents(__DIR__ . '/../../app/modules/Content/Tags/Service/Tags.php');
 $tagValidator = file_get_contents(__DIR__ . '/../../app/modules/Content/Tags/Transport/Api/Tags.php');
+$targetSchema = file_get_contents(__DIR__ . '/../../database/schema.sql');
+$targetSeed = file_get_contents(__DIR__ . '/../../database/seed.sql');
+$userModel = file_get_contents(__DIR__ . '/../../app/modules/Platform/User/Infrastructure/Persistence/Model/Users.php');
 $assert(!str_contains($cardValidator, "'allUpdate'"), 'legacy card allUpdate scene must not re-enable derived-field writes');
 $assert(!str_contains($commentValidator, "'allUpdate'"), 'legacy comment allUpdate scene must not re-enable body edits');
 $assert(str_contains($commentValidator, "'normal' => ['id', 'content', 'status']"), 'managed comment mutation must accept content and moderation fields only');
@@ -56,9 +59,20 @@ $assert(str_contains($commentPinMigration, 'UNIQUE KEY `uq_card_comment_pins_com
 $assert(str_contains($commentService, "->where('parent_id', 0)") && str_contains($commentService, "->where('status', 0)"), 'pin command must accept only visible top-level comments');
 $assert(str_contains($commentService, "\$card['pinned_comment_id']"), 'card comment list must resolve the card pointer');
 $assert(!str_contains($commentService, "Db::table('card_comment_pins')"), 'runtime must not query the retired pin table');
+$assert(!str_contains($targetSchema, 'CREATE TABLE `card_comment_pins`'), 'new installs must not restore the retired pin table');
+$assert(preg_match('/CREATE TABLE `comments` \((.*?)\) ENGINE/s', $targetSchema, $commentTable) === 1
+    && !str_contains($commentTable[1], '`is_top`'), 'new installs must not restore the retired comment pin column');
+$assert(preg_match('/CREATE TABLE `cards` \((.*?)\) ENGINE/s', $targetSchema, $cardTable) === 1
+    && str_contains($cardTable[1], '`is_top`') && str_contains($cardTable[1], '`pinned_comment_id`'),
+    'card pinning and comment pinning must retain their separate current fields');
 $assert(str_contains($commentService, "->orderRaw('(`id` = ' . \$pinnedId . ') DESC')"), 'card comment list must place its resolved pin first');
 $assert(str_contains($commentService, "self::clearPinsForComments(\$ids)"), 'comment lifecycle mutations must clear invalid pins');
 $assert(!str_contains($userValidator, "'allUpdate'"), 'legacy user allUpdate scene must not mix profile and role writes');
+$assert(preg_match('/CREATE TABLE `users` \((.*?)\) ENGINE/s', $targetSchema, $usersTable) === 1
+    && !str_contains($usersTable[1], '`roles_id`'), 'new installs must not restore the legacy role JSON column');
+$assert(!str_contains($targetSeed, '`roles_id`'), 'new install seed must insert root roles through user_roles only');
+$assert(!str_contains($userModel, "'roles_id' => 'json'"), 'runtime model must not require the removed role column');
+$assert(str_contains($userValidator, "'roles_id' => ['type' => 'array'"), 'public role assignment contract must remain available');
 $assert(!str_contains($tagValidator, "'allUpdate'"), 'legacy tag allUpdate scene must not re-enable ownership writes');
 $assert(
     str_contains($tagValidator, "'normal' => ['name', 'status']"),

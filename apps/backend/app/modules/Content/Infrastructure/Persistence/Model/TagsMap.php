@@ -21,7 +21,6 @@ class TagsMap extends Model
         'aid' => 'INT',
         'pid' => 'INT',
         'tag_id' => 'INT',
-        'status' => 'INT',
         'created_at' => 'TIMESTAMP',
         'deleted_at' => 'TIMESTAMP',
     ];

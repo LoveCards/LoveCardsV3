@@ -164,14 +164,16 @@ $test('ThinkPHP config consumes persistent database and JWT state', static funct
 $test('runtime capabilities are trimmed by configuration and commands bypass a shell', static function () use ($tmp, $assert, $assertThrows): void {
     $marker = $tmp . DIRECTORY_SEPARATOR . 'worker marker.txt';
     $runtime = new NativeReleaseRuntime([
-        'drain_command' => [PHP_BINARY, '-r', 'file_put_contents($argv[1], $argv[2]); echo json_encode(["workers_stopped"=>true,"scheduled_trigger_stopped"=>true,"restart_disabled"=>true]);', $marker, '{release_id}'],
+        'drain_command' => [PHP_BINARY, '-r', 'file_put_contents($argv[1], $argv[2] . ":" . $argv[3]); echo json_encode(["workers_stopped"=>true,"scheduled_trigger_stopped"=>true,"restart_disabled"=>true]);', $marker, '{release_id}', '{phase}'],
         'reload_command' => '[]',
         'command_timeout_seconds' => 10,
     ], 'cli');
     $assert($runtime->canDrain(), 'configured drain capability is missing');
     $assert(!$runtime->canReload(), 'unconfigured reload capability was enabled');
     $runtime->drain('release-worker-1');
-    $assert(file_get_contents($marker) === 'release-worker-1', 'release placeholder was not passed as one argv value');
+    $assert(file_get_contents($marker) === 'release-worker-1:activation', 'release and phase placeholders were not passed as argv values');
+    $assertThrows(static fn() => $runtime->assertQuiescent('release-worker-1'), 'Web 请求已排空');
+    $assert(file_get_contents($marker) === 'release-worker-1:contract', 'contract phase was not passed to drain command');
     $bad = new NativeReleaseRuntime(['drain_command' => [PHP_BINARY, '-r', 'echo "ok";']], 'cli');
     $assertThrows(static fn() => $bad->drain('release-worker-1'), '未提供');
     foreach (['workers_stopped', 'scheduled_trigger_stopped', 'restart_disabled'] as $missing) {
