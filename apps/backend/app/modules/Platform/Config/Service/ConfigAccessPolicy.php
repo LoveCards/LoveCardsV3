@@ -10,6 +10,7 @@ use app\shared\Authorization\Scope;
 final class ConfigAccessPolicy
 {
     private const GROUP_CAPABILITIES = [
+        'redis' => 'operations.runtime.configure',
         'storage' => 'storage.read',
         'sender' => 'sender.read',
         'captcha' => 'captcha.read',

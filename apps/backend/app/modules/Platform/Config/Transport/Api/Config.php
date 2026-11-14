@@ -10,7 +10,7 @@ final class Config extends Validate
     {
         return [
             'list' => ['type' => 'object', 'properties' => ['group' => ['type' => 'string', 'maxLength' => 255]], 'additionalProperties' => false],
-            'update' => ['type' => 'object', 'additionalProperties' => ['type' => 'object', 'additionalProperties' => true]],
+            'update' => ['type' => 'object', 'additionalProperties' => ['type' => 'object', 'properties' => ['__revision' => ['type' => 'integer', 'minimum' => 1, 'description' => '管理读取时的配置组版本，仅用于并发校验，不是业务配置']], 'required' => ['__revision'], 'additionalProperties' => true]],
             'register' => ['type' => 'object', 'properties' => ['group' => ['type' => 'string', 'maxLength' => 64], 'schema' => ['type' => 'object', 'additionalProperties' => true]], 'required' => ['group', 'schema'], 'additionalProperties' => false],
             'reload' => ['type' => 'object', 'properties' => ['group' => ['type' => 'string', 'maxLength' => 64]], 'additionalProperties' => false],
             'delete' => ['type' => 'object', 'properties' => ['group' => ['type' => 'string', 'maxLength' => 64]], 'required' => ['group'], 'additionalProperties' => false],

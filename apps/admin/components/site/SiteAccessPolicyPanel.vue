@@ -79,7 +79,7 @@
           </v-col>
         </v-row>
         <p class="mt-2 text-body-2 text-medium-emphasis">
-          当前驱动：{{ service.humanDriver || '未配置' }} · {{ service.humanReady ? '可用' : '未就绪' }}
+          当前驱动：{{ service.humanDriver || '未配置' }} · {{ service.humanReady ? '配置已就绪（未检测第三方连通）' : '未就绪' }}
           · <NuxtLink to="/apps/settings/verification">配置验证服务</NuxtLink>
         </p>
       </AdminConfigSection>
@@ -115,7 +115,7 @@ import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminConfigSaveBar from '~/components/shared/admin/AdminConfigSaveBar.vue'
 import AdminConfigSection from '~/components/shared/admin/AdminConfigSection.vue'
 import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
-import { isApiError, useApi } from '~/lib/api'
+import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import CommonUtils from '~/utils/common'
 import { readBoolean, readObject, readString } from '~/utils/json'
@@ -134,6 +134,7 @@ interface Service {
 type Feedback = { type: 'success' | 'error'; text: string }
 
 const client = useApi()
+const configSnapshot = useConfigSnapshot(client)
 const userStore = useUserStore()
 const props = withDefaults(defineProps<{ active?: boolean }>(), { active: true })
 const emit = defineEmits<{ 'dirty-change': [dirty: boolean] }>()
@@ -162,13 +163,13 @@ const blockingDependency = computed(() => (
   (settings.value.emailVerify && !origin.value.emailVerify && (!service.value.codeEnabled || service.value.codeChannel !== 'smtp'))
   || (settings.value.humanVerify && !origin.value.humanVerify && !service.value.humanReady)
 ))
-const errorMessage = (cause: unknown, fallback: string) => isApiError(cause) ? cause.message : fallback
+const errorMessage = configSnapshot.errorMessage
 
 async function loadConfig() {
   loading.value = true
   loadError.value = ''
   try {
-    const [raw, captchaStatus] = await Promise.all([client.config.list(), client.captcha.config()])
+    const [raw, captchaStatus] = await Promise.all([configSnapshot.list(), client.captcha.config()])
     const core = readObject(raw.core)
     const user = readObject(raw.user)
     if (!raw.captcha) {
@@ -176,12 +177,11 @@ async function loadConfig() {
       return
     }
     const captcha = readObject(raw.captcha)
-    const geetest = readObject(captchaStatus.captcha_geetest_v4)
     const humanDriver = readString(captcha.default_captcha_driver, 'geetest_v4')
     const current: Settings = {
       visitorMode: readBoolean(core.visitor_mode),
       emailVerify: readBoolean(user.captcha),
-      humanVerify: readBoolean(captcha.captcha_enabled, true),
+      humanVerify: readBoolean(captcha.captcha_enabled),
     }
     settings.value = CommonUtils.deepClone(current)
     origin.value = CommonUtils.deepClone(current)
@@ -189,7 +189,7 @@ async function loadConfig() {
       codeEnabled: readBoolean(captcha.code_enabled, true),
       codeChannel: readString(captcha.code_channel, 'smtp'),
       humanDriver,
-      humanReady: humanDriver === 'gd_image' || (humanDriver === 'geetest_v4' && readBoolean(geetest.status)),
+      humanReady: readBoolean(captchaStatus.human_ready),
     }
     loaded.value = true
   } catch (cause) {
@@ -208,7 +208,10 @@ async function saveSettings() {
   if (settings.value.emailVerify !== origin.value.emailVerify) update.user = { captcha: settings.value.emailVerify }
   if (humanChanged.value) update.captcha = { captcha_enabled: settings.value.humanVerify }
   try {
-    await client.config.update(update)
+    const committed = await configSnapshot.update(update)
+    if (committed.core) settings.value.visitorMode = readBoolean(readObject(committed.core).visitor_mode)
+    if (committed.user) settings.value.emailVerify = readBoolean(readObject(committed.user).captcha)
+    if (committed.captcha) settings.value.humanVerify = readBoolean(readObject(committed.captcha).captcha_enabled)
     origin.value = CommonUtils.deepClone(settings.value)
     message.value = { type: 'success', text: '访问与验证设置已保存。' }
   } catch (cause) {
@@ -222,6 +225,6 @@ onMounted(() => {
   if (props.active) void loadConfig()
 })
 watch(() => props.active, (active) => {
-  if (active && !loaded.value && !loading.value) void loadConfig()
+  if (active && !loading.value && !changed.value) void loadConfig()
 })
 </script>

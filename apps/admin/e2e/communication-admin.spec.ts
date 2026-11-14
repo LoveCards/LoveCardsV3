@@ -1,6 +1,21 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 const adminOrigin = process.env.LOVECARDS_DEV_ADMIN_ORIGIN || 'http://127.0.0.1:3000'
+
+async function mockSignalCatalog(page: Page) {
+  await page.route('**/api/admin/communications/signals', route => {
+    expect(route.request().method()).toBe('GET')
+    return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: {
+      revision: 2,
+      signals: [{
+        key: 'notifications.new', topic: 'notifications', owner: 'Platform/Notifications',
+        display_name: '新站内通知', impact_text: '提示用户读取新的站内通知。',
+        default_enabled: true, enabled: true, event_type: 'notification.created', event_version: 1,
+        handler_key: 'notification.created.signal',
+      }],
+    } }) })
+  })
+}
 
 test.use({
   storageState: {
@@ -11,6 +26,7 @@ test.use({
 
 test('policy switch creates a reviewable change and sends the canonical event name', async ({ page }) => {
   test.setTimeout(90_000)
+  await mockSignalCatalog(page)
   const policies = [
     { event_type: 'content.liked', event_version: 1, rule_key: 'notify', enabled: true, display_name: '点赞提醒', impact_text: '关闭后不生成点赞提醒。', notification_type: 'content.card_liked', recipient_rule: 'handler', user_disableable: true, locked: false, policy_revision: 6 },
     { event_type: 'system.notification.issued', event_version: 1, rule_key: 'notify', enabled: true, display_name: '系统安全与审核通知', impact_text: '必须始终开启。', notification_type: 'system.moderation', recipient_rule: 'handler', user_disableable: false, locked: true, policy_revision: 6 },
@@ -53,6 +69,7 @@ test('policy switch creates a reviewable change and sends the canonical event na
 
 test('communications readers can inspect policy catalog without mutation controls', async ({ page }) => {
   test.setTimeout(90_000)
+  await mockSignalCatalog(page)
   const policies = [
     { event_type: 'content.liked', event_version: 1, rule_key: 'notify', enabled: true, display_name: '点赞提醒', impact_text: '关闭后不生成点赞提醒。', notification_type: 'content.card_liked', recipient_rule: 'handler', user_disableable: true, locked: false, policy_revision: 6 },
     { event_type: 'system.notification.issued', event_version: 1, rule_key: 'notify', enabled: true, display_name: '系统安全与审核通知', impact_text: '必须始终开启。', notification_type: 'system.moderation', recipient_rule: 'handler', user_disableable: false, locked: true, policy_revision: 6 },
@@ -73,9 +90,13 @@ test('communications readers can inspect policy catalog without mutation control
   await expect(likedRow).toContainText('已开启', { timeout: 30_000 })
   await expect(likedRow.locator('input[type=checkbox]')).toHaveCount(0)
   await expect(page.getByRole('button', { name: '审阅并保存' })).toHaveCount(0)
+  const signalRow = page.getByRole('row', { name: /新站内通知/ })
+  await expect(signalRow).toContainText('已开启')
+  await expect(signalRow.locator('input[type=checkbox]')).toHaveCount(0)
 })
 
 test('policy revision conflict keeps the draft for explicit review', async ({ page }) => {
+  await mockSignalCatalog(page)
   const liked = { event_type: 'content.liked', event_version: 1, rule_key: 'notify', enabled: true, display_name: '点赞提醒', impact_text: '关闭后不生成点赞提醒。', notification_type: 'content.card_liked', recipient_rule: 'handler', user_disableable: true, locked: false, policy_revision: 6 }
   const followed = { ...liked, event_type: 'social.followed', display_name: '新关注提醒', impact_text: '关闭后不生成关注提醒。' }
   let getCount = 0
@@ -145,8 +166,8 @@ test('runtime validates before review and keeps the draft after a revision confl
   test.setTimeout(90_000)
   const settings = {
     notification_interval_seconds: 20, message_interval_seconds: 45, unread_interval_seconds: 20,
-    polling_backoff_factor: 2, polling_max_interval_seconds: 300, pause_when_hidden: true,
-    worker_stale_seconds: 30, scheduler_stale_seconds: 3600, gateway_stale_seconds: 15, require_supervisor: false,
+    pause_when_hidden: true,
+    worker_stale_seconds: 30, scheduler_stale_seconds: 3600, gateway_stale_seconds: 15,
   }
   let revision = 3
   let validations = 0
@@ -160,6 +181,7 @@ test('runtime validates before review and keeps the draft after a revision confl
   }) }))
   await page.route('**/api/admin/operations/runtime', route => route.fulfill({ contentType: 'application/json', body: JSON.stringify({
     success: true, data: { facilities: [], workers: [], eventing: { pending: 0, processing: 0, dead: 0 },
+      event_processing: { mode: 'scheduled', state: 'active', target_mode: null, scheduled_trigger: 'cli', revision: 1, status: 'ready', reason_code: null, note: null },
       communication: { desired_mode: 'polling', effective_mode: 'polling', status: 'ready', revision,
         reason_code: null, checked_at: '2026-11-07 10:00:00', settings: { ...settings, notification_interval_seconds: revision === 3 ? 20 : 25 },
         last_apply_state: null, last_apply_reason: null, capabilities: [] } },
@@ -177,7 +199,7 @@ test('runtime validates before review and keeps the draft after a revision confl
     return route.fulfill({ status: 409, contentType: 'application/json', body: JSON.stringify({ error: { code: 9016, message: '配置已变化' } }) })
   })
 
-  await page.goto('./apps/operations/runtime', { waitUntil: 'domcontentloaded' })
+  await page.goto('./apps/operations/communication', { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: '修改通信设置' }).click()
   const field = page.getByLabel('通知轮询间隔（秒）')
   await field.fill('21')

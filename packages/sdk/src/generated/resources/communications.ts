@@ -9,4 +9,10 @@ export class Communications extends BaseResource {
   applyPolicies(data: ApiTypes.NotificationPolicyUpdate): Promise<ApiTypes.NotificationPolicyApplyResult> {
     return this._put<ApiTypes.NotificationPolicyApplyResult>("/admin/communications/policies", data)
   }
+  signals(): Promise<ApiTypes.SignalPolicyCatalog> {
+    return this._get<ApiTypes.SignalPolicyCatalog>("/admin/communications/signals")
+  }
+  applySignals(data: ApiTypes.SignalPolicyUpdate): Promise<ApiTypes.SignalPolicyCatalog> {
+    return this._put<ApiTypes.SignalPolicyCatalog>("/admin/communications/signals", data)
+  }
 }

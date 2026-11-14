@@ -1,5 +1,9 @@
 # 通信运行时实施契约（Phase 0 冻结）
 
+> 2026-11-11 退役说明：下文保留的 `polling_backoff_factor`、`polling_max_interval_seconds`、`require_supervisor` 与 `eventing.wakeup` 均不再属于当前实现或有效配置。前两项从未参与浏览器调度；Supervisor 没有真实探测；Worker wakeup 没有生产调用/订阅链。当前运行约束见 [Runtime 架构](RUNTIME-ARCHITECTURE.md) 和 [收敛设计](PLATFORM-CONVERGENCE-2026-11-11.md)。
+
+> **历史记录，不是当前实施契约。** 保留当时的决策和差异登记。当前事件处理、通信模式、故障语义、Redis 配置、Gateway 传输和 SSE 游标以 [EVENTING.md](EVENTING.md)、[RUNTIME-ARCHITECTURE.md](RUNTIME-ARCHITECTURE.md) 与 [FRONTEND-SIGNALS.md](FRONTEND-SIGNALS.md) 为准。以下 `effective_mode` 自动回落 polling、Scheduler/Worker 并行兜底及 Gateway 回源要求已经废止。
+
 - 状态：Implementation Contract / 冻结待架构复审
 - 日期：2026-11-06
 - 上游依据：`COMMUNICATION-RUNTIME-DESIGN-2026-11-05.md`（分支 `docs/communication-runtime-design` @ `c6cf8c0`，尚未并入 main）
@@ -128,7 +132,7 @@ CREATE TABLE IF NOT EXISTS `runtime_config_state` (
 
 ### 4.2 配置（env，不入 settings）
 
-`LC_REALTIME_GATEWAY_URL`（backend probe 用，未配置=能力缺失 `gateway-not-configured`）、`LC_RUNTIME_INTERNAL_TOKEN`（backend↔gateway 共享密钥）、`LC_REALTIME_GATEWAY_PUBLIC_URL`（ticket 响应里的 connect_url 前缀）、`LC_REDIS_HOST`（信号通道）。
+`LC_REALTIME_GATEWAY_URL`（backend probe 用，未配置=能力缺失 `gateway-not-configured`）、`LC_RUNTIME_INTERNAL_TOKEN`（backend↔gateway 共享密钥）、`LC_REALTIME_GATEWAY_PUBLIC_URL`（ticket 响应里的 connect_url 前缀）。信号通道的 Redis 连接由系统 `redis` 配置组维护。
 
 ### 4.3 health/capability（验收 #7：禁止只查端口）
 

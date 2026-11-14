@@ -20,10 +20,7 @@ export function heartbeatFrame() {
   return sseFrame({ event: 'heartbeat', data: '{}' })
 }
 
-export function signalFrame({ id, topic, cursor }) {
-  return sseFrame({ id, event: 'signal', data: JSON.stringify({ topic, cursor }) })
-}
-
-export function resyncFrame() {
-  return sseFrame({ event: 'resync', data: '' })
+export function signalFrame({ topic, cursor }) {
+  // topic 各有业务游标；没有全局流序号时不能把某个业务游标写成 SSE id。
+  return sseFrame({ event: 'signal', data: JSON.stringify({ topic, cursor }) })
 }

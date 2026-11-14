@@ -9,16 +9,18 @@ namespace app\modules\Platform\Config\Public {
         public static array $schemas = [];
         public static array $environmentManaged = [];
         public static array $writes = [];
+        public static array $revisions = [];
 
         public static function reset(): void
         {
-            self::$groups = ['core', 'storage', 'storage_cos', 'sender_smtp', 'captcha_geetest_v4'];
+            self::$groups = ['core', 'storage', 'storage_cos', 'sender_smtp', 'captcha_geetest_v4', 'redis'];
             self::$values = [
                 'core' => ['name' => 'LoveCards'],
                 'storage' => ['default' => 'cos'],
                 'storage_cos' => ['bucket' => 'assets', 'secret_id' => 'id-value', 'secret_key' => 'key-value'],
                 'sender_smtp' => ['host' => 'smtp.example.test', 'pass' => 'mail-secret'],
                 'captcha_geetest_v4' => ['id' => 'captcha-id', 'key' => 'captcha-secret'],
+                'redis' => ['enabled' => false, 'host' => '127.0.0.1', 'port' => 6379, 'database' => 0, 'password' => 'redis-secret', 'tls' => false, 'tls_server_name' => ''],
             ];
             self::$schemas = [
                 'core' => ['name' => ['type' => 'string']],
@@ -36,19 +38,41 @@ namespace app\modules\Platform\Config\Public {
                     'id' => ['type' => 'string'],
                     'key' => ['type' => 'string'],
                 ],
+                'redis' => [
+                    'enabled' => ['type' => 'bool'], 'host' => ['type' => 'string'],
+                    'port' => ['type' => 'int'], 'database' => ['type' => 'int'],
+                    'tls' => ['type' => 'bool'], 'tls_server_name' => ['type' => 'string'],
+                    'password' => ['type' => 'password', 'sensitive' => true],
+                ],
             ];
             self::$environmentManaged = [];
             self::$writes = [];
+            self::$revisions = array_fill_keys(self::$groups, 1);
         }
 
         public static function getSchemaGroups(): array { return self::$groups; }
         public static function getGroup(string $group): array { return self::$values[$group] ?? []; }
+        public static function getSnapshot(string $group): array { return ['values' => self::getGroup($group), 'revision' => self::$revisions[$group] ?? 1]; }
         public static function getSchema(string $group): array { return self::$schemas[$group] ?? []; }
         public static function setGroup(string $group, array $config): bool
         {
             self::$writes[] = [$group, $config];
             self::$values[$group] = array_merge(self::$values[$group] ?? [], $config);
             return true;
+        }
+        public static function compareAndSwapGroups(array $groups, array $expected, ?callable $validate = null): array
+        {
+            foreach ($groups as $group => $values) {
+                if (($expected[$group] ?? null) !== (self::$revisions[$group] ?? 1)) throw new \app\api\ApiException('conflict', \app\api\ApiException::CODE_CONFIG_CONFLICT);
+            }
+            if ($validate !== null) $validate();
+            $result = [];
+            foreach ($groups as $group => $values) {
+                self::setGroup($group, $values);
+                self::$revisions[$group] = (self::$revisions[$group] ?? 1) + 1;
+                $result[$group] = self::getSnapshot($group);
+            }
+            return $result;
         }
         public static function isEnvironmentManaged(string $group, string $key): bool
         {
@@ -62,18 +86,41 @@ namespace app\modules\Platform\Config\Public {
     }
 }
 
+namespace app\modules\Platform\Captcha\Public {
+    final class Captcha
+    {
+        public static bool $ready = false;
+        public static ?string $readyDriver = null;
+
+        public static function isReady(string $type, ?string $driverSlug = null): bool
+        {
+            return $type === 'captcha' && self::$ready
+                && (self::$readyDriver === null || self::$readyDriver === $driverSlug);
+        }
+    }
+}
+
 namespace {
+    function withRevisions(array $groups): array
+    {
+        foreach ($groups as $group => &$values) $values['__revision'] = \app\modules\Platform\Config\Public\Config::$revisions[$group] ?? 1;
+        return $groups;
+    }
     $root = dirname(__DIR__, 2);
     require $root . '/app/shared/Authorization/Scope.php';
     require $root . '/app/shared/Authorization/Grant.php';
     require $root . '/app/shared/Authorization/GrantSet.php';
     require $root . '/app/api/ApiException.php';
     require $root . '/app/modules/Platform/Config/Service/ConfigAccessPolicy.php';
+    require $root . '/app/modules/Platform/Config/Public/RedisConnectionSettings.php';
+    require $root . '/app/modules/Platform/Config/Public/DeploymentNamespace.php';
+    putenv('LC_DEPLOYMENT_ID=fixture-config-security-0001');
     require $root . '/app/modules/Platform/Config/Service/ConfigManager.php';
 
     use app\api\ApiException;
     use app\modules\Platform\Config\Public\Config;
     use app\modules\Platform\Config\Service\ConfigManager;
+    use app\modules\Platform\Captcha\Public\Captcha;
     use app\shared\Authorization\Grant;
     use app\shared\Authorization\GrantSet;
     use app\shared\Authorization\Scope;
@@ -120,6 +167,7 @@ namespace {
             'storage_cos' => 'storage.read',
             'sender_smtp' => 'sender.read',
             'captcha_geetest_v4' => 'captcha.read',
+            'redis' => 'operations.runtime.configure',
         ] as $group => $capability) {
             $expectApi(
                 403,
@@ -132,19 +180,20 @@ namespace {
     $test('update rejects a group outside the actor domain before writing', static function () use ($grants, $expectApi, $assertSame): void {
         Config::reset();
         $manager = new ConfigManager();
-        $expectApi(403, static fn() => $manager->update([
+        $expectApi(403, static fn() => $manager->update(withRevisions([
             'core' => ['name' => 'Changed before denial'],
             'storage' => ['default' => 'local'],
-        ], $grants('admin.access', 'config.update')), 'storage update must require storage.read');
+        ]), $grants('admin.access', 'config.update')), 'storage update must require storage.read');
         $assertSame([], Config::$writes, 'unauthorized update must not write');
 
         foreach ([
             'sender_smtp' => ['host' => 'changed.example.test'],
             'captcha_geetest_v4' => ['id' => 'changed-id'],
+            'redis' => ['host' => 'changed.example.test'],
         ] as $group => $payload) {
             $expectApi(
                 403,
-                static fn() => $manager->update([$group => $payload], $grants('admin.access', 'config.update')),
+                static fn() => $manager->update(withRevisions([$group => $payload]), $grants('admin.access', 'config.update')),
                 "{$group} update must require its domain capability"
             );
         }
@@ -155,7 +204,7 @@ namespace {
         Config::reset();
         $manager = new ConfigManager();
         $expectApi(403, static fn() => $manager->get([], $grants('admin.access', 'storage.read')), 'config.read must be required by the service');
-        $expectApi(403, static fn() => $manager->update(['core' => ['name' => 'Denied']], $grants('admin.access')), 'config.update must be required by the service');
+        $expectApi(403, static fn() => $manager->update(withRevisions(['core' => ['name' => 'Denied']]), $grants('admin.access')), 'config.update must be required by the service');
         $expectApi(403, static fn() => $manager->get([], $grants('config.read')), 'admin.access must be required by the service');
     });
 
@@ -175,23 +224,47 @@ namespace {
         $assert(!str_contains(json_encode($result, JSON_THROW_ON_ERROR), 'mail-secret'), 'serialized response must not contain sender secret');
     });
 
+    $test('redis settings require runtime permission and mask credentials', static function () use ($grants, $assertSame, $expectApi): void {
+        Config::reset();
+        Config::$values['redis']['host'] = '';
+        $manager = new ConfigManager();
+        $granted = $grants('admin.access', 'config.read', 'config.update', 'operations.runtime.configure');
+        $result = $manager->get(['redis'], $granted);
+        $assertSame(['$secret' => 'keep', 'configured' => true], $result['redis']['password'], 'redis password must be redacted');
+        $expectApi(403, static fn() => $manager->get(['redis'], $grants('admin.access', 'config.read')), 'redis group must require runtime permission');
+        $manager->update(withRevisions(['redis' => ['enabled' => false, 'host' => '']]), $granted);
+        $assertSame([['redis', ['enabled' => false, 'host' => '']]], Config::$writes, 'disabled Redis may keep an empty host');
+        Config::$writes = [];
+        $expectApi(422, static fn() => $manager->update(withRevisions(['redis' => ['enabled' => true]]), $granted), 'enabled Redis requires a host');
+        putenv('LC_DEPLOYMENT_ID=');
+        $expectApi(422, static fn() => $manager->update(withRevisions(['redis' => ['enabled' => true, 'host' => 'redis.example.test']]), $granted), 'enabled Redis requires a deployment identity');
+        putenv('LC_DEPLOYMENT_ID=fixture-config-security-0001');
+        $manager->update(withRevisions(['redis' => ['enabled' => true, 'host' => 'redis.example.test', 'port' => 6380]]), $granted);
+        $assertSame([['redis', ['enabled' => true, 'host' => 'redis.example.test', 'port' => 6380]]], Config::$writes, 'valid redis update should use existing config path');
+        Config::$writes = [];
+        $manager->update(withRevisions(['redis' => ['tls' => true, 'tls_server_name' => 'redis.example.test']]), $granted);
+        $assertSame([['redis', ['tls' => true, 'tls_server_name' => 'redis.example.test']]], Config::$writes, 'TLS update should use the same config path');
+        $expectApi(422, static fn() => $manager->update(withRevisions(['redis' => ['host' => '127.0.0.1', 'tls' => true, 'tls_server_name' => '']]), $granted), 'TLS with IP address must require certificate name');
+        $expectApi(400, static fn() => $manager->deleteGroup('redis', $grants('admin.access', 'config.deleteKey', 'operations.runtime.configure')), 'built-in redis group cannot be deleted');
+    });
+
     $test('secret keep replace and clear have explicit behavior', static function () use ($grants, $assertSame): void {
         Config::reset();
         $manager = new ConfigManager();
         $writeGrants = $grants('admin.access', 'config.update', 'storage.read');
 
-        $manager->update(['storage_cos' => [
+        $manager->update(withRevisions(['storage_cos' => [
             'bucket' => 'new-assets',
             'secret_key' => ['$secret' => 'keep'],
             'secret_id' => '',
-        ]], $writeGrants);
+        ]]), $writeGrants);
         $assertSame([['storage_cos', ['bucket' => 'new-assets']]], Config::$writes, 'keep operations must never persist redacted values');
 
         Config::$writes = [];
-        $manager->update(['storage_cos' => [
+        $manager->update(withRevisions(['storage_cos' => [
             'secret_key' => ['$secret' => 'replace', 'value' => 'new-key'],
             'secret_id' => ['$secret' => 'clear'],
-        ]], $writeGrants);
+        ]]), $writeGrants);
         $assertSame([['storage_cos', ['secret_key' => 'new-key', 'secret_id' => '']]], Config::$writes, 'replace and clear must persist only explicit values');
     });
 
@@ -199,12 +272,73 @@ namespace {
         Config::reset();
         $manager = new ConfigManager();
         $writeGrants = $grants('admin.access', 'config.update', 'storage.read');
-        $expectApi(400, static fn() => $manager->update(['storage_cos' => ['secret_key' => 'raw-secret']], $writeGrants), 'raw secret replacement must be rejected');
+        $expectApi(400, static fn() => $manager->update(withRevisions(['storage_cos' => ['secret_key' => 'raw-secret']]), $writeGrants), 'raw secret replacement must be rejected');
         $assertSame([], Config::$writes, 'invalid raw secret must not write');
 
         Config::$environmentManaged['storage_cos.secret_key'] = true;
-        $expectApi(400, static fn() => $manager->update(['storage_cos' => ['secret_key' => ['$secret' => 'clear']]], $writeGrants), 'environment-managed secret cannot be cleared in the database');
+        $expectApi(400, static fn() => $manager->update(withRevisions(['storage_cos' => ['secret_key' => ['$secret' => 'clear']]]), $writeGrants), 'environment-managed secret cannot be cleared in the database');
         $assertSame([], Config::$writes, 'environment-managed secret update must not write');
+    });
+
+    $test('human verification requires a ready driver before enabling', static function () use ($grants, $expectApi, $assertSame): void {
+        Config::reset();
+        Config::$groups[] = 'captcha';
+        Config::$schemas['captcha'] = ['captcha_enabled' => ['type' => 'bool']];
+        $manager = new ConfigManager();
+        $writeGrants = $grants('admin.access', 'config.update', 'captcha.read');
+
+        Captcha::$ready = false;
+        Captcha::$readyDriver = null;
+        $expectApi(422, static fn() => $manager->update(withRevisions(['captcha' => ['captcha_enabled' => true]]), $writeGrants), 'unready human verification must be rejected');
+        $assertSame([], Config::$writes, 'unready driver must not persist enabled policy');
+
+        $manager->update(withRevisions(['captcha' => ['captcha_enabled' => false]]), $writeGrants);
+        $assertSame([['captcha', ['captcha_enabled' => false]]], Config::$writes, 'operator must be able to disable an unready policy');
+
+        Config::$writes = [];
+        Captcha::$ready = true;
+        $manager->update(withRevisions(['captcha' => ['captcha_enabled' => true]]), $writeGrants);
+        $assertSame([['captcha', ['captcha_enabled' => true]]], Config::$writes, 'ready driver permits enabling');
+    });
+
+    $test('enabled policy rejects switching to an unready driver', static function () use ($grants, $expectApi, $assertSame): void {
+        Config::reset();
+        Config::$groups[] = 'captcha';
+        Config::$schemas['captcha'] = [
+            'captcha_enabled' => ['type' => 'bool'],
+            'default_captcha_driver' => ['type' => 'string'],
+        ];
+        Config::$values['captcha'] = ['captcha_enabled' => true, 'default_captcha_driver' => 'geetest_v4'];
+        Captcha::$ready = true;
+        Captcha::$readyDriver = 'geetest_v4';
+        $manager = new ConfigManager();
+        $writeGrants = $grants('admin.access', 'config.update', 'captcha.read');
+
+        $expectApi(422, static fn() => $manager->update(withRevisions(['captcha' => ['default_captcha_driver' => 'gd_image']]), $writeGrants), 'active policy cannot switch to unready image driver');
+        $assertSame([], Config::$writes, 'invalid driver switch must not persist');
+
+        Config::$values['captcha']['captcha_enabled'] = false;
+        $manager->update(withRevisions(['captcha' => ['default_captcha_driver' => 'gd_image']]), $writeGrants);
+        $assertSame([['captcha', ['default_captcha_driver' => 'gd_image']]], Config::$writes, 'disabled policy may select driver before setup');
+    });
+
+    $test('fresh install leaves human verification disabled', static function () use ($assertSame): void {
+        $schema = require dirname(__DIR__, 2) . '/config/apps/captcha.php';
+        $assertSame(false, $schema['captcha_enabled']['default'] ?? null, 'fresh install must not require an unconfigured challenge');
+    });
+
+    $test('management requires the loaded revision and returns a redacted committed snapshot', static function () use ($grants, $expectApi, $assertSame): void {
+        Config::reset();
+        $manager = new ConfigManager();
+        $permissions = $grants('admin.access', 'config.read', 'config.update', 'operations.runtime.configure');
+        $loaded = $manager->get(['redis'], $permissions);
+        $assertSame(1, $loaded['redis']['__revision'], 'management reads include the group revision');
+        $expectApi(422, static fn() => $manager->update(['redis' => ['host' => 'new.example.test']], $permissions), 'blind update must fail');
+        $result = $manager->update(['redis' => ['__revision' => 1, 'host' => 'new.example.test', 'password' => ['$secret' => 'replace', 'value' => 'new-secret']]], $permissions);
+        $assertSame(2, $result['redis']['__revision'], 'response carries the committed revision');
+        $assertSame(['$secret' => 'keep', 'configured' => true], $result['redis']['password'], 'response never exposes the committed password');
+        $expectApi(409, static fn() => $manager->update(['redis' => ['__revision' => 1, 'host' => 'stale.example.test']], $permissions), 'stale form must fail');
+        $assertSame('new.example.test', Config::$values['redis']['host'], 'stale form does not overwrite the committed value');
     });
 
     $failures = 0;

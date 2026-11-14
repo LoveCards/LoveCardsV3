@@ -1,6 +1,6 @@
 # 数据库与迁移运维
 
-LoveCards 以 MySQL/InnoDB 为唯一事务基线。数据库变更既服务首次安装，也服务跨版本升级；`database/schema.sql` 是新装目标结构，`database/seed.sql` 只保存系统默认数据，`database/migrations/*.sql` 是旧实例到当前结构的幂等演进路径。当前静态 `SchemaContract` 仍核对历史 `data.sql` 夹具；新旧路径的结构一致性由独立隔离数据库验证，不能把静态检查误当作实际 schema 相等。
+LoveCards 以 MySQL/InnoDB 为唯一事务基线。数据库变更既服务首次安装，也服务跨版本升级；`database/schema.sql` 是新装目标结构，`database/seed.sql` 只保存系统默认数据，`database/migrations/*.sql` 是旧实例到当前结构的幂等演进路径。新装导入前先确认空库；导入后由 `CleanInstallReceipt` 在 `schema_migrations` 记录 schema 文件与迁移目录的组合指纹，SystemLifecycle 校验后才把历史迁移标记为已完成并允许安装锁。该凭据不比较实际表结构，不能拿它代替一致性测试。当前静态 `SchemaContract` 仍核对历史 `data.sql` 夹具；新旧路径的结构一致性由独立隔离数据库验证，不能把静态检查误当作实际 schema 相等。
 
 ## 当前公共表组
 
@@ -14,9 +14,9 @@ LoveCards 以 MySQL/InnoDB 为唯一事务基线。数据库变更既服务首�
 | 举报 | `reports`、`report_events` | 状态/更新时间索引；状态变化保留事件，evidence snapshot 不依赖目标继续存在 |
 | 私信 | `conversations`、`conversation_members`、`messages` | direct key 唯一；成员未读索引；sender/client_message_id 幂等 |
 | 通知 | `notifications` | recipient、read/status、created/id 查询；dedupe key 防重复 |
-| 事件 | `outbox_events`、`event_deliveries` | event/handler 唯一投递；queue/mode/status/available_at claim 索引 |
+| 事件 | `outbox_events`、`event_deliveries`、`eventing_consumer_state`、`scheduler_runs` | event/handler 唯一投递；queue/mode/status/available_at claim 索引；单例策略行在领取事务内锁定，防定时与常驻同时 claim；定时运行台账记录触发来源与结果 |
 | 文件 | `files`、`file_references` | 稳定 hash、软删除、purge 状态；resource/purpose 与 file 反查 |
-| 运行时 | `runtime_workers`、`system_leases` | worker 心跳状态索引；具 TTL 的唯一 Lease |
+| 运行时 | `runtime_workers`、`runtime_config_state`、`system_leases` | worker 心跳、通信模式 CAS；具 TTL 的唯一 Lease |
 | 生命周期 | `schema_migrations`、`system_upgrade_steps`、`system_releases`、`system_upgrade_plans`、`system_upgrade_plan_steps`、`system_backups` | checksum、phase/cursor/revision；Release/plan/backup 唯一标识和状态索引 |
 | 审计 | `audit_logs` | actor/time 与 resource/time 索引，payload 白名单 |
 
@@ -54,4 +54,4 @@ php think lc:system:upgrade run <plan-id>
 
 ## 验证
 
-`npm run test:backend` 包含安装基线与历史 Schema Contract，检查表、列类型、索引、迁移幂等守卫、敏感默认值和模型字段。`npm run test:schema:e2e` 在两个一次性数据库分别运行 `schema.sql` + `seed.sql` + 安装账本标记与旧基线 + 历史迁移，再比较表、列、索引和外键；必须先设置 `LOVECARDS_SCHEMA_E2E_ISOLATED=1` 与本地数据库连接环境变量。测试数据库名与安全门禁规则见 `BACKEND-TESTING.md`。支持旧版本的真实数据副本仍需单独演练数据转换和锁影响。
+`npm run test:backend` 包含安装基线与历史 Schema Contract，检查表、列类型、索引、迁移幂等守卫、敏感默认值和模型字段；`CleanInstallReceiptBaseline` 还验证 schema 文件或迁移目录变化会使指纹变化。`npm run test:schema:e2e` 在两个一次性数据库分别运行 `schema.sql` + `seed.sql` + CleanInstallReceipt + 安装账本标记与旧基线 + 历史迁移，再比较表、列、索引和外键；必须先设置 `LOVECARDS_SCHEMA_E2E_ISOLATED=1` 与本地数据库连接环境变量。测试数据库名与安全门禁规则见 `BACKEND-TESTING.md`。支持旧版本的真实数据副本仍需单独演练数据转换和锁影响。

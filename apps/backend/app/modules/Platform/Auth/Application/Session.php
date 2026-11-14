@@ -34,12 +34,6 @@ class Session
         $captchaEnabled = (bool) ConfigService::get('captcha.captcha_enabled', false);
         $captchaDriver = (string) ConfigService::get('captcha.default_captcha_driver', 'geetest_v4');
 
-        // Geetest is only usable after its credentials have been activated.
-        // The image driver has no separate activation flag.
-        if ($captchaDriver === 'geetest_v4' && !(bool) ConfigService::get('captcha_geetest_v4.status', false)) {
-            $captchaEnabled = false;
-        }
-
         return [
             'registration' => [
                 'enabled' => true,
@@ -51,6 +45,7 @@ class Session
             'human_verification' => [
                 'enabled' => $captchaEnabled,
                 'driver' => $captchaDriver,
+                'available' => Captcha::isReady('captcha'),
             ],
         ];
     }

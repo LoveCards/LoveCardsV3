@@ -77,6 +77,12 @@ export interface CreateCardParams {
   pictures?: string[]
   media_file_ids?: number[]
   cover_file_id?: number
+  captcha_id?: string
+  captcha_code?: string
+  lot_number?: string
+  captcha_output?: string
+  pass_token?: string
+  gen_time?: string
 }
 
 export interface UpdateCardParams {
@@ -87,4 +93,10 @@ export interface UpdateCardParams {
   cover?: string
   media_file_ids?: number[]
   cover_file_id?: number
+  captcha_id?: string
+  captcha_code?: string
+  lot_number?: string
+  captcha_output?: string
+  pass_token?: string
+  gen_time?: string
 }

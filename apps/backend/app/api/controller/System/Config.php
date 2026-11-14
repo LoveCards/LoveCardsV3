@@ -3,9 +3,13 @@
 namespace app\api\controller\System;
 
 use app\api\ApiResponse;
+use app\api\ApiException;
 use app\api\controller\BaseController;
 use app\modules\Platform\Config\Transport\Api\ConfigResource;
 use app\modules\Platform\Config\Service\ConfigManager;
+use app\modules\Platform\Config\Public\RedisConnectionSettings;
+use app\modules\Platform\Config\Transport\Api\InternalRedisConfigResource;
+use app\modules\Platform\Config\Transport\Api\RedisConnectionTestResource;
 
 class Config extends BaseController
 {
@@ -30,10 +34,27 @@ class Config extends BaseController
         return ApiResponse::createOk(ConfigResource::make($this->config->schemaGroups(request()->auth->grants())));
     }
 
+    public function testRedis()
+    {
+        return ApiResponse::createOk(RedisConnectionTestResource::make($this->config->testRedis(request()->auth->grants())));
+    }
+
+    /** InternalTokenCheck 在路由层鉴权；响应禁止缓存。 */
+    public function internalRedisConfig()
+    {
+        try {
+            $settings = RedisConnectionSettings::current();
+        } catch (\Throwable $ignored) {
+            throw ApiException::capabilityUnavailable('Redis 系统配置不可用');
+        }
+        return ApiResponse::createOk(InternalRedisConfigResource::make($settings))
+            ->header(['Cache-Control' => 'no-store', 'Pragma' => 'no-cache']);
+    }
+
     public function update()
     {
-        $this->config->update($this->validated(), request()->auth->grants());
-        return ApiResponse::createNoContent();
+        $snapshot = $this->config->update($this->validated(), request()->auth->grants());
+        return ApiResponse::createOk(ConfigResource::make($snapshot));
     }
 
     public function init()

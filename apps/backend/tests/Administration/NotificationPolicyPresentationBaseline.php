@@ -13,7 +13,7 @@ $assert = static function (bool $condition, string $message): void {
 };
 
 $registrations = array_values(array_filter(
-    (new HandlerRegistry())->catalog(),
+    (\app\EventHandlers::create())->catalog(),
     static fn(array $row): bool => $row['queue_name'] === 'notifications'
 ));
 $eventTypes = array_column($registrations, 'event_type');

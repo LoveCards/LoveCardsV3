@@ -91,6 +91,16 @@ class Database
         }
     }
 
+    /** 完整 schema.sql 只能导入空数据库，禁止对已有站点补记新装账本。 */
+    public static function AssertEmpty(): void
+    {
+        $connection = Db::connect();
+        $database = $connection->getConfig('database');
+        if ($connection->getTables($database) !== []) {
+            throw ApiException::error('安装目标数据库已包含数据表，请使用升级流程', ApiException::CODE_SYSTEM_ERROR);
+        }
+    }
+
     public static function UpdataConfig($hostname, $database, $username, $password, $hostport, ?SystemPaths $paths = null): bool
     {
         try {

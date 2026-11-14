@@ -12,6 +12,7 @@ final class WorkerHeartbeat
     private string $releaseId;
     private string $schemaVersion;
     private string $handlerCatalogHash;
+    private array $queueNames;
     private int $jobsProcessed;
     private \DateTimeImmutable $heartbeatAt;
 
@@ -22,6 +23,7 @@ final class WorkerHeartbeat
         string $releaseId,
         string $schemaVersion,
         string $handlerCatalogHash,
+        array $queueNames,
         int $jobsProcessed,
         \DateTimeImmutable $heartbeatAt
     ) {
@@ -35,6 +37,12 @@ final class WorkerHeartbeat
         if ($jobsProcessed < 0) {
             throw new \InvalidArgumentException('jobs_processed 不能为负数');
         }
+        if ($queueNames === []) throw new \InvalidArgumentException('queue_names 不能为空');
+        foreach ($queueNames as $queueName) {
+            if (!is_string($queueName) || preg_match('/^[a-z][a-z0-9_.-]{0,63}$/', $queueName) !== 1) {
+                throw new \InvalidArgumentException('queue_name 不合法');
+            }
+        }
 
         $this->workerId = $workerId;
         $this->workerType = $workerType;
@@ -42,6 +50,7 @@ final class WorkerHeartbeat
         $this->releaseId = $releaseId;
         $this->schemaVersion = $schemaVersion;
         $this->handlerCatalogHash = $handlerCatalogHash;
+        $this->queueNames = array_values(array_unique($queueNames));
         $this->jobsProcessed = $jobsProcessed;
         $this->heartbeatAt = $heartbeatAt;
     }
@@ -52,6 +61,7 @@ final class WorkerHeartbeat
     public function releaseId(): string { return $this->releaseId; }
     public function schemaVersion(): string { return $this->schemaVersion; }
     public function handlerCatalogHash(): string { return $this->handlerCatalogHash; }
+    public function queueNames(): array { return $this->queueNames; }
     public function jobsProcessed(): int { return $this->jobsProcessed; }
     public function heartbeatAt(): \DateTimeImmutable { return $this->heartbeatAt; }
 }

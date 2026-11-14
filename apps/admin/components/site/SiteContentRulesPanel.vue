@@ -214,7 +214,7 @@ import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminConfigSaveBar from '~/components/shared/admin/AdminConfigSaveBar.vue'
 import AdminConfigSection from '~/components/shared/admin/AdminConfigSection.vue'
 import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
-import { isApiError, useApi } from '~/lib/api'
+import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import CommonUtils from '~/utils/common'
 import { readBoolean, readNumber, readObject, readString } from '~/utils/json'
@@ -246,6 +246,7 @@ interface RulesConfig {
 type ActionMessage = { type: 'success' | 'error'; text: string }
 
 const client = useApi()
+const configSnapshot = useConfigSnapshot(client)
 const userStore = useUserStore()
 const props = withDefaults(defineProps<{ active?: boolean }>(), { active: true })
 const emit = defineEmits<{ 'dirty-change': [dirty: boolean] }>()
@@ -340,13 +341,13 @@ const toBackendRules = (config: RulesConfig): JsonObject => ({
     review_new_tags: config.tags.reviewNew,
   },
 })
-const errorMessage = (cause: unknown, fallback: string) => isApiError(cause) ? cause.message : fallback
+const errorMessage = configSnapshot.errorMessage
 
 const loadConfig = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const converted = toFrontendFormat(await client.config.list())
+    const converted = toFrontendFormat(await configSnapshot.list())
     rulesConfig.value = CommonUtils.deepClone(converted)
     originConfig.value = CommonUtils.deepClone(converted)
     loaded.value = true
@@ -361,7 +362,8 @@ const saveRules = async () => {
   rulesSaving.value = true
   rulesMessage.value = null
   try {
-    await client.config.update(toBackendRules(rulesConfig.value))
+    const committed = await configSnapshot.update(toBackendRules(rulesConfig.value))
+    rulesConfig.value = toFrontendFormat(committed)
     originConfig.value = CommonUtils.deepClone(rulesConfig.value)
     rulesMessage.value = { type: 'success', text: '内容规则已保存。' }
   } catch (cause) {

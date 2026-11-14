@@ -6,29 +6,13 @@ require $root . '/app/shared/Resource/ResourceRef.php';
 require $root . '/app/shared/Transport/Http/CursorPage.php';
 require $root . '/app/modules/Platform/Notifications/Contract/NotificationTypeCatalog.php';
 require $root . '/app/modules/Platform/Notifications/Domain/NotificationIntent.php';
-require $root . '/app/modules/Platform/Notifications/Domain/NotificationCursor.php';
 require $root . '/app/modules/Platform/Notifications/Contract/NotificationRepository.php';
-require $root . '/app/modules/Platform/Eventing/Public/RealtimeSignal.php';
-require $root . '/app/modules/Platform/Eventing/Public/RealtimeSignalPublisher.php';
 require $root . '/app/modules/Platform/Notifications/Application/ManageNotifications.php';
 
-use app\modules\Platform\Eventing\Public\RealtimeSignal;
-use app\modules\Platform\Eventing\Public\RealtimeSignalPublisher;
 use app\modules\Platform\Notifications\Application\ManageNotifications;
 use app\modules\Platform\Notifications\Contract\NotificationRepository;
-use app\modules\Platform\Notifications\Domain\NotificationCursor;
 use app\modules\Platform\Notifications\Domain\NotificationIntent;
 use app\shared\Resource\ResourceRef;
-
-final class FakeRealtimeSignalPublisher implements RealtimeSignalPublisher
-{
-    /** @var list<array{topic: string, recipient: string, cursor: string}> */
-    public array $signals = [];
-    public function publish(RealtimeSignal $signal): void
-    {
-        $this->signals[] = ['topic' => $signal->topic(), 'recipient' => $signal->recipientKey(), 'cursor' => $signal->cursorHint()];
-    }
-}
 
 final class FakeNotificationRepository implements NotificationRepository
 {
@@ -52,8 +36,7 @@ final class FakeNotificationRepository implements NotificationRepository
 
 $assert = static function (bool $condition, string $message): void { if (!$condition) throw new RuntimeException($message); };
 $repository = new FakeNotificationRepository();
-$signals = new FakeRealtimeSignalPublisher();
-$notifications = new ManageNotifications($repository, null, $signals);
+$notifications = new ManageNotifications($repository);
 $intent = new NotificationIntent(2, 'follow:1:2', 'social.followed', 1, new ResourceRef('user', 1));
 
 $assert($notifications->create($intent) === 1, 'first notification should be created');
@@ -81,14 +64,7 @@ try { $notifications->list(2, null, 20, false, 'custom.foo'); } catch (InvalidAr
 $assert($invalidTypeFilterRejected, 'notification list should reject a type outside the public catalog');
 $assert($notifications->create(new NotificationIntent(3, 'system:restricted:3', 'system.moderation', null)) === 2, 'restricted recipient system notice should be persisted for later access');
 
-// realtime 信号：首次 insert 发一次；去重命中不再发；message 类走 messages topic。
-$assert($signals->signals === [
-    ['topic' => 'notifications', 'recipient' => 'user:2', 'cursor' => NotificationCursor::encode('2026-01-01 00:00:00', 1)],
-    ['topic' => 'notifications', 'recipient' => 'user:3', 'cursor' => NotificationCursor::encode('2026-01-01 00:00:00', 2)],
-], 'each first insert should publish exactly one realtime signal with the list cursor encoding');
 $notifications->create($intent);
-$assert(count($signals->signals) === 2, 'dedupe hit must not publish a realtime signal');
-$notifications->create(new NotificationIntent(2, 'msg:1:2', 'message', 1));
-$assert(count($signals->signals) === 3 && $signals->signals[2]['topic'] === 'messages', 'message notifications should publish on the messages topic');
+$assert(count($repository->items) === 2, 'dedupe hit must not create another notification');
 
 fwrite(STDOUT, "PASS notification behavior baseline\n");

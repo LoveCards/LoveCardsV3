@@ -32,12 +32,12 @@ final class EventRecorder
      * 调用者必须把本方法放在当前业务事务内，使业务写入、Outbox 与 Delivery 同步提交。
      * 唤醒 Redis 等外部 I/O 必须在事务提交后单独执行。
      */
-    public function record(EventEnvelope $event): RecordedEvent
+    public function record(EventEnvelope $event, ?array $signalOrigin = null): RecordedEvent
     {
         $eventId = $this->events->append($event);
         $definitions = array_map(
             static fn(HandlerRegistration $registration): DeliveryDefinition =>
-                DeliveryDefinition::fromRegistration($registration),
+                DeliveryDefinition::fromRegistration($registration, $signalOrigin),
             $this->handlers->handlersFor($event)
         );
         $deliveryIds = $definitions === []

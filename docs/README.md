@@ -1,5 +1,9 @@
 # LoveCards 文档索引
 
+> 完整实施设计与状态账本：[平台事件、通信与生命周期收敛](engineering/PLATFORM-CONVERGENCE-2026-11-11.md)。
+
+dev 实际部署、测试证据和人工验收步骤见 [2026-11-12 dev 验收记录](engineering/DEV-ACCEPTANCE-2026-11-12.md)。
+
 ## 架构与模块
 
 - [总体架构](engineering/ARCHITECTURE.md)
@@ -17,10 +21,11 @@
 
 ## 平台基础设施
 
-- [可裁剪运行时](engineering/RUNTIME-ARCHITECTURE.md)
+- [可裁剪运行时：事件定时/常驻与浏览器轮询/实时](engineering/RUNTIME-ARCHITECTURE.md)
+- [前端变化信号与主动更新（当前契约）](engineering/FRONTEND-SIGNALS.md)
 - [系统生命周期、安装与升级](engineering/SYSTEM-LIFECYCLE.md)
-- [事件总线与异步投递](engineering/EVENTING.md)
-- [SSE 与滑块验证收敛方案](engineering/SSE-AND-HUMAN-VERIFICATION-PLAN-2026-11-08.md)
+- [事件总线、互斥消费策略与异步投递](engineering/EVENTING.md)
+- [SSE 与滑块验证收敛方案（历史方案，通信部分以当前契约为准）](engineering/SSE-AND-HUMAN-VERIFICATION-PLAN-2026-11-08.md)
 - [站内通知开发规范](engineering/NOTIFICATIONS.md)
 - [观测、日志与审计](engineering/OBSERVABILITY.md)
 - [数据库与迁移运维](engineering/DATABASE-OPERATIONS.md)
@@ -43,3 +48,6 @@
 
 - [管理端驱动三域架构导读](engineering/ADMIN-DRIVERS.md) —— Agent 理解总结，仅限参考，不作为改动依据
 
+
+- [系统配置与共享基础设施](engineering/CONFIGURATION.md)：Config 原子版本与 Redis 管理边界。
+- [数据库权威来源与留存治理](engineering/DATABASE-GOVERNANCE-2026-11-11.md)：旧表退役阻断条件与审计。

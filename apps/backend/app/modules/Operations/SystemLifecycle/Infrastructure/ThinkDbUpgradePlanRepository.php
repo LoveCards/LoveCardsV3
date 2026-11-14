@@ -58,6 +58,15 @@ final class ThinkDbUpgradePlanRepository implements UpgradePlanRepository
         );
     }
 
+    public function unsettled(bool $lock = false): ?StoredUpgradePlan
+    {
+        $query = Db::table('system_upgrade_plans')->whereNotIn('status', [UpgradePlan::COMPLETED, StoredUpgradePlan::RECOVERED]);
+        if ($lock) $query->lock(true);
+        $rows = $query->order('id')->limit(2)->select()->toArray();
+        if (count($rows) > 1) throw new \RuntimeException('存在多个未结束升级计划，消费者资格不可判定');
+        return $rows === [] ? null : $this->hydrate($rows[0]);
+    }
+
     public function existsUnsettled(?string $excludingPlanId = null): bool
     {
         $table = Db::query(

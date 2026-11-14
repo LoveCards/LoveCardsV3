@@ -45,6 +45,7 @@ export function AppShell({ children, mobileMode = 'standard' }) {
   const [authExpired, setAuthExpired] = useState(false);
   const [sessionError, setSessionError] = useState(false);
   const [notificationUnread, setNotificationUnread] = useState(0);
+  const [realtimeFault, setRealtimeFault] = useState(false);
   useEffect(() => {
     const handleAuthError = () => setAuthExpired(true);
     window.addEventListener('lc-auth-error', handleAuthError);
@@ -53,6 +54,7 @@ export function AppShell({ children, mobileMode = 'standard' }) {
   useEffect(() => {
     if (!isAuthenticated || !sdkConfigured()) {
       setNotificationUnread(0);
+      setRealtimeFault(false);
       return undefined;
     }
 
@@ -72,12 +74,14 @@ export function AppShell({ children, mobileMode = 'standard' }) {
     // 通信运行时（契约 §6）：唯一取数节奏调度器；组件只订阅刷新信号，不自行定时。
     const runtime = getCommunicationRuntime();
     const unsubscribe = runtime.subscribe((topic) => { if (topic === SIGNAL_UNREAD) void refreshUnread(); });
+    const unsubscribeStatus = runtime.subscribeStatus((status) => { if (active) setRealtimeFault(status === 'fault'); });
     void runtime.start();
     window.addEventListener('lc-notifications-changed', refreshUnread);
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       active = false;
       unsubscribe();
+      unsubscribeStatus();
       runtime.stop();
       window.removeEventListener('lc-notifications-changed', refreshUnread);
       document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -133,6 +137,7 @@ export function AppShell({ children, mobileMode = 'standard' }) {
         </div>
       </header>
       {(authExpired || sessionError) && <div className="session-notice" role="alert"><span>{sessionError ? '本地登录状态已清除，但服务器退出确认失败。' : '登录状态已失效，部分操作暂不可用。'}</span><Link to="/auth/login">重新登录</Link><IconButton className="session-notice-dismiss" type="button" onClick={() => { setAuthExpired(false); setSessionError(false); }} label="关闭登录状态提示" variant="ghost" size="lg" icon={<Icon name="close" size={17} />} /></div>}
+      {realtimeFault && <div className="session-notice" role="status"><span>实时更新暂不可用；手动刷新仍可查看最新内容。</span></div>}
       {children}
       {hasMobileBottomNav && <nav className="mobile-bottom-nav" aria-label="移动端产品导航">
         {bottomNav.map((item) => {

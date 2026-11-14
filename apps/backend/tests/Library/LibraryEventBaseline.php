@@ -125,7 +125,7 @@ namespace
                         public function snapshot(int $policyRevision): ?array { return null; }
                         public function currentRevision(): ?int { return null; }
                         public function listCurrent(): array { return []; }
-                        public function applyChanges(array $changes, int $expectedRevision, ?int $actorId, ?string $reason): array
+                        public function applyChanges(array $changes, int $expectedRevision, ?int $actorId, ?string $reason, callable $audit): array
                         { return ['revision' => $expectedRevision, 'policies' => [], 'before' => []]; }
                     };
                 }

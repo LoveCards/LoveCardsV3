@@ -91,6 +91,7 @@ class Cards extends BaseController
     public function create()
     {
         $params = $this->validated();
+        foreach (['captcha_id', 'captcha_code', 'lot_number', 'captcha_output', 'pass_token', 'gen_time'] as $field) unset($params[$field]);
 
         $params['user_id'] = request()->auth->uid();
         $params['post_ip'] = request()->ip();
@@ -110,6 +111,7 @@ class Cards extends BaseController
     public function update($id)
     {
         $params = $this->validated(null, ['id' => (int) $id]);
+        foreach (['captcha_id', 'captcha_code', 'lot_number', 'captcha_output', 'pass_token', 'gen_time'] as $field) unset($params[$field]);
         $auth = request()->auth;
         CardsService::updateCard($params, $auth->uid(), $auth->grants());
 

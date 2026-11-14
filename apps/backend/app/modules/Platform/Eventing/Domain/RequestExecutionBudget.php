@@ -14,6 +14,8 @@ final class RequestExecutionBudget
     private int $leaseSeconds;
     private array $queueNames;
     private array $executionModes;
+    private string $consumerMode;
+    private string $triggerSource;
 
     public function __construct(
         string $workerId,
@@ -21,7 +23,9 @@ final class RequestExecutionBudget
         int $maxMilliseconds = 50,
         int $leaseSeconds = 30,
         array $queueNames = [],
-        array $executionModes = [ExecutionMode::REQUEST_SAFE]
+        array $executionModes = [ExecutionMode::REQUEST_SAFE],
+        string $consumerMode = 'scheduled',
+        string $triggerSource = 'cli'
     ) {
         if ($workerId === '' || strlen($workerId) > 128) {
             throw new \InvalidArgumentException('Request Executor worker_id 长度必须为 1..128');
@@ -52,12 +56,20 @@ final class RequestExecutionBudget
             }
             ExecutionMode::assert($executionMode);
         }
+        if ($consumerMode !== 'scheduled') {
+            throw new \InvalidArgumentException('一次性消费者只能以 scheduled 模式领取');
+        }
+        if (!in_array($triggerSource, ['cli', 'http'], true)) {
+            throw new \InvalidArgumentException('一次性消费者触发源不合法');
+        }
         $this->workerId = $workerId;
         $this->maxJobs = $maxJobs;
         $this->maxMilliseconds = $maxMilliseconds;
         $this->leaseSeconds = $leaseSeconds;
         $this->queueNames = array_values(array_unique($queueNames));
         $this->executionModes = array_values(array_unique($executionModes));
+        $this->consumerMode = $consumerMode;
+        $this->triggerSource = $triggerSource;
     }
 
     public function workerId(): string { return $this->workerId; }
@@ -66,4 +78,6 @@ final class RequestExecutionBudget
     public function leaseSeconds(): int { return $this->leaseSeconds; }
     public function queueNames(): array { return $this->queueNames; }
     public function executionModes(): array { return $this->executionModes; }
+    public function consumerMode(): string { return $this->consumerMode; }
+    public function triggerSource(): string { return $this->triggerSource; }
 }

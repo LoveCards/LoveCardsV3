@@ -25,7 +25,13 @@ final class FakeMessagingRepository implements MessagingRepository
     public function findOrCreateDirectConversation(int $firstUserId, int $secondUserId, DateTimeImmutable $at): int { return 9; }
     public function createMessage(int $conversationId, int $senderId, string $clientMessageId, string $body, DateTimeImmutable $at): int { return $this->messages[$clientMessageId] = 21; }
     public function touchConversation(int $conversationId, DateTimeImmutable $at): void {}
-    public function markReadThrough(int $userId, int $conversationId, int $messageId): void { $this->readThrough = $messageId; }
+    public function markReadThrough(int $userId, int $conversationId, int $messageId): bool
+    {
+        if ($this->readThrough >= $messageId) return false;
+        $this->readThrough = $messageId;
+        return true;
+    }
+    public function participantIds(int $conversationId): array { return [1, 2]; }
 }
 
 final class FakeMessagePermission implements MessagePermission
@@ -38,18 +44,18 @@ final class FakeMessageNotifier implements MessageNotifier
 {
     public int $calls = 0;
     public bool $calledInsideTransaction = false;
-    public int $committedCalls = 0;
-    public bool $committedInsideTransaction = false;
+    public int $readCalls = 0;
+    public bool $readCalledInsideTransaction = false;
     public function __construct(private FakeMessageTransaction $transactions) {}
     public function messageSent(int $recipientId, int $senderId, int $conversationId, int $messageId): void
     {
         $this->calls++;
         $this->calledInsideTransaction = $this->transactions->active;
     }
-    public function messageCommitted(int $recipientId): void
+    public function messageRead(int $readerId, int $conversationId, int $messageId): void
     {
-        $this->committedCalls++;
-        $this->committedInsideTransaction = $this->transactions->active;
+        $this->readCalls++;
+        $this->readCalledInsideTransaction = $this->transactions->active;
     }
 }
 
@@ -80,13 +86,16 @@ $assert($messaging->send(1, 2, ' hello ', 'client-1') === ['id' => 21, 'conversa
 $assert($messaging->send(1, 2, 'hello', 'client-1') === ['id' => 21, 'conversation_id' => 9], 'same client id should be idempotent');
 $assert($notifier->calls === 1, 'idempotent retry must not duplicate notification');
 $assert($notifier->calledInsideTransaction, 'message notification Outbox write must share the message transaction');
-$assert($notifier->committedCalls === 1 && !$notifier->committedInsideTransaction, 'realtime signal must follow commit and skip idempotent retries');
+$assert($notifier->calls === 1, 'realtime signal must use the recorded message event');
 $transactions->failCommit = true;
 try { $messaging->send(1, 2, 'rollback', 'client-rollback'); } catch (RuntimeException $exception) {}
-$assert($notifier->committedCalls === 1, 'failed transaction must not publish realtime signal');
+$assert($notifier->calls === 2, 'failed transaction may attempt an outbox write that is rolled back');
 $transactions->failCommit = false;
 $messaging->messages(1, 9);
 $assert($repository->readThrough === 12, 'opening messages should advance read cursor');
+$assert($notifier->readCalls === 1 && $notifier->readCalledInsideTransaction, 'read advance and event recording must share a transaction');
+$messaging->messages(1, 9);
+$assert($notifier->readCalls === 1, 'repeated read without cursor advance must not record another event');
 
 $permission->allowed = false;
 $denied = false;
@@ -96,6 +105,7 @@ $assert($denied, 'safety permission must block message send');
 $notifierSource = file_get_contents($root . '/app/modules/Platform/Messaging/Infrastructure/NotificationMessageNotifier.php');
 $assert(str_contains($notifierSource, "'message.sent'"), 'production notifier must publish message.sent');
 $assert(!str_contains($notifierSource, 'Notifications::direct'), 'message send must not write notifications synchronously');
+$assert(!str_contains($notifierSource, 'RealtimeSignalPublisher'), 'message send must not publish realtime signals outside the Outbox');
 
 $socialSource = file_get_contents($root . '/app/modules/Platform/Social/Public/Social.php');
 $assert(str_contains($socialSource, 'TransactionManager::class'), 'social follow must share the relationship transaction with its Outbox event');

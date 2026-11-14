@@ -4,13 +4,11 @@ declare(strict_types=1);
 namespace app\modules\Platform\Messaging\Infrastructure;
 
 use app\modules\Platform\Eventing\Public\DomainEventBus;
-use app\modules\Platform\Eventing\Public\RealtimeSignal;
-use app\modules\Platform\Eventing\Public\RealtimeSignalPublisher;
 use app\modules\Platform\Messaging\Contract\MessageNotifier;
 
 final class NotificationMessageNotifier implements MessageNotifier
 {
-    public function __construct(private DomainEventBus $events, private ?RealtimeSignalPublisher $signals = null)
+    public function __construct(private DomainEventBus $events)
     {
     }
 
@@ -30,9 +28,19 @@ final class NotificationMessageNotifier implements MessageNotifier
         );
     }
 
-    public function messageCommitted(int $recipientId): void
+    public function messageRead(int $readerId, int $conversationId, int $messageId): void
     {
-        // 提交后发信号；通知策略关闭时，私信仍需刷新。
-        $this->signals?->publish(new RealtimeSignal('messages', 'user:' . $recipientId, ''));
+        $this->events->publish(
+            'message.read',
+            'conversation',
+            (string) $conversationId,
+            [
+                'reader_id' => $readerId,
+                'conversation_id' => $conversationId,
+                'message_id' => $messageId,
+            ],
+            $readerId
+        );
     }
+
 }

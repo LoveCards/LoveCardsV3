@@ -25,17 +25,21 @@ $assertThrows = static function (callable $callback, string $message): void {
     throw new RuntimeException($message);
 };
 
-$registry = new HandlerRegistry();
+$registry = \app\EventHandlers::create();
+$assert($registry->catalogHash() === '905a15da233afefb98bd8c8524b189e73846449e650e6611956be25de3de3f11', 'composition migration must preserve the signed catalog exactly');
+$assert(count($registry->catalog()) === 13, 'composition must include every owning module');
+$bindings = require $root . '/app/provider.php';
+$assert($bindings[HandlerRegistry::class]()->catalog() === $registry->catalog(), 'container and standalone composition must be identical');
 $assert(
     $registry->queueNamesFor([ExecutionMode::REQUEST_SAFE]) === ['notifications'],
-    'HTTP request drain must only receive the short notifications queue'
+    'request-safe handler metadata must identify the short notifications queue'
 );
 $assert(
-    $registry->queueNamesFor([ExecutionMode::DAEMON_REQUIRED]) === ['storage'],
-    'slow storage work must be daemon-only'
+    $registry->queueNamesFor([ExecutionMode::DAEMON_REQUIRED]) === ['realtime', 'storage'],
+    'realtime signals and slow storage work must be daemon-only'
 );
 $assert(
-    $registry->queueNamesFor([ExecutionMode::REQUEST_SAFE, ExecutionMode::DAEMON_REQUIRED]) === ['notifications', 'storage'],
+    $registry->queueNamesFor([ExecutionMode::REQUEST_SAFE, ExecutionMode::DAEMON_REQUIRED]) === ['notifications', 'realtime', 'storage'],
     'Scheduler and Worker must cover every registered queue'
 );
 $assertThrows(
@@ -48,7 +52,7 @@ $schedulerBudget = new RequestExecutionBudget(
     1,
     50,
     30,
-    ['notifications', 'storage'],
+    ['notifications', 'realtime', 'storage'],
     [ExecutionMode::REQUEST_SAFE, ExecutionMode::DAEMON_REQUIRED]
 );
 $assert(
@@ -65,15 +69,17 @@ $assert(strlen($failure->error()) <= 2048, 'failure summary must remain within t
 $assert(preg_match('//u', $failure->error()) === 1, 'failure truncation must preserve UTF-8');
 
 $runtimeFiles = [
-    $root . '/app/middleware/EventingRequestDrain.php',
     $root . '/app/command/SchedulerRunOnce.php',
     $root . '/app/command/EventingWorker.php',
 ];
 foreach ($runtimeFiles as $runtimeFile) {
     $source = file_get_contents($runtimeFile);
-    $assert(is_string($source) && str_contains($source, 'queueNamesFor'), basename($runtimeFile) . ' must derive queues from HandlerRegistry');
+    $assert(is_string($source), basename($runtimeFile) . ' must exist');
     $assert(!str_contains($source, "'critical'") && !str_contains($source, "'default'") && !str_contains($source, "'bulk'"), basename($runtimeFile) . ' must not restore legacy hard-coded queues');
 }
+$scheduledUseCase = (string) file_get_contents($root . '/app/modules/Platform/Eventing/Public/ScheduledEventConsumption.php');
+$assert(str_contains($scheduledUseCase, 'queueNamesFor'), 'scheduled consumer must derive queues from HandlerRegistry');
+$assert(!str_contains((string) file_get_contents($root . '/app/middleware.php'), 'EventingRequestDrain'), 'ordinary requests must not consume event deliveries');
 
 $migration = file_get_contents($root . '/database/migrations/20260821000006.sql');
 $assert(is_string($migration) && str_contains($migration, 'VARCHAR(2048)'), 'runtime migration must align last_error width');

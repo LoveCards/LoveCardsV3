@@ -13,3 +13,6 @@ node_modules/
 coverage/
 apps/.lovecards-instance/
 .tmp/
+
+# 管理端隔离浏览器验收生成目录
+apps/admin/.nuxt-*/

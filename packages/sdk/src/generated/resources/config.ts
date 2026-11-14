@@ -9,8 +9,8 @@ export class Config extends BaseResource {
   list(params?: { group?: string }): Promise<ApiTypes.ConfigData> {
     return this._get<ApiTypes.ConfigData>("/admin/config", params)
   }
-  update(data?: Record<string, unknown>): Promise<void> {
-    return this._post<void>("/admin/config", data)
+  update(data?: Record<string, unknown>): Promise<ApiTypes.ConfigData> {
+    return this._post<ApiTypes.ConfigData>("/admin/config", data)
   }
   groups(): Promise<ApiTypes.ConfigData> {
     return this._get<ApiTypes.ConfigData>("/admin/config/groups")
@@ -20,6 +20,9 @@ export class Config extends BaseResource {
   }
   deleteKey(params: { group: string; key: string }): Promise<void> {
     return this._delete<void>("/admin/config/key", params)
+  }
+  redisTest(): Promise<Record<string, unknown>> {
+    return this._post<Record<string, unknown>>("/admin/config/redis/test")
   }
   register(data: { group: string; schema: Record<string, unknown> }): Promise<ApiTypes.ConfigData> {
     return this._post<ApiTypes.ConfigData>("/admin/config/register", data)

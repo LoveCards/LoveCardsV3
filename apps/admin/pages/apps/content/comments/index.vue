@@ -14,7 +14,7 @@
       @reset-view="resetTableView"
     >
       <template #search>
-        <v-text-field v-model="tableSearchValue" clearable label="搜索评论正文" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+        <v-text-field v-model="tableSearchValue" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
       </template>
       <template #actions>
         <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">搜索与排序</v-btn>
@@ -70,12 +70,12 @@
 
         <template #[`item.id`]="{ item }">
           <v-btn class="text-none px-2" min-height="40" variant="text" @click="openCommentPanel(item.id)">
-            #{{ item.id }}
+            #<AdminTableSearchHighlight :text="item.id" :query="highlightQuery('id')" />
           </v-btn>
         </template>
 
         <template #[`item.content`]="{ item }">
-          <AdminContentSummary :content="item.content" :author="item.username" :user-id="item.user_id" />
+          <AdminContentSummary :content="item.content" :author="item.username" :user-id="item.user_id" :highlight-query="highlightQuery('content')" />
         </template>
 
         <template #[`item.operate`]="{ item }">
@@ -100,11 +100,15 @@
         </template>
 
         <template #[`item.created_at`]="{ item }">
-          <span class="text-body-2 text-medium-emphasis">{{ item.created_at }}</span>
+          <span class="text-body-2 text-medium-emphasis"><AdminTableSearchHighlight :text="item.created_at" :query="highlightQuery('created_at')" /></span>
         </template>
 
         <template #[`item.status`]="{ item }">
-          <AdminContentStatus :status="item.status" :pinned="item.is_pinned && !visibleColumns.includes('is_pinned')" />
+          <AdminContentStatus :status="item.status" :pinned="item.is_pinned && !visibleColumns.includes('is_pinned')" :highlight-query="highlightQuery('status')" />
+        </template>
+
+        <template v-for="field in ['user_id', 'aid', 'goods', 'post_ip']" :key="field" #[`item.${field}`]="{ item }">
+          <AdminTableSearchHighlight :text="tableSearchCell(item, field)" :query="highlightQuery(field)" />
         </template>
 
         <template #no-data>
@@ -179,6 +183,7 @@ import { useUserStore } from '~/stores/userStore';
 import CommonUtils from '@/utils/common';
 import SelectUtils from '~/utils/select';
 import { tableSearchValue as mapTableSearchValue } from '~/utils/tableSearchValue';
+import { tableSearchCell } from '~/composables/useAdminTableSearch';
 
 type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
 
@@ -248,6 +253,7 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
 const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
 const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
+const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } = useAdminTableSearchFeedback(tableSearchValue, tableSearchFilter, SearchKeys, 'content', '搜索评论正文');
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
 let latestRequest = 0;
@@ -263,6 +269,7 @@ const getTableData = async () => {
   tableLoading.value = true;
   tableError.value = null;
   const searchValue = tableSearchValue.value?.trim();
+  const searchHighlight = searchSnapshot();
   const sort = tableSortBy.value[0];
   const params: Record<string, unknown> = {
     page: tableCurrentPage.value,
@@ -279,6 +286,7 @@ const getTableData = async () => {
     const result = await client.comments.listManaged(params as Parameters<typeof client.comments.listManaged>[0]);
     if (requestId !== latestRequest) return;
     tableItems.value = result.data;
+    applySearchSnapshot(searchHighlight);
     tableCurrentPage.value = result.pagination?.currentPage ?? tableCurrentPage.value;
     tableTotalItems.value = result.pagination?.totalItems ?? result.data.length;
   } catch (error) {

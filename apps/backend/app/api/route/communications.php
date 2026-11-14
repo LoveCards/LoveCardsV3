@@ -7,6 +7,7 @@ use app\api\middleware\PermissionCheck;
 use app\modules\Operations\Administration\Transport\Api\AdminValidate;
 use app\modules\Operations\Administration\Transport\Api\AdminNotificationPoliciesResource;
 use app\modules\Operations\Administration\Transport\Api\AdminNotificationPoliciesApplyResource;
+use app\modules\Operations\Administration\Transport\Api\AdminSignalPoliciesResource;
 use app\shared\Authorization\Scope;
 
 $access = static fn (string $capability): array => ['auth' => 'required', 'allOf' => [
@@ -25,4 +26,10 @@ Route::group('admin/communications', function () use ($access, $response, $reque
     Route::put('policies', 'Platform.AdminCommunications/applyPolicies')->name('communications.applyPolicies')
         ->setOption('contract', ['request' => $request('notificationPolicies'), 'response' => $response(AdminNotificationPoliciesApplyResource::class)])
         ->setOption('meta', ['name' => '启停通知策略', 'group' => '通信', 'access' => $access('communications.configure')]);
+    Route::get('signals', 'Platform.AdminCommunications/signals')->name('communications.signals')
+        ->setOption('contract', ['request' => null, 'response' => $response(AdminSignalPoliciesResource::class)])
+        ->setOption('meta', ['name' => '主动更新目录', 'group' => '通信', 'access' => $access('communications.read')]);
+    Route::put('signals', 'Platform.AdminCommunications/applySignals')->name('communications.applySignals')
+        ->setOption('contract', ['request' => $request('signalPolicies'), 'response' => $response(AdminSignalPoliciesResource::class)])
+        ->setOption('meta', ['name' => '启停主动更新', 'group' => '通信', 'access' => $access('communications.configure')]);
 })->middleware(JwtAuthCheck::class)->middleware(PermissionCheck::class);

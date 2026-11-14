@@ -23,7 +23,7 @@
       @reset-view="resetTableView"
     >
       <template #search>
-        <v-text-field v-model="tableSearchValue" clearable label="搜索角色名称" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+        <v-text-field v-model="tableSearchValue" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
       </template>
       <template #actions>
         <AdminActionGuard v-if="isRootActor" capability="roles.assign" scope="global">
@@ -103,13 +103,15 @@
             :to="`/apps/access/roles/${item.id}`"
             variant="text"
           >
-            {{ item.name }}
+            <AdminTableSearchHighlight :text="item.name" :query="highlightQuery('name')" />
           </v-btn>
         </template>
 
         <template #[`item.slug`]="{ item }">
-          <v-chip size="small" variant="outlined">{{ item.slug }}</v-chip>
+          <v-chip size="small" variant="outlined"><AdminTableSearchHighlight :text="item.slug" :query="highlightQuery('slug')" /></v-chip>
         </template>
+
+        <template #[`item.id`]="{ item }"><AdminTableSearchHighlight :text="item.id" :query="highlightQuery('id')" /></template>
 
         <template #[`item.is_system`]="{ item }">
           <v-chip
@@ -345,6 +347,7 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
 const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
 const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
+const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } = useAdminTableSearchFeedback(tableSearchValue, tableSearchFilter, SearchKeys, 'name', '搜索角色名称');
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
 let latestRequest = 0;
@@ -360,6 +363,7 @@ const getTableData = async () => {
   tableLoading.value = true;
   tableError.value = null;
   const searchValue = tableSearchValue.value?.trim();
+  const searchHighlight = searchSnapshot();
   const sort = tableSortBy.value[0];
   const params: Record<string, unknown> = {
     page: tableCurrentPage.value,
@@ -376,6 +380,7 @@ const getTableData = async () => {
     const result = await client.roles.list(params as Parameters<typeof client.roles.list>[0]);
     if (requestId !== latestRequest) return;
     tableItems.value = result.data;
+    applySearchSnapshot(searchHighlight);
     const visibleIds = new Set(result.data.map((item) => item.id));
     tableSelected.value = tableSelected.value.filter((id) => visibleIds.has(id));
     tableCurrentPage.value = result.pagination?.currentPage ?? tableCurrentPage.value;

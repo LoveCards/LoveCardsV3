@@ -21,6 +21,12 @@ export class Operations extends BaseResource {
   deliverySummary(): Promise<ApiTypes.OperationsDeliverySummary> {
     return this._get<ApiTypes.OperationsDeliverySummary>("/admin/operations/deliveries/summary")
   }
+  eventConsumption(): Promise<ApiTypes.EventConsumptionSnapshot> {
+    return this._get<ApiTypes.EventConsumptionSnapshot>("/admin/operations/event-consumption")
+  }
+  applyEventConsumption(data: ApiTypes.EventConsumptionUpdate): Promise<ApiTypes.EventConsumptionSnapshot> {
+    return this._put<ApiTypes.EventConsumptionSnapshot>("/admin/operations/event-consumption", data)
+  }
   migrations(): Promise<ApiTypes.OperationsMigration[]> {
     return this._get<ApiTypes.OperationsMigration[]>("/admin/operations/migrations")
   }

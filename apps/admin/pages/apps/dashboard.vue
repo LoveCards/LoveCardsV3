@@ -89,7 +89,7 @@
           <div class="d-flex flex-wrap align-start justify-space-between ga-3 mb-3">
             <div>
               <h2 id="runtime-title" class="text-subtitle-1 font-weight-bold">运行状态</h2>
-              <p class="text-body-2 text-medium-emphasis mt-1">基础设施和事件队列健康度。</p>
+              <p class="text-body-2 text-medium-emphasis mt-1">当前通信方式和事件队列状态。</p>
             </div>
             <v-chip v-if="runtimeStatus" size="small" variant="tonal" :color="runtimeHealthy ? 'success' : 'warning'">
               {{ runtimeHealthy ? '运行正常' : '需要关注' }}
@@ -98,23 +98,20 @@
           <v-alert v-if="runtimeError" type="error" variant="tonal">{{ runtimeError }}</v-alert>
           <v-card v-else-if="runtimeStatus">
             <v-list lines="two">
-              <template v-for="(facility, index) in runtimeStatus.facilities" :key="facility.name">
-                <v-list-item
-                  :prepend-icon="facility.healthy ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'"
-                  :title="facility.name"
-                  :subtitle="facilityReason(facility.reason_code, facility.healthy)"
-                  :base-color="facility.healthy ? 'success' : 'warning'"
-                  :to="`/apps/operations/runtime?source=dashboard&facility=${encodeURIComponent(facility.name)}`"
-                  :value="`runtime-${facility.name}`"
-                />
-                <v-divider v-if="index < runtimeStatus.facilities.length - 1" />
-              </template>
-              <v-divider v-if="runtimeStatus.facilities.length" />
+              <v-list-item
+                :prepend-icon="runtimeStatus.communication.status === 'ready' ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'"
+                title="主动更新"
+                :subtitle="communicationSummary"
+                :base-color="runtimeStatus.communication.status === 'ready' ? 'success' : 'warning'"
+                to="/apps/operations/communication?source=dashboard"
+                value="runtime-communication"
+              />
+              <v-divider />
               <v-list-item
                 prepend-icon="mdi-inbox-arrow-down-outline"
                 title="事件队列"
                 :subtitle="`${runtimeStatus.eventing.pending} 待处理 · ${runtimeStatus.eventing.dead} 死信`"
-                to="/apps/operations/runtime?source=dashboard&section=eventing"
+                to="/apps/operations/eventing?source=dashboard"
                 value="runtime-eventing"
               />
             </v-list>
@@ -163,9 +160,9 @@
           <div class="d-flex flex-wrap align-start justify-space-between ga-3 mb-3">
             <div>
               <h2 id="notifications-title" class="text-subtitle-1 font-weight-bold">站内通知统计</h2>
-              <p class="text-body-2 text-medium-emphasis mt-1">已生成的用户通知累计数据；处理异常请查看通知处理。</p>
+              <p class="text-body-2 text-medium-emphasis mt-1">已生成的用户通知累计数据；处理异常请查看通知投递。</p>
             </div>
-            <v-btn to="/apps/operations/deliveries" variant="text" color="primary" append-icon="mdi-arrow-right">查看通知处理</v-btn>
+            <v-btn to="/apps/operations/deliveries" variant="text" color="primary" append-icon="mdi-arrow-right">查看通知投递</v-btn>
           </div>
           <v-card v-if="notificationStats">
             <v-list>
@@ -230,7 +227,17 @@ const notificationsError = ref<string | null>(null)
 
 const canReadOperations = computed(() => userStore.hasGrant('operations.read', 'global'))
 const canReadCommunications = computed(() => userStore.hasGrant('communications.read', 'global'))
-const runtimeHealthy = computed(() => Boolean(runtimeStatus.value?.facilities.length && runtimeStatus.value.facilities.every((facility) => facility.healthy)))
+const runtimeHealthy = computed(() => Boolean(
+  runtimeStatus.value?.communication.status === 'ready'
+  && runtimeStatus.value.eventing.dead === 0
+  && (runtimeStatus.value.eventing.expired_processing ?? 0) === 0,
+))
+const communicationSummary = computed(() => {
+  const communication = runtimeStatus.value?.communication
+  if (!communication) return '状态不可用'
+  const mode = communication.desired_mode === 'realtime' ? '实时' : '轮询'
+  return communication.status === 'ready' ? `当前为${mode}模式，运行正常` : `当前为${mode}模式，主动提示暂停，请检查依赖`
+})
 
 const roleDescriptions: Record<string, string> = {
   root: '负责全域治理、访问控制与系统高风险操作。',
@@ -261,10 +268,11 @@ const responsibilityLinks = computed(() => [
   { key: 'reports', label: '举报处理', description: '核对证据、状态和处理历史。', icon: 'mdi-flag-outline', to: '/apps/community/reports' },
   { key: 'insights', label: '社区洞察', description: '查看隐私安全的聚合指标。', icon: 'mdi-chart-line', to: '/apps/community/insights' },
   { key: 'users', label: '用户', description: '查看获授权的用户和账号安全状态。', icon: 'mdi-shield-account-outline', to: '/apps/users' },
-  { key: 'runtime', label: '运行健康', description: '检查设施、事件队列和降级状态。', icon: 'mdi-heart-pulse', to: '/apps/operations/runtime' },
-  { key: 'deliveries', label: '通知处理', description: '检查提醒事件的处理结果和失败原因。', icon: 'mdi-send-check-outline', to: '/apps/operations/deliveries' },
-  { key: 'storage', label: '存储服务', description: '维护文件渠道和基础设施配置。', icon: 'mdi-database-cog-outline', to: '/apps/settings/storage' },
-  { key: 'upgrade', label: '升级与迁移', description: '检查升级计划和迁移状态。', icon: 'mdi-package-up', to: '/apps/operations/upgrade' },
+  { key: 'eventing', label: '事件处理', description: '检查事件消费策略、队列和 Worker。', icon: 'mdi-inbox-arrow-down-outline', to: '/apps/operations/eventing' },
+  { key: 'communication', label: '前端通信', description: '检查轮询或实时通信及其依赖。', icon: 'mdi-access-point-network', to: '/apps/operations/communication' },
+  { key: 'deliveries', label: '通知投递', description: '检查提醒事件的处理结果和失败原因。', icon: 'mdi-send-check-outline', to: '/apps/operations/deliveries' },
+  { key: 'storage', label: '文件存储', description: '维护文件渠道和基础设施配置。', icon: 'mdi-database-cog-outline', to: '/apps/settings/storage' },
+  { key: 'upgrade', label: '系统升级', description: '检查升级计划和迁移状态。', icon: 'mdi-package-up', to: '/apps/operations/upgrade' },
   { key: 'audit', label: '审计记录', description: '追溯管理动作、资源变化和请求链路。', icon: 'mdi-clipboard-text-clock-outline', to: '/apps/operations/audit' },
   { key: 'roles', label: '角色与权限', description: '管理角色和 capability grants。', icon: 'mdi-shield-lock-outline', to: '/apps/access/roles' },
 ].filter((link) => userStore.canAccessPath(link.to)))
@@ -284,14 +292,6 @@ function taskIcon(key: string) {
     deliveries_dead: 'mdi-alert-circle-outline',
     files_pending: 'mdi-file-clock-outline',
   } as Record<string, string>)[key] ?? 'mdi-clipboard-check-outline'
-}
-
-function facilityReason(reason: string | null | undefined, healthy: boolean) {
-  if (healthy) return '运行正常'
-  return ({
-    primary_not_configured: '主通道未配置',
-    provider_unknown: '服务提供方未知',
-  } as Record<string, string>)[reason || ''] ?? '需要关注'
 }
 
 const overviewMetrics = computed(() => {

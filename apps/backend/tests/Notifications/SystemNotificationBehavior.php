@@ -57,8 +57,9 @@ final class SystemNoticeDeliveries implements DeliveryRepository
     }
 
     public function claim(DeliveryClaim $claim): array { return []; }
-    public function complete(int $deliveryId, string $claimToken, \DateTimeImmutable $completedAt): bool { return true; }
+    public function complete(int $deliveryId, string $claimToken, \DateTimeImmutable $completedAt, ?string $policyDecision = null): bool { return true; }
     public function fail(int $deliveryId, string $claimToken, DeliveryFailure $failure, \DateTimeImmutable $failedAt): bool { return true; }
+    public function defer(int $deliveryId, string $claimToken, DeliveryFailure $failure, \DateTimeImmutable $deferredAt): bool { return true; }
     public function notePolicyDecision(int $deliveryId, string $decision): void {}
 }
 
@@ -114,7 +115,7 @@ $transactions = new SystemNoticeTransactions($outbox);
 $context = new LogContextScope();
 $context->set(LogContext::start('system-notice-test', 'system-notice-correlation'));
 $bus = new DomainEventBus(
-    new EventRecorder($outbox, new SystemNoticeDeliveries(), new HandlerRegistry(), new SystemNoticeClock()),
+    new EventRecorder($outbox, new SystemNoticeDeliveries(), \app\EventHandlers::create(), new SystemNoticeClock()),
     $context
 );
 $notifications = new SystemNotifications($bus, $transactions);
@@ -161,7 +162,7 @@ $assert($projected->data() === [
 $failedOutbox = new SystemNoticeOutbox();
 $failedTransactions = new SystemNoticeTransactions($failedOutbox);
 $failedBus = new DomainEventBus(
-    new EventRecorder($failedOutbox, new SystemNoticeDeliveries(true), new HandlerRegistry(), new SystemNoticeClock()),
+    new EventRecorder($failedOutbox, new SystemNoticeDeliveries(true), \app\EventHandlers::create(), new SystemNoticeClock()),
     $context
 );
 $assertThrows(

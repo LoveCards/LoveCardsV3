@@ -9,9 +9,11 @@ final class Config
 {
     public static function get(string $key, mixed $default = null): mixed { return ConfigService::get($key, $default); }
     public static function getGroup(string $group): array { return ConfigService::getGroup($group); }
+    public static function getSnapshot(string $group): array { return ConfigService::getSnapshot($group); }
     public static function getSchema(string $group): array { return ConfigService::getSchema($group); }
     public static function set(string $key, mixed $value): bool { return ConfigService::set($key, $value); }
     public static function setGroup(string $group, array $config): bool { return ConfigService::setGroup($group, $config); }
+    public static function compareAndSwapGroups(array $groups, array $expectedRevisions, ?callable $validate = null): array { return ConfigService::compareAndSwapGroups($groups, $expectedRevisions, $validate); }
     public static function getSchemaGroups(): array { return ConfigService::getSchemaGroups(); }
     public static function isEnvironmentManaged(string $group, string $key): bool { return ConfigService::isEnvironmentManaged($group, $key); }
     public static function register(string $group, array $schema, bool $clearCache = true): array { return ConfigService::register($group, $schema, $clearCache); }

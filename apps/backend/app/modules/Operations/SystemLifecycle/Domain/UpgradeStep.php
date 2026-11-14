@@ -20,11 +20,13 @@ final class UpgradeStep
     public const RELOAD_RUNTIME = 'reload_runtime';
     public const HEALTH_CHECK = 'health_check';
     public const CONTRACT_MIGRATIONS = 'contract_migrations';
+    public const FINAL_HEALTH = 'final_health';
 
     /** @return string[] */
-    public static function ordered(): array
+    public static function ordered(int $version = 2): array
     {
-        return [
+        if (!in_array($version, [1, 2], true)) throw new \InvalidArgumentException('Upgrade Plan version 不支持');
+        $steps = [
             self::ENVIRONMENT_PROBE,
             self::IMPORT_RELEASE,
             self::VERIFY_RELEASE,
@@ -45,6 +47,8 @@ final class UpgradeStep
             self::HEALTH_CHECK,
             self::CONTRACT_MIGRATIONS,
         ];
+        if ($version === 2) $steps[] = self::FINAL_HEALTH;
+        return $steps;
     }
 
     public static function assertValid(string $step): void

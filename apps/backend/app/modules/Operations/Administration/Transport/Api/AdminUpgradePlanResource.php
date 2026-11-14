@@ -17,6 +17,10 @@ final class AdminUpgradePlanResource extends Resource
             'required' => ['plan_id', 'release_id', 'revision', 'status', 'current_step', 'contract_approved', 'steps'],
             'properties' => [
                 'plan_id' => ['type' => 'string'],
+                'plan_version' => ['type' => 'integer'],
+                'legacy_plan' => ['type' => 'boolean'],
+                'service_recovered' => ['type' => 'boolean'],
+                'execution_uncertain' => ['type' => 'boolean'],
                 'release_id' => ['type' => 'string'],
                 'current_version' => ['type' => 'string'],
                 'target_version' => ['type' => ['string', 'null']],
@@ -79,7 +83,7 @@ final class AdminUpgradePlanResource extends Resource
         $context = is_array($data['context'] ?? null) ? $data['context'] : [];
         $package = is_array($context['package'] ?? null) ? $context['package'] : [];
         $milestoneKeys = [
-            'created_at', 'environment_verified_at', 'verified_at', 'staged_at',
+            'pointer_restored_at', 'final_health_checked_at', 'created_at', 'environment_verified_at', 'verified_at', 'staged_at',
             'schema_checked_at', 'preflight_migrations_completed_at',
             'expand_migrations_completed_at', 'backfill_migrations_completed_at',
             'migrations_verified_at', 'backup_gate_at', 'activated_at',
@@ -94,6 +98,10 @@ final class AdminUpgradePlanResource extends Resource
 
         return [
             'plan_id' => (string) ($data['plan_id'] ?? ''),
+            'plan_version' => (int) ($data['plan_version'] ?? $context['plan_version'] ?? 1),
+            'legacy_plan' => (int) ($data['plan_version'] ?? $context['plan_version'] ?? 1) === 1,
+            'service_recovered' => ($context['service_recovered'] ?? false) === true,
+            'execution_uncertain' => ($context['execution_in_progress'] ?? false) === true,
             'release_id' => (string) ($data['release_id'] ?? ''),
             'current_version' => (string) (Version::current()['version'] ?? ''),
             'target_version' => isset($context['target_version']) ? (string) $context['target_version'] : null,

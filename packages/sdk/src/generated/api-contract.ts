@@ -46,16 +46,19 @@ export interface GeneratedApiContract {
   "comments.unpinManaged": { method: "DELETE"; path: "/admin/cards/:id/pinned-comment"; request: {  }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "communication.settings": { method: "GET"; path: "/me/communication/settings"; request: void; response: ApiTypes.CommunicationSettingsSnapshot; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "communications.applyPolicies": { method: "PUT"; path: "/admin/communications/policies"; request: ApiTypes.NotificationPolicyUpdate; response: ApiTypes.NotificationPolicyApplyResult; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "communications.applySignals": { method: "PUT"; path: "/admin/communications/signals"; request: ApiTypes.SignalPolicyUpdate; response: ApiTypes.SignalPolicyCatalog; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "communications.policies": { method: "GET"; path: "/admin/communications/policies"; request: void; response: ApiTypes.NotificationPolicyCatalog; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "communications.signals": { method: "GET"; path: "/admin/communications/signals"; request: void; response: ApiTypes.SignalPolicyCatalog; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "community.insights": { method: "GET"; path: "/admin/community/insights"; request: void; response: ApiTypes.OperationsCommunityInsights; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "config.delete": { method: "DELETE"; path: "/admin/config"; request: { group: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "config.deleteKey": { method: "DELETE"; path: "/admin/config/key"; request: { group: string; key: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "config.groups": { method: "GET"; path: "/admin/config/groups"; request: void; response: ApiTypes.ConfigData; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "config.init": { method: "POST"; path: "/admin/config/init"; request: void; response: ApiTypes.ConfigData; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "config.list": { method: "GET"; path: "/admin/config"; request: { group?: string }; response: ApiTypes.ConfigData; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "config.redisTest": { method: "POST"; path: "/admin/config/redis/test"; request: void; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "config.register": { method: "POST"; path: "/admin/config/register"; request: { group: string; schema: Record<string, unknown> }; response: ApiTypes.ConfigData; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "config.reload": { method: "POST"; path: "/admin/config/reload"; request: { group?: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
-  "config.update": { method: "POST"; path: "/admin/config"; request: Record<string, unknown>; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "config.update": { method: "POST"; path: "/admin/config"; request: Record<string, unknown>; response: ApiTypes.ConfigData; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "dashboard.index": { method: "GET"; path: "/admin/dashboard"; request: void; response: ApiTypes.DashboardData; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "drafts.create": { method: "POST"; path: "/me/drafts"; request: { title?: string; content?: string; payload?: Record<string, unknown> }; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "drafts.delete": { method: "DELETE"; path: "/me/drafts/:id"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
@@ -94,6 +97,7 @@ export interface GeneratedApiContract {
   "notifications.unread": { method: "GET"; path: "/me/notifications/unread"; request: { category?: ApiTypes.NotificationListCategory }; response: ApiTypes.NotificationUnread; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "notifications.updatePreferences": { method: "POST"; path: "/me/notifications/preferences"; request: ApiTypes.NotificationPreferencesUpdate; response: ApiTypes.NotificationPreferences; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.advanceUpgrade": { method: "POST"; path: "/admin/operations/upgrades/:planId/advance"; request: void; response: ApiTypes.OperationsUpgradePlan; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "operations.applyEventConsumption": { method: "PUT"; path: "/admin/operations/event-consumption"; request: ApiTypes.EventConsumptionUpdate; response: ApiTypes.EventConsumptionSnapshot; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.applyRuntimeConfig": { method: "PUT"; path: "/admin/operations/runtime/config"; request: ApiTypes.RuntimeConfigUpdate; response: ApiTypes.RuntimeCommunicationSnapshot; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.approveUpgradeContract": { method: "POST"; path: "/admin/operations/upgrades/:planId/approve-contract"; request: void; response: ApiTypes.OperationsUpgradePlan; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.auditLog": { method: "GET"; path: "/admin/audit-logs/:id"; request: void; response: ApiTypes.OperationsAuditLog; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
@@ -102,6 +106,7 @@ export interface GeneratedApiContract {
   "operations.deliveries": { method: "GET"; path: "/admin/operations/deliveries"; request: { page?: number; list_rows?: number; status?: string; worker_type?: string; queue_name?: string; policy_decision?: string }; response: ApiTypes.ListResult<ApiTypes.OperationsDelivery>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "operations.delivery": { method: "GET"; path: "/admin/operations/deliveries/:id"; request: void; response: ApiTypes.OperationsDelivery; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.deliverySummary": { method: "GET"; path: "/admin/operations/deliveries/summary"; request: void; response: ApiTypes.OperationsDeliverySummary; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "operations.eventConsumption": { method: "GET"; path: "/admin/operations/event-consumption"; request: void; response: ApiTypes.EventConsumptionSnapshot; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.migrations": { method: "GET"; path: "/admin/operations/migrations"; request: void; response: ApiTypes.OperationsMigration[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "operations.notificationStats": { method: "GET"; path: "/admin/operations/notifications"; request: void; response: ApiTypes.OperationsNotificationStats; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.overview": { method: "GET"; path: "/admin/operations/overview"; request: void; response: ApiTypes.OperationsOverview; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
@@ -252,16 +257,19 @@ export const generatedApiContract = {
   "comments.unpinManaged": { method: "DELETE", path: "/admin/cards/:id/pinned-comment", status: 204, shape: "void", public: false, capabilities: ["admin.access","comments.pin"] },
   "communication.settings": { method: "GET", path: "/me/communication/settings", status: 200, shape: "item", public: false, capabilities: [] },
   "communications.applyPolicies": { method: "PUT", path: "/admin/communications/policies", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.configure"] },
+  "communications.applySignals": { method: "PUT", path: "/admin/communications/signals", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.configure"] },
   "communications.policies": { method: "GET", path: "/admin/communications/policies", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
+  "communications.signals": { method: "GET", path: "/admin/communications/signals", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
   "community.insights": { method: "GET", path: "/admin/community/insights", status: 200, shape: "item", public: false, capabilities: ["admin.access","community.insights.read"] },
   "config.delete": { method: "DELETE", path: "/admin/config", status: 204, shape: "void", public: false, capabilities: ["admin.access","config.deleteKey"] },
   "config.deleteKey": { method: "DELETE", path: "/admin/config/key", status: 204, shape: "void", public: false, capabilities: ["admin.access","config.deleteKey"] },
   "config.groups": { method: "GET", path: "/admin/config/groups", status: 200, shape: "item", public: false, capabilities: ["admin.access","config.read"] },
   "config.init": { method: "POST", path: "/admin/config/init", status: 200, shape: "item", public: false, capabilities: ["admin.access","config.init"] },
   "config.list": { method: "GET", path: "/admin/config", status: 200, shape: "item", public: false, capabilities: ["admin.access","config.read"] },
+  "config.redisTest": { method: "POST", path: "/admin/config/redis/test", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.runtime.configure"] },
   "config.register": { method: "POST", path: "/admin/config/register", status: 200, shape: "item", public: false, capabilities: ["admin.access","config.register"] },
   "config.reload": { method: "POST", path: "/admin/config/reload", status: 204, shape: "void", public: false, capabilities: ["admin.access","config.reload"] },
-  "config.update": { method: "POST", path: "/admin/config", status: 204, shape: "void", public: false, capabilities: ["admin.access","config.update"] },
+  "config.update": { method: "POST", path: "/admin/config", status: 200, shape: "item", public: false, capabilities: ["admin.access","config.update"] },
   "dashboard.index": { method: "GET", path: "/admin/dashboard", status: 200, shape: "item", public: false, capabilities: ["admin.access","dashboard.read"] },
   "drafts.create": { method: "POST", path: "/me/drafts", status: 200, shape: "item", public: false, capabilities: [] },
   "drafts.delete": { method: "DELETE", path: "/me/drafts/:id", status: 204, shape: "void", public: false, capabilities: [] },
@@ -300,6 +308,7 @@ export const generatedApiContract = {
   "notifications.unread": { method: "GET", path: "/me/notifications/unread", status: 200, shape: "item", public: false, capabilities: [] },
   "notifications.updatePreferences": { method: "POST", path: "/me/notifications/preferences", status: 200, shape: "item", public: false, capabilities: [] },
   "operations.advanceUpgrade": { method: "POST", path: "/admin/operations/upgrades/:planId/advance", status: 200, shape: "item", public: false, capabilities: ["admin.access","system.update"] },
+  "operations.applyEventConsumption": { method: "PUT", path: "/admin/operations/event-consumption", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.runtime.configure"] },
   "operations.applyRuntimeConfig": { method: "PUT", path: "/admin/operations/runtime/config", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.runtime.configure"] },
   "operations.approveUpgradeContract": { method: "POST", path: "/admin/operations/upgrades/:planId/approve-contract", status: 200, shape: "item", public: false, capabilities: ["admin.access","system.update.contract"] },
   "operations.auditLog": { method: "GET", path: "/admin/audit-logs/:id", status: 200, shape: "item", public: false, capabilities: ["admin.access","audit.read"] },
@@ -308,6 +317,7 @@ export const generatedApiContract = {
   "operations.deliveries": { method: "GET", path: "/admin/operations/deliveries", status: 200, shape: "paginated", public: false, capabilities: ["admin.access","communications.read"] },
   "operations.delivery": { method: "GET", path: "/admin/operations/deliveries/:id", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
   "operations.deliverySummary": { method: "GET", path: "/admin/operations/deliveries/summary", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
+  "operations.eventConsumption": { method: "GET", path: "/admin/operations/event-consumption", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.read"] },
   "operations.migrations": { method: "GET", path: "/admin/operations/migrations", status: 200, shape: "collection", public: false, capabilities: ["admin.access","operations.read"] },
   "operations.notificationStats": { method: "GET", path: "/admin/operations/notifications", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
   "operations.overview": { method: "GET", path: "/admin/operations/overview", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.read"] },

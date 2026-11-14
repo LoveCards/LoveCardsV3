@@ -55,19 +55,22 @@ final class PolicyFakeStore implements NotificationPolicyStore
         }
         return $rows;
     }
-    public function applyChanges(array $changes, int $expectedRevision, ?int $actorId, ?string $reason): array
+    public function applyChanges(array $changes, int $expectedRevision, ?int $actorId, ?string $reason, callable $audit): array
     {
         if ($expectedRevision !== $this->revision) throw new \RuntimeException('stale-revision');
+        $before = $this->listCurrent();
         $snapshot = $this->history[$expectedRevision];
         foreach ($changes as $change) {
-            if (!isset($snapshot[$change['event_type']])) throw new \RuntimeException('unknown-rule');
+            if (!isset($snapshot[$change['event_type']]) || $change['event_version'] !== 1 || $change['rule_key'] !== 'notify') throw new \RuntimeException('unknown-rule');
             if ($snapshot[$change['event_type']]['locked']) throw new \RuntimeException('locked');
             $snapshot[$change['event_type']]['enabled'] = $change['enabled'];
         }
         $this->revision += 1;
         $this->history[$this->revision] = $snapshot;
         $this->snapshot = $snapshot;
-        return ['revision' => $this->revision, 'policies' => $this->listCurrent(), 'before' => $this->listCurrent()];
+        $after = $this->listCurrent();
+        $audit($before, $after, $this->revision);
+        return ['revision' => $this->revision, 'policies' => $after, 'before' => $before];
     }
 }
 
@@ -107,27 +110,47 @@ $gate = new NotificationPolicyGate($store);
 $assert($gate->decide('content.liked', 3) === 'applied', 'enabled rule at frozen revision should be applied');
 $assert($gate->decide('social.followed', 3) === 'skipped', 'disabled rule should be skipped');
 $assert($gate->decide('message.sent', 3) === 'not-configured', 'event without a policy row should stay not-configured');
-$assert($gate->decide('content.liked', 2) === 'not-configured', 'missing historical snapshot should be not-configured');
+$missingFailed = false;
+try { $gate->decide('content.liked', 2); } catch (RuntimeException) { $missingFailed = true; }
+$assert($missingFailed, 'missing frozen snapshot must not silently enable notification');
 $assert($gate->decide('content.liked', null) === 'not-configured', 'null frozen revision should be not-configured');
 
 // CAS admin flow
 $policies = new ManageNotificationPolicies($store);
-$applied = $policies->apply(['expected_revision' => 3, 'policies' => [['event_type' => 'content.liked', 'enabled' => false]]], 9);
+$audits = [];
+$audit = static function (array $before, array $after, int $revision) use (&$audits): void { $audits[] = [$before, $after, $revision]; };
+$applied = $policies->apply(['expected_revision' => 3, 'policies' => [['event_type' => 'content.liked', 'enabled' => false]]], 9, $audit);
+$assert($audits[0][0][0]['enabled'] === true && $audits[0][1][0]['enabled'] === false && $audits[0][2] === 4, 'audit captures exact before and after');
 $assert($applied['revision'] === 4, 'CAS apply should bump the global revision');
 $assert($gate->decide('content.liked', 3) === 'applied', 'frozen in-flight deliveries keep the old snapshot semantics');
 $assert($gate->decide('content.liked', 4) === 'skipped', 'new deliveries should observe the new revision');
 
 $staleFailed = false;
-try { $policies->apply(['expected_revision' => 3, 'policies' => [['event_type' => 'content.liked', 'enabled' => true]]], 9); } catch (app\api\ApiException $e) { $staleFailed = true; $assert($e->getCode() === 9016, 'stale revision should map to code 9016'); }
+try { $policies->apply(['expected_revision' => 3, 'policies' => [['event_type' => 'content.liked', 'enabled' => true]]], 9, $audit); } catch (app\api\ApiException $e) { $staleFailed = true; $assert($e->getCode() === 9016, 'stale revision should map to code 9016'); }
 $assert($staleFailed, 'stale expected_revision must be rejected');
 
 $lockedFailed = false;
-try { $policies->apply(['expected_revision' => 4, 'policies' => [['event_type' => 'system.notification.issued', 'enabled' => false]]], 9); } catch (app\api\ApiException $e) { $lockedFailed = true; $assert($e->getCode() === 9010, 'locked rule should be a validation error'); }
+try { $policies->apply(['expected_revision' => 4, 'policies' => [['event_type' => 'system.notification.issued', 'enabled' => false]]], 9, $audit); } catch (app\api\ApiException $e) { $lockedFailed = true; $assert($e->getCode() === 9010, 'locked rule should be a validation error'); }
 $assert($lockedFailed, 'locked system policy must not be disableable');
 
 $unknownFailed = false;
-try { $policies->apply(['expected_revision' => 4, 'policies' => [['event_type' => 'nope.missing', 'enabled' => true]]], 9); } catch (app\api\ApiException $e) { $unknownFailed = true; }
+try { $policies->apply(['expected_revision' => 4, 'policies' => [['event_type' => 'nope.missing', 'enabled' => true]]], 9, $audit); } catch (app\api\ApiException $e) { $unknownFailed = true; }
 $assert($unknownFailed, 'unknown rules must be rejected');
+
+foreach ([
+    [['event_type' => 'content.liked', 'event_version' => 999, 'enabled' => false]],
+    [['event_type' => 'content.liked', 'rule_key' => 'missing', 'enabled' => false]],
+    [['event_type' => 'content.liked', 'event_version' => 1.5, 'enabled' => false]],
+    [['event_type' => 'content.liked', 'enabled' => 'false']],
+    [['event_type' => 'content.liked', 'enabled' => 0]],
+    [['event_type' => 'content.liked']],
+    [['event_type' => 'content.liked', 'enabled' => true], ['event_type' => 'content.liked', 'enabled' => false]],
+] as $invalid) {
+    $failed = false;
+    try { $policies->apply(['expected_revision' => 4, 'policies' => $invalid], 9, $audit); }
+    catch (app\api\ApiException) { $failed = true; }
+    $assert($failed && $store->revision === 4, 'invalid or duplicate rule identity must not advance revision');
+}
 
 // projection path: skipped policy suppresses the projection but records the decision
 $GLOBALS['__policy_event_recorder'] = $recorder = new PolicyFakeEventRecorder();

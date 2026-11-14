@@ -24,8 +24,8 @@ final class NotificationPolicies
     }
 
     /** @return array{revision: int, policies: array<int, array<string, mixed>>, before: array<int, array<string, mixed>>} */
-    public static function apply(array $input, ?int $actorId): array
+    public static function apply(array $input, ?int $actorId, callable $audit): array
     {
-        return self::useCase()->apply($input, $actorId);
+        return self::useCase()->apply($input, $actorId, $audit);
     }
 }

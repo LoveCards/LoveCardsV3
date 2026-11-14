@@ -34,9 +34,13 @@ use app\modules\Platform\Auth\Infrastructure\RecoveryStore;
 use app\shared\Transaction\TransactionManager;
 use app\shared\Infrastructure\Persistence\ThinkOrmTransactionManager;
 use app\modules\Operations\Runtime\Contract\RuntimeConfigStore;
-use app\modules\Operations\Runtime\Contract\SchedulerRunLedger;
+use app\modules\Platform\Eventing\Contract\ScheduledRunLedger;
+use app\modules\Platform\Eventing\Contract\SignalModePort;
+use app\modules\Platform\Eventing\Contract\EventWorkerHeartbeatPort;
 use app\modules\Operations\Runtime\Infrastructure\ThinkOrmRuntimeConfigStore;
-use app\modules\Operations\Runtime\Infrastructure\ThinkDbSchedulerRunLedger;
+use app\modules\Platform\Eventing\Infrastructure\ThinkDbScheduledRunLedger;
+use app\modules\Operations\Runtime\Infrastructure\EventingSignalModeAdapter;
+use app\modules\Operations\Runtime\Infrastructure\EventWorkerHeartbeatAdapter;
 use app\modules\Platform\Social\Contract\SocialGraphRepository;
 use app\modules\Platform\Social\Infrastructure\ThinkOrmSocialGraphRepository;
 use app\modules\Platform\Library\Contract\LibraryRepository;
@@ -50,12 +54,10 @@ use app\modules\Platform\Safety\Infrastructure\ThinkDbAdminReportRepository;
 use app\modules\Platform\Notifications\Contract\NotificationRepository;
 use app\modules\Platform\Eventing\Contract\PolicyVersionSource;
 use app\modules\Platform\Notifications\Contract\NotificationPolicyStore;
-use app\modules\Platform\Notifications\Contract\RealtimePollReader;
-use app\modules\Platform\Notifications\Contract\StreamTicketStore;
+use app\modules\Operations\Runtime\Contract\StreamTicketStore;
 use app\modules\Platform\Notifications\Infrastructure\ThinkDbNotificationPolicyStore;
 use app\modules\Platform\Notifications\Infrastructure\ThinkDbNotificationPolicyVersionSource;
-use app\modules\Platform\Notifications\Infrastructure\ThinkDbRealtimePollReader;
-use app\modules\Platform\Notifications\Infrastructure\ThinkDbStreamTicketStore;
+use app\modules\Operations\Runtime\Infrastructure\ThinkDbStreamTicketStore;
 use app\modules\Platform\Notifications\Contract\SystemNoticeIssuer;
 use app\modules\Platform\Notifications\Infrastructure\ThinkOrmNotificationRepository;
 use app\modules\Platform\Notifications\Public\SystemNotifications;
@@ -116,20 +118,18 @@ use app\modules\Operations\Runtime\Public\WorkerHeartbeatStore;
 use app\modules\Operations\Runtime\Infrastructure\ThinkDbWorkerHeartbeatStore;
 use app\modules\Platform\Eventing\Contract\FailureSanitizer;
 use app\modules\Platform\Eventing\Infrastructure\ConservativeFailureSanitizer;
-use app\modules\Platform\Eventing\Contract\WakeupTransport;
-use app\modules\Platform\Eventing\Infrastructure\NullWakeupTransport;
-use app\modules\Platform\Eventing\Infrastructure\OptionalRedisWakeupTransport;
 use app\modules\Platform\Eventing\Infrastructure\RedisRealtimeSignalPublisher;
 use app\modules\Platform\Eventing\Public\RealtimeSignalPublisher;
-use app\shared\Runtime\FacilityProbe;
-use app\shared\Runtime\NativeFacilityProbe;
 use app\shared\Observability\AuditLogger;
 use app\shared\Observability\ThinkDbAuditLogger;
 use app\shared\Observability\LogContextScope;
 use app\shared\Observability\LogContextProvider;
 
+use app\modules\Platform\Eventing\Public\HandlerRegistry;
+
 // 容器Provider定义文件
 return [
+    HandlerRegistry::class => static fn(): HandlerRegistry => \app\EventHandlers::create(),
     'think\exception\Handle' => ExceptionHandle::class,
     CapabilityProvider::class => RbacCapabilityProvider::class,
     UserRepository::class => ThinkOrmUserRepository::class,
@@ -182,20 +182,19 @@ return [
     ClaimTokenGenerator::class => SecureClaimTokenGenerator::class,
     Sleeper::class => NativeSleeper::class,
     WorkerHeartbeatStore::class => ThinkDbWorkerHeartbeatStore::class,
+    EventWorkerHeartbeatPort::class => EventWorkerHeartbeatAdapter::class,
+    SignalModePort::class => EventingSignalModeAdapter::class,
     FailureSanitizer::class => ConservativeFailureSanitizer::class,
-    WakeupTransport::class => OptionalRedisWakeupTransport::class,
     RealtimeSignalPublisher::class => RedisRealtimeSignalPublisher::class,
-    // 通信运行时（Phase 2）：一次性 stream ticket 与 Gateway 回源读取
+    // 通信运行时：一次性 stream ticket
     StreamTicketStore::class => ThinkDbStreamTicketStore::class,
-    RealtimePollReader::class => ThinkDbRealtimePollReader::class,
     // 通信运行时（Phase 3）：通知策略目录与版本冻结
     NotificationPolicyStore::class => ThinkDbNotificationPolicyStore::class,
     PolicyVersionSource::class => ThinkDbNotificationPolicyVersionSource::class,
-    FacilityProbe::class => NativeFacilityProbe::class,
     AuditLogger::class => ThinkDbAuditLogger::class,
     LogContextScope::class => LogContextScope::class,
     LogContextProvider::class => LogContextScope::class,
     // 通信运行时控制面（Phase 1）
     RuntimeConfigStore::class => ThinkOrmRuntimeConfigStore::class,
-    SchedulerRunLedger::class => ThinkDbSchedulerRunLedger::class,
+    ScheduledRunLedger::class => ThinkDbScheduledRunLedger::class,
 ];

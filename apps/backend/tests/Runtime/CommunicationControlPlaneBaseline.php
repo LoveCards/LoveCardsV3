@@ -5,7 +5,7 @@ declare(strict_types=1);
 // LoveCardsV3 — Communication Runtime Control Plane Baseline
 //
 // Independent PHP script, no PHPUnit, no real database.
-// 冻结通信运行时控制面行为：默认 polling/ready、能力派生降级、
+// 冻结通信运行时控制面行为：默认 polling/ready、实时故障不回退、
 // CAS 乐观并发、白名单校验、业务模块禁止感知通信模式。
 //
 // Usage: @php tests/Runtime/CommunicationControlPlaneBaseline.php
@@ -41,6 +41,7 @@ final class FakeStore implements RuntimeConfigStore
     public ?array $row;
     public array $audits = [];
     public int $saveCalls = 0;
+    public bool $readFails = false;
 
     public function __construct(?array $row = [])
     {
@@ -57,12 +58,18 @@ final class FakeStore implements RuntimeConfigStore
         $this->row = $row;
     }
 
-    public function current(): ?array { return $this->row; }
+    public function current(): ?array
+    {
+        if ($this->readFails) throw new \RuntimeException('simulated storage failure');
+        return $this->row;
+    }
+    public function selectedModeForEnqueue(): ?string { return $this->row['desired_mode'] ?? null; }
 
-    public function compareAndSwap(int $expectedRevision, string $desiredMode, array $settings, ?int $actorId, ?callable $then = null): bool
+    public function compareAndSwap(int $expectedRevision, string $desiredMode, array $settings, ?int $actorId, ?callable $then = null, ?callable $beforeUpdate = null): bool
     {
         $this->saveCalls++;
         if ($this->row === null || (int) $this->row['revision'] !== $expectedRevision) return false;
+        if ($beforeUpdate !== null) $beforeUpdate();
         $this->row['desired_mode'] = $desiredMode;
         $this->row['settings'] = $settings;
         $this->row['revision'] = $expectedRevision + 1;
@@ -86,13 +93,14 @@ final class NamedProbe implements RuntimeProbe
     public function probe(array $settings): array { return ['ready' => $this->ready, 'provider' => 'fake', 'reason_code' => $this->reason]; }
 }
 
-function probes(bool $workerReady = true, bool $gatewayReady = true): array
+function probes(bool $workerReady = true, bool $gatewayReady = true, bool $redisReady = true): array
 {
     return [
+        new NamedProbe('event-consumer', true, null),
+        new NamedProbe('realtime-redis', $redisReady, $redisReady ? null : 'redis-unreachable'),
         new NamedProbe('event-worker', $workerReady, $workerReady ? null : 'worker-heartbeat-stale'),
         new NamedProbe('realtime-gateway', $gatewayReady, $gatewayReady ? null : 'gateway-not-configured'),
         new NamedProbe('scheduler', true, null),
-        new NamedProbe('supervisor', null, 'not-required'),
     ];
 }
 
@@ -108,29 +116,44 @@ $snapshot = makeResolver(new FakeStore(), probes(false, false))->snapshot();
 assertTrue($snapshot['desired_mode'] === 'polling', 'default desired is polling');
 assertTrue($snapshot['effective_mode'] === 'polling' && $snapshot['status'] === 'ready', 'polling stays ready without worker/gateway (acceptance #1)');
 assertTrue($snapshot['reason_code'] === null, 'polling/ready has no reason code');
-assertTrue(count($snapshot['capabilities']) === 4, 'four capabilities listed');
+assertTrue(count($snapshot['capabilities']) === 5, 'five capabilities listed');
 
 // ----------------------------------------------------------------
-// 2. desired=realtime with missing capabilities -> degraded + polling fallback.
+// 2. desired=realtime with missing capabilities -> degraded, preserving selected mode.
 // ----------------------------------------------------------------
 $realtimeRow = ['desired_mode' => 'realtime', 'settings' => CommunicationSettings::defaults(), 'revision' => 2, 'last_apply_state' => 'applied', 'last_apply_reason' => null];
 $snapshot = makeResolver(new FakeStore($realtimeRow), probes(true, false))->snapshot();
-assertTrue($snapshot['effective_mode'] === 'polling' && $snapshot['status'] === 'degraded', 'realtime desired without gateway degrades to polling (acceptance #2)');
+assertTrue($snapshot['effective_mode'] === 'realtime' && $snapshot['status'] === 'degraded', 'realtime fault does not switch transport');
 assertTrue($snapshot['reason_code'] === 'gateway-not-configured', 'degraded snapshot carries gateway reason');
 
 $snapshot = makeResolver(new FakeStore($realtimeRow), probes(false, true))->snapshot();
 assertTrue($snapshot['reason_code'] === 'worker-heartbeat-stale', 'worker blocks realtime before gateway');
 
+$snapshot = makeResolver(new FakeStore($realtimeRow), probes(true, true, false))->snapshot();
+assertTrue($snapshot['effective_mode'] === 'realtime' && $snapshot['reason_code'] === 'redis-unreachable', 'redis outage pauses realtime without polling fallback');
+
 $snapshot = makeResolver(new FakeStore($realtimeRow), probes(true, true))->snapshot();
 assertTrue($snapshot['effective_mode'] === 'realtime' && $snapshot['status'] === 'ready', 'realtime takes effect only when all capabilities ready');
 
 // ----------------------------------------------------------------
-// 3. Fail-safe: missing config table -> polling/degraded/schema-not-ready.
+// 3. 运行期配置不可读或损坏不能伪造默认模式。
 // ----------------------------------------------------------------
-$snapshot = makeResolver(new FakeStore(null), probes(true, true))->snapshot();
-// phpcs:ignore - sentinel covered above
-assertTrue($snapshot['status'] === 'degraded' && $snapshot['reason_code'] === 'schema-not-ready', 'fail-safe derives polling when store unavailable');
-assertTrue($snapshot['effective_mode'] === 'polling', 'fail-safe never claims realtime');
+$invalidStores = [
+    'missing row' => new FakeStore(null),
+    'invalid mode' => new FakeStore(array_replace($realtimeRow, ['desired_mode' => 'unknown'])),
+    'invalid settings' => new FakeStore(array_replace($realtimeRow, ['settings' => ['notification_interval_seconds' => 0]])),
+    'invalid revision' => new FakeStore(array_replace($realtimeRow, ['revision' => 0])),
+    'read failure' => new FakeStore($realtimeRow),
+];
+$invalidStores['read failure']->readFails = true;
+foreach ($invalidStores as $case => $invalidStore) {
+    $caught = null;
+    try { makeResolver($invalidStore, probes(true, true))->snapshot(); }
+    catch (\Throwable $exception) { $caught = $exception; }
+    assertTrue($caught instanceof ApiException && $caught->getHttpStatus() === 503
+        && ($caught->getData()['reason_code'] ?? null) === 'runtime-config-unavailable',
+        "{$case} reports unavailable without a fabricated polling snapshot");
+}
 
 // ----------------------------------------------------------------
 // 4. Settings whitelist and ranges.
@@ -149,8 +172,8 @@ assertTrue(!array_key_exists('legacy_mode', $normalized), 'unknown stored keys d
 // 5. Apply: CAS success path writes audit through the same-transaction sink.
 // ----------------------------------------------------------------
 $store = new FakeStore();
-$resolver = makeResolver($store, probes(true, false));
-$updater = new UpdateRuntimeConfig($store, $resolver);
+$resolver = makeResolver($store, probes(true, true));
+$updater = new UpdateRuntimeConfig($store, $resolver, static fn (): bool => true);
 $audited = 0;
 $result = $updater->apply(7, ['desired_mode' => 'realtime', 'expected_revision' => 1, 'notification_interval_seconds' => 20],
     static function (int $uid, array $payload) use (&$audited): void { $audited++; });
@@ -158,7 +181,18 @@ assertTrue($audited === 1, 'apply records exactly one audit entry');
 assertTrue($store->row['revision'] === 2 && $store->row['desired_mode'] === 'realtime', 'CAS bumps revision and stores desired');
 assertTrue($store->row['settings']['notification_interval_seconds'] === 20, 'provided settings merged');
 assertTrue($store->row['settings']['message_interval_seconds'] === CommunicationSettings::defaults()['message_interval_seconds'], 'unprovided settings preserved');
-assertTrue($result['effective_mode'] === 'polling' && $result['status'] === 'degraded', 'apply realtime without gateway still derives polling/degraded (acceptance #2/#3)');
+assertTrue($result['effective_mode'] === 'realtime' && $result['status'] === 'ready', 'apply realtime only after readiness passes');
+
+// 5a. 开启门禁拒绝不完整的实时链路，不修改所选模式。
+$blockedStore = new FakeStore();
+$blockedUpdater = new UpdateRuntimeConfig($blockedStore, makeResolver($blockedStore, probes(true, false)), static fn (): bool => true);
+$blocked = null;
+try {
+    $blockedUpdater->apply(7, ['desired_mode' => 'realtime', 'expected_revision' => 1], static function (): void {});
+} catch (ApiException $exception) { $blocked = $exception; }
+assertTrue(($blocked?->getData()['reason_code'] ?? null) === 'gateway-not-configured', 'gateway failure blocks enabling realtime');
+assertTrue($blockedStore->row['desired_mode'] === 'polling' && $blockedStore->saveCalls === 0, 'rejected enable preserves polling');
+assertTrue($blockedUpdater->validate(['desired_mode' => 'realtime', 'expected_revision' => 1])['valid'] === false, 'validation reports missing realtime dependency');
 
 // 6. CAS conflict -> 409/9016 stale-revision, row untouched (acceptance #3).
 $before = $store->row;
@@ -188,19 +222,53 @@ foreach (['Platform', 'Content', 'Theme'] as $family) {
     foreach ($iterator as $file) {
         if (!$file->isFile() || $file->getExtension() !== 'php') continue;
         $source = (string) file_get_contents($file->getPathname());
-        foreach (['desired_mode', 'effective_mode', "'realtime'", '"realtime"'] as $needle) {
+        foreach (['desired_mode', 'effective_mode'] as $needle) {
             if (str_contains($source, $needle)) $offenders[] = $file->getPathname() . ':' . $needle;
         }
     }
 }
 assertTrue($offenders === [], 'no communication-mode awareness inside business modules (acceptance #6)' . ($offenders ? ' -> ' . implode(', ', array_slice($offenders, 0, 5)) : ''));
 
-// 9. Realtime hard dependency: require_supervisor policy probe honesty.
-$supervisor = new app\modules\Operations\Runtime\Infrastructure\SupervisorPolicyProbe();
-$entry = $supervisor->probe(['require_supervisor' => false]);
-assertTrue($entry['ready'] === null && $entry['reason_code'] === 'not-required', 'supervisor not-required stays non-blocking');
-$entry = $supervisor->probe(['require_supervisor' => true]);
-assertTrue($entry['ready'] === false && $entry['reason_code'] === 'supervisor-required-missing', 'required supervisor reports honestly when adapter missing');
+// 9. 持久策略行必须在通信 CAS 事务内阻止 scheduled + realtime。
+$guardedStore = new FakeStore();
+$guardedUpdater = new UpdateRuntimeConfig($guardedStore, makeResolver($guardedStore, probes()), static fn (): bool => false);
+$guardError = null;
+try { $guardedUpdater->apply(7, ['desired_mode' => 'realtime', 'expected_revision' => 1], static function (): void {}); }
+catch (ApiException $exception) { $guardError = $exception; }
+assertTrue(($guardError?->getData()['reason_code'] ?? null) === 'event-consumer-not-resident', 'transactional event mode gate blocks realtime');
+assertTrue($guardedStore->row['desired_mode'] === 'polling', 'blocked transactional gate preserves polling');
+
+// 10. 持久化适配器不能把损坏 JSON 或缺失选择转换成空默认设置。
+$database = new class {
+    public ?array $row = null;
+    public bool $readFails = false;
+    public function table(string $table): self { return $this; }
+    public function where(string $field, $value): self { return $this; }
+    public function find(): ?array
+    {
+        if ($this->readFails) throw new \RuntimeException('simulated database failure');
+        return $this->row;
+    }
+};
+\think\Container::getInstance()->instance(\think\DbManager::class, $database);
+$persistentStore = new \app\modules\Operations\Runtime\Infrastructure\ThinkOrmRuntimeConfigStore();
+foreach (['{broken', 'null', '[]', '"polling"'] as $json) {
+    $database->row = ['desired_mode' => 'realtime', 'settings_json' => $json, 'revision' => 1];
+    assertTrue($persistentStore->current() === null, "invalid stored settings {$json} remain unavailable");
+}
+$database->row = ['settings_json' => '{}', 'revision' => 1];
+assertTrue($persistentStore->current() === null, 'missing persisted selection is not defaulted to polling');
+$database->row = ['desired_mode' => 'realtime', 'settings_json' => '{}', 'revision' => 1];
+assertTrue($persistentStore->current()['desired_mode'] === 'realtime', 'valid persisted selection survives empty settings object');
+$database->readFails = true;
+assertTrue($persistentStore->current() === null, 'database read failure is represented as unavailable');
+
+// 11. 未曾生效的参数不再出现在快照，旧输入明确拒绝。
+foreach (['polling_backoff_factor', 'polling_max_interval_seconds', 'require_supervisor'] as $retiredKey) {
+    assertTrue(!array_key_exists($retiredKey, CommunicationSettings::defaults()), "retired setting {$retiredKey} absent from defaults");
+    assertTrue(!array_key_exists($retiredKey, CommunicationSettings::normalize([$retiredKey => 2])), "retired setting {$retiredKey} ignored in old storage");
+    assertTrue(CommunicationSettings::validateInput([$retiredKey => 2]) !== [], "retired setting {$retiredKey} rejected from new writes");
+}
 
 echo "\n{$passCount} passed, {$failCount} failed\n";
 exit($failCount === 0 ? 0 : 1);

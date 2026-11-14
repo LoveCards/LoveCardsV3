@@ -1,5 +1,7 @@
 # LoveCards 模块架构
 
+> 2026-11-11 收敛见 [实施设计](PLATFORM-CONVERGENCE-2026-11-11.md)。通用票据已迁至 Operations/Runtime（会话校验通过 Auth Public）。HandlerRegistry 组装与 Administration 投递重试边界的验收状态见实施设计；不得据旧目录推断已完成收束。
+
 ## 目标
 
 后端按模块组织。模块目录是能力边界；模块内部再按职责分层。API、前台和安装器只是 Host，不承载业务实现。
@@ -52,8 +54,9 @@ Module/
 - Files 依赖 Storage 的公开存储能力；Storage 不依赖 Files。
 - Messaging 与 Social 分别通过 Eventing 传播 `message.sent`、`social.followed`，再由 Notifications Handler 投影收件提醒；业务模块不能直接写通知表。
 - Eventing 只认识 EventEnvelope、Registry 与 Port；业务 Handler 位于拥有副作用的目标模块 Infrastructure。
+- Eventing 拥有事件消费策略与 MySQL 领取门禁；定时和常驻是同一投递用例的互斥调用方式，业务模块只提交事件和实现 Handler。Operations/Runtime 负责通信模式及跨能力就绪门禁，只通过 Eventing Public 查询/切换消费策略；Redis 由 Config Public 统一管理，不能被两模块各自维护一份连接配置。
 - SystemLifecycle 通过 Contract 操作 Release、Migration、Backup、Lease、Pointer 和 Runtime，Domain 不依赖 ZIP、PDO、文件系统或 ThinkPHP。
-- Installer Host 处理首次连接、持久配置、密钥、默认数据和安装锁；结构来自 `database/schema.sql`，默认数据来自 `database/seed.sql`。干净安装在 SystemLifecycle 账本中记录历史迁移为 `complete`，旧版本才执行迁移内容。当前 Host 仍直接调用 RBAC 种子和 JWT 密钥校验，后续切片应改为模块公开入口。
+- Installer Host 处理首次连接、持久配置、密钥、默认数据和安装锁；空库导入结构来自 `database/schema.sql`，默认数据来自 `database/seed.sql`。导入后经 SystemLifecycle Public 记录并校验绑定当前 schema 文件与迁移目录的 `CleanInstallReceipt`，才可把历史迁移账本记为 `complete`；安装锁还要求凭据和账本均完整。旧版本升级执行受审迁移内容，不能借新装凭据跳过。当前 Host 仍直接调用 RBAC 种子和 JWT 密钥校验，后续切片应改为模块公开入口。
 - Content 的跨 Cards/Comments/Tags/Likes 一致性由 Content 协调用例负责，禁止子模块互相直接写对方 Model。
 - 前台主题只返回 Shell 和启动上下文，页面数据统一由浏览器 SDK 请求 API。
 - Dashboard 是跨模块只读组合，不直接读取其他模块 Model。
@@ -89,3 +92,7 @@ npm run check:architecture
 后端行为/数据库/Theme/安装基线
 真实 API 与 Theme HTTP 检查
 ```
+
+## 事件 Handler 的模块归属与装配（2026-11-11）
+
+各业务模块在自身 `Public/EventHandlers.php` 显式返回 `HandlerRegistration`，`app/EventHandlers.php` 是唯一组合根，`HandlerRegistry` 只做登记、校验和查询。Web、CLI、Scheduler、Worker 和健康探测均由容器取得该装配；离线测试也调用同一纯 PHP 组合根。首轮拆分保持 13 个现有登记、目录 JSON 与 SHA-256 完全一致，存量投递的 handler_key、queue、execution_mode 不发生变化。模块间依赖仍通过 Public/Contract；架构检查同时识别 use 和全限定类名引用。新模块添加 Handler 时须在组合根显式接入并更新目录契约测试。

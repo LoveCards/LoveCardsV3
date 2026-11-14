@@ -18,7 +18,7 @@ return [
     ],
     'captcha_enabled'        => [
         'type'        => 'bool',
-        'default'     => true,
+        'default'     => false,
         'description' => '人机验证功能开关',
     ],
     'code_channel'           => [

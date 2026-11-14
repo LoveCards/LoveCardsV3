@@ -8,7 +8,7 @@ use app\api\controller\BaseController;
 use app\modules\Platform\Social\Public\Social;
 use app\modules\Platform\Library\Public\Library;
 use app\modules\Platform\Notifications\Public\Notifications;
-use app\modules\Platform\Notifications\Public\StreamTickets;
+use app\modules\Operations\Runtime\Public\StreamTickets;
 use app\modules\Platform\Safety\Public\Safety;
 use app\shared\Resource\ResourceRef;
 use app\modules\Platform\Drafts\Public\Drafts;
@@ -61,7 +61,11 @@ public function streamTicket()
         if (($runtime['effective_mode'] ?? 'polling') !== 'realtime') {
             throw ApiException::capabilityUnavailable('实时通道当前不可用，请稍后重试', (string) ($runtime['reason_code'] ?? 'realtime-not-ready'));
         }
-        return $this->respond(StreamTickets::issue($this->uid()));
+        try {
+            return $this->respond(StreamTickets::issue($this->uid(), (string) request()->auth->sessionPublicId()));
+        } catch (\DomainException $exception) {
+            throw new \think\exception\HttpException(401, $exception->getMessage());
+        }
     }
     public function unread() { $p=$this->validated(); return $this->respond(['unread' => Notifications::unreadCount($this->uid(), $p['category'] ?? null)]); }
     public function read() { $p=$this->validated(); $ids = $p['ids'] ?? []; if (is_string($ids)) $ids = json_decode($ids, true) ?: []; Notifications::markRead($this->uid(), array_map('intval', (array)$ids)); return $this->respond(); }

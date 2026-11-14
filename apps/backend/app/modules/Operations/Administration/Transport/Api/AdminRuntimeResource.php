@@ -11,7 +11,7 @@ final class AdminRuntimeResource extends Resource
     {
         return ['type' => 'object', 'additionalProperties' => false, 'properties' => [
             'facilities' => ['type' => 'array'], 'workers' => ['type' => 'array'], 'eventing' => ['type' => 'object'],
-            'communication' => ['type' => 'object'],
+            'communication' => ['type' => 'object'], 'event_processing' => ['type' => 'object'],
         ]];
     }
 

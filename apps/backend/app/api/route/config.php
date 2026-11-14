@@ -5,8 +5,13 @@ use think\facade\Route;
 use app\api\middleware\JwtAuthCheck;
 use app\api\middleware\PermissionCheck;
 use app\modules\Platform\Config\Transport\Api\Config as ConfigValidate;
+use app\modules\Platform\Config\Transport\Api\RedisConnectionTestResource;
 
 Route::group('admin/config', function () {
+    Route::post('redis/test', 'System.Config/testRedis')
+        ->name('config.redisTest')
+        ->setOption('contract', ['request' => null, 'response' => ['resource' => RedisConnectionTestResource::class, 'shape' => 'item', 'status' => 200]])
+        ->setOption('meta', ['name' => '测试 Redis 连接', 'group' => '配置', 'access' => ['auth' => 'required', 'allOf' => [['capability' => 'admin.access', 'scope' => 'global'], ['capability' => 'operations.runtime.configure', 'scope' => 'global']]]]);
     Route::get('', 'System.Config/index')
     ->name('config.list')
     ->setOption('contract', ['request' => ['validate' => ConfigValidate::class, 'scene' => 'list'], 'response' => ['resource' => 'app\\modules\\Platform\\Config\\Transport\\Api\\ConfigResource', 'shape' => 'item', 'status' => 200]])
@@ -14,7 +19,7 @@ Route::group('admin/config', function () {
 
     Route::post('', 'System.Config/update')
     ->name('config.update')
-    ->setOption('contract', ['request' => ['validate' => ConfigValidate::class, 'scene' => 'update'], 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
+    ->setOption('contract', ['request' => ['validate' => ConfigValidate::class, 'scene' => 'update'], 'response' => ['resource' => 'app\\modules\\Platform\\Config\\Transport\\Api\\ConfigResource', 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => '保存配置', 'group' => '配置', 'access' => ['auth' => 'required', 'allOf' => [['capability' => 'admin.access', 'scope' => 'global'], ['capability' => 'config.update', 'scope' => 'global']]]]);
 
     Route::get('groups', 'System.Config/groups')

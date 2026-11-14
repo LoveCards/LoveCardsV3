@@ -93,7 +93,7 @@ Route::group('me/cards', function () use ($required, $grant) {
     Route::get(':id', 'Content.Cards/getOwn')->name('cards.getOwn')
         ->setOption('contract', ['request' => null, 'response' => ['resource' => CardResource::class, 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => '我的卡片详情', 'group' => '卡片', 'access' => $required([$grant('cards.read', Scope::OWN)])]);
-})->middleware(JwtAuthCheck::class)->middleware(CaptchaCheck::class, ['type' => 'captcha'])->middleware(PermissionCheck::class);
+})->middleware(JwtAuthCheck::class)->middleware(PermissionCheck::class)->middleware(CaptchaCheck::class, ['type' => 'captcha']);
 
 Route::get('me/feed/following', 'Content.Cards/listFollowing')
     ->name('cards.listFollowing')

@@ -1,6 +1,6 @@
 {
   "source": "thinkphp-runtime-route-registry",
-  "routeCount": 201,
+  "routeCount": 207,
   "routes": [
     {
       "path": "/admin/cards/:id",
@@ -563,8 +563,8 @@
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\PermissionCheck",
+        "app\\api\\middleware\\CaptchaCheck"
       ],
       "contract": {
         "request": null,
@@ -598,8 +598,8 @@
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\PermissionCheck",
+        "app\\api\\middleware\\CaptchaCheck"
       ],
       "contract": {
         "request": null,
@@ -1304,6 +1304,43 @@
       "source": "apps/backend/app/api/route"
     },
     {
+      "path": "/admin/communications/signals",
+      "method": "GET",
+      "name": "communications.signals",
+      "controller": "Platform.AdminCommunications",
+      "action": "signals",
+      "meta": {
+        "name": "主动更新目录",
+        "group": "通信",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminSignalPoliciesResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
       "path": "/admin/community/insights",
       "method": "GET",
       "name": "community.insights",
@@ -1678,6 +1715,43 @@
         "request": null,
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminDeliverySummaryResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/event-consumption",
+      "method": "GET",
+      "name": "operations.eventConsumption",
+      "controller": "Platform.Administration",
+      "action": "eventConsumption",
+      "meta": {
+        "name": "事件消费策略",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminEventConsumptionResource",
           "shape": "item",
           "status": 200
         }
@@ -3070,13 +3144,13 @@
       "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/internal/realtime/notifications-since",
+      "path": "/internal/realtime/redis-config",
       "method": "GET",
-      "name": "internal.realtimeNotificationsSince",
-      "controller": "Platform.RealtimeInternal",
-      "action": "notificationsSince",
+      "name": "internal.realtimeRedisConfig",
+      "controller": "System.Config",
+      "action": "internalRedisConfig",
       "meta": {
-        "name": "通知游标回源（内部）",
+        "name": "Redis 连接配置（内部）",
         "group": "运行时",
         "access": {
           "auth": "public"
@@ -3086,12 +3160,9 @@
         "app\\api\\middleware\\InternalTokenCheck"
       ],
       "contract": {
-        "request": {
-          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalRealtimeValidate",
-          "scene": "since"
-        },
+        "request": null,
         "response": {
-          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalNotificationsPollResource",
+          "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\InternalRedisConfigResource",
           "shape": "item",
           "status": 200
         }
@@ -3183,8 +3254,8 @@
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\PermissionCheck",
+        "app\\api\\middleware\\CaptchaCheck"
       ],
       "contract": {
         "request": {
@@ -3221,8 +3292,8 @@
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\PermissionCheck",
+        "app\\api\\middleware\\CaptchaCheck"
       ],
       "contract": {
         "request": null,
@@ -4460,8 +4531,8 @@
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\PermissionCheck",
+        "app\\api\\middleware\\CaptchaCheck"
       ],
       "contract": {
         "request": {
@@ -4724,9 +4795,9 @@
           "scene": "update"
         },
         "response": {
-          "resource": null,
-          "shape": "void",
-          "status": 204
+          "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\ConfigResource",
+          "shape": "item",
+          "status": 200
         }
       },
       "source": "apps/backend/app/api/route"
@@ -4762,6 +4833,43 @@
         "request": null,
         "response": {
           "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\ConfigResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/config/redis/test",
+      "method": "POST",
+      "name": "config.redisTest",
+      "controller": "System.Config",
+      "action": "testRedis",
+      "meta": {
+        "name": "测试 Redis 连接",
+        "group": "配置",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.runtime.configure",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Config\\Transport\\Api\\RedisConnectionTestResource",
           "shape": "item",
           "status": 200
         }
@@ -5906,6 +6014,32 @@
       "source": "apps/backend/app/api/route"
     },
     {
+      "path": "/internal/eventing/run-once",
+      "method": "POST",
+      "name": "internal.eventingRunOnce",
+      "controller": "System.EventingCron",
+      "action": "runOnce",
+      "meta": {
+        "name": "事件定时消费（内部）",
+        "group": "运行时",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\EventingCronTokenCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Eventing\\Transport\\Api\\ScheduledRunResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
       "path": "/internal/realtime/ticket/verify",
       "method": "POST",
       "name": "internal.realtimeTicketVerify",
@@ -5923,11 +6057,11 @@
       ],
       "contract": {
         "request": {
-          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalRealtimeValidate",
+          "validate": "app\\modules\\Operations\\Runtime\\Transport\\Api\\InternalRealtimeValidate",
           "scene": "verify"
         },
         "response": {
-          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\InternalTicketVerifyResource",
+          "resource": "app\\modules\\Operations\\Runtime\\Transport\\Api\\InternalTicketVerifyResource",
           "shape": "item",
           "status": 200
         }
@@ -5956,8 +6090,8 @@
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\PermissionCheck",
+        "app\\api\\middleware\\CaptchaCheck"
       ],
       "contract": {
         "request": {
@@ -6343,7 +6477,7 @@
       "contract": {
         "request": null,
         "response": {
-          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\StreamTicketResource",
+          "resource": "app\\modules\\Operations\\Runtime\\Transport\\Api\\StreamTicketResource",
           "shape": "item",
           "status": 200
         }
@@ -6690,8 +6824,7 @@
         }
       },
       "middleware": [
-        "app\\api\\middleware\\SessionDebounce",
-        "app\\api\\middleware\\CaptchaCheck"
+        "app\\api\\middleware\\SessionDebounce"
       ],
       "contract": {
         "request": {
@@ -6840,6 +6973,86 @@
       "source": "apps/backend/app/api/route"
     },
     {
+      "path": "/admin/communications/signals",
+      "method": "PUT",
+      "name": "communications.applySignals",
+      "controller": "Platform.AdminCommunications",
+      "action": "applySignals",
+      "meta": {
+        "name": "启停主动更新",
+        "group": "通信",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.configure",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "signalPolicies"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminSignalPoliciesResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/event-consumption",
+      "method": "PUT",
+      "name": "operations.applyEventConsumption",
+      "controller": "Platform.Administration",
+      "action": "applyEventConsumption",
+      "meta": {
+        "name": "切换事件消费策略",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.runtime.configure",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "eventConsumption"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminEventConsumptionResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
       "path": "/admin/operations/runtime/config",
       "method": "PUT",
       "name": "operations.applyRuntimeConfig",
@@ -6941,8 +7154,8 @@
       },
       "middleware": [
         "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\CaptchaCheck",
-        "app\\api\\middleware\\PermissionCheck"
+        "app\\api\\middleware\\PermissionCheck",
+        "app\\api\\middleware\\CaptchaCheck"
       ],
       "contract": {
         "request": {

@@ -10,6 +10,7 @@ const routes = [
   '/apps/access/permissions',
   '/apps/settings/storage/files',
   '/apps/settings/storage',
+  '/apps/settings/redis',
   '/apps/settings/messaging',
   '/apps/settings/verification',
   '/apps/settings/site',
@@ -18,7 +19,8 @@ const routes = [
   '/apps/settings/appearance',
   '/apps/settings/appearance/themes/current',
   '/apps/operations/upgrade',
-  '/apps/operations/runtime',
+  '/apps/operations/eventing',
+  '/apps/operations/communication',
   '/apps/community/reports',
   '/apps/operations/deliveries',
   '/apps/operations/audit',
@@ -30,7 +32,12 @@ const expectedHeadings: Record<string, string> = {
   '/apps/settings/site/policies': '站点策略',
   '/apps/settings/community-rules': '站点策略',
   '/apps/operations/upgrade': '系统升级',
-  '/apps/operations/runtime': '运行状态',
+  '/apps/operations/eventing': '事件处理',
+  '/apps/operations/communication': '前端通信',
+  '/apps/settings/redis': 'Redis 连接',
+  '/apps/settings/storage': '文件存储',
+  '/apps/settings/messaging': '站外发送',
+  '/apps/operations/deliveries': '通知投递',
 }
 
 const legacyAliases = [
@@ -49,7 +56,8 @@ const legacyAliases = [
   ['/apps/settings/access', '/apps/settings/site/policies'],
   ['/apps/settings/community-rules', '/apps/settings/site/policies'],
   ['/apps/operations/notification-policies', '/apps/settings/site/policies'],
-  ['/apps/system/runtime', '/apps/operations/runtime'],
+  ['/apps/system/runtime', '/apps/operations/communication'],
+  ['/apps/operations/runtime', '/apps/operations/communication'],
   ['/apps/system/upgrade', '/apps/operations/upgrade'],
   ['/apps/updata', '/apps/operations/upgrade'],
   ['/apps/roles', '/apps/access/roles'],
@@ -309,11 +317,20 @@ for (const [legacyPath, canonicalPath] of legacyAliases) {
   })
 }
 
+test('legacy runtime event section redirects to eventing', async ({ page }) => {
+  await page.goto('./apps/operations/runtime?section=eventing&source=legacy#diagnostics', { waitUntil: 'domcontentloaded' })
+  await expect(page).toHaveURL(/\/admin\/apps\/operations\/eventing\?/)
+  const url = new URL(page.url())
+  expect(url.searchParams.get('source')).toBe('legacy')
+  expect(url.hash).toBe('#diagnostics')
+  await expect(page.getByRole('heading', { name: '事件处理', exact: true })).toBeVisible()
+})
+
 for (const [legacyPath, canonicalPath] of legacyDetailAliases) {
   test(`legacy detail route redirects to canonical path: ${legacyPath}`, async ({ page }) => {
     await page.goto(`.${legacyPath}?source=legacy#detail-alias`, { waitUntil: 'domcontentloaded' })
     await expect(page).toHaveURL(new RegExp(`/admin${canonicalPath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\?`), {
-      timeout: legacyPath === '/apps/sender/config/smtp' ? 20_000 : 5_000,
+      timeout: 20_000,
     })
 
     const url = new URL(page.url())

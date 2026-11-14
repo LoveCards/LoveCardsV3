@@ -14,6 +14,7 @@ use app\modules\Platform\Eventing\Domain\DeliveryOutcome;
 use app\modules\Platform\Eventing\Public\DeliveryContext;
 use app\modules\Platform\Eventing\Public\HandlerRegistration;
 use app\modules\Platform\Eventing\Public\HandlerRegistry;
+use app\modules\Platform\Eventing\Public\SignalTransportUnavailable;
 use app\shared\Observability\LogContext;
 use app\shared\Observability\LogContextScope;
 
@@ -60,7 +61,7 @@ final class DeliveryProcessor
                 $delivery,
                 null,
                 new \RuntimeException('当前 Release 未注册对应 Event Handler'),
-                $delivery->attemptCount() >= 5
+                $delivery->attemptCount() >= ($delivery->retryAttemptLimit() ?? 5)
             );
         }
         if (!$registration->matches($event)
@@ -73,7 +74,8 @@ final class DeliveryProcessor
                 true
             );
         }
-        if ($delivery->attemptCount() > $registration->maxAttempts()) {
+        $attemptLimit = $delivery->retryAttemptLimit() ?? $registration->maxAttempts();
+        if ($delivery->attemptCount() > $attemptLimit) {
             return $this->fail(
                 $delivery,
                 $registration,
@@ -90,24 +92,31 @@ final class DeliveryProcessor
             'event.causation_id' => $event->causationId(),
         ]));
 
+        $context = new DeliveryContext(
+            $delivery->id(),
+            $delivery->eventId(),
+            $delivery->handlerKey(),
+            $delivery->attemptCount(),
+            $delivery->policyRevision(),
+            $event->eventType(),
+            $delivery->claimToken()
+        );
         try {
             $registration->handler()->handle(
                 $event,
-                new DeliveryContext(
-                    $delivery->id(),
-                    $delivery->eventId(),
-                    $delivery->handlerKey(),
-                    $delivery->attemptCount(),
-                    $delivery->policyRevision(),
-                    $event->eventType()
-                )
+                $context
             );
+            if ($registration->queueName() === 'realtime' && $context->signalDecision() === null) {
+                throw new \UnexpectedValueException('Realtime signal Handler 未记录投递决策');
+            }
+        } catch (SignalTransportUnavailable $exception) {
+            return $this->defer($delivery, $exception);
         } catch (\Throwable $exception) {
             return $this->fail(
                 $delivery,
                 $registration,
                 $exception,
-                $delivery->attemptCount() >= $registration->maxAttempts()
+                $delivery->attemptCount() >= $attemptLimit
             );
         } finally {
             $this->logContext->clear();
@@ -116,10 +125,23 @@ final class DeliveryProcessor
         $completed = $this->deliveries->complete(
             $delivery->id(),
             $delivery->claimToken(),
-            $this->clock->now()
+            $this->clock->now(),
+            $context->signalDecision()
         );
 
         return $completed ? DeliveryOutcome::COMPLETED : DeliveryOutcome::FENCED;
+    }
+
+    private function defer(ClaimedDelivery $delivery, SignalTransportUnavailable $exception): string
+    {
+        $now = $this->clock->now();
+        $updated = $this->deliveries->defer(
+            $delivery->id(),
+            $delivery->claimToken(),
+            new DeliveryFailure(false, $this->sanitizer->sanitize($exception), $now->modify('+30 seconds')),
+            $now
+        );
+        return $updated ? DeliveryOutcome::RETRY_SCHEDULED : DeliveryOutcome::FENCED;
     }
 
     private function fail(

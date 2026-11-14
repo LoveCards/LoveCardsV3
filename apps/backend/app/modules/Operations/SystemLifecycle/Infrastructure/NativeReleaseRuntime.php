@@ -18,9 +18,25 @@ final class NativeReleaseRuntime implements ReleaseRuntime
         return $this->command('drain_command') !== [];
     }
 
+    public function assertQuiescent(string $releaseId): void
+    {
+        if (!$this->canDrain()) throw new \LogicException('Contract 需要配置可确认全部消费者停止的 drain_command');
+        $this->drain($releaseId);
+        // drain 成功代表部署侧确认进程退出；过期租约/过期心跳不能代替该证据。
+        \app\modules\Platform\Eventing\Public\EventConsumption::assertQuiescent();
+        \app\modules\Operations\Runtime\Public\RuntimeCommunication::assertWorkersStopped();
+    }
+
     public function drain(string $releaseId): void
     {
-        $this->run('drain_command', $releaseId);
+        $proof = trim($this->run('drain_command', $releaseId));
+        try { $result = json_decode($proof, true, 8, JSON_THROW_ON_ERROR); }
+        catch (\JsonException) { $result = null; }
+        if (!is_array($result) || ($result['workers_stopped'] ?? null) !== true
+            || ($result['scheduled_trigger_stopped'] ?? null) !== true
+            || ($result['restart_disabled'] ?? null) !== true) {
+            throw new \RuntimeException('drain_command 未提供 Worker、定时触发及自动重启入口全部停止的有效证明');
+        }
     }
 
     public function canReload(): bool
@@ -60,7 +76,7 @@ final class NativeReleaseRuntime implements ReleaseRuntime
         }
     }
 
-    private function run(string $name, string $releaseId): void
+    private function run(string $name, string $releaseId): string
     {
         $this->assertReleaseId($releaseId);
         $command = $this->command($name);
@@ -95,7 +111,7 @@ final class NativeReleaseRuntime implements ReleaseRuntime
                 if (!($status['running'] ?? false)) break;
                 if (microtime(true) >= $deadline) {
                     proc_terminate($process);
-                    throw new \RuntimeException('运行时管理命令超时');
+                    throw new \app\modules\Operations\SystemLifecycle\Exception\ExecutionUncertainException('运行时管理命令超时，子进程结束状态需受控核实');
                 }
                 usleep(10000);
             }
@@ -111,6 +127,7 @@ final class NativeReleaseRuntime implements ReleaseRuntime
             $detail = trim($stderr !== '' ? $stderr : $stdout);
             throw new \RuntimeException('运行时管理命令失败，退出码 ' . $exitCode . ($detail === '' ? '' : ': ' . $detail));
         }
+        return $stdout;
     }
 
     /** @return string[] */

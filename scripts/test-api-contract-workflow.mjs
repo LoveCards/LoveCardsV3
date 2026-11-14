@@ -125,8 +125,13 @@ const internalOperationIds = Object.values(openapi.paths)
   .map((item) => item.operationId)
 assert(!internalOperationIds.includes('internal.realtimeTicketVerify'), 'gateway verify must stay out of the public OpenAPI surface')
 assert(!internalOperationIds.includes('internal.realtimeNotificationsSince'), 'gateway poll must stay out of the public OpenAPI surface')
+assert(!internalOperationIds.includes('internal.eventingRunOnce'), 'cron trigger must stay out of the public OpenAPI surface')
 const internalRoutes = routeManifest.routes.filter((item) => item.name.startsWith('internal.'))
-assert.equal(internalRoutes.length, 2, 'internal gateway routes must remain exported for route-level audits')
+assert.deepEqual(
+  internalRoutes.map((item) => item.name).sort(),
+  ['internal.realtimeRedisConfig', 'internal.realtimeTicketVerify', 'internal.eventingRunOnce'].sort(),
+  'internal routes must remain exported for route-level audits',
+)
 
 const notificationList = operation('notifications.list')
 const notificationQuery = notificationList.parameters.find((item) => item.in === 'query').schema

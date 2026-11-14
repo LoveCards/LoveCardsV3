@@ -16,7 +16,7 @@ use app\modules\Operations\Installer\Infrastructure\Database;
 use app\modules\Operations\Installer\Infrastructure\Environment;
 use app\modules\Operations\Installer\Infrastructure\Rsa;
 
-use app\modules\Platform\Auth\Infrastructure\Jwt;
+use app\modules\Platform\Auth\Public\SigningKeys;
 use app\modules\Operations\SystemLifecycle\Application\SystemLifecycleCoordinator;
 
 class Install
@@ -112,11 +112,14 @@ class Install
             }
             //导入数据库文件
             try {
+                Database::AssertEmpty();
                 // schema.sql 只负责结构，seed.sql 只负责系统默认数据。
                 // 后续结构变更仍由同一个 SystemLifecycle 迁移账本推进。
                 $databaseRoot = app()->getRootPath() . 'database' . DIRECTORY_SEPARATOR;
                 Database::ImportSQLFile($databaseRoot . 'schema.sql');
                 Database::ImportSQLFile($databaseRoot . 'seed.sql');
+                app(\app\modules\Operations\SystemLifecycle\Public\CleanInstallReceipt::class)
+                    ->record($databaseRoot . 'schema.sql', $databaseRoot . 'migrations');
                 // 目标 schema 已包含历史迁移终态；记录审核过的迁移身份和 checksum。
                 app(SystemLifecycleCoordinator::class)->recordInstalledSchema(
                     dirname(__DIR__, 3) . '/database/migrations'
@@ -174,7 +177,20 @@ class Install
             return Export::Create(null, 500, '系统角色能力初始化失败：' . $e->getMessage());
         }
 
-        // 配置初始化成功后再创建安装锁（标记安装完成）
+        // 终结时重新读取实际持久密钥，不能依赖前端已调用过生成密钥步骤。
+        try {
+            SigningKeys::assertReady();
+        } catch (\Throwable $e) {
+            return Export::Create(null, 500, '签名密钥未就绪：' . $e->getMessage());
+        }
+
+        try {
+            \app\modules\Platform\Auth\Public\InstallationAccount::setRootPassword((string) Request::param('admin_password', ''));
+        } catch (\Throwable $e) {
+            return Export::Create(null, 500, '初始管理员密码设置失败：' . $e->getMessage());
+        }
+
+        // 配置、账本、签名密钥及管理员凭据均就绪后再创建安装锁。
         // InstallLock() 返回 bool，失败时抛出 RuntimeException
         try {
             Common::InstallLock();
@@ -219,7 +235,7 @@ class Install
         }
 
         //校验是否可用
-        if (!Jwt::VerifyRsa($key['public'], $key['private'])) {
+        if (!SigningKeys::verifyPair((string) $key['public'], (string) $key['private'])) {
             return Export::Create(null, 500, '密钥对不可用');
         }
 

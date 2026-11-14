@@ -39,6 +39,7 @@ final class ReleaseCompatibilityFakeSource implements MigrationSource
 final class ReleaseCompatibilityFakeLedger implements MigrationLedger
 {
     public function all(): array { return []; }
+    public function allReadOnly(): array { return $this->all(); }
     public function find(string $migrationId): ?MigrationProgress { return null; }
     public function initialize(MigrationDescriptor $descriptor): MigrationProgress { return MigrationProgress::pending($descriptor); }
     public function save(MigrationProgress $progress, int $expectedRevision): MigrationProgress { return $progress->withRevision($expectedRevision + 1); }

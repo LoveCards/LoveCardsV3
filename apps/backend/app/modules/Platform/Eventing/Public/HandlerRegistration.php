@@ -14,6 +14,7 @@ final class HandlerRegistration
     private EventHandler $handler;
     private int $maxAttempts;
     private array $retryDelays;
+    private ?array $signal;
 
     public function __construct(
         string $eventType,
@@ -23,7 +24,8 @@ final class HandlerRegistration
         string $executionMode,
         EventHandler $handler,
         int $maxAttempts = 5,
-        array $retryDelays = [5, 30, 300, 1800]
+        array $retryDelays = [5, 30, 300, 1800],
+        ?array $signal = null
     ) {
         if (!preg_match('/^[A-Za-z][A-Za-z0-9_.-]{0,99}$/', $eventType)) {
             throw new \InvalidArgumentException('Handler event_type 不合法');
@@ -49,6 +51,20 @@ final class HandlerRegistration
                 throw new \InvalidArgumentException('retry_delays 必须是 0..2592000 的整数');
             }
         }
+        if ($signal !== null) {
+            if (array_keys($signal) !== ['key', 'topic', 'owner', 'display_name', 'impact_text', 'default_enabled']
+                || !is_string($signal['key']) || preg_match('/^[a-z][a-z0-9_.-]{0,127}$/', $signal['key']) !== 1
+                || !is_string($signal['topic']) || preg_match('/^[a-z][a-z0-9_.-]{0,99}$/', $signal['topic']) !== 1
+                || !is_string($signal['owner']) || $signal['owner'] === ''
+                || !is_string($signal['display_name']) || $signal['display_name'] === ''
+                || !is_string($signal['impact_text']) || $signal['impact_text'] === ''
+                || !is_bool($signal['default_enabled'])) {
+                throw new \InvalidArgumentException('Realtime signal 注册信息不合法');
+            }
+            if ($executionMode !== ExecutionMode::DAEMON_REQUIRED) {
+                throw new \InvalidArgumentException('Realtime signal 必须由常驻 Worker 投递');
+            }
+        }
 
         $this->eventType = $eventType;
         $this->eventVersion = $eventVersion;
@@ -58,6 +74,7 @@ final class HandlerRegistration
         $this->handler = $handler;
         $this->maxAttempts = $maxAttempts;
         $this->retryDelays = array_values($retryDelays);
+        $this->signal = $signal;
     }
 
     public function eventType(): string { return $this->eventType; }
@@ -67,6 +84,7 @@ final class HandlerRegistration
     public function executionMode(): string { return $this->executionMode; }
     public function handler(): EventHandler { return $this->handler; }
     public function maxAttempts(): int { return $this->maxAttempts; }
+    public function signal(): ?array { return $this->signal; }
 
     public function matches(EventEnvelope $event): bool
     {
@@ -82,7 +100,7 @@ final class HandlerRegistration
 
     public function catalogData(): array
     {
-        return [
+        $data = [
             'event_type' => $this->eventType,
             'event_version' => $this->eventVersion,
             'handler_key' => $this->handlerKey,
@@ -91,5 +109,7 @@ final class HandlerRegistration
             'max_attempts' => $this->maxAttempts,
             'retry_delays' => $this->retryDelays,
         ];
+        if ($this->signal !== null) $data['signal'] = $this->signal;
+        return $data;
     }
 }

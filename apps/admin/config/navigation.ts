@@ -239,11 +239,11 @@ const systemConfigItems = [
     path: '/apps/settings/storage',
     canonicalPath: '/apps/settings/storage',
     legacyAliases: ['/apps/storage/config'],
-    title: '存储服务',
-    searchAliases: ['存储配置'],
+    title: '文件存储',
+    searchAliases: ['存储服务', '存储配置'],
     icon: 'mdi-database-cog-outline',
     domain: 'system',
-    section: '存储',
+    section: '文件存储',
     parentRoute: '/apps/settings/storage',
     grants: [
       { capability: 'storage.read', scope: 'global' },
@@ -253,13 +253,30 @@ const systemConfigItems = [
     actionCapabilities: ['storage.install', 'storage.test', 'config.update'],
   }),
   item({
+    path: '/apps/settings/redis',
+    canonicalPath: '/apps/settings/redis',
+    title: 'Redis 连接',
+    searchAliases: ['Redis 服务', 'Redis 配置', '实时依赖'],
+    icon: 'mdi-database-outline',
+    domain: 'system',
+    section: 'Redis 连接',
+    parentRoute: '/apps/settings/redis',
+    grants: [
+      { capability: 'config.read', scope: 'global' },
+      { capability: 'operations.runtime.configure', scope: 'global' },
+    ],
+    riskLevel: 'high',
+    actionCapabilities: ['config.update', 'operations.runtime.configure'],
+  }),
+  item({
     path: '/apps/settings/messaging',
     canonicalPath: '/apps/settings/messaging',
     legacyAliases: ['/apps/sender/config'],
-    title: '消息渠道',
+    title: '站外发送',
+    searchAliases: ['消息渠道'],
     icon: 'mdi-email-outline',
     domain: 'system',
-    section: '消息渠道',
+    section: '站外发送',
     parentRoute: '/apps/settings/messaging',
     grants: [
       { capability: 'sender.read', scope: 'global' },
@@ -289,14 +306,26 @@ const systemConfigItems = [
 
 const operationsItems = [
   item({
-    path: '/apps/operations/runtime',
-    canonicalPath: '/apps/operations/runtime',
-    legacyAliases: ['/apps/system/runtime'],
-    title: '运行状态',
-    icon: 'mdi-heart-pulse',
+    path: '/apps/operations/eventing',
+    canonicalPath: '/apps/operations/eventing',
+    title: '事件处理',
+    icon: 'mdi-inbox-arrow-down-outline',
     domain: 'system',
-    section: '运行状态',
-    parentRoute: '/apps/operations/runtime',
+    section: '事件处理',
+    parentRoute: '/apps/operations/eventing',
+    grants: [operationsGrant],
+    actionCapabilities: ['operations.read', 'operations.runtime.configure'],
+    riskLevel: 'sensitive',
+  }),
+  item({
+    path: '/apps/operations/communication',
+    canonicalPath: '/apps/operations/communication',
+    legacyAliases: ['/apps/operations/runtime', '/apps/system/runtime'],
+    title: '前端通信',
+    icon: 'mdi-access-point-network',
+    domain: 'system',
+    section: '前端通信',
+    parentRoute: '/apps/operations/communication',
     grants: [operationsGrant],
     actionCapabilities: ['operations.read', 'operations.runtime.configure'],
     riskLevel: 'sensitive',
@@ -304,10 +333,11 @@ const operationsItems = [
   item({
     path: '/apps/operations/deliveries',
     canonicalPath: '/apps/operations/deliveries',
-    title: '通知处理',
+    title: '通知投递',
+    searchAliases: ['通知处理'],
     icon: 'mdi-send-check-outline',
     domain: 'system',
-    section: '通知处理',
+    section: '通知投递',
     parentRoute: '/apps/operations/deliveries',
     grants: [{ capability: 'communications.read', scope: 'global' }],
     riskLevel: 'sensitive',
@@ -317,10 +347,11 @@ const operationsItems = [
     path: '/apps/operations/upgrade',
     canonicalPath: '/apps/operations/upgrade',
     legacyAliases: ['/apps/system/upgrade'],
-    title: '升级与迁移',
+    title: '系统升级',
+    searchAliases: ['升级与迁移'],
     icon: 'mdi-package-up',
     domain: 'system',
-    section: '升级与迁移',
+    section: '系统升级',
     parentRoute: '/apps/operations/upgrade',
     grants: [operationsGrant],
     riskLevel: 'high',
@@ -339,8 +370,8 @@ const operationsItems = [
   }),
 ] as const
 
-const [siteInformation, sitePolicies, appearance, storageService, messagingService, verificationService] = systemConfigItems
-const [runtimeStatus, deliveryProcessing, upgrade, auditLog] = operationsItems
+const [siteInformation, sitePolicies, appearance, storageService, redisService, messagingService, verificationService] = systemConfigItems
+const [eventProcessing, frontendCommunication, deliveryProcessing, upgrade, auditLog] = operationsItems
 
 const accessControlItems: readonly AdminNavigationItem[] = [
   item({
@@ -408,7 +439,7 @@ export const adminNavigation: {
       title: '系统',
       icon: 'mdi-console-line',
       domain: 'system',
-      items: [runtimeStatus, deliveryProcessing, auditLog, storageService, messagingService, verificationService, upgrade],
+      items: [eventProcessing, frontendCommunication, deliveryProcessing, auditLog, storageService, redisService, messagingService, verificationService, upgrade],
     },
   ],
 }
@@ -460,7 +491,7 @@ const routeGrantOverrides: readonly AdminNavigationItem[] = [
     legacyAliases: ['/apps/storage/config/:slug'],
     title: '存储驱动详情',
     domain: 'system',
-    section: '存储',
+    section: '文件存储',
     parentRoute: '/apps/settings/storage',
     grants: [
       { capability: 'storage.read', scope: 'global' },
@@ -472,9 +503,9 @@ const routeGrantOverrides: readonly AdminNavigationItem[] = [
     path: '/apps/settings/messaging/:slug',
     canonicalPath: '/apps/settings/messaging/:slug',
     legacyAliases: ['/apps/sender/config/:slug'],
-    title: '消息渠道详情',
+    title: '站外发送详情',
     domain: 'system',
-    section: '消息渠道',
+    section: '站外发送',
     parentRoute: '/apps/settings/messaging',
     grants: [
       { capability: 'sender.read', scope: 'global' },
@@ -502,7 +533,7 @@ const routeGrantOverrides: readonly AdminNavigationItem[] = [
     legacyAliases: ['/apps/system/upgrade'],
     title: '系统升级',
     domain: 'system',
-    section: '升级与迁移',
+    section: '系统升级',
     parentRoute: '/apps/operations/upgrade',
     grants: [operationsGrant],
     riskLevel: 'high',

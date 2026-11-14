@@ -5,7 +5,7 @@
       description="查看这条站内提醒事件的处理结果、失败原因与重试条件。"
       :breadcrumbs="[
         { title: '系统' },
-        { title: '通知处理', to: '/apps/operations/deliveries' },
+        { title: '通知投递', to: '/apps/operations/deliveries' },
         { title: `#${route.params.id}` },
       ]"
     >

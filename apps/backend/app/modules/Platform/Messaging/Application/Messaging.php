@@ -29,7 +29,14 @@ final class Messaging
         $this->assertUser($userId);
         $result = $this->repository->messagesForUser($userId, $conversationId, $cursor, max(1, min(100, $limit)));
         $items = $result['items'];
-        if ($items !== []) $this->repository->markReadThrough($userId, $conversationId, (int) $items[0]['id']);
+        if ($items !== []) {
+            $this->transactions->run(function () use ($userId, $conversationId, $items): void {
+                $messageId = (int) $items[0]['id'];
+                if ($this->repository->markReadThrough($userId, $conversationId, $messageId)) {
+                    $this->notifier->messageRead($userId, $conversationId, $messageId);
+                }
+            });
+        }
         return $result;
     }
 
@@ -47,8 +54,7 @@ final class Messaging
         if ($clientMessageId === '') $clientMessageId = bin2hex(random_bytes(16));
         if (strlen($clientMessageId) > 128) throw ApiException::badRequest('消息幂等标识过长');
 
-        $created = false;
-        $result = $this->transactions->run(function () use ($userId, $recipientId, $body, $clientMessageId, &$created): array {
+        return $this->transactions->run(function () use ($userId, $recipientId, $body, $clientMessageId): array {
             $existing = $this->repository->findMessageByClientId($userId, $recipientId, $clientMessageId);
             if ($existing !== null) return $existing;
             $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
@@ -62,11 +68,8 @@ final class Messaging
             }
             $this->repository->touchConversation($conversationId, $now);
             $this->notifier->messageSent($recipientId, $userId, $conversationId, $messageId);
-            $created = true;
             return ['id' => $messageId, 'conversation_id' => $conversationId];
         });
-        if ($created) $this->notifier->messageCommitted($recipientId);
-        return $result;
     }
 
     private function assertUser(int $userId): void

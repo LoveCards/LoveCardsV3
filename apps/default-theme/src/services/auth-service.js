@@ -28,14 +28,21 @@ export async function loadAuthPolicy() {
   return client.session.policy();
 }
 
-export async function register({ account, password, passwordConfirm }) {
+export async function sendRegistrationCode(account) {
+  const client = getSdkClient();
+  if (!client) throw new Error('尚未配置 API，无法发送验证码。');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account?.trim() || '')) throw new Error('请输入有效邮箱后再发送验证码。');
+  return client.session.captcha({ account: account.trim() });
+}
+
+export async function register({ account, password, passwordConfirm, code, verification = {} }) {
   const state = getLoginState();
   if (!state.canLogin) throw new Error(state.message);
   if (!account?.trim() || !password || password !== passwordConfirm) {
     throw new Error('请填写账号，并确认两次密码一致。');
   }
   const client = getSdkClient();
-  const result = await client.session.register({ account: account.trim(), password });
+  const result = await client.session.register({ account: account.trim(), password, ...(code ? { code: code.trim() } : {}), ...verification });
   if (!result?.token) throw new Error('注册接口没有返回有效凭证。');
   client.setToken(result.token);
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('lc-auth-changed'));

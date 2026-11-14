@@ -6,6 +6,7 @@ import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { phpUploadIniArgs, phpUploadIniSummary } from './lib/php-upload-limits.mjs'
+import { MIN_SUPPORTED_PHP_VERSION_ID, MAX_SUPPORTED_PHP_VERSION_ID, parsePhpVersionId } from './lib/php-runtime.mjs'
 
 const execFileAsync = promisify(execFile)
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
@@ -36,14 +37,10 @@ async function findPhp() {
   for (const candidate of candidates) {
     try {
       if (candidate !== 'php') await access(candidate)
-      const { stdout } = await execFileAsync(candidate, ['-r', 'echo PHP_VERSION;'])
-      const version = String(stdout).trim()
-      if (version && (version.startsWith('8.1.') || version.startsWith('8.2.') || version.startsWith('8.3.') || version.startsWith('8.4.'))) {
-        return candidate
-      }
-      if (process.env.LOVECARDS_ALLOW_UNSUPPORTED_PHP === '1' && version.startsWith('8.')) {
-        return candidate
-      }
+      const { stdout } = await execFileAsync(candidate, ['-r', 'echo PHP_VERSION_ID;'])
+      const versionId = parsePhpVersionId(stdout)
+      if (versionId !== null && versionId >= MIN_SUPPORTED_PHP_VERSION_ID && versionId < MAX_SUPPORTED_PHP_VERSION_ID) return candidate
+      if (process.env.LOVECARDS_ALLOW_UNSUPPORTED_PHP === '1' && versionId !== null && versionId >= 80000 && versionId < MAX_SUPPORTED_PHP_VERSION_ID) return candidate
     } catch {
       // Try the next configured PHP binary.
     }
@@ -57,7 +54,10 @@ if (await isListening()) {
   setInterval(() => {}, 1000)
 } else {
   const php = await findPhp()
-  const phpIniArgs = phpUploadIniArgs(process.env)
+  const phpIniArgs = [
+    ...phpUploadIniArgs(process.env),
+    ...(process.env.LOVECARDS_E2E_ISOLATED === '1' ? ['-d', 'display_errors=0'] : []),
+  ]
   const phpIniSummary = phpUploadIniSummary(process.env)
   console.log(`Backend PHP upload limits: post_max_size=${phpIniSummary.post_max_size}, upload_max_filesize=${phpIniSummary.upload_max_filesize}`)
   const backendRoot = path.join(root, 'apps', 'backend')

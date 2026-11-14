@@ -3,18 +3,11 @@ declare(strict_types=1);
 
 namespace app\modules\Operations\Administration\Service;
 
-use app\modules\Operations\Runtime\Application\ResolveFacilities;
-use app\shared\Runtime\RuntimeFacilityCatalog;
 use think\facade\Db;
 
 /** 管理端只读投影。它返回聚合和运维元数据，不暴露用户私密明细。 */
 final class AdminReadModel
 {
-    public function __construct(
-        private ResolveFacilities $facilities,
-        private RuntimeFacilityCatalog $facilityCatalog
-    ) {}
-
     public function overview(): array
     {
         return [
@@ -27,7 +20,8 @@ final class AdminReadModel
             'files_pending' => $this->count('files', static fn ($q) => $q->where(function ($inner): void {
                 $inner->where('upload_status', 'pending')->whereOr('status', 0);
             })),
-            'runtime' => array_map(static fn ($status): array => $status->toArray(), $this->facilities->execute($this->facilityCatalog->configs())),
+            // 兼容旧 overview 形状；运行状态已由 /operations/runtime 的双模式快照提供。
+            'runtime' => [],
         ];
     }
 
@@ -65,8 +59,10 @@ final class AdminReadModel
             ->order('queue_name', 'asc')
             ->select()
             ->toArray();
+        $runtimeStatus = app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->statusSnapshot();
         return [
-            'facilities' => array_map(static fn ($status): array => $status->toArray(), $this->facilities->execute($this->facilityCatalog->configs())),
+            // 旧设施 fallback 列表停用；真实健康在 communication/event_processing。
+            'facilities' => [],
             'workers' => $workers,
             'eventing' => [
                 'pending' => (int) ($delivery['pending'] ?? 0),
@@ -78,8 +74,8 @@ final class AdminReadModel
                 'queues' => $queues,
                 'last_updated' => $delivery['last_updated'] ?? null,
             ],
-            // 通信运行时控制面快照（desired/effective/status/capabilities）。
-            'communication' => app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->snapshot(),
+            'communication' => $runtimeStatus['communication'],
+            'event_processing' => $runtimeStatus['event_processing'],
         ];
     }
 

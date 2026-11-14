@@ -20,5 +20,9 @@ interface MessagingRepository
 
     public function touchConversation(int $conversationId, \DateTimeImmutable $at): void;
 
-    public function markReadThrough(int $userId, int $conversationId, int $messageId): void;
+    /** 仅游标真正推进时返回 true。 */
+    public function markReadThrough(int $userId, int $conversationId, int $messageId): bool;
+
+    /** @return int[] */
+    public function participantIds(int $conversationId): array;
 }

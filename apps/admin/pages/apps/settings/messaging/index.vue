@@ -1,7 +1,7 @@
 <template>
   <AdminPageContainer>
     <AdminPageHeader
-      title="消息渠道"
+      title="站外发送"
       description="管理通知使用的发信渠道。密钥仅在详情页编辑，扫描和默认渠道切换均由服务端校验权限。"
       :breadcrumbs="[{ title: '系统' }]"
     >
@@ -29,11 +29,11 @@
 
     <AdminAsyncState
       :empty="channelGroups.length === 0"
-      empty-description="扫描消息渠道后，可在这里选择默认渠道并进入详细配置。"
+      empty-description="扫描发送渠道后，可在这里选择默认渠道并进入详细配置。"
       empty-icon="mdi-email-off-outline"
-      empty-title="尚未发现消息渠道"
+      empty-title="尚未发现发送渠道"
       :error="loadError"
-      error-title="消息渠道加载失败"
+      error-title="站外发送加载失败"
       :loading="loading"
       skeleton-type="heading, article@3"
       @retry="loadChannels"
@@ -105,7 +105,7 @@ import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
-import { isApiError, useApi } from '~/lib/api'
+import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import { readObject, readString } from '~/utils/json'
 
@@ -117,6 +117,7 @@ interface ChannelGroup {
 type Feedback = { type: 'success' | 'error'; text: string }
 
 const client = useApi()
+const configSnapshot = useConfigSnapshot(client)
 const router = useRouter()
 const userStore = useUserStore()
 const channelGroups = shallowRef<ChannelGroup[]>([])
@@ -128,7 +129,7 @@ const actionMessage = ref<Feedback | null>(null)
 const changingDefault = ref('')
 const canUpdateConfig = computed(() => userStore.hasGrant('config.update', 'global'))
 const canInstallSender = computed(() => userStore.hasGrant('sender.install', 'global'))
-const errorMessage = (cause: unknown, fallback: string) => isApiError(cause) ? cause.message : fallback
+const errorMessage = configSnapshot.errorMessage
 const groupTitle = (type: string) => {
   const normalized = type.toLowerCase()
   if (normalized.includes('mail')) return '邮件渠道'
@@ -140,7 +141,7 @@ const loadChannels = async () => {
   loading.value = true
   loadError.value = ''
   try {
-    const [channels, rawConfig] = await Promise.all([client.sender.channels(), client.config.list()])
+    const [channels, rawConfig] = await Promise.all([client.sender.channels(), configSnapshot.list()])
     const senderConfig = readObject(rawConfig.sender)
     const groups: Record<string, SenderChannel[]> = {}
     for (const channel of channels) {
@@ -154,7 +155,7 @@ const loadChannels = async () => {
       defaultSlug: readString(senderConfig[`default_${channelType}`], groupChannels[0]?.slug ?? ''),
     }))
   } catch (cause) {
-    loadError.value = errorMessage(cause, '无法加载消息渠道，请稍后重试。')
+    loadError.value = errorMessage(cause, '无法加载站外发送，请稍后重试。')
   } finally {
     loading.value = false
   }
@@ -164,12 +165,12 @@ const setDefault = async (channelType: string, slug: string) => {
   changingDefault.value = `${channelType}:${slug}`
   actionMessage.value = null
   try {
-    await client.config.update({ sender: { [`default_${channelType}`]: slug } })
+    const committed = await configSnapshot.update({ sender: { [`default_${channelType}`]: slug } })
     const group = channelGroups.value.find(item => item.channelType === channelType)
-    if (group) group.defaultSlug = slug
+    if (group) group.defaultSlug = readString(readObject(committed.sender)[`default_${channelType}`])
     actionMessage.value = { type: 'success', text: `已将 ${slug} 设为默认${groupTitle(channelType)}。` }
   } catch (cause) {
-    actionMessage.value = { type: 'error', text: errorMessage(cause, '默认消息渠道切换失败，请稍后重试。') }
+    actionMessage.value = { type: 'error', text: errorMessage(cause, '默认发送渠道切换失败，请稍后重试。') }
   } finally {
     changingDefault.value = ''
   }
@@ -184,9 +185,9 @@ const scanChannels = async () => {
   try {
     await client.sender.install()
     await loadChannels()
-    scanMessage.value = { type: 'success', text: '消息渠道扫描完成，列表已刷新。' }
+    scanMessage.value = { type: 'success', text: '发送渠道扫描完成，列表已刷新。' }
   } catch (cause) {
-    scanMessage.value = { type: 'error', text: errorMessage(cause, '消息渠道扫描失败，请稍后重试。') }
+    scanMessage.value = { type: 'error', text: errorMessage(cause, '发送渠道扫描失败，请稍后重试。') }
   } finally {
     scanning.value = false
   }

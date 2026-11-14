@@ -194,7 +194,7 @@ export async function loadPublishedCardForEdit(id) {
   };
 }
 
-export async function updatePublishedCard({ id, content, tags = [], kind, files = [], media = [], data = {}, mediaChanged = false, visibility }) {
+export async function updatePublishedCard({ id, content, tags = [], kind, files = [], media = [], data = {}, mediaChanged = false, visibility, verification = {} }) {
   const state = getComposeState();
   if (!state.canPublish) throw new Error(state.message);
   const client = getSdkClient();
@@ -224,6 +224,7 @@ export async function updatePublishedCard({ id, content, tags = [], kind, files 
       ...cardVisibilityPayload,
       data: { ...readCardData(data), kind: publishKind },
       ...mediaPayload,
+      ...verification,
     });
     return { id: numericId };
   } catch (error) {
@@ -232,7 +233,7 @@ export async function updatePublishedCard({ id, content, tags = [], kind, files 
   }
 }
 
-export async function publishCard({ content, tags = [], kind, files = [], file = null, media = [], visibility = 'public' }) {
+export async function publishCard({ content, tags = [], kind, files = [], file = null, media = [], visibility = 'public', verification = {} }) {
   const state = getComposeState();
   if (!state.canPublish) throw new Error(state.message);
   const client = getSdkClient();
@@ -264,6 +265,7 @@ export async function publishCard({ content, tags = [], kind, files = [], file =
       ...cardVisibilityPayload,
       data: { kind: publishKind },
       ...mediaPayload,
+      ...verification,
     });
   } catch (error) {
     await Promise.allSettled(uploads.map((upload) => client.files.delete(upload.id)));

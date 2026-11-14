@@ -5,7 +5,6 @@ namespace app\modules\Operations\SystemLifecycle\Infrastructure;
 
 use app\modules\Operations\SystemLifecycle\Domain\HandlerCatalogHasher;
 use app\modules\Operations\SystemLifecycle\Domain\ReleaseManifest;
-use app\modules\Platform\Eventing\Public\HandlerRegistry;
 
 /** Builds a root-level, fully hashed and signed immutable backend Release ZIP. */
 final class SignedReleaseBuilder
@@ -16,7 +15,6 @@ final class SignedReleaseBuilder
     ];
 
     public function __construct(
-        private HandlerRegistry $handlers,
         private ?ReleaseArchiveLimits $limits = null
     ) {
         $this->limits ??= ReleaseArchiveLimits::configured();
@@ -61,8 +59,9 @@ final class SignedReleaseBuilder
 
         $files = $this->collectFiles($sourceRoot);
         $this->assertRunnableRelease($files);
+        $catalog = $this->sourceCatalog($sourceRoot);
         $catalogJson = json_encode(
-            $this->handlers->catalog(),
+            $catalog,
             JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
         ) . "\n";
 
@@ -108,7 +107,7 @@ final class SignedReleaseBuilder
             'source_schema_range' => ['min' => $sourceSchemaMin, 'max' => $sourceSchemaMax],
             'target_schema' => $targetSchema,
             'migration_checksums' => $migrationChecksums,
-            'handler_catalog_hash' => HandlerCatalogHasher::hashArray($this->handlers->catalog()),
+            'handler_catalog_hash' => HandlerCatalogHasher::hashArray($catalog),
             'file_hashes' => $fileHashes,
             'signature_key_id' => $signatureKeyId,
             'signature' => base64_encode('unsigned'),
@@ -161,6 +160,52 @@ final class SignedReleaseBuilder
             'file_count' => count($fileHashes),
             'bytes' => $bytes,
         ];
+    }
+
+    /** 从目标源码的组合根导出，不能混入构建器进程已加载的另一版本目录。 */
+    private function sourceCatalog(string $sourceRoot): array
+    {
+        $code = 'require $argv[1] . "/vendor/autoload.php"; echo json_encode(\\app\\EventHandlers::create()->catalog(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);';
+        $pipes = [];
+        $process = proc_open(
+            [PHP_BINARY, '-d', 'display_errors=stderr', '-d', 'error_reporting=22527', '-r', $code, $sourceRoot],
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+            $sourceRoot
+        );
+        if (!is_resource($process)) throw new \RuntimeException('无法启动目标源码事件目录导出');
+        fclose($pipes[0]);
+        stream_set_blocking($pipes[1], false);
+        stream_set_blocking($pipes[2], false);
+        $output = '';
+        $errorBytes = 0;
+        $deadline = microtime(true) + 30;
+        try {
+            do {
+                $output .= stream_get_contents($pipes[1]);
+                $errorBytes += strlen((string) stream_get_contents($pipes[2]));
+                if (strlen($output) > 1048576 || $errorBytes > 1048576 || microtime(true) > $deadline) {
+                    proc_terminate($process);
+                    throw new \RuntimeException('目标源码事件目录导出超时或超过输出预算');
+                }
+                $status = proc_get_status($process);
+                if ($status['running']) usleep(10000);
+            } while ($status['running']);
+            $output .= stream_get_contents($pipes[1]);
+            if ($status['exitcode'] !== 0 || strlen($output) > 1048576) {
+                throw new \RuntimeException('目标源码事件目录导出失败，请在目标源码环境检查组合根');
+            }
+            $catalog = json_decode($output, true, 128, JSON_THROW_ON_ERROR);
+            if (!is_array($catalog) || !array_is_list($catalog) || $catalog === []) {
+                throw new \RuntimeException('目标源码事件目录格式无效或为空');
+            }
+            HandlerCatalogHasher::hashArray($catalog);
+            return $catalog;
+        } finally {
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            proc_close($process);
+        }
     }
 
     private function sourceRoot(string $path): string

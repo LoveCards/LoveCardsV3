@@ -18,6 +18,7 @@ final class ThinkDbWorkerHeartbeatStore implements WorkerHeartbeatStore
             'release_id' => $heartbeat->releaseId(),
             'schema_version' => $heartbeat->schemaVersion(),
             'handler_catalog_hash' => $heartbeat->handlerCatalogHash(),
+            'queue_names_json' => json_encode($heartbeat->queueNames(), JSON_THROW_ON_ERROR),
             'jobs_processed' => $heartbeat->jobsProcessed(),
             'heartbeat_at' => $heartbeat->heartbeatAt()->format('Y-m-d H:i:s'),
             'updated_at' => $heartbeat->heartbeatAt()->format('Y-m-d H:i:s'),

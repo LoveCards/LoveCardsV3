@@ -19,7 +19,7 @@ class ChannelManager
     public static function defaultDriver(string $type): string
     {
         $settings   = self::loadSettings();
-        $defaultKey = 'default_' . $type;
+        $defaultKey = 'default_' . $type . '_driver';
         $default    = $settings[$defaultKey] ?? '';
 
         if (!empty($default)) {

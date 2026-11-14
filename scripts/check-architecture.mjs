@@ -23,7 +23,7 @@ async function exists(file) {
 
 async function walk(directory, predicate, result = []) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
-    if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === 'vendor' || entry.name === '.nuxt' || entry.name === '.output' || entry.name === '.nitro' || entry.name === '.data' || entry.name === 'dist' || entry.name === 'coverage') continue
+    if (entry.name === '.git' || entry.name === 'node_modules' || entry.name === 'vendor' || (entry.name === '.nuxt' || entry.name.startsWith('.nuxt-')) || entry.name === '.output' || entry.name === '.nitro' || entry.name === '.data' || entry.name === 'dist' || entry.name === 'coverage') continue
     const file = path.join(directory, entry.name)
     if (entry.isDirectory()) await walk(file, predicate, result)
     else if (predicate(file)) result.push(file)
@@ -291,11 +291,22 @@ for (const file of moduleFiles) {
   const rel = relative(file)
   const sourceModule = rel.split('/').slice(4, 6).join('/')
   const layer = rel.split('/').find((part) => ['Application', 'Domain', 'Contract', 'Infrastructure'].includes(part))
+  const explicitModuleReferences = [...source.matchAll(/\\(app\\modules\\[A-Za-z_][A-Za-z0-9_\\]*)/g)].map((match) => match[1])
+  for (const dependency of explicitModuleReferences) {
+    const target = dependency.split('\\').slice(2, 4).join('/')
+    if (['Operations/SystemLifecycle', 'Platform/Eventing'].includes(sourceModule)
+      && target !== sourceModule && !/^app\\modules\\[^\\]+\\[^\\]+\\(?:Public|Contract)\\/.test(dependency)) {
+      fail(`Cross-module fully qualified references must use Public or Contract: ${rel}:${dependency}`)
+    }
+  }
   for (const match of source.matchAll(/^\s*use\s+(app\\[^;]+|think\\[^;]+);/gmi)) {
     const dependency = match[1].replace(/\s+as\s+.+$/i, '')
     const key = `${rel}:${dependency}`
     if (sourceModule === 'Operations/SystemLifecycle' && /^app\\modules\\(?!Operations\\SystemLifecycle\\)[^\\]+\\[^\\]+\\(?!Public\\|Contract\\)/i.test(dependency)) {
       fail(`SystemLifecycle must not depend on another module's internals: ${key}`)
+    }
+    if (sourceModule === 'Platform/Eventing' && /^app\\modules\\(?!Platform\\Eventing\\)[^\\]+\\[^\\]+\\(?!Public\\|Contract\\)/i.test(dependency)) {
+      fail(`Eventing must not depend on business module internals: ${key}`)
     }
     if (sourceModule !== 'Content/Cards' && /^app\\modules\\Content\\Cards\\(?!Public\\|Contract\\)/i.test(dependency)) {
       fail(`Cross-module Cards dependencies must use Public or Contract: ${key}`)

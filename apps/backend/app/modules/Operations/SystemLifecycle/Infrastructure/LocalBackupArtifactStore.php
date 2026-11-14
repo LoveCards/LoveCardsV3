@@ -71,8 +71,12 @@ final class LocalBackupArtifactStore implements BackupArtifactStore
     {
         $path = $this->path($backupId, 'sql');
         $this->ensureParent($path);
-        $pdo = Db::connect()->getPdo();
-        $database = (string) (Db::connect()->getConfig('database') ?: '');
+        $connection = Db::connect();
+        // 新 CLI 进程可能尚未执行过查询；getPdo() 此时返回 false。
+        $connection->query('SELECT 1');
+        $pdo = $connection->getPdo();
+        if (!$pdo instanceof \PDO) throw new \RuntimeException('无法建立数据库备份连接');
+        $database = (string) ($connection->getConfig('database') ?: '');
         if ($database === '') throw new \RuntimeException('无法确定数据库名称');
 
         $handle = fopen($path . '.part', 'wb');

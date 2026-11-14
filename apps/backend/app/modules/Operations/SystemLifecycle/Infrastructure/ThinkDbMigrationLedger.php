@@ -24,6 +24,11 @@ final class ThinkDbMigrationLedger implements MigrationLedger
     public function all(): array
     {
         $this->bootstrap();
+        return $this->allReadOnly();
+    }
+
+    public function allReadOnly(): array
+    {
         return array_map(fn(array $row): MigrationProgress => MigrationProgress::restore($this->fromRow($row)), Db::table('system_upgrade_steps')->select()->toArray());
     }
 

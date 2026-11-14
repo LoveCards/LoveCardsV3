@@ -1,5 +1,28 @@
 import type { JsonObject } from './json'
 
+export interface SignalPolicyItem {
+  key: string
+  topic: string
+  owner: string
+  display_name: string
+  impact_text: string
+  default_enabled: boolean
+  enabled: boolean
+  event_type: string
+  event_version: number
+  handler_key: string
+}
+
+export interface SignalPolicyCatalog {
+  revision: number
+  signals: SignalPolicyItem[]
+}
+
+export interface SignalPolicyUpdate {
+  expected_revision: number
+  signals: Array<{ key: string; enabled: boolean }>
+}
+
 export interface OperationsFacility {
   name: string
   desired_mode: string
@@ -74,6 +97,32 @@ export interface OperationsRuntimeStatus {
     last_updated?: string | null
   }
   communication: RuntimeCommunicationSnapshot
+  event_processing: EventProcessingSnapshot
+}
+
+export interface EventConsumptionSnapshot {
+  mode: 'scheduled' | 'resident'
+  state: 'active' | 'draining'
+  target_mode: 'scheduled' | 'resident' | null
+  scheduled_trigger: 'none' | 'cli' | 'http'
+  revision: number
+}
+
+export interface EventProcessingSnapshot {
+  mode: 'scheduled' | 'resident' | 'unknown'
+  state: 'active' | 'draining' | 'unavailable'
+  target_mode: 'scheduled' | 'resident' | null
+  scheduled_trigger: 'none' | 'cli' | 'http'
+  revision: number
+  status: 'ready' | 'degraded'
+  reason_code: string | null
+  note: Record<string, unknown> | null
+}
+
+export interface EventConsumptionUpdate {
+  mode: 'scheduled' | 'resident'
+  expected_revision: number
+  scheduled_trigger?: 'none' | 'cli' | 'http'
 }
 
 export interface RuntimeCapability {
@@ -89,13 +138,10 @@ export interface RuntimeCommunicationSettings {
   notification_interval_seconds: number
   message_interval_seconds: number
   unread_interval_seconds: number
-  polling_backoff_factor: number
-  polling_max_interval_seconds: number
   pause_when_hidden: boolean
   worker_stale_seconds: number
   scheduler_stale_seconds: number
   gateway_stale_seconds: number
-  require_supervisor: boolean
 }
 
 export interface RuntimeCommunicationSnapshot {
@@ -117,13 +163,10 @@ export interface RuntimeConfigUpdate {
   notification_interval_seconds?: number
   message_interval_seconds?: number
   unread_interval_seconds?: number
-  polling_backoff_factor?: number
-  polling_max_interval_seconds?: number
   pause_when_hidden?: boolean
   worker_stale_seconds?: number
   scheduler_stale_seconds?: number
   gateway_stale_seconds?: number
-  require_supervisor?: boolean
 }
 
 export interface RuntimeConfigValidation {

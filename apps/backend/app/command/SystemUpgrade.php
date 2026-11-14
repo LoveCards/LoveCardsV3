@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace app\command;
 
 use app\modules\Operations\SystemLifecycle\Application\UpgradeCoordinator;
+use app\shared\Observability\AuditLogger;
 use think\console\Command;
 use think\console\input\Argument;
 use think\console\input\Option;
@@ -31,10 +32,16 @@ final class SystemUpgrade extends Command
             throw new \InvalidArgumentException('advance 不接受提前 Contract 授权，请在等待 Gate 后执行 approve');
         }
 
+        // CLI 由部署权限授权，但与 HTTP 一样先记录实际计划/迁移身份；审计失败禁止推进。
+        $beforeAdvance = static function (array $metadata) use ($action): void {
+            app(AuditLogger::class)->record(null, 'system.upgrade.advance.requested', 'system_upgrade',
+                (string) $metadata['plan_id'], $metadata + ['source' => 'cli', 'command_action' => $action]);
+        };
+
         $result = match ($action) {
             'create' => $coordinator->createPlan($value),
-            'advance' => $coordinator->advance($value),
-            'run' => $coordinator->runUntilSettled($value, $allowContract, max(1, min(10000, (int) $input->getOption('max-advances')))),
+            'advance' => $coordinator->advance($value, $beforeAdvance),
+            'run' => $coordinator->runUntilSettled($value, $allowContract, max(1, min(10000, (int) $input->getOption('max-advances'))), $beforeAdvance),
             'approve' => $coordinator->approveContract($value),
             'recover' => $coordinator->recover($value),
             default => throw new \InvalidArgumentException('Unknown system upgrade action: ' . $action),

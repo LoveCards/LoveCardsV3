@@ -12,7 +12,7 @@
           部分提醒规则缺少影响说明，已设为只读。请检查策略目录后刷新此页。
         </v-alert>
         <v-alert v-if="conflictMessage" class="mb-4" type="warning" variant="tonal">{{ conflictMessage }}</v-alert>
-        <p class="mb-4 text-body-2">这里控制是否生成站内提醒；用户自己的提醒偏好仍会单独生效。<NuxtLink to="/apps/operations/deliveries">查看通知处理记录</NuxtLink></p>
+        <p class="mb-4 text-body-2">这里控制是否生成站内提醒；用户自己的提醒偏好仍会单独生效。<NuxtLink to="/apps/operations/deliveries">查看通知投递记录</NuxtLink></p>
         <v-sheet class="d-sm-none">
             <div v-for="row in rows" :key="row.event_type" class="pa-4 border-b">
               <strong>{{ policyLabel(row) }}</strong>

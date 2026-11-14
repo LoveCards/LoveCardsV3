@@ -258,10 +258,11 @@ if (file_exists($baseDir . '/lock.txt')) {
 } else {
     pass("Release source does not ship an install lock");
 }
-if (strpos($installCode, 'use app\\modules\\Platform\\Auth\\Infrastructure\\Jwt;') !== false) {
-    pass("Installer uses the current JWT implementation");
+if (strpos($installCode, 'use app\\modules\\Platform\\Auth\\Public\\SigningKeys;') !== false
+    && strpos($installCode, 'Auth\\Infrastructure\\Jwt') === false) {
+    pass("Installer uses the public Auth signing key capability");
 } else {
-    fail("Installer does not reference the current JWT implementation");
+    fail("Installer must use public Auth signing key capability");
 }
 if (strpos($jwtCode, '[$jwt_config[\'alg\']]') === false) {
     pass("JWT decode calls match the JWT 7 method signature");

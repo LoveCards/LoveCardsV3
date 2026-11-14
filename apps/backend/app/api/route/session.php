@@ -6,7 +6,6 @@ use app\api\middleware\JwtAuthCheck;
 use app\api\middleware\PermissionCheck;
 use app\api\middleware\SessionDebounce;
 use app\api\middleware\LoginThrottle;
-use app\api\middleware\CaptchaCheck;
 
 use app\modules\Platform\Auth\Transport\Api\AuthPolicyResource;
 use app\modules\Platform\Auth\Transport\Api\SessionResource;
@@ -25,7 +24,7 @@ Route::post('session/register', 'User.Session/register')
     ->name('session.register')
     ->setOption('contract', ['request' => ['validate' => 'app\\modules\\Platform\\Auth\\Transport\\Api\\Session', 'scene' => 'register'], 'response' => ['resource' => 'app\\modules\\Platform\\Auth\\Transport\\Api\\AuthResource', 'shape' => 'item', 'status' => 200]])
     ->setOption('meta', ['name' => '注册', 'group' => '认证', 'access' => ['auth' => 'public']])
-    ->middleware(SessionDebounce::class)->middleware(CaptchaCheck::class, ['type' => 'captcha']);
+    ->middleware(SessionDebounce::class);
 
 Route::post('session/guest', 'User.Session/guest')
     ->name('session.guest')

@@ -14,7 +14,7 @@
       @reset-view="resetTableView"
     >
       <template #search>
-        <v-text-field v-model="tableSearchValue" clearable label="搜索卡片内容" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+        <v-text-field v-model="tableSearchValue" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
       </template>
       <template #actions>
         <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">搜索与排序</v-btn>
@@ -71,7 +71,7 @@
         <template #[`item.tags`]="{ item }">
           <div class="d-flex flex-wrap ga-1 py-2">
             <v-chip v-for="value in renderTags(item.tags)" :key="value" size="x-small" variant="tonal">
-              {{ value }}
+              <AdminTableSearchHighlight :text="value" :query="highlightQuery('tags')" />
             </v-chip>
             <span v-if="renderTags(item.tags).length === 0" class="text-medium-emphasis">—</span>
           </div>
@@ -84,12 +84,12 @@
             variant="text"
             @click="openCardPanel(item.id)"
           >
-            #{{ item.id }}
+            #<AdminTableSearchHighlight :text="item.id" :query="highlightQuery('id')" />
           </v-btn>
         </template>
 
         <template #[`item.content`]="{ item }">
-          <AdminContentSummary :content="item.content" :author="item.username" :user-id="item.user_id" />
+          <AdminContentSummary :content="item.content" :author="item.username" :user-id="item.user_id" :highlight-query="highlightQuery('content')" />
         </template>
 
         <template #[`item.cover`]="{ item }">
@@ -122,15 +122,19 @@
         </template>
 
         <template #[`item.is_top`]="{ item }">
-          <span class="text-body-2 text-medium-emphasis">{{ Number(item.is_top) === 1 ? '置顶' : '—' }}</span>
+          <span class="text-body-2 text-medium-emphasis"><AdminTableSearchHighlight :text="Number(item.is_top) === 1 ? '置顶' : '—'" :query="highlightQuery('is_top')" /></span>
         </template>
 
         <template #[`item.created_at`]="{ item }">
-          <span class="text-body-2 text-medium-emphasis">{{ item.created_at }}</span>
+          <span class="text-body-2 text-medium-emphasis"><AdminTableSearchHighlight :text="item.created_at" :query="highlightQuery('created_at')" /></span>
         </template>
 
         <template #[`item.status`]="{ item }">
-          <AdminContentStatus :status="item.status" :pinned="Number(item.is_top) === 1 && !visibleColumns.includes('is_top')" />
+          <AdminContentStatus :status="item.status" :pinned="Number(item.is_top) === 1 && !visibleColumns.includes('is_top')" :highlight-query="highlightQuery('status')" />
+        </template>
+
+        <template v-for="field in ['user_id', 'goods', 'comments', 'views', 'post_ip']" :key="field" #[`item.${field}`]="{ item }">
+          <AdminTableSearchHighlight :text="tableSearchCell(item, field)" :query="highlightQuery(field)" />
         </template>
 
         <template #no-data>
@@ -194,6 +198,7 @@ import { useUserStore } from '~/stores/userStore';
 import CommonUtils from '@/utils/common';
 import SelectUtils from '~/utils/select';
 import { tableSearchValue as mapTableSearchValue } from '~/utils/tableSearchValue';
+import { tableSearchCell } from '~/composables/useAdminTableSearch';
 
 type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
 
@@ -288,6 +293,7 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
 const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
 const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
+const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } = useAdminTableSearchFeedback(tableSearchValue, tableSearchFilter, SearchKeys, 'content', '搜索卡片内容');
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
 let latestRequest = 0;
@@ -303,6 +309,7 @@ const getTableData = async () => {
   tableLoading.value = true;
   tableError.value = null;
   const searchValue = tableSearchValue.value?.trim();
+  const searchHighlight = searchSnapshot();
   const sort = tableSortBy.value[0];
   const params: Record<string, unknown> = {
     page: tableCurrentPage.value,
@@ -322,6 +329,7 @@ const getTableData = async () => {
     const result = await client.cards.listManaged(params as Parameters<typeof client.cards.listManaged>[0]);
     if (requestId !== latestRequest) return;
     tableItems.value = result.data;
+    applySearchSnapshot(searchHighlight);
     tableCurrentPage.value = result.pagination?.currentPage ?? tableCurrentPage.value;
     tableTotalItems.value = result.pagination?.totalItems ?? result.data.length;
   } catch (error) {

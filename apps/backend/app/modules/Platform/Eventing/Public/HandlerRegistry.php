@@ -10,75 +10,13 @@ final class HandlerRegistry
     private array $byKey = [];
     /** @var array<string, HandlerRegistration[]> */
     private array $byEvent = [];
+    /** @var array<string, true> */
+    private array $signalKeys = [];
 
-    public function __construct()
+    /** @param iterable<HandlerRegistration> $registrations */
+    public function __construct(iterable $registrations)
     {
-        $this->register(new HandlerRegistration(
-            'social.followed',
-            1,
-            'notifications.social-followed',
-            'notifications',
-            ExecutionMode::REQUEST_SAFE,
-            new \app\modules\Platform\Notifications\Infrastructure\SocialFollowedNotificationHandler()
-        ));
-        $this->register(new HandlerRegistration(
-            'message.sent',
-            1,
-            'notifications.message-sent',
-            'notifications',
-            ExecutionMode::REQUEST_SAFE,
-            new \app\modules\Platform\Notifications\Infrastructure\MessageSentNotificationHandler()
-        ));
-        $this->register(new HandlerRegistration(
-            'content.liked',
-            1,
-            'notifications.content-liked',
-            'notifications',
-            ExecutionMode::REQUEST_SAFE,
-            new \app\modules\Platform\Notifications\Infrastructure\ContentLikedNotificationHandler()
-        ));
-        $this->register(new HandlerRegistration(
-            'library.saved',
-            1,
-            'notifications.library-saved',
-            'notifications',
-            ExecutionMode::REQUEST_SAFE,
-            new \app\modules\Platform\Notifications\Infrastructure\LibrarySavedNotificationHandler()
-        ));
-        $this->register(new HandlerRegistration(
-            'content.comment.published',
-            1,
-            'notifications.content-comment-published',
-            'notifications',
-            ExecutionMode::REQUEST_SAFE,
-            new \app\modules\Platform\Notifications\Infrastructure\ContentCommentPublishedNotificationHandler()
-        ));
-        $this->register(new HandlerRegistration(
-            'content.mentions.added',
-            1,
-            'notifications.content-mentions-added',
-            'notifications',
-            ExecutionMode::REQUEST_SAFE,
-            new \app\modules\Platform\Notifications\Infrastructure\ContentMentionsAddedNotificationHandler()
-        ));
-        $this->register(new HandlerRegistration(
-            'system.notification.issued',
-            1,
-            'notifications.system-notification-issued',
-            'notifications',
-            ExecutionMode::REQUEST_SAFE,
-            new \app\modules\Platform\Notifications\Infrastructure\SystemNotificationIssuedHandler()
-        ));
-        $this->register(new HandlerRegistration(
-            'file.purge.requested',
-            1,
-            'files.purge',
-            'storage',
-            ExecutionMode::DAEMON_REQUIRED,
-            new \app\modules\Platform\Files\Infrastructure\PurgeFileHandler(),
-            8,
-            [5, 30, 300, 1800, 7200, 21600, 86400]
-        ));
+        foreach ($registrations as $registration) $this->register($registration);
     }
 
     public function register(HandlerRegistration $registration): void
@@ -86,6 +24,13 @@ final class HandlerRegistry
         $key = $registration->handlerKey();
         if (isset($this->byKey[$key])) {
             throw new \LogicException("Event Handler 重复注册：{$key}");
+        }
+        $signal = $registration->signal();
+        if ($signal !== null) {
+            if (isset($this->signalKeys[$signal['key']])) {
+                throw new \LogicException("Realtime signal 重复注册：{$signal['key']}");
+            }
+            $this->signalKeys[$signal['key']] = true;
         }
 
         $eventKey = $this->eventKey($registration->eventType(), $registration->eventVersion());
@@ -154,6 +99,23 @@ final class HandlerRegistry
             $catalog[] = $registration->catalogData();
         }
 
+        return $catalog;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function signalCatalog(): array
+    {
+        $catalog = [];
+        foreach ($this->byKey as $registration) {
+            $signal = $registration->signal();
+            if ($signal === null) continue;
+            $catalog[] = $signal + [
+                'event_type' => $registration->eventType(),
+                'event_version' => $registration->eventVersion(),
+                'handler_key' => $registration->handlerKey(),
+            ];
+        }
+        usort($catalog, static fn(array $a, array $b): int => strcmp($a['key'], $b['key']));
         return $catalog;
     }
 

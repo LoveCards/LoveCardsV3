@@ -64,6 +64,26 @@ try {
 }
 $controller->check('adminUpdate', ['id' => 1]);
 
+$humanResult = [
+    'lot_number' => 'lot',
+    'captcha_output' => 'output',
+    'pass_token' => 'token',
+    'gen_time' => '123',
+];
+$assert(
+    array_intersect_key($controller->check('selfCreate', ['content' => 'card'] + $humanResult), $humanResult) === $humanResult,
+    'card creation must preserve challenge fields until middleware verification'
+);
+$assert(
+    array_intersect_key($controller->check('selfUpdate', ['id' => 1] + $humanResult), $humanResult) === $humanResult,
+    'card update must preserve challenge fields until middleware verification'
+);
+$imageResult = ['captcha_id' => 'image-id', 'captcha_code' => 'ABCD'];
+$assert(
+    array_intersect_key($controller->check('selfCreate', ['content' => 'card'] + $imageResult), $imageResult) === $imageResult,
+    'card creation must preserve image challenge fields'
+);
+
 $normalize = new ReflectionMethod(\app\modules\Content\Cards\Service\Cards::class, 'normalizeCardMetadata');
 $normalize->setAccessible(true);
 $metadata = $normalize->invoke(null, ['data' => ['title' => 'old', 'summary' => 'old', 'kind' => 'image']]);

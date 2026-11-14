@@ -15,6 +15,8 @@ final class DeliveryClaim
     private string $claimToken;
     private \DateTimeImmutable $now;
     private \DateTimeImmutable $leaseUntil;
+    private string $consumerMode;
+    private ?string $triggerSource;
 
     public function __construct(
         string $workerId,
@@ -23,7 +25,9 @@ final class DeliveryClaim
         int $limit,
         string $claimToken,
         \DateTimeImmutable $now,
-        \DateTimeImmutable $leaseUntil
+        \DateTimeImmutable $leaseUntil,
+        string $consumerMode,
+        ?string $triggerSource = null
     ) {
         if ($workerId === '' || strlen($workerId) > 128) {
             throw new \InvalidArgumentException('worker_id 长度必须为 1..128');
@@ -54,6 +58,13 @@ final class DeliveryClaim
         if ($leaseUntil <= $now) {
             throw new \InvalidArgumentException('lease_until 必须晚于 now');
         }
+        if (!in_array($consumerMode, ['scheduled', 'resident'], true)) {
+            throw new \InvalidArgumentException('consumer_mode 不合法');
+        }
+        if (($consumerMode === 'scheduled' && !in_array($triggerSource, ['cli', 'http'], true))
+            || ($consumerMode === 'resident' && $triggerSource !== null)) {
+            throw new \InvalidArgumentException('trigger_source 与 consumer_mode 不匹配');
+        }
 
         $this->workerId = $workerId;
         $this->queueNames = array_values(array_unique($queueNames));
@@ -62,6 +73,8 @@ final class DeliveryClaim
         $this->claimToken = $claimToken;
         $this->now = $now;
         $this->leaseUntil = $leaseUntil;
+        $this->consumerMode = $consumerMode;
+        $this->triggerSource = $triggerSource;
     }
 
     public function workerId(): string { return $this->workerId; }
@@ -71,4 +84,6 @@ final class DeliveryClaim
     public function claimToken(): string { return $this->claimToken; }
     public function now(): \DateTimeImmutable { return $this->now; }
     public function leaseUntil(): \DateTimeImmutable { return $this->leaseUntil; }
+    public function consumerMode(): string { return $this->consumerMode; }
+    public function triggerSource(): ?string { return $this->triggerSource; }
 }

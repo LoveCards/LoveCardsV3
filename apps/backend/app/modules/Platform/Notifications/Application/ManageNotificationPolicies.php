@@ -9,7 +9,7 @@ use app\modules\Platform\Notifications\Contract\NotificationPolicyStore;
 
 /**
  * 管理端策略目录用例：列表 + CAS 批量启停（契约 §5.2）。
- * locked=1（安全/审核/账号类）普通管理员不可改；缺行/缺目录 fail-open。
+ * locked=1（安全/审核/账号类）不可修改；身份与目录不一致时拒绝提交。
  */
 final class ManageNotificationPolicies
 {
@@ -27,7 +27,7 @@ final class ManageNotificationPolicies
      * @param array{expected_revision?: mixed, policies?: mixed, reason?: mixed} $input
      * @return array{revision: int, policies: array<int, array<string, mixed>>, before: array<int, array<string, mixed>>}
      */
-    public function apply(array $input, ?int $actorId): array
+    public function apply(array $input, ?int $actorId, callable $audit): array
     {
         $expected = isset($input['expected_revision']) ? (int) $input['expected_revision'] : 0;
         if ($expected < 1) {
@@ -39,23 +39,39 @@ final class ManageNotificationPolicies
         }
         $changes = [];
         $violations = [];
+        $seen = [];
         foreach (array_values($rows) as $index => $row) {
             if (!is_array($row)) {
                 $violations[] = ['field' => "policies.{$index}", 'message' => '策略规则格式非法'];
                 continue;
             }
-            $eventType = trim((string) ($row['event_type'] ?? ''));
-            $ruleKey = trim((string) ($row['rule_key'] ?? 'notify'));
-            $eventVersion = (int) ($row['event_version'] ?? 1);
-            if ($eventType === '' || preg_match('/^[a-z][a-z0-9_.-]{0,127}$/', $eventType) !== 1 || $eventVersion < 1) {
+            $eventType = is_string($row['event_type'] ?? null) ? trim($row['event_type']) : '';
+            $ruleKey = is_string($row['rule_key'] ?? 'notify') ? trim($row['rule_key'] ?? 'notify') : '';
+            $versionInput = $row['event_version'] ?? 1;
+            $eventVersion = filter_var($versionInput, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if ($eventType === '' || preg_match('/^[a-z][a-z0-9_.-]{0,127}$/', $eventType) !== 1
+                || (!is_int($versionInput) && !is_string($versionInput)) || $eventVersion === false) {
                 $violations[] = ['field' => "policies.{$index}.event_type", 'message' => '事件类型非法'];
+                continue;
+            }
+            if (isset($seen[$eventType])) {
+                $violations[] = ['field' => "policies.{$index}.event_type", 'message' => '同一事件规则不能重复提交'];
+                continue;
+            }
+            $seen[$eventType] = true;
+            if (!is_bool($row['enabled'] ?? null)) {
+                $violations[] = ['field' => "policies.{$index}.enabled", 'message' => '通知开关必须是布尔值'];
+                continue;
+            }
+            if (!is_string($row['rule_key'] ?? 'notify') || $ruleKey === '') {
+                $violations[] = ['field' => "policies.{$index}.rule_key", 'message' => '通知规则标识无效'];
                 continue;
             }
             $changes[] = [
                 'event_type' => $eventType,
                 'event_version' => $eventVersion,
                 'rule_key' => $ruleKey,
-                'enabled' => filter_var($row['enabled'] ?? false, FILTER_VALIDATE_BOOLEAN),
+                'enabled' => $row['enabled'],
             ];
         }
         if ($violations !== []) {
@@ -63,7 +79,7 @@ final class ManageNotificationPolicies
         }
         $reason = isset($input['reason']) ? mb_substr(trim((string) $input['reason']), 0, 255) : null;
         try {
-            return $this->store->applyChanges($changes, $expected, $actorId, $reason);
+            return $this->store->applyChanges($changes, $expected, $actorId, $reason, $audit);
         } catch (\RuntimeException $exception) {
             // 存储层把 CAS 失败与锁定行统一抛出，转成稳定 API 语义。
             if (str_contains($exception->getMessage(), 'stale-revision')) {

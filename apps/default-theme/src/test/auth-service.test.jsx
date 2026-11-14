@@ -9,7 +9,7 @@ const runtime = vi.hoisted(() => ({ getRuntimeDataMode: vi.fn() }));
 vi.mock('../app/sdk-client.js', () => sdk);
 vi.mock('../app/runtime-context.js', () => runtime);
 
-import { checkSession, getLoginState, login, register } from '../services/auth-service.js';
+import { checkSession, getLoginState, login, register, sendRegistrationCode } from '../services/auth-service.js';
 import { hasSessionCapability } from '../app/providers.jsx';
 
 describe('login SDK integration', () => {
@@ -45,6 +45,25 @@ describe('login SDK integration', () => {
     await register({ account: ' new-user ', password: 'secret1', passwordConfirm: 'secret1' });
     expect(client.session.register).toHaveBeenCalledWith({ account: 'new-user', password: 'secret1' });
     expect(client.setToken).toHaveBeenCalledWith('registered-token');
+  });
+
+  it('passes email and human verification results to registration', async () => {
+    const client = {
+      session: { captcha: vi.fn().mockResolvedValue(undefined), register: vi.fn().mockResolvedValue({ token: 'registered-token' }) },
+      setToken: vi.fn(),
+    };
+    sdk.getSdkClient.mockReturnValue(client);
+    await sendRegistrationCode(' user@example.com ');
+    await register({ account: ' user@example.com ', password: 'secret1', passwordConfirm: 'secret1', code: ' 123456 ', verification: { lot_number: 'lot', captcha_output: 'output', pass_token: 'pass', gen_time: '123' } });
+    expect(client.session.captcha).toHaveBeenCalledWith({ account: 'user@example.com' });
+    expect(client.session.register).toHaveBeenCalledWith({ account: 'user@example.com', password: 'secret1', code: '123456', lot_number: 'lot', captcha_output: 'output', pass_token: 'pass', gen_time: '123' });
+  });
+
+  it('rejects invalid registration email before sending a code', async () => {
+    const client = { session: { captcha: vi.fn() } };
+    sdk.getSdkClient.mockReturnValue(client);
+    await expect(sendRegistrationCode('not-an-email')).rejects.toThrow('请输入有效邮箱');
+    expect(client.session.captcha).not.toHaveBeenCalled();
   });
 
   it('only clears a stored token when session check returns 401', async () => {
