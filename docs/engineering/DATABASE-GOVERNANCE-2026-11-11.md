@@ -1,10 +1,10 @@
 # 数据库权威来源、退役与保留治理
 
-本次对旧实例仅做源码、历史迁移及 dev 数据量的只读审计；数据量不能代替逐行语义映射。新安装的 `seed.sql` 已停止向 `permissions`、`role_permissions`、`system` 三张无运行时读写的旧表播种，旧实例的数据及完整 schema 均未删除。没有执行 DROP、DELETE、归档或 schema 修改。当前设计边界见 [平台收敛方案](PLATFORM-CONVERGENCE-2026-11-11.md)；破坏性变更须等 S9 升级暂停、Contract、最终健康与恢复链验收完成，再按现有 UpgradeCoordinator/Backup Gate/Contract Gate 推进。
+本次先对源码、历史迁移和 dev 数据做只读审计，再对四张非空旧表做逐行核验。数据量本身不能代替语义映射。新安装的 `seed.sql` 已停止向 `permissions`、`role_permissions`、`system` 播种；当前开发分支新增受审 S11 候选迁移，仅允许四张表与已核对的历史种子完全一致时进入 Contract。它尚未在 dev 执行 DROP。当前设计边界见 [平台收敛方案](PLATFORM-CONVERGENCE-2026-11-11.md)；破坏性变更只能经现有 UpgradeCoordinator、Backup Gate、停消费者和独立 Contract 批准推进。
 
 2026-11-11 dev 预检：分支 `dev-sse-preview`、HEAD `cc8b36fc`，已有未提交 `packages/sdk/test/TEST_REPORT.md`；`system_upgrade_steps` 44 条均 complete，44 个迁移源文件 checksum 与账本一致。候选表行数：`good=0`、`images=0`、`system=11`、`permissions=66`、`role_permissions=117`、`role_capabilities=152`、`card_comment_pins=0`。另有 `users=31`、`files=8`、`cards=31`、`event_deliveries=90`，其中 `users.roles_id` 非 NULL 2 条、`files.ref_id` 非 NULL 3 条。此结果明确阻断旧表/字段的直接删除；尚未核验非空记录的逐行转换及授权等价性。
 
-2026-11-12 补充只读核验：dev 的 `system` 11 行、`permissions` 66 行、`role_permissions` 117 行与原始 `data.sql` 种子逐字段 SHA-256 指纹完全一致；`role_capabilities` 的 152 个 `(role_id, capability)` 与 `20260727000001.sql`、`20260728000001.sql` 生成集合一致。比较时 `system.value` 只计算哈希，未打印明文；`role_capabilities.id` 不参与集合比较，因为 `INSERT ... SELECT` 的自增顺序不是业务语义。`role_permissions` 中 14 条关联不到 `permissions`，其 `permission_id` 为原始种子中的 67–80，属于已存在的孤儿记录。以上证明 dev 四表没有额外的自定义旧行，但不能推广到其他安装实例。`role_capabilities` 只在历史迁移时一次性回填到 `role_grants`，此后不是双写投影；现时差异可能是授权撤销，不能把旧行重新灌回。删除前仍须明确这些孤儿记录的历史处置和当前授权等价性，并在迁移中阻断其他实例的未知数据。
+2026-11-12 补充只读核验：dev 的 `system` 11 行、`permissions` 66 行、`role_permissions` 117 行与原始 `data.sql` 种子逐字段 SHA-256 指纹完全一致；`role_capabilities` 的 152 个 `(role_id, capability)` 与 `20260727000001.sql`、`20260728000001.sql` 生成集合一致。比较时 `system.value` 只计算哈希，未打印明文；`role_capabilities.id` 不参与集合比较，因为 `INSERT ... SELECT` 的自增顺序不是业务语义。`role_permissions` 中 14 条关联不到 `permissions`，其 `permission_id` 为原始种子中的 67–80，属于已存在的孤儿记录。四张表都无运行时读写；当前授权以 `role_grants` 为准。`role_capabilities` 只在历史迁移时一次性回填到 `role_grants`，此后不是双写投影，旧行不得重新灌回以免复活已撤销授权。对 dev 这些确认为原始种子的旧行，退役不改变当前授权；其他实例的自定义旧数据由 S11 前置校验明确阻断，必须先另行审定转换或归档。该结论不推广到 `good`、`images`、`card_comment_pins` 和兼容字段。
 
 ## 1. 七张旧表的退役判定
 
@@ -14,15 +14,15 @@
 |---|---|---|---|---|
 | `good` | Content/Likes；当前点赞事实在 `likes` | `20260727000001` 显式转换 good→likes，校验重复与旧字段冲突 | 旧迁移 complete/checksum 一致；每条源记录按 card/ref_id/uid 与 likes 对账，aid/ip/created_at 冲突不能吞掉；需考虑后续业务删除，不能重新全量补写已删点赞 | 保留；经升级前备份、差异处理和 Contract 批准后另写退役迁移 |
 | `images` | 旧内容媒体关联；当前 Files + `file_references`，卡片还存在旧 URL 表达 | 无已登记的 images 转换 SQL | 记录 aid/pid、URL、用户、软删除状态；确认文件对象可达、归属和公开性映射。仅有 URL 无法自动猜出存储驱动或文件身份 | 映射未明确或数据未核实即阻断 DROP |
-| `system` | 旧站点键值；当前 Platform/Config 的 `configs` 与部署配置 | 无已登记的 system 转换 SQL | 逐键确认配置归属、类型、加密/秘密语义与唯一来源，禁止把旧字符串直接覆盖新配置 | 非空未映射时保留，或先经批准导出归档；不自动转换 |
-| `permissions` | 旧路由权限；当前 Platform/Rbac 的 capability + scope 模型 | 无已登记的逐路由权限转换 SQL | 旧 slug/path/method 与现 capability/scope 不一一等价；核验自定义权限是否已人工迁移，避免授权扩大或丢失 | 未核实自定义授权即阻断 DROP |
-| `role_permissions` | 旧角色→路由权限；当前 `role_grants` | 无已登记转换 SQL；当前有到 roles 的外键 | 联合 permissions 验证旧角色授权，不可只因当前不读而丢弃；按依赖顺序处置关联后再处置权限表 | 与 permissions 一起保留、映射或批准归档 |
-| `role_capabilities` | 旧无 scope 授权；当前 `role_grants`，目录在 `capabilities` | `20260727000001`、`20260728000001` 建表/种子，`20260804000001` 规范 capability 后转 role_grants | 旧迁移全部完成；按既有后缀/资源能力 scope 转换规则核验。旧表此后不再同步，不能把它当现时权限重新灌回、复活已撤销权限 | 保留到迁移来源审计完成，随后独立 Contract 退役 |
+| `system` | 旧站点键值；当前 Platform/Config 的 `configs` 与部署配置 | 无已登记的 system 转换 SQL | dev 11 行均为原始种子；其他实例存在非种子值时须人工审定配置归属、类型和秘密语义，不能自动覆盖新配置 | S11 候选 Contract 只允许精确原始种子；未知值阻断 |
+| `permissions` | 旧路由权限；当前 Platform/Rbac 的 capability + scope 模型 | 无已登记的逐路由权限转换 SQL | dev 66 行均为原始种子；自定义 slug/path/method 不能猜测为现 capability/scope | S11 候选 Contract 只允许精确原始种子；未知值阻断 |
+| `role_permissions` | 旧角色→路由权限；当前 `role_grants` | 无已登记转换 SQL；当前有到 roles 的外键 | dev 117 行均为原始种子，其中 14 行原本即指向不存在的权限 67–80；自定义关联须先审定 | S11 候选 Contract 在同一受审多表 DROP 中退役关联与 permissions；未知值阻断 |
+| `role_capabilities` | 旧无 scope 授权；当前 `role_grants`，目录在 `capabilities` | `20260727000001`、`20260728000001` 建表/种子，`20260804000001` 规范 capability 后转 role_grants | dev 152 个角色/能力对均为历史迁移原始集合；旧表此后不再同步，不能重灌以免复活已撤销权限 | S11 候选 Contract 只允许历史集合；未知值阻断 |
 | `card_comment_pins` | 旧卡片置顶关系；当前 `cards.pinned_comment_id` | `20260824000002` 从 comments.is_top 汇入；`20260824000003` 汇入 cards 指针 | 迁移只处理可见、未删除卡片/评论；现时指针可能已被用户修改。核验历史转换及异常记录，不能盲目要求两表当前完全相等或覆盖新选择；pinned_by/pinned_at 如需追溯须归档 | 保留；旧数据处理决定与备份验收后另行退役 |
 
-这些旧表目前仍在完整 schema 中。后续获准退役时必须同一切片修改新装 schema 与新增 contract 迁移，保持干净安装和历史升级结果一致；历史 SQL、checksum 和迁移账本不改写。
+S11 已在候选分支把 `system`、`permissions`、`role_permissions`、`role_capabilities` 从完整 `schema.sql` 移除，并新增 `20261112000001.sql` 的受控退役 Contract 与 `20261112000002.sql` 的独立过程清理 Contract；`good`、`images`、`card_comment_pins` 仍在目标 schema 中。其他候选获准退役时，也须在同一切片修改新装 schema 与新增迁移，保持干净安装和历史升级结果一致；历史 SQL、checksum 和迁移账本不改写。
 
-新安装停止播种上述三表后，干净安装与旧版本升级的**表、列、索引和外键**仍须一致；旧实例保留的历史授权/配置记录与新装空旧表在行数据上有意不同，不能将结构一致性测试宣称为业务数据一致。`SchemaSeedBaseline` 阻止遗留种子回流，隔离数据库 `test:schema:e2e` 验证结构终态；旧实例退役前的逐行授权等价和配置映射仍是独立阻断条件。
+干净安装与旧版本升级的**表、列、索引和外键**须一致；结构一致性测试不等于业务数据一致。`SchemaSeedBaseline` 阻止遗留种子回流，隔离数据库 `test:schema:e2e` 从旧版数据和 49 条已完成迁移出发，经真实签名包 UpgradeCoordinator、Backup Gate、Contract 批准执行 S11，再与干净安装比较终态。测试还覆盖同名自定义过程、未知旧行及批准后数据变化的阻断与显式修复重试。其他安装实例的自定义配置、授权或权限若不能精确证明可退役，前置校验必须失败，不能让表结构相同掩盖数据丢失。
 
 ## 2. 不能误删的兼容字段与派生值
 

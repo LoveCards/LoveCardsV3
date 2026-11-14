@@ -9,8 +9,9 @@ final class MigrationDescriptor
     private string $description;
     private string $checksum;
     private bool $hasContract;
+    private bool $requiresUpgradeContract;
 
-    public function __construct(string $id, string $description, string $checksum, bool $hasContract = false)
+    public function __construct(string $id, string $description, string $checksum, bool $hasContract = false, bool $requiresUpgradeContract = false)
     {
         if (!preg_match('/^[0-9]{14}(?:_[a-z0-9][a-z0-9_-]{0,63})?$/', $id)) {
             throw new \InvalidArgumentException('Migration ID 不合法');
@@ -27,17 +28,19 @@ final class MigrationDescriptor
         $this->description = $description;
         $this->checksum = $checksum;
         $this->hasContract = $hasContract;
+        $this->requiresUpgradeContract = $requiresUpgradeContract;
     }
 
-    public static function fromSource(string $id, string $description, string $source, bool $hasContract = false): self
+    public static function fromSource(string $id, string $description, string $source, bool $hasContract = false, bool $requiresUpgradeContract = false): self
     {
-        return new self($id, $description, hash('sha256', $source), $hasContract);
+        return new self($id, $description, hash('sha256', $source), $hasContract, $requiresUpgradeContract);
     }
 
     public function id(): string { return $this->id; }
     public function description(): string { return $this->description; }
     public function checksum(): string { return $this->checksum; }
     public function hasContract(): bool { return $this->hasContract; }
+    public function requiresUpgradeContract(): bool { return $this->requiresUpgradeContract; }
 
     /** @return array{id: string, description: string, checksum: string, has_contract: bool} */
     public function toArray(): array
