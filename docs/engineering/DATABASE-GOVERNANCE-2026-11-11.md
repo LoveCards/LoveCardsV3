@@ -22,7 +22,7 @@
 
 S11 已在候选分支把 `system`、`permissions`、`role_permissions`、`role_capabilities` 从完整 `schema.sql` 移除，并新增 `20261112000001.sql` 的受控退役 Contract 与 `20261112000002.sql` 的独立过程清理 Contract。当时 `good`、`images`、`card_comment_pins` 仍在目标 schema；后续 11 月 13 日切片另行处理。其他候选获准退役时，也须在同一切片修改新装 schema 与新增迁移，保持干净安装和历史升级结果一致；历史 SQL、checksum 和迁移账本不改写。
 
-干净安装与旧版本升级的**表、列、索引和外键**须一致；结构一致性测试不等于业务数据一致。`SchemaSeedBaseline` 阻止遗留种子回流，隔离数据库 `test:schema:e2e` 从旧版数据和 49 条已完成迁移出发，经真实签名包 UpgradeCoordinator、Backup Gate、Contract 批准执行 S11，再与干净安装比较终态。测试还覆盖同名自定义过程、未知旧行及批准后数据变化的阻断与显式修复重试。其他安装实例的自定义配置、授权或权限若不能精确证明可退役，前置校验必须失败，不能让表结构相同掩盖数据丢失。
+干净安装与旧版本升级的**表、列、索引和外键**须一致；结构一致性测试不等于业务数据一致。`SchemaSeedBaseline` 阻止遗留种子回流，隔离数据库 `test:schema:e2e` 从旧版数据和 49 条已完成迁移出发，经真实签名包 UpgradeCoordinator、Backup Gate、Contract 批准执行 S11，再与干净安装比较终态。测试还覆盖同名自定义过程、未知旧行、含数据的自定义字段及批准后数据变化的阻断与显式修复重试。其他安装实例的自定义配置、授权或权限若不能精确证明可退役，前置校验必须失败，不能让表结构相同掩盖数据丢失。
 
 ## 2. 不能误删的兼容字段与派生值
 

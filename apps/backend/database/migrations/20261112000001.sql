@@ -30,6 +30,30 @@ BEGIN
         RESIGNAL;
     END;
 
+    -- 仅比较旧字段的值会漏掉实例自行增加的列及其中的数据。
+    IF (SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'system') <> 3
+       OR (SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'system'
+          AND COLUMN_NAME IN ('id', 'name', 'value')) <> 3
+       OR (SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'permissions') <> 9
+       OR (SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'permissions'
+          AND COLUMN_NAME IN ('id', 'name', 'slug', 'path', 'method', 'description', 'created_at', 'updated_at', 'deleted_at')) <> 9
+       OR (SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'role_permissions') <> 4
+       OR (SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'role_permissions'
+          AND COLUMN_NAME IN ('id', 'role_id', 'permission_id', 'created_at')) <> 4
+       OR (SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'role_capabilities') <> 3
+       OR (SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'role_capabilities'
+          AND COLUMN_NAME IN ('id', 'role_id', 'capability')) <> 3 THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'S11 旧表包含未审定字段，禁止删除';
+    END IF;
+
     DROP TEMPORARY TABLE IF EXISTS `lc_s11_expected_system`;
     CREATE TEMPORARY TABLE `lc_s11_expected_system` LIKE `system`;
     INSERT INTO `lc_s11_expected_system` (`id`, `name`, `value`) VALUES

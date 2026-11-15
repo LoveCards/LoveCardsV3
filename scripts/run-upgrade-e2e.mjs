@@ -456,7 +456,12 @@ try {
     } else if (plan.status === 'failed' || plan.status === 'recovered') {
       throw new Error(`Upgrade entered unexpected terminal state: ${plan.status}`)
     }
-    if (plan.current_step === 'preflight_migrations' && ['collision', 'unknown'].includes(negativeStage)) {
+    if (plan.current_step === 'preflight_migrations' && ['collision', 'unknown', 'schema'].includes(negativeStage)) {
+      if (negativeStage === 'schema') {
+        await run(php, ['-r', connectScript
+          + '$pdo->exec("ALTER TABLE `system` ADD COLUMN `legacy_note` VARCHAR(255) NULL");'
+          + '$pdo->exec("UPDATE `system` SET `legacy_note`=\'e2e-custom-data\' WHERE id=1");'], dbEnv)
+      }
       await api(`/admin/operations/upgrades/${planId}/advance`, { token, method: 'POST', expected: [500] })
       plan = (await api(`/admin/operations/upgrades/${planId}`, { token })).data
       if (plan.status !== 'failed' || plan.current_step !== 'preflight_migrations') {
@@ -475,10 +480,17 @@ try {
         await run(php, ['-r', connectScript + '$pdo->exec("DROP PROCEDURE lc_s11_assert_legacy_seed");'], dbEnv)
         negativeStage = 'unknown'
         console.log('[upgrade-e2e] custom procedure collision rejected without overwrite')
-      } else {
+      } else if (negativeStage === 'unknown') {
         await run(php, ['-r', connectScript + '$pdo->exec("UPDATE `system` SET value=\'lovecards.cn\' WHERE id=1");'], dbEnv)
-        negativeStage = 'done'
+        negativeStage = 'schema'
         console.log('[upgrade-e2e] unknown legacy row rejected and repaired for explicit retry')
+      } else {
+        await run(php, ['-r', connectScript
+          + '$value=$pdo->query("SELECT legacy_note FROM `system` WHERE id=1")->fetchColumn();'
+          + 'if($value!=="e2e-custom-data")exit(1);'
+          + '$pdo->exec("ALTER TABLE `system` DROP COLUMN `legacy_note`");'], dbEnv)
+        negativeStage = 'done'
+        console.log('[upgrade-e2e] custom legacy column and its data rejected before DROP')
       }
       previousRevision = Number(plan.revision)
       continue
