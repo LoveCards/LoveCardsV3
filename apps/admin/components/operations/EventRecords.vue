@@ -52,10 +52,16 @@ const queueOptions = [
   { title: '实时提示', value: 'realtime' },
   { title: '文件清理', value: 'storage' },
 ]
-const queue = ref(typeof route.query.queue === 'string' ? route.query.queue : '')
-const draftType = ref(typeof route.query.event_type === 'string' ? route.query.event_type : '')
-const eventType = ref(draftType.value.trim())
-const page = ref(typeof route.query.event_page === 'string' ? Math.max(1, Number.parseInt(route.query.event_page, 10) || 1) : 1)
+const queue = computed<string>({
+  get: () => typeof route.query.queue === 'string' ? route.query.queue : '',
+  set: value => { if (value !== queue.value) updateQuery({ queue: value || undefined, event_page: undefined }) },
+})
+const eventType = computed(() => typeof route.query.event_type === 'string' ? route.query.event_type.trim() : '')
+const draftType = ref(eventType.value)
+const page = computed<number>({
+  get: () => typeof route.query.event_page === 'string' ? Math.max(1, Number.parseInt(route.query.event_page, 10) || 1) : 1,
+  set: value => { if (value !== page.value) updateQuery({ event_page: value === 1 ? undefined : String(value) }) },
+})
 const events = ref<OperationsEvent[]>([])
 const total = ref(0)
 const pageCount = computed(() => Math.ceil(total.value / 20))
@@ -63,7 +69,13 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 let requestId = 0
 
-function applyType() { eventType.value = draftType.value.trim(); page.value = 1 }
+function updateQuery(patch: Record<string, string | undefined>) {
+  void router.push({ query: { ...route.query, tab: 'events', ...patch } })
+}
+function applyType() {
+  const next = draftType.value.trim()
+  if (next !== eventType.value || page.value !== 1) updateQuery({ event_type: next || undefined, event_page: undefined })
+}
 async function load() {
   const id = ++requestId
   loading.value = true
@@ -79,9 +91,6 @@ async function load() {
     if (id === requestId) error.value = isApiError(cause) ? cause.message : '无法加载事件明细'
   } finally { if (id === requestId) loading.value = false }
 }
-watch(queue, () => { page.value = 1 })
-watch([queue, eventType, page], () => {
-  void router.replace({ query: { ...route.query, tab: 'events', queue: queue.value || undefined, event_type: eventType.value || undefined, event_page: page.value === 1 ? undefined : String(page.value) } })
-  void load()
-}, { immediate: true })
+watch(eventType, value => { draftType.value = value })
+watch([queue, eventType, page], () => { void load() }, { immediate: true })
 </script>

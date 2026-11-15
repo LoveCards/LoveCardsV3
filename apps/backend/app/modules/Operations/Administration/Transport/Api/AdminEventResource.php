@@ -31,6 +31,26 @@ final class AdminEventResource extends Resource
     public static function make($value): array
     {
         $data = self::normalize($value);
-        return is_array($data) ? $data : [];
+        if (!is_array($data)) return [];
+        $deliveries = is_array($data['deliveries'] ?? null) ? $data['deliveries'] : [];
+        return [
+            'id' => (int) ($data['id'] ?? 0),
+            'event_type' => (string) ($data['event_type'] ?? ''),
+            'event_version' => (int) ($data['event_version'] ?? 0),
+            'aggregate_type' => (string) ($data['aggregate_type'] ?? ''),
+            'aggregate_key' => (string) ($data['aggregate_key'] ?? ''),
+            'occurred_at' => (string) ($data['occurred_at'] ?? ''),
+            'created_at' => (string) ($data['created_at'] ?? ''),
+            'deliveries' => array_map(static fn (array $delivery): array => [
+                'id' => (int) ($delivery['id'] ?? 0),
+                'event_id' => (int) ($delivery['event_id'] ?? 0),
+                'handler_key' => (string) ($delivery['handler_key'] ?? ''),
+                'queue_name' => (string) ($delivery['queue_name'] ?? ''),
+                'status' => (string) ($delivery['status'] ?? ''),
+                'attempt_count' => (int) ($delivery['attempt_count'] ?? 0),
+                'policy_decision' => $delivery['policy_decision'] ?? null,
+                'last_error' => $delivery['last_error'] ?? null,
+            ], $deliveries),
+        ];
     }
 }

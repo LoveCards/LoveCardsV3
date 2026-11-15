@@ -6,7 +6,7 @@
       </template>
     </AdminPageHeader>
 
-    <v-tabs v-model="activeTab" class="mb-5" aria-label="事件管理视图">
+    <v-tabs :model-value="activeTab" class="mb-5" aria-label="事件管理视图" @update:model-value="selectTab">
       <v-tab v-if="canReadRuntime" value="status">运行状态</v-tab>
       <v-tab v-if="canReadEvents" value="events">事件明细</v-tab>
       <v-tab v-if="canReadRuntime" value="handlers">注册能力</v-tab>
@@ -67,7 +67,7 @@
         <v-sheet border rounded class="pa-4 mb-5">
           <div class="d-flex flex-wrap align-center justify-space-between ga-3">
             <h2 class="text-h6">事件队列</h2>
-            <v-btn variant="text" append-icon="mdi-arrow-right" @click="activeTab = 'events'">查看事件明细</v-btn>
+            <v-btn v-if="canReadEvents" variant="text" append-icon="mdi-arrow-right" @click="selectTab('events')">查看事件明细</v-btn>
           </div>
           <div class="d-flex flex-wrap ga-6 mt-3 text-body-2">
             <span>待处理 <strong>{{ runtime.eventing.pending }}</strong></span>
@@ -124,10 +124,18 @@ const router = useRouter()
 const canReadRuntime = computed(() => userStore.hasGrant('operations.read', 'global'))
 const canReadEvents = computed(() => userStore.hasGrant('communications.read', 'global'))
 type EventTab = 'status' | 'events' | 'handlers'
-const requestedTab = route.query.tab
-const initialTab = requestedTab === 'events' && canReadEvents.value ? 'events' : requestedTab === 'handlers' && canReadRuntime.value ? 'handlers' : canReadRuntime.value ? 'status' : 'events'
-const activeTab = ref<EventTab>(initialTab)
-watch(activeTab, tab => { void router.replace({ query: { ...route.query, tab } }) })
+const activeTab = computed<EventTab>(() => {
+  const requested = route.query.tab
+  if (requested === 'events' && canReadEvents.value) return 'events'
+  if (requested === 'handlers' && canReadRuntime.value) return 'handlers'
+  return canReadRuntime.value ? 'status' : 'events'
+})
+function selectTab(tab: string | null) {
+  if (tab !== 'status' && tab !== 'events' && tab !== 'handlers') return
+  if (tab === 'events' && !canReadEvents.value) return
+  if (tab !== 'events' && !canReadRuntime.value) return
+  if (route.query.tab !== tab) void router.push({ query: { ...route.query, tab } })
+}
 const notifier = useAdminNotifier()
 const runtime = ref<OperationsRuntimeStatus | null>(null)
 const communication = computed(() => runtime.value?.communication ?? null)
