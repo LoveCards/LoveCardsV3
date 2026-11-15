@@ -28,6 +28,7 @@ const releaseCopyExcludedRoots = new Set([
 const contractProbeTable = 'e2e_upgrade_contract_probe'
 const contractProbeMigration = '20991231235959_e2e_contract_probe.sql'
 // R1 兼容 Release 的完整源码身份；包含最终受审 S11 与点赞前驱迁移。
+const compatibilityRef = 'review/r1-compat-source-20261115'
 const compatibilityCommit = '9632a4946808244bbae67149fae8781bfa6b015d'
 const compatibilityMigrations = ['20261112000001.sql', '20261112000002.sql', '20261112000003.sql']
 
@@ -223,6 +224,8 @@ async function prepareReleaseSource(destination) {
 async function prepareCompatibilitySource(destination, php, temporaryRoot) {
   const archive = path.join(temporaryRoot, 'compatibility-source.zip')
   const extractRoot = path.join(temporaryRoot, 'compatibility-source')
+  const taggedCommit = await run('git', ['rev-parse', `refs/tags/${compatibilityRef}^{commit}`])
+  if (taggedCommit !== compatibilityCommit) throw new Error('Reviewed R1 compatibility source tag differs from expected commit')
   await run('git', ['archive', '--format=zip', `--output=${archive}`, compatibilityCommit, 'apps/backend'])
   const extract = '$zip=new ZipArchive();if($zip->open($argv[1])!==true||!$zip->extractTo($argv[2]))exit(1);$zip->close();'
   await run(php, ['-r', extract, archive, extractRoot])
