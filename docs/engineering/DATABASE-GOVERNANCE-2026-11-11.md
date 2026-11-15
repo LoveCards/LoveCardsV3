@@ -69,6 +69,6 @@ S11 已在候选分支把 `system`、`permissions`、`role_permissions`、`role_
 
 R1 兼容源码是引入 `20261112000003` 的已提交版本（本地原始提交 `034ce0a0`），先发布并完成该迁移；R2 才停止写旧点赞列并执行删除。R2 构建器将 `source_schema_range.min` 限制为该前驱迁移，隔离升级 E2E 从 R1 Git 源码构建签名包再升级 R2。**这个构建检查只验证所声明的 schema 范围，不能证明线上活动 Release 的代码身份。**生产操作必须核验当前 Release pointer 与受审 R1 包身份、迁移账本 checksum 及备份，不能仅手工跑前驱 SQL 后从更早代码直接执行 R2 Contract。
 
-`20261113000003.sql` 与 `20261113000004.sql` 分别处理旧置顶关系和 `comments.is_top`。旧 `card_comment_pins` 行可非空且可能滞后于当前 `cards.pinned_comment_id`，不做相等校验、不回灌；`pinned_by/pinned_at` 仅由 Backup Gate 已核验的数据库备份保存，独立 Contract 获批后才可删除。当前指针自身指向异常评论时 Verify/Contract 必须阻断。`20261113000005.sql` 处理 `users.roles_id` 数据库列；旧 JSON 不回灌 `user_roles`，避免恢复已撤销的角色。上述候选均须隔离数据库执行并确认终态一致，不能据源文件存在声称 dev 已退役。
+`20261113000003.sql` 与 `20261113000004.sql` 分别处理旧置顶关系和 `comments.is_top`。旧 `card_comment_pins` 行可非空且可能滞后于当前 `cards.pinned_comment_id`，不做相等校验、不回灌；`pinned_by/pinned_at` 仅由 Backup Gate 已核验的数据库备份保存，独立 Contract 获批后才可删除。当前指针自身指向异常评论时 Verify/Contract 必须阻断。`20261113000005.sql` 处理 `users.roles_id` 数据库列；非空旧数组的每个角色必须仍在 `user_roles`，差异会阻断 Verify 与 Contract。旧 JSON 可能因撤权而过时，差异须先人工核验并保留证据，不自动回灌 `user_roles`，也不能直接解释为应恢复的授权。上述候选均须隔离数据库执行并确认终态一致，不能据源文件存在声称 dev 已退役。
 
 四项都在 Verify 检查，并在受控 Contract 前重查；新装 `schema.sql` 与 `seed.sql` 同步收束。`card_drafts.version`、`user_uid_registry.retired_at`、`comments.data`、`view_history` 时间列和 `cards.views` 尚需独立的产品语义及实例数据核验，当前不随这批 Contract 删除。`files.ref_type/ref_id`、`cards.tags`、`messages.deleted_at` 仍有运行时读写，不能因外观相似归入冗余字段。

@@ -36,6 +36,17 @@ SELECT IF(
 INSERT INTO `lc_user_roles_guard` (`id`)
 SELECT IF(EXISTS (SELECT 1 FROM `users` WHERE `roles_id` IS NOT NULL
     AND (JSON_VALID(`roles_id`) = 0 OR JSON_TYPE(`roles_id`) <> 'ARRAY')), 1, 3);
+-- 旧 JSON 可能滞后于撤权；出现差异时先人工核验，不自动回灌或删除证据。
+INSERT INTO `lc_user_roles_guard` (`id`)
+SELECT IF(EXISTS (
+    SELECT 1 FROM `users` legacy_user
+    WHERE legacy_user.`roles_id` IS NOT NULL
+      AND JSON_LENGTH(legacy_user.`roles_id`) <> (
+          SELECT COUNT(*) FROM `user_roles` current_role
+          WHERE current_role.`user_id` = legacy_user.`id`
+            AND JSON_CONTAINS(legacy_user.`roles_id`, CAST(current_role.`role_id` AS CHAR)) = 1
+      )
+), 1, 4);
 DROP TEMPORARY TABLE `lc_user_roles_guard`;
 
 -- @lc-phase contract
@@ -70,5 +81,15 @@ SELECT IF(
 INSERT INTO `lc_user_roles_guard` (`id`)
 SELECT IF(EXISTS (SELECT 1 FROM `users` WHERE `roles_id` IS NOT NULL
     AND (JSON_VALID(`roles_id`) = 0 OR JSON_TYPE(`roles_id`) <> 'ARRAY')), 1, 3);
+INSERT INTO `lc_user_roles_guard` (`id`)
+SELECT IF(EXISTS (
+    SELECT 1 FROM `users` legacy_user
+    WHERE legacy_user.`roles_id` IS NOT NULL
+      AND JSON_LENGTH(legacy_user.`roles_id`) <> (
+          SELECT COUNT(*) FROM `user_roles` current_role
+          WHERE current_role.`user_id` = legacy_user.`id`
+            AND JSON_CONTAINS(legacy_user.`roles_id`, CAST(current_role.`role_id` AS CHAR)) = 1
+      )
+), 1, 4);
 DROP TEMPORARY TABLE `lc_user_roles_guard`;
 ALTER TABLE `users` DROP COLUMN `roles_id`;

@@ -665,6 +665,11 @@ try {
   let currentApproved = false
   const negativeContracts = [
     {
+      id: '20261113000005', label: 'unreconciled legacy user roles',
+      inject: '$pdo->exec("UPDATE users SET roles_id=\'[999999]\' WHERE id=1");',
+      repair: '$pdo->exec("UPDATE users SET roles_id=\'[1, 2, 3]\' WHERE id=1");',
+    },
+    {
       id: '20261113000008', label: 'nonempty images',
       inject: '$pdo->exec("INSERT INTO images (aid,pid,user_id,url,created_at) VALUES (0,0,0,\'e2e-legacy-image\',UTC_TIMESTAMP())");',
       repair: '$pdo->exec("DELETE FROM images WHERE url=\'e2e-legacy-image\'");',
