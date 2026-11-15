@@ -32,8 +32,6 @@ class Likes
             }
 
             LikesModel::create([
-                'aid' => 1,
-                'pid' => $refId,
                 'ref_type' => $refType,
                 'ref_id' => $refId,
                 'uid' => $uid,

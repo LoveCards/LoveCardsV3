@@ -78,10 +78,14 @@ namespace {
     $rule = ['enabled' => true, 'locked' => false, 'user_disableable' => true, 'notification_type' => 'content.card_liked'];
     $initial = [
         'notification_policy_versions' => [['policy_revision' => 1, 'snapshot_json' => json_encode(['content.liked' => $rule])]],
-        'notification_policies' => [$rule + ['event_type' => 'content.liked', 'event_version' => 1, 'rule_key' => 'notify', 'recipient_rule' => 'handler', 'policy_revision' => 1]],
+        'notification_policies' => [$rule + ['event_type' => 'content.liked', 'event_version' => 1, 'rule_key' => 'notify', 'policy_revision' => 1]],
     ];
     Db::$tables = $initial;
     $store = new ThinkDbNotificationPolicyStore();
+    $assert($store->listCurrent()[0]['recipient_rule'] === 'handler', 'removed storage column must preserve management API recipient rule');
+    Db::$tables['notification_policies'][0]['recipient_rule'] = 'custom';
+    $rejects(fn() => $store->listCurrent(), 'unsupported historical recipient rule must not be displayed as handler');
+    Db::$tables = $initial;
     $gate = new NotificationPolicyGate($store);
     $change = ['event_type' => 'content.liked', 'event_version' => 1, 'rule_key' => 'notify', 'enabled' => false];
     $noop = static function (): void {};

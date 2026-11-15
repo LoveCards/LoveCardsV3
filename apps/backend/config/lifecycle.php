@@ -18,7 +18,7 @@ return [
     'maximum_release_unpacked_bytes' => 1073741824,
     'maximum_release_manifest_bytes' => 4194304,
     'runtime' => [
-        // JSON argv arrays. Empty arrays keep worker management fully disabled.
+        // JSON argv arrays; drain 可用 {release_id}/{phase} 占位符，Contract 还须证明 Web 请求已排空。
         'drain_command' => env('LC_RUNTIME_DRAIN_COMMAND_JSON', '[]'),
         'reload_command' => env('LC_RUNTIME_RELOAD_COMMAND_JSON', '[]'),
         'command_timeout_seconds' => (int) env('LC_RUNTIME_COMMAND_TIMEOUT', 30),

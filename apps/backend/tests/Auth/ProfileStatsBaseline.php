@@ -11,7 +11,7 @@ namespace think\facade {
         public function whereNull(string $field): self { $this->filters[$field] = null; return $this; }
         public function count(): int
         {
-            $map = ['l.aid'=>'aid', 'l.ref_type'=>'ref_type', 'c.user_id'=>'card_user_id', 'c.status'=>'card_status', 'c.deleted_at'=>'card_deleted_at', 'c.visibility'=>'visibility'];
+            $map = ['l.ref_type'=>'ref_type', 'c.user_id'=>'card_user_id', 'c.status'=>'card_status', 'c.deleted_at'=>'card_deleted_at', 'c.visibility'=>'visibility'];
             return count(array_filter($this->rows, function (array $row) use ($map): bool {
                 foreach ($this->filters as $field => $value) if (($row[$map[$field]] ?? null) !== $value) return false;
                 return true;
@@ -48,6 +48,7 @@ $assert = static function (bool $condition, string $message): void {
 $assert(str_contains($source, "['received_likes' => UserProfileStats::receivedLikes(") , 'users.me must expose received_likes');
 $assert(substr_count($socialSource, "['received_likes' => UserProfileStats::receivedLikes(") === 2, 'uid and handle public profiles must share received likes');
 $assert(str_contains($statsSource, "where('l.ref_type', 'card')"), 'received likes must only use card likes');
+$assert(!str_contains($statsSource, "where('l.aid'"), 'received likes must not query retired legacy columns');
 $assert(str_contains($statsSource, "where('c.status', 0)"), 'received likes must exclude unavailable cards');
 $assert(str_contains($statsSource, "whereNull('c.deleted_at')"), 'received likes must exclude deleted cards');
 $assert(!str_contains($statsSource, "likes_and_saves"), 'backend profile stats must not expose likes and saves aggregate');
