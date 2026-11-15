@@ -1,6 +1,6 @@
 # API Contract Audit
 
-- Routes inspected: 207
+- Routes inspected: 209
 - P0: 0
 - P1: 0
 - P2: 0
@@ -55,6 +55,8 @@
 | GET | `/admin/operations/deliveries/summary` | `operations.deliverySummary` | grants:admin.access:global,communications.read:global | no | AdminDeliverySummaryResource::make | — |
 | GET | `/admin/operations/event-consumption` | `operations.eventConsumption` | grants:admin.access:global,operations.read:global | no | AdminEventConsumptionResource::make | — |
 | PUT | `/admin/operations/event-consumption` | `operations.applyEventConsumption` | grants:admin.access:global,operations.runtime.configure:global | yes | AdminEventConsumptionResource::make | — |
+| GET | `/admin/operations/event-handlers` | `operations.eventHandlers` | grants:admin.access:global,operations.read:global | no | AdminEventHandlerResource::collection | — |
+| GET | `/admin/operations/events` | `operations.events` | grants:admin.access:global,communications.read:global | yes | AdminEventResource::paginate | — |
 | GET | `/admin/operations/migrations` | `operations.migrations` | grants:admin.access:global,operations.read:global | no | AdminMigrationResource::collection | — |
 | POST | `/admin/operations/migrations/run` | `operations.runMigrations` | grants:admin.access:global,operations.migrate:global | yes | AdminMigrationResource::collection | — |
 | GET | `/admin/operations/notifications` | `operations.notificationStats` | grants:admin.access:global,communications.read:global | no | AdminNotificationStatsResource::make | — |

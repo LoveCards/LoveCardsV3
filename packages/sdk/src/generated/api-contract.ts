@@ -107,6 +107,8 @@ export interface GeneratedApiContract {
   "operations.delivery": { method: "GET"; path: "/admin/operations/deliveries/:id"; request: void; response: ApiTypes.OperationsDelivery; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.deliverySummary": { method: "GET"; path: "/admin/operations/deliveries/summary"; request: void; response: ApiTypes.OperationsDeliverySummary; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.eventConsumption": { method: "GET"; path: "/admin/operations/event-consumption"; request: void; response: ApiTypes.EventConsumptionSnapshot; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "operations.eventHandlers": { method: "GET"; path: "/admin/operations/event-handlers"; request: void; response: ApiTypes.OperationsEventHandler[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
+  "operations.events": { method: "GET"; path: "/admin/operations/events"; request: { page?: number; list_rows?: number; event_type?: string; queue_name?: string }; response: ApiTypes.ListResult<ApiTypes.OperationsEvent>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "operations.migrations": { method: "GET"; path: "/admin/operations/migrations"; request: void; response: ApiTypes.OperationsMigration[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "operations.notificationStats": { method: "GET"; path: "/admin/operations/notifications"; request: void; response: ApiTypes.OperationsNotificationStats; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.overview": { method: "GET"; path: "/admin/operations/overview"; request: void; response: ApiTypes.OperationsOverview; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
@@ -318,6 +320,8 @@ export const generatedApiContract = {
   "operations.delivery": { method: "GET", path: "/admin/operations/deliveries/:id", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
   "operations.deliverySummary": { method: "GET", path: "/admin/operations/deliveries/summary", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
   "operations.eventConsumption": { method: "GET", path: "/admin/operations/event-consumption", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.read"] },
+  "operations.eventHandlers": { method: "GET", path: "/admin/operations/event-handlers", status: 200, shape: "collection", public: false, capabilities: ["admin.access","operations.read"] },
+  "operations.events": { method: "GET", path: "/admin/operations/events", status: 200, shape: "paginated", public: false, capabilities: ["admin.access","communications.read"] },
   "operations.migrations": { method: "GET", path: "/admin/operations/migrations", status: 200, shape: "collection", public: false, capabilities: ["admin.access","operations.read"] },
   "operations.notificationStats": { method: "GET", path: "/admin/operations/notifications", status: 200, shape: "item", public: false, capabilities: ["admin.access","communications.read"] },
   "operations.overview": { method: "GET", path: "/admin/operations/overview", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.read"] },

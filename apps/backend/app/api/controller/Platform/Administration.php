@@ -45,6 +45,8 @@ final class Administration extends BaseController
     public function eventConsumption() { return $this->respond(Admin::eventConsumption()); }
     public function applyEventConsumption() { return $this->respond(Admin::applyEventConsumption($this->validated(), $this->uid())); }
     public function deliveries() { return $this->respond(Admin::deliveries($this->validated())); }
+    public function events() { return $this->respond(Admin::events($this->validated())); }
+    public function eventHandlers() { return $this->respond(Admin::eventHandlers()); }
     public function deliverySummary() { return $this->respond(Admin::deliverySummary()); }
     public function delivery(int $id) { return $this->respond(Admin::delivery($id)); }
     public function retryDelivery(int $id)

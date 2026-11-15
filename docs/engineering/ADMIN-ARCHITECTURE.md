@@ -77,16 +77,16 @@ SDK hook / Page -> useAdminNotifier -> notificationStore -> NotificationNotifier
 | --- | --- | --- | --- | --- |
 | 1 | 举报治理 | `/apps/community/reports`、`/:id` | `reports.listManaged/getManaged/transition`；`reports.read/manage` | 按状态分页、查看证据快照与事件、选择审核结论并转换状态 |
 | 2 | 账号安全与 Session | `/apps/users/:id/security` | `users.security/sessions/revokeSession/revokeSessions`；`users.security.read`、`users.sessions.revoke` | 单 Session/全部撤销必须明确确认；恢复操作通过审计日志追溯 |
-| 3 | 通知投递 | `/apps/operations/deliveries`、`/:id` | `operations.deliveries/delivery/deliverySummary/retryDelivery/notificationStats`；`communications.read`、`operations.retry` | 通知投递页按 `queue_name=notifications` 过滤，专用汇总与列表同口径；列表/详情展示冻结策略版本及处理结果；只对允许状态手工重试。`notificationStats` 是用户通知总量，不与事件投递计数混用 |
+| 3 | 事件管理 | `/apps/operations/eventing`、`/apps/operations/deliveries/:id` | `operations.runtime/events/eventHandlers/delivery/retryDelivery/notificationStats`；`operations.read`、`communications.read`、`operations.retry` | 页面按运行状态、事件明细和注册能力分区；通知只是队列筛选。事件按事实列行并展开处理任务；详情展示冻结策略版本及处理结果。旧 `/apps/operations/deliveries` 入口保留为通知队列筛选。 |
 | 4 | 审计日志 | `/apps/operations/audit`、`/:id` | `operations.auditLogs/auditLog`；`audit.read` | 以 resource、request/correlation id 追踪；详情 payload 只显示后端白名单 |
-| 5 | 事件、通信与升级 | `/apps/operations/eventing`、`/apps/operations/communication`、`/apps/operations/upgrade` | `operations.runtime/upgrades/...`；`operations.read`、`operations.runtime.configure`、`system.update/update.contract/recover` | 事件处理页显示定时/常驻策略、任务积压、Worker 在线状态和队列诊断；前端通信页显示轮询/实时模式、刷新参数、Gateway 和 Redis 依赖；升级页显示当前与目标版本、更新说明、签名 ZIP、升级状态、Contract 独立批准及 pointer 恢复。迁移账本保留在 API/CLI，不占用升级页 |
+| 5 | 事件、通信与升级 | `/apps/operations/eventing`、`/apps/operations/communication`、`/apps/operations/upgrade` | `operations.runtime/upgrades/...`；`operations.read`、`operations.runtime.configure`、`system.update/update.contract/recover` | 事件管理页按运行状态、事件事实、注册能力显示定时/常驻策略、任务积压、Worker 在线状态和处理任务；前端通信页显示轮询/实时模式、刷新参数、Gateway 和 Redis 依赖；升级页显示当前与目标版本、更新说明、签名 ZIP、升级状态、Contract 独立批准及 pointer 恢复。迁移账本保留在 API/CLI，不占用升级页 |
 | 6 | 社区聚合 | `/apps/community/insights` | `community.insights`；`community.insights.read` | 仅显示草稿、收藏、历史的总量和参与人数，不返回成员私密明细 |
 
-事件处理与前端通信是两个页面、两个独立模式选择：默认 `scheduled + polling`，可选 `resident + polling` 或 `resident + realtime`，拒绝 `scheduled + realtime`。切实时先让常驻事件处理就绪，再检查 Redis、Worker 和 Gateway；退出常驻先在前端通信页切回轮询，再到事件处理页退出常驻。两个后端配置各有 revision/CAS 和审计，两个页面分别提交并以服务端状态刷新结果，不把两个请求包装成一次已成功的原子操作。切换事件策略时如仍有有效领取租约，应显示 draining/待结算并提供继续推进，不提前显示目标模式生效。探测失败不自动切另一模式，错误文案明确告诉管理员需维护或手动切换。Redis 连接在统一系统配置页维护，前端通信页只展示引用的就绪结果与跳转入口，不复制连接表单。旧 `require_supervisor` 没有真实进程管理器探测，不在页面上作为可开启的健康门禁。
+事件管理与前端通信是两个页面、两个独立模式选择：默认 `scheduled + polling`，可选 `resident + polling` 或 `resident + realtime`，拒绝 `scheduled + realtime`。切实时先让常驻事件管理页显示事件处理就绪，再检查 Redis、Worker 和 Gateway；退出常驻先在前端通信页切回轮询，再到事件管理页退出常驻。两个后端配置各有 revision/CAS 和审计，两个页面分别提交并以服务端状态刷新结果，不把两个请求包装成一次已成功的原子操作。切换事件策略时如仍有有效领取租约，应显示 draining/待结算并提供继续推进，不提前显示目标模式生效。探测失败不自动切另一模式，错误文案明确告诉管理员需维护或手动切换。Redis 连接在统一系统配置页维护，前端通信页只展示引用的就绪结果与跳转入口，不复制连接表单。旧 `require_supervisor` 没有真实进程管理器探测，不在页面上作为可开启的健康门禁。
 
-通知投递是通知事件投递记录页，属于 Notifications 的运维入口，并与事件队列相关；它不负责浏览器轮询或 SSE 通信。事件处理页链接通知投递页，前端通信页不重复通知投递列表。
+通知处理是事件管理页的队列筛选和处理任务详情，属于 Notifications 的运维入口；它不负责浏览器轮询或 SSE 通信。旧通知投递列表保留为通知队列兼容筛选，前端通信页不重复事件明细。
 
-管理 API 的 `facilities` 字段暂保留为空数组以兼容既有响应形状；两个页面与 `lc:runtime:status` 都读取同一 `event_processing`、`communication` 快照作为模式及健康事实，不再展示旧 Facility 的 `request/polling` fallback。旧 `/apps/operations/runtime` 与 `/apps/system/runtime` 仅重定向到前端通信页；带 `section=eventing` 的旧链接重定向到事件处理页，删除条件是外部书签和调用方已迁移。
+管理 API 的 `facilities` 字段暂保留为空数组以兼容既有响应形状；两个页面与 `lc:runtime:status` 都读取同一 `event_processing`、`communication` 快照作为模式及健康事实，不再展示旧 Facility 的 `request/polling` fallback。旧 `/apps/operations/runtime` 与 `/apps/system/runtime` 仅重定向到前端通信页；带 `section=eventing` 的旧链接重定向到事件管理页，删除条件是外部书签和调用方已迁移。
 
 默认定时触发来源为 `none`，管理员须选择 CLI cron 或受认证 HTTP 定时触发并在部署环境实际配置；后台展示声明与近期运行结果，不能把一次人工成功说成持续调度已安装。从定时切常驻可以先完成互斥策略切换，再启动 Worker；健康在新鲜心跳前保持故障。只有 Worker 真正就绪后才允许把前端通信切实时。
 

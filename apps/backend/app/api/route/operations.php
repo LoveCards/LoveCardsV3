@@ -14,6 +14,8 @@ use app\modules\Operations\Administration\Transport\Api\AdminRuntimeValidateReso
 use app\modules\Operations\Administration\Transport\Api\AdminEventConsumptionResource;
 use app\modules\Operations\Administration\Transport\Api\AdminDeliveryResource;
 use app\modules\Operations\Administration\Transport\Api\AdminDeliverySummaryResource;
+use app\modules\Operations\Administration\Transport\Api\AdminEventResource;
+use app\modules\Operations\Administration\Transport\Api\AdminEventHandlerResource;
 use app\modules\Operations\Administration\Transport\Api\AdminAuditLogResource;
 use app\modules\Operations\Administration\Transport\Api\AdminNotificationStatsResource;
 use app\modules\Operations\Administration\Transport\Api\AdminCommunityInsightsResource;
@@ -70,6 +72,12 @@ Route::group('admin/operations', function () use ($access, $response, $request) 
     Route::put('event-consumption', 'Platform.Administration/applyEventConsumption')->name('operations.applyEventConsumption')
         ->setOption('contract', ['request' => $request('eventConsumption'), 'response' => $response(AdminEventConsumptionResource::class)])
         ->setOption('meta', ['name' => '切换事件消费策略', 'group' => '运维', 'access' => $access('operations.runtime.configure')]);
+    Route::get('events', 'Platform.Administration/events')->name('operations.events')
+        ->setOption('contract', ['request' => $request('eventList'), 'response' => $response(AdminEventResource::class, 'paginated')])
+        ->setOption('meta', ['name' => '事件明细', 'group' => '运维', 'access' => $access('communications.read')]);
+    Route::get('event-handlers', 'Platform.Administration/eventHandlers')->name('operations.eventHandlers')
+        ->setOption('contract', ['request' => null, 'response' => $response(AdminEventHandlerResource::class, 'collection')])
+        ->setOption('meta', ['name' => '事件处理能力目录', 'group' => '运维', 'access' => $access('operations.read')]);
     Route::get('deliveries', 'Platform.Administration/deliveries')->name('operations.deliveries')
         ->setOption('contract', ['request' => $request('deliveryList'), 'response' => $response(AdminDeliveryResource::class, 'paginated')])
         ->setOption('meta', ['name' => '事件投递', 'group' => '运维', 'access' => $access('communications.read')]);

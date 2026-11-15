@@ -1,5 +1,5 @@
 {
-  "routeCount": 207,
+  "routeCount": 209,
   "summary": {},
   "routes": [
     {
@@ -3431,6 +3431,155 @@
         "shape": "item",
         "resource": "AdminEventConsumptionResource",
         "operation": "make"
+      }
+    },
+    {
+      "path": "/admin/operations/event-handlers",
+      "method": "GET",
+      "name": "operations.eventHandlers",
+      "controller": "Platform.Administration",
+      "action": "eventHandlers",
+      "meta": {
+        "name": "事件处理能力目录",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminEventHandlerResource",
+          "shape": "collection",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Administration.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "AdminEventHandlerResource::collection"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "AdminEventHandlerResource",
+        "operation": "collection"
+      }
+    },
+    {
+      "path": "/admin/operations/events",
+      "method": "GET",
+      "name": "operations.events",
+      "controller": "Platform.Administration",
+      "action": "events",
+      "meta": {
+        "name": "事件明细",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
+          "scene": "eventList"
+        },
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminEventResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Administration.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "AdminEventResource::paginate"
+      ],
+      "validators": [
+        "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+      ],
+      "validatorScene": "eventList",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "AdminEventResource",
+        "operation": "paginate"
       }
     },
     {

@@ -56,6 +56,8 @@ final class Administration
         }
     }
     public static function deliveries(array $params): array { return app(AdminReadModel::class)->deliveries($params); }
+    public static function events(array $params): array { return app(AdminReadModel::class)->events($params); }
+    public static function eventHandlers(): array { return app(\app\modules\Platform\Eventing\Public\HandlerRegistry::class)->catalog(); }
     public static function deliverySummary(): array { return app(AdminReadModel::class)->deliverySummary(); }
     public static function delivery(int $id): array { return app(AdminReadModel::class)->delivery($id); }
     public static function auditLogs(array $params): array { return app(AdminReadModel::class)->auditLogs($params); }

@@ -26,6 +26,7 @@ require $root . '/app/modules/Platform/Storage/Transport/Api/StorageResource.php
 require $root . '/app/modules/Theme/Transport/Api/ThemeResource.php';
 require $root . '/app/modules/Theme/Transport/Api/ThemeConfigResource.php';
 require $root . '/app/modules/Platform/User/Transport/Api/ProfileResource.php';
+require $root . '/app/modules/Operations/Administration/Transport/Api/AdminEventResource.php';
 
 use app\shared\Transport\Http\ApiResource;
 use app\modules\Platform\Auth\Transport\Api\AuthResource;
@@ -39,6 +40,7 @@ use app\modules\Platform\Files\Transport\Api\DirectUploadResource;
 use app\modules\Platform\Files\Transport\Api\FileResource;
 use app\modules\Content\Likes\Transport\Api\LikeResource;
 use app\modules\Operations\Dashboard\Transport\Api\DashboardResource;
+use app\modules\Operations\Administration\Transport\Api\AdminEventResource;
 use app\modules\Platform\Rbac\Transport\Api\PermissionResource;
 use app\modules\Platform\Rbac\Transport\Api\RoleResource;
 use app\modules\Theme\Transport\Api\ThemeResource;
@@ -102,6 +104,26 @@ $test('role pagination maps each row through role resource', static function () 
     $assertSame(1, $result['current_page']);
     $assertSame('admin', $result['data'][0]['slug']);
     $assertFalse(array_key_exists('password', $result['data'][0]));
+});
+
+$test('admin event resource excludes payload and delivery credentials', static function () use ($assertSame, $assertFalse): void {
+    $result = AdminEventResource::make([
+        'id' => '7', 'event_type' => 'message.sent', 'event_version' => '1',
+        'aggregate_type' => 'message', 'aggregate_key' => '19',
+        'occurred_at' => '2026-11-16 12:00:00', 'created_at' => '2026-11-16 12:00:00',
+        'payload' => ['secret' => 'private'], 'claim_token' => 'private',
+        'deliveries' => [[
+            'id' => '8', 'event_id' => '7', 'handler_key' => 'notifications.message',
+            'queue_name' => 'notifications', 'status' => 'completed', 'attempt_count' => '1',
+            'policy_decision' => null, 'last_error' => null, 'claim_token' => 'private',
+        ]],
+    ]);
+
+    $assertSame(7, $result['id']);
+    $assertSame(8, $result['deliveries'][0]['id']);
+    $assertFalse(array_key_exists('payload', $result));
+    $assertFalse(array_key_exists('claim_token', $result));
+    $assertFalse(array_key_exists('claim_token', $result['deliveries'][0]));
 });
 
 $test('permission resource keeps the capability tuple stable', static function () use ($assertSame): void {
