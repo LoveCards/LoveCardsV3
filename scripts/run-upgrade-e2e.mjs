@@ -679,6 +679,8 @@ try {
       id: '20261113000008', label: 'nonempty images',
       inject: '$pdo->exec("INSERT INTO images (aid,pid,user_id,url,created_at) VALUES (0,0,0,\'e2e-legacy-image\',UTC_TIMESTAMP())");',
       repair: '$pdo->exec("DELETE FROM images WHERE url=\'e2e-legacy-image\'");',
+      alteredShape: '$pdo->exec("ALTER TABLE images ADD UNIQUE KEY e2e_custom_url (url)");',
+      restoreShape: '$pdo->exec("ALTER TABLE images DROP INDEX e2e_custom_url");',
     },
     {
       id: '20261113000010', label: 'nonzero tags_map.status',
@@ -716,6 +718,17 @@ try {
           + `$state=$pdo->query("SELECT status FROM system_upgrade_steps WHERE migration_id='${scenario.id}'")->fetchColumn();`
           + 'if($state!=="failed")exit(1);'
         await run(php, ['-r', inspect + scenario.repair], dbEnv)
+        if (scenario.alteredShape) {
+          await run(php, ['-r', connectScript + scenario.alteredShape], dbEnv)
+          await api(`/admin/operations/upgrades/${currentPlanId}/advance`, {
+            token: currentToken, method: 'POST', expected: [500],
+          })
+          currentPlan = (await api(`/admin/operations/upgrades/${currentPlanId}`, { token: currentToken })).data
+          if (currentPlan.status !== 'failed' || currentPlan.current_step !== 'verify_migrations') {
+            throw new Error(`${scenario.label} custom schema did not block current Release verify`)
+          }
+          await run(php, ['-r', inspect + scenario.restoreShape], dbEnv)
+        }
         currentPlan = (await api(`/admin/operations/upgrades/${currentPlanId}/advance`, {
           token: currentToken, method: 'POST',
         })).data
