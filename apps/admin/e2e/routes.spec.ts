@@ -32,12 +32,12 @@ const expectedHeadings: Record<string, string> = {
   '/apps/settings/site/policies': '站点策略',
   '/apps/settings/community-rules': '站点策略',
   '/apps/operations/upgrade': '系统升级',
-  '/apps/operations/eventing': '事件处理',
+  '/apps/operations/eventing': '事件管理',
   '/apps/operations/communication': '前端通信',
   '/apps/settings/redis': 'Redis 连接',
   '/apps/settings/storage': '文件存储',
   '/apps/settings/messaging': '站外发送',
-  '/apps/operations/deliveries': '通知投递',
+  '/apps/operations/deliveries': '事件管理',
 }
 
 const legacyAliases = [
@@ -323,7 +323,7 @@ test('legacy runtime event section redirects to eventing', async ({ page }) => {
   const url = new URL(page.url())
   expect(url.searchParams.get('source')).toBe('legacy')
   expect(url.hash).toBe('#diagnostics')
-  await expect(page.getByRole('heading', { name: '事件处理', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '事件管理', exact: true })).toBeVisible()
 })
 
 for (const [legacyPath, canonicalPath] of legacyDetailAliases) {

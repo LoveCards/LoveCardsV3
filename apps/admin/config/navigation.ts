@@ -308,12 +308,17 @@ const operationsItems = [
   item({
     path: '/apps/operations/eventing',
     canonicalPath: '/apps/operations/eventing',
-    title: '事件处理',
+    title: '事件管理',
+    searchAliases: ['事件处理', '通知投递', '通知处理', '事件明细'],
     icon: 'mdi-inbox-arrow-down-outline',
     domain: 'system',
-    section: '事件处理',
+    section: '事件管理',
     parentRoute: '/apps/operations/eventing',
     grants: [operationsGrant],
+    grantSets: [
+      [operationsGrant],
+      [{ capability: 'communications.read', scope: 'global' }],
+    ],
     actionCapabilities: ['operations.read', 'operations.runtime.configure'],
     riskLevel: 'sensitive',
   }),
@@ -329,19 +334,6 @@ const operationsItems = [
     grants: [operationsGrant],
     actionCapabilities: ['operations.read', 'operations.runtime.configure'],
     riskLevel: 'sensitive',
-  }),
-  item({
-    path: '/apps/operations/deliveries',
-    canonicalPath: '/apps/operations/deliveries',
-    title: '通知投递',
-    searchAliases: ['通知处理'],
-    icon: 'mdi-send-check-outline',
-    domain: 'system',
-    section: '通知投递',
-    parentRoute: '/apps/operations/deliveries',
-    grants: [{ capability: 'communications.read', scope: 'global' }],
-    riskLevel: 'sensitive',
-    actionCapabilities: ['operations.retry'],
   }),
   item({
     path: '/apps/operations/upgrade',
@@ -371,7 +363,7 @@ const operationsItems = [
 ] as const
 
 const [siteInformation, sitePolicies, appearance, storageService, redisService, messagingService, verificationService] = systemConfigItems
-const [eventProcessing, frontendCommunication, deliveryProcessing, upgrade, auditLog] = operationsItems
+const [eventProcessing, frontendCommunication, upgrade, auditLog] = operationsItems
 
 const accessControlItems: readonly AdminNavigationItem[] = [
   item({
@@ -439,7 +431,7 @@ export const adminNavigation: {
       title: '系统',
       icon: 'mdi-console-line',
       domain: 'system',
-      items: [eventProcessing, frontendCommunication, deliveryProcessing, auditLog, storageService, redisService, messagingService, verificationService, upgrade],
+      items: [eventProcessing, frontendCommunication, auditLog, storageService, redisService, messagingService, verificationService, upgrade],
     },
   ],
 }

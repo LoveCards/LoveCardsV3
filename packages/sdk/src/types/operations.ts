@@ -193,6 +193,36 @@ export interface OperationsDelivery {
   updated_at: string
 }
 
+export interface OperationsEvent {
+  id: number
+  event_type: string
+  event_version: number
+  aggregate_type: string
+  aggregate_key: string
+  occurred_at: string
+  created_at: string
+  deliveries: Array<{
+    id: number
+    event_id: number
+    handler_key: string
+    queue_name: string
+    status: string
+    attempt_count: number
+    policy_decision: string | null
+    last_error: string | null
+  }>
+}
+
+export interface OperationsEventHandler {
+  event_type: string
+  event_version: number
+  handler_key: string
+  queue_name: string
+  execution_mode: string
+  max_attempts: number
+  signal_key: string | null
+}
+
 export interface OperationsDeliverySummary {
   pending: number
   processing: number

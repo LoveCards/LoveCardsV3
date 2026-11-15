@@ -17,6 +17,10 @@ final class AdminValidate extends Validate
             'normal' => ['page', 'list_rows', 'status', 'worker_type', 'queue_name', 'policy_decision'],
             'require' => false, 'nonNull' => false, 'toNull' => [],
         ],
+        'eventList' => [
+            'normal' => ['page', 'list_rows', 'event_type', 'queue_name'],
+            'require' => false, 'nonNull' => false, 'toNull' => [],
+        ],
         'transition' => [
             'normal' => ['note', 'resolution'],
             'require' => ['status'], 'nonNull' => false, 'toNull' => [],
@@ -71,6 +75,7 @@ final class AdminValidate extends Validate
         'limit' => 'number|between:1,200',
         'file' => 'require|fileExt:zip',
         'unread_only' => 'boolean',
+        'event_type' => 'max:100',
         'desired_mode' => 'max:16',
         'mode' => 'in:scheduled,resident',
         'scheduled_trigger' => 'in:none,cli,http',

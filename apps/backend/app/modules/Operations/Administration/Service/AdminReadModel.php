@@ -96,6 +96,35 @@ final class AdminReadModel
         return $this->paginate($rows, (int) $total, $page, $limit);
     }
 
+    /** 事件事实按行分页；处理结果从当前页批量读取，不暴露事件 payload。 */
+    public function events(array $params): array
+    {
+        $page = $this->page($params);
+        $limit = $this->limit($params);
+        $query = Db::table('outbox_events')->alias('e')
+            ->field('e.id,e.event_type,e.event_version,e.aggregate_type,e.aggregate_key,e.occurred_at,e.created_at');
+        if (!empty($params['event_type'])) $query->where('e.event_type', (string) $params['event_type']);
+        if (!empty($params['queue_name'])) {
+            $query->whereExists(function ($subquery) use ($params): void {
+                $subquery->table('event_deliveries')->alias('d')
+                    ->whereRaw('d.event_id = e.id')->where('d.queue_name', (string) $params['queue_name']);
+            });
+        }
+        $total = (clone $query)->count('e.id');
+        $rows = $query->order('e.id', 'desc')->page($page, $limit)->select()->toArray();
+        $ids = array_map(static fn(array $row): int => (int) $row['id'], $rows);
+        $byEvent = [];
+        if ($ids !== []) {
+            $deliveries = Db::table('event_deliveries')
+                ->field('id,event_id,handler_key,queue_name,status,attempt_count,policy_decision,last_error')
+                ->whereIn('event_id', $ids)->order('id', 'asc')->select()->toArray();
+            foreach ($deliveries as $delivery) $byEvent[(int) $delivery['event_id']][] = $delivery;
+        }
+        foreach ($rows as &$row) $row['deliveries'] = $byEvent[(int) $row['id']] ?? [];
+        unset($row);
+        return $this->paginate($rows, (int) $total, $page, $limit);
+    }
+
     /** @return array<string,mixed> */
     public function delivery(int $id): array
     {

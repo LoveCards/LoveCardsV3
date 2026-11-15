@@ -2826,6 +2826,7 @@
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
+            "event_type": "max:100",
             "desired_mode": "max:16",
             "mode": "in:scheduled,resident",
             "scheduled_trigger": "in:none,cli,http",
@@ -3202,6 +3203,7 @@
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
+            "event_type": "max:100",
             "desired_mode": "max:16",
             "mode": "in:scheduled,resident",
             "scheduled_trigger": "in:none,cli,http",
@@ -5737,6 +5739,7 @@
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
+            "event_type": "max:100",
             "desired_mode": "max:16",
             "mode": "in:scheduled,resident",
             "scheduled_trigger": "in:none,cli,http",
@@ -6428,6 +6431,7 @@
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
+            "event_type": "max:100",
             "desired_mode": "max:16",
             "mode": "in:scheduled,resident",
             "scheduled_trigger": "in:none,cli,http",
@@ -6570,6 +6574,347 @@
             }
           }
         }
+      }
+    },
+    "/admin/operations/event-handlers": {
+      "get": {
+        "operationId": "operations.eventHandlers",
+        "tags": [
+          "运维"
+        ],
+        "summary": "事件处理能力目录",
+        "description": "事件处理能力目录",
+        "x-controller": "Platform.Administration/eventHandlers",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "operations.read"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "AdminEventHandlerResource",
+        "x-response-shape": "collection",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "event_type": {
+                            "type": "string"
+                          },
+                          "event_version": {
+                            "type": "integer"
+                          },
+                          "handler_key": {
+                            "type": "string"
+                          },
+                          "queue_name": {
+                            "type": "string"
+                          },
+                          "execution_mode": {
+                            "type": "string"
+                          },
+                          "max_attempts": {
+                            "type": "integer"
+                          },
+                          "signal_key": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        }
+                      },
+                      "x-typescript-type": "OperationsEventHandler[]"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/admin/operations/events": {
+      "get": {
+        "operationId": "operations.events",
+        "tags": [
+          "运维"
+        ],
+        "summary": "事件明细",
+        "description": "事件明细",
+        "x-controller": "Platform.Administration/events",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "communications.read",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "communications.read"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "AdminEventResource",
+        "x-response-shape": "paginated",
+        "x-validators": [
+          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+        ],
+        "x-validator-scene": "eventList",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate": {
+            "expected_revision": "number",
+            "policies": "array",
+            "signals": "array",
+            "reason": "max:255",
+            "page": "number",
+            "list_rows": "number",
+            "actor_id": "number",
+            "status": "max:32",
+            "queue_name": "max:64",
+            "policy_decision": "in:applied,skipped,not-configured",
+            "resource_type": "max:64",
+            "worker_type": "max:64",
+            "search_value": "max:255",
+            "search_keys": "max:255",
+            "note": "max:2000",
+            "resolution": "max:255",
+            "limit": "number|between:1,200",
+            "file": "require|fileExt:zip",
+            "unread_only": "boolean",
+            "event_type": "max:100",
+            "desired_mode": "max:16",
+            "mode": "in:scheduled,resident",
+            "scheduled_trigger": "in:none,cli,http",
+            "notification_interval_seconds": "number",
+            "message_interval_seconds": "number",
+            "unread_interval_seconds": "number",
+            "pause_when_hidden": "boolean",
+            "worker_stale_seconds": "number",
+            "scheduler_stale_seconds": "number",
+            "gateway_stale_seconds": "number"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "event_type": {
+                            "type": "string"
+                          },
+                          "event_version": {
+                            "type": "integer"
+                          },
+                          "aggregate_type": {
+                            "type": "string"
+                          },
+                          "aggregate_key": {
+                            "type": "string"
+                          },
+                          "occurred_at": {
+                            "type": "string"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "deliveries": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "id": {
+                                  "type": "integer"
+                                },
+                                "event_id": {
+                                  "type": "integer"
+                                },
+                                "handler_key": {
+                                  "type": "string"
+                                },
+                                "queue_name": {
+                                  "type": "string"
+                                },
+                                "status": {
+                                  "type": "string"
+                                },
+                                "attempt_count": {
+                                  "type": "integer"
+                                },
+                                "policy_decision": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "last_error": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "x-typescript-type": "ListResult<OperationsEvent>"
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/PaginationInfo"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "page": {
+                  "type": "number"
+                },
+                "list_rows": {
+                  "type": "number"
+                },
+                "event_type": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "queue_name": {
+                  "type": "string",
+                  "maxLength": 64
+                }
+              },
+              "additionalProperties": true,
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; event_type?: string; queue_name?: string }",
+              "x-validators": [
+                "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate"
+              ],
+              "x-validator-scene": "eventList"
+            }
+          }
+        ]
       }
     },
     "/admin/operations/migrations": {
@@ -6744,6 +7089,7 @@
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
+            "event_type": "max:100",
             "desired_mode": "max:16",
             "mode": "in:scheduled,resident",
             "scheduled_trigger": "in:none,cli,http",
@@ -7359,6 +7705,7 @@
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
+            "event_type": "max:100",
             "desired_mode": "max:16",
             "mode": "in:scheduled,resident",
             "scheduled_trigger": "in:none,cli,http",
@@ -7704,6 +8051,7 @@
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
+            "event_type": "max:100",
             "desired_mode": "max:16",
             "mode": "in:scheduled,resident",
             "scheduled_trigger": "in:none,cli,http",
@@ -7886,6 +8234,7 @@
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
+            "event_type": "max:100",
             "desired_mode": "max:16",
             "mode": "in:scheduled,resident",
             "scheduled_trigger": "in:none,cli,http",
@@ -8158,6 +8507,7 @@
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
+            "event_type": "max:100",
             "desired_mode": "max:16",
             "mode": "in:scheduled,resident",
             "scheduled_trigger": "in:none,cli,http",
@@ -9610,6 +9960,7 @@
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
+            "event_type": "max:100",
             "desired_mode": "max:16",
             "mode": "in:scheduled,resident",
             "scheduled_trigger": "in:none,cli,http",
@@ -9816,6 +10167,7 @@
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
+            "event_type": "max:100",
             "desired_mode": "max:16",
             "mode": "in:scheduled,resident",
             "scheduled_trigger": "in:none,cli,http",
@@ -10330,6 +10682,7 @@
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
+            "event_type": "max:100",
             "desired_mode": "max:16",
             "mode": "in:scheduled,resident",
             "scheduled_trigger": "in:none,cli,http",

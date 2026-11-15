@@ -2,15 +2,15 @@
   <AdminPageContainer>
     <AdminPageHeader
       :title="`投递 #${route.params.id}`"
-      description="查看这条站内提醒事件的处理结果、失败原因与重试条件。"
+      description="查看这条事件处理任务的结果、失败原因与重试条件。"
       :breadcrumbs="[
         { title: '系统' },
-        { title: '通知投递', to: '/apps/operations/deliveries' },
+        { title: '事件明细', to: '/apps/operations/eventing?tab=events' },
         { title: `#${route.params.id}` },
       ]"
     >
       <template #actions>
-        <v-btn prepend-icon="mdi-arrow-left" to="/apps/operations/deliveries" variant="outlined">
+        <v-btn prepend-icon="mdi-arrow-left" to="/apps/operations/eventing?tab=events" variant="outlined">
           返回列表
         </v-btn>
         <AdminActionGuard capability="operations.retry">

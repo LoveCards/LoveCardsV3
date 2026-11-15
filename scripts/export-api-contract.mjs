@@ -75,6 +75,8 @@ function resourceType(route) {
   map.AdminRuntimeConfig = 'RuntimeCommunicationSnapshot'
   map.AdminEventConsumption = 'EventConsumptionSnapshot'
   map.AdminDeliverySummary = 'OperationsDeliverySummary'
+  map.AdminEvent = 'OperationsEvent'
+  map.AdminEventHandler = 'OperationsEventHandler'
   map.AdminRuntimeValidate = 'RuntimeConfigValidation'
   map.StreamTicket = 'StreamTicket'
   map.CommunicationSettings = 'CommunicationSettingsSnapshot'

@@ -27,6 +27,12 @@ export class Operations extends BaseResource {
   applyEventConsumption(data: ApiTypes.EventConsumptionUpdate): Promise<ApiTypes.EventConsumptionSnapshot> {
     return this._put<ApiTypes.EventConsumptionSnapshot>("/admin/operations/event-consumption", data)
   }
+  eventHandlers(): Promise<ApiTypes.OperationsEventHandler[]> {
+    return this._get<ApiTypes.OperationsEventHandler[]>("/admin/operations/event-handlers")
+  }
+  events(params?: { page?: number; list_rows?: number; event_type?: string; queue_name?: string }): Promise<ApiTypes.ListResult<ApiTypes.OperationsEvent>> {
+    return this._get<ApiTypes.ListResult<ApiTypes.OperationsEvent>>("/admin/operations/events", params)
+  }
   migrations(): Promise<ApiTypes.OperationsMigration[]> {
     return this._get<ApiTypes.OperationsMigration[]>("/admin/operations/migrations")
   }

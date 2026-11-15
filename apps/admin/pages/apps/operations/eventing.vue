@@ -1,12 +1,20 @@
 <template>
   <AdminPageContainer>
-    <AdminPageHeader title="事件处理" description="选择定时或常驻消费，并查看事件积压与处理进程。" :breadcrumbs="[{ title: '系统' }]">
+    <AdminPageHeader title="事件管理" description="查看事件事实、处理结果和当前版本的处理能力。" :breadcrumbs="[{ title: '系统' }]">
       <template #actions>
-        <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="hasUnsavedChanges" @click="load">刷新</v-btn>
+        <v-btn v-if="activeTab === 'status'" prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="hasUnsavedChanges" @click="load">刷新</v-btn>
       </template>
     </AdminPageHeader>
 
-    <AdminAsyncState :loading="loading && !runtime" :error="error && !runtime ? error : null" :empty="!runtime" @retry="load">
+    <v-tabs v-model="activeTab" class="mb-5" aria-label="事件管理视图">
+      <v-tab v-if="canReadRuntime" value="status">运行状态</v-tab>
+      <v-tab v-if="canReadEvents" value="events">事件明细</v-tab>
+      <v-tab v-if="canReadRuntime" value="handlers">注册能力</v-tab>
+    </v-tabs>
+    <EventRecords v-if="activeTab === 'events' && canReadEvents" />
+    <EventHandlerCatalog v-if="activeTab === 'handlers' && canReadRuntime" />
+
+    <AdminAsyncState v-if="activeTab === 'status' && canReadRuntime" :loading="loading && !runtime" :error="error && !runtime ? error : null" :empty="!runtime" @retry="load">
       <template v-if="runtime">
         <v-alert v-if="error" class="mb-4" type="warning" variant="tonal">刷新失败，以下是上次读取的状态：{{ error }}</v-alert>
         <v-alert v-if="configConflict" class="mb-4" type="warning" variant="tonal">{{ configConflict }}</v-alert>
@@ -59,7 +67,7 @@
         <v-sheet border rounded class="pa-4 mb-5">
           <div class="d-flex flex-wrap align-center justify-space-between ga-3">
             <h2 class="text-h6">事件队列</h2>
-            <v-btn to="/apps/operations/deliveries" variant="text" append-icon="mdi-arrow-right">查看通知投递</v-btn>
+            <v-btn variant="text" append-icon="mdi-arrow-right" @click="activeTab = 'events'">查看事件明细</v-btn>
           </div>
           <div class="d-flex flex-wrap ga-6 mt-3 text-body-2">
             <span>待处理 <strong>{{ runtime.eventing.pending }}</strong></span>
@@ -67,7 +75,7 @@
             <span>失败 <strong>{{ runtime.eventing.dead }}</strong></span>
             <span v-if="runtime.eventing.oldest_pending_age_seconds !== null && runtime.eventing.oldest_pending_age_seconds !== undefined">最早待处理 {{ formatAge(runtime.eventing.oldest_pending_age_seconds) }}</span>
           </div>
-          <p class="text-body-2 text-medium-emphasis mt-3 mb-0">通知投递是事件队列中的一类任务；前端通信只负责把变化提示送到浏览器。</p>
+          <p class="text-body-2 text-medium-emphasis mt-3 mb-0">通知、实时提示和文件清理都通过事件队列处理；事件明细包含没有投递任务的事实。</p>
         </v-sheet>
 
         <v-expansion-panels variant="accordion">
@@ -96,6 +104,8 @@
 
 <script setup lang="ts">
 import type { EventConsumptionUpdate, OperationsRuntimeStatus } from '@lovecards/sdk'
+import EventRecords from '~/components/operations/EventRecords.vue'
+import EventHandlerCatalog from '~/components/operations/EventHandlerCatalog.vue'
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue'
@@ -105,8 +115,19 @@ import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTabl
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
 import { useAdminNotifier } from '~/composables/useAdminNotifier'
 import { isApiError, useApi } from '~/lib/api'
+import { useUserStore } from '~/stores/userStore'
 
 const client = useApi()
+const userStore = useUserStore()
+const route = useRoute()
+const router = useRouter()
+const canReadRuntime = computed(() => userStore.hasGrant('operations.read', 'global'))
+const canReadEvents = computed(() => userStore.hasGrant('communications.read', 'global'))
+type EventTab = 'status' | 'events' | 'handlers'
+const requestedTab = route.query.tab
+const initialTab = requestedTab === 'events' && canReadEvents.value ? 'events' : requestedTab === 'handlers' && canReadRuntime.value ? 'handlers' : canReadRuntime.value ? 'status' : 'events'
+const activeTab = ref<EventTab>(initialTab)
+watch(activeTab, tab => { void router.replace({ query: { ...route.query, tab } }) })
 const notifier = useAdminNotifier()
 const runtime = ref<OperationsRuntimeStatus | null>(null)
 const communication = computed(() => runtime.value?.communication ?? null)
@@ -207,6 +228,7 @@ async function doApply() {
   finally { applying.value = false }
 }
 async function load() {
+  if (!canReadRuntime.value) return
   loading.value = true
   error.value = null
   try {
