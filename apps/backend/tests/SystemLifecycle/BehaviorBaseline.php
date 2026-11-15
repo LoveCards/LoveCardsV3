@@ -570,6 +570,34 @@ $test('SqlFileMigration rejects executable SQL before the first phase marker', s
     });
 });
 
+$test('Destructive contract marker blocks manual migration before execution', static function () use ($assertSame, $assertThrows, $withSqlFile): void {
+    $source = "-- @lc-requires-upgrade-contract\n-- @lc-phase preflight\nSELECT 1;\n-- @lc-phase contract\nDROP TABLE `old_table`;\n";
+    $withSqlFile($source, static function (string $path) use ($assertSame, $assertThrows): void {
+        $sqlMigration = new SqlFileMigration('20261112000001', $path, 'S11 legacy retirement');
+        $assertSame(true, $sqlMigration->descriptor()->requiresUpgradeContract());
+        $migration = new class('20261112000001', true) extends SystemLifecycleFakeMigration {
+            public function descriptor(): MigrationDescriptor {
+                return MigrationDescriptor::fromSource('20261112000001', 'S11 fake', 's11 fake', true, true);
+            }
+        };
+        $ledger = new SystemLifecycleInMemoryLedger();
+        $runner = new MigrationRunner($ledger);
+        foreach (range(1, 4) as $_) $runner->runNext($migration);
+        $before = $ledger->find('20261112000001');
+        $assertSame(MigrationPhase::CONTRACT, $before->phase());
+        $assertThrows(LogicException::class, static fn() => $runner->runNext($migration, true), 'UpgradeCoordinator');
+        $assertSame($before->toArray(), $ledger->find('20261112000001')->toArray(), 'manual rejection must not move the ledger');
+        $runner->runNext($migration, true, false, true);
+        $assertSame(1, $migration->contractCalls, 'coordinator-controlled contract must execute once');
+    });
+});
+
+$test('Destructive contract marker requires contract SQL', static function () use ($assertThrows, $withSqlFile): void {
+    $withSqlFile("-- @lc-requires-upgrade-contract\n-- @lc-phase preflight\nSELECT 1;\n", static function (string $path) use ($assertThrows): void {
+        $assertThrows(InvalidArgumentException::class, static fn() => new SqlFileMigration('20261112000002', $path, 'Invalid marker'), '必须包含 Contract SQL');
+    });
+});
+
 foreach ($tests as $name => $callback) {
     try {
         $callback();

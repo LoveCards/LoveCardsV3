@@ -73,7 +73,7 @@ const schemaRemoteDatabase = runNode('scripts/run-schema-consistency-e2e.mjs', {
   LOVECARDS_E2E_DB_HOST: 'database.example.com',
 })
 assert.notEqual(schemaRemoteDatabase.status, 0)
-assert.match(schemaRemoteDatabase.stderr, /localhost database address/)
+assert.match(schemaRemoteDatabase.stderr, /database host must be local/)
 
 const bootstrapSource = await readFile(path.join(root, 'scripts/bootstrap-e2e.php'), 'utf8')
 assert.match(bootstrapSource, /getenv\('LOVECARDS_E2E_ISOLATED'\)\s*!==\s*'1'/)

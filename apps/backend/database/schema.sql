@@ -194,28 +194,6 @@ CREATE TABLE `outbox_events` (
   PRIMARY KEY (`id`),
   KEY `idx_outbox_created` (`created_at`,`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-CREATE TABLE `permissions` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(100) NOT NULL COMMENT '权限名称',
-  `slug` varchar(100) NOT NULL COMMENT '权限标识（唯一）',
-  `path` varchar(255) NOT NULL COMMENT '权限路径（如：/api/admin/users）',
-  `method` varchar(10) NOT NULL DEFAULT 'GET' COMMENT 'HTTP方法：GET,POST,PUT,PATCH,DELETE,*',
-  `description` varchar(255) NOT NULL,
-  `created_at` datetime NOT NULL,
-  `updated_at` datetime NOT NULL,
-  `deleted_at` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `slug` (`slug`),
-  KEY `path_method` (`path`,`method`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='权限表';
-CREATE TABLE `role_capabilities` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `role_id` int(11) NOT NULL,
-  `capability` varchar(100) NOT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_role_cap` (`role_id`,`capability`),
-  KEY `idx_role_id` (`role_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE `roles` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(50) NOT NULL COMMENT '角色名称',
@@ -310,12 +288,6 @@ CREATE TABLE `security_challenges` (
   `created_at` datetime NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_challenge_lookup` (`purpose`,`subject_hash`,`expires_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-CREATE TABLE `system` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `name` varchar(255) DEFAULT '',
-  `value` varchar(2555) NOT NULL DEFAULT '',
-  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE TABLE `stream_tickets` (
   `ticket_hash` char(64) NOT NULL,
@@ -680,17 +652,6 @@ CREATE TABLE `role_grants` (
   CONSTRAINT `fk_role_grants_capability` FOREIGN KEY (`capability`) REFERENCES `capabilities` (`capability`) ON DELETE RESTRICT,
   CONSTRAINT `fk_role_grants_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-CREATE TABLE `role_permissions` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `role_id` int(11) NOT NULL COMMENT '角色ID',
-  `permission_id` int(11) NOT NULL COMMENT '权限ID',
-  `created_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `role_permission` (`role_id`,`permission_id`),
-  KEY `role_id` (`role_id`),
-  KEY `permission_id` (`permission_id`),
-  CONSTRAINT `fk_role_permissions_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='角色权限关联表';
 CREATE TABLE `system_upgrade_plan_steps` (
   `plan_pk` bigint(20) unsigned NOT NULL,
   `step_name` varchar(32) NOT NULL,

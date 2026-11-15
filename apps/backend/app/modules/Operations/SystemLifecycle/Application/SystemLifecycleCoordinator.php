@@ -86,7 +86,7 @@ final class SystemLifecycleCoordinator
     ): array {
         $this->assertExecutablePhase($phase, $allowContract);
         if ($lifecycleLeaseHolder === '') throw new \InvalidArgumentException('Lifecycle Lease holder 不能为空');
-        return $this->advanceOne($directory, $allowContract, $lifecycleLeaseHolder, $phase, $retryFailed);
+        return $this->advanceOne($directory, $allowContract, $lifecycleLeaseHolder, $phase, $retryFailed, true);
     }
 
     /** 调用方须持有生命周期 Lease；不初始化或复位迁移进度。 */
@@ -168,7 +168,8 @@ final class SystemLifecycleCoordinator
         bool $allowContract,
         string $holder,
         ?string $requiredPhase,
-        bool $retryFailed = false
+        bool $retryFailed = false,
+        bool $upgradeControlled = false
     ): array
     {
         if (!$this->lease->renew(LifecycleLease::NAME, $holder, $this->now(), LifecycleLease::TTL_SECONDS)) {
@@ -179,7 +180,7 @@ final class SystemLifecycleCoordinator
         if ($step !== null) {
             foreach ($migrations as $migration) {
                 if ($migration->descriptor()->id() === $step->descriptor()->id()) {
-                    $progress = $this->runner->runNext($migration, $allowContract, $retryFailed);
+                    $progress = $this->runner->runNext($migration, $allowContract, $retryFailed, $upgradeControlled);
                     if (!$this->lease->renew(LifecycleLease::NAME, $holder, $this->now(), LifecycleLease::TTL_SECONDS)) {
                         throw new UpgradeLeaseUnavailableException('系统迁移 Lease 已丢失');
                     }
