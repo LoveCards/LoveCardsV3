@@ -27,9 +27,9 @@ const releaseCopyExcludedRoots = new Set([
 ])
 const contractProbeTable = 'e2e_upgrade_contract_probe'
 const contractProbeMigration = '20991231235959_e2e_contract_probe.sql'
-// 兼容 Release 的代码取自引入前驱迁移的提交；S11 使用当前受审迁移。
-const compatibilityMigration = 'apps/backend/database/migrations/20261112000003.sql'
-const s11Migration = 'apps/backend/database/migrations/20261112000001.sql'
+// R1 兼容 Release 的完整源码身份；包含最终受审 S11 与点赞前驱迁移。
+const compatibilityCommit = '9632a4946808244bbae67149fae8781bfa6b015d'
+const compatibilityMigrations = ['20261112000001.sql', '20261112000002.sql', '20261112000003.sql']
 
 if (process.env.LOVECARDS_UPGRADE_E2E_ISOLATED !== '1') {
   throw new Error('Refusing upgrade E2E: set LOVECARDS_UPGRADE_E2E_ISOLATED=1')
@@ -223,14 +223,15 @@ async function prepareReleaseSource(destination) {
 async function prepareCompatibilitySource(destination, php, temporaryRoot) {
   const archive = path.join(temporaryRoot, 'compatibility-source.zip')
   const extractRoot = path.join(temporaryRoot, 'compatibility-source')
-  const compatibilityCommit = await run('git', ['log', '-1', '--format=%H', '--', compatibilityMigration])
-  if (!/^[a-f0-9]{40}$/.test(compatibilityCommit)) throw new Error('Reviewed compatibility commit is unavailable')
   await run('git', ['archive', '--format=zip', `--output=${archive}`, compatibilityCommit, 'apps/backend'])
   const extract = '$zip=new ZipArchive();if($zip->open($argv[1])!==true||!$zip->extractTo($argv[2]))exit(1);$zip->close();'
   await run(php, ['-r', extract, archive, extractRoot])
   await cp(path.join(extractRoot, 'apps', 'backend'), destination, { recursive: true })
-  // R1 代码早于 S11 字段检查修复；签名测试包必须包含最终受审的 S11 SQL。
-  await cp(path.join(root, s11Migration), path.join(destination, 'database', 'migrations', path.basename(s11Migration)))
+  for (const migration of compatibilityMigrations) {
+    const source = await readFile(path.join(destination, 'database', 'migrations', migration))
+    const current = await readFile(path.join(backendRoot, 'database', 'migrations', migration))
+    if (!source.equals(current)) throw new Error(`R1 migration checksum differs from current source: ${migration}`)
+  }
   // Composer dependencies are installed by CI and intentionally absent from Git.
   await cp(path.join(backendRoot, 'vendor'), path.join(destination, 'vendor'), { recursive: true })
 }
