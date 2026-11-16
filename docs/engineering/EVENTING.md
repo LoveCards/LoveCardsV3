@@ -19,6 +19,8 @@ Publisher
 
 `DomainEventBus` 提供模块发布入口；`HandlerRegistry` 显式注册 `event_type + event_version + handler_key + queue + execution_mode`。Handler 不能通过扫描目录或反射隐式出现，因为 Release 的 Handler Catalog 必须可签名、可比较。
 
+`queue_name` 不是模块名称或资源等级，而是副作用和运行依赖的逻辑分类与路由字段；当前消费者跨队列领取，不提供独立吞吐保证。当前队列目录及新模块接入要求见 [事件队列接入与治理规范](EVENT-QUEUE-GOVERNANCE.md)；HandlerRegistration 会拒绝未登记队列。
+
 适合使用事件的场景：关注后创建通知、私信后通知收件人、文件清理、外部发送器投递、审计旁路和后续可重试处理。不适合使用事件的场景：同一请求必须立即得到结果的校验、权限判断、余额/计数等强一致核心写入。
 
 ## EventEnvelope
@@ -47,7 +49,7 @@ pending -> claimed -> delivered
 
 claim 使用随机 token、worker id 与 lease expiry；完成或失败更新必须匹配 claim token。Handler 仍须以 `DeliveryContext::idempotencyKey()` 或业务唯一键幂等，因为“副作用成功但进程在 checkpoint 前退出”会导致至少一次重放。
 
-错误记录只保存经过 `FailureSanitizer` 清理的稳定摘要，不保存 Token、凭证或完整个人数据。管理员可在 `/apps/operations/deliveries` 查看投递、筛选失败项并重试；手工重试需要 `operations.retry`，只经 Eventing `DeliveryRetries` 公开用例授权并同事务写审计，Administration 不直接改投递表。
+错误记录只保存经过 `FailureSanitizer` 清理的稳定摘要，不保存 Token、凭证或完整个人数据。管理员可在 `/apps/operations/deliveries` 按队列与状态查看处理任务、筛选失败项并重试；手工重试需要 `operations.retry`，只经 Eventing `DeliveryRetries` 公开用例授权并同事务写审计，Administration 不直接改投递表。
 
 人工重试只适用于 `dead` 且未按策略永久跳过的投递。`attempt_count` 保留累计次数，`retry_attempt_limit` 为授权后的绝对上限；NULL 继续使用 Handler 默认预算。每次明确授权将上限设为当前次数加一，失败后重新成为 dead，不自动恢复原始完整预算。授权不修改事件、Handler 或冻结策略，不清空最近错误；审计保留原错误、原上限和新增上限。重试只使投递重新等待领取，不直接执行 Handler，不绕过当前消费策略、执行身份或升级暂停门禁；这些门禁的实施状态以收敛设计账本为准。重复点击已变为 pending 的记录不会叠加额度。
 

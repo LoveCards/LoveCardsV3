@@ -350,6 +350,23 @@ for (const file of applicationFiles) {
   }
 }
 
+// 队列目录是代码准入门槛；两个管理端任务视图的筛选项必须随目录同步。
+const queueCatalogSource = await readFile(path.join(root, 'apps/backend/app/modules/Platform/Eventing/Public/QueueCatalog.php'), 'utf8')
+const governedQueues = [...queueCatalogSource.matchAll(/^        '([a-z][a-z0-9_.-]*)' => \[\s*$/gm)].map((match) => match[1]).sort()
+if (governedQueues.length === 0) fail('QueueCatalog definitions could not be read by architecture check')
+for (const adminView of [
+  'apps/admin/components/operations/EventRecords.vue',
+  'apps/admin/pages/apps/operations/deliveries/index.vue',
+]) {
+  const source = await readFile(path.join(root, adminView), 'utf8')
+  const queueOptionsBlock = source.match(/const queueOptions = \[([\s\S]*?)\]/)?.[1] ?? ''
+  const filterQueues = [...queueOptionsBlock.matchAll(/value: '([^']+)'/g)]
+    .map((match) => match[1]).filter((name) => name !== 'all').sort()
+  if (JSON.stringify(governedQueues) !== JSON.stringify(filterQueues)) {
+    fail(`${adminView} queue filter must match QueueCatalog: governed=${governedQueues.join(',')}, filter=${filterQueues.join(',')}`)
+  }
+}
+
 for (const file of applicationFiles) {
   const rel = relative(file)
   if (!rel.split('/').includes('Application')) continue

@@ -40,6 +40,7 @@ final class HandlerRegistration
             throw new \InvalidArgumentException('queue_name 不合法');
         }
         ExecutionMode::assert($executionMode);
+        QueueCatalog::assertCompatible($queueName, $executionMode);
         if ($maxAttempts < 1 || $maxAttempts > 100) {
             throw new \InvalidArgumentException('max_attempts 必须为 1..100');
         }
@@ -52,6 +53,9 @@ final class HandlerRegistration
             }
         }
         if ($signal !== null) {
+            if ($queueName !== 'realtime') {
+                throw new \InvalidArgumentException('Realtime signal 必须登记到 realtime 队列');
+            }
             if (array_keys($signal) !== ['key', 'topic', 'owner', 'display_name', 'impact_text', 'default_enabled']
                 || !is_string($signal['key']) || preg_match('/^[a-z][a-z0-9_.-]{0,127}$/', $signal['key']) !== 1
                 || !is_string($signal['topic']) || preg_match('/^[a-z][a-z0-9_.-]{0,99}$/', $signal['topic']) !== 1
@@ -62,7 +66,7 @@ final class HandlerRegistration
                 throw new \InvalidArgumentException('Realtime signal 注册信息不合法');
             }
             if ($executionMode !== ExecutionMode::DAEMON_REQUIRED) {
-                throw new \InvalidArgumentException('Realtime signal 必须由常驻 Worker 投递');
+                throw new \InvalidArgumentException('Realtime signal 必须使用 daemon_required 执行模式');
             }
         }
 

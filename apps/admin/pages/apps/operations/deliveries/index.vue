@@ -1,38 +1,38 @@
 <template>
-  <AdminPageContainer>
-    <AdminPageHeader title="通知投递" description="检查站内提醒对应事件的处理结果。处理完成不代表用户已阅读。" :breadcrumbs="[{ title: '系统' }]">
+  <AdminPageContainer fluid>
+    <AdminPageHeader title="处理任务" description="按队列与状态定位事件处理结果。处理完成不代表浏览器已收到或用户已阅读。" :breadcrumbs="[{ title: '系统' }]">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="loadAll">刷新</v-btn></template>
     </AdminPageHeader>
-    <p class="mb-4 text-body-2">仅显示通知投递队列。<NuxtLink to="/apps/operations/eventing">事件处理</NuxtLink> · <NuxtLink to="/apps/operations/notification-policies">通知策略</NuxtLink></p>
-    <v-sheet v-if="summary" border rounded class="mb-4 pa-4">
+    <p class="mb-4 text-body-2">每行是一项处理任务。<NuxtLink to="/apps/operations/eventing?tab=events">查看业务事件</NuxtLink> · <NuxtLink v-if="queue === 'notifications'" to="/apps/operations/notification-policies">通知策略</NuxtLink></p>
+    <v-sheet v-if="queue === 'notifications' && summary" border rounded class="mb-4 pa-4">
       <div class="d-flex flex-wrap ga-5">
         <span>失败 <strong>{{ summary.dead }}</strong></span><span>待处理 <strong>{{ summary.pending }}</strong></span>
         <span>处理中 <strong>{{ summary.processing }}</strong></span><span>已按策略跳过 <strong>{{ summary.skipped }}</strong></span>
       </div>
       <p class="mt-2 mb-0 text-caption text-medium-emphasis">通知队列当前累计状态 · 检查于 {{ summary.checked_at }}</p>
     </v-sheet>
-    <v-alert v-if="summaryError" class="mb-4" type="warning" variant="tonal">处理汇总暂不可用：{{ summaryError }}<template #append><v-btn variant="outlined" @click="loadSummary">重试</v-btn></template></v-alert>
-    <div class="d-flex flex-wrap align-center ga-3 mb-4">
-      <v-select :model-value="view" class="d-sm-none w-100" :items="viewOptions" label="处理状态" variant="outlined" density="compact" hide-details @update:model-value="setView" />
-      <div class="delivery-filter-scroll d-none d-sm-block">
-        <v-btn-toggle :model-value="view" mandatory aria-label="处理状态筛选" @update:model-value="setView">
-          <v-btn value="dead">失败</v-btn><v-btn value="all">全部</v-btn><v-btn value="pending">待处理</v-btn>
-          <v-btn value="processing">处理中</v-btn><v-btn value="skipped">按策略跳过</v-btn>
-        </v-btn-toggle>
-      </div>
-      <span class="text-body-2 text-medium-emphasis">{{ totalItems }} 条记录</span>
-    </div>
-    <AdminAsyncState :loading="loading && !deliveries.length" :error="error && !deliveries.length ? error : null" :empty="!loading && !deliveries.length" :empty-title="view === 'dead' ? '没有失败记录' : '没有匹配的处理记录'" empty-description="试试其他处理状态。" @retry="loadDeliveries">
-      <v-alert v-if="error" class="mb-3" type="error" variant="tonal">{{ error }}<template #append><v-btn variant="outlined" @click="loadDeliveries">重试</v-btn></template></v-alert>
-      <AdminResourceTableShell v-model:visible-columns="visibleColumns" :columns="columnOptions" :result-count="totalItems" preference-key="operations-deliveries" @reset-view="resetTableView">
+    <v-alert v-if="queue === 'notifications' && summaryError" class="mb-4" type="warning" variant="tonal">处理汇总暂不可用：{{ summaryError }}<template #append><v-btn variant="outlined" @click="loadSummary">重试</v-btn></template></v-alert>
+    <AdminResourceTableShell v-model:visible-columns="visibleColumns" :columns="columnOptions" :result-count="totalItems" preference-key="operations-deliveries" @reset-view="resetTableView">
+      <template #toolbar>
+        <v-select :model-value="queue" :items="queueOptions" item-title="title" item-value="value" label="处理队列" variant="outlined" density="compact" hide-details class="mb-3" @update:model-value="setQueue" />
+        <v-select :model-value="view" class="d-sm-none w-100" :items="viewOptions" label="处理状态" variant="outlined" density="compact" hide-details @update:model-value="setView" />
+        <div class="delivery-filter-scroll d-none d-sm-block">
+          <v-btn-toggle :model-value="view" mandatory aria-label="处理状态筛选" @update:model-value="setView">
+            <v-btn value="dead">失败</v-btn><v-btn value="all">全部</v-btn><v-btn value="pending">待处理</v-btn>
+            <v-btn value="processing">处理中</v-btn><v-btn value="skipped">已跳过</v-btn>
+          </v-btn-toggle>
+        </div>
+      </template>
+      <AdminAsyncState :loading="loading && !deliveries.length" :error="error && !deliveries.length ? error : null" :empty="!loading && !deliveries.length" :empty-title="view === 'dead' ? '没有失败记录' : '没有匹配的处理记录'" empty-description="试试其他处理状态。" @retry="loadDeliveries">
+        <v-alert v-if="error" class="ma-3" type="error" variant="tonal">{{ error }}<template #append><v-btn variant="outlined" @click="loadDeliveries">重试</v-btn></template></v-alert>
         <v-data-table-server v-model:items-per-page="itemsPerPage" v-model:page="page" :headers="headers" :items="deliveries" :items-length="totalItems" :items-per-page-options="[10, 20, 50]" :loading="loading" item-value="id" items-per-page-text="每页行数">
-          <template #item.event="{ item }"><AdminResourceLink :label="item.display_name || item.event_type" resource-type="event_delivery" :resource-id="item.id" /><div class="text-caption text-medium-emphasis">{{ item.event_type }} · #{{ item.id }}</div></template>
-          <template #item.status="{ item }"><span v-if="item.policy_decision === 'skipped'">已按策略跳过</span><AdminStatusChip v-else :status="item.status" /></template>
+          <template #item.event="{ item }"><AdminResourceLink :label="item.display_name || item.event_type" resource-type="event_delivery" :resource-id="item.id" /><div class="text-caption text-medium-emphasis">{{ item.event_type }} · #{{ item.id }} · {{ queueLabel(item.queue_name) }}</div></template>
+          <template #item.status="{ item }"><span v-if="item.policy_decision === 'skipped'">{{ skipLabel(item.queue_name) }}</span><AdminStatusChip v-else :status="item.status" /></template>
           <template #item.error="{ item }"><span class="delivery-error">{{ item.last_error || '-' }}</span></template>
           <template #item.action="{ item }"><NuxtLink :to="`/apps/operations/deliveries/${item.id}`">查看详情</NuxtLink></template>
         </v-data-table-server>
-      </AdminResourceTableShell>
-    </AdminAsyncState>
+      </AdminAsyncState>
+    </AdminResourceTableShell>
   </AdminPageContainer>
 </template>
 
@@ -47,6 +47,7 @@ import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
 import { useApi, isApiError } from '~/lib/api'
 
 type View = 'dead' | 'all' | 'pending' | 'processing' | 'skipped'
+type Queue = 'notifications' | 'realtime' | 'storage' | 'all'
 const client = useApi()
 const route = useRoute()
 const router = useRouter()
@@ -56,9 +57,20 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const summaryError = ref<string | null>(null)
 const validViews: View[] = ['dead', 'all', 'pending', 'processing', 'skipped']
+const validQueues: Queue[] = ['notifications', 'realtime', 'storage', 'all']
+const queueOptions = [
+  { title: '通知', value: 'notifications' },
+  { title: '全部队列', value: 'all' },
+  { title: '实时提示', value: 'realtime' },
+  { title: '文件处理', value: 'storage' },
+]
+const parseQueue = (value: unknown): Queue => typeof value === 'string' && validQueues.includes(value as Queue) ? value as Queue : 'notifications'
+const queue = ref<Queue>(parseQueue(route.query.queue))
+const queueLabel = (name: string) => queueOptions.find(option => option.value === name)?.title ?? name
+const skipLabel = (name: string) => name === 'notifications' ? '已按策略跳过通知' : name === 'realtime' ? '已跳过实时提示' : '已跳过'
 const viewOptions = [
   { title: '失败', value: 'dead' }, { title: '全部', value: 'all' }, { title: '待处理', value: 'pending' },
-  { title: '处理中', value: 'processing' }, { title: '按策略跳过', value: 'skipped' },
+  { title: '处理中', value: 'processing' }, { title: '已跳过', value: 'skipped' },
 ]
 const parseView = (value: unknown): View => typeof value === 'string' && validViews.includes(value as View) ? value as View : 'dead'
 const view = ref<View>(parseView(route.query.view))
@@ -85,12 +97,12 @@ async function loadDeliveries() {
   totalItems.value = 0
   try {
     const filters = view.value === 'skipped' ? { status: 'completed', policy_decision: 'skipped' } : view.value === 'all' ? {} : { status: view.value }
-    const result = await client.operations.deliveries({ page: page.value, list_rows: itemsPerPage.value, queue_name: 'notifications', ...filters })
+    const result = await client.operations.deliveries({ page: page.value, list_rows: itemsPerPage.value, ...(queue.value === 'all' ? {} : { queue_name: queue.value }), ...filters })
     if (requestId !== latestDeliveryRequest) return
     deliveries.value = result.data
     totalItems.value = result.pagination?.totalItems ?? result.data.length
   } catch (cause) {
-    if (requestId === latestDeliveryRequest) error.value = isApiError(cause) ? cause.message : '无法加载通知投递记录'
+    if (requestId === latestDeliveryRequest) error.value = isApiError(cause) ? cause.message : '无法加载处理任务'
   } finally { if (requestId === latestDeliveryRequest) loading.value = false }
 }
 async function loadSummary() {
@@ -99,20 +111,29 @@ async function loadSummary() {
   try { const result = await client.operations.deliverySummary(); if (requestId === latestSummaryRequest) summary.value = result }
   catch (cause) { if (requestId === latestSummaryRequest) summaryError.value = isApiError(cause) ? cause.message : '无法加载处理汇总' }
 }
-async function loadAll() { await Promise.all([loadDeliveries(), loadSummary()]) }
+async function loadAll() { await Promise.all([loadDeliveries(), ...(queue.value === 'notifications' ? [loadSummary()] : [])]) }
 function syncRouteQuery() {
-  const next = { ...route.query, view: view.value, page: String(page.value), list_rows: String(itemsPerPage.value) }
-  if (route.query.view === next.view && route.query.page === next.page && route.query.list_rows === next.list_rows) return
+  const next = { ...route.query, queue: queue.value === 'notifications' ? undefined : queue.value, view: view.value, page: String(page.value), list_rows: String(itemsPerPage.value) }
+  if (route.query.queue === next.queue && route.query.view === next.view && route.query.page === next.page && route.query.list_rows === next.list_rows) return
   void router.replace({ query: next })
 }
 function resetTableView() { page.value = 1; itemsPerPage.value = 20 }
+function setQueue(next: unknown) {
+  const selected = parseQueue(next)
+  if (selected === queue.value) return
+  queue.value = selected
+  page.value = 1
+  if (selected === 'notifications' && !summary.value) void loadSummary()
+}
 function setView(next: unknown) {
   const selected = parseView(next)
   if (selected === view.value) return
   view.value = selected
   page.value = 1
 }
-watch(() => [route.query.view, route.query.page, route.query.list_rows], () => {
+watch(() => [route.query.queue, route.query.view, route.query.page, route.query.list_rows], () => {
+  const nextQueue = parseQueue(route.query.queue)
+  if (queue.value !== nextQueue) queue.value = nextQueue
   const nextView = parseView(route.query.view)
   const nextPage = queryInt(route.query.page, 1)
   const nextSize = queryInt(route.query.list_rows, 20)
@@ -121,12 +142,12 @@ watch(() => [route.query.view, route.query.page, route.query.list_rows], () => {
   if (allowedPageSizes.includes(nextSize) && itemsPerPage.value !== nextSize) itemsPerPage.value = nextSize
 })
 let initialized = false
-watch([view, page, itemsPerPage], () => {
+watch([queue, view, page, itemsPerPage], () => {
   if (initialized) syncRouteQuery()
   initialized = true
   void loadDeliveries()
 }, { immediate: true })
-onMounted(() => void loadSummary())
+onMounted(() => { if (queue.value === 'notifications') void loadSummary() })
 </script>
 
 <style scoped>

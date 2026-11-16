@@ -1,5 +1,5 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="1040">
     <AdminPageHeader title="事件管理" description="查看事件事实、处理结果和当前版本的处理能力。" :breadcrumbs="[{ title: '系统' }]">
       <template #actions>
         <v-btn v-if="activeTab === 'status'" prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="hasUnsavedChanges" @click="load">刷新</v-btn>
@@ -60,7 +60,7 @@
         <AdminDangerActionDialog v-model="applyDialog" title="切换事件消费策略" action-label="确认应用" color="primary" :impact="applyImpact" :loading="applying" :error="applyError" @confirm="doApply" />
 
         <v-alert v-if="runtime.eventing.dead || runtime.eventing.expired_processing" :type="runtime.eventing.dead ? 'error' : 'warning'" variant="tonal" icon="mdi-alert-circle-outline" class="mb-5">
-          <div v-if="runtime.eventing.dead">有 {{ runtime.eventing.dead }} 条事件进入失败状态。</div>
+          <div v-if="runtime.eventing.dead">有 {{ runtime.eventing.dead }} 项处理任务失败。</div>
           <div v-if="runtime.eventing.expired_processing">有 {{ runtime.eventing.expired_processing }} 条处理租约已过期。</div>
         </v-alert>
 
@@ -68,6 +68,7 @@
           <div class="d-flex flex-wrap align-center justify-space-between ga-3">
             <h2 class="text-h6">事件队列</h2>
             <v-btn v-if="canReadEvents" variant="text" append-icon="mdi-arrow-right" @click="selectTab('events')">查看事件明细</v-btn>
+            <v-btn v-if="canReadEvents" variant="text" append-icon="mdi-arrow-right" to="/apps/operations/deliveries?queue=all&view=dead">查看处理任务</v-btn>
           </div>
           <div class="d-flex flex-wrap ga-6 mt-3 text-body-2">
             <span>待处理 <strong>{{ runtime.eventing.pending }}</strong></span>
