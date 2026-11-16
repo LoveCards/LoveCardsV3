@@ -28,9 +28,9 @@
 
 管理端一级菜单、页面归属和中文名称以 `docs/engineering/ADMIN-NAVIGATION-CONVENTION-2026-11-07.md` 为准；`ADMIN-IA-DESIGN.md` 的旧菜单图仅保留迁移历史。调整导航时须同步页面标题、面包屑和相关 E2E 断言。
 
-管理端工作台、列表、详情和配置页的宽度、区块顺序与桌面/窄屏布局在本分支待人工审查；合并后以 `docs/engineering/ADMIN-LAYOUT-SYSTEM.md` 为准；新增页面须先选页面骨架，再组合 Vuetify 组件。
+管理端工作台、列表、详情和配置页的宽度、区块顺序与桌面/窄屏布局以 `docs/engineering/ADMIN-LAYOUT-SYSTEM.md` 为准；新增页面须先选页面骨架，再组合 Vuetify 组件。
 
-事件 Handler 的队列分类、执行模式、事务发布和新增队列审查在本分支待人工审查；合并后以 `docs/engineering/EVENT-QUEUE-GOVERNANCE.md` 为准；新增模块必须在自身 `Public/EventHandlers.php` 显式装配，不能使用未登记的 `queue_name`。
+事件 Handler 的队列分类、执行模式、事务发布和新增队列审查以 `docs/engineering/EVENT-QUEUE-GOVERNANCE.md` 为准；新增模块必须在自身 `Public/EventHandlers.php` 显式装配，不能使用未登记的 `queue_name`。
 
 禁止使用 `file:` 或 `../` 跨 workspace 建立隐式依赖。跨模块关系必须通过包名、HTTP 契约或根脚本表达。
 

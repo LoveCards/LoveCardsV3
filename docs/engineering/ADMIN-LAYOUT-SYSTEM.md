@@ -1,6 +1,6 @@
 # 管理端页面布局规范
 
-> 状态：本分支待人工审查；合并后适用于 `apps/admin` 的规范路由；菜单名称和归属仍以 `ADMIN-NAVIGATION-CONVENTION-2026-11-07.md` 为准，颜色与原生组件规则仍以 `ADMIN-UI-STYLE-LOCK.md` 为准。
+> 适用范围：`apps/admin` 的规范路由；菜单名称和归属仍以 `ADMIN-NAVIGATION-CONVENTION-2026-11-07.md` 为准，颜色与原生组件规则仍以 `ADMIN-UI-STYLE-LOCK.md` 为准。
 
 ## 目标
 

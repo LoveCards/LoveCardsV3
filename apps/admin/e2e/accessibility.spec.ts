@@ -79,6 +79,8 @@ test('workbench uses a main column and a secondary column on desktop, then stack
     const tasks = document.querySelector('.workbench-tasks')?.getBoundingClientRect()
     const responsibility = document.querySelector('.workbench-responsibility')?.getBoundingClientRect()
     return Boolean(tasks && responsibility
+      && tasks.width > 0 && tasks.height > 0
+      && responsibility.width > 0 && responsibility.height > 0
       && Math.abs(tasks.x - responsibility.x) <= 1
       && responsibility.y > tasks.y)
   })).toBe(true)

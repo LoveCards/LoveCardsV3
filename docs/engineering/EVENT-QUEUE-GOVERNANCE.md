@@ -1,6 +1,6 @@
 # 事件队列接入与治理规范
 
-> 状态：本分支待人工审查；合并后适用于 `apps/backend` 的所有 Event Handler；事件业务边界仍以 [事件总线、任务与投递](EVENTING.md) 为准。
+> 适用范围：`apps/backend` 的所有 Event Handler；事件业务边界仍以 [事件总线、任务与投递](EVENTING.md) 为准。
 
 ## 目的
 
