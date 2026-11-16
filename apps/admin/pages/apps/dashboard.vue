@@ -405,6 +405,7 @@ onMounted(async () => {
 .workbench-layout__main,
 .workbench-layout__aside {
   display: flex;
+  width: 100%;
   min-width: 0;
   flex-direction: column;
   gap: 24px;

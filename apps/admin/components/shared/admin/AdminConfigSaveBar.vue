@@ -13,7 +13,7 @@ defineProps<{ dirty: boolean; label: string }>()
 
 <style scoped>
 .admin-config-save-bar {
-  position: sticky;
+  position: static;
   z-index: 2;
   bottom: 0;
   min-height: 64px;
@@ -22,9 +22,14 @@ defineProps<{ dirty: boolean; label: string }>()
   background: rgb(var(--v-theme-surface));
 }
 
+@media (min-width: 960px) {
+  .admin-config-save-bar {
+    position: sticky;
+  }
+}
+
 @media (max-width: 959.98px) {
   .admin-config-save-bar {
-    position: static;
     padding-inline: 8px;
   }
 }

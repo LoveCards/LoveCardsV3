@@ -97,19 +97,19 @@ test('delivery detail keeps payload private and retries without a manual reason'
   })
 
   await page.goto('./apps/operations/deliveries/77', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('heading', { name: '投递 #77', exact: true, level: 1 })).toBeVisible()
-  await expect(page.getByRole('listbox', { name: '投递摘要' }).getByText('死信', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '处理任务 #77', exact: true, level: 1 })).toBeVisible()
+  await expect(page.getByRole('listbox', { name: '任务摘要' }).getByText('死信', { exact: true })).toBeVisible()
   await expect(page.getByText('recipient projection unavailable')).toBeVisible()
   await expect(page.locator('body')).not.toContainText('this value must never be rendered')
 
-  await page.getByRole('button', { name: '重试投递', exact: true }).click()
+  await page.getByRole('button', { name: '重试任务', exact: true }).click()
   const confirm = page.getByTestId('danger-confirm')
   await expect(confirm).toBeEnabled()
   await confirm.click()
 
   await expect.poll(() => retried).toBe(true)
-  await expect(page.getByRole('listbox', { name: '投递摘要' }).getByText('待处理', { exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: '重试投递', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('listbox', { name: '任务摘要' }).getByText('待处理', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '重试任务', exact: true })).toHaveCount(0)
 })
 
 test('audit detail presents snapshots, trace and no manual reason or contract-external fields', async ({ page }) => {

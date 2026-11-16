@@ -37,7 +37,7 @@ const expectedHeadings: Record<string, string> = {
   '/apps/settings/redis': 'Redis 连接',
   '/apps/settings/storage': '文件存储',
   '/apps/settings/messaging': '站外发送',
-  '/apps/operations/deliveries': '通知投递',
+  '/apps/operations/deliveries': '处理任务',
 }
 
 const legacyAliases = [
