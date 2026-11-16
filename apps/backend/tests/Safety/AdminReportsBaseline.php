@@ -87,8 +87,10 @@ try { $reports->transition(4, 9, 'resolved', null, null, '127.0.0.1'); }
 catch (\app\api\ApiException) { $missingConclusion = true; }
 $assert($missingConclusion, 'closing a report must require a written conclusion');
 $assert($repository->report['status'] === 'reviewing', 'rejected transition must not change the report state');
+$assert($notices->records === [], 'rejected report transition must not notify the reporter');
 $reports->transition(4, 9, 'resolved', 'resolved', '处理完成', '127.0.0.1');
 $assert(count($notices->records) === 1, 'resolved report must issue one moderation notice');
+$assert($notices->records[0]['recipientId'] === 2, 'report outcome notice must target the reporter');
 $assert($notices->records[0]['noticeKey'] === 'safety.report.outcome:4:resolved', 'report outcome notice must use the terminal state key');
 $reports->transition(4, 9, 'resolved', null, 'note only', '127.0.0.1');
 $assert(count($notices->records) === 1, 'same-state report note must not duplicate the outcome notice');

@@ -174,6 +174,9 @@ namespace
     $assert(Users::$row['email'] === 'new@example.com' && Users::$row['security_version'] === 5, 'email change must update contact and security version');
     $assert(count(ProfileSecurityState::$sessions->records) === 1, 'email change must revoke sessions');
     $assert(ProfileSecurityState::$notices->records[0][1] === 'user.email.changed:5', 'email notice must use security version');
+    $assert(ProfileSecurityState::$notices->records[0][0] === 7, 'email notice must target the affected user');
+    $assert(count(ProfileSecurityState::$audit->records) === 1, 'email change must write one audit record');
+    $assert(\think\facade\Db::$commits === 1 && \think\facade\Db::$rollbacks === 0, 'email change effects must commit together');
 
     $reset();
     Captcha::$valid = false;
@@ -181,6 +184,7 @@ namespace
     try { Profile::changeEmail(7, 'current-password', 'new@example.com', 'wrong'); } catch (\app\api\ApiException) { $rejected = true; }
     $assert($rejected, 'invalid email captcha must be rejected');
     $assert(ProfileSecurityState::$notices->records === [] && ProfileSecurityState::$sessions->records === [], 'rejected email change must have no side effects');
+    $assert(ProfileSecurityState::$audit->records === [] && Users::$row['security_version'] === 4, 'rejected email change must not audit or mutate security version');
 
     fwrite(STDOUT, "PASS profile security notification baseline\n");
 
