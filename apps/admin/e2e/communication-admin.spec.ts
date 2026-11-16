@@ -200,11 +200,16 @@ test('runtime validates before review and keeps the draft after a revision confl
   })
 
   await page.goto('./apps/operations/communication', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('button', { name: '刷新' })).toBeEnabled()
   await page.getByRole('button', { name: '修改通信设置' }).click()
   const field = page.getByLabel('通知轮询间隔（秒）')
   await field.fill('21')
-  await page.getByRole('button', { name: '应用变更' }).click()
-  await expect(page.getByText('请检查间隔')).toBeVisible()
+  await expect(field).toHaveValue('21')
+  const apply = page.getByRole('button', { name: '应用变更' })
+  await expect(apply).toBeEnabled()
+  await apply.click()
+  await expect.poll(() => validations).toBe(1)
+  await expect(page.getByText('请检查间隔')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByRole('dialog')).toHaveCount(0)
   expect(writes).toBe(0)
 

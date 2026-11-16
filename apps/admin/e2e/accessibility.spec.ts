@@ -75,12 +75,13 @@ test('workbench uses a main column and a secondary column on desktop, then stack
   expect(desktopTasks!.x + desktopTasks!.width).toBeLessThan(desktopResponsibility!.x)
 
   await page.setViewportSize({ width: 390, height: 844 })
-  const mobileTasks = await tasks.boundingBox()
-  const mobileResponsibility = await responsibility.boundingBox()
-  expect(mobileTasks).not.toBeNull()
-  expect(mobileResponsibility).not.toBeNull()
-  expect(Math.abs(mobileTasks!.x - mobileResponsibility!.x)).toBeLessThanOrEqual(1)
-  expect(mobileResponsibility!.y).toBeGreaterThan(mobileTasks!.y)
+  await expect.poll(() => page.evaluate(() => {
+    const tasks = document.querySelector('.workbench-tasks')?.getBoundingClientRect()
+    const responsibility = document.querySelector('.workbench-responsibility')?.getBoundingClientRect()
+    return Boolean(tasks && responsibility
+      && Math.abs(tasks.x - responsibility.x) <= 1
+      && responsibility.y > tasks.y)
+  })).toBe(true)
 })
 
 test('workbench keeps secondary links concise until expanded', async ({ page }) => {
@@ -116,11 +117,11 @@ test('narrow configuration save action follows the final field', async ({ page }
   await expect(saveBar).toBeAttached()
   for (const width of [390, 640]) {
     await page.setViewportSize({ width, height: 844 })
-    const fieldBox = await lastField.boundingBox()
-    const saveBox = await saveBar.boundingBox()
-    expect(fieldBox).not.toBeNull()
-    expect(saveBox).not.toBeNull()
-    expect(saveBox!.y).toBeGreaterThanOrEqual(fieldBox!.y + fieldBox!.height)
+    await expect.poll(async () => {
+      const field = await lastField.boundingBox()
+      const save = await saveBar.boundingBox()
+      return Boolean(field && save && save.y >= field.y + field.height)
+    }).toBe(true)
   }
 })
 
