@@ -46,6 +46,9 @@
         >
           <v-window v-model="tab">
             <v-window-item value="usages">
+              <v-alert v-if="siteSettingsChanged || settingsChanged" class="mb-4" type="info" variant="tonal">
+                以下状态以最近一次读取或保存的配置为准；未保存的修改尚未生效。
+              </v-alert>
               <AdminConfigSection
                 description="接入说明以当前版本为准；外部发送和第三方验证的连通性不由配置状态推断。"
                 icon="mdi-shield-check-outline"
@@ -54,15 +57,15 @@
                 <v-list bg-color="transparent" density="comfortable">
                   <v-list-item
                     title="新用户注册：邮件验证码"
-                    :subtitle="siteSettings.emailVerify ? mailStatus : '未要求；注册可使用其他账号类型'"
+                    :subtitle="originSiteSettings.emailVerify ? mailStatus : '未要求；注册可使用其他账号类型'"
                   />
                   <v-list-item
                     title="新用户注册：人机验证"
-                    :subtitle="siteSettings.humanVerify ? humanStatus : '未要求'"
+                    :subtitle="originSiteSettings.humanVerify ? humanStatus : '未要求'"
                   />
                   <v-list-item
                     title="卡片创建与编辑：人机验证"
-                    :subtitle="siteSettings.humanVerify ? humanStatus : '未要求；只对写入请求检查'"
+                    :subtitle="originSiteSettings.humanVerify ? humanStatus : '未要求；只对写入请求检查'"
                   />
                   <v-list-item title="修改邮箱：邮件验证码" :subtitle="`始终要求；${mailStatus}`" />
                   <v-list-item title="登录：人机验证" subtitle="当前未接入，不能在这里开启" />
@@ -304,7 +307,8 @@ const canReadSender = computed(() => userStore.hasGrant('sender.read', 'global')
 const settingsChanged = computed(() => JSON.stringify(settings.value) !== JSON.stringify(originSettings.value))
 const siteSettingsChanged = computed(() => JSON.stringify(siteSettings.value) !== JSON.stringify(originSiteSettings.value))
 const mailReady = computed(() => settings.value.code_enabled && settings.value.code_channel === 'smtp')
-const mailStatus = computed(() => mailReady.value
+const savedMailReady = computed(() => originSettings.value.code_enabled && originSettings.value.code_channel === 'smtp')
+const mailStatus = computed(() => savedMailReady.value
   ? '验证码服务已开启并选择邮件渠道；发送渠道配置和外部投递未验证'
   : '邮件验证码条件不满足，可能无法完成')
 const humanStatus = computed(() => humanReady.value === null

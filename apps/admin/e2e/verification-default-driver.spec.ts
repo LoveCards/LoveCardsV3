@@ -145,5 +145,8 @@ test('verification conflict preserves unsaved requirements', async ({ page }) =>
   await expect(page.getByText('配置已被其他管理员修改。当前编辑已保留，请重新加载并核对后再保存。')).toBeVisible()
   await expect(select).toContainText('开启')
   await expect(page.getByRole('button', { name: '保存站点验证要求' })).toBeEnabled()
+  await page.getByRole('tab', { name: '使用场景' }).click()
+  await expect(page.getByText('以下状态以最近一次读取或保存的配置为准；未保存的修改尚未生效。')).toBeVisible()
+  await expect(page.locator('.v-list-item').filter({ hasText: '新用户注册：邮件验证码' })).toContainText('未要求')
   expect(writes).toBe(1)
 })
