@@ -2,7 +2,7 @@
   <AdminPageContainer>
     <AdminPageHeader
       title="站外发送"
-      description="管理通知使用的发信渠道。密钥仅在详情页编辑，扫描和默认渠道切换均由服务端校验权限。"
+      description="管理验证码使用的站外发送渠道。当前站内通知由事件处理，不经这里发送。"
       :breadcrumbs="[{ title: '系统' }]"
     >
       <template #actions>
@@ -25,6 +25,11 @@
     </v-alert>
     <v-alert v-if="actionMessage" class="mb-4" :type="actionMessage.type" variant="tonal">
       {{ actionMessage.text }}
+    </v-alert>
+
+    <v-alert class="mb-4" type="info" variant="tonal">
+      当前接入：注册和修改邮箱的验证码经验证服务调用这里的渠道。渠道配置和默认选择不代表外部投递成功；发送测试会真实发送测试码，结果只代表本次测试。
+      <NuxtLink to="/apps/settings/verification">查看验证中心</NuxtLink>
     </v-alert>
 
     <AdminAsyncState

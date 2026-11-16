@@ -289,11 +289,11 @@ const systemConfigItems = [
     path: '/apps/settings/verification',
     canonicalPath: '/apps/settings/verification',
     legacyAliases: ['/apps/captcha/config'],
-    title: '验证服务',
-    searchAliases: ['验证配置', '验证码服务'],
+    title: '验证中心',
+    searchAliases: ['验证配置', '验证码服务', '验证服务'],
     icon: 'mdi-shield-check-outline',
     domain: 'system',
-    section: '验证服务',
+    section: '验证中心',
     parentRoute: '/apps/settings/verification',
     grants: [
       { capability: 'captcha.read', scope: 'global' },
@@ -511,7 +511,7 @@ const routeGrantOverrides: readonly AdminNavigationItem[] = [
     legacyAliases: ['/apps/captcha/config/:slug'],
     title: '验证器详情',
     domain: 'system',
-    section: '验证服务',
+    section: '验证中心',
     parentRoute: '/apps/settings/verification',
     grants: [
       { capability: 'captcha.read', scope: 'global' },

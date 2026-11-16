@@ -27,6 +27,10 @@
       {{ actionMessage.text }}
     </v-alert>
 
+    <v-alert class="mb-4" type="info" variant="tonal">
+      当前上传用途：卡片、评论、头像、资料封面和直传。头像与资料封面使用头像类限额，其余使用内容类限额；实际可上传范围还受渠道和厂商限制。已配置不代表外部存储连通，连接测试只代表本次结果。
+    </v-alert>
+
     <div>
       <v-tabs v-model="tab" color="primary">
         <v-tab prepend-icon="mdi-cloud-outline" value="channels">渠道管理</v-tab>
