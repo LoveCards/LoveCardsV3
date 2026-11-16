@@ -41,7 +41,8 @@ test('keyboard users can skip directly to the main content', async ({ page }) =>
   await expect(page.locator('#admin-main-content')).toBeFocused()
 })
 
-test('workbench sections follow the same visual and document order', async ({ page }) => {
+test('workbench sections keep their reading order on a narrow screen', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('./apps/dashboard', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '我的待办' })).toBeVisible()
 
@@ -58,6 +59,69 @@ test('workbench sections follow the same visual and document order', async ({ pa
     expect(ids.indexOf('responsibility-title')).toBeLessThan(ids.indexOf('notifications-title'))
   }
   expect(sections.map((section) => section.top)).toEqual([...sections.map((section) => section.top)].sort((a, b) => a - b))
+})
+
+test('workbench uses a main column and a secondary column on desktop, then stacks on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('./apps/dashboard', { waitUntil: 'domcontentloaded' })
+  const tasks = page.locator('.workbench-tasks')
+  const responsibility = page.locator('.workbench-responsibility')
+  await expect(tasks).toBeVisible()
+  await expect(responsibility).toBeVisible()
+  const desktopTasks = await tasks.boundingBox()
+  const desktopResponsibility = await responsibility.boundingBox()
+  expect(desktopTasks).not.toBeNull()
+  expect(desktopResponsibility).not.toBeNull()
+  expect(desktopTasks!.x + desktopTasks!.width).toBeLessThan(desktopResponsibility!.x)
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  const mobileTasks = await tasks.boundingBox()
+  const mobileResponsibility = await responsibility.boundingBox()
+  expect(mobileTasks).not.toBeNull()
+  expect(mobileResponsibility).not.toBeNull()
+  expect(Math.abs(mobileTasks!.x - mobileResponsibility!.x)).toBeLessThanOrEqual(1)
+  expect(mobileResponsibility!.y).toBeGreaterThan(mobileTasks!.y)
+})
+
+test('workbench keeps secondary links concise until expanded', async ({ page }) => {
+  await page.goto('./apps/dashboard', { waitUntil: 'domcontentloaded' })
+  const responsibility = page.locator('.workbench-responsibility')
+  const expand = responsibility.getByRole('button', { name: /展开其余 .* 个入口/ })
+  await expect(expand).toBeVisible()
+  await expect(responsibility.locator('.v-list-item')).toHaveCount(3)
+  await expand.click()
+  await expect(responsibility.locator('.v-list-item')).not.toHaveCount(3)
+  await expect(responsibility.getByRole('button', { name: '收起入口' })).toBeVisible()
+})
+
+test('list and configuration pages keep their own consistent reading widths', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('./apps/content/cards', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '卡片', level: 1 })).toBeVisible()
+  const listWidth = (await page.locator('.admin-page-container').first().boundingBox())?.width
+  expect(listWidth).toBeGreaterThan(1100)
+
+  await page.goto('./apps/settings/site', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('heading', { name: '站点信息', level: 1 })).toBeVisible()
+  const configWidth = (await page.locator('.admin-page-container').first().boundingBox())?.width
+  expect(configWidth).toBeGreaterThan(700)
+  expect(configWidth).toBeLessThanOrEqual(961)
+})
+
+test('narrow configuration save action follows the final field', async ({ page }) => {
+  await page.goto('./apps/settings/site', { waitUntil: 'domcontentloaded' })
+  const lastField = page.getByLabel('版权信息')
+  const saveBar = page.locator('.admin-config-save-bar')
+  await expect(lastField).toBeVisible()
+  await expect(saveBar).toBeAttached()
+  for (const width of [390, 640]) {
+    await page.setViewportSize({ width, height: 844 })
+    const fieldBox = await lastField.boundingBox()
+    const saveBox = await saveBar.boundingBox()
+    expect(fieldBox).not.toBeNull()
+    expect(saveBox).not.toBeNull()
+    expect(saveBox!.y).toBeGreaterThanOrEqual(fieldBox!.y + fieldBox!.height)
+  }
 })
 
 test('reduced-motion preference disables non-essential admin transitions', async ({ page }) => {

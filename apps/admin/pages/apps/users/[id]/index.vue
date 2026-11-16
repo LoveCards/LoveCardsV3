@@ -1,5 +1,5 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="1040">
     <AdminPageHeader
       :title="user ? `用户 · ${user.username}` : `用户 #${route.params.id}`"
       description="查看账号身份、状态与角色归属；安全会话和恢复能力保持在独立的受限页面。"
@@ -34,7 +34,7 @@
       @retry="load"
     >
       <template v-if="user">
-        <v-sheet border rounded="lg" overflow-hidden>
+        <AdminDetailSection title="账号概况">
           <v-list lines="two">
             <v-list-item>
               <template #prepend>
@@ -58,11 +58,9 @@
               <AdminSensitiveField label="手机号" :value="user.phone" />
             </v-list-item>
           </v-list>
-        </v-sheet>
+        </AdminDetailSection>
 
-        <section class="mt-8" aria-labelledby="user-roles-title">
-          <h2 id="user-roles-title" class="mb-3 text-h6">角色归属</h2>
-          <v-sheet border class="pa-4" rounded="lg">
+        <AdminDetailSection title="角色归属" class="mt-5">
             <div v-if="roleLabels.length" class="d-flex flex-wrap ga-2">
               <v-chip
                 v-for="role in roleLabels"
@@ -81,8 +79,7 @@
               title="未分配角色"
               text="该账号当前没有显式角色归属。"
             />
-          </v-sheet>
-        </section>
+        </AdminDetailSection>
 
         <v-alert
           class="mt-6"
@@ -101,6 +98,7 @@
 import type { User } from '@lovecards/sdk'
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
+import AdminDetailSection from '~/components/shared/admin/AdminDetailSection.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminSensitiveField from '~/components/shared/admin/AdminSensitiveField.vue'

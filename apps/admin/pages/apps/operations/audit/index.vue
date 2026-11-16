@@ -1,5 +1,5 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer fluid>
     <AdminPageHeader title="审计日志" description="按动作、操作者、资源和时间核对操作记录。" :breadcrumbs="[{ title: '系统' }]">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn></template>
     </AdminPageHeader>

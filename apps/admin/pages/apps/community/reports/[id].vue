@@ -1,5 +1,5 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="1040">
     <AdminPageHeader :title="`举报 #${route.params.id}`" description="仅展示处理举报所需的上下文，不开放任意浏览私密内容。" :breadcrumbs="breadcrumbs">
       <template #actions>
         <AdminActionGuard v-if="report && canTransition" capability="reports.manage">
@@ -12,7 +12,7 @@
     </AdminPageHeader>
     <AdminAsyncState :loading="loading" :error="error" :empty="!report" @retry="load">
       <template v-if="report">
-        <v-sheet border rounded="lg" class="pa-5">
+        <AdminDetailSection title="举报概况">
           <div class="d-flex flex-wrap justify-space-between ga-3 mb-5">
             <div><div class="text-caption text-medium-emphasis">当前状态</div><AdminStatusChip :status="report.status" class="mt-1" /></div>
             <AdminResourceLink :resource-type="report.target_type" :resource-id="report.target_id" />
@@ -31,9 +31,8 @@
             <v-col cols="12"><strong>补充说明</strong><p class="mb-0 mt-1 text-pre-wrap">{{ report.details || '无' }}</p></v-col>
             <v-col v-if="report.resolution" cols="12"><strong>处理结论</strong><p class="mb-0 mt-1">{{ report.resolution }}</p></v-col>
           </v-row>
-        </v-sheet>
-        <v-sheet v-if="evidence" border rounded="lg" class="pa-5 mt-5">
-          <div class="text-h6 mb-3">举报证据（提交时快照）</div>
+        </AdminDetailSection>
+        <AdminDetailSection v-if="evidence" title="举报证据（提交时快照）" class="mt-5">
           <v-alert class="mb-4" type="info" variant="tonal">证据取自举报提交时刻，正文按前 2000 字留存；哈希对应全文，原文后续被修改或删除不影响验证。</v-alert>
           <v-row>
             <v-col v-for="field in evidenceFields" :key="field.label" cols="12" :md="field.wide ? 12 : 4">
@@ -46,10 +45,10 @@
             <div v-if="evidenceTruncated" class="mt-1 text-caption text-medium-emphasis">内容超长，仅留存前 2000 字。</div>
           </template>
           <div v-if="evidenceSha" class="mt-3 text-caption text-medium-emphasis">内容哈希（sha256）：{{ evidenceSha }}</div>
-        </v-sheet>
-        <v-sheet border rounded="lg" class="pa-5 mt-5">
+        </AdminDetailSection>
+        <AdminDetailSection title="处理记录" class="mt-5">
           <AdminAuditTrail :items="auditItems" />
-        </v-sheet>
+        </AdminDetailSection>
       </template>
     </AdminAsyncState>
 
@@ -83,6 +82,7 @@
 import type { AdminReport, AdminReportEvent, AdminReportEvidence } from '@lovecards/sdk'
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
+import AdminDetailSection from '~/components/shared/admin/AdminDetailSection.vue'
 import AdminAuditTrail from '~/components/shared/admin/AdminAuditTrail.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'

@@ -1,5 +1,5 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="1040">
     <AdminPageHeader :title="security ? `账号安全 · ${security.user.username}` : '账号安全'" description="查看账号安全版本与 Session，并执行最小范围的撤销。" :breadcrumbs="breadcrumbs">
       <template #actions>
         <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn>

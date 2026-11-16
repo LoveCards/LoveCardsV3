@@ -1,5 +1,5 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="960">
     <AdminPageHeader
       :title="configTheme.id ? `主题配置 · ${configTheme.id}` : '主题配置'"
       description="按当前主题提供的配置定义调整外观。保存后将影响所有访问该主题的用户。"
@@ -83,7 +83,7 @@
               </v-col>
             </v-row>
             <v-divider class="mb-4" />
-            <AdminConfigSaveBar :dirty="configChanged" label="主题配置">
+            <AdminConfigSaveBar v-if="canUpdateTheme" :dirty="configChanged" label="主题配置">
               <AdminActionGuard capability="theme.update" scope="global">
                 <v-btn
                   color="primary"

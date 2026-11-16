@@ -1,5 +1,5 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="960">
     <AdminPageHeader
       title="Redis 连接"
       description="管理系统共用的 Redis 连接。默认关闭；实时主动更新启用前会检查连接和常驻服务。"
@@ -61,7 +61,7 @@
         <v-alert v-if="secretAction === 'clear'" type="warning" variant="tonal">保存后将移除 Redis 认证密码。</v-alert>
       </AdminConfigSection>
 
-      <AdminConfigSaveBar class="my-5" :dirty="dirty" label="Redis 配置">
+      <AdminConfigSaveBar v-if="canShowActions" class="my-5" :dirty="dirty" label="Redis 配置">
         <AdminActionGuard capability="operations.runtime.configure">
           <v-btn variant="outlined" prepend-icon="mdi-connection" :loading="testing" :disabled="dirty || testing" @click="testConnection">测试当前连接</v-btn>
         </AdminActionGuard>
@@ -109,6 +109,7 @@ const passwordConfigured = ref(false)
 const secretAction = ref<'keep' | 'replace' | 'clear'>('keep')
 const replacementPassword = ref('')
 const canEdit = computed(() => userStore.hasGrant('config.update', 'global') && userStore.hasGrant('operations.runtime.configure', 'global'))
+const canShowActions = computed(() => userStore.hasGrant('operations.runtime.configure', 'global'))
 const dirty = computed(() => JSON.stringify(form) !== JSON.stringify(original.value) || secretAction.value !== 'keep')
 const { unsavedChangesDialog, continueEditing, discardChanges } = useAdminUnsavedChanges(dirty)
 

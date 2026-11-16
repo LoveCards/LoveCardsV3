@@ -1,5 +1,5 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="1040">
     <AdminPageHeader title="系统升级" description="上传已签名的升级包，并查看升级进度。" :breadcrumbs="[{ title: '系统' }]">
       <template #actions>
         <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn>

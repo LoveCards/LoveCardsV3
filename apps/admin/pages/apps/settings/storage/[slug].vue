@@ -1,13 +1,11 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="960">
     <AdminPageHeader
       :title="`${channelName} 配置`"
       description="编辑存储渠道参数。保存后可使用服务端已保存的配置测试连接。"
       :breadcrumbs="[{ title: '系统' }, { title: '文件存储', to: '/apps/settings/storage' }, { title: channelName }]"
     />
 
-    <v-row>
-      <v-col cols="12" lg="8">
         <AdminConfigSection
           title="渠道参数"
           description="连接测试只读取已保存配置；密钥字段留空表示保留服务端现值。"
@@ -93,7 +91,7 @@
                   </v-col>
                 </v-row>
                 <v-divider class="mb-4" />
-                <AdminConfigSaveBar :dirty="configChanged" label="渠道配置">
+                <AdminConfigSaveBar v-if="canUpdateConfig || canTestStorage" :dirty="configChanged" label="渠道配置">
                   <AdminActionGuard capability="storage.test" scope="global">
                     <v-btn
                       color="primary"
@@ -127,8 +125,6 @@
               </v-form>
             </AdminAsyncState>
         </AdminConfigSection>
-      </v-col>
-    </v-row>
     <AdminUnsavedChangesDialog
       :model-value="unsavedChangesDialog"
       @stay="continueEditing"
