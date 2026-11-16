@@ -2,6 +2,26 @@
   <v-app>
     <v-app-bar border="b" color="surface" elevation="0">
       <v-app-bar-title>LoveCards Admin</v-app-bar-title>
+      <v-menu location="bottom end">
+        <template #activator="{ props }">
+          <v-btn
+            v-bind="props"
+            prepend-icon="mdi-theme-light-dark"
+            variant="text"
+            :aria-label="`界面主题：${preferenceLabel}`"
+          >{{ preferenceLabel }}</v-btn>
+        </template>
+        <v-list density="compact" nav min-width="180">
+          <v-list-item
+            v-for="option in adminThemeOptions"
+            :key="option.value"
+            :active="preference === option.value"
+            :prepend-icon="option.icon"
+            :title="option.label"
+            @click="setPreference(option.value)"
+          />
+        </v-list>
+      </v-menu>
     </v-app-bar>
 
     <v-main>
@@ -41,10 +61,12 @@
 import { useApi, isApiError } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import { firstAccessibleAdminPath } from '~/utils/access'
+import { adminThemeOptions } from '~/composables/useAdminTheme'
 
 definePageMeta({ layout: false })
 
 const client = useApi()
+const { preference, preferenceLabel, setPreference } = useAdminTheme()
 const userStore = useUserStore()
 const account = ref('')
 const password = ref('')

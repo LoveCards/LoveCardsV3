@@ -148,6 +148,29 @@ export default defineNuxtConfig({
                             success: "#43A047",
                             warning: "#FF9800",
                         }
+                    },
+                    indigoDarkTheme: {
+                        dark: true,
+                        colors: {
+                            background: "#111827",
+                            surface: "#1B2433",
+                            "surface-variant": "#273244",
+                            "on-background": "#F3F4F6",
+                            "on-surface": "#F3F4F6",
+                            "on-surface-variant": "#B8C4D5",
+                            outline: "#46536A",
+                            primary: "#A8B9FF",
+                            "primary-darken-1": "#C1CCFF",
+                            "primary-container": "#303A61",
+                            "on-primary": "#111827",
+                            "on-primary-container": "#E5E9FF",
+                            secondary: "#F7C66F",
+                            accent: "#A8B9FF",
+                            error: "#FF9B97",
+                            info: "#8BCBFB",
+                            success: "#82D6A0",
+                            warning: "#F7C66F",
+                        }
                     }
                 }
             }

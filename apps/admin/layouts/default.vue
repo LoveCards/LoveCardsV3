@@ -136,6 +136,26 @@
           </v-list>
           <v-divider />
           <v-list density="compact" nav>
+            <v-menu location="start" :close-on-content-click="false">
+              <template #activator="{ props: themeMenuProps }">
+                <v-list-item
+                  v-bind="themeMenuProps"
+                  prepend-icon="mdi-theme-light-dark"
+                  title="界面主题"
+                  :subtitle="preferenceLabel"
+                />
+              </template>
+              <v-list density="compact" nav min-width="180">
+                <v-list-item
+                  v-for="option in themeOptions"
+                  :key="option.value"
+                  :active="preference === option.value"
+                  :prepend-icon="option.icon"
+                  :title="option.label"
+                  @click="setPreference(option.value)"
+                />
+              </v-list>
+            </v-menu>
             <v-list-item
               prepend-icon="mdi-shield-account-outline"
               title="当前角色"
@@ -267,6 +287,7 @@
 
 <script setup lang="ts">
 import { mergeProps } from 'vue'
+import { adminThemeOptions } from '~/composables/useAdminTheme'
 import NotificationNotifier from '~/components/shared/NotificationNotifier.vue'
 import { useUserStore } from '~/stores/userStore'
 import { useApi } from '~/lib/api'
@@ -279,6 +300,7 @@ import type { AdminNavigationItem } from '~/config/navigation'
 import type { User } from '@lovecards/sdk'
 
 const theme = useTheme()
+const { preference, preferenceLabel, setPreference } = useAdminTheme()
 const { mdAndDown, smAndDown } = useDisplay()
 const route = useRoute()
 const userStore = useUserStore()
@@ -291,6 +313,7 @@ const searchOpen = ref(false)
 const searchInput = ref<{ focus: () => void } | null>(null)
 const searchQuery = ref('')
 const currentYear = new Date().getFullYear()
+const themeOptions = adminThemeOptions
 
 const userInfo = computed(() => userStore.userInfo ?? ({
   username: '',
