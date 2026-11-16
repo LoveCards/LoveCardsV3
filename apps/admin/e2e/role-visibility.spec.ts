@@ -39,7 +39,7 @@ const roleCases: RoleCase[] = [
     name: '站点编辑',
     grants: [...common, globalGrant('config.read'), globalGrant('config.update')],
     visible: ['站点信息', '站点策略'],
-    hidden: ['验证服务', '事件管理'],
+    hidden: ['验证中心', '事件管理'],
   },
   {
     slug: 'content_operator',
@@ -81,7 +81,7 @@ const roleCases: RoleCase[] = [
     name: '通知只读员',
     grants: [...common, globalGrant('communications.read')],
     visible: ['站点策略', '事件管理'],
-    hidden: ['站点信息', '前端通信', '验证服务'],
+    hidden: ['站点信息', '前端通信', '验证中心'],
   },
   {
     slug: 'auditor',

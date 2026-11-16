@@ -2,12 +2,12 @@
   <AdminPageContainer :max-width="960">
     <AdminPageHeader
       title="站点策略"
-      description="集中管理访问要求、内容发布规则、站内提醒和主动更新。各项设置分别读取和保存。"
+      description="集中管理访客访问、内容发布规则、站内提醒和主动更新。验证要求在验证中心修改。"
       :breadcrumbs="[{ title: '站点' }]"
     />
 
     <v-tabs v-model="tab" color="primary" class="mb-4" density="comfortable">
-      <v-tab v-if="canAccessTab('access')" prepend-icon="mdi-account-check-outline" value="access">访问与验证<span v-if="dirtyTabs.access" class="ml-2">· 未保存</span></v-tab>
+      <v-tab v-if="canAccessTab('access')" prepend-icon="mdi-account-check-outline" value="access">访问设置<span v-if="dirtyTabs.access" class="ml-2">· 未保存</span></v-tab>
       <v-tab v-if="canAccessTab('content')" prepend-icon="mdi-shield-check-outline" value="content">内容规则<span v-if="dirtyTabs.content" class="ml-2">· 未保存</span></v-tab>
       <v-tab v-if="canAccessTab('notifications')" prepend-icon="mdi-bell-cog-outline" value="notifications">通知策略<span v-if="dirtyTabs.notifications" class="ml-2">· 未保存</span></v-tab>
     </v-tabs>
@@ -52,7 +52,7 @@ const ready = ref(false)
 
 const canAccessTab = (candidate: SitePolicyTab): boolean => {
   if (candidate === 'access') {
-    return userStore.hasGrant('config.read', 'global') && userStore.hasGrant('captcha.read', 'global')
+    return userStore.hasGrant('config.read', 'global')
   }
   if (candidate === 'content') return userStore.hasGrant('config.read', 'global')
   return userStore.hasGrant('communications.read', 'global')

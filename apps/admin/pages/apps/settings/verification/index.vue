@@ -1,8 +1,8 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="960">
     <AdminPageHeader
-      title="验证服务"
-      description="管理验证码发送服务、发送渠道和人机验证驱动。站点验证要求在访问与验证中设置。"
+      title="验证中心"
+      description="查看哪些操作使用验证，并在这里管理验证要求、服务和驱动。"
       :breadcrumbs="[{ title: '系统' }]"
     >
       <template #actions>
@@ -29,6 +29,8 @@
 
     <div>
       <v-tabs v-model="tab" color="primary">
+        <v-tab prepend-icon="mdi-shield-check-outline" value="usages">使用场景</v-tab>
+        <v-tab prepend-icon="mdi-account-check-outline" value="requirements">验证要求</v-tab>
         <v-tab prepend-icon="mdi-puzzle-outline" value="drivers">驱动管理</v-tab>
         <v-tab prepend-icon="mdi-tune-variant" value="settings">服务设置</v-tab>
       </v-tabs>
@@ -43,6 +45,90 @@
           @retry="loadPage"
         >
           <v-window v-model="tab">
+            <v-window-item value="usages">
+              <AdminConfigSection
+                description="接入说明以当前版本为准；外部发送和第三方验证的连通性不由配置状态推断。"
+                icon="mdi-shield-check-outline"
+                title="验证使用场景"
+              >
+                <v-list bg-color="transparent" density="comfortable">
+                  <v-list-item
+                    title="新用户注册：邮件验证码"
+                    :subtitle="siteSettings.emailVerify ? mailStatus : '未要求；注册可使用其他账号类型'"
+                  />
+                  <v-list-item
+                    title="新用户注册：人机验证"
+                    :subtitle="siteSettings.humanVerify ? humanStatus : '未要求'"
+                  />
+                  <v-list-item
+                    title="卡片创建与编辑：人机验证"
+                    :subtitle="siteSettings.humanVerify ? humanStatus : '未要求；只对写入请求检查'"
+                  />
+                  <v-list-item title="修改邮箱：邮件验证码" :subtitle="`始终要求；${mailStatus}`" />
+                  <v-list-item title="登录：人机验证" subtitle="当前未接入，不能在这里开启" />
+                </v-list>
+              </AdminConfigSection>
+            </v-window-item>
+
+            <v-window-item value="requirements">
+              <AdminConfigSection
+                :dirty="siteSettingsChanged"
+                description="注册要求与卡片写入的人机验证在这里统一修改；修改邮箱始终要求邮件验证码。"
+                icon="mdi-account-check-outline"
+                title="站点验证要求"
+              >
+                <v-alert v-if="siteMessage" class="mb-4" :type="siteMessage.type" variant="tonal">
+                  {{ siteMessage.text }}
+                </v-alert>
+                <v-alert v-if="siteDependencyWarning" class="mb-4" type="warning" variant="tonal">
+                  {{ siteDependencyWarning }}
+                </v-alert>
+                <v-row dense>
+                  <v-col cols="12" sm="6">
+                    <v-select
+                      v-model="siteSettings.emailVerify"
+                      :disabled="!canUpdateConfig || siteSaving"
+                      density="comfortable"
+                      item-title="title"
+                      item-value="value"
+                      :items="switchItems"
+                      label="注册邮件验证"
+                      variant="outlined"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-select
+                      v-model="siteSettings.humanVerify"
+                      :disabled="!canUpdateConfig || siteSaving"
+                      density="comfortable"
+                      item-title="title"
+                      item-value="value"
+                      :items="switchItems"
+                      label="注册与卡片写入的人机验证"
+                      variant="outlined"
+                    />
+                  </v-col>
+                </v-row>
+                <p class="text-body-2 text-medium-emphasis">
+                  登录尚未接入人机验证。关闭验证码服务或切换为短信渠道，会使需要邮件验证码的操作无法完成。
+                </p>
+              </AdminConfigSection>
+              <AdminConfigSaveBar v-if="canUpdateConfig" class="mt-4" :dirty="siteSettingsChanged" label="站点验证要求">
+                <AdminActionGuard capability="config.update" scope="global">
+                  <v-btn
+                    color="primary"
+                    :disabled="!siteSettingsChanged || siteEnableBlocked || settingsChanged"
+                    :loading="siteSaving"
+                    prepend-icon="mdi-content-save-outline"
+                    variant="flat"
+                    @click="saveSiteSettings"
+                  >
+                    保存站点验证要求
+                  </v-btn>
+                </AdminActionGuard>
+              </AdminConfigSaveBar>
+            </v-window-item>
+
             <v-window-item value="drivers">
               <AdminAsyncState
                 :empty="driverGroups.length === 0"
@@ -142,7 +228,8 @@
                       </v-col>
                     </v-row>
                     <p class="mt-2 text-body-2 text-medium-emphasis">
-                      站点是否要求注册邮件验证或人机验证，请到 <NuxtLink to="/apps/settings/access">访问与验证</NuxtLink> 设置。
+                      邮件验证码用于注册及修改邮箱。关闭服务或改为短信渠道时，这些流程可能无法完成；配置存在不代表邮件投递成功。
+                      <NuxtLink v-if="canReadSender" to="/apps/settings/messaging">查看站外发送</NuxtLink>
                     </p>
                     <v-divider class="mb-4" />
                     <div class="d-flex justify-end">
@@ -171,11 +258,13 @@
 </template>
 
 <script setup lang="ts">
-import type { CaptchaDriver } from '@lovecards/sdk'
+import type { CaptchaDriver, JsonObject } from '@lovecards/sdk'
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
+import AdminConfigSaveBar from '~/components/shared/admin/AdminConfigSaveBar.vue'
+import AdminConfigSection from '~/components/shared/admin/AdminConfigSection.vue'
 import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import CommonUtils from '~/utils/common'
@@ -192,7 +281,7 @@ const client = useApi()
 const configSnapshot = useConfigSnapshot(client)
 const router = useRouter()
 const userStore = useUserStore()
-const tab = ref('drivers')
+const tab = ref('usages')
 const loading = ref(false)
 const loadError = ref('')
 const scanning = ref(false)
@@ -201,12 +290,36 @@ const actionMessage = ref<Feedback | null>(null)
 const changingDefault = ref('')
 const settingsSaving = ref(false)
 const settingsMessage = ref<Feedback | null>(null)
+const siteSaving = ref(false)
+const siteMessage = ref<Feedback | null>(null)
 const driverGroups = shallowRef<DriverGroup[]>([])
 const settings = ref({ code_enabled: true, code_channel: 'smtp' })
 const originSettings = ref(CommonUtils.deepClone(settings.value))
+const siteSettings = ref({ emailVerify: false, humanVerify: false })
+const originSiteSettings = ref(CommonUtils.deepClone(siteSettings.value))
+const humanReady = ref<boolean | null>(null)
 const canUpdateConfig = computed(() => userStore.hasGrant('config.update', 'global'))
 const canInstallCaptcha = computed(() => userStore.hasGrant('captcha.install', 'global'))
+const canReadSender = computed(() => userStore.hasGrant('sender.read', 'global'))
 const settingsChanged = computed(() => JSON.stringify(settings.value) !== JSON.stringify(originSettings.value))
+const siteSettingsChanged = computed(() => JSON.stringify(siteSettings.value) !== JSON.stringify(originSiteSettings.value))
+const mailReady = computed(() => settings.value.code_enabled && settings.value.code_channel === 'smtp')
+const mailStatus = computed(() => mailReady.value
+  ? '验证码服务已开启并选择邮件渠道；发送渠道配置和外部投递未验证'
+  : '邮件验证码条件不满足，可能无法完成')
+const humanStatus = computed(() => humanReady.value === null
+  ? '驱动状态未知，不能确认是否可用'
+  : humanReady.value ? '本地驱动已就绪；第三方连通未验证' : '驱动未就绪，当前无法完成验证')
+const siteEnableBlocked = computed(() => (
+  (siteSettings.value.emailVerify && !originSiteSettings.value.emailVerify && !mailReady.value)
+  || (siteSettings.value.humanVerify && !originSiteSettings.value.humanVerify && humanReady.value !== true)
+))
+const siteDependencyWarning = computed(() => {
+  if (settingsChanged.value && siteSettingsChanged.value) return '请先保存服务设置，再保存站点验证要求。'
+  if (siteSettings.value.emailVerify && !mailReady.value) return '注册邮件验证需要启用验证码服务并选择邮件渠道。'
+  if (siteSettings.value.humanVerify && humanReady.value !== true) return '人机验证驱动尚未确认就绪。'
+  return ''
+})
 const switchItems = [{ title: '开启', value: true }, { title: '关闭', value: false }]
 const channelItems = [{ title: '邮箱（SMTP）', value: 'smtp' }, { title: '短信（SMS）', value: 'sms' }]
 const groupTitle = (type: string) => type === 'code' ? '验证码' : type === 'captcha' ? '人机验证' : type
@@ -217,6 +330,7 @@ const loadPage = async () => {
   loadError.value = ''
   try {
     const [drivers, rawConfig] = await Promise.all([client.captcha.drivers(), configSnapshot.list()])
+    if (!rawConfig.captcha || !rawConfig.user) throw new Error('验证配置缺失')
     const captchaConfig = readObject(rawConfig.captcha)
     const groups: Record<string, CaptchaDriver[]> = {}
     for (const driver of drivers) {
@@ -234,6 +348,18 @@ const loadPage = async () => {
       code_channel: readString(captchaConfig.code_channel, 'smtp'),
     }
     originSettings.value = CommonUtils.deepClone(settings.value)
+    siteSettings.value = {
+      emailVerify: readBoolean(readObject(rawConfig.user).captcha),
+      humanVerify: readBoolean(captchaConfig.captcha_enabled),
+    }
+    originSiteSettings.value = CommonUtils.deepClone(siteSettings.value)
+    humanReady.value = null
+    try {
+      const status = await client.captcha.config()
+      humanReady.value = readBoolean(status.human_ready)
+    } catch {
+      // 状态未知时不根据配置推断驱动健康。
+    }
   } catch (cause) {
     loadError.value = errorMessage(cause, '无法加载验证驱动和配置，请稍后重试。')
   } finally {
@@ -279,6 +405,25 @@ const saveSettings = async () => {
     settingsMessage.value = { type: 'error', text: errorMessage(cause, '验证设置保存失败，请稍后重试。') }
   } finally {
     settingsSaving.value = false
+  }
+}
+const saveSiteSettings = async () => {
+  if (!canUpdateConfig.value || !siteSettingsChanged.value || siteEnableBlocked.value || settingsChanged.value || siteSaving.value) return
+  siteSaving.value = true
+  siteMessage.value = null
+  const update: JsonObject = {}
+  if (siteSettings.value.emailVerify !== originSiteSettings.value.emailVerify) update.user = { captcha: siteSettings.value.emailVerify }
+  if (siteSettings.value.humanVerify !== originSiteSettings.value.humanVerify) update.captcha = { captcha_enabled: siteSettings.value.humanVerify }
+  try {
+    const committed = await configSnapshot.update(update)
+    if (committed.user) siteSettings.value.emailVerify = readBoolean(readObject(committed.user).captcha)
+    if (committed.captcha) siteSettings.value.humanVerify = readBoolean(readObject(committed.captcha).captcha_enabled)
+    originSiteSettings.value = CommonUtils.deepClone(siteSettings.value)
+    siteMessage.value = { type: 'success', text: '站点验证要求已保存。' }
+  } catch (cause) {
+    siteMessage.value = { type: 'error', text: errorMessage(cause, '保存站点验证要求失败，请稍后重试。') }
+  } finally {
+    siteSaving.value = false
   }
 }
 const scanDrivers = async () => {

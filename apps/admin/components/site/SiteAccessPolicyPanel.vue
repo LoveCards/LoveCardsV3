@@ -1,6 +1,5 @@
 <template>
   <div class="site-policy-panel">
-
     <AdminAsyncState
       :error="loadError"
       error-title="访问设置加载失败"
@@ -9,86 +8,75 @@
       @retry="loadConfig"
     >
       <v-alert v-if="!canUpdateConfig" class="mb-4" type="info" variant="tonal">
-        当前账号只有查看权限，不能修改访问与验证设置。
+        当前账号只有查看权限，不能修改访问设置。
       </v-alert>
       <v-alert v-if="message" class="mb-4" :type="message.type" variant="tonal">
         {{ message.text }}
       </v-alert>
-      <v-alert v-if="dependencyWarning" class="mb-4" type="warning" variant="tonal">
-        {{ dependencyWarning }}
-        <NuxtLink to="/apps/settings/verification">前往验证服务</NuxtLink>
-      </v-alert>
 
       <AdminConfigSection
         class="mb-4"
-        :dirty="accessChanged"
-        description="访客浏览和注册邮件验证是站点对用户的访问要求。开启注册邮件验证后，注册仅接受邮箱账号。"
+        :dirty="changed"
+        description="访客浏览决定未登录用户能否访问公开内容。"
         icon="mdi-account-key-outline"
-        title="访问与注册"
+        title="访问设置"
       >
-        <v-row dense>
-          <v-col cols="12" sm="6">
-            <v-select
-              v-model="settings.visitorMode"
-              :disabled="!canUpdateConfig || saving"
-              density="comfortable"
-              item-title="title"
-              item-value="value"
-              :items="switchItems"
-              label="访客浏览"
-              variant="outlined"
-            />
-          </v-col>
-          <v-col cols="12" sm="6">
-            <v-select
-              v-model="settings.emailVerify"
-              :disabled="!canUpdateConfig || saving"
-              density="comfortable"
-              hint="开启后，新用户注册必须接收并输入邮件验证码"
-              item-title="title"
-              item-value="value"
-              :items="switchItems"
-              label="注册邮件验证"
-              persistent-hint
-              variant="outlined"
-            />
-          </v-col>
-        </v-row>
+        <v-select
+          v-model="visitorMode"
+          :disabled="!canUpdateConfig || saving"
+          density="comfortable"
+          item-title="title"
+          item-value="value"
+          :items="switchItems"
+          label="访客浏览"
+          variant="outlined"
+        />
       </AdminConfigSection>
 
       <AdminConfigSection
-        :dirty="humanChanged"
-        description="当前接入注册及卡片写入流程；登录尚未接入人机验证。"
+        description="验证要求在验证中心统一修改；这里仅显示当前要求及依赖。"
         icon="mdi-shield-account-outline"
-        title="人机验证"
+        title="验证要求"
       >
-        <v-row dense>
-          <v-col cols="12" sm="6">
-            <v-select
-              v-model="settings.humanVerify"
-              :disabled="!canUpdateConfig || saving"
-              density="comfortable"
-              hint="还需要系统验证服务中的人机验证驱动可用"
-              item-title="title"
-              item-value="value"
-              :items="switchItems"
-              label="启用人机验证"
-              persistent-hint
-              variant="outlined"
+        <v-alert v-if="!canReadCaptcha" type="info" variant="tonal">
+          当前账号无权查看验证设置。
+        </v-alert>
+        <template v-else>
+          <v-alert v-if="summaryError" class="mb-4" type="warning" variant="tonal">
+            {{ summaryError }}
+          </v-alert>
+          <v-list v-if="summary" bg-color="transparent" density="compact">
+            <v-list-item
+              title="注册邮件验证"
+              :subtitle="summary.emailVerify ? '已要求；新用户注册仅接受邮箱账号' : '未要求'"
             />
-          </v-col>
-        </v-row>
-        <p class="mt-2 text-body-2 text-medium-emphasis">
-          当前驱动：{{ service.humanDriver || '未配置' }} · {{ service.humanReady ? '配置已就绪（未检测第三方连通）' : '未就绪' }}
-          · <NuxtLink to="/apps/settings/verification">配置验证服务</NuxtLink>
-        </p>
+            <v-list-item
+              title="注册与卡片写入的人机验证"
+              :subtitle="summary.humanVerify ? '已要求' : '未要求；登录尚未接入人机验证'"
+            />
+            <v-list-item
+              title="修改邮箱"
+              subtitle="始终要求邮件验证码，不能在站点策略中关闭"
+            />
+            <v-list-item
+              title="验证码服务与邮件渠道"
+              :subtitle="summary.codeEnabled && summary.codeChannel === 'smtp' ? '已开启邮件渠道；外部投递未验证' : '邮件验证依赖未就绪，注册或修改邮箱可能无法完成'"
+            />
+            <v-list-item
+              title="人机验证驱动"
+              :subtitle="summary.humanReady === null ? '就绪状态未知' : summary.humanReady ? '本地配置已就绪；未检测第三方连通' : '本地配置未就绪'"
+            />
+          </v-list>
+          <p v-if="!summary" class="text-body-2 text-medium-emphasis">验证设置尚未加载，不能推断当前要求。</p>
+          <NuxtLink to="/apps/settings/verification">前往验证中心</NuxtLink>
+        </template>
       </AdminConfigSection>
 
-      <AdminConfigSaveBar class="mt-4" :dirty="changed" label="访问与验证">
+      <AdminConfigSaveBar v-if="canUpdateConfig" class="mt-4" :dirty="changed" label="访问设置">
         <AdminActionGuard capability="config.update" scope="global">
           <v-btn
             color="primary"
-            :disabled="!changed || Boolean(blockingDependency)"
+            :disabled="!changed"
             :loading="saving"
             prepend-icon="mdi-content-save-outline"
             variant="flat"
@@ -109,7 +97,6 @@
 </template>
 
 <script setup lang="ts">
-import type { JsonObject } from '@lovecards/sdk'
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminConfigSaveBar from '~/components/shared/admin/AdminConfigSaveBar.vue'
@@ -117,19 +104,14 @@ import AdminConfigSection from '~/components/shared/admin/AdminConfigSection.vue
 import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
 import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
-import CommonUtils from '~/utils/common'
 import { readBoolean, readObject, readString } from '~/utils/json'
 
-interface Settings {
-  visitorMode: boolean
+interface VerificationSummary {
   emailVerify: boolean
   humanVerify: boolean
-}
-interface Service {
   codeEnabled: boolean
   codeChannel: string
-  humanDriver: string
-  humanReady: boolean
+  humanReady: boolean | null
 }
 type Feedback = { type: 'success' | 'error'; text: string }
 
@@ -139,83 +121,70 @@ const userStore = useUserStore()
 const props = withDefaults(defineProps<{ active?: boolean }>(), { active: true })
 const emit = defineEmits<{ 'dirty-change': [dirty: boolean] }>()
 const canUpdateConfig = computed(() => userStore.hasGrant('config.update', 'global'))
+const canReadCaptcha = computed(() => userStore.hasGrant('captcha.read', 'global'))
 const loading = ref(false)
-const loaded = ref(false)
 const saving = ref(false)
 const loadError = ref('')
+const summaryError = ref('')
 const message = ref<Feedback | null>(null)
 const switchItems = [{ title: '开启', value: true }, { title: '关闭', value: false }]
-const settings = ref<Settings>({ visitorMode: false, emailVerify: false, humanVerify: false })
-const origin = ref<Settings>(CommonUtils.deepClone(settings.value))
-const service = ref<Service>({ codeEnabled: false, codeChannel: '', humanDriver: '', humanReady: false })
-const accessChanged = computed(() => settings.value.visitorMode !== origin.value.visitorMode || settings.value.emailVerify !== origin.value.emailVerify)
-const humanChanged = computed(() => settings.value.humanVerify !== origin.value.humanVerify)
-const changed = computed(() => accessChanged.value || humanChanged.value)
+const visitorMode = ref(false)
+const originalVisitorMode = ref(false)
+const summary = ref<VerificationSummary | null>(null)
+const changed = computed(() => visitorMode.value !== originalVisitorMode.value)
 watch(changed, value => emit('dirty-change', value), { immediate: true })
 const { unsavedChangesDialog, continueEditing, discardChanges } = useAdminUnsavedChanges(changed)
-const dependencyWarning = computed(() => {
-  if (settings.value.emailVerify && !service.value.codeEnabled) return '注册邮件验证需要先启用系统验证码服务。'
-  if (settings.value.emailVerify && service.value.codeChannel !== 'smtp') return '注册邮件验证需要通过邮件渠道发送验证码。'
-  if (settings.value.humanVerify && !service.value.humanReady) return '当前人机验证驱动未就绪，启用后仍无法完成验证。'
-  return ''
-})
-const blockingDependency = computed(() => (
-  (settings.value.emailVerify && !origin.value.emailVerify && (!service.value.codeEnabled || service.value.codeChannel !== 'smtp'))
-  || (settings.value.humanVerify && !origin.value.humanVerify && !service.value.humanReady)
-))
 const errorMessage = configSnapshot.errorMessage
 
 async function loadConfig() {
   loading.value = true
   loadError.value = ''
+  summaryError.value = ''
+  summary.value = null
   try {
-    const [raw, captchaStatus] = await Promise.all([configSnapshot.list(), client.captcha.config()])
-    const core = readObject(raw.core)
-    const user = readObject(raw.user)
-    if (!raw.captcha) {
-      loadError.value = '当前账号无权读取验证配置，请联系管理员授予 captcha.read 权限。'
-      return
+    const raw = await configSnapshot.list()
+    if (!raw.core) throw new Error('访问配置缺失')
+    visitorMode.value = readBoolean(readObject(raw.core).visitor_mode)
+    originalVisitorMode.value = visitorMode.value
+
+    if (canReadCaptcha.value) {
+      if (!raw.user || !raw.captcha) {
+        summaryError.value = '验证配置未返回，请重新加载后核对。'
+      } else {
+        const captcha = readObject(raw.captcha)
+        summary.value = {
+          emailVerify: readBoolean(readObject(raw.user).captcha),
+          humanVerify: readBoolean(captcha.captcha_enabled),
+          codeEnabled: readBoolean(captcha.code_enabled, true),
+          codeChannel: readString(captcha.code_channel, 'smtp'),
+          humanReady: null,
+        }
+        try {
+          const status = await client.captcha.config()
+          summary.value.humanReady = readBoolean(status.human_ready)
+        } catch (cause) {
+          summaryError.value = errorMessage(cause, '无法核对人机验证驱动状态。')
+        }
+      }
     }
-    const captcha = readObject(raw.captcha)
-    const humanDriver = readString(captcha.default_captcha_driver, 'geetest_v4')
-    const current: Settings = {
-      visitorMode: readBoolean(core.visitor_mode),
-      emailVerify: readBoolean(user.captcha),
-      humanVerify: readBoolean(captcha.captcha_enabled),
-    }
-    settings.value = CommonUtils.deepClone(current)
-    origin.value = CommonUtils.deepClone(current)
-    service.value = {
-      codeEnabled: readBoolean(captcha.code_enabled, true),
-      codeChannel: readString(captcha.code_channel, 'smtp'),
-      humanDriver,
-      humanReady: readBoolean(captchaStatus.human_ready),
-    }
-    loaded.value = true
   } catch (cause) {
-    loadError.value = errorMessage(cause, '无法加载访问与验证设置，请稍后重试。')
+    loadError.value = errorMessage(cause, '无法加载访问设置，请稍后重试。')
   } finally {
     loading.value = false
   }
 }
 
 async function saveSettings() {
-  if (!canUpdateConfig.value || !changed.value || blockingDependency.value || saving.value) return
+  if (!canUpdateConfig.value || !changed.value || saving.value) return
   saving.value = true
   message.value = null
-  const update: JsonObject = {}
-  if (settings.value.visitorMode !== origin.value.visitorMode) update.core = { visitor_mode: settings.value.visitorMode }
-  if (settings.value.emailVerify !== origin.value.emailVerify) update.user = { captcha: settings.value.emailVerify }
-  if (humanChanged.value) update.captcha = { captcha_enabled: settings.value.humanVerify }
   try {
-    const committed = await configSnapshot.update(update)
-    if (committed.core) settings.value.visitorMode = readBoolean(readObject(committed.core).visitor_mode)
-    if (committed.user) settings.value.emailVerify = readBoolean(readObject(committed.user).captcha)
-    if (committed.captcha) settings.value.humanVerify = readBoolean(readObject(committed.captcha).captcha_enabled)
-    origin.value = CommonUtils.deepClone(settings.value)
-    message.value = { type: 'success', text: '访问与验证设置已保存。' }
+    const committed = await configSnapshot.update({ core: { visitor_mode: visitorMode.value } })
+    visitorMode.value = readBoolean(readObject(committed.core).visitor_mode)
+    originalVisitorMode.value = visitorMode.value
+    message.value = { type: 'success', text: '访问设置已保存。' }
   } catch (cause) {
-    message.value = { type: 'error', text: errorMessage(cause, '保存访问与验证设置失败，请稍后重试。') }
+    message.value = { type: 'error', text: errorMessage(cause, '保存访问设置失败，请稍后重试。') }
   } finally {
     saving.value = false
   }
@@ -224,7 +193,7 @@ async function saveSettings() {
 onMounted(() => {
   if (props.active) void loadConfig()
 })
-watch(() => props.active, (active) => {
+watch(() => props.active, active => {
   if (active && !loading.value && !changed.value) void loadConfig()
 })
 </script>
