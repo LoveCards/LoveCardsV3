@@ -12,7 +12,7 @@ const roleSlug = `e2e_role_${suffix}`
 test('created custom role persists grants across reload', async ({ page }) => {
   test.setTimeout(90_000)
   await page.goto('./apps/access/roles')
-  await expect(page.getByRole('heading', { name: '角色', exact: true })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('heading', { name: '角色管理', exact: true })).toBeVisible({ timeout: 15_000 })
 
   // 1. 创建：对话框填写名称/slug/描述并提交
   await page.getByRole('button', { name: '创建角色' }).first().click()

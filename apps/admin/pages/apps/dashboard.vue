@@ -23,11 +23,12 @@
       skeleton-type="heading, paragraph, card@3"
       @retry="loadWorkbench"
     >
-      <div class="d-flex flex-column ga-6">
+      <div class="workbench-layout">
+        <div class="workbench-layout__main">
         <section v-if="dashboard" class="workbench-tasks" aria-labelledby="tasks-title">
           <div class="mb-3">
             <h2 id="tasks-title" class="text-subtitle-1 font-weight-bold">我的待办</h2>
-            <p class="text-body-2 text-medium-emphasis mt-1">只显示当前 grants 允许处理的待办，不按角色名称推断权限。</p>
+            <p class="text-body-2 text-medium-emphasis mt-1">只显示当前账号有权处理的待办。</p>
           </div>
           <v-card v-if="pendingTasks.length">
             <v-list lines="two">
@@ -63,7 +64,7 @@
               <h2 id="overview-title" class="text-subtitle-1 font-weight-bold">内容概览</h2>
               <p class="text-body-2 text-medium-emphasis mt-1">来自服务端仪表盘的实时汇总。</p>
             </div>
-            <v-chip v-if="dashboard" size="small" variant="tonal" color="primary">已同步</v-chip>
+            <v-chip v-if="dashboard && dashboardReadAt" size="small" variant="tonal" color="primary">本次读取于 {{ dashboardReadAt }}</v-chip>
           </div>
 
           <v-card v-if="dashboard">
@@ -84,7 +85,8 @@
             </v-list>
           </v-card>
         </section>
-
+        </div>
+        <div class="workbench-layout__aside">
         <section v-if="canReadOperations" class="workbench-runtime" aria-labelledby="runtime-title">
           <div class="d-flex flex-wrap align-start justify-space-between ga-3 mb-3">
             <div>
@@ -141,16 +143,26 @@
 
             <v-divider class="my-4" />
             <v-list v-if="responsibilityLinks.length" lines="two" density="comfortable">
-              <template v-for="(link, index) in responsibilityLinks" :key="link.key">
+              <template v-for="(link, index) in visibleResponsibilityLinks" :key="link.key">
                 <v-list-item :prepend-icon="link.icon" :to="link.to" :value="`responsibility-${link.key}`">
                   <v-list-item-title>{{ link.label }}</v-list-item-title>
                   <v-list-item-subtitle>{{ link.description }}</v-list-item-subtitle>
                   <template #append><v-icon icon="mdi-chevron-right" size="18" /></template>
                 </v-list-item>
-                <v-divider v-if="index < responsibilityLinks.length - 1" />
+                <v-divider v-if="index < visibleResponsibilityLinks.length - 1" />
               </template>
             </v-list>
-            <v-alert v-else type="info" variant="tonal">
+            <v-btn
+              v-if="responsibilityLinks.length > responsibilityPreviewLimit"
+              class="mt-2"
+              variant="text"
+              :append-icon="showAllResponsibilities ? 'mdi-chevron-up' : 'mdi-chevron-down'"
+              :aria-expanded="showAllResponsibilities"
+              @click="showAllResponsibilities = !showAllResponsibilities"
+            >
+              {{ showAllResponsibilities ? '收起入口' : `展开其余 ${responsibilityLinks.length - responsibilityPreviewLimit} 个入口` }}
+            </v-btn>
+            <v-alert v-if="!responsibilityLinks.length" type="info" variant="tonal">
               当前角色尚未获得业务模块入口，请联系超级管理员核对 grants。
             </v-alert>
           </v-card>
@@ -164,23 +176,35 @@
             </div>
             <v-btn to="/apps/operations/eventing?tab=events" variant="text" color="primary" append-icon="mdi-arrow-right">查看事件明细</v-btn>
           </div>
-          <v-card v-if="notificationStats">
-            <v-list>
-              <v-list-item prepend-icon="mdi-bell-outline" title="通知总量" value="notification-total">
-                <template #append><strong class="text-h6">{{ notificationStats.total }}</strong></template>
-              </v-list-item>
-              <v-divider />
-              <v-list-item prepend-icon="mdi-bell-badge-outline" title="未读通知" value="notification-unread">
-                <template #append><strong class="text-h6">{{ notificationStats.unread }}</strong></template>
-              </v-list-item>
-              <v-divider />
-              <v-list-item prepend-icon="mdi-account-multiple-outline" title="覆盖用户" value="notification-recipients">
-                <template #append><strong class="text-h6">{{ notificationStats.recipients }}</strong></template>
-              </v-list-item>
-            </v-list>
+        <v-card v-if="notificationStats">
+          <dl class="workbench-notification-stats">
+            <div><dt>通知总量</dt><dd>{{ notificationStats.total }}</dd></div>
+            <div><dt>未读通知</dt><dd>{{ notificationStats.unread }}</dd></div>
+            <div><dt>覆盖用户</dt><dd>{{ notificationStats.recipients }}</dd></div>
+          </dl>
           </v-card>
           <v-alert v-else-if="notificationsError" type="error" variant="tonal">{{ notificationsError }}</v-alert>
           <v-card v-else class="pa-5 text-body-2 text-medium-emphasis">正在读取通知统计…</v-card>
+        </section>
+        </div>
+        <section v-if="canReadAudit" class="workbench-changes" aria-labelledby="changes-title">
+          <div class="d-flex flex-wrap align-center justify-space-between ga-3 mb-3">
+            <div>
+              <h2 id="changes-title" class="text-subtitle-1 font-weight-bold">最近变更</h2>
+              <p class="text-body-2 text-medium-emphasis mt-1">只展示当前账号有权读取的管理操作记录。</p>
+            </div>
+            <v-btn to="/apps/operations/audit" variant="text" append-icon="mdi-arrow-right">查看审计日志</v-btn>
+          </div>
+          <AdminAsyncState :loading="auditLoading" :error="auditError" :empty="!recentChanges.length" empty-title="暂无近期变更" @retry="loadRecentChanges">
+            <v-card>
+              <v-list lines="two">
+                <template v-for="(change, index) in recentChanges" :key="change.id">
+                  <v-list-item :to="`/apps/operations/audit/${change.id}`" :title="change.action" :subtitle="`操作者 ${change.actor_id ? `#${change.actor_id}` : '系统或匿名'} · ${change.resource_type || '未关联资源'} ${change.resource_id || ''} · ${change.created_at}`" append-icon="mdi-chevron-right" />
+                  <v-divider v-if="index < recentChanges.length - 1" />
+                </template>
+              </v-list>
+            </v-card>
+          </AdminAsyncState>
         </section>
 
         <section v-if="dashboard && dashboard.notice.length" class="workbench-notice" aria-labelledby="notice-title">
@@ -206,7 +230,7 @@
 </template>
 
 <script setup lang="ts">
-import type { DashboardData, DashboardTask, OperationsNotificationStats, OperationsRuntimeStatus, RoleInfo } from '@lovecards/sdk'
+import type { DashboardData, DashboardTask, OperationsAuditLog, OperationsNotificationStats, OperationsRuntimeStatus, RoleInfo } from '@lovecards/sdk'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
@@ -224,9 +248,16 @@ const runtimeStatus = ref<OperationsRuntimeStatus | null>(null)
 const runtimeError = ref<string | null>(null)
 const notificationStats = ref<OperationsNotificationStats | null>(null)
 const notificationsError = ref<string | null>(null)
+const dashboardReadAt = ref('')
+const recentChanges = ref<OperationsAuditLog[]>([])
+const auditLoading = ref(false)
+const auditError = ref<string | null>(null)
+const showAllResponsibilities = ref(false)
+const responsibilityPreviewLimit = 3
 
 const canReadOperations = computed(() => userStore.hasGrant('operations.read', 'global'))
 const canReadCommunications = computed(() => userStore.hasGrant('communications.read', 'global'))
+const canReadAudit = computed(() => userStore.hasGrant('audit.read', 'global'))
 const runtimeHealthy = computed(() => Boolean(
   runtimeStatus.value?.communication.status === 'ready'
   && runtimeStatus.value.eventing.dead === 0
@@ -257,8 +288,8 @@ const responsibilityDescription = computed(() => {
   const descriptions = responsibilityRoles.value
     .map((role) => roleDescriptions[role.slug])
     .filter((value): value is string => Boolean(value))
-  if (!descriptions.length) return '此账号使用自定义角色；入口、按钮和数据范围以当前 grants 为准。'
-  return `${descriptions.join(' ')}入口、按钮和数据范围仍以当前 grants 为准。`
+  if (!descriptions.length) return '此账号使用自定义角色；可用入口和操作由当前权限决定。'
+  return `${descriptions.join(' ')}可用入口和操作由当前权限决定。`
 })
 
 const responsibilityLinks = computed(() => [
@@ -275,6 +306,9 @@ const responsibilityLinks = computed(() => [
   { key: 'audit', label: '审计记录', description: '追溯管理动作、资源变化和请求链路。', icon: 'mdi-clipboard-text-clock-outline', to: '/apps/operations/audit' },
   { key: 'roles', label: '角色与权限', description: '管理角色和 capability grants。', icon: 'mdi-shield-lock-outline', to: '/apps/access/roles' },
 ].filter((link) => userStore.canAccessPath(link.to)))
+const visibleResponsibilityLinks = computed(() => showAllResponsibilities.value
+  ? responsibilityLinks.value
+  : responsibilityLinks.value.slice(0, responsibilityPreviewLimit))
 
 const workbenchTasks = computed<DashboardTask[]>(() => dashboard.value?.workbench?.tasks ?? [])
 const pendingTasks = computed(() => workbenchTasks.value.filter((task) => task.count > 0))
@@ -312,6 +346,7 @@ async function loadWorkbench() {
   notificationsError.value = null
   try {
     await dashboardStore.getDashboard()
+    if (!dashboardStore.error) dashboardReadAt.value = new Date().toLocaleString('zh-CN')
     await loadAuxiliaryData()
   } finally {
     loading.value = false
@@ -334,12 +369,88 @@ async function loadAuxiliaryData() {
       notificationsError.value = errorMessage(error, '无法加载通知统计。')
     }
   }
+  if (canReadAudit.value) await loadRecentChanges()
+}
+
+async function loadRecentChanges() {
+  auditLoading.value = true
+  auditError.value = null
+  try {
+    const result = await client.operations.auditLogs({ page: 1, list_rows: 5 })
+    recentChanges.value = result.data
+  } catch (error) {
+    auditError.value = errorMessage(error, '无法加载最近变更。')
+  } finally {
+    auditLoading.value = false
+  }
 }
 
 onMounted(async () => {
   loading.value = true
   await dashboardStore.init()
+  if (!dashboardStore.error) dashboardReadAt.value = new Date().toLocaleString('zh-CN')
   await loadAuxiliaryData()
   loading.value = false
 })
 </script>
+
+<style scoped>
+.workbench-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(320px, 5fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.workbench-layout__main,
+.workbench-layout__aside {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.workbench-changes,
+.workbench-notice {
+  grid-column: 1 / -1;
+}
+
+.workbench-notification-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.workbench-notification-stats > div {
+  min-width: 0;
+  padding: 14px 8px;
+  text-align: center;
+}
+
+.workbench-notification-stats > div + div {
+  border-left: 1px solid rgb(var(--v-theme-outline));
+}
+
+.workbench-notification-stats dt {
+  color: rgb(var(--v-theme-on-surface-variant));
+  font-size: 0.75rem;
+}
+
+.workbench-notification-stats dd {
+  margin: 4px 0 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+@media (max-width: 960px) {
+  .workbench-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .workbench-changes,
+  .workbench-notice {
+    grid-column: 1;
+  }
+}
+</style>

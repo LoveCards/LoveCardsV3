@@ -1,13 +1,11 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="960">
     <AdminPageHeader
       :title="`${driverName} 配置`"
       description="配置验证码驱动。修改后应确认登录、注册和敏感操作仍能正常校验。"
       :breadcrumbs="[{ title: '系统' }, { title: '验证服务', to: '/apps/settings/verification' }, { title: driverName }]"
     />
 
-    <v-row>
-      <v-col cols="12" lg="8">
         <AdminConfigSection
           title="驱动参数"
           description="配置变更会影响登录、注册与敏感操作校验。"
@@ -89,7 +87,7 @@
                   </v-col>
                 </v-row>
                 <v-divider class="mb-4" />
-                <AdminConfigSaveBar :dirty="configChanged" label="驱动配置">
+                <AdminConfigSaveBar v-if="canUpdateConfig" :dirty="configChanged" label="驱动配置">
                   <AdminActionGuard
                     :all-of="[
                       { capability: 'config.update', scope: 'global' },
@@ -111,8 +109,6 @@
               </v-form>
             </AdminAsyncState>
         </AdminConfigSection>
-      </v-col>
-    </v-row>
     <AdminUnsavedChangesDialog
       :model-value="unsavedChangesDialog"
       @stay="continueEditing"

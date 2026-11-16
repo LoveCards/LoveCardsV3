@@ -1,5 +1,5 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="1040">
     <AdminPageHeader
       :title="`审计记录 #${route.params.id}`"
       description="核对一次管理操作的操作者、目标资源、状态前后值和请求链路。"
@@ -28,7 +28,7 @@
       @retry="load"
     >
       <template v-if="auditLog">
-        <v-sheet border rounded="lg" overflow-hidden>
+        <AdminDetailSection title="操作概况">
           <v-list lines="two">
             <v-list-item
               prepend-icon="mdi-shield-check-outline"
@@ -65,13 +65,10 @@
               :title="auditLog.created_at"
             />
           </v-list>
-        </v-sheet>
+        </AdminDetailSection>
 
-        <section class="mt-7" aria-labelledby="audit-change-title">
-          <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-3">
-            <h2 id="audit-change-title" class="text-h6">状态变化</h2>
-            <v-chip size="small" variant="outlined">服务端已脱敏</v-chip>
-          </div>
+        <AdminDetailSection title="状态变化" class="mt-5">
+          <template #actions><v-chip size="small" variant="outlined">服务端已脱敏</v-chip></template>
           <v-row v-if="hasBefore || hasAfter" dense>
             <v-col cols="12" md="6">
               <v-sheet border class="audit-detail__snapshot pa-4" rounded="lg">
@@ -89,11 +86,9 @@
           <v-sheet v-else border class="pa-4 text-body-2 text-medium-emphasis" rounded="lg">
             该审计事件没有记录资源状态快照。
           </v-sheet>
-        </section>
+        </AdminDetailSection>
 
-        <section class="mt-7" aria-labelledby="audit-trace-title">
-          <h2 id="audit-trace-title" class="mb-3 text-h6">请求链路</h2>
-          <v-sheet border rounded="lg" overflow-hidden>
+        <AdminDetailSection title="请求链路" class="mt-5">
             <v-list lines="two">
               <v-list-item
                 prepend-icon="mdi-identifier"
@@ -107,15 +102,13 @@
                 :title="auditLog.correlation_id || '未提供'"
               />
             </v-list>
-          </v-sheet>
-        </section>
+        </AdminDetailSection>
 
-        <section v-if="hasExtraContext" class="mt-7" aria-labelledby="audit-context-title">
-          <h2 id="audit-context-title" class="mb-3 text-h6">其他受控上下文</h2>
-          <v-sheet border class="audit-detail__snapshot pa-4" rounded="lg">
+        <AdminDetailSection v-if="hasExtraContext" title="其他受控上下文" class="mt-5">
+          <div class="audit-detail__snapshot">
             <pre>{{ serialize(extraContext) }}</pre>
-          </v-sheet>
-        </section>
+          </div>
+        </AdminDetailSection>
 
         <v-alert
           class="mt-6"
@@ -134,6 +127,7 @@
 <script setup lang="ts">
 import type { OperationsAuditLog } from '@lovecards/sdk'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
+import AdminDetailSection from '~/components/shared/admin/AdminDetailSection.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'

@@ -1,6 +1,6 @@
 <template>
   <AdminPageHeader
-    title="文件"
+    title="文件管理"
     description="管理上传文件与回收站。过期上传处理只标记失败；永久删除属于高风险操作。"
     :breadcrumbs="[{ title: '内容' }]"
   />

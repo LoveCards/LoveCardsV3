@@ -1,5 +1,5 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="960">
     <AdminPageHeader
       title="站点信息"
       description="维护站点对外展示的名称、地址和备案信息。"
@@ -104,7 +104,7 @@
         </v-row>
       </AdminConfigSection>
 
-      <AdminConfigSaveBar class="mt-4" :dirty="siteChanged" label="站点信息">
+      <AdminConfigSaveBar v-if="canUpdateConfig" class="mt-4" :dirty="siteChanged" label="站点信息">
         <AdminActionGuard capability="config.update" scope="global">
           <v-btn
             color="primary"

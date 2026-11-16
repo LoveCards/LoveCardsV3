@@ -1,13 +1,11 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="960">
     <AdminPageHeader
       :title="`${channelName} 配置`"
       description="管理发送渠道参数，并使用已保存的配置发送测试消息。"
       :breadcrumbs="[{ title: '系统' }, { title: '站外发送', to: '/apps/settings/messaging' }, { title: channelName }]"
     />
 
-    <v-row>
-      <v-col cols="12" lg="8">
         <AdminConfigSection
           title="渠道参数"
           description="测试发信只读取已保存配置；密钥字段留空表示保留服务端现值。"
@@ -90,7 +88,7 @@
                   </v-col>
                 </v-row>
                 <v-divider class="mb-4" />
-                <AdminConfigSaveBar :dirty="configChanged" label="渠道配置">
+                <AdminConfigSaveBar v-if="canUpdateConfig || canTestChannel" :dirty="configChanged" label="渠道配置">
                   <AdminActionGuard capability="sender.test" scope="global">
                     <v-btn
                       color="primary"
@@ -123,8 +121,6 @@
               </v-form>
             </AdminAsyncState>
         </AdminConfigSection>
-      </v-col>
-    </v-row>
 
     <v-dialog v-model="testDialog" aria-label="测试消息通道" max-width="480" :persistent="testLoading">
       <v-card prepend-icon="mdi-email-fast-outline" title="测试发信">

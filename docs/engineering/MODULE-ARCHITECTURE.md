@@ -96,3 +96,5 @@ npm run check:architecture
 ## 事件 Handler 的模块归属与装配（2026-11-11）
 
 各业务模块在自身 `Public/EventHandlers.php` 显式返回 `HandlerRegistration`，`app/EventHandlers.php` 是唯一组合根，`HandlerRegistry` 只做登记、校验和查询。Web、CLI、Scheduler、Worker 和健康探测均由容器取得该装配；离线测试也调用同一纯 PHP 组合根。首轮拆分保持 13 个现有登记、目录 JSON 与 SHA-256 完全一致，存量投递的 handler_key、queue、execution_mode 不发生变化。模块间依赖仍通过 Public/Contract；架构检查同时识别 use 和全限定类名引用。新模块添加 Handler 时须在组合根显式接入并更新目录契约测试。
+
+队列不是模块私有命名空间。`queue_name` 按副作用和基础设施依赖划分，当前目录、执行模式和新增队列审查以 [事件队列接入与治理规范](EVENT-QUEUE-GOVERNANCE.md) 为准。

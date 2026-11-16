@@ -1,5 +1,5 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="1040">
     <AdminPageHeader title="前端通信" description="管理浏览器获取主动更新的方式，并检查实时通信依赖。" :breadcrumbs="[{ title: '系统' }]">
       <template #actions>
         <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="hasChanges" @click="load">刷新</v-btn>

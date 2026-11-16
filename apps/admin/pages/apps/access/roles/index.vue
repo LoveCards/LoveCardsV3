@@ -1,6 +1,6 @@
 <template>
   <AdminPageHeader
-    title="角色"
+    title="角色管理"
     description="定义管理端职责模板与授权范围。提交前请确认角色用途和授权边界。"
     :breadcrumbs="[{ title: '用户' }]"
   >

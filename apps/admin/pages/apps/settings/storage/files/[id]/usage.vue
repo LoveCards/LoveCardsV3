@@ -1,5 +1,5 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="1040">
     <AdminPageHeader :title="`文件 #${route.params.id}`" description="查看文件元数据与业务引用，内部存储路径不会作为公共 URL 展示。" :breadcrumbs="breadcrumbs">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn></template>
     </AdminPageHeader>

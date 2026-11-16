@@ -1,5 +1,5 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="960">
     <AdminPageHeader
       title="站点策略"
       description="集中管理访问要求、内容发布规则、站内提醒和主动更新。各项设置分别读取和保存。"

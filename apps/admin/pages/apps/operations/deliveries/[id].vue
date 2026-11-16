@@ -1,16 +1,16 @@
 <template>
-  <AdminPageContainer>
+  <AdminPageContainer :max-width="1040">
     <AdminPageHeader
-      :title="`投递 #${route.params.id}`"
+      :title="`处理任务 #${route.params.id}`"
       description="查看这条事件处理任务的结果、失败原因与重试条件。"
       :breadcrumbs="[
         { title: '系统' },
-        { title: '事件明细', to: '/apps/operations/eventing?tab=events' },
+        { title: '处理任务', to: '/apps/operations/deliveries' },
         { title: `#${route.params.id}` },
       ]"
     >
       <template #actions>
-        <v-btn prepend-icon="mdi-arrow-left" to="/apps/operations/eventing?tab=events" variant="outlined">
+        <v-btn prepend-icon="mdi-arrow-left" to="/apps/operations/deliveries" variant="outlined">
           返回列表
         </v-btn>
         <AdminActionGuard capability="operations.retry">
@@ -21,7 +21,7 @@
             variant="tonal"
             @click="openRetry"
           >
-            重试投递
+            重试任务
           </v-btn>
         </AdminActionGuard>
       </template>
@@ -32,9 +32,9 @@
       :error="error"
       :error-title="errorTitle"
       :empty="missing"
-      empty-description="该记录可能已清理，或输入的投递 ID 无效。"
+      empty-description="该记录可能已清理，或输入的任务 ID 无效。"
       empty-icon="mdi-send-outline"
-      empty-title="投递记录不存在"
+      empty-title="处理任务不存在"
       skeleton-type="heading, list-item-two-line@6"
       @retry="load"
     >
@@ -52,10 +52,10 @@
         </v-alert>
 
         <v-sheet border rounded="lg" overflow-hidden>
-          <v-list aria-label="投递摘要" lines="two">
+          <v-list aria-label="任务摘要" lines="two">
             <v-list-item prepend-icon="mdi-list-status" subtitle="处理结果">
               <template #title>
-                <span v-if="delivery.policy_decision === 'skipped'">已按策略跳过通知</span>
+                <span v-if="delivery.policy_decision === 'skipped'">{{ skipLabel(delivery.queue_name) }}</span>
                 <AdminStatusChip v-else :status="delivery.status" />
               </template>
               <template #append>
@@ -97,10 +97,12 @@
               <dl class="delivery-detail__metadata">
                 <dt>事件 ID</dt><dd>{{ delivery.event_id }}</dd>
                 <dt>处理器</dt><dd>{{ delivery.handler_key }}</dd>
-                <dt>队列</dt><dd>{{ delivery.queue_name }}</dd>
+                <dt>队列</dt><dd>{{ queueLabel(delivery.queue_name) }}</dd>
                 <dt>执行模式</dt><dd>{{ delivery.execution_mode }}</dd>
-                <dt>策略版本</dt><dd>{{ delivery.policy_revision ?? '旧记录未配置' }}</dd>
-                <dt>策略判断</dt><dd>{{ policyDecisionLabel(delivery.policy_decision) }}</dd>
+                <template v-if="delivery.queue_name === 'notifications'">
+                  <dt>通知策略版本</dt><dd>{{ delivery.policy_revision ?? '旧记录未配置' }}</dd>
+                  <dt>通知策略判断</dt><dd>{{ policyDecisionLabel(delivery.policy_decision) }}</dd>
+                </template>
                 <dt>关联 ID</dt><dd>{{ delivery.correlation_id || '未提供' }}</dd>
               </dl>
             </v-expansion-panel-text>
@@ -121,9 +123,9 @@
 
     <AdminDangerActionDialog
       v-model="retryDialog"
-      title="重试事件投递"
-      action-label="加入重试队列"
-      :resource-label="delivery ? `${delivery.event_type} · 投递 #${delivery.id}` : ''"
+      title="重试处理任务"
+      action-label="加入待处理队列"
+      :resource-label="delivery ? `${delivery.event_type} · 任务 #${delivery.id}` : ''"
       impact="该处理器将再次消费事件。请先确认失败原因已解除，并确保业务处理器能够幂等执行。"
       :loading="retrying"
       :error="actionError"
@@ -144,6 +146,9 @@ import { useAdminNotifier } from '~/composables/useAdminNotifier'
 import { isApiError, useApi } from '~/lib/api'
 
 const route = useRoute()
+const queueLabels: Record<string, string> = { notifications: '通知', realtime: '实时提示', storage: '文件处理' }
+const queueLabel = (name: string) => queueLabels[name] ?? name
+const skipLabel = (name: string) => name === 'notifications' ? '已按策略跳过通知' : name === 'realtime' ? '已跳过实时提示' : '已跳过'
 const client = useApi()
 const notifier = useAdminNotifier()
 const delivery = ref<OperationsDelivery | null>(null)
@@ -187,8 +192,8 @@ async function load() {
     if (isApiError(cause) && cause.status === 404) {
       missing.value = true
     } else {
-      errorTitle.value = isApiError(cause) && cause.status === 403 ? '无权查看投递详情' : '无法加载投递详情'
-      error.value = isApiError(cause) ? cause.message : '无法加载投递详情，请稍后重试。'
+      errorTitle.value = isApiError(cause) && cause.status === 403 ? '无权查看任务详情' : '无法加载任务详情'
+      error.value = isApiError(cause) ? cause.message : '无法加载任务详情，请稍后重试。'
     }
   } finally {
     if (requestId === latestRequest) loading.value = false
@@ -207,7 +212,7 @@ async function retry() {
   try {
     await client.operations.retryDelivery(delivery.value.id)
     retryDialog.value = false
-    notifier.success('事件已加入重试队列')
+    notifier.success('处理任务已加入待处理队列')
     await load()
   } catch (cause) {
     actionError.value = isApiError(cause) ? cause.message : '重试失败，请稍后再试。'
