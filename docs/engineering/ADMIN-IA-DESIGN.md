@@ -156,6 +156,8 @@ LoveCards 管理端应从“按技术模块堆放的页面集合”改成“按�
 
 ### 6.1 列表页
 
+本节是早期信息架构草案；列表的当前目标交互与例外以 [列表与表格交互规范](ADMIN-TABLE-INTERACTION-STANDARD.md) 为准。
+
 ```text
 Breadcrumbs
 PageHeader：标题 / 用途说明 / 一个主动作
