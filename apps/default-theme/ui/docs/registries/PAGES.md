@@ -30,7 +30,7 @@
 | ID | 页面 | Route | 桌面结构 | 移动结构 | 必备状态 | 交付 |
 |---|---|---|---|---|---|---|
 | L1-01 | 推荐首页 | `/` | 顶栏 + 频道 + 多列流 + 右栏 | 顶栏 + 双列流 + 底栏 | loading/empty/error/guest | Foundation → Blueprint 01 |
-| L1-02 | 关注流 | `/?feed=following` | 独立关注流 | 标题 + 双列流 + 底栏 | login/loading/no-following/new-post/error | Blueprint 01 |
+| L1-02 | 动态 | `/?feed=following` | 关注流 | 标题 + 双列流 + 底栏 | login/loading/no-following/new-post/error | Blueprint 01 |
 | L1-03 | 发布 / 编辑 | `/compose`、`/compose?draft=<id>`、`/compose?edit=<cardId>` | 显式选择随笔/图文/视频 + 单编辑轴 | `immersive`：局部任务顶栏 + 单轴编辑 + 固定发布栏，无 BottomNav；已发布编辑不显示草稿动作 | loading/404/403/uploading/field-error/task-error/dirty | Blueprint 04 |
 | L1-04 | 消息 | `/messages` | 统一消息中心标题 + 私信双栏工作区 | 统一标题/一级 Tab + 私信列表 | loading/empty/error/permission | Blueprint 07 |
 | L1-05 | 我的 | `/me` | 个人封面 + 同页内容标签 + 统一卡片流 | 全宽身份头 + 可横向滑动标签 + 双列卡片流 | loading/empty/error/private/editing | Blueprint 05 |

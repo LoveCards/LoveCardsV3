@@ -7,7 +7,7 @@ import { normalizeMediaFit } from '../features/media/media-fit.js';
 
 export const HOME_CHANNELS = [
   { id: 'recommended', label: '推荐' },
-  { id: 'following', label: '关注' },
+  { id: 'following', label: '动态' },
   { id: 'latest', label: '最新' },
 ];
 
@@ -223,8 +223,8 @@ export function getHomeFeedSnapshot(channel = 'recommended') {
     return {
       source: 'unavailable',
       items: [],
-      message: '关注流预览暂未开放',
-      detail: '关注流需要登录并读取真实关注关系，设计预览不会伪造关注数据。',
+      message: '动态预览暂未开放',
+      detail: '动态需要登录并读取真实关注关系，设计预览不会伪造关注数据。',
     };
   }
 

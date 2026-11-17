@@ -13,7 +13,7 @@ import { getCommunicationRuntime, SIGNAL_UNREAD } from '../services/communicatio
 
 const bottomNav = [
   { to: '/', label: '首页', icon: 'home', end: true },
-  { to: '/?feed=following', label: '关注', icon: 'users' },
+  { to: '/?feed=following', label: '动态', icon: 'users' },
   { to: '/compose', label: '发布', icon: 'plus', compose: true },
   { to: '/messages', label: '消息', icon: 'mail', inbox: true },
   { to: '/me', label: '我的', icon: 'user' },
@@ -21,7 +21,7 @@ const bottomNav = [
 
 const desktopNav = [
   { to: '/', label: '首页', end: true },
-  { to: '/?feed=following', label: '关注' },
+  { to: '/?feed=following', label: '动态' },
   { to: '/messages', label: '消息', inbox: true },
 ];
 
