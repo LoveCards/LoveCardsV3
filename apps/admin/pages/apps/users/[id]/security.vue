@@ -106,7 +106,7 @@ const breadcrumbs = [
   { title: '账号安全', disabled: true },
 ]
 const headers = [
-  { title: 'Session', key: 'id' }, { title: '状态', key: 'state' }, { title: '安全版本', key: 'security_version' },
+  { title: 'Session', key: 'id' }, { title: '状态', key: 'state', sortable: false }, { title: '安全版本', key: 'security_version' },
   { title: 'Token 到期', key: 'token_expires_at' }, { title: '可续期至', key: 'renewable_until' }, { title: '操作', key: 'action', sortable: false },
 ]
 

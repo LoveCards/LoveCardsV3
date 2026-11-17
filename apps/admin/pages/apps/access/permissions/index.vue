@@ -14,12 +14,16 @@
       v-model:visible-columns="visibleColumns"
       :columns="columnOptions"
       :default-columns="defaultColumns"
-      :result-count="tableTotalItems"
-      preference-key="access-permissions"
-      @reset-view="resetTableView"
+      :result-count="tableHasResult ? tableTotalItems : null"
+      :result-state="tableResultState"
+      :view-query-keys="['search_value', 'order_key', 'order_desc', 'list_rows']" preference-key="access-permissions"
+      @reset-view="resetTableView" @apply-view="applySavedView"
     >
       <template #search>
-        <v-text-field v-model="tableSearchValue" clearable label="搜索能力标识或描述" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+        <div class="d-flex flex-wrap align-center ga-2">
+          <v-text-field v-model="tableSearchValue" class="flex-grow-1" clearable label="搜索能力标识或描述" prepend-inner-icon="mdi-magnify" single-line @keyup.enter="submitSearch" @update:model-value="onSearchDraftChange" />
+          <v-btn variant="outlined" @click="submitSearch">查询</v-btn>
+        </div>
       </template>
 
       <v-alert
@@ -55,15 +59,10 @@
         </template>
 
         <template #[`item.capability`]="{ item }">
-          <v-btn
-            class="text-none px-2"
-            min-height="44"
-            prepend-icon="mdi-key-outline"
-            :to="`/apps/access/permissions/${encodeURIComponent(item.capability)}/${encodeURIComponent(item.scope)}`"
-            variant="text"
-          >
+          <div class="d-flex align-center ga-2">
+            <v-icon icon="mdi-key-outline" size="small" />
             <AdminTableSearchHighlight :text="item.capability" :query="appliedSearch" />
-          </v-btn>
+          </div>
         </template>
 
         <template #[`item.scope`]="{ item }">
@@ -78,6 +77,9 @@
           </v-list-item>
         </template>
 
+        <template #[`item.operate`]="{ item }">
+          <NuxtLink :to="`/apps/access/permissions/${encodeURIComponent(item.capability)}/${encodeURIComponent(item.scope)}`">查看详情</NuxtLink>
+        </template>
         <template #no-data>
           <v-empty-state
             :icon="tableError ? 'mdi-cloud-alert-outline' : 'mdi-shield-search'"
@@ -101,7 +103,6 @@ import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
 import { useApi } from '~/lib/api';
-import CommonUtils from '@/utils/common';
 import SelectUtils from '~/utils/select';
 
 type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
@@ -119,11 +120,12 @@ const AllTableHeaders = [
   { title: '能力标识', value: 'capability', sortable: true },
   { title: '作用域', value: 'scope', sortable: true },
   { title: '描述', value: 'description', sortable: true },
+  { title: '操作', value: 'operate', sortable: false },
 ];
-const defaultColumns = ['capability', 'scope', 'description'];
+const defaultColumns = ['capability', 'scope', 'description', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
-const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: header.value === 'capability' }));
+const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: header.value === 'capability' || header.value === 'operate' }));
 const TableListRowsOptions = SelectUtils.Common.Table.ListRowsOptions;
 const scopeLabel = (scope: CapabilityItem['scope']) => ({ own: '本人资源', all: '全部资源', global: '全局' }[scope]);
 
@@ -141,9 +143,13 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
   ? [{ key: route.query.order_key, order: ['1', 'true', 'desc'].includes(String(route.query.order_desc)) ? 'desc' : 'asc' }]
   : []);
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
+const appliedSearchValue = ref(tableSearchValue.value);
 const appliedSearch = ref('');
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
+const tableHasResult = ref(false);
+const tableResultState = ref<'ready' | 'loading' | 'stale'>('ready');
+let lastSuccessfulQuery: string | null = null;
 let latestRequest = 0;
 
 const errorMessage = (error: unknown) => {
@@ -156,7 +162,7 @@ const getTableData = async () => {
   const requestId = ++latestRequest;
   tableLoading.value = true;
   tableError.value = null;
-  const searchValue = tableSearchValue.value?.trim();
+  const searchValue = appliedSearchValue.value?.trim();
   const sort = tableSortBy.value[0];
   const params: Record<string, unknown> = {
     page: tableCurrentPage.value,
@@ -168,6 +174,15 @@ const getTableData = async () => {
     params.order_desc = sort.order === 'desc';
   }
 
+  const queryKey = JSON.stringify(params);
+  const refreshing = tableHasResult.value && lastSuccessfulQuery === queryKey;
+  tableResultState.value = refreshing ? 'loading' : 'ready';
+  if (!refreshing) {
+    tableItems.value = [];
+    tableTotalItems.value = 0;
+    tableHasResult.value = false;
+  }
+
   try {
     const result = await client.permissions.list(params as Parameters<typeof client.permissions.list>[0]);
     if (requestId !== latestRequest) return;
@@ -175,8 +190,14 @@ const getTableData = async () => {
     appliedSearch.value = searchValue ?? '';
     tableCurrentPage.value = result.pagination?.currentPage ?? tableCurrentPage.value;
     tableTotalItems.value = result.pagination?.totalItems ?? result.data.length;
+    lastSuccessfulQuery = queryKey;
+    tableHasResult.value = true;
+    tableResultState.value = 'ready';
   } catch (error) {
-    if (requestId === latestRequest) tableError.value = errorMessage(error);
+    if (requestId === latestRequest) {
+      tableError.value = errorMessage(error);
+      if (refreshing) tableResultState.value = 'stale';
+    }
   } finally {
     if (requestId === latestRequest) tableLoading.value = false;
   }
@@ -187,7 +208,7 @@ const syncRouteQuery = () => {
   const sort = tableSortBy.value[0];
   next.page = String(tableCurrentPage.value);
   next.list_rows = String(tableListRows.value);
-  if (tableSearchValue.value?.trim()) next.search_value = tableSearchValue.value.trim();
+  if (appliedSearchValue.value?.trim()) next.search_value = appliedSearchValue.value.trim();
   else delete next.search_value;
   if (sort) {
     next.order_key = sort.key;
@@ -200,17 +221,46 @@ const syncRouteQuery = () => {
 };
 
 const refreshFromFirstPage = () => {
-  syncRouteQuery();
-  if (tableCurrentPage.value === 1) void getTableData();
-  else tableCurrentPage.value = 1;
+  if (tableCurrentPage.value === 1) {
+    syncRouteQuery();
+    void getTableData();
+  } else {
+    tableCurrentPage.value = 1;
+  }
 };
-const searchTableData = CommonUtils.lodash.debounce(refreshFromFirstPage, 500);
-const clearSearch = () => {
-  tableSearchValue.value = undefined;
+const submitSearch = () => {
+  appliedSearchValue.value = tableSearchValue.value?.trim() || undefined;
   refreshFromFirstPage();
 };
+const onSearchDraftChange = (value: string | null) => {
+  if (!value?.trim() && appliedSearchValue.value) {
+    appliedSearchValue.value = undefined;
+    refreshFromFirstPage();
+  }
+};
+const clearSearch = () => {
+  tableSearchValue.value = undefined;
+  appliedSearchValue.value = undefined;
+  refreshFromFirstPage();
+};
+const applySavedView = (query: Record<string, string | null | (string | null)[]>) => {
+  const search = query.search_value;
+  tableSearchValue.value = typeof search === 'string' && search.trim() ? search.trim() : undefined;
+  appliedSearchValue.value = tableSearchValue.value;
+  const orderKey = query.order_key;
+  tableSortBy.value = typeof orderKey === 'string' && AllTableHeaders.some((header) => header.value === orderKey && header.sortable)
+    ? [{ key: orderKey, order: ['1', 'true', 'desc'].includes(String(query.order_desc)) ? 'desc' : 'asc' }]
+    : [];
+  const size = positiveQueryInt(query.list_rows, defaultListRows);
+  tableListRows.value = TableListRowsOptions.some((option) => option.value === size) ? size : defaultListRows;
+  tableCurrentPage.value = 1;
+  syncRouteQuery();
+  void getTableData();
+};
+
 const resetTableView = () => {
   tableSearchValue.value = undefined;
+  appliedSearchValue.value = undefined;
   tableSortBy.value = [];
   tableListRows.value = defaultListRows;
   if (tableCurrentPage.value === 1) { syncRouteQuery(); void getTableData(); }

@@ -2,6 +2,7 @@
   <AdminPageContainer :max-width="1040">
     <AdminPageHeader :title="`举报 #${route.params.id}`" description="仅展示处理举报所需的上下文，不开放任意浏览私密内容。" :breadcrumbs="breadcrumbs">
       <template #actions>
+        <v-btn variant="text" prepend-icon="mdi-arrow-left" @click="returnToAdminList(router, reportListPath)">返回列表</v-btn>
         <AdminActionGuard v-if="report && canTransition" capability="reports.manage">
           <v-btn color="primary" prepend-icon="mdi-gavel" @click="openTransitionDialog">更新处理状态</v-btn>
         </AdminActionGuard>
@@ -90,8 +91,12 @@ import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
 import { useApi, isApiError } from '~/lib/api'
 import { useAdminNotifier } from '~/composables/useAdminNotifier'
+import { returnToAdminList, validateAdminListSource } from '~/utils/adminListSource'
 
 const route = useRoute()
+const router = useRouter()
+const reportListPath = '/apps/community/reports'
+const listSource = ref(reportListPath)
 const client = useApi()
 const notifier = useAdminNotifier()
 const report = ref<AdminReport | null>(null)
@@ -104,7 +109,8 @@ const nextStatus = ref('')
 const resolution = ref('')
 const noteDialog = ref(false)
 const note = ref('')
-const breadcrumbs = [{ title: '举报处理', to: '/apps/community/reports' }, { title: `#${route.params.id}`, disabled: true }]
+const breadcrumbs = computed(() => [{ title: '举报处理', to: listSource.value }, { title: `#${route.params.id}`, disabled: true }])
+onMounted(() => { listSource.value = validateAdminListSource(window.history.state?.listSource, reportListPath) ?? reportListPath })
 const statusItems = [
   { title: '待处理', value: 'open' }, { title: '处理中', value: 'reviewing' }, { title: '已解决', value: 'resolved' },
   { title: '已驳回', value: 'rejected' }, { title: '已关闭', value: 'closed' },

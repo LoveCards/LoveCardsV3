@@ -9,8 +9,8 @@
       v-model:visible-columns="visibleColumns"
       :columns="columnOptions"
       :result-count="totalItems"
-      preference-key="operations-audit"
-      @reset-view="resetTableView"
+      :view-query-keys="['action', 'actor', 'resource_type', 'resource_id', 'request_id', 'correlation_id', 'from', 'to', 'list_rows']" preference-key="operations-audit"
+      @reset-view="resetTableView" @apply-view="applySavedView"
     >
       <template #toolbar>
         <v-alert v-if="filterError" class="mb-3" type="error" variant="tonal">{{ filterError }}</v-alert>
@@ -45,6 +45,7 @@
         <template #append><v-btn variant="outlined" @click="load">重试</v-btn></template>
       </v-alert>
       <v-data-table-server
+        class="admin-table-no-sort"
         :items-per-page="itemsPerPage"
         :page="page"
         :headers="headers"
@@ -59,15 +60,11 @@
         @update:items-per-page="changePageSize"
       >
         <template #item.action="{ item }"><strong class="audit-action" :title="item.action">{{ item.action }}</strong><div class="text-caption text-medium-emphasis">操作者 {{ item.actor_id ? `#${item.actor_id}` : '系统或匿名' }}</div></template>
-        <template #item.resource="{ item }"><AdminResourceLink v-if="item.resource_type" :resource-type="item.resource_type" :resource-id="item.resource_id" /><span v-else>—</span></template>
+        <template #item.resource="{ item }"><span v-if="item.resource_type">{{ item.resource_type }} #{{ item.resource_id }}</span><span v-else>—</span></template>
         <template #item.trace="{ item }"><code class="audit-code">{{ item.request_id || '—' }}</code><div class="audit-code text-caption text-medium-emphasis">{{ item.correlation_id || '—' }}</div></template>
-        <template #item.created_at="{ item }"><time :datetime="item.created_at" :title="item.created_at">{{ item.created_at.slice(0, 19) }}</time></template>
+        <template #item.created_at="{ item }"><AdminTableTime :value="item.created_at" seconds /></template>
         <template #item.detail="{ item }">
-          <v-tooltip text="查看审计详情" location="top">
-            <template #activator="{ props }">
-              <v-btn v-bind="props" :aria-label="`查看审计记录 #${item.id}`" :to="`/apps/operations/audit/${item.id}`" icon="mdi-open-in-new" variant="text" />
-            </template>
-          </v-tooltip>
+          <NuxtLink :to="`/apps/operations/audit/${item.id}`">查看详情</NuxtLink>
         </template>
         <template #no-data>
           <v-empty-state :icon="error ? 'mdi-cloud-alert-outline' : 'mdi-clipboard-text-clock-outline'" :title="error ? '无法加载审计日志' : '没有匹配的审计记录'" :text="error || '调整查询条件后重试。'">
@@ -101,8 +98,8 @@
 import type { OperationsAuditLog } from '@lovecards/sdk'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
-import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue'
+import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue'
 import { useApi, isApiError } from '~/lib/api'
 
 type AuditFilters = { action: string; actor: string; resource_type: string; resource_id: string; request_id: string; correlation_id: string; from: string; to: string }
@@ -208,8 +205,8 @@ function navigationQuery(pageNumber: number, size: number, filters = routeState.
   query.list_rows = String(size)
   return query
 }
-function changePage(next: number) { if (next !== page.value) void router.push({ query: navigationQuery(next, itemsPerPage.value), hash: route.hash }) }
-function changePageSize(next: number) { if (next !== itemsPerPage.value) void router.push({ query: navigationQuery(1, next), hash: route.hash }) }
+function changePage(next: number) { if (next !== page.value) void router.replace({ query: navigationQuery(next, itemsPerPage.value), hash: route.hash }) }
+function changePageSize(next: number) { if (next !== itemsPerPage.value) void router.replace({ query: navigationQuery(1, next), hash: route.hash }) }
 function applyFilters() {
   filterError.value = ''
   const filters: Partial<AuditFilters> = {}
@@ -242,15 +239,27 @@ function applyFilters() {
   }
   if (filters.from && filters.to && filters.from >= filters.to) return void (filterError.value = '结束时间必须晚于开始时间。')
   advancedOpen.value = false
-  void router.push({ query: navigationQuery(1, itemsPerPage.value, filters), hash: route.hash })
+  void router.replace({ query: navigationQuery(1, itemsPerPage.value, filters), hash: route.hash })
 }
 function clearFilters() {
   Object.assign(draft, emptyDraft())
   filterError.value = ''
   advancedOpen.value = false
-  void router.push({ query: navigationQuery(1, itemsPerPage.value, {}), hash: route.hash })
+  void router.replace({ query: navigationQuery(1, itemsPerPage.value, {}), hash: route.hash })
 }
-function resetTableView() { void router.push({ query: navigationQuery(1, 30), hash: route.hash }) }
+function applySavedView(saved: Record<string, string | null | (string | null)[]>) {
+  const query = { ...route.query }
+  for (const key of filterKeys) delete query[key]
+  for (const key of filterKeys) {
+    const value = saved[key]
+    if (typeof value === 'string') query[key] = value
+  }
+  const size = queryInt(saved.list_rows, 30, 100)
+  query.list_rows = String(allowedPageSizes.includes(size) ? size : 30)
+  query.page = '1'
+  void router.replace({ query, hash: route.hash })
+}
+function resetTableView() { void router.replace({ query: navigationQuery(1, 30), hash: route.hash }) }
 
 let latestRequest = 0
 async function load() {

@@ -61,7 +61,7 @@ const error = ref<string | null>(null)
 const conflict = ref('')
 const dialogOpen = ref(false)
 const saveError = ref('')
-const headers = [{ title: '主动提示与影响', key: 'key' }, { title: '当前设置', key: 'enabled', sortable: false }]
+const headers = [{ title: '主动提示与影响', key: 'key', sortRaw: (a: SignalPolicyItem, b: SignalPolicyItem) => a.display_name.localeCompare(b.display_name, 'zh-CN') }, { title: '当前设置', key: 'enabled', sortable: false }]
 const dirty = computed(() => rows.value.some(row => row.enabled !== row.original))
 const impact = computed(() => rows.value.filter(row => row.enabled !== row.original)
   .map(row => `${row.display_name}：${row.original ? '开启 → 关闭' : '关闭 → 开启'}`)

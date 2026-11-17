@@ -26,8 +26,8 @@ const props = withDefaults(defineProps<{
 })
 
 const resourceMap: Record<string, { target: (id: string) => string; label: string; icon: string }> = {
-  card: { target: (id) => `/apps/content/cards?inspect=${encodeURIComponent(id)}`, label: '卡片', icon: 'mdi-card-text-outline' },
-  comment: { target: (id) => `/apps/content/comments?inspect=${encodeURIComponent(id)}`, label: '评论', icon: 'mdi-comment-text-outline' },
+  card: { target: (id) => `/apps/content/cards/${encodeURIComponent(id)}`, label: '卡片', icon: 'mdi-card-text-outline' },
+  comment: { target: (id) => `/apps/content/comments/${encodeURIComponent(id)}`, label: '评论', icon: 'mdi-comment-text-outline' },
   tag: { target: (id) => `/apps/content/tags?inspect=${encodeURIComponent(id)}`, label: '标签', icon: 'mdi-tag-outline' },
   user: { target: (id) => `/apps/users/${encodeURIComponent(id)}`, label: '用户', icon: 'mdi-account-outline' },
   file: { target: (id) => `/apps/settings/storage/files/${encodeURIComponent(id)}/usage`, label: '文件', icon: 'mdi-file-outline' },

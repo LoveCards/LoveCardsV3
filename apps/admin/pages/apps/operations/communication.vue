@@ -156,7 +156,7 @@ const advancedNumericFields = [
 ] as const
 const capabilityHeaders = [
   { title: '能力', key: 'key' }, { title: '状态', key: 'ready' }, { title: 'Provider', key: 'provider' },
-  { title: '原因', key: 'reason' }, { title: '检查时间', key: 'checked_at' },
+  { title: '原因', key: 'reason', sortable: false }, { title: '检查时间', key: 'checked_at' },
 ]
 const hasChanges = computed(() => {
   const current = communication.value

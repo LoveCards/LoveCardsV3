@@ -10,11 +10,16 @@
       v-model:visible-columns="visibleColumns"
       :columns="columnOptions"
       :default-columns="defaultColumns"
-      preference-key="users"
-      @reset-view="resetTableView"
+      :result-count="tableHasResult ? tableTotalItems : null"
+      :result-state="tableResultState"
+      :view-query-keys="['search_value', 'order_key', 'order_desc', 'filters', 'list_rows']" preference-key="users"
+      @reset-view="resetTableView" @apply-view="applySavedView"
     >
       <template #search>
-        <v-text-field v-model="tableSearchValue" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+        <div class="d-flex flex-wrap align-center ga-2">
+          <v-text-field v-model="tableSearchValue" class="flex-grow-1" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @keyup.enter="submitSearch" @update:model-value="onSearchDraftChange" />
+          <v-btn variant="outlined" @click="submitSearch">查询</v-btn>
+        </div>
       </template>
       <template #actions>
         <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">搜索与排序</v-btn>
@@ -24,11 +29,11 @@
         <v-row dense align="center" aria-live="polite">
           <v-col cols="12" sm="auto"><span class="text-body-2">已选择 {{ tableSelected.length }} 项</span></v-col>
           <v-col cols="12" sm="4" md="3">
-            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="tableLoading" item-title="title" item-value="value" label="批量操作" />
+            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="!allowRowMutation" item-title="title" item-value="value" label="批量操作" />
           </v-col>
           <v-col cols="auto">
             <AdminActionGuard :capability="batchCapability" scope="all">
-              <v-btn variant="outlined" :disabled="BatchOperate === ''" @click="openBatchUserDialog">应用操作</v-btn>
+              <v-btn variant="outlined" :disabled="!allowRowMutation || BatchOperate === ''" @click="openBatchUserDialog">应用操作</v-btn>
             </AdminActionGuard>
           </v-col>
           <v-col cols="auto"><v-btn variant="text" @click="tableSelected = []">取消选择</v-btn></v-col>
@@ -114,7 +119,7 @@
               <v-icon v-else icon="mdi-account" aria-label="默认头像" />
             </v-avatar>
             <div>
-              <v-btn :to="`/apps/users/${item.id}`" variant="text" class="px-0 text-none justify-start"><AdminTableSearchHighlight :text="item.username" :query="highlightQuery('username')" /></v-btn>
+              <span class="text-body-1 font-weight-medium"><AdminTableSearchHighlight :text="item.username" :query="highlightQuery('username')" /></span>
               <div v-if="!visibleColumns.includes('number')" class="text-caption text-medium-emphasis">账号 <AdminTableSearchHighlight :text="item.number" :query="highlightQuery('number')" /></div>
             </div>
           </div>
@@ -122,15 +127,15 @@
 
         <template #[`item.operate`]="{ item }">
           <div class="d-flex align-center ga-1">
-            <AdminActionGuard v-if="canEditUser(item)" capability="users.update" scope="all">
-              <v-btn variant="text" @click="openEditUserDialog(item)">编辑用户</v-btn>
-            </AdminActionGuard>
-            <v-btn v-else :to="`/apps/users/${item.id}`" variant="text">查看用户</v-btn>
-            <v-menu v-if="userStore.hasGrant('users.security.read', 'global') || canDeleteUser(item)" location="bottom end">
+            <v-btn :to="`/apps/users/${item.id}`" variant="text">查看详情</v-btn>
+            <v-menu v-if="allowRowMutation && (canEditUser(item) || userStore.hasGrant('users.security.read', 'global') || canDeleteUser(item))" location="bottom end">
               <template #activator="{ props }">
                 <v-btn v-bind="props" aria-label="更多用户操作" icon="mdi-dots-horizontal" variant="text" />
               </template>
               <v-list density="compact">
+                <AdminActionGuard v-if="canEditUser(item)" capability="users.update" scope="all">
+                  <v-list-item title="编辑用户" prepend-icon="mdi-pencil" @click="openEditUserDialog(item)" />
+                </AdminActionGuard>
                 <v-list-item v-if="userStore.hasGrant('users.security.read', 'global')" :to="`/apps/users/${item.id}/security`" title="查看账号安全" prepend-icon="mdi-shield-account-outline" />
                 <v-list-item v-if="canDeleteUser(item)" title="删除用户" prepend-icon="mdi-delete-outline" @click="openDeleteUserDialog(item)" />
               </v-list>
@@ -163,7 +168,7 @@
         <template v-for="field in ['id', 'number', 'email', 'phone']" :key="field" #[`item.${field}`]="{ item }">
           <AdminTableSearchHighlight :text="tableSearchCell(item, field)" :query="highlightQuery(field)" />
         </template>
-        <template #[`item.created_at`]="{ value }"><span class="text-body-2 text-medium-emphasis"><AdminTableSearchHighlight :text="value" :query="highlightQuery('created_at')" /></span></template>
+        <template #[`item.created_at`]="{ value }"><AdminTableTime :value="String(value ?? '')" :query="highlightQuery('created_at')" /></template>
 
         <template #no-data>
           <v-empty-state
@@ -225,6 +230,7 @@ import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue';
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue';
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
+import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue';
 import EditUserDialog from '~/components/users/EditUserDialog.vue';
 import PublicBatchDialog from '@/components/shared/Table/BatchDialog.vue';
 import PublicDeleteDialog from '~/components/shared/Table/DeleteDialog.vue';
@@ -251,14 +257,38 @@ const positiveQueryInt = (value: unknown, fallback: number) => {
   const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : Number.NaN;
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
-const queryFilters = (value: unknown): Record<string, unknown> => {
-  if (typeof value !== 'string' || !value) return {};
-  try {
-    const parsed = JSON.parse(value);
-    return typeof parsed === 'object' && parsed && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
+const normalizeFilters = (value: unknown): Record<string, unknown> => {
+  let source: Record<string, unknown>;
+  if (typeof value === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      source = typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown> : {};
+    } catch {
+      source = {};
+    }
+  } else {
+    source = typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? value as Record<string, unknown> : {};
   }
+  const result: Record<string, unknown> = {};
+  if (Array.isArray(source.search_keys)) {
+    const keys = [...new Set(source.search_keys.filter((key): key is string =>
+      typeof key === 'string' && SearchKeys.some((option) => option.value === key)))];
+    if (keys.length) result.search_keys = keys;
+  }
+  const orderKey = source.order_key;
+  if (typeof orderKey === 'string' && AllTableHeaders.some((header) => header.value === orderKey && header.sortable)) {
+    result.order_key = orderKey;
+    if (typeof source.order_desc === 'boolean') result.order_desc = source.order_desc;
+  }
+  if (typeof source.status === 'number' && Number.isInteger(source.status) && source.status >= 0 && source.status <= 3) {
+    result.status = source.status;
+  }
+  if (typeof source.role_id === 'number' && Number.isSafeInteger(source.role_id) && source.role_id > 0) {
+    result.role_id = source.role_id;
+  }
+  return result;
 };
 
 const AllTableHeaders = [
@@ -376,7 +406,7 @@ const targetMutationAllowed = (user: User) => {
 };
 const canEditUser = (user: User) => userStore.hasGrant('users.update', 'all') && targetMutationAllowed(user);
 const canDeleteUser = (user: User) => userStore.hasGrant('users.delete', 'all') && targetMutationAllowed(user);
-const isUserSelectable = (user: User) => TableBatchOptions.value.length > 0 && targetMutationAllowed(user);
+const isUserSelectable = (user: User) => allowRowMutation.value && TableBatchOptions.value.length > 0 && targetMutationAllowed(user);
 const shouldShowTargetLock = (user: User) => {
   return (userStore.hasGrant('users.update', 'all') || userStore.hasGrant('users.delete', 'all'))
     && !targetMutationAllowed(user);
@@ -414,11 +444,16 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
   ? [{ key: route.query.order_key, order: ['1', 'true', 'desc'].includes(String(route.query.order_desc)) ? 'desc' : 'asc' }]
   : []);
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
-const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
+const appliedSearchValue = ref(tableSearchValue.value);
+const tableSearchFilter = ref<Record<string, unknown>>(normalizeFilters(route.query.filters));
 const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
-const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } = useAdminTableSearchFeedback(tableSearchValue, tableSearchFilter, SearchKeys, 'username', '搜索用户名');
+const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } = useAdminTableSearchFeedback(appliedSearchValue, tableSearchFilter, SearchKeys, 'username', '搜索用户名');
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
+const tableHasResult = ref(false);
+const tableResultState = ref<'ready' | 'loading' | 'stale'>('ready');
+const allowRowMutation = computed(() => tableHasResult.value && !tableLoading.value && tableResultState.value === 'ready');
+let lastSuccessfulQuery: string | null = null;
 let latestRequest = 0;
 
 const errorMessage = (error: unknown) => {
@@ -431,18 +466,28 @@ const getTableData = async () => {
   const requestId = ++latestRequest;
   tableLoading.value = true;
   tableError.value = null;
-  const searchValue = tableSearchValue.value?.trim();
+  const searchValue = appliedSearchValue.value?.trim();
   const searchHighlight = searchSnapshot();
   const sort = tableSortBy.value[0];
   const params: Record<string, unknown> = {
+    ...normalizeFilters(tableSearchFilter.value),
     page: tableCurrentPage.value,
     list_rows: tableListRows.value,
-    ...tableSearchFilter.value,
   };
   if (searchValue) params.search_value = mapTableSearchValue(searchValue, tableSearchFilter.value.search_keys, { status: SelectUtils.User.status });
   if (sort) {
     params.order_key = sort.key;
     params.order_desc = sort.order === 'desc';
+  }
+
+  const queryKey = JSON.stringify(params);
+  const refreshing = tableHasResult.value && lastSuccessfulQuery === queryKey;
+  tableResultState.value = refreshing ? 'loading' : 'ready';
+  if (!refreshing) {
+    tableItems.value = [];
+    tableTotalItems.value = 0;
+    tableHasResult.value = false;
+    tableSelected.value = [];
   }
 
   try {
@@ -455,8 +500,14 @@ const getTableData = async () => {
     tableSelected.value = tableSelected.value.filter((id) => visibleIds.has(id));
     tableCurrentPage.value = result.pagination?.currentPage ?? tableCurrentPage.value;
     tableTotalItems.value = result.pagination?.totalItems ?? result.data.length;
+    lastSuccessfulQuery = queryKey;
+    tableHasResult.value = true;
+    tableResultState.value = 'ready';
   } catch (error) {
-    if (requestId === latestRequest) tableError.value = errorMessage(error);
+    if (requestId === latestRequest) {
+      tableError.value = errorMessage(error);
+      if (refreshing) tableResultState.value = 'stale';
+    }
   } finally {
     if (requestId === latestRequest) tableLoading.value = false;
   }
@@ -470,7 +521,7 @@ const syncRouteQuery = () => {
   const orderDesc = sort ? sort.order === 'desc' || sort.order === true : tableSearchFilter.value.order_desc !== false;
   next.page = String(tableCurrentPage.value);
   next.list_rows = String(tableListRows.value);
-  if (tableSearchValue.value?.trim()) next.search_value = tableSearchValue.value.trim();
+  if (appliedSearchValue.value?.trim()) next.search_value = appliedSearchValue.value.trim();
   else delete next.search_value;
   if (orderKey) {
     next.order_key = orderKey;
@@ -485,18 +536,51 @@ const syncRouteQuery = () => {
 };
 
 const refreshFromFirstPage = () => {
-  syncRouteQuery();
-  if (tableCurrentPage.value === 1) void getTableData();
-  else tableCurrentPage.value = 1;
+  if (tableCurrentPage.value === 1) {
+    syncRouteQuery();
+    void getTableData();
+  } else {
+    tableCurrentPage.value = 1;
+  }
 };
-const searchTableData = CommonUtils.lodash.debounce(refreshFromFirstPage, 500);
+const submitSearch = () => {
+  appliedSearchValue.value = tableSearchValue.value?.trim() || undefined;
+  refreshFromFirstPage();
+};
+const onSearchDraftChange = (value: string | null) => {
+  if (!value?.trim() && appliedSearchValue.value) {
+    appliedSearchValue.value = undefined;
+    refreshFromFirstPage();
+  }
+};
 const clearFilters = () => {
   tableSearchValue.value = undefined;
+  appliedSearchValue.value = undefined;
   tableSearchFilter.value = {};
   refreshFromFirstPage();
 };
+const applySavedView = (query: Record<string, string | null | (string | null)[]>) => {
+  const search = query.search_value;
+  tableSearchValue.value = typeof search === 'string' && search.trim() ? search.trim() : undefined;
+  appliedSearchValue.value = tableSearchValue.value;
+  const filters = normalizeFilters(query.filters);
+  applySearchDialog(filters);
+  const orderKey = query.order_key ?? filters.order_key;
+  const orderDesc = query.order_key ? query.order_desc : filters.order_desc;
+  tableSortBy.value = typeof orderKey === 'string' && AllTableHeaders.some((header) => header.value === orderKey && header.sortable)
+    ? [{ key: orderKey, order: ['1', 'true', 'desc'].includes(String(orderDesc)) ? 'desc' : 'asc' }]
+    : [];
+  const size = positiveQueryInt(query.list_rows, defaultListRows);
+  tableListRows.value = TableListRowsOptions.some((option) => option.value === size) ? size : defaultListRows;
+  tableSelected.value = [];
+  tableCurrentPage.value = 1;
+  syncRouteQuery();
+  void getTableData();
+};
+
 const resetTableView = () => {
   tableSearchValue.value = undefined;
+  appliedSearchValue.value = undefined;
   tableSearchFilter.value = {};
   tableSortBy.value = [];
   tableListRows.value = defaultListRows;
@@ -596,6 +680,7 @@ const openBatchUserDialog = () => {
 const SearchUserDialog_state = ref(false);
 const setTableSearchFilter = (data: Record<string, unknown>) => {
   applySearchDialog(data);
+  tableSearchFilter.value = normalizeFilters(tableSearchFilter.value);
   tableCurrentPage.value = 1;
   syncRouteQuery();
 };
