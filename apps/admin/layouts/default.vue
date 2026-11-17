@@ -22,8 +22,8 @@
       <v-btn
         class="admin-brand"
         variant="text"
-        :to="adminNavigation.dashboard.path"
-        aria-label="返回管理工作台"
+        :to="homePath"
+        :aria-label="homePath === adminNavigation.dashboard.path ? '返回管理工作台' : '前往可访问的管理页面'"
       >
         <v-icon icon="mdi-heart-box-outline" size="24" />
         <span class="admin-brand__name">LoveCards</span>
@@ -297,6 +297,7 @@ import {
   canAccessNavigationItem,
 } from '~/config/navigation'
 import type { AdminNavigationItem } from '~/config/navigation'
+import { firstAccessibleAdminPath } from '~/utils/access'
 import type { User } from '@lovecards/sdk'
 
 const theme = useTheme()
@@ -354,6 +355,7 @@ const visibleNavigationGroups = computed(() => adminNavigation.groups
 const visibleDashboard = computed(() => canAccessNavigationItem(adminNavigation.dashboard, userStore.grants)
   ? adminNavigation.dashboard
   : undefined)
+const homePath = computed(() => firstAccessibleAdminPath(userStore.grants) ?? '/login')
 const allVisibleItems = computed(() => [
   ...(visibleDashboard.value ? [visibleDashboard.value] : []),
   ...visibleNavigationGroups.value.flatMap((group) => group.items),
