@@ -133,7 +133,15 @@ final class ReleaseCompatibilityValidator implements ReleaseCompatibility
         if ($catalog['checksums'] !== $manifest->migrationChecksums()) {
             throw new ReleaseVerificationException('Release Migration Catalog 与 Manifest Checksum 不一致');
         }
-        return $catalog['has_contract'];
+        if (!$catalog['has_contract']) return false;
+        $records = $this->migrationRecords($manifest);
+        foreach ($this->migrations->discover(rtrim($releaseRoot, '/\\') . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'migrations') as $migration) {
+            $descriptor = $migration->descriptor();
+            if (!$descriptor->hasContract()) continue;
+            $record = $records[$descriptor->id()] ?? null;
+            if ($record === null || !$record->isComplete()) return true;
+        }
+        return false;
     }
 
     public function verifyPreContractMigrationsComplete(ReleaseManifest $manifest): void
