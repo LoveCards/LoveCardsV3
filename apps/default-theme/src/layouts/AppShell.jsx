@@ -53,10 +53,14 @@ export function AppShell({ children, mobileMode = 'standard' }) {
   const [notificationUnread, setNotificationUnread] = useState(0);
   const [realtimeFault, setRealtimeFault] = useState(false);
   useEffect(() => {
+    if (!isAuthenticated && !isVisitor) {
+      setAuthExpired(false);
+      return undefined;
+    }
     const handleAuthError = () => setAuthExpired(true);
     window.addEventListener('lc-auth-error', handleAuthError);
     return () => window.removeEventListener('lc-auth-error', handleAuthError);
-  }, []);
+  }, [isAuthenticated, isVisitor]);
   useEffect(() => {
     if (!isAuthenticated || !sdkConfigured()) {
       setNotificationUnread(0);

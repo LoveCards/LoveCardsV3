@@ -15,6 +15,9 @@ use app\modules\Platform\Auth\Application\Session;
 use app\modules\Platform\Auth\Contract\TokenService;
 use app\modules\Platform\Auth\Contract\UserRepository;
 use app\modules\Platform\Auth\Public\AuthUser;
+use app\modules\Platform\Auth\Public\AuthContext;
+use app\modules\Platform\Auth\Transport\Api\SessionResource;
+use app\shared\Authorization\GrantSet;
 
 $app = new \think\App(dirname(__DIR__, 2));
 $app->setRuntimePath(sys_get_temp_dir() . '/lc-guest-regression-runtime/');
@@ -116,6 +119,26 @@ $tests['guest mints stay random per visit and never reuse a shared account'] = s
         $assert(!password_verify('123456', $entry['user']->passwordHash()), 'guest password must not be the static 123456');
         $assert(in_array($guestRoleId, array_map('intval', $entry['user']->roleIds()), true), 'guest accounts must carry the guest system role');
     }
+};
+$tests['session check identifies token backed guest without changing auth permission context'] = static function () use ($session, $directory, $guestRoleId, $normalRoleId, $assert): void {
+    $issued = $session->guest('203.0.113.8');
+    $guest = $directory->findById((int) substr($issued['token'], strlen('token-for-')));
+    $assert($guest !== null, 'guest token must resolve to the minted account');
+
+    $guestSession = SessionResource::make([
+        'uid' => '123456789012', 'visitor' => false, 'roles' => $guest->roleIds(),
+        'capabilities' => [], 'grants' => [],
+    ]);
+    $normalSession = SessionResource::make([
+        'uid' => '123456789013', 'visitor' => false, 'roles' => [$normalRoleId],
+        'capabilities' => [], 'grants' => [],
+    ]);
+    $assert($guestSession['visitor'] === true && $guestSession['roles'] === [$guestRoleId], 'guest token must be reported as a visitor session');
+    $assert($normalSession['visitor'] === false, 'regular token must stay an authenticated session');
+
+    $context = AuthContext::authenticated(0, $guest, [$guestRoleId], GrantSet::fromRows([]));
+    $assert($context->isVisitor() === false, 'token backed guest must retain its authenticated permission context');
+    $assert(SessionResource::make($context)['visitor'] === true, 'object response path must report the guest role as a visitor session');
 };
 $tests['guest role accounts are refused for password login even with the right password'] = static function () use ($tokens, $roleStore, $legacyHash, $guestRoleId, $assert): void {
     try {
