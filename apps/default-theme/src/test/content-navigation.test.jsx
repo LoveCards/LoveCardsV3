@@ -28,9 +28,12 @@ describe('content navigation', () => {
       for (const className of ['desktop-nav', 'mobile-bottom-nav']) {
         const nav = navigation(html, className);
         expect(nav).toMatch(/<a(?=[^>]*aria-current="page")(?=[^>]*href="\/\?feed=following")[^>]*>/);
+        const dynamicEntry = nav.match(/<a[^>]*href="\/\?feed=following"[^>]*>[\s\S]*?<\/a>/)?.[0] || '';
+        expect(dynamicEntry).toContain('动态');
+        expect(dynamicEntry).not.toContain('关注');
         expect(nav).not.toMatch(/<a(?=[^>]*aria-current="page")(?=[^>]*href="\/")[^>]*>/);
       }
-      expect(html).toContain('>关注</h1>');
+      expect(html).toContain('>动态</h1>');
       expect(html).not.toContain('class="home-channels"');
     },
   );

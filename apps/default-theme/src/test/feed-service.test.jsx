@@ -20,7 +20,7 @@ describe('home feed data boundary', () => {
 
   it('keeps unsupported relationship feeds distinct from empty feeds', () => {
     vi.stubEnv('VITE_DATA_MODE', 'design-preview');
-    expect(getHomeFeedSnapshot('following')).toMatchObject({ source: 'unavailable', message: '关注流预览暂未开放' });
+    expect(getHomeFeedSnapshot('following')).toMatchObject({ source: 'unavailable', message: '动态预览暂未开放' });
   });
 
   it('falls back to the latest public feed when the recommended endpoint fails', async () => {

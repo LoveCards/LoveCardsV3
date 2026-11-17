@@ -13,7 +13,7 @@
 
 | 编号 | 状态 | 入口 | React 路由 | 审计结论 |
 |---|---|---|---|---|
-| 01 | `needs-sync` | [`blueprint-01-home-feed.html`](../../blueprints/blueprint-01-home-feed.html) | `/`、`/?feed=following` | 首页频道第二项为发现；关注流升为全局第二入口。仍需继续对照当前 Masonry 实现完成密度审计。 |
+| 01 | `needs-sync` | [`blueprint-01-home-feed.html`](../../blueprints/blueprint-01-home-feed.html) | `/`、`/?feed=following` | 首页频道第二项为发现；动态（关注流）为全局第二入口。仍需继续对照当前 Masonry 实现完成密度审计。 |
 | 02 | `needs-sync` | [`blueprint-02-discovery-search.html`](../../blueprints/blueprint-02-discovery-search.html) | `/explore`、`/search*`、`/topic/*` | 发现、搜索与话题主体结构继续有效；全局入口调整为首页频道第二项，蓝图导航需同步。 |
 | 03 | `needs-sync` | [`blueprint-03-content-detail.html`](../../blueprints/blueprint-03-content-detail.html) | `/post/*`、`/media/*` | 已合并历史 CSS 级联并移除归档依赖；仍需继续对照评论输入实现。 |
 | 04 | `canonical` | [`blueprint-04-compose.html`](../../blueprints/blueprint-04-compose.html) | `/compose`、`/compose?edit=<cardId>`、`/drafts*` | 发布器显式区分随笔、图文和视频；手机发布、草稿恢复和已发布编辑统一使用 `immersive` Shell，无全局 TopNav/BottomNav，固定发布栏是唯一底部任务栏。桌面和手机使用同一连续编辑轴；字段错误就近、任务错误进入 scoped Banner。草稿箱使用 `task` Shell 并回到同一编辑器。 |
