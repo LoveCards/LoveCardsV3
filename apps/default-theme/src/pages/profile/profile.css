@@ -1,4 +1,14 @@
 @layer lovecards-pages {
+  .guest-me-page { width: min(720px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 96px; }
+  .guest-me-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+  .guest-me-heading h1 { margin: 0; font-size: 1.45rem; }
+  .guest-me-heading span { padding: 5px 9px; border-radius: 999px; color: var(--lc-rose-deep); background: var(--lc-rose-soft); font-size: 0.72rem; font-weight: 700; }
+  .guest-me-section { margin-bottom: 12px; padding: 22px; border: 1px solid var(--lc-separator); border-radius: var(--lc-radius-panel); background: var(--lc-surface); }
+  .guest-me-section h2 { margin: 0 0 7px; font-size: 1.06rem; }
+  .guest-me-section p { margin: 0 0 18px; color: var(--lc-muted); font-size: 0.84rem; line-height: 1.6; }
+  .guest-me-links { display: flex; flex-wrap: wrap; gap: 10px; }
+  .guest-me-settings { min-height: 44px; display: inline-flex; align-items: center; color: var(--lc-rose-deep); font-size: 0.82rem; font-weight: 680; }
+  .guest-me-page a:focus-visible { outline: 2px solid var(--lc-rose); outline-offset: 3px; }
   .profile-page { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 26px 0 88px; }
   .profile-hero { overflow: hidden; border: 1px solid var(--lc-separator); border-radius: var(--lc-radius-panel); background: var(--lc-surface); }
   .profile-cover { min-height: 132px; display: flex; align-items: end; padding: 18px 22px; color: #fff; background: linear-gradient(135deg, #e8b6aa 0%, #d99388 48%, #9f6977 100%); background-position: center; background-size: cover; }
@@ -160,6 +170,9 @@
   .edit-profile-actions .astryx-button { min-height: 44px; }
 
   @media (max-width: 760px) {
+    .guest-me-page { width: 100%; padding: 16px 12px calc(88px + env(safe-area-inset-bottom)); }
+    .guest-me-section { padding: 18px 16px; }
+    .guest-me-links .action-link { min-height: 44px; }
     .app-shell.is-profile-route .product-header { display: none; }
     .profile-page { width: 100%; padding: 12px 12px calc(88px + env(safe-area-inset-bottom)); background: var(--lc-canvas); }
     .profile-mobile-top { position: sticky; top: 0; z-index: var(--lc-z-sticky); min-height: 48px; margin: -12px -12px 8px; padding: 0 8px; display: grid; grid-template-columns: 48px minmax(0, 1fr) 48px; align-items: center; background: color-mix(in srgb, var(--lc-surface) 96%, transparent); border-bottom: 1px solid var(--lc-separator); backdrop-filter: blur(10px); }

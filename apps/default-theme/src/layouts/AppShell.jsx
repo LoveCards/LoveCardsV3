@@ -7,6 +7,7 @@ import { Avatar, Icon } from '../ui/icons.jsx';
 import { ActionMenu } from '../ui/interaction.jsx';
 import { IconButton } from '../ui/controls.jsx';
 import { useAuth } from '../app/providers.jsx';
+import { endCurrentSession } from '../app/end-current-session.js';
 import { getRuntimeDataMode } from '../app/runtime-context.js';
 import { getSdkClient, sdkConfigured } from '../app/sdk-client.js';
 import { getCommunicationRuntime, SIGNAL_UNREAD } from '../services/communication-runtime.js';
@@ -34,7 +35,8 @@ function isProtectedNavigationTarget(target) {
 
 export function AppShell({ children, mobileMode = 'standard' }) {
   const navigate = useNavigate();
-  const { pathname, search } = useLocation();
+  const location = useLocation();
+  const { pathname, search } = location;
   const feedParams = new URLSearchParams(search);
   const followingActive = pathname === '/' && (feedParams.get('feed') === 'following' || feedParams.get('channel') === 'following');
   const homeActive = (pathname === '/' && !followingActive) || pathname === '/explore' || pathname === '/search' || pathname.startsWith('/search/') || pathname.startsWith('/topic/');
@@ -44,10 +46,10 @@ export function AppShell({ children, mobileMode = 'standard' }) {
   const { isAuthenticated, isVisitor, user, logout, status: authStatus } = useAuth();
   const designPreview = getRuntimeDataMode() === 'design-preview';
   const requiresLogin = !designPreview && authStatus === 'ready' && !isAuthenticated;
-  const navigationTarget = (target) => requiresLogin && isProtectedNavigationTarget(target) ? '/auth/login' : target;
-  const navigationState = (target) => requiresLogin && isProtectedNavigationTarget(target) ? { from: target } : undefined;
+  const needsNavigationLogin = (target) => requiresLogin && !(isVisitor && target === '/me') && isProtectedNavigationTarget(target);
+  const navigationTarget = (target) => needsNavigationLogin(target) ? '/auth/login' : target;
+  const navigationState = (target) => needsNavigationLogin(target) ? { from: target } : undefined;
   const [authExpired, setAuthExpired] = useState(false);
-  const [sessionError, setSessionError] = useState(false);
   const [notificationUnread, setNotificationUnread] = useState(0);
   const [realtimeFault, setRealtimeFault] = useState(false);
   useEffect(() => {
@@ -92,14 +94,7 @@ export function AppShell({ children, mobileMode = 'standard' }) {
     };
   }, [isAuthenticated]);
   const endSession = async (destination) => {
-    setSessionError(false);
-    try {
-      await logout();
-    } catch {
-      setSessionError(true);
-    } finally {
-      navigate(destination, { replace: true });
-    }
+    await endCurrentSession(logout, navigate, destination);
   };
   const accountItems = isAuthenticated ? [
     { label: '我的主页', icon: <Icon name="user" size={17} />, onClick: () => navigate('/me') },
@@ -139,7 +134,8 @@ export function AppShell({ children, mobileMode = 'standard' }) {
           </div>
         </div>
       </header>
-      {(authExpired || sessionError) && <div className="session-notice" role="alert"><span>{sessionError ? '本地登录状态已清除，但服务器退出确认失败。' : '登录状态已失效，部分操作暂不可用。'}</span><Link to="/auth/login">重新登录</Link><IconButton className="session-notice-dismiss" type="button" onClick={() => { setAuthExpired(false); setSessionError(false); }} label="关闭登录状态提示" variant="ghost" size="lg" icon={<Icon name="close" size={17} />} /></div>}
+      {location.state?.logoutUnconfirmed && <div className="session-notice" role="alert"><span>本机凭证已清除，但服务器退出未确认。</span><IconButton className="session-notice-dismiss" type="button" onClick={() => navigate(`${pathname}${search}${location.hash}`, { replace: true, state: null })} label="关闭退出状态提示" variant="ghost" size="lg" icon={<Icon name="close" size={17} />} /></div>}
+      {authExpired && <div className="session-notice" role="alert"><span>登录状态已失效，部分操作暂不可用。</span><Link to="/auth/login">重新登录</Link><IconButton className="session-notice-dismiss" type="button" onClick={() => setAuthExpired(false)} label="关闭登录状态提示" variant="ghost" size="lg" icon={<Icon name="close" size={17} />} /></div>}
       {realtimeFault && <div className="session-notice" role="status"><span>实时更新暂不可用；手动刷新仍可查看最新内容。</span></div>}
       {children}
       {hasMobileBottomNav && <nav className="mobile-bottom-nav" aria-label="移动端产品导航">
