@@ -19,9 +19,9 @@ use app\modules\Operations\SystemLifecycle\Domain\HandlerCatalogHasher;
 final class ReleaseCompatibilityFakeMigration implements Migration
 {
     private MigrationDescriptor $descriptor;
-    public function __construct()
+    public function __construct(bool $hasContract = false)
     {
-        $this->descriptor = MigrationDescriptor::fromSource('20260819000003', 'compatibility fixture', "-- compatibility fixture\n");
+        $this->descriptor = MigrationDescriptor::fromSource('20260819000003', 'compatibility fixture', "-- compatibility fixture\n", $hasContract);
     }
     public function descriptor(): MigrationDescriptor { return $this->descriptor; }
     public function preflight(): void {}
@@ -33,12 +33,15 @@ final class ReleaseCompatibilityFakeMigration implements Migration
 
 final class ReleaseCompatibilityFakeSource implements MigrationSource
 {
-    public function discover(string $directory): array { return [new ReleaseCompatibilityFakeMigration()]; }
+    public function __construct(private bool $hasContract = false) {}
+    public function discover(string $directory): array { return [new ReleaseCompatibilityFakeMigration($this->hasContract)]; }
 }
 
 final class ReleaseCompatibilityFakeLedger implements MigrationLedger
 {
-    public function all(): array { return []; }
+    /** @param MigrationProgress[] $records */
+    public function __construct(private array $records = []) {}
+    public function all(): array { return $this->records; }
     public function allReadOnly(): array { return $this->all(); }
     public function find(string $migrationId): ?MigrationProgress { return null; }
     public function initialize(MigrationDescriptor $descriptor): MigrationProgress { return MigrationProgress::pending($descriptor); }
@@ -82,6 +85,15 @@ try {
     file_put_contents($catalogPath, json_encode([['handler_key' => 'tampered']], JSON_THROW_ON_ERROR));
     try { $validator->verifyStagedRelease($manifest, $tmp); throw new RuntimeException('tampered handler catalog accepted'); }
     catch (ReleaseVerificationException $exception) {}
+    $contractDescriptor = (new ReleaseCompatibilityFakeMigration(true))->descriptor();
+    $waiting = MigrationProgress::restore([
+        'id' => $contractDescriptor->id(), 'checksum' => $contractDescriptor->checksum(),
+        'phase' => 'contract', 'status' => 'waiting', 'revision' => 0, 'attempts' => 0,
+    ]);
+    $waitingValidator = new ReleaseCompatibilityValidator(new ReleaseCompatibilityFakeSource(true), new ReleaseCompatibilityFakeLedger([$waiting]), new ReleaseCompatibilityFakeEnvironment($catalogHash));
+    if (!$waitingValidator->requiresContract($manifest, $tmp)) throw new RuntimeException('waiting Contract was not gated');
+    $completeValidator = new ReleaseCompatibilityValidator(new ReleaseCompatibilityFakeSource(true), new ReleaseCompatibilityFakeLedger([MigrationProgress::pending($contractDescriptor)->installedTarget()]), new ReleaseCompatibilityFakeEnvironment($catalogHash));
+    if ($completeValidator->requiresContract($manifest, $tmp)) throw new RuntimeException('completed Contract required approval again');
     fwrite(STDOUT, "PASS handler catalog is fail-closed before staging and checked at runtime\n1 Release compatibility test passed.\n");
 } catch (Throwable $exception) {
     $failures++;
