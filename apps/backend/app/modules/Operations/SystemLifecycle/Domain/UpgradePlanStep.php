@@ -83,7 +83,10 @@ final class UpgradePlanStep
 
     public function skip(): self
     {
-        if ($this->state !== UpgradeStepState::PENDING || !UpgradeStep::isOptional($this->name)) {
+        $obsoleteApproval = $this->name === UpgradeStep::CONTRACT_MIGRATIONS
+            && $this->state === UpgradeStepState::WAITING
+            && $this->attempts === 0;
+        if (($this->state !== UpgradeStepState::PENDING && !$obsoleteApproval) || !UpgradeStep::isOptional($this->name)) {
             throw new \LogicException('只有未开始的可选 Upgrade Step 可以跳过');
         }
         return new self($this->name, UpgradeStepState::SKIPPED, $this->attempts, null, null);
