@@ -18,7 +18,7 @@ Route/Page -> Pinia or local state -> @lovecards/sdk -> /api -> ThinkPHP
 
 ## 目录约定
 
-页面的整体宽度、区块顺序与工作台/列表/详情/配置四类骨架以 [管理端页面布局规范](ADMIN-LAYOUT-SYSTEM.md) 为准。共享组件统一局部外观，页面仍负责把信息放进正确的骨架。
+页面的整体宽度、区块顺序与工作台/列表/详情/配置四类骨架以 [管理端页面布局规范](ADMIN-LAYOUT-SYSTEM.md) 为准；列表与局部表格的字段、入口和操作语义以 [列表与表格交互规范](ADMIN-TABLE-INTERACTION-STANDARD.md) 为准。共享组件统一局部外观，页面仍负责把信息放进正确的骨架。
 
 ```text
 apps/admin/
@@ -104,7 +104,7 @@ SDK hook / Page -> useAdminNotifier -> notificationStore -> NotificationNotifier
 
 ### 页面状态
 
-上述页面使用 `AdminPageHeader`、`AdminAsyncState`、`AdminStatusChip`、`AdminActionGuard`、`AdminDangerActionDialog`、`AdminAuditTrail`、`AdminResourceLink`、`AdminResourceTableShell`、`AdminFilterToolbar` 和 `AdminConfigSection` 等共享组件，保持 loading/error/empty/disabled 状态一致。列表的 URL 状态、列设置和命名视图由共享表格壳统一编排，浏览器持久化键必须按当前管理员隔离。配置页面统一通过 `useAdminUnsavedChanges` 拦截站内离开和浏览器关闭。固定导航唯一来源是 `config/navigation.ts`，页面 capability 必须同时出现在后端 Route access、`CapabilityCatalog`、系统角色种子和导航契约中。
+上述页面使用 `AdminPageHeader`、`AdminAsyncState`、`AdminStatusChip`、`AdminActionGuard`、`AdminDangerActionDialog`、`AdminAuditTrail`、`AdminResourceLink`、`AdminResourceTableShell`、`AdminFilterToolbar` 和 `AdminConfigSection` 等共享组件，保持 loading/error/empty/disabled 状态一致。页面维护与 API 对应的 URL 查询状态；共享表格控件维护列设置和命名视图，二者只使用一份排序状态，浏览器持久化键必须按当前管理员隔离。配置页面统一通过 `useAdminUnsavedChanges` 拦截站内离开和浏览器关闭。固定导航唯一来源是 `config/navigation.ts`，页面 capability 必须同时出现在后端 Route access、`CapabilityCatalog`、系统角色种子和导航契约中。
 
 ## 验证门禁
 
