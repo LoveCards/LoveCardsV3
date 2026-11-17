@@ -121,6 +121,7 @@
     align-items: start;
     gap: 24px;
   }
+  .home-layout.is-following { grid-template-columns: minmax(0, 1fr); }
 
   .home-feed {
     min-width: 0;
@@ -487,6 +488,8 @@
     .home-channels a { min-width: 56px; min-height: 44px; font-size: 0.74rem; }
     .home-channels-note { margin-left: 6px; font-size: 0.62rem; }
     .home-heading { display: none; }
+    .home-heading.is-following { display: block; min-height: 0; padding: 17px 0 7px; }
+    .home-heading.is-following .home-heading-actions { display: none; }
     .home-preview-disclosure {
       position: relative;
       top: 5px;

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Brand } from '../components/Brand.jsx';
 import { HeaderSearch } from '../components/HeaderSearch.jsx';
 import { ThemeToggle } from '../features/theme/ThemeToggle.jsx';
@@ -13,7 +13,7 @@ import { getCommunicationRuntime, SIGNAL_UNREAD } from '../services/communicatio
 
 const bottomNav = [
   { to: '/', label: '首页', icon: 'home', end: true },
-  { to: '/explore', label: '发现', icon: 'search' },
+  { to: '/?feed=following', label: '关注', icon: 'users' },
   { to: '/compose', label: '发布', icon: 'plus', compose: true },
   { to: '/messages', label: '消息', icon: 'mail', inbox: true },
   { to: '/me', label: '我的', icon: 'user' },
@@ -21,19 +21,23 @@ const bottomNav = [
 
 const desktopNav = [
   { to: '/', label: '首页', end: true },
-  { to: '/explore', label: '发现' },
+  { to: '/?feed=following', label: '关注' },
   { to: '/messages', label: '消息', inbox: true },
 ];
 
 const protectedNavigationPrefixes = ['/me', '/messages', '/inbox', '/compose', '/drafts', '/settings/profile', '/settings/security', '/settings/session', '/settings/privacy', '/settings/blocked', '/settings/notifications'];
 
 function isProtectedNavigationTarget(target) {
+  if (target.startsWith('/?') && new URLSearchParams(target.slice(2)).get('feed') === 'following') return true;
   return protectedNavigationPrefixes.some((prefix) => target === prefix || target.startsWith(`${prefix}/`) || target.startsWith(`${prefix}?`));
 }
 
 export function AppShell({ children, mobileMode = 'standard' }) {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
+  const feedParams = new URLSearchParams(search);
+  const followingActive = pathname === '/' && (feedParams.get('feed') === 'following' || feedParams.get('channel') === 'following');
+  const homeActive = (pathname === '/' && !followingActive) || pathname === '/explore' || pathname === '/search' || pathname.startsWith('/search/') || pathname.startsWith('/topic/');
   const hasMobileBottomNav = mobileMode === 'standard';
   const messageCenterActive = pathname === '/messages' || pathname.startsWith('/messages/') || pathname === '/inbox' || pathname.startsWith('/inbox/');
   const composeActive = pathname === '/compose' || pathname.startsWith('/compose/');
@@ -122,9 +126,8 @@ export function AppShell({ children, mobileMode = 'standard' }) {
             {desktopNav.map((item) => {
               if (item.unavailable) return <span className="nav-unavailable" aria-disabled="true" key={item.label}>{item.label}<small>未开放</small></span>;
               const content = <>{item.label}{item.inbox && notificationUnread > 0 && <span className="nav-unread" aria-label={`${notificationUnread} 条未读通知`}>{notificationUnread > 99 ? '99+' : notificationUnread}</span>}</>;
-              return item.inbox
-                ? <Link aria-current={messageCenterActive ? 'page' : undefined} key={item.to} to={navigationTarget(item.to)} state={navigationState(item.to)}>{content}</Link>
-                : <NavLink end={item.end} key={item.to} to={navigationTarget(item.to)} state={navigationState(item.to)}>{content}</NavLink>;
+              const active = item.inbox ? messageCenterActive : item.to === '/' ? homeActive : followingActive;
+              return <Link aria-current={active ? 'page' : undefined} key={item.to} to={navigationTarget(item.to)} state={navigationState(item.to)}>{content}</Link>;
             })}
           </nav>
           <HeaderSearch />
@@ -153,13 +156,14 @@ export function AppShell({ children, mobileMode = 'standard' }) {
             {item.compose && <span className="sr-only">{item.label}</span>}
           </>;
           if (item.inbox) return <Link className={messageCenterActive ? 'is-active' : undefined} aria-current={messageCenterActive ? 'page' : undefined} key={item.to} to={navigationTarget(item.to)} state={navigationState(item.to)}>{content}</Link>;
-          return <NavLink
-            className={({ isActive }) => `${item.compose ? 'is-compose ' : ''}${isActive ? 'is-active' : ''}`.trim()}
-            end={item.end}
+          const active = item.compose ? composeActive : item.to === '/' ? homeActive : item.to === '/?feed=following' ? followingActive : pathname === item.to;
+          return <Link
+            className={`${item.compose ? 'is-compose ' : ''}${active ? 'is-active' : ''}`.trim()}
+            aria-current={active ? 'page' : undefined}
             key={item.to}
             to={navigationTarget(item.to)}
             state={navigationState(item.to)}
-          >{content}</NavLink>;
+          >{content}</Link>;
         })}
       </nav>}
     </div>

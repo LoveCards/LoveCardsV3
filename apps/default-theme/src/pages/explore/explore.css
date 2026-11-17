@@ -2,11 +2,12 @@
   .discovery-page {
     width: min(var(--lc-page-max), calc(100% - 40px));
     margin: 0 auto;
-    padding: 28px 0 88px;
+    padding: 0 0 88px;
   }
 
   .discovery-heading {
     min-height: 86px;
+    padding-top: 28px;
     margin-bottom: 18px;
     display: flex;
     align-items: end;
@@ -272,8 +273,8 @@
   }
 
   @media (max-width: 760px) {
-    .discovery-page { width: 100%; padding: 16px 9px calc(88px + env(safe-area-inset-bottom)); background: var(--lc-canvas); }
-    .discovery-heading { min-height: 0; margin-bottom: 15px; display: block; }
+    .discovery-page { width: 100%; padding: 0 9px calc(88px + env(safe-area-inset-bottom)); background: var(--lc-canvas); }
+    .discovery-heading { min-height: 0; margin-bottom: 15px; padding-top: 16px; display: block; }
     .discovery-heading h1 { font-size: 1.35rem; }
     .discovery-heading .capability-note { display: block; margin-top: 9px; }
     .discovery-search-surface { grid-template-columns: minmax(0, 1fr) auto; margin-inline: 0; padding: 7px 8px 7px 12px; gap: 7px; }
