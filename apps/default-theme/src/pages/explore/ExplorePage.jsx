@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
+import { ContentChannels } from '../../components/ContentChannels.jsx';
 import { ResourceState } from '../../components/ResourceState.jsx';
 import { FeedCollection } from '../../features/feed/FeedCollection.jsx';
 import { useResource } from '../../app/use-resource.js';
@@ -46,12 +47,13 @@ export function ExplorePage({ search = false, topic = false }) {
   return (
     <AppShell>
       <main className="discovery-page" aria-labelledby="discovery-title">
+        {!search && !topic && <ContentChannels active="explore" />}
         <header className="discovery-heading">
           <div>
             <h1 id="discovery-title">{topic ? `# ${data.topic?.name || query}` : (search && query ? `搜索“${query}”` : '去发现，今天的新鲜事')}</h1>
             <p>{topic ? '围绕同一兴趣继续浏览内容。' : '从正在发生的城市、兴趣和创作者开始。'}</p>
           </div>
-          <span className="capability-note">关注、趋势与个性推荐暂未开放</span>
+          <span className="capability-note">趋势与个性推荐暂未开放</span>
         </header>
 
         {!topic && <DiscoverySearchSurface query={query} onSubmit={updateQuery} />}

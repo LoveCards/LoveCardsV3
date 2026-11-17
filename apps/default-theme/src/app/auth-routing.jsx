@@ -31,3 +31,11 @@ export function ProtectedRoute({ children }) {
   }
   return children;
 }
+
+export function HomeFeedRoute({ children }) {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  return params.get('feed') === 'following' || params.get('channel') === 'following'
+    ? <ProtectedRoute>{children}</ProtectedRoute>
+    : children;
+}

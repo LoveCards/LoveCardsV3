@@ -22,7 +22,7 @@ import { MessagesPage } from '../pages/community/MessagesPage.jsx';
 import { NewMessagePage } from '../pages/community/NewMessagePage.jsx';
 import { PrivacyPage } from '../pages/community/PrivacyPage.jsx';
 import { PublicProfileView } from '../pages/community/PublicProfileView.jsx';
-import { ProtectedRoute } from './auth-routing.jsx';
+import { HomeFeedRoute, ProtectedRoute } from './auth-routing.jsx';
 
 const pendingRoutes = [
   { path: '/compose/:type', title: '发布类型', description: '针对不同媒体类型提供对应编辑体验。', capability: '分类发布编辑器暂未开放，请使用通用发布页。', backTo: '/compose', backLabel: '返回发布', mobileMode: 'immersive', protected: true },
@@ -33,7 +33,7 @@ const pendingRoutes = [
 export function EagerAppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={<HomeFeedRoute><HomePage /></HomeFeedRoute>} />
       <Route path="/explore" element={<ExplorePage />} />
       <Route path="/search" element={<ExplorePage search />} />
       <Route path="/search/:scope" element={<ExplorePage search />} />

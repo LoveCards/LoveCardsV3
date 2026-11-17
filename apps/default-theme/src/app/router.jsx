@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
-import { ProtectedRoute } from './auth-routing.jsx';
+import { HomeFeedRoute, ProtectedRoute } from './auth-routing.jsx';
 
 const HomePage = lazy(() => import('../pages/home/HomePage.jsx').then((module) => ({ default: module.HomePage })));
 const ExplorePage = lazy(() => import('../pages/explore/ExplorePage.jsx').then((module) => ({ default: module.ExplorePage })));
@@ -39,7 +39,7 @@ export function AppRoutes() {
   return (
     <Suspense fallback={<RouteLoadingState />}>
       <Routes>
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<HomeFeedRoute><HomePage /></HomeFeedRoute>} />
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/search" element={<ExplorePage search />} />
         <Route path="/search/:scope" element={<ExplorePage search />} />

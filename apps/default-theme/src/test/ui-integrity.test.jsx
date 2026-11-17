@@ -270,7 +270,7 @@ describe('UI integrity', () => {
     expect(relations).toContain("!designPreview && auth.status === 'error'");
     expect(relations).toContain("(auth.isAuthenticated || designPreview) && <RelationSwitcher");
     expect(profile).toContain("!designPreview && authStatus === 'error' ? <ResourceState status=\"error\" error={authError}");
-    expect(router).toContain("import { ProtectedRoute } from './auth-routing.jsx';");
+    expect(router).toContain("import { HomeFeedRoute, ProtectedRoute } from './auth-routing.jsx';");
     expect(router).toContain('<Route path="/me" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />');
     expect(navigationSpec).toContain('登录边界');
     expect(navigationSpec).toContain('`from` 只接受单斜杠开头');
@@ -413,7 +413,7 @@ describe('UI integrity', () => {
     expect(inbox).toContain('互动消息');
     expect(inbox).toContain('系统通知');
     expect(inbox).not.toContain('>全部</a>');
-    expect(inbox).not.toContain('>关注</a>');
+    expect(inbox.match(/<nav class="notification-filters"[\s\S]*?<\/nav>/)?.[0] || '').not.toContain('>关注</a>');
 
     const messagesSource = readFileSync(fileURLToPath(new URL('../pages/community/MessagesPage.jsx', import.meta.url)), 'utf8');
     const panelSource = readFileSync(fileURLToPath(new URL('../pages/community/ConversationPanel.jsx', import.meta.url)), 'utf8');
