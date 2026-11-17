@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
 import { useAuth, useThemeMode } from '../../app/providers.jsx';
+import { endCurrentSession } from '../../app/end-current-session.js';
 import { getUserFacingError } from '../../app/user-facing-error.js';
 import { ResourceErrorBanner } from '../../components/ResourceState.jsx';
 import { sendEmailCaptcha, updateEmail, updatePassword } from '../../services/content-service.js';
@@ -49,7 +50,7 @@ function formatSessionTime(value) {
   return Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(date);
 }
 
-function SessionSettingsSection({ authStatus, authError, isAuthenticated, refreshAuth, sessions, feedback, busy, logout, navigate, setBusy, setSessions, setFeedback }) {
+function SessionSettingsSection({ authStatus, authError, isAuthenticated, isVisitor, refreshAuth, sessions, feedback, busy, logout, navigate, setBusy, setSessions, setFeedback }) {
   const activeSessions = sessions.data
     .filter((item) => item.status === 'active')
     .sort((left, right) => Number(right.current) - Number(left.current) || new Date(right.created_at).getTime() - new Date(left.created_at).getTime());
@@ -69,8 +70,8 @@ function SessionSettingsSection({ authStatus, authError, isAuthenticated, refres
       setBusy('');
     }
   };
-  return <SettingsGroup title="登录设备" description="查看正在使用账号的设备与登录记录；没有返回的设备信息不会被猜测或补写。">
-    {authStatus === 'checking' ? <SettingsRowsSkeleton rows={3} label="登录设备加载中" /> : authStatus === 'error' ? <ResourceErrorBanner error={authError} onRetry={refreshAuth} /> : !isAuthenticated ? <div className="settings-login-note" role="status"><div><h3>当前没有登录会话</h3><p>登录后可以查看和管理登录设备。</p></div><Link className="action-link action-link-primary" to="/auth/login">去登录</Link></div> : <>
+  return <SettingsGroup title={isVisitor ? '游客会话' : '登录设备'} description={isVisitor ? '管理当前设备上的游客身份。' : '查看正在使用账号的设备与登录记录；没有返回的设备信息不会被猜测或补写。'}>
+    {authStatus === 'checking' ? <SettingsRowsSkeleton rows={3} label="登录设备加载中" /> : authStatus === 'error' ? <ResourceErrorBanner error={authError} onRetry={refreshAuth} /> : isVisitor ? <div className="settings-action-row"><div><h3>当前为游客会话</h3><p>结束后，此设备保存的游客凭证会清除，无法继续使用当前游客身份。</p></div><Button type="button" label="结束游客会话" variant="secondary" size="lg" isDisabled={Boolean(busy)} isLoading={busy === 'visitor-logout'} onClick={() => { setBusy('visitor-logout'); void endCurrentSession(logout, navigate, '/'); }} /></div> : !isAuthenticated ? <div className="settings-login-note" role="status"><div><h3>当前没有登录会话</h3><p>登录后可以查看和管理登录设备。</p></div><Link className="action-link action-link-primary" to="/auth/login">去登录</Link></div> : <>
       {feedback.scope === 'session' && <ScopedBanner className="settings-task-feedback" title="会话操作没有完成" description={feedback.message} />}
       {sessions.status === 'loading' && <SettingsRowsSkeleton rows={3} label="登录设备加载中" />}
       {sessions.status === 'error' && <ResourceErrorBanner error={sessions.error} />}
@@ -96,7 +97,7 @@ function SessionSettingsSection({ authStatus, authError, isAuthenticated, refres
 
 export function SettingsPage({ section }) {
   const toast = useToast();
-  const { isAuthenticated, logout, status: authStatus, error: authError, refresh: refreshAuth, can } = useAuth();
+  const { isAuthenticated, isVisitor, logout, status: authStatus, error: authError, refresh: refreshAuth, can } = useAuth();
   const { preference, setPreference, reduceMotion, setReduceMotion } = useThemeMode();
   const navigate = useNavigate();
   const [currentPassword, setCurrentPassword] = useState('');
@@ -165,7 +166,7 @@ export function SettingsPage({ section }) {
       {section === '__legacy-session' && <SettingsGroup title="登录状态" description="管理当前设备上的登录状态；退出不会删除账号或内容。">
         {authStatus === 'checking' ? <SettingsRowsSkeleton rows={1} label="登录状态加载中" /> : authStatus === 'error' ? <ResourceErrorBanner error={authError} onRetry={refreshAuth} /> : isAuthenticated ? <><div className="settings-action-row"><div><h3>退出当前账号</h3><p>退出后，此设备需要重新登录才能访问个人内容。</p></div><Button type="button" label="退出登录" variant="secondary" size="lg" isDisabled={Boolean(busy)} isLoading={busy === 'logout'} clickAction={async () => { setBusy('logout'); try { await logout(); } finally { navigate('/auth/login', { replace: true }); } }} /></div>{sessions.status === 'loading' && <SettingsRowsSkeleton rows={3} label="会话列表加载中" />}{sessions.status === 'error' && <ResourceErrorBanner error={sessions.error} onRetry={() => window.dispatchEvent(new Event('lc-auth-changed'))} />}{sessions.status === 'success' && <div className="settings-session-list">{sessions.data.filter((item) => item.status === 'active').map((session) => <div className="settings-session-row" key={session.id}><div><strong>{session.device_name || '当前登录会话'} {session.current && <small>当前会话</small>}</strong><p>{session.location || ''}{session.ip_address ? `${session.location ? ' · ' : ''}${session.ip_address}` : ''}</p></div><Button type="button" label="撤销" variant="secondary" size="sm" isDisabled={session.current || Boolean(busy)} clickAction={async () => { setBusy(`session-${session.id}`); try { await revokeSession(session.id); setSessions((value) => ({ ...value, data: value.data.map((item) => item.id === session.id ? { ...item, status: 'revoked' } : item) })); } catch (error) { setFeedback({ scope: 'session', message: getUserFacingError(error, { fallback: '会话暂时无法撤销，请稍后重试。' }) }); } finally { setBusy(''); } }} /></div>)}</div>}{sessions.status === 'success' && sessions.data.some((item) => item.status === 'active' && !item.current) && <Button type="button" label="撤销其他会话" variant="secondary" size="lg" isDisabled={Boolean(busy)} clickAction={async () => { setBusy('revoke-others'); try { await revokeOtherSessions(); const next = await listSessions(); setSessions({ status: 'success', data: next, error: null }); } catch (error) { setFeedback({ scope: 'session', message: getUserFacingError(error, { fallback: '其他会话暂时无法撤销，请稍后重试。' }) }); } finally { setBusy(''); } }} />}</> : <div className="settings-login-note" role="status"><div><h3>当前没有登录会话</h3><p>登录后可以在这里退出当前账号。</p></div><Link className="action-link action-link-primary" to="/auth/login">去登录</Link></div>}
       </SettingsGroup>}
-      {section === 'session' && <SessionSettingsSection authStatus={authStatus} authError={authError} isAuthenticated={isAuthenticated} refreshAuth={refreshAuth} sessions={sessions} feedback={feedback} busy={busy} logout={logout} navigate={navigate} setBusy={setBusy} setSessions={setSessions} setFeedback={setFeedback} />}
+      {section === 'session' && <SessionSettingsSection authStatus={authStatus} authError={authError} isAuthenticated={isAuthenticated} isVisitor={isVisitor} refreshAuth={refreshAuth} sessions={sessions} feedback={feedback} busy={busy} logout={logout} navigate={navigate} setBusy={setBusy} setSessions={setSessions} setFeedback={setFeedback} />}
     </SettingsLayout>
   </AppShell>;
 }

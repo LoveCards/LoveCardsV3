@@ -271,7 +271,7 @@ describe('UI integrity', () => {
     expect(relations).toContain("(auth.isAuthenticated || designPreview) && <RelationSwitcher");
     expect(profile).toContain("!designPreview && authStatus === 'error' ? <ResourceState status=\"error\" error={authError}");
     expect(router).toContain("import { HomeFeedRoute, ProtectedRoute } from './auth-routing.jsx';");
-    expect(router).toContain('<Route path="/me" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />');
+    expect(router).toContain('<Route path="/me" element={<ProtectedRoute allowVisitor><MePage /></ProtectedRoute>} />');
     expect(navigationSpec).toContain('登录边界');
     expect(navigationSpec).toContain('`from` 只接受单斜杠开头');
     expect(feedbackSpec).toContain('认证边界');

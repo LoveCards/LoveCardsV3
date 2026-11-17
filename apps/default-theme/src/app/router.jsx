@@ -1,12 +1,12 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { HomeFeedRoute, ProtectedRoute } from './auth-routing.jsx';
+import { HomePage } from '../pages/home/HomePage.jsx';
 
-const HomePage = lazy(() => import('../pages/home/HomePage.jsx').then((module) => ({ default: module.HomePage })));
 const ExplorePage = lazy(() => import('../pages/explore/ExplorePage.jsx').then((module) => ({ default: module.ExplorePage })));
 const DetailPage = lazy(() => import('../pages/detail/DetailPage.jsx').then((module) => ({ default: module.DetailPage })));
 const MediaPage = lazy(() => import('../pages/detail/MediaPage.jsx').then((module) => ({ default: module.MediaPage })));
-const ProfilePage = lazy(() => import('../pages/profile/ProfilePage.jsx').then((module) => ({ default: module.ProfilePage })));
+const MePage = lazy(() => import('../pages/profile/MePage.jsx').then((module) => ({ default: module.MePage })));
 const ProfileRelationPage = lazy(() => import('../pages/profile/ProfileSecondaryPage.jsx').then((module) => ({ default: module.ProfileRelationPage })));
 const ComposePage = lazy(() => import('../pages/compose/ComposePage.jsx').then((module) => ({ default: module.ComposePage })));
 const AuthPage = lazy(() => import('../pages/auth/AuthPage.jsx').then((module) => ({ default: module.AuthPage })));
@@ -47,7 +47,7 @@ export function AppRoutes() {
         <Route path="/post/:id" element={<DetailPage />} />
         <Route path="/post/:id/thread/:commentId" element={<DetailPage />} />
         <Route path="/media/:id" element={<MediaPage />} />
-        <Route path="/me" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+        <Route path="/me" element={<ProtectedRoute allowVisitor><MePage /></ProtectedRoute>} />
         <Route path="/me/following" element={<ProtectedRoute><ProfileRelationPage relation="following" /></ProtectedRoute>} />
         <Route path="/me/followers" element={<ProtectedRoute><ProfileRelationPage relation="followers" /></ProtectedRoute>} />
         {/* Legacy deep links remain safe, but received likes are display-only and have no detail page. */}
@@ -64,7 +64,7 @@ export function AppRoutes() {
         <Route path="/settings/appearance" element={<SettingsPage section="appearance" />} />
         <Route path="/settings/security" element={<ProtectedRoute><SettingsPage section="security" /></ProtectedRoute>} />
         <Route path="/settings/account" element={<Navigate to="/settings/security" replace />} />
-        <Route path="/settings/session" element={<ProtectedRoute><SettingsPage section="session" /></ProtectedRoute>} />
+        <Route path="/settings/session" element={<ProtectedRoute allowVisitor><SettingsPage section="session" /></ProtectedRoute>} />
         <Route path="/settings/notifications" element={<ProtectedRoute><NotificationSettingsPage /></ProtectedRoute>} />
         <Route path="/compose" element={<ProtectedRoute><ComposePage /></ProtectedRoute>} />
         <Route path="/auth/login" element={<AuthPage mode="login" />} />
