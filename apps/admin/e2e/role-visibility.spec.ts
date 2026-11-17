@@ -155,6 +155,20 @@ test('a privileged role name cannot reveal pages without matching grants', async
   await expect(navigation.getByRole('link', { name: '系统升级', exact: true })).toHaveCount(0)
 })
 
+test('brand link opens the first page available to an administrator without dashboard access', async ({ page }) => {
+  await mockCurrentAdministrator(page, {
+    slug: 'audit_only',
+    name: '只读审计员',
+    grants: [globalGrant('admin.access'), globalGrant('audit.read')],
+    visible: [],
+    hidden: [],
+  })
+
+  await page.goto('./apps/operations/audit', { waitUntil: 'domcontentloaded' })
+  await page.getByRole('link', { name: '前往可访问的管理页面' }).click()
+  await expect(page).toHaveURL(/\/admin\/apps\/operations\/audit(?:\?|$)/)
+})
+
 test('the workbench is direct and only the current task group expands automatically', async ({ page }) => {
   await mockCurrentAdministrator(page, {
     slug: 'multi_domain_operator',
