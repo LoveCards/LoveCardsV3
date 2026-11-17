@@ -68,7 +68,7 @@ final class UpgradeCoordinatorFakeReleaseRepository implements ReleaseRepository
 
 final class UpgradeCoordinatorFakeCompatibility implements ReleaseCompatibility
 {
-    public function __construct(private array &$trace, private bool $contractRequired = true) {}
+    public function __construct(private array &$trace, public bool $contractRequired = true) {}
     public int $environmentChecks = 0;
     public int $stagedChecks = 0;
     public int $preContractChecks = 0;
@@ -281,6 +281,35 @@ $migrationTraceCount = static fn(array $trace): int => count(array_filter(
     static fn(string $entry): bool => str_starts_with($entry, 'migration:')
 ));
 $tests = [];
+$tests['completed contract resumes a previously waiting release without approval'] = static function () use ($fixture, $source, $assert): void {
+    $state = $fixture();
+    $plan = $state->coordinator->createPlan($source, 7);
+    $id = $plan->plan()->planId();
+    for ($advance = 0; $advance < 100 && $plan->status() !== UpgradePlan::WAITING; $advance++) {
+        $plan = $state->coordinator->advance($id);
+    }
+    $assert($plan->plan()->current()?->name() === UpgradeStep::CONTRACT_MIGRATIONS, 'fixture did not reach Contract gate');
+    $state->compatibility->contractRequired = false;
+    $resumed = $state->coordinator->advance($id);
+    $assert($resumed->plan()->current()?->name() === UpgradeStep::FINAL_HEALTH, 'completed Contract did not release waiting plan');
+    $assert(!$resumed->contractApproved(), 'completed Contract unexpectedly gained approval');
+    $assert(!in_array('migration:' . MigrationPhase::CONTRACT, $state->trace, true), 'completed Contract executed SQL again');
+};
+$tests['approved contract completes after the last migration unit'] = static function () use ($fixture, $source, $assert): void {
+    $state = $fixture();
+    $plan = $state->coordinator->createPlan($source, 7);
+    $id = $plan->plan()->planId();
+    for ($advance = 0; $advance < 100 && $plan->status() !== UpgradePlan::WAITING; $advance++) {
+        $plan = $state->coordinator->advance($id);
+    }
+    $state->coordinator->approveContract($id);
+    $plan = $state->coordinator->advance($id);
+    $assert($plan->plan()->current()?->name() === UpgradeStep::CONTRACT_MIGRATIONS, 'fixture did not start Contract work');
+    $state->compatibility->contractRequired = false;
+    $plan = $state->coordinator->advance($id);
+    $assert($plan->plan()->current()?->name() === UpgradeStep::FINAL_HEALTH, 'approved Contract did not complete after its final migration unit');
+    $assert($plan->contractApproved(), 'approved Contract lost its approval record');
+};
 $tests['running plan with failed ledger stops once before explicit retry'] = static function () use ($fixture, $source, $assert, $assertThrows): void {
     $state = $fixture();
     $plan = $state->coordinator->createPlan($source, 7);

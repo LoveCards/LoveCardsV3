@@ -159,10 +159,12 @@ final class UpgradeCoordinator
             if (($stored->context()['execution_in_progress'] ?? false) === true) {
                 throw new \LogicException('上次升级执行未确认结束；必须先核实 SQL/子进程已停止并受控处置，禁止凭 Lease 到期重放');
             }
-            if ($current->state() === UpgradeStepState::WAITING && !$stored->contractApproved()) return $stored;
-
             $manifest = $this->manifest($stored);
             $releaseRoot = $this->paths->releaseRoot($stored->plan()->releaseId());
+
+            if ($current->state() === UpgradeStepState::WAITING
+                && !$stored->contractApproved()
+                && $this->compatibility->requiresContract($manifest, $releaseRoot)) return $stored;
 
             // 审计在同一 Lease 下捕获实际目标，必须先成功，之后才改变计划或迁移状态。
             if ($beforeAdvance !== null) $beforeAdvance($this->advanceAuditMetadata($stored, $releaseRoot));
@@ -174,7 +176,9 @@ final class UpgradeCoordinator
                 );
             }
 
-            if ($this->isOptionalStep($current, $manifest, $releaseRoot)) {
+            if ($this->isOptionalStep($current, $manifest, $releaseRoot)
+                && ($current->state() === UpgradeStepState::PENDING
+                    || ($current->state() === UpgradeStepState::WAITING && !$stored->contractApproved()))) {
                 $skipped = $stored->withPlan($stored->plan()->skip($current->name()));
                 return $this->plans->save($skipped, $stored->plan()->revision());
             }
