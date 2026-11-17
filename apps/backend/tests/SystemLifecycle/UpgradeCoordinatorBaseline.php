@@ -295,6 +295,21 @@ $tests['completed contract resumes a previously waiting release without approval
     $assert(!$resumed->contractApproved(), 'completed Contract unexpectedly gained approval');
     $assert(!in_array('migration:' . MigrationPhase::CONTRACT, $state->trace, true), 'completed Contract executed SQL again');
 };
+$tests['approved contract completes after the last migration unit'] = static function () use ($fixture, $source, $assert): void {
+    $state = $fixture();
+    $plan = $state->coordinator->createPlan($source, 7);
+    $id = $plan->plan()->planId();
+    for ($advance = 0; $advance < 100 && $plan->status() !== UpgradePlan::WAITING; $advance++) {
+        $plan = $state->coordinator->advance($id);
+    }
+    $state->coordinator->approveContract($id);
+    $plan = $state->coordinator->advance($id);
+    $assert($plan->plan()->current()?->name() === UpgradeStep::CONTRACT_MIGRATIONS, 'fixture did not start Contract work');
+    $state->compatibility->contractRequired = false;
+    $plan = $state->coordinator->advance($id);
+    $assert($plan->plan()->current()?->name() === UpgradeStep::FINAL_HEALTH, 'approved Contract did not complete after its final migration unit');
+    $assert($plan->contractApproved(), 'approved Contract lost its approval record');
+};
 $tests['running plan with failed ledger stops once before explicit retry'] = static function () use ($fixture, $source, $assert, $assertThrows): void {
     $state = $fixture();
     $plan = $state->coordinator->createPlan($source, 7);

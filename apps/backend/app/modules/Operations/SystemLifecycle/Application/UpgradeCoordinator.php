@@ -176,7 +176,9 @@ final class UpgradeCoordinator
                 );
             }
 
-            if ($this->isOptionalStep($current, $manifest, $releaseRoot)) {
+            if ($this->isOptionalStep($current, $manifest, $releaseRoot)
+                && ($current->state() === UpgradeStepState::PENDING
+                    || ($current->state() === UpgradeStepState::WAITING && !$stored->contractApproved()))) {
                 $skipped = $stored->withPlan($stored->plan()->skip($current->name()));
                 return $this->plans->save($skipped, $stored->plan()->revision());
             }
