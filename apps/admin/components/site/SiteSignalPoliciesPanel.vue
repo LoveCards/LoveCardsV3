@@ -5,7 +5,10 @@
         <h2 id="site-signals-title" class="text-h6">主动更新</h2>
         <p class="text-body-2 text-medium-emphasis mt-1">这些开关只控制实时提示。关闭后，私信和站内通知仍会保存，用户手动刷新仍可查看。</p>
       </div>
-      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="dirty" @click="load">刷新</v-btn>
+      <div class="d-flex flex-wrap align-center ga-2">
+        <span v-if="dirty" class="text-caption text-medium-emphasis">请先保存或放弃修改，再刷新。</span>
+        <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="dirty" @click="load">刷新</v-btn>
+      </div>
     </div>
     <AdminAsyncState :loading="loading && !catalog" :error="error && !catalog ? error : null" :empty="!catalog" @retry="load">
       <template v-if="catalog">

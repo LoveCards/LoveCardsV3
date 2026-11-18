@@ -73,7 +73,7 @@
         item-value="id"
         items-per-page-text="每页行数"
         :headers="TableHeaders"
-        :item-selectable="allowRowMutation"
+        :item-selectable="isRowSelectable"
         :items="tableItems"
         :items-length="tableTotalItems"
         :items-per-page-options="TableListRowsOptions"
@@ -280,6 +280,7 @@ const tableError = ref<string | null>(null);
 const tableHasResult = ref(false);
 const tableResultState = ref<'ready' | 'loading' | 'stale'>('ready');
 const allowRowMutation = computed(() => tableHasResult.value && !tableLoading.value && tableResultState.value === 'ready');
+const isRowSelectable = () => allowRowMutation.value;
 let lastSuccessfulQuery: string | null = null;
 const hasActiveFilters = computed(() => Boolean(
   appliedSearchValue.value?.trim()
