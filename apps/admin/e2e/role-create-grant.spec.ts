@@ -37,8 +37,9 @@ test('created custom role persists grants across reload', async ({ page }) => {
 
   // 3. 授权：勾选目录中真实存在的三个 grant（GET /api/admin/permissions/all 事实：跨 users/permissions 两域含 global scope）
   await openRoleAction(page, roleRow, '分配权限')
-  const assignDialog = page.locator('.v-dialog:visible').filter({ hasText: '权限调整会影响该角色可见的页面' })
+  const assignDialog = page.locator('.v-dialog:visible')
   await expect(assignDialog).toBeVisible({ timeout: 15_000 })
+  await expect(assignDialog).toContainText('权限调整会影响该角色可见的页面')
   for (const grantKey of ['users.read:all', 'users.read:own', 'permissions.read:global']) {
     const checkbox = assignDialog.locator(`input[type="checkbox"][value="${grantKey}"]`)
     await expect(checkbox).toBeVisible({ timeout: 15_000 })
@@ -51,8 +52,9 @@ test('created custom role persists grants across reload', async ({ page }) => {
 
   // 4. 重开授权对话框：勾选状态来自服务端回读，证明持久化
   await openRoleAction(page, roleRow, '分配权限')
-  const reopenDialog = page.locator('.v-dialog:visible').filter({ hasText: '权限调整会影响该角色可见的页面' })
+  const reopenDialog = page.locator('.v-dialog:visible')
   await expect(reopenDialog).toBeVisible({ timeout: 15_000 })
+  await expect(reopenDialog).toContainText('权限调整会影响该角色可见的页面')
   for (const grantKey of ['users.read:all', 'users.read:own', 'permissions.read:global']) {
     await expect(reopenDialog.locator(`input[type="checkbox"][value="${grantKey}"]`)).toBeChecked({ timeout: 15_000 })
   }
@@ -70,8 +72,9 @@ test('role list exposes the new role through the detail page', async ({ page }) 
 
   // 编辑入口：修改名称后列表回读（第二个写动作，防止写链路只测一半）
   await openRoleAction(page, roleRow, '编辑角色')
-  const editDialog = page.locator('.v-dialog:visible').filter({ has: page.getByLabel('角色名称') })
+  const editDialog = page.locator('.v-dialog:visible')
   await expect(editDialog).toBeVisible({ timeout: 15_000 })
+  await expect(editDialog.getByLabel('角色名称')).toBeVisible()
   const renamed = `${roleName}_已改名`
   await editDialog.getByLabel('角色名称').fill(renamed)
   await editDialog.getByRole('button', { name: '保存修改' }).click()

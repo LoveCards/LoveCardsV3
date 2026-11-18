@@ -114,9 +114,9 @@ const originalGrantKeys = computed(() => grants.value.map(grantKey).sort())
 const basicDirty = computed(() => {
   const current = role.value
   return mode.value === 'edit' && current !== null && (
-    draftName.value !== current.name
-    || (classification.value === 'custom' && draftSlug.value !== current.slug)
-    || draftDescription.value !== (current.description ?? '')
+    draftName.value.trim() !== current.name
+    || (classification.value === 'custom' && draftSlug.value.trim() !== current.slug)
+    || draftDescription.value.trim() !== (current.description ?? '')
   )
 })
 const grantsDirty = computed(() => mode.value === 'assign' && JSON.stringify([...selectedGrantKeys.value].sort()) !== JSON.stringify(originalGrantKeys.value))
