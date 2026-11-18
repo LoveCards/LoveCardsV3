@@ -1,14 +1,11 @@
 <template>
-  <v-btn
+  <NuxtLink
     v-if="target"
-    :to="target"
-    :prepend-icon="icon"
-    class="admin-resource-link px-2"
-    min-height="44"
-    variant="text"
+    :to="{ path: target, state: { adminSource: route.fullPath } }"
+    class="admin-resource-link"
   >
     <AdminTableSearchHighlight :text="displayLabel" :query="highlightQuery" />
-  </v-btn>
+  </NuxtLink>
   <span v-else class="text-medium-emphasis"><AdminTableSearchHighlight :text="displayLabel" :query="highlightQuery" /></span>
 </template>
 
@@ -38,9 +35,9 @@ const resourceMap: Record<string, { target: (id: string) => string; label: strin
 }
 
 const userStore = useUserStore()
+const route = useRoute()
 const normalizedType = computed(() => props.resourceType.toLowerCase())
 const definition = computed(() => resourceMap[normalizedType.value])
-const icon = computed(() => definition.value?.icon ?? 'mdi-link-variant')
 const target = computed(() => {
   if (!definition.value || props.resourceId === null || props.resourceId === undefined || props.resourceId === '') return null
   const path = definition.value.target(String(props.resourceId))
@@ -51,6 +48,13 @@ const displayLabel = computed(() => props.label || `${definition.value?.label ??
 
 <style scoped>
 .admin-resource-link {
-  text-transform: none;
+  color: rgb(var(--v-theme-primary));
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.admin-resource-link:focus-visible {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: 2px;
 }
 </style>

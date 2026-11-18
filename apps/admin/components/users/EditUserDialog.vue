@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="thisDialogState" aria-label="编辑用户" max-width="720" :persistent="saving || avatarUploading">
+  <v-dialog :model-value="thisDialogState" @update:model-value="onDialogModelChange" aria-label="编辑用户" max-width="720" :persistent="saving || avatarUploading">
     <v-card prepend-icon="mdi-account-edit-outline" title="编辑用户">
       <v-card-text class="pt-4">
         <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">
@@ -112,7 +112,7 @@
       <v-divider />
       <v-card-actions class="pa-4">
         <v-spacer />
-        <v-btn :disabled="saving || avatarUploading" variant="text" @click="thisDialogState = false">
+        <v-btn :disabled="saving || avatarUploading" variant="text" @click="requestClose">
           取消
         </v-btn>
         <v-btn
@@ -127,10 +127,18 @@
       </v-card-actions>
     </v-card>
   </v-dialog>
+  <AdminUnsavedChangesDialog
+    :model-value="confirmDiscard"
+    subject="用户尚未保存的修改"
+    @stay="stayEditing"
+    @discard="discardChanges"
+  />
 </template>
 
 <script setup lang="ts">
 import type { UploadResult, User } from '@lovecards/sdk'
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
+import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
 import { isApiError, useApi } from '~/lib/api'
 import { useAdminNotifier } from '~/composables/useAdminNotifier'
 import { useUserStore } from '~/stores/userStore'
@@ -163,6 +171,48 @@ const formError = ref('')
 const avatarUploading = ref(false)
 const avatarUploadError = ref('')
 const selectedAvatar = ref<File | File[] | null>(null)
+const confirmDiscard = ref(false)
+const dirty = computed(() => JSON.stringify(editUserData.value.edit) !== JSON.stringify(editUserData.value.origin))
+let resolveNavigation: ((allow: boolean) => void) | null = null
+const onDialogModelChange = (value: boolean) => {
+  if (value) thisDialogState.value = true
+  else requestClose()
+}
+const requestClose = () => {
+  if (saving.value || avatarUploading.value) return
+  if (dirty.value) confirmDiscard.value = true
+  else thisDialogState.value = false
+}
+const stayEditing = () => {
+  confirmDiscard.value = false
+  resolveNavigation?.(false)
+  resolveNavigation = null
+}
+const discardChanges = () => {
+  confirmDiscard.value = false
+  thisDialogState.value = false
+  resolveNavigation?.(true)
+  resolveNavigation = null
+}
+const guardNavigation = () => {
+  if (!thisDialogState.value || !dirty.value) return true
+  confirmDiscard.value = true
+  return new Promise<boolean>((resolve) => { resolveNavigation = resolve })
+}
+onBeforeRouteLeave(guardNavigation)
+onBeforeRouteUpdate((to, from) =>
+  JSON.stringify(to.params) !== JSON.stringify(from.params) ? guardNavigation() : true)
+const beforeUnload = (event: BeforeUnloadEvent) => {
+  if (!thisDialogState.value || !dirty.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+onMounted(() => window.addEventListener('beforeunload', beforeUnload))
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', beforeUnload)
+  resolveNavigation?.(false)
+})
+
 const canAssignRoles = computed(() => userStore.hasGrant('users.roles.assign', 'global'))
 const canReadRoles = computed(() => userStore.hasGrant('roles.read', 'global'))
 const canManageRoles = computed(() => canAssignRoles.value && canReadRoles.value)

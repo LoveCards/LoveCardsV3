@@ -1,8 +1,8 @@
 <template>
-  <NuxtLink v-if="to" :to="to" class="admin-table-row-action"><slot /></NuxtLink>
   <v-btn
-    v-else
-    variant="text"
+    :to="to"
+    :variant="prominent ? 'tonal' : 'text'"
+    :color="prominent ? 'primary' : undefined"
     class="admin-table-row-action"
     :disabled="disabled"
     :loading="loading"
@@ -19,6 +19,7 @@ defineProps<{
   to?: RouteLocationRaw
   disabled?: boolean
   loading?: boolean
+  prominent?: boolean
 }>()
 
 const emit = defineEmits<{ click: [event: MouseEvent] }>()
@@ -32,17 +33,12 @@ const emit = defineEmits<{ click: [event: MouseEvent] }>()
   box-sizing: border-box;
   min-height: 32px;
   padding: 4px 6px;
-  border: 0;
   border-radius: 4px;
-  background: transparent;
-  color: rgb(var(--v-theme-primary));
-  font: inherit;
   font-size: 0.875rem;
   font-weight: 500;
   line-height: 1.25;
   text-decoration: none;
   white-space: nowrap;
-  cursor: pointer;
 }
 
 .admin-table-row-action.v-btn {
@@ -51,11 +47,6 @@ const emit = defineEmits<{ click: [event: MouseEvent] }>()
   padding-inline: 6px;
   letter-spacing: normal;
   text-transform: none;
-}
-
-.admin-table-row-action:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 
 .admin-table-row-action:focus-visible {

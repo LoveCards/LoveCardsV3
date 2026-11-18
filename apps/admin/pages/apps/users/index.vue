@@ -14,6 +14,10 @@
       v-model:visible-columns="visibleColumns"
       :columns="columnOptions"
       :default-columns="defaultColumns"
+      v-model:action-capacity="actionCapacity"
+      :action-headers="TableHeaders"
+      :action-labels="['查看用户', '编辑用户', '删除用户']"
+      :selection-width="48"
       :result-count="tableHasResult ? tableTotalItems : null"
       :result-state="tableResultState"
       :view-query-keys="['search_value', 'order_key', 'order_desc', 'filters', 'list_rows']" preference-key="users"
@@ -130,20 +134,8 @@
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <div class="d-flex align-center ga-1">
-            <AdminTableRowAction :to="`/apps/users/${item.id}`">查看详情</AdminTableRowAction>
-            <v-menu v-if="allowRowMutation && (canEditUser(item) || userStore.hasGrant('users.security.read', 'global') || canDeleteUser(item))" location="bottom end">
-              <template #activator="{ props }">
-                <v-btn v-bind="props" class="admin-table-row-more" aria-label="更多用户操作" title="更多用户操作" icon="mdi-dots-horizontal" size="small" variant="text" />
-              </template>
-              <v-list density="compact">
-                <AdminActionGuard v-if="canEditUser(item)" capability="users.update" scope="all">
-                  <v-list-item title="编辑用户" prepend-icon="mdi-pencil" @click="openEditUserDialog(item)" />
-                </AdminActionGuard>
-                <v-list-item v-if="userStore.hasGrant('users.security.read', 'global')" :to="`/apps/users/${item.id}/security`" title="查看账号安全" prepend-icon="mdi-shield-account-outline" />
-                <v-list-item v-if="canDeleteUser(item)" title="删除用户" prepend-icon="mdi-delete-outline" @click="openDeleteUserDialog(item)" />
-              </v-list>
-            </v-menu>
+          <div class="d-flex align-center justify-end ga-1">
+            <AdminTableRowActions :actions="userRowActions(item)" :capacity="actionCapacity" more-label="更多用户操作" />
             <v-tooltip
               v-if="shouldShowTargetLock(item)"
               :text="targetProtectionMessage(item)"
@@ -190,6 +182,7 @@
     </AdminResourceTableShell>
   </AdminPageContainer>
 
+  <UserQuickViewDialog v-model="quickViewOpen" :user-id="quickViewUserId" />
   <EditUserDialog
     v-model:thisDialogState="EditUserDialog_state"
     v-model:editUserData="EditUserDialog_data"
@@ -235,17 +228,20 @@ import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
 import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue';
+import AdminTableRowActions from '~/components/shared/admin/AdminTableRowActions.vue';
+import UserQuickViewDialog from '~/components/users/UserQuickViewDialog.vue';
 import EditUserDialog from '~/components/users/EditUserDialog.vue';
 import PublicBatchDialog from '@/components/shared/Table/BatchDialog.vue';
 import PublicDeleteDialog from '~/components/shared/Table/DeleteDialog.vue';
 import PublicSearchDialog from '@/components/shared/Table/SearchDialog.vue';
 import { useAdminNotifier } from '~/composables/useAdminNotifier';
-import { useApi } from '~/lib/api';
+import { isApiError, useApi } from '~/lib/api';
 import { useUserStore } from '~/stores/userStore';
 import CommonUtils from '@/utils/common';
 import SelectUtils from '~/utils/select';
 import { tableSearchValue as mapTableSearchValue } from '~/utils/tableSearchValue';
 import { tableSearchCell } from '~/composables/useAdminTableSearch';
+import { classifyUserTargetRole, parseUserRoleIds, type UserTargetRoleState } from '~/utils/userTargetProtection';
 
 type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
 type EditableUser = {
@@ -297,12 +293,12 @@ const normalizeFilters = (value: unknown): Record<string, unknown> => {
 
 const AllTableHeaders = [
   { title: '用户', value: 'username', sortable: true, minWidth: 240 },
-  { title: 'ID', value: 'id', sortable: true },
+  { title: 'ID', value: 'id', sortable: true, minWidth: 88 },
   { title: '角色', value: 'roles_id', sortable: false, minWidth: 144 },
-  { title: '头像', value: 'avatar', sortable: false },
-  { title: '账号', value: 'number', sortable: true },
-  { title: '邮箱', value: 'email', sortable: true },
-  { title: '手机号', value: 'phone', sortable: true },
+  { title: '头像', value: 'avatar', sortable: false, minWidth: 80 },
+  { title: '账号', value: 'number', sortable: true, minWidth: 144 },
+  { title: '邮箱', value: 'email', sortable: true, minWidth: 220 },
+  { title: '手机号', value: 'phone', sortable: true, minWidth: 150 },
   { title: '注册时间', value: 'created_at', sortable: true, minWidth: 176 },
   { title: '状态', value: 'status', sortable: true, minWidth: 112 },
   { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
@@ -329,7 +325,6 @@ const batchCapabilityFor = (method: UsersBatchMethod | '') => method === 'delete
 const TableBatchOptions = computed(() => BaseTableBatchOptions.filter((option) => userStore.hasGrant(batchCapabilityFor(option.value), 'all')));
 const batchCapability = computed(() => batchCapabilityFor(BatchOperate.value));
 
-type TargetRoleState = 'root' | 'non-root' | 'unknown';
 type RenderedUserRole = { key: string; title: string; isRoot: boolean };
 
 const UserRoles = ref<Role[]>([]);
@@ -369,40 +364,10 @@ const loadUserRoles = async (force = false) => {
     rolesLoading.value = false;
   }
 };
-const parseRoleIds = (rolesId: unknown): number[] | null => {
-  let ids: unknown = rolesId;
-  if (ids === undefined || ids === null) return null;
-  if (typeof ids === 'string') {
-    try {
-      ids = JSON.parse(ids);
-    } catch {
-      return null;
-    }
-  }
-  if (typeof ids !== 'number' && !Array.isArray(ids)) return null;
-  const normalized = (typeof ids === 'number' ? [ids] : Array.isArray(ids) ? ids : []).map(Number);
-  if (normalized.some((id) => !Number.isInteger(id) || id <= 0)) return null;
-  return normalized;
-};
+const parseRoleIds = parseUserRoleIds;
 const embeddedRoles = (user: User): RoleInfo[] => Array.isArray(user.roles) ? user.roles : [];
-const targetRoleState = (user: User): TargetRoleState => {
-  const embedded = embeddedRoles(user);
-  if (embedded.some((role) => role.slug === 'root')) return 'root';
-
-  const ids = parseRoleIds(user.roles_id);
-  if (ids === null) return 'unknown';
-  if (ids.length === 0) return 'non-root';
-
-  if (rolesLoaded.value) {
-    const roles = ids.map((id) => UserRoles.value.find((role) => role.id === id));
-    if (roles.some((role) => !role)) return 'unknown';
-    return roles.some((role) => role?.slug === 'root') ? 'root' : 'non-root';
-  }
-
-  const embeddedIds = new Set(embedded.map((role) => role.id));
-  if (embedded.length > 0 && ids.every((id) => embeddedIds.has(id))) return 'non-root';
-  return 'unknown';
-};
+const targetRoleState = (user: User): UserTargetRoleState =>
+  classifyUserTargetRole(user, UserRoles.value, rolesLoaded.value);
 const targetMutationAllowed = (user: User) => {
   const state = targetRoleState(user);
   if (state === 'unknown') return false;
@@ -596,18 +561,45 @@ const resetTableView = () => {
   }
 };
 
+const actionCapacity = ref(1);
+const editLoadingId = ref<number | null>(null);
+const quickViewOpen = ref(false);
+const quickViewUserId = ref<number | null>(null);
+const openUserQuickView = (id: number) => {
+  quickViewUserId.value = id;
+  quickViewOpen.value = true;
+};
+const userRowActions = (user: User) => [
+  { key: 'view', label: '查看用户', onClick: () => openUserQuickView(user.id) },
+  ...(canEditUser(user) ? [{ key: 'edit', label: '编辑用户', disabled: !allowRowMutation.value || editLoadingId.value !== null, loading: editLoadingId.value === user.id, onClick: () => { void openEditUserDialog(user) } }] : []),
+  ...(canDeleteUser(user) ? [{ key: 'delete', label: '删除用户', disabled: !allowRowMutation.value, onClick: () => openDeleteUserDialog(user) }] : []),
+];
+
 const EditUserDialog_state = ref(false);
 const EditUserDialog_data = ref<EditableUser>({ origin: {}, edit: {} });
-const openEditUserDialog = (data: User) => {
+const openEditUserDialog = async (data: User) => {
+  if (!allowRowMutation.value || editLoadingId.value !== null) return;
   if (!canEditUser(data)) {
     notifier.warning(targetMutationAllowed(data) ? '当前账号无权编辑用户。' : targetProtectionMessage(data));
     return;
   }
-  EditUserDialog_data.value = {
-    origin: CommonUtils.deepClone(data),
-    edit: CommonUtils.deepClone(data),
-  };
-  EditUserDialog_state.value = true;
+  editLoadingId.value = data.id;
+  try {
+    const fresh = await client.users.getManaged(data.id);
+    if (!canEditUser(fresh)) {
+      notifier.warning(targetMutationAllowed(fresh) ? '当前账号无权编辑用户。' : targetProtectionMessage(fresh));
+      return;
+    }
+    EditUserDialog_data.value = {
+      origin: CommonUtils.deepClone(fresh),
+      edit: CommonUtils.deepClone(fresh),
+    };
+    EditUserDialog_state.value = true;
+  } catch (cause) {
+    notifier.error(isApiError(cause) ? cause.message : '无法读取最新用户资料，请稍后重试。');
+  } finally {
+    editLoadingId.value = null;
+  }
 };
 
 const DeleteUserDialog_state = ref(false);

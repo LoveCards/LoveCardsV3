@@ -10,7 +10,8 @@
       ]"
     >
       <template #actions>
-        <v-btn prepend-icon="mdi-arrow-left" to="/apps/users" variant="outlined">返回列表</v-btn>
+        <v-btn prepend-icon="mdi-arrow-left" variant="outlined" @click="returnToAdminSource(router, '/apps/users')">{{ sourcePath ? '返回来源' : '返回列表' }}</v-btn>
+        <v-btn v-if="canEditTarget" prepend-icon="mdi-pencil" variant="tonal" @click="openEditor">编辑用户</v-btn>
         <AdminActionGuard capability="users.security.read" scope="global">
           <v-btn
             v-if="user"
@@ -91,11 +92,17 @@
         />
       </template>
     </AdminAsyncState>
+    <EditUserDialog
+      v-model:thisDialogState="editOpen"
+      v-model:editUserData="editData"
+      :getTableData="load"
+      :ACCOUNT_STATUS="SelectUtils.User.status"
+    />
   </AdminPageContainer>
 </template>
 
 <script setup lang="ts">
-import type { User } from '@lovecards/sdk'
+import type { Role, User } from '@lovecards/sdk'
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDetailSection from '~/components/shared/admin/AdminDetailSection.vue'
@@ -103,13 +110,61 @@ import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminSensitiveField from '~/components/shared/admin/AdminSensitiveField.vue'
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
+import EditUserDialog from '~/components/users/EditUserDialog.vue'
+import CommonUtils from '~/utils/common'
+import SelectUtils from '~/utils/select'
+import { classifyUserTargetRole } from '~/utils/userTargetProtection'
+import { returnToAdminSource, validateAdminSource } from '~/utils/adminListSource'
+import { useUserStore } from '~/stores/userStore'
 import { isApiError, useApi } from '~/lib/api'
 
 const route = useRoute()
+const router = useRouter()
 const client = useApi()
+const userStore = useUserStore()
 const user = ref<User | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+const sourcePath = ref<string | null>(null)
+const roleCatalog = ref<Role[]>([])
+const roleCatalogLoaded = ref(false)
+const editOpen = ref(false)
+const editData = ref<{ origin: Partial<User>; edit: Partial<User> }>({ origin: {}, edit: {} })
+const isRootActor = computed(() => userStore.roles.some((role) => role.slug === 'root'))
+const canEditTarget = computed(() => {
+  if (!user.value || !userStore.hasGrant('users.update', 'all')) return false
+  const state = classifyUserTargetRole(user.value, roleCatalog.value, roleCatalogLoaded.value)
+  return state !== 'unknown' && (state !== 'root' || isRootActor.value)
+})
+function openEditor() {
+  if (!user.value || !canEditTarget.value) return
+  editData.value = { origin: CommonUtils.deepClone(user.value), edit: CommonUtils.deepClone(user.value) }
+  editOpen.value = true
+}
+async function loadRoleCatalog() {
+  if (!userStore.hasGrant('roles.read', 'global')) return
+  try {
+    const roles: Role[] = []
+    let page = 1
+    let totalPages = 1
+    do {
+      const result = await client.roles.list({ page, list_rows: 100 })
+      roles.push(...result.data)
+      totalPages = result.pagination?.totalPages ?? 1
+      page += 1
+    } while (page <= totalPages)
+    roleCatalog.value = roles
+    roleCatalogLoaded.value = true
+  } catch {
+    roleCatalogLoaded.value = false
+  }
+}
+onMounted(() => {
+  sourcePath.value = validateAdminSource(window.history.state?.adminSource)
+  void loadRoleCatalog()
+})
+
 
 const accountStatus = computed(() => {
   const states: Record<number, { status: string; label: string }> = {
