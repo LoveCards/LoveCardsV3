@@ -1,11 +1,14 @@
 <template>
-  <NuxtLink
+  <v-btn
     v-if="target"
-    :to="{ path: target, state: { adminSource: route.fullPath } }"
-    class="admin-resource-link"
+    :to="target"
+    :prepend-icon="icon"
+    class="admin-resource-link px-2"
+    min-height="44"
+    variant="text"
   >
     <AdminTableSearchHighlight :text="displayLabel" :query="highlightQuery" />
-  </NuxtLink>
+  </v-btn>
   <span v-else class="text-medium-emphasis"><AdminTableSearchHighlight :text="displayLabel" :query="highlightQuery" /></span>
 </template>
 
@@ -25,7 +28,7 @@ const props = withDefaults(defineProps<{
 const resourceMap: Record<string, { target: (id: string) => string; label: string; icon: string }> = {
   card: { target: (id) => `/apps/content/cards/${encodeURIComponent(id)}`, label: '卡片', icon: 'mdi-card-text-outline' },
   comment: { target: (id) => `/apps/content/comments/${encodeURIComponent(id)}`, label: '评论', icon: 'mdi-comment-text-outline' },
-  tag: { target: (id) => `/apps/content/tags?inspect=${encodeURIComponent(id)}`, label: '标签', icon: 'mdi-tag-outline' },
+  tag: { target: (id) => `/apps/content/tags/${encodeURIComponent(id)}`, label: '标签', icon: 'mdi-tag-outline' },
   user: { target: (id) => `/apps/users/${encodeURIComponent(id)}`, label: '用户', icon: 'mdi-account-outline' },
   file: { target: (id) => `/apps/settings/storage/files/${encodeURIComponent(id)}/usage`, label: '文件', icon: 'mdi-file-outline' },
   media: { target: (id) => `/apps/settings/storage/files/${encodeURIComponent(id)}/usage`, label: '媒体', icon: 'mdi-image-outline' },
@@ -35,9 +38,9 @@ const resourceMap: Record<string, { target: (id: string) => string; label: strin
 }
 
 const userStore = useUserStore()
-const route = useRoute()
 const normalizedType = computed(() => props.resourceType.toLowerCase())
 const definition = computed(() => resourceMap[normalizedType.value])
+const icon = computed(() => definition.value?.icon ?? 'mdi-link-variant')
 const target = computed(() => {
   if (!definition.value || props.resourceId === null || props.resourceId === undefined || props.resourceId === '') return null
   const path = definition.value.target(String(props.resourceId))
@@ -48,13 +51,6 @@ const displayLabel = computed(() => props.label || `${definition.value?.label ??
 
 <style scoped>
 .admin-resource-link {
-  color: rgb(var(--v-theme-primary));
-  text-decoration: underline;
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-}
-.admin-resource-link:focus-visible {
-  outline: 2px solid rgb(var(--v-theme-primary));
-  outline-offset: 2px;
+  text-transform: none;
 }
 </style>

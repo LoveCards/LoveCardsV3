@@ -12,8 +12,12 @@
   <AdminPageContainer fluid>
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
+      v-model:action-capacity="actionCapacity"
       :columns="columnOptions"
       :default-columns="defaultColumns"
+      :action-headers="TableHeaders"
+      :action-labels="cardActionLabels"
+      :selection-width="48"
       preference-key="content-cards"
       :result-count="resultCount"
       :result-state="tableLoading ? 'loading' : tableError ? 'stale' : 'ready'"
@@ -90,6 +94,10 @@
           <span class="text-body-2 text-medium-emphasis">#<AdminTableSearchHighlight :text="item.id" :query="highlightQuery('id')" /></span>
         </template>
 
+        <template #[`item.user_id`]="{ item }">
+          <AdminTableSearchHighlight :text="`${item.username?.trim() || '用户'} #${item.user_id}`" :query="highlightQuery('user_id')" />
+        </template>
+
         <template #[`item.content`]="{ item }">
           <AdminContentSummary :content="item.content" :author="item.username" :user-id="item.user_id" :highlight-query="highlightQuery('content')" />
         </template>
@@ -108,20 +116,7 @@
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <div class="d-flex align-center ga-1">
-            <AdminActionGuard capability="cards.read" scope="all">
-              <AdminTableRowAction :to="{ path: `/apps/content/cards/${item.id}`, state: { listSource: route.fullPath } }">查看详情</AdminTableRowAction>
-            </AdminActionGuard>
-            <v-menu v-if="canUpdateCard || canApproveCard || canPinCard || canDeleteCard" location="bottom end">
-              <template #activator="{ props }">
-                <v-btn v-bind="props" class="admin-table-row-more" :disabled="!canMutateRows" aria-label="更多卡片操作" title="更多卡片操作" icon="mdi-dots-horizontal" size="small" variant="text" />
-              </template>
-              <v-list density="compact">
-                <v-list-item v-if="canUpdateCard || canApproveCard || canPinCard" prepend-icon="mdi-pencil-outline" :title="cardPanelActionLabel" @click="openCardPanel(item.id)" />
-                <v-list-item v-if="canDeleteCard" prepend-icon="mdi-delete-outline" title="删除卡片" @click="openDeleteCardDialog(item)" />
-              </v-list>
-            </v-menu>
-          </div>
+          <AdminTableRowActions :actions="cardRowActions(item)" :capacity="actionCapacity" more-label="更多卡片操作" />
         </template>
 
         <template #[`item.is_top`]="{ item }">
@@ -136,7 +131,7 @@
           <AdminContentStatus :status="item.status" :pinned="Number(item.is_top) === 1 && !visibleColumns.includes('is_top')" :highlight-query="highlightQuery('status')" />
         </template>
 
-        <template v-for="field in ['user_id', 'goods', 'comments', 'views', 'post_ip']" :key="field" #[`item.${field}`]="{ item }">
+        <template v-for="field in ['goods', 'comments', 'views', 'post_ip']" :key="field" #[`item.${field}`]="{ item }">
           <AdminTableSearchHighlight :text="tableSearchCell(item, field)" :query="highlightQuery(field)" />
         </template>
 
@@ -156,10 +151,17 @@
     </AdminResourceTableShell>
   </AdminPageContainer>
 
-  <EditCardDialog
-    v-model:thisDialogState="EditCardDialog_state"
-    v-model:editCardData="EditCardDialog_data"
-    :getTableData="getTableData"
+  <CardInspectDialog v-model="CardInspectDialog_state" :card-id="CardInspectDialog_id" :initial-mode="CardInspectDialog_mode" :source-path="route.fullPath" @saved="getTableData" />
+  <AdminDangerActionDialog
+    :model-value="Boolean(pendingCardCommand)"
+    :title="pendingCardCommand?.action.label ?? '确认卡片操作'"
+    :action-label="pendingCardCommand?.action.label ?? '确认执行'"
+    :impact="pendingCardCommand?.action.impact ?? ''"
+    :resource-label="pendingCardCommand ? `卡片 #${pendingCardCommand.id}` : ''"
+    :loading="cardCommandBusy"
+    :error="cardCommandError"
+    @update:model-value="closeCardCommand"
+    @confirm="runCardCommand"
   />
   <PublicDeleteDialog
     v-model:thisDialogState="DeleteCardDialog_state"
@@ -187,15 +189,19 @@
 import AdminContentSummary from '~/components/content/AdminContentSummary.vue';
 import AdminContentStatus from '~/components/content/AdminContentStatus.vue';
 import type { Card, CardsBatchMethod } from '@lovecards/sdk';
+import { cardGovernanceActions, type CardGovernanceAction } from '~/components/cards/cardGovernanceActions';
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue';
+import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue';
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue';
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
+import AdminTableRowActions from '~/components/shared/admin/AdminTableRowActions.vue';
 import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue';
-import EditCardDialog from '@/components/cards/EditCardDialog.vue';
+import CardInspectDialog from '~/components/cards/CardInspectDialog.vue';
 import PublicBatchDialog from '@/components/shared/Table/BatchDialog.vue';
 import PublicDeleteDialog from '@/components/shared/Table/DeleteDialog.vue';
 import PublicSearchDialog from '@/components/shared/Table/SearchDialog.vue';
+import { useAdminNotifier } from '~/composables/useAdminNotifier';
 import { useApi } from '~/lib/api';
 import { useTagsStore } from '@/stores/tagsStore';
 import { useUserStore } from '~/stores/userStore';
@@ -206,6 +212,7 @@ import { tableSearchCell } from '~/composables/useAdminTableSearch';
 type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
 
 const client = useApi();
+const notifier = useAdminNotifier();
 const route = useRoute();
 const router = useRouter();
 
@@ -247,7 +254,7 @@ const queryFilters = (value: unknown): Record<string, unknown> => {
 const AllTableHeaders = [
   { title: '内容', value: 'content', sortable: false, minWidth: 320 },
   { title: 'ID', value: 'id', sortable: true },
-  { title: '用户ID', value: 'user_id', sortable: true },
+  { title: '用户', value: 'user_id', sortable: true },
   { title: '封面', value: 'cover', sortable: false },
   { title: '自定义字段', value: 'data', sortable: false },
   { title: '点赞数', value: 'goods', sortable: true },
@@ -264,7 +271,7 @@ const defaultColumns = ['content', 'created_at', 'status', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: ['content', 'operate'].includes(header.value) }));
-const SearchKeys = AllTableHeaders.slice(0, -1);
+const SearchKeys = AllTableHeaders.slice(0, -1).map((header) => header.value === 'user_id' ? { ...header, title: '用户 ID' } : header);
 const BaseTableBatchOptions = [
   { title: '切换置顶状态', value: 'top' },
   { title: '切换封禁状态', value: 'ban' },
@@ -275,6 +282,7 @@ const BaseTableBatchOptions = [
 const TableListRowsOptions = SelectUtils.Common.Table.ListRowsOptions;
 const userStore = useUserStore();
 const canDeleteCard = computed(() => userStore.hasGrant('cards.delete', 'all'));
+const canViewCard = computed(() => userStore.hasGrant('cards.read', 'all'));
 const batchCapabilityFor = (method: CardsBatchMethod | '') => {
   if (method === 'delete') return 'cards.delete';
   if (method === 'top' || method === 'unset_top') return 'cards.pin';
@@ -286,6 +294,7 @@ const batchCapability = computed(() => batchCapabilityFor(BatchOperate.value));
 
 const tagsStore = useTagsStore();
 const Tags = computed(() => Array.isArray(tagsStore.tags) ? tagsStore.tags : []);
+const tagNamesById = computed(() => new Map(Tags.value.map((tag) => [Number(tag.id), tag.name])));
 const normalizeTagIds = (tags: unknown): string[] => {
   if (Array.isArray(tags)) return tags.map(String);
   if (typeof tags !== 'string' || tags.trim() === '') return [];
@@ -296,14 +305,74 @@ const normalizeTagIds = (tags: unknown): string[] => {
     return [];
   }
 };
-const renderTags = (tags: unknown) => normalizeTagIds(tags).flatMap((item) => {
-  const tag = Tags.value.find((tagItem) => Number(tagItem.id) === Number(item));
-  return tag ? [`#${tag.id} ${tag.name}`] : [];
+const renderTags = (tags: unknown) => normalizeTagIds(tags).map((item) => {
+  const name = tagNamesById.value.get(Number(item));
+  return name ? `${name} #${item}` : `标签 #${item}`;
 });
 const canUpdateCard = computed(() => userStore.hasGrant('cards.update', 'all'));
 const canApproveCard = computed(() => userStore.hasGrant('cards.approve', 'all'));
 const canPinCard = computed(() => userStore.hasGrant('cards.pin', 'all'));
-const cardPanelActionLabel = computed(() => canUpdateCard.value ? '编辑卡片' : canApproveCard.value || canPinCard.value ? '审核卡片' : '查看卡片');
+const cardActionLabels = computed(() => [...new Set(['查看卡片', ...(canUpdateCard.value ? ['编辑卡片'] : []), ...tableItems.value.flatMap(item => cardGovernanceActions(item, { approve: canApproveCard.value, update: canUpdateCard.value, pin: canPinCard.value }).map(action => action.label)), ...(canDeleteCard.value ? ['删除卡片'] : [])])]);
+const actionCapacity = ref(1);
+const CardInspectDialog_state = ref(false);
+const CardInspectDialog_id = ref<number | null>(null);
+const CardInspectDialog_mode = ref<'view' | 'edit'>('view');
+const openCardInspect = (id: number, mode: 'view' | 'edit' = 'view') => {
+  CardInspectDialog_id.value = id;
+  CardInspectDialog_mode.value = mode;
+  CardInspectDialog_state.value = true;
+};
+const cardRowActions = (item: Card) => [
+  ...(canViewCard.value ? [{ key: 'view', label: '查看卡片', onClick: () => openCardInspect(item.id) }] : []),
+  ...(canUpdateCard.value
+    ? [{ key: 'edit', label: '编辑卡片', disabled: !canMutateRows.value, onClick: () => openCardInspect(item.id, 'edit') }]
+    : []),
+  ...cardGovernanceActions(item, { approve: canApproveCard.value, update: canUpdateCard.value, pin: canPinCard.value })
+    .map(action => ({ key: action.method, label: action.label, disabled: !canMutateRows.value, onClick: () => void openCardCommand(item.id, action) })),
+  ...(canDeleteCard.value ? [{ key: 'delete', label: '删除卡片', disabled: !canMutateRows.value, onClick: () => openDeleteCardDialog(item) }] : []),
+];
+
+const pendingCardCommand = ref<{ id: number; action: CardGovernanceAction } | null>(null);
+const cardCommandBusy = ref(false);
+const cardCommandError = ref('');
+const cardCommandCapabilities = () => ({ approve: canApproveCard.value, update: canUpdateCard.value, pin: canPinCard.value });
+const matchingCardCommand = async (id: number, expected: CardGovernanceAction) => {
+  const current = await client.cards.getManaged(id);
+  return cardGovernanceActions(current, cardCommandCapabilities()).find(action => action.method === expected.method && action.label === expected.label);
+};
+const openCardCommand = async (id: number, action: CardGovernanceAction) => {
+  if (!canMutateRows.value) return;
+  cardCommandBusy.value = true;
+  cardCommandError.value = '';
+  try {
+    const current = await matchingCardCommand(id, action);
+    if (!current) throw new Error('卡片状态已变化，请刷新后重新选择操作。');
+    pendingCardCommand.value = { id, action: current };
+  } catch (cause) {
+    cardCommandError.value = cause instanceof Error ? cause.message : '无法核对卡片当前状态。';
+    notifier.error(cardCommandError.value);
+    void getTableData();
+  } finally {
+    cardCommandBusy.value = false;
+  }
+};
+const closeCardCommand = (open: boolean) => { if (!open && !cardCommandBusy.value) pendingCardCommand.value = null; };
+const runCardCommand = async () => {
+  const current = pendingCardCommand.value;
+  if (!current || cardCommandBusy.value || !canMutateRows.value) return;
+  cardCommandBusy.value = true;
+  cardCommandError.value = '';
+  try {
+    if (!await matchingCardCommand(current.id, current.action)) throw new Error('卡片状态已变化，请刷新后重新选择操作。');
+    await client.cards.batchManaged({ method: current.action.method, ids: [current.id] });
+    pendingCardCommand.value = null;
+    await getTableData();
+  } catch (cause) {
+    cardCommandError.value = cause instanceof Error ? cause.message : '卡片操作失败，请稍后重试。';
+  } finally {
+    cardCommandBusy.value = false;
+  }
+};
 
 const tableItems = ref<Card[]>([]);
 const tableSelected = ref<number[]>([]);
@@ -433,13 +502,6 @@ const resetTableView = () => {
   else tableCurrentPage.value = 1;
 };
 
-const EditCardDialog_state = ref(false);
-const EditCardDialog_data = ref<Card | null>(null);
-const openCardPanel = (id: number) => {
-  if (!canMutateRows.value) return;
-  EditCardDialog_data.value = { id } as Card;
-  EditCardDialog_state.value = true;
-};
 
 // 旧 inspect 深链只单向迁移到只读详情；列表条件留在 history state 中。
 watch(() => route.query.inspect, (value) => {

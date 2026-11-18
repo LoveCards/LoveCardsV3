@@ -1,6 +1,5 @@
 <template>
-  <v-dialog v-model="thisDialogState" :aria-label="panelTitle" max-width="1040" :persistent="saving || uploadingImages" scrollable>
-    <v-card prepend-icon="mdi-file-edit-outline" :title="panelTitle">
+  <v-card :border="!embedded" rounded="lg" variant="flat">
       <v-card-text class="pt-4">
         <AdminAsyncState
           :error="loadError"
@@ -13,34 +12,16 @@
             {{ formError }}
           </v-alert>
 
-          <v-list bg-color="surface-variant" class="mb-4" density="compact" rounded="lg">
-            <v-row class="ma-0" dense>
-              <v-col cols="12" sm="6" md="4">
-                <v-list-item prepend-icon="mdi-account-outline" subtitle="用户 ID" :title="displayValue(CardData.edit.user_id)" />
-              </v-col>
-              <v-col cols="12" sm="6" md="4">
-                <v-list-item prepend-icon="mdi-clock-outline" subtitle="发布时间" :title="displayValue(CardData.edit.created_at)" />
-              </v-col>
-              <v-col cols="12" sm="6" md="4">
-                <v-list-item prepend-icon="mdi-ip-network-outline" subtitle="发布 IP" :title="displayValue(CardData.edit.post_ip)" />
-              </v-col>
-              <v-col cols="12" sm="6" md="4">
-                <v-list-item prepend-icon="mdi-heart-outline" subtitle="获赞数" :title="displayValue(CardData.edit.goods)" />
-              </v-col>
-              <v-col cols="12" sm="6" md="4">
-                <v-list-item prepend-icon="mdi-eye-outline" subtitle="浏览数" :title="displayValue(CardData.edit.views)" />
-              </v-col>
-              <v-col cols="12" sm="6" md="4">
-                <v-list-item prepend-icon="mdi-comment-outline" subtitle="评论数" :title="displayValue(CardData.edit.comments)" />
-              </v-col>
-            </v-row>
-          </v-list>
+          <div v-if="loaded" class="d-flex flex-wrap align-center ga-3 mb-4">
+            <AdminContentStatus :status="CardData.origin.status" :pinned="Number(CardData.origin.is_top) === 1" />
+            <span class="text-body-2 text-medium-emphasis">{{ visibilityLabel }}</span>
+          </div>
 
-          <v-alert v-if="panelMode === 'view'" class="mb-4" density="compact" type="info" variant="tonal">
-            当前账号只有查看权限，字段保持只读。
-          </v-alert>
-
-          <v-row dense>
+          <div v-if="mode === 'view'" class="mb-4">
+            <p class="text-body-1 text-pre-wrap mb-3">{{ CardData.origin.content || '—' }}</p>
+            <p class="text-body-2 text-medium-emphasis mb-0">标签：{{ tagNames || '—' }}</p>
+          </div>
+          <v-row v-else dense>
             <v-col cols="12">
               <v-select
                 v-model="CardData.edit.tags"
@@ -56,30 +37,6 @@
                 variant="outlined"
               />
             </v-col>
-            <v-col v-if="canPinCard" cols="12" sm="6">
-              <v-select
-                v-model="CardData.edit.is_top"
-                :disabled="saving"
-                density="comfortable"
-                item-title="title"
-                item-value="value"
-                :items="SelectUtils.Cards.top"
-                label="置顶状态"
-                variant="outlined"
-              />
-            </v-col>
-            <v-col v-if="canApproveCard" cols="12" sm="6">
-              <v-select
-                v-model="CardData.edit.status"
-                :disabled="saving"
-                density="comfortable"
-                item-title="title"
-                item-value="value"
-                :items="SelectUtils.Cards.status"
-                label="审核状态"
-                variant="outlined"
-              />
-            </v-col>
             <v-col cols="12">
               <v-textarea
                 v-model="CardData.edit.content"
@@ -92,6 +49,17 @@
               />
             </v-col>
           </v-row>
+
+          <v-list bg-color="surface-variant" class="mb-4" density="compact" rounded="lg">
+            <v-row class="ma-0" dense>
+              <v-col cols="12" sm="6" md="4"><v-list-item prepend-icon="mdi-account-outline" subtitle="作者"><AdminResourceLink resource-type="user" :resource-id="CardData.origin.user_id" :label="`${CardData.origin.username || '用户'} #${CardData.origin.user_id}`" /></v-list-item></v-col>
+              <v-col cols="12" sm="6" md="4"><v-list-item prepend-icon="mdi-clock-outline" subtitle="发布时间" :title="displayValue(CardData.origin.created_at)" /></v-col>
+              <v-col cols="12" sm="6" md="4"><v-list-item prepend-icon="mdi-ip-network-outline" subtitle="发布 IP" :title="displayValue(CardData.origin.post_ip)" /></v-col>
+              <v-col cols="12" sm="6" md="4"><v-list-item prepend-icon="mdi-heart-outline" subtitle="获赞数" :title="displayValue(CardData.origin.goods)" /></v-col>
+              <v-col cols="12" sm="6" md="4"><v-list-item prepend-icon="mdi-eye-outline" subtitle="浏览数" :title="displayValue(CardData.origin.views)" /></v-col>
+              <v-col cols="12" sm="6" md="4"><v-list-item prepend-icon="mdi-comment-outline" subtitle="评论数" :title="displayValue(CardData.origin.comments)" /></v-col>
+            </v-row>
+          </v-list>
 
           <v-expansion-panels v-if="hasCustomData" class="mb-4" variant="accordion">
             <v-expansion-panel title="查看扩展字段（只读）">
@@ -113,8 +81,11 @@
           <v-alert v-if="uploadError" class="mb-4" role="alert" type="error" variant="tonal">
             {{ uploadError }}
           </v-alert>
-          <v-alert v-if="hasUnboundMedia" class="mb-4" role="alert" type="warning" variant="tonal">
-            部分旧媒体缺少可验证的文件 ID，媒体增删已锁定；仍可保存正文、标签或审核字段。请先完成媒体迁移后再调整媒体集合。
+          <v-alert v-if="mode === 'edit' && uploadedFileIds.length" class="mb-4" role="alert" type="warning" variant="tonal">
+            本次已上传 {{ uploadedFileIds.length }} 个文件。放弃卡片修改不会撤销这些上传；可在文件管理中检查未引用文件。
+          </v-alert>
+          <v-alert v-if="mode === 'edit' && hasUnboundMedia" class="mb-4" role="alert" type="warning" variant="tonal">
+            部分旧媒体缺少可验证的文件 ID，媒体增删已锁定；仍可保存正文或标签。请先完成媒体迁移后再调整媒体集合。
           </v-alert>
           <v-row dense class="mb-2">
             <v-col v-for="(item, index) in CardMediaData.edit" :key="`${item.fileId ?? 'legacy'}:${index}`" cols="6" sm="4" md="3">
@@ -123,7 +94,7 @@
                   <div class="d-flex justify-end pa-1">
                     <v-progress-circular v-if="item.fileId === 0" color="primary" indeterminate size="28" />
                     <v-btn
-                      v-else-if="canUpdateContent"
+                      v-else-if="mode === 'edit' && canUpdateContent"
                       :aria-label="`删除第 ${index + 1} 张图片`"
                       color="surface"
                       :disabled="hasUnboundMedia"
@@ -142,8 +113,9 @@
               </v-sheet>
             </v-col>
           </v-row>
+          <v-alert v-if="mode === 'edit' && canUpdateContent && canUploadFiles" class="mb-3" density="compact" type="info" variant="tonal">图片选择后立即上传；放弃卡片编辑不会撤销已经完成的文件上传。</v-alert>
           <v-file-input
-            v-if="canUpdateContent && canUploadFiles"
+            v-if="mode === 'edit' && canUpdateContent && canUploadFiles"
             v-model="viewCardFiles"
             accept="image/*"
             :disabled="hasUnboundMedia || saving || uploadingImages"
@@ -156,42 +128,65 @@
             variant="outlined"
             @update:model-value="uploadSelectedImages"
           />
-          <v-alert v-else-if="canUpdateContent" density="compact" type="info" variant="tonal">
+          <v-alert v-else-if="mode === 'edit' && canUpdateContent" density="compact" type="info" variant="tonal">
             当前账号没有上传文件权限；仍可编辑正文、标签或移除已有图片。
           </v-alert>
+
+          <v-sheet v-if="mode === 'view' && commands.length" border rounded="lg" class="pa-4 mt-5">
+            <h3 class="text-subtitle-1 font-weight-medium mb-2">卡片治理</h3>
+            <p class="text-body-2 text-medium-emphasis mb-3">审核、封禁、隐藏和置顶是立即生效的命令，提交前会确认影响。</p>
+            <v-alert v-if="commandError" class="mb-3" role="alert" type="error" variant="tonal">{{ commandError }}</v-alert>
+            <div class="d-flex flex-wrap ga-2">
+              <v-btn v-for="command in commands" :key="command.method" :disabled="commandBusy" variant="outlined" @click="pendingCommand = command">{{ command.label }}</v-btn>
+            </div>
+            <v-alert v-if="pendingCommand" class="mt-4" type="warning" variant="tonal">
+              {{ pendingCommand.impact }}确定对卡片 #{{ cardId }}执行“{{ pendingCommand.label }}”吗？
+              <template #append>
+                <v-btn :disabled="commandBusy" variant="text" @click="pendingCommand = null">取消</v-btn>
+                <v-btn color="warning" :loading="commandBusy" variant="flat" @click="runCommand">{{ pendingCommand.label }}</v-btn>
+              </template>
+            </v-alert>
+          </v-sheet>
 
         </AdminAsyncState>
       </v-card-text>
 
       <v-divider />
-      <v-card-actions class="pa-4">
+      <v-card-actions v-if="loaded && !loading && !loadError" class="pa-4">
         <v-spacer />
-        <v-btn :disabled="saving || uploadingImages" variant="text" @click="thisDialogState = false">
-          {{ canEditCard ? '取消' : '关闭' }}
-        </v-btn>
+        <v-btn v-if="mode === 'view' && canEditCard" variant="tonal" @click="beginEdit">{{ editLabel }}</v-btn>
+        <v-btn v-if="mode === 'edit'" :disabled="saving || uploadingImages" variant="text" @click="cancelEdit">取消编辑</v-btn>
         <v-btn
-          v-if="canEditCard"
+          v-if="mode === 'edit' && canEditCard"
           color="primary"
           :disabled="loading || Boolean(loadError) || uploadingImages || !canEditCard"
           :loading="saving"
           variant="flat"
           @click="submit"
         >
-          {{ panelActionLabel }}
+          保存修改
         </v-btn>
       </v-card-actions>
-    </v-card>
-  </v-dialog>
+      <v-alert v-if="showDiscardConfirm" class="ma-4" type="warning" variant="tonal">
+        当前修改尚未保存，确定放弃吗？
+        <template #append>
+          <v-btn variant="text" @click="showDiscardConfirm = false">继续编辑</v-btn>
+          <v-btn color="warning" variant="flat" @click="discardEdit">放弃修改</v-btn>
+        </template>
+      </v-alert>
+  </v-card>
 </template>
 
 <script setup lang="ts">
 import type { Card } from '@lovecards/sdk'
+import { cardGovernanceActions, type CardGovernanceAction } from '~/components/cards/cardGovernanceActions'
+import AdminContentStatus from '~/components/content/AdminContentStatus.vue'
+import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import { isApiError, useApi } from '~/lib/api'
 import { useAdminNotifier } from '~/composables/useAdminNotifier'
 import { useUserStore } from '~/stores/userStore'
 import CommonUtils from '~/utils/common'
-import SelectUtils from '~/utils/select'
 
 interface ManagedMedia {
   fileId: number | null
@@ -203,44 +198,71 @@ type CardUpdateInput = {
   media_file_ids?: number[]
   cover_file_id?: number
   content?: string
-  is_top?: number
-  status?: number
   tags?: number[]
 }
 
 const client = useApi()
 const notifier = useAdminNotifier()
 const userStore = useUserStore()
-const props = defineProps<{ getTableData?: () => unknown }>()
+const props = withDefaults(defineProps<{ cardId: number; initialMode?: 'view' | 'edit'; embedded?: boolean }>(), { initialMode: 'view', embedded: false })
+const emit = defineEmits<{ saved: []; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean] }>()
 const tagsStore = useTagsStore()
 const viewTags = computed(() => Array.isArray(tagsStore.tags) ? tagsStore.tags : [])
-const thisDialogState = defineModel<boolean>('thisDialogState', { default: false })
-const editCardData = defineModel<Card | null>('editCardData')
 const emptyCard = {} as ManagedCard
 const CardData = ref<{ edit: ManagedCard; origin: ManagedCard }>({ edit: emptyCard, origin: emptyCard })
 const CardMediaData = ref<{ edit: ManagedMedia[]; origin: ManagedMedia[] }>({ edit: [], origin: [] })
 const viewCardFiles = ref<File[]>([])
 const loading = ref(false)
+const loaded = ref(false)
 const saving = ref(false)
 const uploadingImages = ref(false)
 const loadError = ref('')
 const formError = ref('')
 const uploadError = ref('')
+const uploadedFileIds = ref<number[]>([])
+const commandError = ref('')
+const commandBusy = ref(false)
+const pendingCommand = ref<CardGovernanceAction | null>(null)
+let latestLoad = 0
+const mode = ref<'view' | 'edit'>('view')
+const showDiscardConfirm = ref(false)
+const emitDirtyChange = (value: boolean) => emit('dirty-change', value)
 const canUpdateContent = computed(() => userStore.hasGrant('cards.update', 'all'))
 const canPinCard = computed(() => userStore.hasGrant('cards.pin', 'all'))
 const canApproveCard = computed(() => userStore.hasGrant('cards.approve', 'all'))
 const canUploadFiles = computed(() => userStore.hasGrant('files.upload', 'global'))
-const canEditCard = computed(() => canUpdateContent.value || canPinCard.value || canApproveCard.value)
-const panelMode = computed<'view' | 'review' | 'edit'>(() => {
-  if (canUpdateContent.value) return 'edit'
-  if (canApproveCard.value || canPinCard.value) return 'review'
-  return 'view'
+const canEditCard = canUpdateContent
+const editLabel = '编辑卡片'
+const commands = computed<CardGovernanceAction[]>(() => {
+  if (!loaded.value) return []
+  return cardGovernanceActions(CardData.value.origin, { approve: canApproveCard.value, update: canUpdateContent.value, pin: canPinCard.value })
 })
-const panelTitle = computed(() => panelMode.value === 'edit' ? '编辑卡片' : panelMode.value === 'review' ? '审核卡片' : '查看卡片')
-const panelActionLabel = computed(() => panelMode.value === 'edit' ? '保存修改' : '提交审核')
+const visibilityLabel = computed(() => ({ public: '公开', followers: '仅关注者', private: '仅自己' })[CardData.value.origin.visibility ?? 'public'])
+const tagNames = computed(() => (CardData.value.origin.tags ?? []).map(id => viewTags.value.find(tag => Number(tag.id) === id)?.name ?? `#${id}`).join('、'))
 const hasUnboundMedia = computed(() => CardMediaData.value.edit.some(item => item.fileId === null))
+const dirty = computed(() => mode.value === 'edit' && (JSON.stringify({ content: CardData.value.edit.content, tags: CardData.value.edit.tags }) !== JSON.stringify({ content: CardData.value.origin.content, tags: CardData.value.origin.tags }) || JSON.stringify(CardMediaData.value.edit.map(item => item.fileId)) !== JSON.stringify(CardMediaData.value.origin.map(item => item.fileId))))
+const reportUnsavedUpload = () => {
+  if (!uploadedFileIds.value.length) return
+  notifier.warning(`本次上传的 ${uploadedFileIds.value.length} 个文件可能尚未被卡片引用，可在文件管理中检查。`)
+  uploadedFileIds.value = []
+}
+watch(dirty, emitDirtyChange, { immediate: true })
+watch(() => saving.value || uploadingImages.value || commandBusy.value, value => emit('busy-change', value), { immediate: true })
+const beginEdit = () => { if (canEditCard.value) mode.value = 'edit' }
+const discardEdit = () => {
+  reportUnsavedUpload()
+  CardData.value.edit = CommonUtils.deepClone(CardData.value.origin)
+  CardMediaData.value.edit = CommonUtils.deepClone(CardMediaData.value.origin)
+  viewCardFiles.value = []
+  formError.value = ''
+  uploadError.value = ''
+  commandError.value = ''
+  showDiscardConfirm.value = false
+  mode.value = 'view'
+}
+const cancelEdit = () => { if (dirty.value) showDiscardConfirm.value = true; else discardEdit() }
 
-const hasCustomData = computed(() => Object.keys(CardData.value.edit.data || {}).length > 0)
+const hasCustomData = computed(() => loaded.value && Object.keys(CardData.value.edit.data || {}).length > 0)
 const displayValue = (value: unknown) => value === undefined || value === null || value === '' ? '—' : String(value)
 const displayJson = (value: unknown) => {
   try {
@@ -300,15 +322,23 @@ const hydrateMedia = (card: Card): ManagedMedia[] => {
 }
 
 const loadCard = async () => {
-  if (!editCardData.value) return
+  const request = ++latestLoad
+  if (!Number.isSafeInteger(props.cardId) || props.cardId <= 0) {
+    loadError.value = '卡片 ID 无效。'
+    loaded.value = false
+    return
+  }
   loading.value = true
+  loaded.value = false
+  const requestedId = props.cardId
   loadError.value = ''
   formError.value = ''
   uploadError.value = ''
   viewCardFiles.value = []
   CardMediaData.value = { edit: [], origin: [] }
   try {
-    const card = await client.cards.getManaged(editCardData.value.id)
+    const card = await client.cards.getManaged(props.cardId)
+    if (request !== latestLoad || requestedId !== props.cardId) return
     const normalized: ManagedCard = { ...card, tags: normalizeTagIds(card) }
     CardData.value = {
       edit: CommonUtils.deepClone(normalized),
@@ -317,10 +347,11 @@ const loadCard = async () => {
     const media = hydrateMedia(card)
     CardMediaData.value.edit = CommonUtils.deepClone(media)
     CardMediaData.value.origin = CommonUtils.deepClone(media)
+    loaded.value = true
   } catch (cause) {
-    loadError.value = errorMessage(cause, '无法加载卡片详情，请稍后重试。')
+    if (request === latestLoad && requestedId === props.cardId) loadError.value = errorMessage(cause, '无法加载卡片详情，请稍后重试。')
   } finally {
-    loading.value = false
+    if (request === latestLoad && requestedId === props.cardId) loading.value = false
   }
 }
 
@@ -328,10 +359,12 @@ const uploadSelectedImages = async (value: File | File[] | null) => {
   if (!canUpdateContent.value || !canUploadFiles.value || hasUnboundMedia.value) return
   const files = (Array.isArray(value) ? value : value ? [value] : []).filter(file => file.type.startsWith('image/'))
   if (files.length === 0) return
+  viewCardFiles.value = []
   uploadingImages.value = true
   uploadError.value = ''
+  const uploadCardId = props.cardId
   try {
-    await Promise.all(files.map(async (file) => {
+    const results = await Promise.allSettled(files.map(async (file) => {
       const previewUrl = URL.createObjectURL(file)
       const image: ManagedMedia = { fileId: 0, url: previewUrl, type: 'image' }
       CardMediaData.value.edit.push(image)
@@ -339,17 +372,23 @@ const uploadSelectedImages = async (value: File | File[] | null) => {
         const formData = new FormData()
         formData.append('file', file)
         const result = await client.files.upload(formData)
-        image.fileId = result.id
-        image.url = result.url
+        if (uploadCardId !== props.cardId) {
+          uploadedFileIds.value = [...uploadedFileIds.value, result.id]
+          return
+        }
+        const currentIndex = CardMediaData.value.edit.findIndex(item => item.url === previewUrl && item.fileId === 0)
+        if (currentIndex >= 0) CardMediaData.value.edit[currentIndex] = { fileId: result.id, url: result.url, type: 'image' }
+        uploadedFileIds.value = [...uploadedFileIds.value, result.id]
       } catch (cause) {
-        const index = CardMediaData.value.edit.indexOf(image)
+        const index = CardMediaData.value.edit.findIndex(item => item.url === previewUrl && item.fileId === 0)
         if (index >= 0) CardMediaData.value.edit.splice(index, 1)
         throw cause
       } finally {
         URL.revokeObjectURL(previewUrl)
       }
     }))
-    viewCardFiles.value = []
+    const failures = results.filter(result => result.status === 'rejected')
+    if (failures.length > 0) throw new Error(`${failures.length} 张图片上传失败；已成功上传的图片仍在本次草稿中。`)
   } catch (cause) {
     uploadError.value = errorMessage(cause, '部分图片上传失败，请重新选择。')
   } finally {
@@ -375,14 +414,6 @@ const patchCard = async () => {
     originInput.content = originData.content
     originInput.tags = originData.tags ?? undefined
   }
-  if (canPinCard.value) {
-    editInput.is_top = editData.is_top
-    originInput.is_top = originData.is_top
-  }
-  if (canApproveCard.value) {
-    editInput.status = editData.status
-    originInput.status = originData.status
-  }
   const params = CommonUtils.removeCommonProperties(editInput, originInput)
   const originMediaIds = CardMediaData.value.origin.map(item => item.fileId)
   const editMediaIds = CardMediaData.value.edit.map(item => item.fileId)
@@ -403,14 +434,19 @@ const patchCard = async () => {
 }
 
 const submit = async () => {
-  if (saving.value) return
+  if (saving.value || !canUpdateContent.value || !loaded.value) return
   saving.value = true
   formError.value = ''
   try {
     const changed = await patchCard()
     if (!changed) return
-    thisDialogState.value = false
-    await props.getTableData?.()
+    const boundIds = new Set(CardMediaData.value.edit.map(item => item.fileId))
+    uploadedFileIds.value = uploadedFileIds.value.filter(id => !boundIds.has(id))
+    reportUnsavedUpload()
+    mode.value = 'view'
+    saving.value = false
+    emit('saved')
+    await loadCard()
   } catch (cause) {
     formError.value = errorMessage(cause, '卡片保存失败，请检查字段后重试。')
   } finally {
@@ -418,11 +454,30 @@ const submit = async () => {
   }
 }
 
-watch(thisDialogState, (open) => {
-  if (open) {
-    void loadCard()
+const runCommand = async () => {
+  const command = pendingCommand.value
+  if (!command || commandBusy.value || dirty.value) return
+  commandBusy.value = true
+  commandError.value = ''
+  try {
+    const current = await client.cards.getManaged(props.cardId)
+    const stillAllowed = cardGovernanceActions(current, { approve: canApproveCard.value, update: canUpdateContent.value, pin: canPinCard.value })
+      .some(action => action.method === command.method && action.label === command.label)
+    if (!stillAllowed) throw new Error('卡片状态已变化，请刷新后重新选择操作。')
+    await client.cards.batchManaged({ method: command.method, ids: [props.cardId] })
+    pendingCommand.value = null
+    emit('saved')
+    await loadCard()
+  } catch (cause) {
+    commandError.value = errorMessage(cause, '卡片操作失败，请稍后重试。')
+  } finally {
+    commandBusy.value = false
   }
-})
+}
+const openCard = () => { mode.value = props.initialMode === 'edit' && canEditCard.value ? 'edit' : 'view'; void loadCard() }
+onMounted(openCard)
+watch(() => props.cardId, openCard)
+onBeforeUnmount(reportUnsavedUpload)
 </script>
 
 <style scoped>

@@ -182,12 +182,11 @@
     </AdminResourceTableShell>
   </AdminPageContainer>
 
-  <UserQuickViewDialog v-model="quickViewOpen" :user-id="quickViewUserId" />
-  <EditUserDialog
-    v-model:thisDialogState="EditUserDialog_state"
-    v-model:editUserData="EditUserDialog_data"
-    :getTableData="getTableData"
-    :ACCOUNT_STATUS="SelectUtils.User.status"
+  <UserQuickViewDialog
+    v-model="quickViewOpen"
+    :user-id="quickViewUserId"
+    :initial-mode="quickViewMode"
+    @updated="getTableData"
   />
   <PublicDeleteDialog
     v-model:thisDialogState="DeleteUserDialog_state"
@@ -230,25 +229,18 @@ import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTabl
 import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue';
 import AdminTableRowActions from '~/components/shared/admin/AdminTableRowActions.vue';
 import UserQuickViewDialog from '~/components/users/UserQuickViewDialog.vue';
-import EditUserDialog from '~/components/users/EditUserDialog.vue';
 import PublicBatchDialog from '@/components/shared/Table/BatchDialog.vue';
 import PublicDeleteDialog from '~/components/shared/Table/DeleteDialog.vue';
 import PublicSearchDialog from '@/components/shared/Table/SearchDialog.vue';
 import { useAdminNotifier } from '~/composables/useAdminNotifier';
 import { isApiError, useApi } from '~/lib/api';
 import { useUserStore } from '~/stores/userStore';
-import CommonUtils from '@/utils/common';
 import SelectUtils from '~/utils/select';
 import { tableSearchValue as mapTableSearchValue } from '~/utils/tableSearchValue';
 import { tableSearchCell } from '~/composables/useAdminTableSearch';
 import { classifyUserTargetRole, parseUserRoleIds, type UserTargetRoleState } from '~/utils/userTargetProtection';
 
 type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
-type EditableUser = {
-  origin: Partial<User> & { roles_id?: number[] | string; password?: string };
-  edit: Partial<User> & { roles_id?: number[] | string; password?: string };
-};
-
 const client = useApi();
 const route = useRoute();
 const router = useRouter();
@@ -562,45 +554,19 @@ const resetTableView = () => {
 };
 
 const actionCapacity = ref(1);
-const editLoadingId = ref<number | null>(null);
 const quickViewOpen = ref(false);
 const quickViewUserId = ref<number | null>(null);
-const openUserQuickView = (id: number) => {
+const quickViewMode = ref<'view' | 'edit'>('view');
+const openUserDetail = (id: number, mode: 'view' | 'edit') => {
   quickViewUserId.value = id;
+  quickViewMode.value = mode;
   quickViewOpen.value = true;
 };
 const userRowActions = (user: User) => [
-  { key: 'view', label: '查看用户', onClick: () => openUserQuickView(user.id) },
-  ...(canEditUser(user) ? [{ key: 'edit', label: '编辑用户', disabled: !allowRowMutation.value || editLoadingId.value !== null, loading: editLoadingId.value === user.id, onClick: () => { void openEditUserDialog(user) } }] : []),
+  { key: 'view', label: '查看用户', onClick: () => openUserDetail(user.id, 'view') },
+  ...(canEditUser(user) ? [{ key: 'edit', label: '编辑用户', disabled: !allowRowMutation.value, onClick: () => openUserDetail(user.id, 'edit') }] : []),
   ...(canDeleteUser(user) ? [{ key: 'delete', label: '删除用户', disabled: !allowRowMutation.value, onClick: () => openDeleteUserDialog(user) }] : []),
 ];
-
-const EditUserDialog_state = ref(false);
-const EditUserDialog_data = ref<EditableUser>({ origin: {}, edit: {} });
-const openEditUserDialog = async (data: User) => {
-  if (!allowRowMutation.value || editLoadingId.value !== null) return;
-  if (!canEditUser(data)) {
-    notifier.warning(targetMutationAllowed(data) ? '当前账号无权编辑用户。' : targetProtectionMessage(data));
-    return;
-  }
-  editLoadingId.value = data.id;
-  try {
-    const fresh = await client.users.getManaged(data.id);
-    if (!canEditUser(fresh)) {
-      notifier.warning(targetMutationAllowed(fresh) ? '当前账号无权编辑用户。' : targetProtectionMessage(fresh));
-      return;
-    }
-    EditUserDialog_data.value = {
-      origin: CommonUtils.deepClone(fresh),
-      edit: CommonUtils.deepClone(fresh),
-    };
-    EditUserDialog_state.value = true;
-  } catch (cause) {
-    notifier.error(isApiError(cause) ? cause.message : '无法读取最新用户资料，请稍后重试。');
-  } finally {
-    editLoadingId.value = null;
-  }
-};
 
 const DeleteUserDialog_state = ref(false);
 const DeleteUserDialog_data = ref<{ id: number; display?: string }>({ id: 0 });

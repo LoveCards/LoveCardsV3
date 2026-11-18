@@ -98,16 +98,15 @@
         <template #[`item.operate`]="{ item }">
           <div class="d-flex align-center ga-1">
             <AdminActionGuard capability="tags.read" scope="all">
-              <AdminTableRowAction :disabled="!allowRowMutation && canUpdateTag" @click="openTagPanel(item.id)">
-                {{ tagPanelActionLabel }}
-              </AdminTableRowAction>
+              <AdminTableRowAction @click="openTagPanel(item.id)">查看标签</AdminTableRowAction>
             </AdminActionGuard>
-            <v-menu v-if="canDeleteTag && allowRowMutation" location="bottom end">
+            <v-menu v-if="allowRowMutation && (canUpdateTag || canDeleteTag)" location="bottom end">
               <template #activator="{ props }">
                 <v-btn v-bind="props" class="admin-table-row-more" aria-label="更多标签操作" title="更多标签操作" icon="mdi-dots-horizontal" size="small" variant="text" />
               </template>
               <v-list density="compact">
-                <v-list-item prepend-icon="mdi-delete-outline" title="删除标签" @click="openDeleteTagDialog(item)" />
+                <v-list-item v-if="canUpdateTag" prepend-icon="mdi-pencil-outline" title="编辑名称" @click="openTagPanel(item.id, 'edit')" />
+                <v-list-item v-if="canDeleteTag" prepend-icon="mdi-delete-outline" title="删除标签" @click="openDeleteTagDialog(item)" />
               </v-list>
             </v-menu>
           </div>
@@ -144,11 +143,7 @@
   </AdminPageContainer>
 
   <CreateTagDialog v-model:thisDialogState="CreateTagDialog_state" :getTableData="getTableData" />
-  <EditTagDialog
-    v-model:thisDialogState="EditTagDialog_state"
-    v-model:TagData="EditTagDialog_data"
-    :getTableData="getTableData"
-  />
+  <TagDetailDialog v-model="TagDetailDialog_state" :tag-id="TagDetailDialog_id" :initial-mode="TagDetailDialog_mode" :source-path="route.fullPath" @saved="getTableData" />
   <PublicDeleteDialog
     v-model:thisDialogState="DeleteTagDialog_state"
     v-model:deleteData="DeleteTagDialog_data"
@@ -178,7 +173,7 @@ import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
 import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue';
 import CreateTagDialog from '@/components/tags/CreateTagDialog.vue';
-import EditTagDialog from '@/components/tags/EditTagDialog.vue';
+import TagDetailDialog from '~/components/tags/TagDetailDialog.vue';
 import PublicBatchDialog from '@/components/shared/Table/BatchDialog.vue';
 import PublicDeleteDialog from '@/components/shared/Table/DeleteDialog.vue';
 import PublicSearchDialog from '@/components/shared/Table/SearchDialog.vue';
@@ -255,7 +250,6 @@ const tagStatus = (status: number) => {
 };
 const canUpdateTag = computed(() => userStore.hasGrant('tags.update', 'all'));
 const canDeleteTag = computed(() => userStore.hasGrant('tags.delete', 'all'));
-const tagPanelActionLabel = computed(() => canUpdateTag.value ? '编辑' : '查看');
 const batchCapabilityFor = (method: TagsBatchMethod | '') => method === 'delete' ? 'tags.delete' : 'tags.update';
 const TableBatchOptions = computed(() => BaseTableBatchOptions.filter((option) => userStore.hasGrant(batchCapabilityFor(option.value), 'all')));
 const batchCapability = computed(() => batchCapabilityFor(BatchOperate.value));
@@ -389,23 +383,21 @@ const openCreateTagDialog = () => {
   CreateTagDialog_state.value = true;
 };
 
-const EditTagDialog_state = ref(false);
-const EditTagDialog_data = ref<Tag | null>(null);
-const openTagPanel = (id: number) => {
-  EditTagDialog_data.value = { id } as Tag;
-  EditTagDialog_state.value = true;
-  void router.replace({ query: { ...route.query, inspect: String(id) }, hash: route.hash });
+const TagDetailDialog_state = ref(false);
+const TagDetailDialog_id = ref<number | null>(null);
+const TagDetailDialog_mode = ref<'view' | 'edit'>('view');
+const openTagPanel = (id: number, mode: 'view' | 'edit' = 'view') => {
+  TagDetailDialog_id.value = id;
+  TagDetailDialog_mode.value = mode;
+  TagDetailDialog_state.value = true;
 };
 watch(() => route.query.inspect, (value) => {
   const id = typeof value === 'string' ? Number.parseInt(value, 10) : 0;
   if (id > 0) {
-    EditTagDialog_data.value = { id } as Tag;
-    EditTagDialog_state.value = true;
-  } else if (EditTagDialog_state.value) {
-    EditTagDialog_state.value = false;
+    openTagPanel(id);
   }
 }, { immediate: true });
-watch(EditTagDialog_state, (open) => {
+watch(TagDetailDialog_state, (open) => {
   if (open || !route.query.inspect) return;
   const next = { ...route.query };
   delete next.inspect;

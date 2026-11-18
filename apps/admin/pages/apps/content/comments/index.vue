@@ -81,6 +81,10 @@
           <span class="text-body-2 text-medium-emphasis">#<AdminTableSearchHighlight :text="item.id" :query="highlightQuery('id')" /></span>
         </template>
 
+        <template #[`item.user_id`]="{ item }">
+          <AdminTableSearchHighlight :text="`${item.username?.trim() || '用户'} #${item.user_id}`" :query="highlightQuery('user_id')" />
+        </template>
+
         <template #[`item.content`]="{ item }">
           <AdminContentSummary :content="item.content" :author="item.username" :user-id="item.user_id" :highlight-query="highlightQuery('content')" />
         </template>
@@ -235,7 +239,7 @@ const queryFilters = (value: unknown): Record<string, unknown> => {
 const AllTableHeaders = [
   { title: '内容', value: 'content', sortable: false, minWidth: 320 },
   { title: 'ID', value: 'id', sortable: true },
-  { title: '用户ID', value: 'user_id', sortable: true },
+  { title: '用户', value: 'user_id', sortable: true },
   { title: '应用ID', value: 'aid', sortable: true },
   { title: '自定义字段', value: 'data', sortable: false },
   { title: '点赞数', value: 'goods', sortable: true },
@@ -249,7 +253,7 @@ const defaultColumns = ['content', 'created_at', 'status', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: ['content', 'operate'].includes(header.value) }));
-const SearchKeys = AllTableHeaders.filter((header) => !['is_pinned', 'operate'].includes(header.value));
+const SearchKeys = AllTableHeaders.filter((header) => !['is_pinned', 'operate'].includes(header.value)).map((header) => header.value === 'user_id' ? { ...header, title: '用户 ID' } : header);
 const BaseTableBatchOptions = [
   { title: '切换封禁状态', value: 'ban' },
   { title: '切换隐藏状态', value: 'hide' },
