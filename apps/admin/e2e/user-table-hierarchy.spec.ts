@@ -63,6 +63,8 @@ for (const width of [1440, 960, 600, 390]) {
       }
     } else {
       expect(await detail.evaluate(item => item.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44)
+      const mobileLabels = page.locator('.v-data-table__td-title')
+      expect(await mobileLabels.evaluateAll(items => items.every(item => getComputedStyle(item).whiteSpace === 'nowrap'))).toBe(true)
     }
     await page.screenshot({ path: testInfo.outputPath('users.png'), fullPage: true })
     await row.getByRole('button', { name: '更多用户操作' }).click()
@@ -144,6 +146,7 @@ test('status search sends the stored value for a Chinese label', async ({ page }
   await expect(page.locator('tbody tr').first()).toContainText('member_1', { timeout: 20_000 })
   const request = page.waitForRequest(request => request.url().includes('/api/admin/users?') && new URL(request.url()).searchParams.get('search_value') === '0')
   await page.getByRole('textbox', { name: '搜索状态' }).fill('正常')
+  await page.getByRole('textbox', { name: '搜索状态' }).press('Enter')
   await request
   await expect(page).toHaveURL(/search_value=%E6%AD%A3%E5%B8%B8/)
   await expect(page.locator('tbody tr').first().locator('mark')).toHaveText('正常')
