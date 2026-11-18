@@ -18,3 +18,18 @@
     white-space: nowrap;
   }
 }
+
+/* 移动行中的字段名保持横排，长内容在值侧折行。 */
+@media (max-width: 599.98px) {
+  .v-data-table .v-data-table__td-title {
+    flex: 0 0 auto;
+    min-width: 6rem;
+    white-space: nowrap;
+  }
+
+  .v-data-table .v-data-table__td-value {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+}

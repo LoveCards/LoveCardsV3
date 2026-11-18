@@ -63,6 +63,8 @@ for (const width of [1440, 960, 600, 390]) {
       }
     } else {
       expect(await detail.evaluate(item => item.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44)
+      const mobileLabels = page.locator('.v-data-table__td-title')
+      expect(await mobileLabels.evaluateAll(items => items.every(item => getComputedStyle(item).whiteSpace === 'nowrap'))).toBe(true)
     }
     await page.screenshot({ path: testInfo.outputPath('users.png'), fullPage: true })
     await row.getByRole('button', { name: '更多用户操作' }).click()
