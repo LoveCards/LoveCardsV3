@@ -1,13 +1,16 @@
 <template>
   <section aria-label="事件明细">
+    <div class="d-flex flex-wrap align-center justify-space-between ga-3 mb-4">
+      <h2 class="text-h6">事件明细</h2>
+      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新事件明细</v-btn>
+    </div>
     <p class="text-body-2 text-medium-emphasis mb-4">每行是一件已经发生的业务事件；展开后可查看它对应的处理任务。这里不展示事件正文或私密数据。</p>
     <div class="d-flex flex-wrap align-center ga-3 mb-4">
       <v-select v-model="queue" :items="queueOptions" item-title="title" item-value="value" label="处理队列" variant="outlined" density="compact" hide-details class="flex-grow-1" />
       <v-text-field v-model="draftType" label="事件类型" placeholder="例如 message.sent" variant="outlined" density="compact" hide-details class="flex-grow-1" @keyup.enter="applyType" />
       <v-btn variant="outlined" @click="applyType">筛选</v-btn>
-      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn>
     </div>
-    <AdminAsyncState :loading="loading && !events.length" :error="error && !events.length ? error : null" :empty="!loading && !events.length" empty-title="没有匹配的事件" @retry="load">
+    <AdminAsyncState :loading="loading && !hasCurrentResult" :error="error && !hasCurrentResult ? error : null" :empty="!loading && !error && !events.length" empty-title="没有匹配的事件" @retry="load">
       <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
       <v-expansion-panels variant="accordion">
         <v-expansion-panel v-for="event in events" :key="event.id" :value="event.id" elevation="0" border>
@@ -30,8 +33,8 @@
         </v-expansion-panel>
       </v-expansion-panels>
       <div class="d-flex flex-wrap align-center justify-space-between ga-3 mt-4">
-        <span class="text-body-2">共 {{ total }} 条事件</span>
-        <v-pagination v-if="pageCount > 1" v-model="page" :length="pageCount" :total-visible="5" aria-label="事件页码" />
+        <span v-if="hasCurrentResult" class="text-body-2">{{ loading ? '更新中 · 上次结果共' : error ? '上次结果共' : '共' }} {{ total }} 条事件</span>
+        <v-pagination v-if="pageCount > 1" v-model="page" :length="pageCount" :total-visible="5" :disabled="loading || !!error" aria-label="事件页码" />
       </div>
     </AdminAsyncState>
   </section>
@@ -67,6 +70,9 @@ const total = ref(0)
 const pageCount = computed(() => Math.ceil(total.value / 20))
 const loading = ref(false)
 const error = ref<string | null>(null)
+const lastSuccessfulKey = ref('')
+const currentQueryKey = computed(() => JSON.stringify({ page: page.value, queue: queue.value, eventType: eventType.value }))
+const hasCurrentResult = computed(() => lastSuccessfulKey.value === currentQueryKey.value)
 let requestId = 0
 
 function updateQuery(patch: Record<string, string | undefined>) {
@@ -78,15 +84,19 @@ function applyType() {
 }
 async function load() {
   const id = ++requestId
+  const queryKey = currentQueryKey.value
   loading.value = true
   error.value = null
-  events.value = []
-  total.value = 0
+  if (queryKey !== lastSuccessfulKey.value) {
+    events.value = []
+    total.value = 0
+  }
   try {
     const result = await client.operations.events({ page: page.value, list_rows: 20, ...(queue.value ? { queue_name: queue.value } : {}), ...(eventType.value ? { event_type: eventType.value } : {}) })
     if (id !== requestId) return
     events.value = result.data
     total.value = result.pagination?.totalItems ?? result.data.length
+    lastSuccessfulKey.value = queryKey
   } catch (cause) {
     if (id === requestId) error.value = isApiError(cause) ? cause.message : '无法加载事件明细'
   } finally { if (id === requestId) loading.value = false }

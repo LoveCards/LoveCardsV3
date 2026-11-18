@@ -3,7 +3,11 @@
     title="评论"
     description="查看评论内容与状态，按需审核和管理。"
     :breadcrumbs="[{ title: '内容' }]"
-  />
+  >
+    <template #actions>
+      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="tableLoading" @click="getTableData">刷新</v-btn>
+    </template>
+  </AdminPageHeader>
 
   <AdminPageContainer fluid>
     <AdminResourceTableShell
@@ -21,7 +25,6 @@
         <div class="d-flex align-center ga-2"><v-text-field v-model="searchDraft" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @keydown.enter.prevent="submitSearch" @click:clear="clearSearch" /><v-btn variant="outlined" @click="submitSearch">查询</v-btn></div>
       </template>
       <template #actions>
-        <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="tableLoading" @click="getTableData">刷新</v-btn>
         <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">搜索与排序</v-btn>
       </template>
       <template v-if="tableSelected.length" #selection>
@@ -85,11 +88,11 @@
         <template #[`item.operate`]="{ item }">
           <div class="d-flex align-center ga-1">
             <AdminActionGuard capability="comments.read" scope="all">
-              <v-btn variant="text" :to="{ path: `/apps/content/comments/${item.id}`, state: { listSource: route.fullPath } }">查看详情</v-btn>
+              <AdminTableRowAction :to="{ path: `/apps/content/comments/${item.id}`, state: { listSource: route.fullPath } }">查看详情</AdminTableRowAction>
             </AdminActionGuard>
             <v-menu v-if="canEditComment || canModerateComment || canDeleteComment || (canPin && Number(item.status) === 0 && !item.parent_id)" location="bottom end">
               <template #activator="{ props }">
-                <v-btn v-bind="props" :disabled="!canMutateRows" aria-label="更多评论操作" icon="mdi-dots-horizontal" variant="text" />
+                <v-btn v-bind="props" class="admin-table-row-more" :disabled="!canMutateRows" aria-label="更多评论操作" title="更多评论操作" icon="mdi-dots-horizontal" size="small" variant="text" />
               </template>
               <v-list density="compact">
                 <v-list-item v-if="canEditComment || canModerateComment" prepend-icon="mdi-pencil-outline" :title="commentPanelActionLabel" @click="openCommentPanel(item.id)" />
@@ -230,17 +233,17 @@ const queryFilters = (value: unknown): Record<string, unknown> => {
 };
 
 const AllTableHeaders = [
-  { title: '内容', value: 'content', sortable: false, minWidth: 320, width: '55%' },
+  { title: '内容', value: 'content', sortable: false, minWidth: 320 },
   { title: 'ID', value: 'id', sortable: true },
   { title: '用户ID', value: 'user_id', sortable: true },
   { title: '应用ID', value: 'aid', sortable: true },
   { title: '自定义字段', value: 'data', sortable: false },
   { title: '点赞数', value: 'goods', sortable: true },
-  { title: '发布时间', value: 'created_at', sortable: true, width: 180 },
+  { title: '发布时间', value: 'created_at', sortable: true, minWidth: 176 },
   { title: 'IP', value: 'post_ip', sortable: true },
   { title: '卡片置顶', value: 'is_pinned', sortable: false },
-  { title: '状态', value: 'status', sortable: true, width: 120 },
-  { title: '操作', value: 'operate', sortable: false, width: 160 },
+  { title: '状态', value: 'status', sortable: true, minWidth: 112 },
+  { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
 const defaultColumns = ['content', 'created_at', 'status', 'operate'];
 const visibleColumns = ref([...defaultColumns]);

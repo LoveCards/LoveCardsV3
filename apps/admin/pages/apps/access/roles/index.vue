@@ -5,6 +5,7 @@
     :breadcrumbs="[{ title: '用户' }]"
   >
     <template #actions>
+      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="tableLoading" @click="getTableData">刷新</v-btn>
       <AdminActionGuard capability="roles.create" scope="global">
         <v-btn color="primary" prepend-icon="mdi-shield-plus-outline" variant="flat" @click="CreateDialog_state = true">
           创建角色
@@ -133,9 +134,9 @@
 
         <template #[`item.operate`]="{ item }">
           <div class="d-flex ga-1 align-center">
-            <NuxtLink :to="`/apps/access/roles/${item.id}`">查看详情</NuxtLink>
+            <AdminTableRowAction :to="`/apps/access/roles/${item.id}`">查看详情</AdminTableRowAction>
             <v-menu v-if="allowRowMutation && (canEditRole(item) || canAssignRole(item) || canDeleteRole(item))" location="bottom end">
-              <template #activator="{ props }"><v-btn v-bind="props" aria-label="更多角色操作" icon="mdi-dots-horizontal" size="small" variant="text" /></template>
+              <template #activator="{ props }"><v-btn v-bind="props" class="admin-table-row-more" aria-label="更多角色操作" title="更多角色操作" icon="mdi-dots-horizontal" size="small" variant="text" /></template>
               <v-list density="compact">
                 <AdminActionGuard v-if="canEditRole(item)" capability="roles.update" scope="global">
                   <v-list-item title="编辑角色" prepend-icon="mdi-pencil" @click="openEditDialog(item)" />
@@ -272,13 +273,13 @@ const normalizeFilters = (value: unknown): Record<string, unknown> => {
 };
 
 const AllTableHeaders = [
-  { title: 'ID', value: 'id', sortable: true },
-  { title: '名称', value: 'name', sortable: true },
-  { title: 'Slug', value: 'slug', sortable: true },
-  { title: '类型', value: 'is_system', sortable: true },
-  { title: '描述', value: 'description', sortable: true },
-  { title: '创建时间', value: 'created_at', sortable: true },
-  { title: '操作', value: 'operate', sortable: false },
+  { title: 'ID', value: 'id', sortable: true, minWidth: 88 },
+  { title: '名称', value: 'name', sortable: true, minWidth: 200 },
+  { title: 'Slug', value: 'slug', sortable: true, minWidth: 160 },
+  { title: '类型', value: 'is_system', sortable: true, minWidth: 104 },
+  { title: '描述', value: 'description', sortable: true, minWidth: 240 },
+  { title: '创建时间', value: 'created_at', sortable: true, minWidth: 176 },
+  { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
 const defaultColumns = ['id', 'name', 'slug', 'is_system', 'description', 'operate'];
 const visibleColumns = ref([...defaultColumns]);

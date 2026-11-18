@@ -155,8 +155,8 @@ const advancedNumericFields = [
   { key: 'gateway_stale_seconds', label: 'Gateway 探测缓存（秒）', hint: '5~120' },
 ] as const
 const capabilityHeaders = [
-  { title: '能力', key: 'key' }, { title: '状态', key: 'ready' }, { title: 'Provider', key: 'provider' },
-  { title: '原因', key: 'reason', sortable: false }, { title: '检查时间', key: 'checked_at' },
+  { title: '能力', key: 'key', minWidth: 160 }, { title: '状态', key: 'ready', minWidth: 112 }, { title: 'Provider', key: 'provider', minWidth: 136 },
+  { title: '原因', key: 'reason', sortable: false, minWidth: 240 }, { title: '检查时间', key: 'checked_at', minWidth: 176 },
 ]
 const hasChanges = computed(() => {
   const current = communication.value

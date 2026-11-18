@@ -6,6 +6,7 @@
   >
     <template #actions>
       <v-chip color="info" variant="tonal" size="small">只读目录</v-chip>
+      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="tableLoading" @click="getTableData">刷新</v-btn>
     </template>
   </AdminPageHeader>
 
@@ -78,7 +79,7 @@
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <NuxtLink :to="`/apps/access/permissions/${encodeURIComponent(item.capability)}/${encodeURIComponent(item.scope)}`">查看详情</NuxtLink>
+          <AdminTableRowAction :to="`/apps/access/permissions/${encodeURIComponent(item.capability)}/${encodeURIComponent(item.scope)}`">查看详情</AdminTableRowAction>
         </template>
         <template #no-data>
           <v-empty-state
@@ -117,10 +118,10 @@ const positiveQueryInt = (value: unknown, fallback: number) => {
 };
 
 const AllTableHeaders = [
-  { title: '能力标识', value: 'capability', sortable: true },
-  { title: '作用域', value: 'scope', sortable: true },
-  { title: '描述', value: 'description', sortable: true },
-  { title: '操作', value: 'operate', sortable: false },
+  { title: '能力标识', value: 'capability', sortable: true, minWidth: 240 },
+  { title: '作用域', value: 'scope', sortable: true, minWidth: 120 },
+  { title: '描述', value: 'description', sortable: true, minWidth: 280 },
+  { title: '操作', value: 'operate', sortable: false, minWidth: 112 },
 ];
 const defaultColumns = ['capability', 'scope', 'description', 'operate'];
 const visibleColumns = ref([...defaultColumns]);

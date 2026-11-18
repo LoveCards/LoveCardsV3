@@ -30,7 +30,7 @@
           <template #item.status="{ item }"><span v-if="item.policy_decision === 'skipped'">{{ skipLabel(item.queue_name) }}</span><AdminStatusChip v-else :status="item.status" /></template>
           <template #item.error="{ item }"><span class="delivery-error">{{ item.last_error || '—' }}</span></template>
           <template #item.updated_at="{ item }"><AdminTableTime :value="item.updated_at" /></template>
-          <template #item.action="{ item }"><NuxtLink :to="`/apps/operations/deliveries/${item.id}`">查看详情</NuxtLink></template>
+          <template #item.action="{ item }"><AdminTableRowAction :to="`/apps/operations/deliveries/${item.id}`">查看详情</AdminTableRowAction></template>
         </v-data-table-server>
       </AdminAsyncState>
     </AdminResourceTableShell>
@@ -85,8 +85,8 @@ const resultCount = ref<number | null>(null)
 const resultState = ref<'ready' | 'loading' | 'stale'>('ready')
 let lastSuccessfulKey: string | null = null
 const allHeaders = [
-  { title: '业务事件', key: 'event' }, { title: '处理结果', key: 'status' }, { title: '尝试', key: 'attempt_count' },
-  { title: '最后错误', key: 'error' }, { title: '更新时间', key: 'updated_at' }, { title: '操作', key: 'action' },
+  { title: '业务事件', key: 'event', minWidth: 240 }, { title: '处理结果', key: 'status', minWidth: 128 }, { title: '尝试', key: 'attempt_count', minWidth: 88 },
+  { title: '最后错误', key: 'error', minWidth: 240 }, { title: '更新时间', key: 'updated_at', minWidth: 176 }, { title: '操作', key: 'action', minWidth: 112 },
 ].map((header) => ({ ...header, sortable: false }))
 const visibleColumns = ref(allHeaders.map((header) => header.key))
 const headers = computed(() => allHeaders.filter((header) => visibleColumns.value.includes(header.key)))

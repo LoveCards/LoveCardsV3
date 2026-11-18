@@ -35,11 +35,7 @@
             <template #item.state="{ item }"><AdminStatusChip :status="item.active ? 'active' : 'closed'" :label="item.active ? '有效' : '已撤销或过期'" /></template>
             <template #item.action="{ item }">
               <AdminActionGuard v-if="mayRevokeSessions" capability="users.sessions.revoke">
-                <v-tooltip v-if="item.active" text="撤销 Session" location="top">
-                  <template #activator="{ props }">
-                    <v-btn v-bind="props" aria-label="撤销 Session" color="error" icon="mdi-logout-variant" variant="text" @click="openRevoke(item.id)" />
-                  </template>
-                </v-tooltip>
+                <AdminTableRowAction v-if="item.active" @click="openRevoke(item.id)">撤销 Session</AdminTableRowAction>
               </AdminActionGuard>
               <v-tooltip v-else-if="item.active && hasRevocationGrant" :text="protectionNotice" location="top">
                 <template #activator="{ props }">
@@ -106,8 +102,8 @@ const breadcrumbs = [
   { title: '账号安全', disabled: true },
 ]
 const headers = [
-  { title: 'Session', key: 'id' }, { title: '状态', key: 'state', sortable: false }, { title: '安全版本', key: 'security_version' },
-  { title: 'Token 到期', key: 'token_expires_at' }, { title: '可续期至', key: 'renewable_until' }, { title: '操作', key: 'action', sortable: false },
+  { title: 'Session', key: 'id', minWidth: 176 }, { title: '状态', key: 'state', sortable: false, minWidth: 120 }, { title: '安全版本', key: 'security_version', minWidth: 112 },
+  { title: 'Token 到期', key: 'token_expires_at', minWidth: 176 }, { title: '可续期至', key: 'renewable_until', minWidth: 176 }, { title: '操作', key: 'action', sortable: false, minWidth: 128 },
 ]
 
 let latestLoad = 0
