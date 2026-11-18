@@ -3,7 +3,11 @@
     title="卡片"
     description="查看卡片内容，处理待审核或异常内容。"
     :breadcrumbs="[{ title: '内容' }]"
-  />
+  >
+    <template #actions>
+      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="tableLoading" @click="getTableData">刷新</v-btn>
+    </template>
+  </AdminPageHeader>
 
   <AdminPageContainer fluid>
     <AdminResourceTableShell
@@ -21,7 +25,6 @@
         <div class="d-flex align-center ga-2"><v-text-field v-model="searchDraft" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @keydown.enter.prevent="submitSearch" @click:clear="clearSearch" /><v-btn variant="outlined" @click="submitSearch">查询</v-btn></div>
       </template>
       <template #actions>
-        <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="tableLoading" @click="getTableData">刷新</v-btn>
         <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">搜索与排序</v-btn>
       </template>
       <template v-if="tableSelected.length" #selection>
@@ -107,11 +110,11 @@
         <template #[`item.operate`]="{ item }">
           <div class="d-flex align-center ga-1">
             <AdminActionGuard capability="cards.read" scope="all">
-              <v-btn variant="text" :to="{ path: `/apps/content/cards/${item.id}`, state: { listSource: route.fullPath } }">查看详情</v-btn>
+              <AdminTableRowAction :to="{ path: `/apps/content/cards/${item.id}`, state: { listSource: route.fullPath } }">查看详情</AdminTableRowAction>
             </AdminActionGuard>
             <v-menu v-if="canUpdateCard || canApproveCard || canPinCard || canDeleteCard" location="bottom end">
               <template #activator="{ props }">
-                <v-btn v-bind="props" :disabled="!canMutateRows" aria-label="更多卡片操作" icon="mdi-dots-horizontal" variant="text" />
+                <v-btn v-bind="props" class="admin-table-row-more" :disabled="!canMutateRows" aria-label="更多卡片操作" title="更多卡片操作" icon="mdi-dots-horizontal" size="small" variant="text" />
               </template>
               <v-list density="compact">
                 <v-list-item v-if="canUpdateCard || canApproveCard || canPinCard" prepend-icon="mdi-pencil-outline" :title="cardPanelActionLabel" @click="openCardPanel(item.id)" />
@@ -242,7 +245,7 @@ const queryFilters = (value: unknown): Record<string, unknown> => {
 };
 
 const AllTableHeaders = [
-  { title: '内容', value: 'content', sortable: false, minWidth: 320, width: '55%' },
+  { title: '内容', value: 'content', sortable: false, minWidth: 320 },
   { title: 'ID', value: 'id', sortable: true },
   { title: '用户ID', value: 'user_id', sortable: true },
   { title: '封面', value: 'cover', sortable: false },
@@ -251,11 +254,11 @@ const AllTableHeaders = [
   { title: '评论数', value: 'comments', sortable: true },
   { title: '浏览量', value: 'views', sortable: true },
   { title: '标签', value: 'tags', sortable: false },
-  { title: '发布时间', value: 'created_at', sortable: true, width: 180 },
+  { title: '发布时间', value: 'created_at', sortable: true, minWidth: 176 },
   { title: 'IP', value: 'post_ip', sortable: true },
   { title: '置顶', value: 'is_top', sortable: true },
-  { title: '状态', value: 'status', sortable: true, width: 120 },
-  { title: '操作', value: 'operate', sortable: false, width: 160 },
+  { title: '状态', value: 'status', sortable: true, minWidth: 112 },
+  { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
 const defaultColumns = ['content', 'created_at', 'status', 'operate'];
 const visibleColumns = ref([...defaultColumns]);

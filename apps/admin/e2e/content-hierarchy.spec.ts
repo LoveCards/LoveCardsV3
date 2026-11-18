@@ -67,14 +67,16 @@ for (const resource of ['cards', 'comments'] as const) {
       await page.goto(`./apps/content/${resource}`)
       await expect(page.locator('tbody tr').first()).toContainText('周末在校园', { timeout: 20_000 })
       await page.screenshot({ path: testInfo.outputPath('content-list.png'), fullPage: true, animations: 'disabled' })
-      const headings = await page.locator('thead tr').first().locator('th, td').allTextContents()
-      expect(headings.map(value => value.trim())).toEqual(['', '内容', '发布时间', '状态', '操作'])
+      if (width >= 600) {
+        const headings = await page.locator('thead tr').first().locator('th, td').allTextContents()
+        expect(headings.map(value => value.trim())).toEqual(['', '内容', '发布时间', '状态', '操作'])
+      }
       await expect(page.locator('tbody tr').first()).toContainText('林晓')
       await expect(page.locator('tbody tr').first().locator('.v-chip')).toHaveCount(0)
       await expect(page.getByText('待审核', { exact: true }).first()).toBeVisible()
       const label = resource === 'cards' ? '卡片' : '评论'
       const row = page.locator('tbody tr').first()
-      await expect(row.getByRole('button', { name: `编辑${label}`, exact: true })).toBeVisible()
+      await expect(row.getByRole('link', { name: '查看详情', exact: true })).toBeVisible()
       await expect(page.getByRole('button', { name: `删除${label}`, exact: true })).toHaveCount(0)
       await row.getByRole('button', { name: `更多${label}操作` }).click()
       await page.getByText(`删除${label}`, { exact: true }).click()
@@ -97,7 +99,7 @@ for (const resource of ['cards', 'comments'] as const) {
     await contentFixtures(page, resource, true)
     await page.goto(`./apps/content/${resource}`)
     const label = resource === 'cards' ? '卡片' : '评论'
-    await expect(page.locator('tbody tr').first().getByRole('button', { name: `查看${label}`, exact: true })).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator('tbody tr').first().getByRole('link', { name: '查看详情', exact: true })).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('button', { name: `更多${label}操作` })).toHaveCount(0)
   })
 }

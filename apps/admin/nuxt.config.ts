@@ -26,6 +26,7 @@ export default defineNuxtConfig({
     css: [
         '@mdi/font/css/materialdesignicons.css',
         '~/assets/admin-accessibility.css',
+        '~/assets/admin-tables.css',
     ],
     // Shared admin primitives are intentionally addressable by their
     // capability-oriented names (AdminPageHeader, AdminAsyncState, ...).

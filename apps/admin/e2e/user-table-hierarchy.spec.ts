@@ -44,13 +44,26 @@ async function fixtures(page: Page, limited = false) {
   return unexpected
 }
 
-for (const width of [1440, 390]) {
+for (const width of [1440, 960, 600, 390]) {
   test(`user identity and secondary actions at ${width}px`, async ({ page }, testInfo) => {
     const unexpected = await fixtures(page)
     await page.setViewportSize({ width, height: 900 })
     await page.goto('./apps/users')
     const row = page.locator('tbody tr').first()
     await expect(row).toContainText('member_1', { timeout: 20_000 })
+    await expect(page.getByRole('button', { name: '刷新', exact: true })).toBeVisible()
+    const detail = row.getByRole('link', { name: '查看详情', exact: true })
+    await expect(detail).toBeVisible()
+    if (width >= 600) {
+      const headers = page.locator('thead .v-data-table__th')
+      expect(await headers.evaluateAll(items => items.every(item => getComputedStyle(item).whiteSpace === 'nowrap'))).toBe(true)
+      if (width === 600) {
+        const wrapper = page.locator('.v-data-table .v-table__wrapper')
+        expect(await wrapper.evaluate(item => item.scrollWidth > item.clientWidth)).toBe(true)
+      }
+    } else {
+      expect(await detail.evaluate(item => item.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44)
+    }
     await page.screenshot({ path: testInfo.outputPath('users.png'), fullPage: true })
     await row.getByRole('button', { name: '更多用户操作' }).click()
     await expect(page.getByText('删除用户', { exact: true })).toBeVisible()
@@ -64,8 +77,22 @@ for (const width of [1440, 390]) {
 test('limited roles do not see security or mutation actions', async ({ page }) => {
   await fixtures(page, true)
   await page.goto('./apps/users')
-  await expect(page.locator('tbody tr').first().getByRole('link', { name: '查看用户' })).toBeVisible({ timeout: 20_000 })
+  await expect(page.locator('tbody tr').first().getByRole('link', { name: '查看详情' })).toBeVisible({ timeout: 20_000 })
   await expect(page.getByRole('button', { name: '更多用户操作' })).toHaveCount(0)
+})
+
+test('user refresh keeps the active query and remains outside the table toolbar', async ({ page }) => {
+  await fixtures(page)
+  await page.goto('./apps/users?page=1&list_rows=20')
+  await expect(page.locator('tbody tr').first()).toContainText('member_1', { timeout: 20_000 })
+  const refresh = page.getByRole('button', { name: '刷新', exact: true })
+  await expect(refresh).toHaveCount(1)
+  await expect(page.locator('.admin-resource-table-shell').getByRole('button', { name: '刷新', exact: true })).toHaveCount(0)
+  const request = page.waitForRequest(value => value.url().includes('/api/admin/users?') && value.method() === 'GET')
+  await refresh.click()
+  const params = new URL((await request).url()).searchParams
+  expect(params.get('page')).toBe('1')
+  expect(params.get('list_rows')).toBe('20')
 })
 
 test('user filters survive sorting changes and clear without losing normal status zero', async ({ page }) => {

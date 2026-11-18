@@ -3,7 +3,11 @@
     title="用户管理"
     description="查找用户，查看账号状态与角色。"
     :breadcrumbs="[{ title: '用户' }]"
-  />
+  >
+    <template #actions>
+      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="tableLoading" @click="getTableData">刷新</v-btn>
+    </template>
+  </AdminPageHeader>
 
   <AdminPageContainer fluid>
     <AdminResourceTableShell
@@ -127,10 +131,10 @@
 
         <template #[`item.operate`]="{ item }">
           <div class="d-flex align-center ga-1">
-            <v-btn :to="`/apps/users/${item.id}`" variant="text">查看详情</v-btn>
+            <AdminTableRowAction :to="`/apps/users/${item.id}`">查看详情</AdminTableRowAction>
             <v-menu v-if="allowRowMutation && (canEditUser(item) || userStore.hasGrant('users.security.read', 'global') || canDeleteUser(item))" location="bottom end">
               <template #activator="{ props }">
-                <v-btn v-bind="props" aria-label="更多用户操作" icon="mdi-dots-horizontal" variant="text" />
+                <v-btn v-bind="props" class="admin-table-row-more" aria-label="更多用户操作" title="更多用户操作" icon="mdi-dots-horizontal" size="small" variant="text" />
               </template>
               <v-list density="compact">
                 <AdminActionGuard v-if="canEditUser(item)" capability="users.update" scope="all">
@@ -294,14 +298,14 @@ const normalizeFilters = (value: unknown): Record<string, unknown> => {
 const AllTableHeaders = [
   { title: '用户', value: 'username', sortable: true, minWidth: 240 },
   { title: 'ID', value: 'id', sortable: true },
-  { title: '角色', value: 'roles_id', sortable: false },
+  { title: '角色', value: 'roles_id', sortable: false, minWidth: 144 },
   { title: '头像', value: 'avatar', sortable: false },
   { title: '账号', value: 'number', sortable: true },
   { title: '邮箱', value: 'email', sortable: true },
   { title: '手机号', value: 'phone', sortable: true },
-  { title: '注册时间', value: 'created_at', sortable: true },
-  { title: '状态', value: 'status', sortable: true },
-  { title: '操作', value: 'operate', sortable: false, width: 200 },
+  { title: '注册时间', value: 'created_at', sortable: true, minWidth: 176 },
+  { title: '状态', value: 'status', sortable: true, minWidth: 112 },
+  { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
 const defaultColumns = ['username', 'roles_id', 'created_at', 'status', 'operate'];
 const visibleColumns = ref([...defaultColumns]);

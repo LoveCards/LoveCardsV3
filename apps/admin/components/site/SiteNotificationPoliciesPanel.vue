@@ -88,8 +88,8 @@ const saveError = ref<string | undefined>(undefined)
 const conflictMessage = ref('')
 
 const headers = [
-  { title: '提醒与影响', key: 'event_type', sortRaw: (a: NotificationPolicyRule, b: NotificationPolicyRule) => policyLabel(a).localeCompare(policyLabel(b), 'zh-CN') },
-  { title: '当前设置', key: 'enabled', sortable: false },
+  { title: '提醒与影响', key: 'event_type', minWidth: 320, sortRaw: (a: NotificationPolicyRule, b: NotificationPolicyRule) => policyLabel(a).localeCompare(policyLabel(b), 'zh-CN') },
+  { title: '当前设置', key: 'enabled', sortable: false, minWidth: 160 },
 ]
 
 function isMissingDescription(row: NotificationPolicyRule) { return !row.display_name || !row.impact_text }

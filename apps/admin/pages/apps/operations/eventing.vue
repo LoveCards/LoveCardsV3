@@ -1,10 +1,6 @@
 <template>
   <AdminPageContainer :max-width="1040">
-    <AdminPageHeader title="事件管理" description="查看事件事实、处理结果和当前版本的处理能力。" :breadcrumbs="[{ title: '系统' }]">
-      <template #actions>
-        <v-btn v-if="activeTab === 'status'" prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="hasUnsavedChanges" @click="load">刷新</v-btn>
-      </template>
-    </AdminPageHeader>
+    <AdminPageHeader title="事件管理" description="查看事件事实、处理结果和当前版本的处理能力。" :breadcrumbs="[{ title: '系统' }]" />
 
     <v-tabs :model-value="activeTab" class="mb-5" aria-label="事件管理视图" @update:model-value="selectTab">
       <v-tab v-if="canReadRuntime" value="status">运行状态</v-tab>
@@ -14,6 +10,13 @@
     <EventRecords v-if="activeTab === 'events' && canReadEvents" />
     <EventHandlerCatalog v-if="activeTab === 'handlers' && canReadRuntime" />
 
+    <div v-if="activeTab === 'status' && canReadRuntime" class="d-flex flex-wrap align-center justify-space-between ga-3 mb-4">
+      <h2 class="text-h6">运行状态</h2>
+      <div class="d-flex flex-wrap align-center ga-2">
+        <span v-if="hasUnsavedChanges" class="text-caption text-medium-emphasis">先处理未保存的修改，再刷新</span>
+        <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="hasUnsavedChanges" @click="load">刷新运行状态</v-btn>
+      </div>
+    </div>
     <AdminAsyncState v-if="activeTab === 'status' && canReadRuntime" :loading="loading && !runtime" :error="error && !runtime ? error : null" :empty="!runtime" @retry="load">
       <template v-if="runtime">
         <v-alert v-if="error" class="mb-4" type="warning" variant="tonal">刷新失败，以下是上次读取的状态：{{ error }}</v-alert>
@@ -167,8 +170,8 @@ const hasUnsavedChanges = computed(() => {
 })
 const onlineWorkerCount = computed(() => runtime.value?.workers.filter(worker => worker.worker_type === 'eventing' && worker.online).length ?? 0)
 const queueHeaders = [
-  { title: '队列', key: 'queue_name' }, { title: '执行模式', key: 'execution_mode' },
-  { title: '待处理', key: 'pending' }, { title: '处理中', key: 'processing' }, { title: '死信', key: 'dead' },
+  { title: '队列', key: 'queue_name', minWidth: 176 }, { title: '执行模式', key: 'execution_mode', minWidth: 128 },
+  { title: '待处理', key: 'pending', minWidth: 96 }, { title: '处理中', key: 'processing', minWidth: 96 }, { title: '死信', key: 'dead', minWidth: 88 },
 ]
 const reasonLabels: Record<string, string> = {
   'config-locked': '环境变量已锁定运行模式',

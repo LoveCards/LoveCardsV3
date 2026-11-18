@@ -3,7 +3,11 @@
     title="文件管理"
     description="管理上传文件与回收站。过期上传处理只标记失败；永久删除属于高风险操作。"
     :breadcrumbs="[{ title: '内容' }]"
-  />
+  >
+    <template #actions>
+      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="tableLoading" @click="getTableData">刷新</v-btn>
+    </template>
+  </AdminPageHeader>
 
   <AdminPageContainer fluid>
     <AdminResourceTableShell
@@ -144,17 +148,17 @@
         <template #[`item.operate`]="{ item }">
           <div class="d-flex align-center ga-2">
             <AdminActionGuard v-if="canReadUsage" capability="files.usage.read">
-              <NuxtLink :to="`/apps/settings/storage/files/${item.id}/usage`">查看引用</NuxtLink>
+              <AdminTableRowAction :to="`/apps/settings/storage/files/${item.id}/usage`">查看引用</AdminTableRowAction>
             </AdminActionGuard>
             <AdminActionGuard v-else-if="viewMode === 'normal' && canUpdateFile" capability="files.update" scope="all">
-              <v-btn variant="text" :disabled="!allowRowMutation" @click="openEditDialog(item)">编辑文件</v-btn>
+              <AdminTableRowAction :disabled="!allowRowMutation" @click="openEditDialog(item)">编辑文件</AdminTableRowAction>
             </AdminActionGuard>
             <AdminActionGuard v-else-if="viewMode === 'deleted' && canRestoreFile" capability="files.restore" scope="all">
-              <v-btn variant="text" :disabled="!allowRowMutation" @click="openSingleBatchOp(item, 'restore')">恢复文件</v-btn>
+              <AdminTableRowAction :disabled="!allowRowMutation" @click="openSingleBatchOp(item, 'restore')">恢复文件</AdminTableRowAction>
             </AdminActionGuard>
             <v-menu v-if="showFileMoreActions && allowRowMutation" location="bottom end">
               <template #activator="{ props }">
-                <v-btn v-bind="props" aria-label="更多文件操作" icon="mdi-dots-horizontal" size="small" variant="text" />
+                <v-btn v-bind="props" class="admin-table-row-more" aria-label="更多文件操作" title="更多文件操作" icon="mdi-dots-horizontal" size="small" variant="text" />
               </template>
               <v-list density="compact">
                 <AdminActionGuard v-if="viewMode === 'normal' && canReadUsage && canUpdateFile" capability="files.update" scope="all">
@@ -311,17 +315,17 @@ const normalizeFilters = (value: unknown): Record<string, unknown> => {
 
 const AllTableHeaders = [
   { title: '文件名', value: 'original_name', sortable: true, minWidth: 240 },
-  { title: '预览', value: 'preview', sortable: false },
+  { title: '预览', value: 'preview', sortable: false, minWidth: 88 },
   { title: 'ID', value: 'id', sortable: true },
   { title: '大小', value: 'file_size', sortable: true },
-  { title: '场景', value: 'scene', sortable: true },
+  { title: '场景', value: 'scene', sortable: true, minWidth: 120 },
   { title: '渠道', value: 'channel_slug', sortable: true },
   { title: '上传者', value: 'user_id', sortable: true },
-  { title: '状态', value: 'status', sortable: true },
-  { title: '上传状态', value: 'upload_status', sortable: true },
+  { title: '状态', value: 'status', sortable: true, minWidth: 112 },
+  { title: '上传状态', value: 'upload_status', sortable: true, minWidth: 128 },
   { title: '公开范围', value: 'is_public', sortable: true },
-  { title: '创建时间', value: 'created_at', sortable: true },
-  { title: '操作', value: 'operate', sortable: false },
+  { title: '创建时间', value: 'created_at', sortable: true, minWidth: 176 },
+  { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
 const defaultColumns = ['original_name', 'preview', 'file_size', 'scene', 'status', 'created_at', 'operate'];
 const visibleColumns = ref([...defaultColumns]);

@@ -36,7 +36,7 @@
           <template #item.status="{ item }"><AdminStatusChip :status="item.status" /></template>
           <template #item.created_at="{ item }"><AdminTableTime :value="item.created_at" /></template>
           <template #item.reason="{ item }"><AdminTableSearchHighlight :text="item.reason" :query="appliedSearch" /></template>
-          <template #item.action="{ item }"><NuxtLink :to="{ path: `/apps/community/reports/${item.id}`, state: { listSource: route.fullPath } }">查看详情</NuxtLink></template>
+          <template #item.action="{ item }"><AdminTableRowAction :to="{ path: `/apps/community/reports/${item.id}`, state: { listSource: route.fullPath } }">查看详情</AdminTableRowAction></template>
           <template #no-data>
             <v-empty-state :icon="error ? 'mdi-cloud-alert-outline' : 'mdi-flag-outline'" :title="error ? '无法加载举报' : '没有匹配的举报'" :text="error || '调整关键词或筛选条件后重试。'">
               <template #actions><v-btn v-if="error" variant="outlined" @click="load">重试</v-btn><v-btn v-else-if="hasFilters" variant="text" @click="clearFilters">清除筛选</v-btn></template>
@@ -95,8 +95,9 @@ const appliedSearch = ref(searchValue.value.trim())
 const hasFilters = computed(() => Boolean(appliedSearch.value || status.value || resourceType.value))
 const targetLabel = (type: string) => resourceTypeItems.find((item) => item.value === type)?.title ?? '目标'
 const allHeaders = [
-  { title: '编号', key: 'id' }, { title: '举报人', key: 'reporter_id' }, { title: '目标', key: 'target' },
-  { title: '原因', key: 'reason' }, { title: '状态', key: 'status' }, { title: '创建时间', key: 'created_at' }, { title: '操作', key: 'action' },
+  { title: '编号', key: 'id', minWidth: 88 }, { title: '举报人', key: 'reporter_id', minWidth: 128 }, { title: '目标', key: 'target', minWidth: 144 },
+  { title: '原因', key: 'reason', minWidth: 280 }, { title: '状态', key: 'status', minWidth: 112 }, { title: '创建时间', key: 'created_at', minWidth: 176 },
+  { title: '操作', key: 'action', minWidth: 112 },
 ].map((header) => ({ ...header, sortable: false }))
 const defaultColumns = allHeaders.map((header) => header.key)
 const visibleColumns = ref([...defaultColumns])

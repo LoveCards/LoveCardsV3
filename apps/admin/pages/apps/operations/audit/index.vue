@@ -64,7 +64,7 @@
         <template #item.trace="{ item }"><code class="audit-code">{{ item.request_id || '—' }}</code><div class="audit-code text-caption text-medium-emphasis">{{ item.correlation_id || '—' }}</div></template>
         <template #item.created_at="{ item }"><AdminTableTime :value="item.created_at" seconds /></template>
         <template #item.detail="{ item }">
-          <NuxtLink :to="`/apps/operations/audit/${item.id}`">查看详情</NuxtLink>
+          <AdminTableRowAction :to="`/apps/operations/audit/${item.id}`">查看详情</AdminTableRowAction>
         </template>
         <template #no-data>
           <v-empty-state :icon="error ? 'mdi-cloud-alert-outline' : 'mdi-clipboard-text-clock-outline'" :title="error ? '无法加载审计日志' : '没有匹配的审计记录'" :text="error || '调整查询条件后重试。'">
@@ -128,8 +128,8 @@ const draft = reactive<AuditDraft>(emptyDraft())
 const advancedCount = computed(() => [draft.resourceId, draft.requestId, draft.correlationId].filter(Boolean).length)
 
 const allHeaders = [
-  { title: '动作', key: 'action', minWidth: 270 }, { title: '资源', key: 'resource' }, { title: 'Request / Correlation ID', key: 'trace', minWidth: 270 },
-  { title: '时间', key: 'created_at' }, { title: '详情', key: 'detail' },
+  { title: '动作', key: 'action', minWidth: 270 }, { title: '资源', key: 'resource', minWidth: 160 }, { title: 'Request / Correlation ID', key: 'trace', minWidth: 270 },
+  { title: '时间', key: 'created_at', minWidth: 176 }, { title: '详情', key: 'detail', minWidth: 112 },
 ].map((header) => ({ ...header, sortable: false }))
 const visibleColumns = ref(allHeaders.map((header) => header.key))
 const headers = computed(() => allHeaders.filter((header) => visibleColumns.value.includes(header.key)))

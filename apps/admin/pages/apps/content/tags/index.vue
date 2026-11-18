@@ -5,6 +5,7 @@
     :breadcrumbs="[{ title: '内容' }]"
   >
     <template #actions>
+      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="tableLoading" @click="getTableData">刷新</v-btn>
       <AdminActionGuard capability="tags.create" scope="global">
         <v-btn color="primary" prepend-icon="mdi-tag-plus-outline" variant="flat" @click="openCreateTagDialog">
           创建标签
@@ -97,13 +98,13 @@
         <template #[`item.operate`]="{ item }">
           <div class="d-flex align-center ga-1">
             <AdminActionGuard capability="tags.read" scope="all">
-              <v-btn size="small" variant="text" :disabled="!allowRowMutation && canUpdateTag" @click="openTagPanel(item.id)">
+              <AdminTableRowAction :disabled="!allowRowMutation && canUpdateTag" @click="openTagPanel(item.id)">
                 {{ tagPanelActionLabel }}
-              </v-btn>
+              </AdminTableRowAction>
             </AdminActionGuard>
             <v-menu v-if="canDeleteTag && allowRowMutation" location="bottom end">
               <template #activator="{ props }">
-                <v-btn v-bind="props" aria-label="更多标签操作" icon="mdi-dots-horizontal" size="small" variant="text" />
+                <v-btn v-bind="props" class="admin-table-row-more" aria-label="更多标签操作" title="更多标签操作" icon="mdi-dots-horizontal" size="small" variant="text" />
               </template>
               <v-list density="compact">
                 <v-list-item prepend-icon="mdi-delete-outline" title="删除标签" @click="openDeleteTagDialog(item)" />
@@ -227,13 +228,13 @@ const normalizeFilters = (value: unknown): Record<string, unknown> => {
 };
 
 const AllTableHeaders = [
-  { title: '标签名', value: 'name', sortable: true },
-  { title: '状态', value: 'status', sortable: true },
-  { title: '创建时间', value: 'created_at', sortable: true },
+  { title: '标签名', value: 'name', sortable: true, minWidth: 240 },
+  { title: '状态', value: 'status', sortable: true, minWidth: 112 },
+  { title: '创建时间', value: 'created_at', sortable: true, minWidth: 176 },
   { title: 'ID', value: 'id', sortable: true },
   { title: '应用 ID', value: 'aid', sortable: true },
   { title: '创建用户 ID', value: 'user_id', sortable: true },
-  { title: '操作', value: 'operate', sortable: false },
+  { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
 const defaultColumns = ['name', 'status', 'created_at', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
