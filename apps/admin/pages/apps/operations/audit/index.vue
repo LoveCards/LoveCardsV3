@@ -271,13 +271,13 @@ function applyFilters() {
   }
   if (filters.from && filters.to && filters.from >= filters.to) return void (filterError.value = '结束时间必须晚于开始时间。')
   advancedOpen.value = false
-  void router.replace({ query: navigationQuery(1, itemsPerPage.value, filters), hash: route.hash })
+  void router.push({ query: navigationQuery(1, itemsPerPage.value, filters), hash: route.hash })
 }
 function clearFilters() {
   Object.assign(draft, emptyDraft())
   filterError.value = ''
   advancedOpen.value = false
-  void router.replace({ query: navigationQuery(1, itemsPerPage.value, {}), hash: route.hash })
+  void router.push({ query: navigationQuery(1, itemsPerPage.value, {}), hash: route.hash })
 }
 function applySavedView(saved: Record<string, string | null | (string | null)[]>) {
   const query = { ...route.query }

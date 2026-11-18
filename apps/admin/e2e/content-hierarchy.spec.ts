@@ -132,7 +132,7 @@ test('saved card relation columns display readable names', async ({ page }) => {
   await page.getByRole('button', { name: '视图设置' }).click()
   await page.getByRole('checkbox', { name: '显示用户列' }).click()
   await page.getByRole('checkbox', { name: '显示标签列' }).click()
-  await page.getByRole('button', { name: '视图设置' }).click()
+  await page.keyboard.press('Escape')
   await expect(page.locator('tbody tr').first()).toContainText('林晓 #201')
   await expect(page.locator('tbody tr').first()).toContainText('校园 #7')
 })
