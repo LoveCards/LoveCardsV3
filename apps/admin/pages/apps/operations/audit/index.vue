@@ -65,7 +65,7 @@
         <template #item.trace="{ item }"><code class="audit-code">{{ item.request_id || '—' }}</code><div class="audit-code text-caption text-medium-emphasis">{{ item.correlation_id || '—' }}</div></template>
         <template #item.created_at="{ item }"><AdminTableTime :value="item.created_at" seconds /></template>
         <template #item.detail="{ item }">
-          <AdminTableRowAction :to="`/apps/operations/audit/${item.id}`">查看详情</AdminTableRowAction>
+          <v-btn class="audit-row-action" min-height="32" size="small" variant="tonal" @click="openAudit(item.id, $event)">查看审计</v-btn>
         </template>
         <template #no-data>
           <v-empty-state :icon="error ? 'mdi-cloud-alert-outline' : 'mdi-clipboard-text-clock-outline'" :title="error ? '无法加载审计日志' : '没有匹配的审计记录'" :text="error || '调整查询条件后重试。'">
@@ -74,6 +74,8 @@
         </template>
       </v-data-table-server>
     </AdminResourceTableShell>
+
+    <AuditInspectDialog v-model="auditOpen" :audit-id="selectedAuditId" :source-path="route.fullPath" />
 
     <v-dialog v-model="advancedOpen" aria-label="更多审计筛选" max-width="600">
       <v-card prepend-icon="mdi-filter-outline" title="更多筛选">
@@ -101,6 +103,7 @@ import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue'
 import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue'
+import AuditInspectDialog from '~/components/operations/AuditInspectDialog.vue'
 import { useApi, isApiError } from '~/lib/api'
 
 type AuditFilters = { action: string; actor: string; resource_type: string; resource_id: string; request_id: string; correlation_id: string; from: string; to: string }
@@ -114,6 +117,10 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const filterError = ref('')
 const advancedOpen = ref(false)
+const auditOpen = ref(false)
+const selectedAuditId = ref<number | null>(null)
+let auditTrigger: HTMLElement | null = null
+let auditSourcePath = ''
 const totalItems = ref(0)
 const lastSuccessfulKey = ref<string | null>(null)
 const resultState = ref<'ready' | 'stale'>('ready')
@@ -129,6 +136,28 @@ const actorModes = [
 const emptyDraft = (): AuditDraft => ({ action: '', actorMode: 'all', actorId: '', resourceType: '', resourceId: '', requestId: '', correlationId: '', from: '', to: '' })
 const draft = reactive<AuditDraft>(emptyDraft())
 const advancedCount = computed(() => [draft.resourceId, draft.requestId, draft.correlationId].filter(Boolean).length)
+
+function openAudit(id: number, event: MouseEvent) {
+  auditTrigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
+  auditSourcePath = route.fullPath
+  selectedAuditId.value = id
+  auditOpen.value = true
+}
+
+watch(auditOpen, async (open) => {
+  if (open) return
+  await nextTick()
+  if (route.fullPath !== auditSourcePath) return
+  if (auditTrigger?.isConnected) auditTrigger.focus()
+  else {
+    const heading = document.querySelector<HTMLElement>('h1')
+    if (heading) {
+      heading.tabIndex = -1
+      heading.focus()
+    }
+  }
+  auditTrigger = null
+})
 
 const allHeaders = [
   { title: '动作', key: 'action', minWidth: 270 }, { title: '资源', key: 'resource', minWidth: 160 }, { title: 'Request / Correlation ID', key: 'trace', minWidth: 270 },
@@ -303,4 +332,8 @@ watch(() => route.fullPath, () => { syncDraft(); void load() }, { immediate: tru
 <style scoped>
 .audit-action { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .audit-code { overflow-wrap: anywhere; }
+.audit-row-action { min-width: 0; white-space: nowrap; }
+@media (max-width: 599.98px) {
+  .audit-row-action { min-height: 44px; }
+}
 </style>

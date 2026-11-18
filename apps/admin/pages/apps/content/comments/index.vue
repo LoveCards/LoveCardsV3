@@ -12,8 +12,12 @@
   <AdminPageContainer fluid>
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
+      v-model:action-capacity="actionCapacity"
       :columns="columnOptions"
       :default-columns="defaultColumns"
+      :action-headers="TableHeaders"
+      :action-labels="commentActionLabels"
+      :selection-width="48"
       preference-key="content-comments"
       :result-count="resultCount"
       :result-state="tableLoading ? 'loading' : tableError ? 'stale' : 'ready'"
@@ -90,21 +94,7 @@
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <div class="d-flex align-center ga-1">
-            <AdminActionGuard capability="comments.read" scope="all">
-              <AdminTableRowAction :to="{ path: `/apps/content/comments/${item.id}`, state: { listSource: route.fullPath } }">查看详情</AdminTableRowAction>
-            </AdminActionGuard>
-            <v-menu v-if="canEditComment || canModerateComment || canDeleteComment || (canPin && Number(item.status) === 0 && !item.parent_id)" location="bottom end">
-              <template #activator="{ props }">
-                <v-btn v-bind="props" class="admin-table-row-more" :disabled="!canMutateRows" aria-label="更多评论操作" title="更多评论操作" icon="mdi-dots-horizontal" size="small" variant="text" />
-              </template>
-              <v-list density="compact">
-                <v-list-item v-if="canEditComment || canModerateComment" prepend-icon="mdi-pencil-outline" :title="commentPanelActionLabel" @click="openCommentPanel(item.id)" />
-                <v-list-item v-if="canPin && Number(item.status) === 0 && !item.parent_id" :prepend-icon="item.is_pinned ? 'mdi-pin-off-outline' : 'mdi-pin-outline'" :title="item.is_pinned ? '取消置顶评论' : '置顶评论'" @click="openPinCommentDialog(item)" />
-                <v-list-item v-if="canDeleteComment" prepend-icon="mdi-delete-outline" title="删除评论" @click="openDeleteCommentDialog(item)" />
-              </v-list>
-            </v-menu>
-          </div>
+          <AdminTableRowActions :actions="commentRowActions(item)" :capacity="actionCapacity" more-label="更多评论操作" />
         </template>
 
         <template #[`item.is_pinned`]="{ item }">
@@ -119,7 +109,7 @@
           <AdminContentStatus :status="item.status" :pinned="item.is_pinned && !visibleColumns.includes('is_pinned')" :highlight-query="highlightQuery('status')" />
         </template>
 
-        <template v-for="field in ['user_id', 'aid', 'goods', 'post_ip']" :key="field" #[`item.${field}`]="{ item }">
+        <template v-for="field in ['aid', 'goods', 'post_ip']" :key="field" #[`item.${field}`]="{ item }">
           <AdminTableSearchHighlight :text="tableSearchCell(item, field)" :query="highlightQuery(field)" />
         </template>
 
@@ -139,10 +129,17 @@
     </AdminResourceTableShell>
   </AdminPageContainer>
 
-  <EditCommentDialog
-    v-model:thisDialogState="EditCommentDialog_state"
-    v-model:CommentData="EditCommentDialog_data"
-    :getTableData="getTableData"
+  <CommentInspectDialog v-model="CommentInspectDialog_state" :comment-id="CommentInspectDialog_id" :initial-mode="CommentInspectDialog_mode" :source-path="route.fullPath" @saved="getTableData" />
+  <AdminDangerActionDialog
+    :model-value="Boolean(pendingCommentCommand)"
+    :title="pendingCommentCommand?.action.label ?? '确认评论操作'"
+    :action-label="pendingCommentCommand?.action.label ?? '确认执行'"
+    :impact="pendingCommentCommand?.action.impact ?? ''"
+    :resource-label="pendingCommentCommand ? `评论 #${pendingCommentCommand.id}` : ''"
+    :loading="commentCommandBusy"
+    :error="commentCommandError"
+    @update:model-value="closeCommentCommand"
+    @confirm="runCommentCommand"
   />
   <AdminDangerActionDialog
     v-model="PinCommentDialog_state"
@@ -181,16 +178,19 @@
 import AdminContentSummary from '~/components/content/AdminContentSummary.vue';
 import AdminContentStatus from '~/components/content/AdminContentStatus.vue';
 import type { Comment, CommentsBatchMethod } from '@lovecards/sdk';
+import { commentGovernanceActions, type CommentGovernanceAction } from '~/components/comments/commentGovernanceActions';
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue';
 import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue';
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue';
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
+import AdminTableRowActions from '~/components/shared/admin/AdminTableRowActions.vue';
 import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue';
-import EditCommentDialog from '@/components/comments/EditCommentDialog.vue';
+import CommentInspectDialog from '~/components/comments/CommentInspectDialog.vue';
 import PublicBatchDialog from '@/components/shared/Table/BatchDialog.vue';
 import PublicDeleteDialog from '@/components/shared/Table/DeleteDialog.vue';
 import PublicSearchDialog from '@/components/shared/Table/SearchDialog.vue';
+import { useAdminNotifier } from '~/composables/useAdminNotifier';
 import { useApi } from '~/lib/api';
 import { useUserStore } from '~/stores/userStore';
 import SelectUtils from '~/utils/select';
@@ -200,6 +200,7 @@ import { tableSearchCell } from '~/composables/useAdminTableSearch';
 type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
 
 const client = useApi();
+const notifier = useAdminNotifier();
 const route = useRoute();
 const router = useRouter();
 
@@ -253,7 +254,8 @@ const defaultColumns = ['content', 'created_at', 'status', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: ['content', 'operate'].includes(header.value) }));
-const SearchKeys = AllTableHeaders.filter((header) => !['is_pinned', 'operate'].includes(header.value)).map((header) => header.value === 'user_id' ? { ...header, title: '用户 ID' } : header);
+const SearchKeys = AllTableHeaders.filter((header) => !['is_pinned', 'operate'].includes(header.value))
+  .map((header) => header.value === 'user_id' ? { ...header, title: '用户 ID' } : header);
 const BaseTableBatchOptions = [
   { title: '切换封禁状态', value: 'ban' },
   { title: '切换隐藏状态', value: 'hide' },
@@ -263,12 +265,68 @@ const BaseTableBatchOptions = [
 const TableListRowsOptions = SelectUtils.Common.Table.ListRowsOptions;
 const userStore = useUserStore();
 const canDeleteComment = computed(() => userStore.hasGrant('comments.delete', 'all'));
+const canViewComment = computed(() => userStore.hasGrant('comments.read', 'all'));
 const canPin = computed(() => userStore.hasGrant('comments.pin', 'all'));
 const canEditComment = computed(() => userStore.hasGrant('comments.update', 'all'));
 const canModerateComment = computed(() => userStore.hasGrant('comments.moderate', 'all'));
-const commentPanelActionLabel = computed(() => canEditComment.value
-  ? '编辑评论'
-  : canModerateComment.value ? '审核评论' : '查看评论');
+const commentActionLabels = computed(() => ['查看评论', ...(canEditComment.value ? ['编辑评论'] : []), ...(canModerateComment.value ? ['通过审核', '封禁评论', '解除封禁', '隐藏评论', '取消隐藏'] : []), ...(canPin.value ? ['置顶评论', '取消置顶评论'] : []), ...(canDeleteComment.value ? ['删除评论'] : [])]);
+const actionCapacity = ref(1);
+const CommentInspectDialog_state = ref(false);
+const CommentInspectDialog_id = ref<number | null>(null);
+const CommentInspectDialog_mode = ref<'view' | 'edit'>('view');
+const openCommentInspect = (id: number, mode: 'view' | 'edit' = 'view') => {
+  CommentInspectDialog_id.value = id;
+  CommentInspectDialog_mode.value = mode;
+  CommentInspectDialog_state.value = true;
+};
+const commentRowActions = (item: Comment) => [
+  ...(canViewComment.value ? [{ key: 'view', label: '查看评论', onClick: () => openCommentInspect(item.id) }] : []),
+  ...(canEditComment.value
+    ? [{ key: 'edit', label: '编辑评论', disabled: !canMutateRows.value, onClick: () => openCommentInspect(item.id, 'edit') }]
+    : []),
+  ...commentGovernanceActions(item, { moderate: canModerateComment.value, pin: false })
+    .map(action => ({ key: action.method, label: action.label, disabled: !canMutateRows.value, onClick: () => void openCommentCommand(item.id, action) })),
+  ...(canPin.value && Number(item.status) === 0 && !item.parent_id
+    ? [{ key: 'pin', label: item.is_pinned ? '取消置顶评论' : '置顶评论', disabled: !canMutateRows.value, onClick: () => openPinCommentDialog(item) }]
+    : []),
+  ...(canDeleteComment.value ? [{ key: 'delete', label: '删除评论', disabled: !canMutateRows.value, onClick: () => openDeleteCommentDialog(item) }] : []),
+];
+const pendingCommentCommand = ref<{ id: number; action: CommentGovernanceAction } | null>(null);
+const commentCommandBusy = ref(false);
+const commentCommandError = ref('');
+const matchingCommentCommand = async (id: number, expected: CommentGovernanceAction) => {
+  const current = await client.comments.getManaged(id);
+  return commentGovernanceActions(current, { moderate: canModerateComment.value, pin: false }).find(action => action.method === expected.method && action.label === expected.label);
+};
+const openCommentCommand = async (id: number, action: CommentGovernanceAction) => {
+  if (!canMutateRows.value) return;
+  commentCommandBusy.value = true;
+  commentCommandError.value = '';
+  try {
+    const current = await matchingCommentCommand(id, action);
+    if (!canMutateRows.value) return;
+    if (!current) throw new Error('评论状态已变化，请刷新后重新选择操作。');
+    pendingCommentCommand.value = { id, action: current };
+  } catch (cause) {
+    commentCommandError.value = cause instanceof Error ? cause.message : '无法核对评论当前状态。';
+    notifier.error(commentCommandError.value);
+    void getTableData();
+  } finally { commentCommandBusy.value = false; }
+};
+const closeCommentCommand = (open: boolean) => { if (!open && !commentCommandBusy.value) pendingCommentCommand.value = null; };
+const runCommentCommand = async () => {
+  const current = pendingCommentCommand.value;
+  if (!current || commentCommandBusy.value || !canMutateRows.value) return;
+  commentCommandBusy.value = true;
+  commentCommandError.value = '';
+  try {
+    if (!await matchingCommentCommand(current.id, current.action)) throw new Error('评论状态已变化，请刷新后重新选择操作。');
+    await client.comments.batchManaged({ method: current.action.method, ids: [current.id] });
+    pendingCommentCommand.value = null;
+    await getTableData();
+  } catch (cause) { commentCommandError.value = cause instanceof Error ? cause.message : '评论操作失败，请稍后重试。'; }
+  finally { commentCommandBusy.value = false; }
+};
 const batchCapabilityFor = (method: CommentsBatchMethod | '') => method === 'delete' ? 'comments.delete' : 'comments.moderate';
 const TableBatchOptions = computed(() => BaseTableBatchOptions.filter((option) => userStore.hasGrant(batchCapabilityFor(option.value), 'all')));
 const batchCapability = computed(() => batchCapabilityFor(BatchOperate.value));
@@ -413,13 +471,6 @@ const openDeleteCommentDialog = (data: { id: number }) => {
   DeleteCommentDialog_state.value = true;
 };
 
-const EditCommentDialog_state = ref(false);
-const EditCommentDialog_data = ref<Comment | null>(null);
-const openCommentPanel = (id: number) => {
-  if (!canMutateRows.value) return;
-  EditCommentDialog_data.value = { id } as Comment;
-  EditCommentDialog_state.value = true;
-};
 
 // 旧 inspect 深链只单向迁移到只读详情；列表条件留在 history state 中。
 watch(() => route.query.inspect, (value) => {

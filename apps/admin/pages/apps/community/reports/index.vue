@@ -3,7 +3,7 @@
     <AdminPageHeader title="举报处理" description="按状态审阅举报，处理动作会记录原因与操作者。" :breadcrumbs="[{ title: '内容' }]">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn></template>
     </AdminPageHeader>
-    <AdminResourceTableShell v-model:visible-columns="visibleColumns" :columns="columnOptions" :default-columns="defaultColumns" :result-count="lastSuccessfulKey ? totalItems : null" :result-state="loading && lastSuccessfulKey ? 'loading' : resultState" :view-query-keys="['search_value', 'status', 'resource_type', 'list_rows']" preference-key="community-reports" @apply-view="applySavedView" @reset-view="resetTableView">
+    <AdminResourceTableShell v-model:visible-columns="visibleColumns" v-model:action-capacity="actionCapacity" :action-headers="headers" :action-labels="['查看举报', '处理举报']" :columns="columnOptions" :default-columns="defaultColumns" :result-count="lastSuccessfulKey ? totalItems : null" :result-state="loading && lastSuccessfulKey ? 'loading' : resultState" :view-query-keys="['search_value', 'status', 'resource_type', 'list_rows']" preference-key="community-reports" @apply-view="applySavedView" @reset-view="resetTableView">
       <template #search>
         <v-text-field v-model="searchValue" clearable label="搜索原因或补充说明" prepend-inner-icon="mdi-magnify" @keydown.enter="applySearch" @click:clear="clearSearch" />
       </template>
@@ -36,7 +36,9 @@
           <template #item.status="{ item }"><AdminStatusChip :status="item.status" /></template>
           <template #item.created_at="{ item }"><AdminTableTime :value="item.created_at" /></template>
           <template #item.reason="{ item }"><AdminTableSearchHighlight :text="item.reason" :query="appliedSearch" /></template>
-          <template #item.action="{ item }"><AdminTableRowAction :to="{ path: `/apps/community/reports/${item.id}`, state: { listSource: route.fullPath } }">查看详情</AdminTableRowAction></template>
+          <template #item.action="{ item }">
+            <AdminTableRowActions :actions="reportRowActions(item)" :capacity="actionCapacity" more-label="更多举报操作" />
+          </template>
           <template #no-data>
             <v-empty-state :icon="error ? 'mdi-cloud-alert-outline' : 'mdi-flag-outline'" :title="error ? '无法加载举报' : '没有匹配的举报'" :text="error || '调整关键词或筛选条件后重试。'">
               <template #actions><v-btn v-if="error" variant="outlined" @click="load">重试</v-btn><v-btn v-else-if="hasFilters" variant="text" @click="clearFilters">清除筛选</v-btn></template>
@@ -45,6 +47,7 @@
       </v-data-table-server>
     </AdminResourceTableShell>
   </AdminPageContainer>
+  <ReportDetailDialog v-model="detailOpen" :report-id="detailId" :initial-mode="detailMode" @updated="load" />
 </template>
 
 <script setup lang="ts">
@@ -54,8 +57,29 @@ import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue'
 import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue'
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
+import AdminTableRowActions from '~/components/shared/admin/AdminTableRowActions.vue'
+import ReportDetailDialog from '~/components/reports/ReportDetailDialog.vue'
+import { useUserStore } from '~/stores/userStore'
 import { useApi, isApiError } from '~/lib/api'
 
+const userStore = useUserStore()
+const actionCapacity = ref(1)
+const detailOpen = ref(false)
+const detailId = ref<number | null>(null)
+const detailMode = ref<'view' | 'process'>('view')
+const canManage = computed(() => userStore.hasGrant('reports.manage', 'global'))
+const canWrite = computed(() => !loading.value && resultState.value === 'ready')
+function openDetail(id: number, mode: 'view' | 'process') {
+  detailId.value = id
+  detailMode.value = mode
+  detailOpen.value = true
+}
+const reportRowActions = (item: AdminReport) => [
+  { key: 'view', label: '查看举报', onClick: () => openDetail(item.id, 'view') },
+  ...(canManage.value && item.status !== 'closed'
+    ? [{ key: 'process', label: '处理举报', disabled: !canWrite.value, onClick: () => openDetail(item.id, 'process') }]
+    : []),
+]
 const client = useApi()
 const route = useRoute()
 const router = useRouter()
