@@ -79,7 +79,7 @@
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <AdminTableRowAction :to="`/apps/access/permissions/${encodeURIComponent(item.capability)}/${encodeURIComponent(item.scope)}`">查看详情</AdminTableRowAction>
+          <AdminTableRowAction @click="openPermission(item)">查看权限</AdminTableRowAction>
         </template>
         <template #no-data>
           <v-empty-state
@@ -96,6 +96,12 @@
       </v-data-table-server>
     </AdminResourceTableShell>
   </AdminPageContainer>
+  <PermissionDetailDialog
+    v-model="inspectOpen"
+    :capability="inspectCapability"
+    :scope="inspectScope"
+    :source-path="route.fullPath"
+  />
 </template>
 
 <script setup lang="ts">
@@ -103,6 +109,7 @@ import type { CapabilityItem } from '@lovecards/sdk';
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue';
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
+import PermissionDetailDialog from '~/components/permissions/PermissionDetailDialog.vue';
 import { useApi } from '~/lib/api';
 import SelectUtils from '~/utils/select';
 
@@ -111,6 +118,14 @@ type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
 const client = useApi();
 const route = useRoute();
 const router = useRouter();
+const inspectOpen = ref(false);
+const inspectCapability = ref<string | null>(null);
+const inspectScope = ref<string | null>(null);
+const openPermission = (item: CapabilityItem) => {
+  inspectCapability.value = item.capability;
+  inspectScope.value = item.scope;
+  inspectOpen.value = true;
+};
 
 const positiveQueryInt = (value: unknown, fallback: number) => {
   const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : Number.NaN;

@@ -30,11 +30,12 @@
           <template #item.status="{ item }"><span v-if="item.policy_decision === 'skipped'">{{ skipLabel(item.queue_name) }}</span><AdminStatusChip v-else :status="item.status" /></template>
           <template #item.error="{ item }"><span class="delivery-error">{{ item.last_error || '—' }}</span></template>
           <template #item.updated_at="{ item }"><AdminTableTime :value="item.updated_at" /></template>
-          <template #item.action="{ item }"><AdminTableRowAction :to="`/apps/operations/deliveries/${item.id}`">查看详情</AdminTableRowAction></template>
+          <template #item.action="{ item }"><AdminTableRowAction @click="openDelivery(item.id)">查看任务</AdminTableRowAction></template>
         </v-data-table-server>
       </AdminAsyncState>
     </AdminResourceTableShell>
   </AdminPageContainer>
+  <DeliveryDetailDialog v-model="inspectOpen" :delivery-id="inspectId" :source-path="route.fullPath" @updated="loadDeliveries" />
 </template>
 
 <script setup lang="ts">
@@ -45,6 +46,7 @@ import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue'
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
 import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue'
+import DeliveryDetailDialog from '~/components/operations/DeliveryDetailDialog.vue'
 import { useApi, isApiError } from '~/lib/api'
 
 type View = 'dead' | 'all' | 'pending' | 'processing' | 'skipped'
@@ -52,6 +54,9 @@ type Queue = 'notifications' | 'realtime' | 'storage' | 'all'
 const client = useApi()
 const route = useRoute()
 const router = useRouter()
+const inspectOpen = ref(false)
+const inspectId = ref<number | null>(null)
+const openDelivery = (id: number) => { inspectId.value = id; inspectOpen.value = true }
 const deliveries = ref<OperationsDelivery[]>([])
 const summary = ref<OperationsDeliverySummary | null>(null)
 const loading = ref(false)

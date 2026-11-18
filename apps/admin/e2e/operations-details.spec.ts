@@ -103,7 +103,7 @@ test('delivery detail keeps payload private and retries without a manual reason'
   await expect(page.locator('body')).not.toContainText('this value must never be rendered')
 
   await page.getByRole('button', { name: '重试任务', exact: true }).click()
-  const confirm = page.getByTestId('danger-confirm')
+  const confirm = page.getByRole('button', { name: '加入待处理队列', exact: true })
   await expect(confirm).toBeEnabled()
   await confirm.click()
 
@@ -179,7 +179,7 @@ test('audit query keeps filters in the URL and sends only supported API fields',
   expect(requests.at(-1)?.searchParams.has('action')).toBe(false)
 })
 
-test('delivery list keeps its canonical detail link and audit list opens a record dialog', async ({ page }) => {
+test('delivery and audit lists open shared detail dialogs without navigation', async ({ page }) => {
   test.setTimeout(60_000)
   await page.route('**/api/admin/operations/deliveries/summary', async (route) => {
     await route.fulfill({
@@ -196,6 +196,9 @@ test('delivery list keeps its canonical detail link and audit list opens a recor
         pagination: { currentPage: 1, totalPages: 1, totalItems: 1, itemsPerPage: 20 },
       }),
     })
+  })
+  await page.route('**/api/admin/operations/deliveries/77', async route => {
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: deliveryFixture() }) })
   })
   await page.route('**/api/admin/audit-logs/88', async (route) => {
     await route.fulfill({
@@ -215,11 +218,13 @@ test('delivery list keeps its canonical detail link and audit list opens a recor
   })
 
   await page.goto('./apps/operations/deliveries', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('link', { name: 'content.card_liked' })).toHaveAttribute(
-    'href',
-    '/admin/apps/operations/deliveries/77',
-    { timeout: 20_000 },
-  )
+  const deliveryUrl = page.url()
+  const deliveryRequest = page.waitForRequest(request => request.url().endsWith('/api/admin/operations/deliveries/77') && request.method() === 'GET')
+  await page.getByRole('button', { name: '查看任务', exact: true }).click()
+  await deliveryRequest
+  await expect(page.getByRole('dialog', { name: '查看处理任务' })).toContainText('任务 #77')
+  await expect(page).toHaveURL(deliveryUrl)
+  await page.getByRole('button', { name: '关闭处理任务' }).click()
 
   await page.goto('./apps/operations/audit', { waitUntil: 'domcontentloaded' })
   const row = page.getByRole('row').filter({ hasText: 'cards.update' })

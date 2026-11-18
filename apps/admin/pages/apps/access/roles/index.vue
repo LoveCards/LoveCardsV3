@@ -17,6 +17,10 @@
   <AdminPageContainer fluid>
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
+      v-model:action-capacity="actionCapacity"
+      :action-headers="TableHeaders"
+      :action-labels="roleActionLabels"
+      :selection-width="48"
       :columns="columnOptions"
       :default-columns="defaultColumns"
       :result-count="tableHasResult ? tableTotalItems : null"
@@ -133,23 +137,7 @@
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <div class="d-flex ga-1 align-center">
-            <AdminTableRowAction :to="`/apps/access/roles/${item.id}`">查看详情</AdminTableRowAction>
-            <v-menu v-if="allowRowMutation && (canEditRole(item) || canAssignRole(item) || canDeleteRole(item))" location="bottom end">
-              <template #activator="{ props }"><v-btn v-bind="props" class="admin-table-row-more" aria-label="更多角色操作" title="更多角色操作" icon="mdi-dots-horizontal" size="small" variant="text" /></template>
-              <v-list density="compact">
-                <AdminActionGuard v-if="canEditRole(item)" capability="roles.update" scope="global">
-                  <v-list-item title="编辑角色" prepend-icon="mdi-pencil" @click="openEditDialog(item)" />
-                </AdminActionGuard>
-                <AdminActionGuard v-if="canAssignRole(item)" :all-of="[{ capability: 'roles.assign', scope: 'global' }, { capability: 'permissions.read', scope: 'global' }]">
-                  <v-list-item title="分配权限" prepend-icon="mdi-shield-key-outline" @click="openAssignDialog(item)" />
-                </AdminActionGuard>
-                <AdminActionGuard v-if="canDeleteRole(item)" capability="roles.delete" scope="global">
-                  <v-list-item title="删除角色" prepend-icon="mdi-delete" @click="openDeleteDialog(item)" />
-                </AdminActionGuard>
-              </v-list>
-            </v-menu>
-          </div>
+          <AdminTableRowActions :actions="roleRowActions(item)" :capacity="actionCapacity" more-label="更多角色操作" />
         </template>
 
         <template #[`item.created_at`]="{ item }"><AdminTableTime :value="item.created_at" /></template>
@@ -173,16 +161,7 @@
   </AdminPageContainer>
 
   <CreateRoleDialog v-model:thisDialogState="CreateDialog_state" :getTableData="getTableData" />
-  <EditRoleDialog
-    v-model:thisDialogState="EditDialog_state"
-    v-model:RoleData="EditDialog_data"
-    :getTableData="getTableData"
-  />
-  <AssignPermissionsDialog
-    v-model:thisDialogState="AssignDialog_state"
-    v-model:RoleData="AssignDialog_role"
-    :getTableData="getTableData"
-  />
+  <RoleDetailDialog v-model="RoleDetailDialog_state" :role-id="RoleDetailDialog_id" :initial-mode="RoleDetailDialog_mode" :source-path="route.fullPath" @saved="getTableData" />
   <PublicDeleteDialog
     v-model:thisDialogState="DeleteDialog_state"
     v-model:deleteData="DeleteDialog_data"
@@ -222,9 +201,9 @@ import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
 import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue';
-import AssignPermissionsDialog from '@/components/roles/AssignPermissionsDialog.vue';
 import CreateRoleDialog from '@/components/roles/CreateRoleDialog.vue';
-import EditRoleDialog from '@/components/roles/EditRoleDialog.vue';
+import RoleDetailDialog from '~/components/roles/RoleDetailDialog.vue';
+import AdminTableRowActions from '~/components/shared/admin/AdminTableRowActions.vue';
 import PublicBatchDialog from '@/components/shared/Table/BatchDialog.vue';
 import PublicDeleteDialog from '@/components/shared/Table/DeleteDialog.vue';
 import PublicSearchDialog from '@/components/shared/Table/SearchDialog.vue';
@@ -491,31 +470,29 @@ const confirmReseed = async () => {
     reseedLoading.value = false;
   }
 };
-const EditDialog_state = ref(false);
-const EditDialog_data = ref<Role | null>(null);
-const openEditDialog = (item: Role) => {
-  if (!canEditRole(item)) {
-    notifier.warning(roleClassification(item) === 'unknown'
-      ? '无法确认目标角色类型，请刷新列表后重试。'
-      : isSystemRole(item) ? '只有超级管理员可以编辑系统角色。' : '当前账号无权编辑角色。');
-    return;
-  }
-  EditDialog_data.value = item;
-  EditDialog_state.value = true;
+const actionCapacity = ref(1);
+const roleActionLabels = computed(() => [
+  '查看角色',
+  ...(tableItems.value.some(canEditRole) ? ['编辑角色'] : []),
+  ...(tableItems.value.some(canAssignRole) ? ['分配权限'] : []),
+  ...(tableItems.value.some(canDeleteRole) ? ['删除角色'] : []),
+]);
+const RoleDetailDialog_state = ref(false);
+const RoleDetailDialog_id = ref<number | null>(null);
+const RoleDetailDialog_mode = ref<'view' | 'edit' | 'assign'>('view');
+const openRoleDetail = (item: Role, mode: 'view' | 'edit' | 'assign' = 'view') => {
+  if (mode === 'edit' && !canEditRole(item)) return;
+  if (mode === 'assign' && !canAssignRole(item)) return;
+  RoleDetailDialog_id.value = item.id;
+  RoleDetailDialog_mode.value = mode;
+  RoleDetailDialog_state.value = true;
 };
-
-const AssignDialog_state = ref(false);
-const AssignDialog_role = ref<Role | null>(null);
-const openAssignDialog = (item: Role) => {
-  if (!canAssignRole(item)) {
-    notifier.warning(roleClassification(item) === 'unknown'
-      ? '无法确认目标角色类型，请刷新列表后重试。'
-      : isSystemRole(item) ? '只有超级管理员可以调整系统角色权限。' : '当前账号无权分配角色权限。');
-    return;
-  }
-  AssignDialog_role.value = item;
-  AssignDialog_state.value = true;
-};
+const roleRowActions = (item: Role) => [
+  { key: 'view', label: '查看角色', onClick: () => openRoleDetail(item) },
+  ...(canEditRole(item) ? [{ key: 'edit', label: '编辑角色', disabled: !allowRowMutation.value, onClick: () => openRoleDetail(item, 'edit') }] : []),
+  ...(canAssignRole(item) ? [{ key: 'assign', label: '分配权限', disabled: !allowRowMutation.value, onClick: () => openRoleDetail(item, 'assign') }] : []),
+  ...(canDeleteRole(item) ? [{ key: 'delete', label: '删除角色', disabled: !allowRowMutation.value, onClick: () => openDeleteDialog(item) }] : []),
+];
 
 const DeleteDialog_state = ref(false);
 const DeleteDialog_data = ref<{ id: number; display?: string }>({ id: 0 });
