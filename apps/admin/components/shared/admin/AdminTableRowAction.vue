@@ -1,16 +1,15 @@
 <template>
   <NuxtLink v-if="to" :to="to" class="admin-table-row-action"><slot /></NuxtLink>
-  <button
+  <v-btn
     v-else
-    type="button"
+    variant="text"
     class="admin-table-row-action"
-    :disabled="disabled || loading"
-    :aria-busy="loading || undefined"
+    :disabled="disabled"
+    :loading="loading"
     @click="emit('click', $event)"
   >
-    <v-progress-circular v-if="loading" indeterminate size="14" width="2" class="me-1" />
     <slot />
-  </button>
+  </v-btn>
 </template>
 
 <script setup lang="ts">
@@ -46,6 +45,14 @@ const emit = defineEmits<{ click: [event: MouseEvent] }>()
   cursor: pointer;
 }
 
+.admin-table-row-action.v-btn {
+  min-width: 0;
+  height: 32px;
+  padding-inline: 6px;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
 .admin-table-row-action:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -56,7 +63,8 @@ const emit = defineEmits<{ click: [event: MouseEvent] }>()
   outline-offset: 2px;
 }
 
-.admin-table-row-action:disabled {
+.admin-table-row-action:disabled,
+.admin-table-row-action.v-btn--disabled {
   color: rgba(var(--v-theme-on-surface), 0.38);
   cursor: not-allowed;
   text-decoration: none;
@@ -70,6 +78,11 @@ const emit = defineEmits<{ click: [event: MouseEvent] }>()
   .admin-table-row-action {
     min-width: 44px;
     min-height: 44px;
+  }
+
+  .admin-table-row-action.v-btn {
+    height: 44px;
+    min-width: 44px;
   }
 
   :global(.admin-table-row-more.v-btn) {
