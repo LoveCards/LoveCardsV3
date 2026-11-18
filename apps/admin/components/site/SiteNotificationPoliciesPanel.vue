@@ -1,6 +1,7 @@
 <template>
   <div class="site-policy-panel">
-    <div class="d-flex justify-end mb-4">
+    <div class="d-flex flex-wrap align-center justify-end ga-2 mb-4">
+      <span v-if="dirty" class="text-caption text-medium-emphasis">请先保存或放弃修改，再刷新。</span>
       <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="dirty" @click="load">刷新</v-btn>
     </div>
     <AdminAsyncState :loading="loading && !catalog" :error="error && !catalog ? error : null" :empty="!catalog" @retry="load">

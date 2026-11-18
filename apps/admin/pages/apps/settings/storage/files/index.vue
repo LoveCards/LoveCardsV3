@@ -78,7 +78,7 @@
         item-value="id"
         items-per-page-text="每页行数"
         :headers="TableHeaders"
-        :item-selectable="allowRowMutation"
+        :item-selectable="isRowSelectable"
         :items="tableItems"
         :items-length="tableTotalItems"
         :items-per-page-options="TableListRowsOptions"
@@ -90,11 +90,11 @@
         </template>
 
         <template #[`item.original_name`]="{ item }">
-          <v-list-item class="px-0 py-1" width="280">
-            <v-list-item-title>
+          <v-list-item class="admin-file-cell px-0 py-1" width="280">
+            <v-list-item-title class="admin-file-name text-wrap">
               <AdminTableSearchHighlight :text="item.original_name || `文件 #${item.id}`" :query="highlightQuery('original_name')" />
             </v-list-item-title>
-            <v-list-item-subtitle>{{ item.mime_type || '未知类型' }}</v-list-item-subtitle>
+            <v-list-item-subtitle class="text-wrap">{{ item.mime_type || '未知类型' }}</v-list-item-subtitle>
           </v-list-item>
         </template>
 
@@ -394,6 +394,7 @@ const tableError = ref<string | null>(null);
 const tableHasResult = ref(false);
 const tableResultState = ref<'ready' | 'loading' | 'stale'>('ready');
 const allowRowMutation = computed(() => tableHasResult.value && !tableLoading.value && tableResultState.value === 'ready');
+const isRowSelectable = () => allowRowMutation.value;
 let lastSuccessfulQuery: string | null = null;
 let latestRequest = 0;
 
@@ -649,3 +650,8 @@ watch(viewMode, () => {
   if (alreadyOnFirstPage) void getTableData();
 });
 </script>
+
+<style scoped>
+.admin-file-cell { max-width: 100%; }
+.admin-file-name { white-space: normal; overflow-wrap: anywhere; }
+</style>

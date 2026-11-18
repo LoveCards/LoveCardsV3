@@ -8,7 +8,8 @@
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
       :columns="columnOptions"
-      :result-count="totalItems"
+      :result-count="lastSuccessfulKey ? totalItems : null"
+      :result-state="loading && lastSuccessfulKey ? 'loading' : resultState"
       :view-query-keys="['action', 'actor', 'resource_type', 'resource_id', 'request_id', 'correlation_id', 'from', 'to', 'list_rows']" preference-key="operations-audit"
       @reset-view="resetTableView" @apply-view="applySavedView"
     >
@@ -114,6 +115,8 @@ const error = ref<string | null>(null)
 const filterError = ref('')
 const advancedOpen = ref(false)
 const totalItems = ref(0)
+const lastSuccessfulKey = ref<string | null>(null)
+const resultState = ref<'ready' | 'stale'>('ready')
 const allowedPageSizes = [10, 20, 30, 50]
 const filterKeys = ['action', 'actor', 'resource_type', 'resource_id', 'request_id', 'correlation_id', 'from', 'to'] as const
 const actionSuggestions = ['auth.recovery.request', 'auth.recovery.failed', 'auth.recovery.reset', 'auth.session.revoke', 'communications.policies.update']
@@ -259,21 +262,37 @@ function applySavedView(saved: Record<string, string | null | (string | null)[]>
   query.page = '1'
   void router.replace({ query, hash: route.hash })
 }
-function resetTableView() { void router.replace({ query: navigationQuery(1, 30), hash: route.hash }) }
+function resetTableView() {
+  Object.assign(draft, emptyDraft())
+  filterError.value = ''
+  advancedOpen.value = false
+  void router.replace({ query: navigationQuery(1, 30, {}), hash: route.hash })
+}
 
 let latestRequest = 0
 async function load() {
   const requestId = ++latestRequest
+  const { filters, page: currentPage, size } = routeState.value
+  const queryKey = JSON.stringify({ filters, page: currentPage, size })
+  if (queryKey !== lastSuccessfulKey.value) {
+    logs.value = []
+    totalItems.value = 0
+    lastSuccessfulKey.value = null
+  }
   loading.value = true
   error.value = null
-  const { filters, page: currentPage, size } = routeState.value
   try {
     const result = await client.operations.auditLogs({ page: currentPage, list_rows: size, ...filters })
     if (requestId !== latestRequest) return
     logs.value = result.data
     totalItems.value = result.pagination?.totalItems ?? result.data.length
+    lastSuccessfulKey.value = queryKey
+    resultState.value = 'ready'
   } catch (cause) {
-    if (requestId === latestRequest) error.value = isApiError(cause) ? cause.message : '无法加载审计日志'
+    if (requestId === latestRequest) {
+      error.value = isApiError(cause) ? cause.message : '无法加载审计日志'
+      resultState.value = 'stale'
+    }
   } finally {
     if (requestId === latestRequest) loading.value = false
   }
