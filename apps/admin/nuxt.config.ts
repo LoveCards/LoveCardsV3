@@ -105,6 +105,8 @@ export default defineNuxtConfig({
             /* 模块选项 */
         },
         vuetifyOptions: { // Vuetify 初始化配置
+            locale: { locale: 'zhHans', fallback: 'en' },
+            localeMessages: ['zhHans'],
             // 同类组件只在这里选择原生外观；页面仅覆盖业务上确有区别的状态。
             defaults: {
                 VCard: { variant: 'flat', border: true },
