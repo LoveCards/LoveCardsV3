@@ -4797,6 +4797,9 @@
                           "upload_status": {
                             "type": "integer"
                           },
+                          "is_deleted": {
+                            "type": "boolean"
+                          },
                           "created_at": {
                             "type": "string"
                           },
@@ -5091,6 +5094,9 @@
                         },
                         "upload_status": {
                           "type": "integer"
+                        },
+                        "is_deleted": {
+                          "type": "boolean"
                         },
                         "created_at": {
                           "type": "string"
@@ -21408,6 +21414,9 @@
                           "upload_status": {
                             "type": "integer"
                           },
+                          "is_deleted": {
+                            "type": "boolean"
+                          },
                           "created_at": {
                             "type": "string"
                           },
@@ -21863,6 +21872,9 @@
                         },
                         "upload_status": {
                           "type": "integer"
+                        },
+                        "is_deleted": {
+                          "type": "boolean"
                         },
                         "created_at": {
                           "type": "string"

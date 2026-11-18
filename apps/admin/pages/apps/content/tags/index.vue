@@ -17,8 +17,12 @@
   <AdminPageContainer fluid>
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
+      v-model:action-capacity="actionCapacity"
       :columns="columnOptions"
       :default-columns="defaultColumns"
+      :action-headers="TableHeaders"
+      :action-labels="tagActionLabels"
+      :selection-width="48"
       :result-count="tableHasResult ? tableTotalItems : null"
       :result-state="tableResultState"
       :view-query-keys="['search_value', 'order_key', 'order_desc', 'filters', 'list_rows']" preference-key="content-tags"
@@ -96,20 +100,7 @@
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <div class="d-flex align-center ga-1">
-            <AdminActionGuard capability="tags.read" scope="all">
-              <AdminTableRowAction @click="openTagPanel(item.id)">查看标签</AdminTableRowAction>
-            </AdminActionGuard>
-            <v-menu v-if="allowRowMutation && (canUpdateTag || canDeleteTag)" location="bottom end">
-              <template #activator="{ props }">
-                <v-btn v-bind="props" class="admin-table-row-more" aria-label="更多标签操作" title="更多标签操作" icon="mdi-dots-horizontal" size="small" variant="text" />
-              </template>
-              <v-list density="compact">
-                <v-list-item v-if="canUpdateTag" prepend-icon="mdi-pencil-outline" title="编辑名称" @click="openTagPanel(item.id, 'edit')" />
-                <v-list-item v-if="canDeleteTag" prepend-icon="mdi-delete-outline" title="删除标签" @click="openDeleteTagDialog(item)" />
-              </v-list>
-            </v-menu>
-          </div>
+          <AdminTableRowActions :actions="tagRowActions(item)" :capacity="actionCapacity" more-label="更多标签操作" />
         </template>
 
         <template #[`item.status`]="{ item }">
@@ -171,6 +162,7 @@ import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue';
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue';
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
+import AdminTableRowActions from '~/components/shared/admin/AdminTableRowActions.vue';
 import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue';
 import CreateTagDialog from '@/components/tags/CreateTagDialog.vue';
 import TagDetailDialog from '~/components/tags/TagDetailDialog.vue';
@@ -250,6 +242,13 @@ const tagStatus = (status: number) => {
 };
 const canUpdateTag = computed(() => userStore.hasGrant('tags.update', 'all'));
 const canDeleteTag = computed(() => userStore.hasGrant('tags.delete', 'all'));
+const canViewTag = computed(() => userStore.hasGrant('tags.read', 'all'));
+const actionCapacity = ref(1);
+const tagActionLabels = computed(() => [
+  ...(canViewTag.value ? ['查看标签'] : []),
+  ...(canUpdateTag.value ? ['编辑名称'] : []),
+  ...(canDeleteTag.value ? ['删除标签'] : []),
+]);
 const batchCapabilityFor = (method: TagsBatchMethod | '') => method === 'delete' ? 'tags.delete' : 'tags.update';
 const TableBatchOptions = computed(() => BaseTableBatchOptions.filter((option) => userStore.hasGrant(batchCapabilityFor(option.value), 'all')));
 const batchCapability = computed(() => batchCapabilityFor(BatchOperate.value));
@@ -391,6 +390,11 @@ const openTagPanel = (id: number, mode: 'view' | 'edit' = 'view') => {
   TagDetailDialog_mode.value = mode;
   TagDetailDialog_state.value = true;
 };
+const tagRowActions = (item: Tag) => [
+  ...(canViewTag.value ? [{ key: 'view', label: '查看标签', onClick: () => openTagPanel(item.id) }] : []),
+  ...(canUpdateTag.value ? [{ key: 'edit', label: '编辑名称', disabled: !allowRowMutation.value, onClick: () => openTagPanel(item.id, 'edit') }] : []),
+  ...(canDeleteTag.value ? [{ key: 'delete', label: '删除标签', disabled: !allowRowMutation.value, onClick: () => openDeleteTagDialog(item) }] : []),
+];
 watch(() => route.query.inspect, (value) => {
   const id = typeof value === 'string' ? Number.parseInt(value, 10) : 0;
   if (id > 0) {

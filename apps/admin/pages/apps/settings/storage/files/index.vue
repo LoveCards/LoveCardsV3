@@ -12,8 +12,12 @@
   <AdminPageContainer fluid>
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
+      v-model:action-capacity="actionCapacity"
       :columns="columnOptions"
       :default-columns="defaultColumns"
+      :action-headers="TableHeaders"
+      :action-labels="fileActionLabels"
+      :selection-width="48"
       :result-count="tableHasResult ? tableTotalItems : null"
       :result-state="tableResultState"
       :view-query-keys="['search_value', 'order_key', 'order_desc', 'filters', 'view', 'list_rows']" preference-key="settings-storage-files"
@@ -146,36 +150,7 @@
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <div class="d-flex align-center ga-2">
-            <AdminActionGuard v-if="canReadUsage" capability="files.usage.read">
-              <AdminTableRowAction :to="`/apps/settings/storage/files/${item.id}/usage`">查看引用</AdminTableRowAction>
-            </AdminActionGuard>
-            <AdminActionGuard v-else-if="viewMode === 'normal' && canUpdateFile" capability="files.update" scope="all">
-              <AdminTableRowAction :disabled="!allowRowMutation" @click="openEditDialog(item)">编辑文件</AdminTableRowAction>
-            </AdminActionGuard>
-            <AdminActionGuard v-else-if="viewMode === 'deleted' && canRestoreFile" capability="files.restore" scope="all">
-              <AdminTableRowAction :disabled="!allowRowMutation" @click="openSingleBatchOp(item, 'restore')">恢复文件</AdminTableRowAction>
-            </AdminActionGuard>
-            <v-menu v-if="showFileMoreActions && allowRowMutation" location="bottom end">
-              <template #activator="{ props }">
-                <v-btn v-bind="props" class="admin-table-row-more" aria-label="更多文件操作" title="更多文件操作" icon="mdi-dots-horizontal" size="small" variant="text" />
-              </template>
-              <v-list density="compact">
-                <AdminActionGuard v-if="viewMode === 'normal' && canReadUsage && canUpdateFile" capability="files.update" scope="all">
-                  <v-list-item title="编辑文件" prepend-icon="mdi-pencil" @click="openEditDialog(item)" />
-                </AdminActionGuard>
-                <AdminActionGuard v-if="viewMode === 'normal' && canTrashFile" capability="files.delete" scope="all">
-                  <v-list-item title="移入回收站" prepend-icon="mdi-delete-outline" @click="openSingleBatchOp(item, 'trash')" />
-                </AdminActionGuard>
-                <AdminActionGuard v-if="viewMode === 'deleted' && canReadUsage && canRestoreFile" capability="files.restore" scope="all">
-                  <v-list-item title="恢复文件" prepend-icon="mdi-restore" @click="openSingleBatchOp(item, 'restore')" />
-                </AdminActionGuard>
-                <AdminActionGuard v-if="viewMode === 'deleted' && canPurgeFile" capability="files.purge" scope="all">
-                  <v-list-item title="永久删除文件" prepend-icon="mdi-delete-forever" @click="openHardDeleteDialog(item)" />
-                </AdminActionGuard>
-              </v-list>
-            </v-menu>
-          </div>
+          <AdminTableRowActions :actions="fileRowActions(item)" :capacity="actionCapacity" more-label="更多文件操作" />
         </template>
 
         <template #[`item.created_at`]="{ item }"><AdminTableTime :value="item.created_at" /></template>
@@ -196,11 +171,7 @@
     </AdminResourceTableShell>
   </AdminPageContainer>
 
-  <EditFileDialog
-    v-model:thisDialogState="EditDialog_state"
-    v-model:FileData="EditDialog_data"
-    :getTableData="getTableData"
-  />
+  <FileDetailDialog v-model="DetailDialog_state" :file-id="DetailDialog_id" @changed="getTableData" />
   <PublicDeleteDialog
     v-model:thisDialogState="DeleteDialog_state"
     v-model:deleteData="DeleteDialog_data"
@@ -230,7 +201,7 @@
     :action-label="singleActionDialogAction"
     :resource-label="singleActionResourceLabel"
     :impact="singleActionImpact"
-    :color="singleAction.method === 'restore' ? 'primary' : 'error'"
+    :color="singleAction.method === 'trash' || singleAction.method === 'ban' ? 'error' : 'primary'"
     :loading="singleActionLoading"
     :error="singleActionError"
     @confirm="confirmSingleBatchOp"
@@ -254,15 +225,15 @@ import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerAction
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue';
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
+import AdminTableRowActions from '~/components/shared/admin/AdminTableRowActions.vue';
 import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue';
-import EditFileDialog from '@/components/storage/EditFileDialog.vue';
+import FileDetailDialog from '@/components/storage/FileDetailDialog.vue';
 import PublicBatchDialog from '@/components/shared/Table/BatchDialog.vue';
 import PublicDeleteDialog from '@/components/shared/Table/DeleteDialog.vue';
 import PublicSearchDialog from '@/components/shared/Table/SearchDialog.vue';
 import { tableSearchCell } from '~/composables/useAdminTableSearch';
 import { useApi } from '~/lib/api';
 import { useUserStore } from '~/stores/userStore';
-import CommonUtils from '~/utils/common';
 import SelectUtils from '~/utils/select';
 
 type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
@@ -271,14 +242,21 @@ const client = useApi();
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
-const canReadUsage = computed(() => userStore.hasGrant('files.usage.read', 'global'));
 const canUpdateFile = computed(() => userStore.hasGrant('files.update', 'all'));
 const canTrashFile = computed(() => userStore.hasGrant('files.delete', 'all'));
 const canRestoreFile = computed(() => userStore.hasGrant('files.restore', 'all'));
 const canPurgeFile = computed(() => userStore.hasGrant('files.purge', 'all'));
-const showFileMoreActions = computed(() => viewMode.value === 'normal'
-  ? (canReadUsage.value && canUpdateFile.value) || canTrashFile.value
-  : (canReadUsage.value && canRestoreFile.value) || canPurgeFile.value);
+const actionCapacity = ref(1);
+const fileActionLabels = computed(() => [
+  '查看文件',
+  ...(viewMode.value === 'normal' ? [
+    ...(canUpdateFile.value ? ['审核通过', '设为非公开'] : []),
+    ...(canTrashFile.value ? ['移入回收站'] : []),
+  ] : [
+    ...(canRestoreFile.value ? ['恢复文件'] : []),
+    ...(canPurgeFile.value ? ['永久删除文件'] : []),
+  ]),
+]);
 
 
 const positiveQueryInt = (value: unknown, fallback: number) => {
@@ -353,7 +331,6 @@ const BaseTableBatchOptions = computed<Array<{ title: string; value: FilesBatchM
       { title: '封禁', value: 'ban' },
       { title: '切换公开', value: 'toggle_public' },
       { title: '移入回收站', value: 'trash' },
-      { title: '永久删除', value: 'hard_delete' },
     ]);
 const BatchOperate = ref<FilesBatchMethod | ''>('');
 const batchCapabilityFor = (method: FilesBatchMethod | '') => {
@@ -541,15 +518,21 @@ const handleBatchOp = (ids: number[], method: FilesBatchMethod) => {
 const SingleActionDialog_state = ref(false);
 const singleActionLoading = ref(false);
 const singleActionError = ref('');
-const singleAction = ref<{ id: number; display: string; method: FilesBatchMethod }>({ id: 0, display: '', method: 'trash' });
-const singleActionDialogTitle = computed(() => singleAction.value.method === 'restore' ? '确认恢复文件' : '确认移入回收站');
-const singleActionDialogAction = computed(() => singleAction.value.method === 'restore' ? '恢复文件' : '移入回收站');
+const singleAction = ref<{ id: number; display: string; method: FilesBatchMethod; status: number; isPublic: number }>({ id: 0, display: '', method: 'trash', status: 0, isPublic: 0 });
+const singleActionLabels: Record<FilesBatchMethod, string> = { approve: '审核通过', ban: '封禁文件', toggle_public: '切换公开状态', trash: '移入回收站', restore: '恢复文件', hard_delete: '永久删除文件' };
+const singleActionDialogTitle = computed(() => `确认${singleActionLabels[singleAction.value.method]}`);
+const singleActionDialogAction = computed(() => singleActionLabels[singleAction.value.method]);
 const singleActionResourceLabel = computed(() => `${singleAction.value.display || '文件'}（#${singleAction.value.id}）`);
-const singleActionImpact = computed(() => singleAction.value.method === 'restore'
-  ? '文件将重新回到正常列表；能否在前台访问仍取决于审核状态、公开状态和实际存储对象。'
-  : '文件将进入回收站并停止正常使用；永久删除前仍可恢复。');
-const openSingleBatchOp = (item: LCFile, method: Extract<FilesBatchMethod, 'trash' | 'restore'>) => {
-  singleAction.value = { id: item.id, display: item.original_name || item.file_url || '文件', method };
+const singleActionImpact = computed(() => ({
+  approve: '审核状态将设为通过；实际访问仍取决于公开和上传状态。',
+  ban: '文件将被封禁，并停止正常公开访问。',
+  toggle_public: '文件公开状态将立即翻转。请核对当前状态后再确认。',
+  trash: '文件将进入回收站并停止正常使用；永久删除前仍可恢复。',
+  restore: '文件将重新回到正常列表；能否在前台访问仍取决于审核状态、公开状态和实际存储对象。',
+  hard_delete: '文件将永久删除，此操作不可撤销。',
+})[singleAction.value.method]);
+const openSingleBatchOp = (item: LCFile, method: Exclude<FilesBatchMethod, 'hard_delete'>) => {
+  singleAction.value = { id: item.id, display: item.original_name || item.file_url || '文件', method, status: item.status, isPublic: item.is_public };
   singleActionError.value = '';
   SingleActionDialog_state.value = true;
 };
@@ -558,6 +541,13 @@ const confirmSingleBatchOp = async () => {
   singleActionLoading.value = true;
   singleActionError.value = '';
   try {
+    const current = await client.files.getManaged(singleAction.value.id);
+    if (singleAction.value.method === 'toggle_public' && current.is_public !== singleAction.value.isPublic) {
+      throw new Error('公开状态已变化，请刷新后重新选择操作。');
+    }
+    if (['approve', 'ban'].includes(singleAction.value.method) && current.status !== singleAction.value.status) {
+      throw new Error('审核状态已变化，请刷新后重新选择操作。');
+    }
     await handleBatchOp([singleAction.value.id], singleAction.value.method);
     SingleActionDialog_state.value = false;
   } catch (error) {
@@ -567,15 +557,25 @@ const confirmSingleBatchOp = async () => {
   }
 };
 
-const EditDialog_state = ref(false);
-const EditDialog_data = ref<{ edit: LCFile; origin: LCFile }>({ edit: {} as LCFile, origin: {} as LCFile });
-const openEditDialog = (item: LCFile) => {
-  EditDialog_data.value = {
-    origin: CommonUtils.deepClone(item),
-    edit: CommonUtils.deepClone(item),
-  };
-  EditDialog_state.value = true;
+const DetailDialog_state = ref(false);
+const DetailDialog_id = ref<number | null>(null);
+const openDetailDialog = (item: LCFile) => {
+  DetailDialog_id.value = item.id;
+  DetailDialog_state.value = true;
 };
+const fileRowActions = (item: LCFile) => [
+  { key: 'view', label: '查看文件', onClick: () => openDetailDialog(item) },
+  ...(viewMode.value === 'normal' ? [
+    ...(canUpdateFile.value ? [
+      { key: 'review', label: item.status === 0 ? '封禁文件' : '审核通过', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, item.status === 0 ? 'ban' : 'approve') },
+      { key: 'public', label: item.is_public ? '设为非公开' : '设为公开', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, 'toggle_public') },
+    ] : []),
+    ...(canTrashFile.value ? [{ key: 'trash', label: '移入回收站', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, 'trash') }] : []),
+  ] : [
+    ...(canRestoreFile.value ? [{ key: 'restore', label: '恢复文件', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, 'restore') }] : []),
+    ...(canPurgeFile.value ? [{ key: 'purge', label: '永久删除文件', disabled: !allowRowMutation.value, onClick: () => openHardDeleteDialog(item) }] : []),
+  ]),
+];
 
 const DeleteDialog_state = ref(false);
 const DeleteDialog_data = ref<{ id: number; display?: string }>({ id: 0 });

@@ -132,7 +132,7 @@ $test('permission resource keeps the capability tuple stable', static function (
     $assertSame(['capability' => 'cards.read', 'scope' => 'own', 'description' => 'Read cards'], $result);
 });
 
-$test('file resource removes storage internals but keeps public upload fields', static function () use ($assertSame, $assertFalse): void {
+$test('file resource removes storage internals and exposes deletion state', static function () use ($assertSame, $assertFalse): void {
     $result = FileResource::make([
         'id' => 8,
         'url' => '/upload/a.png',
@@ -142,8 +142,12 @@ $test('file resource removes storage internals but keeps public upload fields', 
 
     $assertSame(8, $result['id']);
     $assertSame('/upload/a.png', $result['url']);
+    $assertSame(true, $result['is_deleted']);
     $assertFalse(array_key_exists('driver_path', $result));
     $assertFalse(array_key_exists('deleted_at', $result));
+
+    $active = FileResource::make(['id' => 9, 'deleted_at' => null]);
+    $assertSame(false, $active['is_deleted']);
 });
 
 $test('direct upload resource exposes credential fields only', static function () use ($assertSame, $assertFalse): void {

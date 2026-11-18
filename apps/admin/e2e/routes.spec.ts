@@ -395,7 +395,7 @@ test('content resource routes open read-only detail pages while other resources 
   )
   await expect(page.getByRole('heading', { name: '权限管理', exact: true, level: 1 })).toHaveCount(0)
 
-  await expectDetailHeading(page, `/apps/settings/storage/files/${ids.file}/usage`, `文件 #${ids.file}`)
+  await expectDetailHeading(page, `/apps/settings/storage/files/${ids.file}`, `文件 #${ids.file}`)
   await expect(page.getByRole('heading', { name: '文件信息', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: '资源引用', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: '文件管理', exact: true, level: 1 })).toHaveCount(0)
@@ -426,7 +426,7 @@ test('legacy detail aliases redirect to canonical resource routes', async ({ pag
   await expect(page.getByRole('heading', { name: '文件信息', exact: true })).toBeVisible()
 
   url = new URL(page.url())
-  expect(url.pathname).toBe(`/admin/apps/settings/storage/files/${file}/usage`)
+  expect(url.pathname).toBe(`/admin/apps/settings/storage/files/${file}`)
   expect(url.searchParams.get('source')).toBe('legacy')
   expect(url.hash).toBe('#usage')
 })

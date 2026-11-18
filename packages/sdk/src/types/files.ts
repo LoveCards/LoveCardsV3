@@ -19,6 +19,7 @@ export interface LCFile {
   metadata: JsonObject | null
   status: number
   upload_status: number
+  is_deleted: boolean
   expire_at: string | null
   created_at: string
   updated_at: string
