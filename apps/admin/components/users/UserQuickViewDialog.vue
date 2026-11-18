@@ -72,7 +72,11 @@ const user = ref<User | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const canReadSecurity = computed(() => userStore.hasGrant('users.security.read', 'global'))
-const roleNames = computed(() => user.value?.roles?.map((role) => role.name).filter(Boolean).join('、') || '')
+const roleNames = computed(() => {
+  if (!user.value) return ''
+  const embedded = new Map((user.value.roles ?? []).map((role) => [role.id, role.name]))
+  return (user.value.roles_id ?? []).map((id) => embedded.get(id) || `角色 #${id}`).join('、')
+})
 const status = computed(() => {
   const labels: Record<number, { status: string; label: string }> = {
     0: { status: 'active', label: '正常' },
