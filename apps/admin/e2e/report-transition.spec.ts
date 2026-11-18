@@ -131,8 +131,14 @@ test('failed transition keeps the dialog open with the resolution text preserved
   await expect(dialog.getByLabel('处理原因或结论')).toHaveValue('这段文字必须保留')
 })
 
-test('report list exposes one detail action and restores its filters', async ({ page }) => {
+test('report list opens the current report in a dialog and preserves its filters', async ({ page }) => {
   test.setTimeout(90_000)
+  await page.route('**/api/admin/reports/55', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: reportFixture('open') }),
+    })
+  })
   await page.route('**/api/admin/reports?**', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
@@ -143,21 +149,21 @@ test('report list exposes one detail action and restores its filters', async ({ 
       }),
     })
   })
-  await page.route('**/api/admin/reports/55', async (route) => {
-    await route.fulfill({
-      contentType: 'application/json',
-      body: JSON.stringify({ success: true, data: reportFixture('open') }),
-    })
-  })
-
   await page.goto('./apps/community/reports?status=open&page=1&list_rows=20', { waitUntil: 'domcontentloaded' })
   const row = page.getByRole('row').filter({ hasText: '包含骚扰内容' })
   await expect(row.getByText('#55', { exact: true })).toBeVisible({ timeout: 20_000 })
   await expect(row.getByText('用户 #91', { exact: true })).toBeVisible()
   await expect(row.getByText('卡片 #482', { exact: true })).toBeVisible()
-  await expect(row.getByRole('link', { name: '查看详情' })).toHaveCount(1)
-  await row.getByRole('link', { name: '查看详情' }).click()
-  await expect(page.getByRole('heading', { name: '举报 #55' })).toBeVisible()
-  await page.getByRole('button', { name: '返回列表' }).click()
-  await expect(page).toHaveURL(/\/apps\/community\/reports\?.*status=open/)
+  const listUrl = page.url()
+  const detailRequest = page.waitForRequest(request => request.url().endsWith('/api/admin/reports/55') && request.method() === 'GET')
+  await row.getByRole('button', { name: '查看举报', exact: true }).click()
+  await detailRequest
+  const dialog = page.getByRole('dialog', { name: '查看举报' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText('包含骚扰内容')
+  await expect(dialog).toContainText('连续多条评论引用了同一段私人信息')
+  await expect(page).toHaveURL(listUrl)
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(page).toHaveURL(listUrl)
 })

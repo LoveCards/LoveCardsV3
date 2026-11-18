@@ -179,7 +179,7 @@ test('audit query keeps filters in the URL and sends only supported API fields',
   expect(requests.at(-1)?.searchParams.has('action')).toBe(false)
 })
 
-test('operations lists link each record to its canonical detail page', async ({ page }) => {
+test('delivery list keeps its canonical detail link and audit list opens a record dialog', async ({ page }) => {
   test.setTimeout(60_000)
   await page.route('**/api/admin/operations/deliveries/summary', async (route) => {
     await route.fulfill({
@@ -195,6 +195,12 @@ test('operations lists link each record to its canonical detail page', async ({ 
         data: [deliveryFixture()],
         pagination: { currentPage: 1, totalPages: 1, totalItems: 1, itemsPerPage: 20 },
       }),
+    })
+  })
+  await page.route('**/api/admin/audit-logs/88', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: auditFixture }),
     })
   })
   await page.route('**/api/admin/audit-logs?**', async (route) => {
@@ -216,9 +222,19 @@ test('operations lists link each record to its canonical detail page', async ({ 
   )
 
   await page.goto('./apps/operations/audit', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('link', { name: '查看审计记录 #88' })).toHaveAttribute(
-    'href',
-    '/admin/apps/operations/audit/88',
-    { timeout: 20_000 },
-  )
+  const row = page.getByRole('row').filter({ hasText: 'cards.update' })
+  await expect(row).toBeVisible({ timeout: 20_000 })
+  const listUrl = page.url()
+  const detailRequest = page.waitForRequest(request => request.url().endsWith('/api/admin/audit-logs/88') && request.method() === 'GET')
+  await row.getByRole('button', { name: '查看审计', exact: true }).click()
+  await detailRequest
+  const dialog = page.getByRole('dialog', { name: '查看审计' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText('cards.update')
+  await expect(dialog).toContainText('request-audit-88')
+  await expect(dialog).not.toContainText('must-not-render')
+  await expect(page).toHaveURL(listUrl)
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(page).toHaveURL(listUrl)
 })
