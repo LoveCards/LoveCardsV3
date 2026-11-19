@@ -286,6 +286,7 @@
 </template>
 
 <script setup lang="ts">
+import { useDisplay, useTheme } from 'vuetify'
 import { mergeProps } from 'vue'
 import { adminThemeOptions } from '~/composables/useAdminTheme'
 import NotificationNotifier from '~/components/shared/NotificationNotifier.vue'

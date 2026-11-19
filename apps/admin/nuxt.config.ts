@@ -102,7 +102,8 @@ export default defineNuxtConfig({
     },
     vuetify: { // 模块的专属配置项
         moduleOptions: {
-            /* 模块选项 */
+            // 避免 Vuetify useLayout 与 Nuxt 4.6 内置 composable 同名。
+            importComposables: false,
         },
         vuetifyOptions: { // Vuetify 初始化配置
             locale: { locale: 'zhHans', fallback: 'en' },

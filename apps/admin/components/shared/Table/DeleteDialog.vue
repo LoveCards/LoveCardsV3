@@ -28,7 +28,7 @@ const props = withDefaults(defineProps<{
 
 const thisDialogState = defineModel<boolean>('thisDialogState', { default: false })
 const deleteData = defineModel<{ id: number; display?: string }>('deleteData', {
-  default: { id: 0 },
+  default: () => ({ id: 0 }),
 })
 
 const deleting = ref(false)
