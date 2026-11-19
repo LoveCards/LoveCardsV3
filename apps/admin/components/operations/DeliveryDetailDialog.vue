@@ -1,5 +1,5 @@
 <template>
-  <v-dialog
+  <v-dialog @after-leave="restoreDialogFocus"
     :model-value="modelValue"
     :fullscreen="xs"
     :persistent="busy"
@@ -27,6 +27,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
 import { useDisplay } from 'vuetify'
 import DeliveryDetailContent from '~/components/operations/DeliveryDetailContent.vue'
 
@@ -47,4 +48,5 @@ async function openFullPage() {
   await router.push({ path, state: { listSource: props.sourcePath } })
 }
 watch(() => props.modelValue, open => { if (!open) busy.value = false })
+const restoreDialogFocus = useAdminDialogFocusReturn(() => props.modelValue)
 </script>

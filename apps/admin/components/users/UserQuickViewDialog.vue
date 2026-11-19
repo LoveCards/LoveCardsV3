@@ -1,5 +1,5 @@
 <template>
-  <v-dialog :model-value="open" aria-label="用户详情" :fullscreen="xs" max-width="880" @update:model-value="onDialogChange">
+  <v-dialog @after-leave="restoreDialogFocus" :model-value="open" aria-label="用户详情" :fullscreen="xs" max-width="880" @update:model-value="onDialogChange">
     <v-card>
       <v-card-title class="d-flex align-center ga-3">
         <span>{{ initialMode === 'edit' ? '编辑用户' : '查看用户' }}</span>
@@ -29,6 +29,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
 import type { User } from '@lovecards/sdk'
 import { useDisplay } from 'vuetify'
 import UserDetailContent from '~/components/users/UserDetailContent.vue'
@@ -57,6 +58,7 @@ function onDialogChange(value: boolean) {
   if (value) open.value = true
   else void close()
 }
+const restoreDialogFocus = useAdminDialogFocusReturn(open)
 </script>
 
 <style scoped>

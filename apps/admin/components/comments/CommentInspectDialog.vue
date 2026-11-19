@@ -1,5 +1,5 @@
 <template>
-  <v-dialog :model-value="modelValue" :fullscreen="xs" :persistent="busy" aria-label="评论详情" max-width="880" scrollable @update:model-value="requestClose">
+  <v-dialog @after-leave="restoreDialogFocus" :model-value="modelValue" :fullscreen="xs" :persistent="busy" aria-label="评论详情" max-width="880" scrollable @update:model-value="requestClose">
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between ga-2"><span>评论 #{{ commentId }}</span><v-btn aria-label="关闭" icon="mdi-close" variant="text" @click="requestClose(false)" /></v-card-title>
       <v-divider />
@@ -12,6 +12,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
 import { useDisplay } from 'vuetify'
 import CommentDetailContent from '~/components/comments/CommentDetailContent.vue'
 const props = withDefaults(defineProps<{ modelValue: boolean; commentId: number | null; sourcePath: string; initialMode?: 'view' | 'edit' }>(), { initialMode: 'view' })
@@ -23,4 +24,5 @@ const confirmClose = ref(false)
 function requestClose(open: boolean) { if (open || busy.value) return; if (dirty.value) { confirmClose.value = true; return } emit('update:modelValue', false) }
 function discardAndClose() { confirmClose.value = false; dirty.value = false; emit('update:modelValue', false) }
 watch(() => props.modelValue, open => { if (!open) { dirty.value = false; busy.value = false; confirmClose.value = false } })
+const restoreDialogFocus = useAdminDialogFocusReturn(() => props.modelValue)
 </script>

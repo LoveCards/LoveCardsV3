@@ -1,5 +1,5 @@
 <template>
-  <v-dialog :model-value="open" aria-label="举报详情" :fullscreen="xs" max-width="1040" @update:model-value="onDialogChange">
+  <v-dialog @after-leave="restoreDialogFocus" :model-value="open" aria-label="举报详情" :fullscreen="xs" max-width="1040" @update:model-value="onDialogChange">
     <v-card>
       <v-card-title class="d-flex align-center ga-3">
         <v-icon icon="mdi-flag-outline" size="small" />
@@ -29,6 +29,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
 import type { AdminReport } from '@lovecards/sdk'
 import { useDisplay } from 'vuetify'
 import ReportDetailContent from '~/components/reports/ReportDetailContent.vue'
@@ -55,6 +56,7 @@ function onDialogChange(value: boolean) {
   else void close()
 }
 watch(open, (value) => { if (!value) report.value = null })
+const restoreDialogFocus = useAdminDialogFocusReturn(open)
 </script>
 
 <style scoped>

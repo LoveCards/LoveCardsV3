@@ -1,5 +1,5 @@
 <template>
-  <v-dialog
+  <v-dialog @after-leave="restoreDialogFocus"
     :model-value="modelValue"
     :fullscreen="xs"
     aria-label="查看审计"
@@ -26,6 +26,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
 import { useDisplay } from 'vuetify'
 import AuditDetailContent from '~/components/operations/AuditDetailContent.vue'
 
@@ -41,4 +42,5 @@ async function openFullPage() {
   await nextTick()
   await router.push({ path, state: { listSource: props.sourcePath } })
 }
+const restoreDialogFocus = useAdminDialogFocusReturn(() => props.modelValue)
 </script>

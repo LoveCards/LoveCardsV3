@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="thisDialogState" aria-label="创建标签" max-width="480" :persistent="saving">
+  <v-dialog @after-leave="restoreDialogFocus" v-model="thisDialogState" aria-label="创建标签" max-width="480" :persistent="saving">
     <v-card>
       <v-card-title class="text-h6">创建标签</v-card-title>
       <v-divider />
@@ -34,6 +34,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
 import { isApiError, useApi } from '~/lib/api'
 
 const client = useApi()
@@ -63,4 +64,5 @@ const submit = async () => {
 watch(thisDialogState, (open) => {
   if (open) formError.value = ''
 })
+const restoreDialogFocus = useAdminDialogFocusReturn(thisDialogState)
 </script>

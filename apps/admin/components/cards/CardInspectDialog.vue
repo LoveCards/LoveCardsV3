@@ -1,5 +1,5 @@
 <template>
-  <v-dialog :model-value="modelValue" :fullscreen="xs" :persistent="busy" aria-label="卡片详情" max-width="1040" scrollable @update:model-value="requestClose">
+  <v-dialog @after-leave="restoreDialogFocus" :model-value="modelValue" :fullscreen="xs" :persistent="busy" aria-label="卡片详情" max-width="1040" scrollable @update:model-value="requestClose">
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between ga-2">
         <span>卡片 #{{ cardId }}</span>
@@ -34,6 +34,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
 import { useDisplay } from 'vuetify'
 import CardDetailContent from '~/components/cards/CardDetailContent.vue'
 
@@ -61,4 +62,5 @@ function discardAndClose() {
   emit('update:modelValue', false)
 }
 watch(() => props.modelValue, open => { if (!open) { dirty.value = false; busy.value = false; confirmClose.value = false } })
+const restoreDialogFocus = useAdminDialogFocusReturn(() => props.modelValue)
 </script>

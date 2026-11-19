@@ -1,5 +1,5 @@
 <template>
-  <v-dialog :model-value="modelValue" :fullscreen="xs" :persistent="busy" aria-label="文件详情" max-width="1040" scrollable @update:model-value="requestClose">
+  <v-dialog @after-leave="restoreDialogFocus" :model-value="modelValue" :fullscreen="xs" :persistent="busy" aria-label="文件详情" max-width="1040" scrollable @update:model-value="requestClose">
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between ga-2">
         <span>文件 #{{ fileId }}</span>
@@ -18,10 +18,11 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
 import { useDisplay } from 'vuetify'
 import FileDetailContent from '~/components/storage/FileDetailContent.vue'
 
-defineProps<{ modelValue: boolean; fileId: number | null }>()
+const props = defineProps<{ modelValue: boolean; fileId: number | null }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; changed: [] }>()
 const { xs } = useDisplay()
 const busy = ref(false)
@@ -32,4 +33,5 @@ function handleRemoved() {
   emit('changed')
   emit('update:modelValue', false)
 }
+const restoreDialogFocus = useAdminDialogFocusReturn(() => props.modelValue)
 </script>
