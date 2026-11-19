@@ -2,6 +2,8 @@
 
 > 状态：目标设计基线，2026-11-19 固定；现有详情页尚未全部迁移，不能以当前实现反推规范。
 >
+> 本文件是[子页面与子任务设计规范](ADMIN-SUBPAGE-DESIGN-STANDARD.md)的 A 类细则；配置、专题、Tab 与短任务弹窗以总规范为准。
+>
 > 范围：`apps/admin` 的资源独立详情页、列表详情弹窗及其查看、字段编辑、专题处理。列表行、查询和行尾操作以 [列表与表格交互规范](ADMIN-TABLE-INTERACTION-STANDARD.md) 为准；页面宽度以 [页面布局规范](ADMIN-LAYOUT-SYSTEM.md) 为准；色彩、字体、圆角和暗色模式以 [UI 风格锁定](ADMIN-UI-STYLE-LOCK.md) 为准。本文件只收束详情主体的层级、字段、编辑和弹窗呈现，不改变 SDK、capability、状态机或通知规则。
 
 ## 1. 设计目标与行为边界

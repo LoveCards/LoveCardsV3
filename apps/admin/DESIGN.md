@@ -86,7 +86,7 @@ LoveCards Admin 是在桌面工作环境中长时间使用的任务型界面。�
 
 完整 token、尺寸、组件语法和偏离禁止项见 [ADMIN-UI-STYLE-LOCK.md](../../docs/engineering/ADMIN-UI-STYLE-LOCK.md)。施工阶段如需改变颜色、字体、圆角、密度或外壳布局，必须先更新该风格锁定文件。
 
-资源列表和局部表格的当前目标设计见 [ADMIN-TABLE-INTERACTION-STANDARD.md](../../docs/engineering/ADMIN-TABLE-INTERACTION-STANDARD.md)。详情与编辑态的视觉目标见 [ADMIN-DETAIL-EDIT-DESIGN-STANDARD.md](../../docs/engineering/ADMIN-DETAIL-EDIT-DESIGN-STANDARD.md)。本文件下方带日期的列表实施记录只说明当时已实现的行为；与新规范冲突时按新规范迁移，不能据此宣称页面已完成迁移。
+资源列表和局部表格的当前目标设计见 [ADMIN-TABLE-INTERACTION-STANDARD.md](../../docs/engineering/ADMIN-TABLE-INTERACTION-STANDARD.md)。所有子页面与子任务的类型、容器和覆盖清单见 [ADMIN-SUBPAGE-DESIGN-STANDARD.md](../../docs/engineering/ADMIN-SUBPAGE-DESIGN-STANDARD.md)；资源详情与编辑态的字段细则见 [ADMIN-DETAIL-EDIT-DESIGN-STANDARD.md](../../docs/engineering/ADMIN-DETAIL-EDIT-DESIGN-STANDARD.md)。本文件下方带日期的列表实施记录只说明当时已实现的行为；与新规范冲突时按新规范迁移，不能据此宣称页面已完成迁移。
 
 2026-11-19 的目标：列表与独立页复用模块内同一详情主体。详情查看态中的可写字段可就地切换为编辑控件；审核、封禁、隐藏、置顶、恢复、重试等是资源命令，依权限与状态显示于行尾、详情操作区或批量选中区，不用“编辑/删除”模板代替。弹窗只承载详情主体与焦点/关闭，独立页承载路由与面包屑。行尾操作按表格容器宽度和列可读性逐项外露适合本行的动作，余项进入“更多”；批量动作留在选中区。下方 2026-09 的“单个文字主动作”仅是历史实施记录。
 

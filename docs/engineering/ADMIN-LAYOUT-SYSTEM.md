@@ -1,6 +1,6 @@
 # 管理端页面布局规范
 
-> 适用范围：`apps/admin` 的规范路由；菜单名称和归属仍以 `ADMIN-NAVIGATION-CONVENTION-2026-11-07.md` 为准，颜色与原生组件规则仍以 `ADMIN-UI-STYLE-LOCK.md` 为准。列表内部的列、字段、断点、入口和弹窗边界以 [列表与表格交互规范](ADMIN-TABLE-INTERACTION-STANDARD.md) 为准。
+> 适用范围：`apps/admin` 的规范路由；菜单名称和归属仍以 `ADMIN-NAVIGATION-CONVENTION-2026-11-07.md` 为准，颜色与原生组件规则仍以 `ADMIN-UI-STYLE-LOCK.md` 为准。列表内部的列、字段、断点、入口和弹窗边界以 [列表与表格交互规范](ADMIN-TABLE-INTERACTION-STANDARD.md) 为准。 子页面的类型、容器与覆盖范围以[子页面设计规范](ADMIN-SUBPAGE-DESIGN-STANDARD.md)为准。
 
 ## 目标
 

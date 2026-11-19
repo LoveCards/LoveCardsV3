@@ -32,7 +32,7 @@
 
 管理端资源列表、局部表格、字段显示、行尾操作与详情/弹窗边界以 `docs/engineering/ADMIN-TABLE-INTERACTION-STANDARD.md` 为准。该文件是目标设计；现有页面未全部迁移，不能把历史实现当作规范。
 
-管理端详情主体、查看/编辑切换、保存区及弹窗视觉以 `docs/engineering/ADMIN-DETAIL-EDIT-DESIGN-STANDARD.md` 为准；它是目标基线，迁移须逐资源验收。
+管理端所有子页面与子任务（资源详情、配置、专题、Tab 和弹窗）先按 `docs/engineering/ADMIN-SUBPAGE-DESIGN-STANDARD.md` 选类型和容器；资源详情的字段与编辑细则再按 `docs/engineering/ADMIN-DETAIL-EDIT-DESIGN-STANDARD.md` 执行。两者均是目标基线，迁移须逐页验收。
 
 事件 Handler 的队列分类、执行模式、事务发布和新增队列审查以 `docs/engineering/EVENT-QUEUE-GOVERNANCE.md` 为准；新增模块必须在自身 `Public/EventHandlers.php` 显式装配，不能使用未登记的 `queue_name`。
 
