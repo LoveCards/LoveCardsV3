@@ -270,7 +270,7 @@ const canPin = computed(() => userStore.hasGrant('comments.pin', 'all'));
 const canEditComment = computed(() => userStore.hasGrant('comments.update', 'all'));
 const canModerateComment = computed(() => userStore.hasGrant('comments.moderate', 'all'));
 const conciseGovernanceLabel = (label: string) => label.endsWith('评论') ? label.slice(0, -2) : label;
-const commentActionLabels = computed(() => ['查看', ...(canEditComment.value ? ['编辑'] : []), ...(canModerateComment.value ? ['通过审核', '封禁', '解除封禁', '隐藏', '取消隐藏'] : []), ...(canPin.value ? ['置顶', '取消置顶'] : []), ...(canDeleteComment.value ? ['删除'] : [])]);
+const commentActionLabels = computed(() => [...(canEditComment.value ? ['编辑'] : canViewComment.value ? ['查看'] : []), ...(canModerateComment.value ? ['通过审核', '封禁', '解除封禁', '隐藏', '取消隐藏'] : []), ...(canPin.value ? ['置顶', '取消置顶'] : []), ...(canDeleteComment.value ? ['删除'] : [])]);
 const actionCapacity = ref(1);
 const CommentInspectDialog_state = ref(false);
 const CommentInspectDialog_id = ref<number | null>(null);
@@ -281,7 +281,7 @@ const openCommentInspect = (id: number, mode: 'view' | 'edit' = 'view') => {
   CommentInspectDialog_state.value = true;
 };
 const commentRowActions = (item: Comment) => [
-  ...(canViewComment.value ? [{ key: 'view', label: '查看', onClick: () => openCommentInspect(item.id) }] : []),
+  ...(!canEditComment.value && canViewComment.value ? [{ key: 'view', label: '查看', onClick: () => openCommentInspect(item.id) }] : []),
   ...(canEditComment.value
     ? [{ key: 'edit', label: '编辑', disabled: !canMutateRows.value, onClick: () => openCommentInspect(item.id, 'edit') }]
     : []),

@@ -3,7 +3,7 @@
     <AdminPageHeader title="举报处理" description="按状态审阅举报，处理动作会记录原因与操作者。" :breadcrumbs="[{ title: '内容' }]">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn></template>
     </AdminPageHeader>
-    <AdminResourceTableShell v-model:visible-columns="visibleColumns" v-model:action-capacity="actionCapacity" :action-headers="headers" :action-labels="['查看', '处理']" :columns="columnOptions" :default-columns="defaultColumns" :result-count="lastSuccessfulKey ? totalItems : null" :result-state="loading && lastSuccessfulKey ? 'loading' : resultState" :view-query-keys="['search_value', 'status', 'resource_type', 'list_rows']" preference-key="community-reports" @apply-view="applySavedView" @reset-view="resetTableView">
+    <AdminResourceTableShell v-model:visible-columns="visibleColumns" v-model:action-capacity="actionCapacity" :action-headers="headers" :action-labels="['处理', '查看']" :columns="columnOptions" :default-columns="defaultColumns" :result-count="lastSuccessfulKey ? totalItems : null" :result-state="loading && lastSuccessfulKey ? 'loading' : resultState" :view-query-keys="['search_value', 'status', 'resource_type', 'list_rows']" preference-key="community-reports" @apply-view="applySavedView" @reset-view="resetTableView">
       <template #search>
         <v-text-field v-model="searchValue" clearable label="搜索原因或补充说明" prepend-inner-icon="mdi-magnify" @keydown.enter="applySearch" @click:clear="clearSearch" />
       </template>
@@ -75,10 +75,10 @@ function openDetail(id: number, mode: 'view' | 'process') {
   detailOpen.value = true
 }
 const reportRowActions = (item: AdminReport) => [
-  { key: 'view', label: '查看', onClick: () => openDetail(item.id, 'view') },
   ...(canManage.value && item.status !== 'closed'
     ? [{ key: 'process', label: '处理', disabled: !canWrite.value, onClick: () => openDetail(item.id, 'process') }]
     : []),
+  ...(!canManage.value || item.status === 'closed' ? [{ key: 'view', label: '查看', onClick: () => openDetail(item.id, 'view') }] : []),
 ]
 const client = useApi()
 const route = useRoute()

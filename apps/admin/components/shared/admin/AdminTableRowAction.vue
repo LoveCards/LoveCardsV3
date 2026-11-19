@@ -1,8 +1,7 @@
 <template>
   <v-btn
     :to="to"
-    :variant="prominent ? 'tonal' : 'text'"
-    :color="prominent ? 'primary' : undefined"
+    variant="text"
     class="admin-table-row-action"
     :disabled="disabled"
     :loading="loading"
@@ -19,7 +18,6 @@ defineProps<{
   to?: RouteLocationRaw
   disabled?: boolean
   loading?: boolean
-  prominent?: boolean
 }>()
 
 const emit = defineEmits<{ click: [event: MouseEvent] }>()

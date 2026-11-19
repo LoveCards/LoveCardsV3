@@ -244,16 +244,7 @@ const canTrashFile = computed(() => userStore.hasGrant('files.delete', 'all'));
 const canRestoreFile = computed(() => userStore.hasGrant('files.restore', 'all'));
 const canPurgeFile = computed(() => userStore.hasGrant('files.purge', 'all'));
 const actionCapacity = ref(1);
-const fileActionLabels = computed(() => [
-  '查看',
-  ...(viewMode.value === 'normal' ? [
-    ...(canUpdateFile.value ? ['审核通过', '设为非公开'] : []),
-    ...(canTrashFile.value ? ['移入回收站'] : []),
-  ] : [
-    ...(canRestoreFile.value ? ['恢复'] : []),
-    ...(canPurgeFile.value ? ['永久删除'] : []),
-  ]),
-]);
+const fileActionLabels = computed(() => [...new Set(tableItems.value.flatMap((item) => fileRowActions(item).map((action) => action.label)))]);
 
 
 const positiveQueryInt = (value: unknown, fallback: number) => {
@@ -562,7 +553,7 @@ const openDetailDialog = (item: LCFile) => {
   DetailDialog_state.value = true;
 };
 const fileRowActions = (item: LCFile) => [
-  { key: 'view', label: '查看', onClick: () => openDetailDialog(item) },
+  ...(!(viewMode.value === 'normal' ? canUpdateFile.value || canTrashFile.value : canRestoreFile.value || canPurgeFile.value) ? [{ key: 'view', label: '查看', onClick: () => openDetailDialog(item) }] : []),
   ...(viewMode.value === 'normal' ? [
     ...(canUpdateFile.value ? [
       { key: 'review', label: item.status === 0 ? '封禁' : '审核通过', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, item.status === 0 ? 'ban' : 'approve') },

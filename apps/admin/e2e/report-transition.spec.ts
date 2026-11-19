@@ -159,7 +159,7 @@ test('report list opens the current report in a dialog and preserves its filters
   await expect(row.getByText('卡片 #482', { exact: true })).toBeVisible()
   const listUrl = page.url()
   const detailRequest = page.waitForRequest(request => request.url().endsWith('/api/admin/reports/55') && request.method() === 'GET')
-  await row.getByRole('button', { name: '查看', exact: true }).click()
+  await row.getByRole('button', { name: '处理', exact: true }).click()
   await detailRequest
   const dialog = page.getByRole('dialog', { name: '举报详情' })
   await expect(dialog).toBeVisible()

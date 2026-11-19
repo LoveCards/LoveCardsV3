@@ -313,7 +313,7 @@ const canUpdateCard = computed(() => userStore.hasGrant('cards.update', 'all'));
 const canApproveCard = computed(() => userStore.hasGrant('cards.approve', 'all'));
 const canPinCard = computed(() => userStore.hasGrant('cards.pin', 'all'));
 const conciseGovernanceLabel = (label: string) => label.endsWith('卡片') ? label.slice(0, -2) : label;
-const cardActionLabels = computed(() => [...new Set(['查看', ...(canUpdateCard.value ? ['编辑'] : []), ...tableItems.value.flatMap(item => cardGovernanceActions(item, { approve: canApproveCard.value, update: canUpdateCard.value, pin: canPinCard.value }).map(action => conciseGovernanceLabel(action.label))), ...(canDeleteCard.value ? ['删除'] : [])])]);
+const cardActionLabels = computed(() => [...new Set([...(canUpdateCard.value ? ['编辑'] : canViewCard.value ? ['查看'] : []), ...tableItems.value.flatMap(item => cardGovernanceActions(item, { approve: canApproveCard.value, update: canUpdateCard.value, pin: canPinCard.value }).map(action => conciseGovernanceLabel(action.label))), ...(canDeleteCard.value ? ['删除'] : [])])]);
 const actionCapacity = ref(1);
 const CardInspectDialog_state = ref(false);
 const CardInspectDialog_id = ref<number | null>(null);
@@ -324,7 +324,7 @@ const openCardInspect = (id: number, mode: 'view' | 'edit' = 'view') => {
   CardInspectDialog_state.value = true;
 };
 const cardRowActions = (item: Card) => [
-  ...(canViewCard.value ? [{ key: 'view', label: '查看', onClick: () => openCardInspect(item.id) }] : []),
+  ...(!canUpdateCard.value && canViewCard.value ? [{ key: 'view', label: '查看', onClick: () => openCardInspect(item.id) }] : []),
   ...(canUpdateCard.value
     ? [{ key: 'edit', label: '编辑', disabled: !canMutateRows.value, onClick: () => openCardInspect(item.id, 'edit') }]
     : []),

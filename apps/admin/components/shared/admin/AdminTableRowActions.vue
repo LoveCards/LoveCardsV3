@@ -2,12 +2,11 @@
   <div class="admin-table-row-actions">
     <template v-if="visibleActions.length">
       <AdminTableRowAction
-        v-for="(action, index) in visibleActions"
+        v-for="action in visibleActions"
         :key="action.key"
         :to="action.to"
         :disabled="action.disabled"
         :loading="action.loading"
-        :prominent="index === 0"
         @click="action.onClick?.()"
       >
         {{ action.label }}

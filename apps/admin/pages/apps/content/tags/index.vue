@@ -245,7 +245,7 @@ const canDeleteTag = computed(() => userStore.hasGrant('tags.delete', 'all'));
 const canViewTag = computed(() => userStore.hasGrant('tags.read', 'all'));
 const actionCapacity = ref(1);
 const tagActionLabels = computed(() => [
-  ...(canViewTag.value ? ['查看'] : []),
+  ...(!canUpdateTag.value && canViewTag.value ? ['查看'] : []),
   ...(canUpdateTag.value ? ['编辑'] : []),
   ...(canDeleteTag.value ? ['删除'] : []),
 ]);
@@ -391,7 +391,7 @@ const openTagPanel = (id: number, mode: 'view' | 'edit' = 'view') => {
   TagDetailDialog_state.value = true;
 };
 const tagRowActions = (item: Tag) => [
-  ...(canViewTag.value ? [{ key: 'view', label: '查看', onClick: () => openTagPanel(item.id) }] : []),
+  ...(!canUpdateTag.value && canViewTag.value ? [{ key: 'view', label: '查看', onClick: () => openTagPanel(item.id) }] : []),
   ...(canUpdateTag.value ? [{ key: 'edit', label: '编辑', disabled: !allowRowMutation.value, onClick: () => openTagPanel(item.id, 'edit') }] : []),
   ...(canDeleteTag.value ? [{ key: 'delete', label: '删除', disabled: !allowRowMutation.value, onClick: () => openDeleteTagDialog(item) }] : []),
 ];

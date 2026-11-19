@@ -68,7 +68,7 @@
         <template #item.correlation_id="{ item }"><code class="audit-code">{{ item.correlation_id || '—' }}</code></template>
         <template #item.created_at="{ item }"><AdminTableTime :value="item.created_at" seconds /></template>
         <template #item.detail="{ item }">
-          <v-btn class="audit-row-action" min-height="32" size="small" variant="tonal" @click="openAudit(item.id, $event)">查看</v-btn>
+          <v-btn class="audit-row-action" min-height="32" size="small" variant="text" @click="openAudit(item.id, $event)">查看</v-btn>
         </template>
         <template #no-data>
           <v-empty-state :icon="error ? 'mdi-cloud-alert-outline' : 'mdi-clipboard-text-clock-outline'" :title="error ? '无法加载审计日志' : '没有匹配的审计记录'" :text="error || '调整查询条件后重试。'">

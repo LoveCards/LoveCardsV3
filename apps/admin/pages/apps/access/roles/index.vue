@@ -471,12 +471,7 @@ const confirmReseed = async () => {
   }
 };
 const actionCapacity = ref(1);
-const roleActionLabels = computed(() => [
-  '查看',
-  ...(tableItems.value.some(canEditRole) ? ['编辑'] : []),
-  ...(tableItems.value.some(canAssignRole) ? ['分配权限'] : []),
-  ...(tableItems.value.some(canDeleteRole) ? ['删除'] : []),
-]);
+const roleActionLabels = computed(() => [...new Set(tableItems.value.flatMap((item) => roleRowActions(item).map((action) => action.label)))]);
 const RoleDetailDialog_state = ref(false);
 const RoleDetailDialog_id = ref<number | null>(null);
 const RoleDetailDialog_mode = ref<'view' | 'edit' | 'assign'>('view');
@@ -488,7 +483,7 @@ const openRoleDetail = (item: Role, mode: 'view' | 'edit' | 'assign' = 'view') =
   RoleDetailDialog_state.value = true;
 };
 const roleRowActions = (item: Role) => [
-  { key: 'view', label: '查看', onClick: () => openRoleDetail(item) },
+  ...(!canEditRole(item) && !canAssignRole(item) ? [{ key: 'view', label: '查看', onClick: () => openRoleDetail(item) }] : []),
   ...(canEditRole(item) ? [{ key: 'edit', label: '编辑', disabled: !allowRowMutation.value, onClick: () => openRoleDetail(item, 'edit') }] : []),
   ...(canAssignRole(item) ? [{ key: 'assign', label: '分配权限', disabled: !allowRowMutation.value, onClick: () => openRoleDetail(item, 'assign') }] : []),
   ...(canDeleteRole(item) ? [{ key: 'delete', label: '删除', disabled: !allowRowMutation.value, onClick: () => openDeleteDialog(item) }] : []),

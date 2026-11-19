@@ -76,8 +76,10 @@ for (const width of [1440, 960, 600, 390]) {
     const row = page.locator('tbody tr').first()
     await expect(row).toContainText('member_1', { timeout: 20_000 })
     await expect(page.getByRole('button', { name: '刷新', exact: true })).toBeVisible()
-    const detail = row.getByRole('button', { name: '查看', exact: true })
+    const detail = row.getByRole('button', { name: '编辑', exact: true })
     await expect(detail).toBeVisible()
+    await expect(detail).toHaveClass(/v-btn--variant-text/)
+    await expect(row.getByRole('button', { name: '查看', exact: true })).toHaveCount(0)
     await expect(row.getByRole('link', { name: '查看详情' })).toHaveCount(0)
     const headers = page.locator('thead .v-data-table__th')
     await expect(headers.first()).toBeVisible()
@@ -96,7 +98,6 @@ for (const width of [1440, 960, 600, 390]) {
     await expect(dialog).toBeVisible()
     await expect(dialog).toContainText('member_1')
     await expect(page).toHaveURL(listUrl)
-    await dialog.getByRole('button', { name: '编辑用户', exact: true }).click()
     await expect(dialog.getByRole('textbox', { name: '用户名' })).toHaveValue('林晓')
     await dialog.getByRole('button', { name: '取消', exact: true }).click()
     await expect(dialog.getByRole('textbox', { name: '用户名' })).toHaveCount(0)
@@ -104,6 +105,8 @@ for (const width of [1440, 960, 600, 390]) {
     await expect(dialog).toBeHidden()
 
     await expectUserActionAvailable(page, row, '编辑')
+    await expectUserActionAvailable(page, row, '封禁')
+    await expectUserActionAvailable(page, row, '冻结')
     await expectUserActionAvailable(page, row, '删除')
     if (width === 1440) await expect(row.getByRole('button', { name: '编辑', exact: true })).toBeVisible()
     if (width === 390) await expect(row.getByRole('button', { name: '更多用户操作' })).toBeVisible()
@@ -113,11 +116,49 @@ for (const width of [1440, 960, 600, 390]) {
 
 }
 
+test('user status commands follow row state and confirm without mutation', async ({ page }) => {
+  const unexpected = await fixtures(page)
+  await page.goto('./apps/users')
+  const rows = page.locator('tbody tr')
+  await expect(rows.first()).toContainText('member_1', { timeout: 20_000 })
+  await expectUserActionAvailable(page, rows.first(), '封禁')
+  await expectUserActionAvailable(page, rows.first(), '冻结')
+  await expectUserActionAvailable(page, rows.nth(1), '解除封禁')
+  await expectUserActionAvailable(page, rows.nth(2), '审核通过')
+  await openUserAction(page, rows.first(), '封禁')
+  const confirm = page.getByRole('dialog', { name: '封禁' })
+  await expect(confirm).toContainText('林晓（用户 #101）')
+  await expect(confirm).toContainText('账号状态将从“正常”变为“已封禁”')
+  await confirm.getByRole('button', { name: '取消', exact: true }).click()
+  expect(unexpected).toEqual([])
+})
+
+test('single user ban uses the managed status contract', async ({ page }) => {
+  const unexpected = await fixtures(page)
+  const payloads: unknown[] = []
+  await page.route('**/api/admin/users/101', async route => {
+    if (route.request().method() !== 'PATCH') return route.fallback()
+    payloads.push(route.request().postDataJSON())
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await page.goto('./apps/users')
+  const row = page.locator('tbody tr').first()
+  await expect(row).toContainText('member_1', { timeout: 20_000 })
+  await openUserAction(page, row, '封禁')
+  const confirm = page.getByRole('dialog', { name: '封禁' })
+  await expect(confirm).toContainText('账号状态将从“正常”变为“已封禁”')
+  await confirm.getByRole('button', { name: '封禁', exact: true }).click()
+  await expect(confirm).toBeHidden()
+  expect(payloads).toEqual([{ status: 1 }])
+  expect(unexpected).toEqual([])
+})
+
 test('limited roles do not see security or mutation actions', async ({ page }) => {
   await fixtures(page, true)
   await page.goto('./apps/users')
   const row = page.locator('tbody tr').first()
   await expect(row.getByRole('button', { name: '查看', exact: true })).toBeVisible({ timeout: 20_000 })
+  await expect(row.getByRole('button', { name: '查看', exact: true })).toHaveClass(/v-btn--variant-text/)
   await expect(row.getByRole('button')).toHaveCount(1)
   await expect(row.getByRole('link')).toHaveCount(0)
   await expect(row.getByRole('button', { name: '编辑', exact: true })).toHaveCount(0)

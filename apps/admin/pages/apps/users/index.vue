@@ -16,7 +16,7 @@
       :default-columns="defaultColumns"
       v-model:action-capacity="actionCapacity"
       :action-headers="TableHeaders"
-      :action-labels="['查看', '编辑', '删除']"
+      :action-labels="userActionLabels"
       :selection-width="48"
       :result-count="tableHasResult ? tableTotalItems : null"
       :result-state="tableResultState"
@@ -179,6 +179,17 @@
     :initial-mode="quickViewMode"
     @updated="getTableData"
   />
+  <AdminDangerActionDialog
+    v-model="statusCommandOpen"
+    :title="statusCommand?.label || ''"
+    :action-label="statusCommand?.label || ''"
+    :resource-label="statusCommand ? `${statusCommand.username}（用户 #${statusCommand.id}）` : ''"
+    :impact="statusCommand ? `账号状态将从“${statusCommand.sourceLabel}”变为“${statusCommand.targetLabel}”。此操作会影响账号访问或内容可见性。` : ''"
+    :color="statusCommand?.targetStatus === 0 ? 'primary' : 'error'"
+    :loading="statusCommandBusy"
+    :error="statusCommandError"
+    @confirm="confirmStatusCommand"
+  />
   <PublicDeleteDialog
     v-model:thisDialogState="DeleteUserDialog_state"
     v-model:deleteData="DeleteUserDialog_data"
@@ -213,6 +224,7 @@
 
 <script setup lang="ts">
 import type { Role, RoleInfo, User, UsersBatchMethod } from '@lovecards/sdk';
+import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue';
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue';
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue';
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
@@ -553,11 +565,90 @@ const openUserDetail = (id: number, mode: 'view' | 'edit') => {
   quickViewMode.value = mode;
   quickViewOpen.value = true;
 };
+type UserStatusCommand = {
+  key: string;
+  label: string;
+  targetStatus: number;
+};
+const statusLabel = (status: number) => ({ 0: '正常', 1: '已封禁', 2: '已冻结', 3: '待审核' } as Record<number, string>)[status] ?? '未知状态';
+const statusCommandsFor = (user: User): UserStatusCommand[] => {
+  const status = Number(user.status);
+  if (![0, 1, 2, 3].includes(status)) return [];
+  return [
+    ...(status === 1 ? [{ key: 'unban', label: '解除封禁', targetStatus: 0 }] : []),
+    ...(status === 2 ? [{ key: 'unfreeze', label: '解除冻结', targetStatus: 0 }] : []),
+    ...(status === 3 ? [{ key: 'approve', label: '审核通过', targetStatus: 0 }] : []),
+    ...(status !== 1 ? [{ key: 'ban', label: '封禁', targetStatus: 1 }] : []),
+    ...(status !== 2 ? [{ key: 'freeze', label: '冻结', targetStatus: 2 }] : []),
+    ...(status !== 3 ? [{ key: 'review', label: '提交审核', targetStatus: 3 }] : []),
+  ];
+};
+const statusCommandOpen = ref(false);
+const statusCommandBusy = ref(false);
+const statusCommandError = ref('');
+const statusCommand = ref<{
+  id: number; username: string; sourceStatus: number; sourceLabel: string;
+  targetStatus: number; targetLabel: string; label: string;
+} | null>(null);
+const openStatusCommand = async (user: User, command: UserStatusCommand) => {
+  if (!allowRowMutation.value || !canEditUser(user)) return;
+  try {
+    const latest = await client.users.getManaged(user.id);
+    if (!targetMutationAllowed(latest)) {
+      notifier.warning(targetProtectionMessage(latest));
+      return;
+    }
+    if (Number(latest.status) !== Number(user.status)) {
+      notifier.warning('账号状态已变化，请核对刷新后的列表。');
+      await getTableData();
+      return;
+    }
+    statusCommandError.value = '';
+    statusCommand.value = {
+      id: latest.id, username: latest.username, sourceStatus: Number(latest.status),
+      sourceLabel: statusLabel(Number(latest.status)), targetStatus: command.targetStatus,
+      targetLabel: statusLabel(command.targetStatus), label: command.label,
+    };
+    statusCommandOpen.value = true;
+  } catch (cause) {
+    notifier.error(isApiError(cause) ? cause.message : '无法读取最新账号状态，请重试。');
+  }
+};
+const confirmStatusCommand = async () => {
+  const command = statusCommand.value;
+  if (!command || statusCommandBusy.value) return;
+  statusCommandBusy.value = true;
+  statusCommandError.value = '';
+  try {
+    const latest = await client.users.getManaged(command.id);
+    if (!userStore.hasGrant('users.update', 'all')) throw new Error('当前账号无权修改用户状态。');
+    if (!targetMutationAllowed(latest)) throw new Error(targetProtectionMessage(latest));
+    if (Number(latest.status) !== command.sourceStatus) {
+      await getTableData();
+      throw new Error('账号状态已变化，请关闭弹窗并核对刷新后的列表。');
+    }
+    await client.users.updateManaged(command.id, { status: command.targetStatus });
+    statusCommandOpen.value = false;
+    statusCommand.value = null;
+    notifier.success('账号状态已更新');
+    await getTableData();
+  } catch (cause) {
+    statusCommandError.value = isApiError(cause) ? cause.message : cause instanceof Error ? cause.message : '账号状态更新失败，请重试。';
+  } finally {
+    statusCommandBusy.value = false;
+  }
+};
 const userRowActions = (user: User) => [
-  { key: 'view', label: '查看', onClick: () => openUserDetail(user.id, 'view') },
   ...(canEditUser(user) ? [{ key: 'edit', label: '编辑', disabled: !allowRowMutation.value, onClick: () => openUserDetail(user.id, 'edit') }] : []),
+  ...(!canEditUser(user) && userStore.hasGrant('users.read', 'all') ? [{ key: 'view', label: '查看', onClick: () => openUserDetail(user.id, 'view') }] : []),
+  ...(canEditUser(user) ? statusCommandsFor(user).map((command) => ({
+    key: command.key, label: command.label, disabled: !allowRowMutation.value,
+    onClick: () => void openStatusCommand(user, command),
+  })) : []),
   ...(canDeleteUser(user) ? [{ key: 'delete', label: '删除', disabled: !allowRowMutation.value, onClick: () => openDeleteUserDialog(user) }] : []),
 ];
+
+const userActionLabels = computed(() => [...new Set(tableItems.value.flatMap((user) => userRowActions(user).map((action) => action.label)))]);
 
 const DeleteUserDialog_state = ref(false);
 const DeleteUserDialog_data = ref<{ id: number; display?: string }>({ id: 0 });
