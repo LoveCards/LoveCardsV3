@@ -1,6 +1,8 @@
 <template>
-  <v-dialog v-model="thisDialogState" aria-label="创建标签" max-width="560" :persistent="saving">
-    <v-card prepend-icon="mdi-tag-plus-outline" title="创建标签">
+  <v-dialog v-model="thisDialogState" aria-label="创建标签" max-width="480" :persistent="saving">
+    <v-card>
+      <v-card-title class="text-h6">创建标签</v-card-title>
+      <v-divider />
       <v-card-text class="pt-4">
         <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">
           {{ formError }}

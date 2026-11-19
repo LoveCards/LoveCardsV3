@@ -2,44 +2,33 @@
   <AdminAsyncState :loading="loading" :error="error" :empty="!report" @retry="load">
     <template v-if="report">
         <AdminDetailSection title="举报概况">
-          <div class="d-flex flex-wrap justify-space-between ga-3 mb-5">
-            <div><div class="text-caption text-medium-emphasis">当前状态</div><AdminStatusChip :status="report.status" class="mt-1" /></div>
-            <AdminResourceLink :resource-type="report.target_type" :resource-id="report.target_id" />
-          </div>
-          <v-row>
-            <v-col cols="12" md="4">
-              <strong>举报人</strong>
-              <AdminResourceLink :resource-type="'user'" :resource-id="report.reporter_id" class="mt-1" />
-            </v-col>
-            <v-col cols="12" md="4"><strong>原因</strong><div>{{ report.reason }}</div></v-col>
-            <v-col cols="12" md="4">
-              <strong>负责人</strong>
-              <div v-if="!report.assignee_id">未指派</div>
-              <AdminResourceLink v-if="report.assignee_id" :resource-type="'user'" :resource-id="report.assignee_id" class="mt-1" />
-            </v-col>
-            <v-col cols="12"><strong>补充说明</strong><p class="mb-0 mt-1 text-pre-wrap">{{ report.details || '无' }}</p></v-col>
-            <v-col v-if="report.resolution" cols="12"><strong>处理结论</strong><p class="mb-0 mt-1">{{ report.resolution }}</p></v-col>
+          <v-row dense>
+            <v-col cols="12" sm="6"><AdminDetailField label="当前状态"><AdminStatusChip :status="report.status" /></AdminDetailField></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="举报目标"><AdminResourceLink :resource-type="report.target_type" :resource-id="report.target_id" /></AdminDetailField></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="举报人"><AdminResourceLink resource-type="user" :resource-id="report.reporter_id" /></AdminDetailField></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="原因" :value="report.reason" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="负责人"><AdminResourceLink v-if="report.assignee_id" resource-type="user" :resource-id="report.assignee_id" /><span v-else>未指派</span></AdminDetailField></v-col>
+            <v-col cols="12"><AdminDetailField label="补充说明" :value="report.details || '无'" /></v-col>
+            <v-col v-if="report.resolution" cols="12"><AdminDetailField label="处理结论" :value="report.resolution" /></v-col>
           </v-row>
         </AdminDetailSection>
-        <AdminDetailSection v-if="evidence" title="举报证据（提交时快照）" class="mt-5">
-          <v-alert class="mb-4" type="info" variant="tonal">证据取自举报提交时刻，正文按前 2000 字留存；哈希对应全文，原文后续被修改或删除不影响验证。</v-alert>
+        <AdminDetailSection v-if="evidence" title="举报证据（提交时快照）" description="正文保留前 2000 字；哈希对应提交时全文。">
           <v-row>
-            <v-col v-for="field in evidenceFields" :key="field.label" cols="12" :md="field.wide ? 12 : 4">
-              <strong>{{ field.label }}</strong>
-              <div class="text-pre-wrap">{{ field.value }}</div>
+            <v-col v-for="field in evidenceFields" :key="field.label" cols="12" :sm="field.wide ? 12 : 6">
+              <AdminDetailField :label="field.label" :value="field.value" />
             </v-col>
           </v-row>
           <template v-if="evidenceContent">
-            <div class="mt-4"><strong>当时内容</strong><p class="mb-0 mt-1 text-pre-wrap">{{ evidenceContent }}</p></div>
+            <AdminDetailField class="mt-4" label="当时内容" :value="evidenceContent" />
             <div v-if="evidenceTruncated" class="mt-1 text-caption text-medium-emphasis">内容超长，仅留存前 2000 字。</div>
           </template>
           <div v-if="evidenceSha" class="mt-3 text-caption text-medium-emphasis">内容哈希（sha256）：{{ evidenceSha }}</div>
         </AdminDetailSection>
-        <AdminDetailSection title="处理记录" class="mt-5">
+        <AdminDetailSection title="处理记录">
           <AdminStateTimeline :items="timelineItems" />
         </AdminDetailSection>
 
-      <AdminDetailSection v-if="canManage" title="处理操作" class="mt-5">
+      <AdminDetailSection v-if="canManage" title="处理操作">
         <div v-if="mode === 'view'" class="d-flex flex-wrap ga-2">
           <v-btn v-if="canTransition" prepend-icon="mdi-gavel" variant="tonal" @click="startProcessing">更新处理状态</v-btn>
           <v-btn prepend-icon="mdi-note-text-outline" variant="outlined" @click="startNote">追加备注</v-btn>
@@ -68,6 +57,7 @@ import type { AdminReport, AdminReportEvent, AdminReportEvidence } from '@loveca
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDetailSection from '~/components/shared/admin/AdminDetailSection.vue'
+import AdminDetailField from '~/components/shared/admin/AdminDetailField.vue'
 import AdminStateTimeline from '~/components/shared/admin/AdminStateTimeline.vue'
 import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'

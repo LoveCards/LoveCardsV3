@@ -9,30 +9,31 @@
           </div>
           <p v-if="mode === 'view'" class="text-body-1 text-pre-wrap mb-4">{{ comment.content || '—' }}</p>
           <template v-else>
-            <v-alert class="mb-4" type="info" variant="tonal">后台修改会记录操作者与变更前后状态。</v-alert>
             <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">{{ formError }}</v-alert>
             <v-textarea v-model="draft" auto-grow :disabled="saving" label="评论正文" maxlength="140" rows="4" variant="outlined" />
           </template>
+          <v-divider class="my-5" />
+          <h3 class="text-subtitle-1 font-weight-medium mb-3">关联与发布</h3>
           <v-row dense>
-            <v-col cols="12" sm="6"><strong>作者</strong><div><AdminResourceLink resource-type="user" :resource-id="comment.user_id" :label="`${comment.username || '用户'} #${comment.user_id}`" /></div></v-col>
-            <v-col cols="12" sm="6"><strong>所属卡片</strong><div><AdminResourceLink resource-type="card" :resource-id="comment.card_id" /></div></v-col>
-            <v-col cols="12" sm="6"><strong>父评论</strong><div v-if="comment.parent_id"><AdminResourceLink resource-type="comment" :resource-id="comment.parent_id" /></div><div v-else>—</div></v-col>
-            <v-col cols="12" sm="6"><strong>点赞数</strong><div>{{ comment.goods }}</div></v-col>
-            <v-col cols="12" sm="6"><strong>发布时间</strong><div><AdminTableTime :value="comment.created_at" /></div></v-col>
-            <v-col cols="12" sm="6"><strong>更新时间</strong><div><AdminTableTime :value="comment.updated_at" /></div></v-col>
-            <v-col v-if="comment.post_ip" cols="12" sm="6"><strong>发布 IP</strong><div>{{ comment.post_ip }}</div></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="作者"><AdminResourceLink resource-type="user" :resource-id="comment.user_id" :label="`${comment.username || '用户'} #${comment.user_id}`" /></AdminDetailField></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="所属卡片"><AdminResourceLink resource-type="card" :resource-id="comment.card_id" /></AdminDetailField></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="父评论"><AdminResourceLink v-if="comment.parent_id" resource-type="comment" :resource-id="comment.parent_id" /><span v-else>—</span></AdminDetailField></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="点赞数" :value="comment.goods" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="发布时间"><AdminTableTime :value="comment.created_at" /></AdminDetailField></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="更新时间"><AdminTableTime :value="comment.updated_at" /></AdminDetailField></v-col>
+            <v-col v-if="comment.post_ip" cols="12" sm="6"><AdminDetailField label="发布 IP" :value="comment.post_ip" /></v-col>
           </v-row>
           <v-expansion-panels v-if="comment.data" class="my-4" variant="accordion"><v-expansion-panel title="查看扩展字段（只读）"><v-expansion-panel-text><pre class="text-wrap">{{ displayJson(comment.data) }}</pre></v-expansion-panel-text></v-expansion-panel></v-expansion-panels>
-          <v-sheet v-if="mode === 'view' && commands.length" border rounded="lg" class="pa-4 mt-5">
+          <section v-if="mode === 'view' && commands.length" class="mt-5">
+            <v-divider class="mb-4" />
             <h3 class="text-subtitle-1 font-weight-medium mb-2">评论治理</h3>
-            <p class="text-body-2 text-medium-emphasis mb-3">审核、封禁、隐藏和置顶是立即生效的命令。</p>
             <v-alert v-if="commandError" class="mb-3" role="alert" type="error" variant="tonal">{{ commandError }}</v-alert>
             <div class="d-flex flex-wrap ga-2"><v-btn v-for="action in commands" :key="action.method" :disabled="busy" variant="outlined" @click="pendingCommand = action">{{ action.label }}</v-btn></div>
             <v-alert v-if="pendingCommand" class="mt-4" type="warning" variant="tonal">
               {{ pendingCommand.impact }}确定对评论 #{{ commentId }}执行“{{ pendingCommand.label }}”吗？
               <template #append><v-btn :disabled="busy" variant="text" @click="pendingCommand = null">取消</v-btn><v-btn color="warning" :loading="busy" variant="flat" @click="runCommand">{{ pendingCommand.label }}</v-btn></template>
             </v-alert>
-          </v-sheet>
+          </section>
         </template>
       </AdminAsyncState>
     </v-card-text>
@@ -53,6 +54,7 @@ import { commentGovernanceActions, type CommentGovernanceAction } from '~/compon
 import AdminContentStatus from '~/components/content/AdminContentStatus.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'
+import AdminDetailField from '~/components/shared/admin/AdminDetailField.vue'
 import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue'
 import { useAdminNotifier } from '~/composables/useAdminNotifier'
 import { isApiError, useApi } from '~/lib/api'

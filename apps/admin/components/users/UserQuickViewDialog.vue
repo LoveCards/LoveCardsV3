@@ -1,11 +1,10 @@
 <template>
-  <v-dialog :model-value="open" aria-label="用户详情" :fullscreen="xs" max-width="720" @update:model-value="onDialogChange">
+  <v-dialog :model-value="open" aria-label="用户详情" :fullscreen="xs" max-width="880" @update:model-value="onDialogChange">
     <v-card>
       <v-card-title class="d-flex align-center ga-3">
-        <v-icon icon="mdi-account-outline" size="small" />
         <span>{{ initialMode === 'edit' ? '编辑用户' : '查看用户' }}</span>
         <v-spacer />
-        <v-btn icon="mdi-close" variant="text" aria-label="关闭用户详情" @click="close" />
+        <v-btn icon="mdi-close" variant="text" aria-label="关闭" @click="close" />
       </v-card-title>
       <v-divider />
       <v-card-text class="admin-user-detail-body">
@@ -19,12 +18,11 @@
           @updated="$emit('updated')"
         />
       </v-card-text>
-      <v-divider />
-      <v-card-actions class="pa-4">
+      <v-divider v-if="loadedUser" />
+      <v-card-actions v-if="loadedUser" class="pa-4">
         <v-btn v-if="loadedUser && canReadSecurity" variant="text" @click="navigateAfterConfirm('/apps/users/' + loadedUser.id + '/security')">账号安全</v-btn>
-        <v-spacer />
-        <v-btn variant="text" @click="close">关闭</v-btn>
-        <v-btn v-if="loadedUser" variant="outlined" @click="navigateAfterConfirm('/apps/users/' + loadedUser.id, true)">打开完整页面</v-btn>
+
+        <v-btn v-if="loadedUser" variant="text" @click="navigateAfterConfirm('/apps/users/' + loadedUser.id, true)">打开完整页面</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

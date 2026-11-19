@@ -1,9 +1,9 @@
 <template>
-  <v-dialog :model-value="modelValue" :fullscreen="smAndDown" :persistent="busy" aria-label="卡片详情" max-width="1040" scrollable @update:model-value="requestClose">
+  <v-dialog :model-value="modelValue" :fullscreen="xs" :persistent="busy" aria-label="卡片详情" max-width="1040" scrollable @update:model-value="requestClose">
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between ga-2">
         <span>卡片 #{{ cardId }}</span>
-        <v-btn aria-label="关闭卡片详情" icon="mdi-close" variant="text" @click="requestClose(false)" />
+        <v-btn aria-label="关闭" icon="mdi-close" variant="text" @click="requestClose(false)" />
       </v-card-title>
       <v-divider />
       <v-card-text class="pa-0">
@@ -18,11 +18,9 @@
           @saved="emit('saved')"
         />
       </v-card-text>
-      <v-divider />
-      <v-card-actions class="pa-4">
+      <v-divider v-if="cardId && !dirty" />
+      <v-card-actions v-if="cardId && !dirty" class="pa-4">
         <v-btn v-if="cardId && !dirty" :to="{ path: `/apps/content/cards/${cardId}`, state: { listSource: sourcePath } }" variant="text">打开完整页面</v-btn>
-        <v-spacer />
-        <v-btn variant="outlined" :disabled="busy" @click="requestClose(false)">关闭</v-btn>
       </v-card-actions>
       <v-alert v-if="confirmClose" class="ma-4" type="warning" variant="tonal">
         卡片有未保存修改，确定关闭并放弃吗？
@@ -46,7 +44,7 @@ const props = withDefaults(defineProps<{
   initialMode?: 'view' | 'edit'
 }>(), { initialMode: 'view' })
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; saved: [] }>()
-const { smAndDown } = useDisplay()
+const { xs } = useDisplay()
 const dirty = ref(false)
 const busy = ref(false)
 const confirmClose = ref(false)

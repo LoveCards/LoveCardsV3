@@ -18,14 +18,14 @@
           title="目标账号受保护"
           :text="protectionNotice"
         />
-        <v-sheet border rounded="lg" class="pa-5">
-          <v-row>
-            <v-col cols="12" md="4"><div class="text-caption text-medium-emphasis">用户编号</div><div>#{{ security.user.id }} · {{ security.user.number }}</div></v-col>
-            <v-col cols="12" md="4"><AdminSensitiveField label="邮箱" :value="security.user.email" /></v-col>
-            <v-col cols="12" md="4"><AdminSensitiveField label="手机号" :value="security.user.phone" /></v-col>
-            <v-col cols="12" md="4"><div class="text-caption text-medium-emphasis">账号状态</div><AdminStatusChip :status="accountStatus.status" :label="accountStatus.label" class="mt-1" /></v-col>
-            <v-col cols="12" md="4"><div class="text-caption text-medium-emphasis">安全版本</div><div>{{ security.user.security_version }}</div></v-col>
-            <v-col cols="12" md="4"><div class="text-caption text-medium-emphasis">恢复挑战</div><div>{{ security.recovery_challenges }} 个</div></v-col>
+        <v-sheet border rounded="lg" class="pa-6">
+          <v-row dense>
+            <v-col cols="12" sm="6"><AdminDetailField label="用户编号" :value="`#${security.user.id} · ${security.user.number}`" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="账号状态"><AdminStatusChip :status="accountStatus.status" :label="accountStatus.label" /></AdminDetailField></v-col>
+            <v-col cols="12" sm="6"><AdminSensitiveField label="邮箱" :value="security.user.email" /></v-col>
+            <v-col cols="12" sm="6"><AdminSensitiveField label="手机号" :value="security.user.phone" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="安全版本" :value="security.user.security_version" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="恢复挑战" :value="`${security.recovery_challenges} 个`" /></v-col>
           </v-row>
         </v-sheet>
 
@@ -61,6 +61,7 @@ import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerAction
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminSensitiveField from '~/components/shared/admin/AdminSensitiveField.vue'
+import AdminDetailField from '~/components/shared/admin/AdminDetailField.vue'
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
 import { useApi, isApiError } from '~/lib/api'
 import { useAdminNotifier } from '~/composables/useAdminNotifier'

@@ -9,22 +9,14 @@
     @retry="load"
   >
     <template v-if="permission">
-      <v-sheet border rounded="lg" overflow-hidden>
-        <v-list lines="two">
-          <v-list-item prepend-icon="mdi-key-outline" subtitle="能力标识" :title="permission.capability" />
-          <v-divider />
-          <v-list-item prepend-icon="mdi-target-account" subtitle="作用域" :title="scopeLabel" />
-          <v-divider />
-          <v-list-item prepend-icon="mdi-text-box-check-outline" subtitle="服务端说明" :title="permission.description" />
-        </v-list>
+      <v-sheet border rounded="lg" class="pa-6">
+        <v-row dense>
+          <v-col cols="12" sm="6"><AdminDetailField label="能力标识" :value="permission.capability" /></v-col>
+          <v-col cols="12" sm="6"><AdminDetailField label="作用域" :value="scopeLabel" /></v-col>
+          <v-col cols="12"><AdminDetailField label="服务端说明" :value="permission.description" /></v-col>
+        </v-row>
       </v-sheet>
-      <v-alert
-        class="mt-6"
-        type="warning"
-        variant="tonal"
-        title="授予前先确认职责边界"
-        text="权限必须通过角色组合授予；页面入口、动作按钮和后端路由都应引用同一个 capability 与 scope。"
-      />
+
     </template>
   </AdminAsyncState>
 </template>
@@ -32,6 +24,7 @@
 <script setup lang="ts">
 import type { AuthorizationScope, CapabilityItem } from '@lovecards/sdk'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
+import AdminDetailField from '~/components/shared/admin/AdminDetailField.vue'
 import { isApiError, useApi } from '~/lib/api'
 
 const props = defineProps<{ capability: string; scope: string }>()

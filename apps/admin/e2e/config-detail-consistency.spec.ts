@@ -140,7 +140,7 @@ test('missing audit detail retains the return route', async ({ page }) => {
   await fixture(page)
   await page.route('**/api/admin/audit-logs/1', route => route.fulfill({ status: 404, json: { success: false, message: '记录不存在', code: 404 } }))
   await page.goto('./apps/operations/audit/1')
-  await expect(page.getByText('审计记录不存在', { exact: true })).toBeVisible()
+  await expect(page.locator('main')).toContainText('审计记录不存在')
   await expect(page.getByRole('link', { name: '返回列表', exact: true })).toHaveAttribute('href', '/admin/apps/operations/audit')
 })
 

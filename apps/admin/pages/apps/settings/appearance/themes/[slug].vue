@@ -82,7 +82,6 @@
                 />
               </v-col>
             </v-row>
-            <v-divider class="mb-4" />
             <AdminConfigSaveBar v-if="canUpdateTheme" :dirty="configChanged" label="主题配置">
               <AdminActionGuard capability="theme.update" scope="global">
                 <v-btn

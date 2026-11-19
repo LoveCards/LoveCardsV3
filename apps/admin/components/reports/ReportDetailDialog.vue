@@ -1,11 +1,11 @@
 <template>
-  <v-dialog :model-value="open" aria-label="举报详情" :fullscreen="xs" max-width="760" @update:model-value="onDialogChange">
+  <v-dialog :model-value="open" aria-label="举报详情" :fullscreen="xs" max-width="1040" @update:model-value="onDialogChange">
     <v-card>
       <v-card-title class="d-flex align-center ga-3">
         <v-icon icon="mdi-flag-outline" size="small" />
         <span>举报 #{{ reportId }}</span>
         <v-spacer />
-        <v-btn icon="mdi-close" variant="text" aria-label="关闭举报详情" @click="close" />
+        <v-btn icon="mdi-close" variant="text" aria-label="关闭" @click="close" />
       </v-card-title>
       <v-divider />
       <v-card-text class="admin-report-detail-body">
@@ -19,11 +19,10 @@
           @updated="$emit('updated')"
         />
       </v-card-text>
-      <v-divider />
-      <v-card-actions class="pa-4">
-        <v-spacer />
-        <v-btn variant="text" @click="close">关闭</v-btn>
-        <v-btn v-if="report" variant="outlined" @click="openFullPage">打开完整页面</v-btn>
+      <v-divider v-if="report" />
+      <v-card-actions v-if="report" class="pa-4">
+
+        <v-btn v-if="report" variant="text" @click="openFullPage">打开完整页面</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

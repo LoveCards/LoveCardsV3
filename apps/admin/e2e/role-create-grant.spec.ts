@@ -23,7 +23,7 @@ test('created custom role persists grants across reload', async ({ page }) => {
 
   // 1. 创建：对话框填写名称/slug/描述并提交
   await page.getByRole('button', { name: '创建角色' }).first().click()
-  const createDialog = page.locator('.v-dialog:visible').filter({ hasText: '创建角色后还需要分配权限' })
+  const createDialog = page.getByRole('dialog', { name: '创建角色' })
   await createDialog.getByLabel('角色名称').fill(roleName)
   await createDialog.getByLabel('角色标识（Slug）').fill(roleSlug)
   await createDialog.getByLabel('角色描述').fill('E2E 浏览器写路径验收角色')

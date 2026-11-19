@@ -1,9 +1,9 @@
 <template>
-  <section :aria-labelledby="headingId" class="admin-config-section">
-    <v-card>
+  <section :aria-labelledby="headingId" class="admin-config-section" :class="{ 'admin-config-section--joined': joined }">
+    <v-card :border="!joined" :rounded="joined ? 0 : 'lg'" elevation="0" variant="flat">
       <div class="admin-config-section__header">
         <div class="d-flex align-start ga-3 min-w-0">
-          <v-icon v-if="icon" :color="risk === 'high' ? 'warning' : 'primary'" :icon="icon" class="mt-1" />
+          <v-icon v-if="icon" :icon="icon" class="mt-1 text-medium-emphasis" size="small" />
           <div class="min-w-0">
             <div class="d-flex flex-wrap align-center ga-2">
               <h2 :id="headingId" class="text-h6">{{ title }}</h2>
@@ -20,7 +20,7 @@
         </div>
       </div>
       <v-divider />
-      <v-card-text>
+      <v-card-text class="admin-config-section__body">
         <slot />
       </v-card-text>
       <template v-if="$slots.footer">
@@ -40,24 +40,34 @@ const props = withDefaults(defineProps<{
   icon?: string
   dirty?: boolean
   risk?: 'normal' | 'high'
+  joined?: boolean
 }>(), {
   description: '',
   icon: '',
   dirty: false,
   risk: 'normal',
+  joined: false,
 })
 
 const headingId = computed(() => `admin-config-${props.title.toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-')}`)
 </script>
 
 <style scoped>
+.admin-config-section--joined + .admin-config-section--joined {
+  border-top: 1px solid rgb(var(--v-theme-outline));
+}
+
 .admin-config-section__header,
 .admin-config-section__footer {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px;
+  padding: 24px;
+}
+
+.admin-config-section__body {
+  padding: 24px;
 }
 
 .admin-config-section__actions {
@@ -71,6 +81,15 @@ const headingId = computed(() => `admin-config-${props.title.toLocaleLowerCase()
   .admin-config-section__header,
   .admin-config-section__footer {
     flex-direction: column;
+  }
+
+  .admin-config-section__body {
+    padding: 16px;
+  }
+
+  .admin-config-section__header,
+  .admin-config-section__footer {
+    padding: 16px;
   }
 
   .admin-config-section__actions {

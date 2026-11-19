@@ -52,11 +52,12 @@
         <v-card-title class="text-h6">上传升级包</v-card-title>
         <v-divider />
         <v-card-text class="pt-5">
+          <p class="mb-4 text-body-2 text-medium-emphasis">选择已签名的 Release ZIP；上传后会立即创建升级计划。</p>
           <v-file-input v-model="releaseFile" accept=".zip,application/zip" label="签名 Release ZIP" prepend-icon="mdi-file-upload-outline" variant="outlined" :disabled="creating" />
           <v-alert v-if="uploadError" class="mt-3" :text="uploadError" type="error" variant="tonal" />
         </v-card-text>
         <v-divider />
-        <v-card-actions class="pa-4"><v-spacer /><v-btn :disabled="creating" variant="text" @click="uploadDialog = false">取消</v-btn><v-btn color="primary" :loading="creating" :disabled="!releaseFile" @click="createPlan">上传</v-btn></v-card-actions>
+        <v-card-actions class="pa-4"><v-spacer /><v-btn :disabled="creating" variant="text" @click="uploadDialog = false">取消</v-btn><v-btn color="primary" :loading="creating" :disabled="!releaseFile" variant="flat" @click="createPlan">上传</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="pa-4">
+  <div>
     <AdminAsyncState :loading="loading" :error="loadError" :empty="!role" empty-title="角色不存在" @retry="load">
       <template v-if="role">
         <v-alert v-if="actionError" class="mb-4" type="error" variant="tonal">{{ actionError }}</v-alert>
@@ -16,9 +16,9 @@
           <v-alert v-if="classification === 'unknown'" class="mb-4" type="warning" variant="tonal">无法确认角色类型，编辑与分配权限已锁定。</v-alert>
           <v-alert v-else-if="classification === 'system' && mode === 'edit'" class="mb-4" type="info" variant="tonal">系统角色的标识由服务端固定，只允许超级管理员修改名称和说明。</v-alert>
           <v-row v-if="mode !== 'edit'" dense>
-            <v-col cols="12" sm="6"><div class="text-caption text-medium-emphasis">稳定标识</div><div>{{ role.slug }}</div></v-col>
-            <v-col cols="12" sm="6"><div class="text-caption text-medium-emphasis">编号</div><div>#{{ role.id }}</div></v-col>
-            <v-col cols="12"><div class="text-caption text-medium-emphasis">职责说明</div><div class="text-pre-wrap">{{ role.description || '未填写职责说明' }}</div></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="稳定标识" :value="role.slug" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="编号" :value="`#${role.id}`" /></v-col>
+            <v-col cols="12"><AdminDetailField label="职责说明" :value="role.description || '未填写职责说明'" /></v-col>
           </v-row>
           <template v-else>
             <v-row dense>
@@ -33,7 +33,7 @@
           </template>
         </AdminDetailSection>
 
-        <AdminDetailSection class="mt-5" title="已授予能力" description="权限分配独立保存，会影响角色可见数据和可执行操作。">
+        <AdminDetailSection title="已授予能力" description="权限分配独立保存，会影响角色可见数据和可执行操作。">
           <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-3">
             <v-chip size="small" variant="outlined">{{ grants.length }} 项</v-chip>
             <v-btn v-if="mode === 'view' && canAssign" variant="outlined" prepend-icon="mdi-shield-key-outline" @click="startAssign">分配权限</v-btn>
@@ -59,7 +59,7 @@
             </div>
           </template>
           <v-list v-else-if="grants.length" density="compact">
-            <v-list-item v-for="grant in grants" :key="grantKey(grant)" prepend-icon="mdi-key-outline" :title="grant.capability" :subtitle="scopeLabel(grant.scope)" :to="permissionPath(grant)" />
+            <v-list-item v-for="grant in grants" :key="grantKey(grant)" :title="grant.capability" :subtitle="scopeLabel(grant.scope)" :to="permissionPath(grant)" />
           </v-list>
           <p v-else class="text-body-2 text-medium-emphasis">该角色没有单独授予的能力。</p>
         </AdminDetailSection>
@@ -76,6 +76,7 @@
 import type { AuthorizationScope, CapabilityItem, Grant, Role } from '@lovecards/sdk'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDetailSection from '~/components/shared/admin/AdminDetailSection.vue'
+import AdminDetailField from '~/components/shared/admin/AdminDetailField.vue'
 import { isApiError, useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 

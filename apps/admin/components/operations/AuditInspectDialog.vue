@@ -1,7 +1,7 @@
 <template>
   <v-dialog
     :model-value="modelValue"
-    :fullscreen="smAndDown"
+    :fullscreen="xs"
     aria-label="查看审计"
     max-width="1040"
     scrollable
@@ -10,17 +10,16 @@
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between ga-3">
         <span>审计记录 #{{ auditId }}</span>
-        <v-btn aria-label="关闭审计记录" icon="mdi-close" variant="text" @click="emit('update:modelValue', false)" />
+        <v-btn aria-label="关闭" icon="mdi-close" variant="text" @click="emit('update:modelValue', false)" />
       </v-card-title>
       <v-divider />
       <v-card-text>
         <AuditDetailContent v-if="modelValue && auditId" :audit-id="auditId" />
       </v-card-text>
-      <v-divider />
-      <v-card-actions class="pa-4">
-        <v-spacer />
-        <v-btn variant="text" @click="emit('update:modelValue', false)">关闭</v-btn>
-        <v-btn v-if="auditId" variant="outlined" @click="openFullPage">打开完整页面</v-btn>
+      <v-divider v-if="auditId" />
+      <v-card-actions v-if="auditId" class="pa-4">
+
+        <v-btn v-if="auditId" variant="text" @click="openFullPage">打开完整页面</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -32,7 +31,7 @@ import AuditDetailContent from '~/components/operations/AuditDetailContent.vue'
 
 const props = defineProps<{ modelValue: boolean; auditId: number | null; sourcePath: string }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
-const { smAndDown } = useDisplay()
+const { xs } = useDisplay()
 const router = useRouter()
 
 async function openFullPage() {

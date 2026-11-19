@@ -1,18 +1,15 @@
 <template>
-  <div class="pa-4">
+  <div>
     <AdminAsyncState :loading="loading" :error="loadError" :empty="!tag" empty-title="标签不存在" @retry="loadTag">
       <template v-if="tag">
         <v-alert v-if="actionError" class="mb-4" role="alert" type="error" variant="tonal">{{ actionError }}</v-alert>
         <AdminDetailSection title="标签信息">
-          <div class="d-flex flex-wrap align-center justify-space-between ga-3 mb-4">
-            <div>
-              <div class="text-caption text-medium-emphasis">名称</div>
-              <div v-if="mode === 'view'" class="text-body-1 font-weight-medium">{{ tag.name }}</div>
-            </div>
-            <v-btn v-if="mode === 'view' && canUpdate && !pending" prepend-icon="mdi-pencil-outline" variant="outlined" @click="startEditing">编辑名称</v-btn>
+          <div class="d-flex flex-wrap align-start justify-space-between ga-3 mb-4">
+            <AdminDetailField v-if="mode === 'view'" label="名称" :value="tag.name" />
+            <v-text-field v-else v-model="draftName" class="flex-grow-1" :disabled="pending" density="comfortable" label="标签名称" maxlength="50" required variant="outlined" />
+            <v-btn v-if="mode === 'view' && canUpdate && !pending" variant="text" @click="startEditing">编辑</v-btn>
           </div>
           <template v-if="mode === 'edit'">
-            <v-text-field v-model="draftName" :disabled="pending" label="标签名称" maxlength="50" required variant="outlined" />
             <v-alert v-if="confirmCancel" class="mb-3" type="warning" variant="tonal">
               标签名称有未保存修改，确定放弃吗？
               <template #append>
@@ -26,13 +23,13 @@
             </div>
           </template>
           <v-row dense class="mt-2">
-            <v-col cols="12" sm="6"><div class="text-caption text-medium-emphasis">编号</div><div>#{{ tag.id }}</div></v-col>
-            <v-col cols="12" sm="6"><div class="text-caption text-medium-emphasis">创建用户</div><AdminResourceLink resource-type="user" :resource-id="tag.user_id" :label="`用户 #${tag.user_id}`" /></v-col>
-            <v-col cols="12" sm="6"><div class="text-caption text-medium-emphasis">应用 ID</div><div>{{ tag.aid }}</div></v-col>
-            <v-col cols="12" sm="6"><div class="text-caption text-medium-emphasis">创建时间</div><AdminTableTime :value="tag.created_at" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="创建用户"><AdminResourceLink resource-type="user" :resource-id="tag.user_id" :label="`用户 #${tag.user_id}`" /></AdminDetailField></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="创建时间"><AdminTableTime :value="tag.created_at" /></AdminDetailField></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="编号" :value="`#${tag.id}`" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="应用 ID" :value="tag.aid" /></v-col>
           </v-row>
         </AdminDetailSection>
-        <AdminDetailSection class="mt-4" title="治理状态" description="状态变更单独执行并记录审核结果。">
+        <AdminDetailSection title="治理状态" description="状态变更单独执行并记录审核结果。">
           <v-chip size="small" variant="tonal" :color="statusColor">{{ statusLabel }}</v-chip>
           <div v-if="canUpdate && mode === 'view'" class="d-flex flex-wrap ga-2 mt-4">
             <v-btn v-for="action in governanceActions" :key="action.method" :disabled="pending" size="small" variant="outlined" @click="selectedAction = action">{{ action.label }}</v-btn>
@@ -57,6 +54,7 @@ import { useUserStore } from '~/stores/userStore'
 import { useTagsStore } from '~/stores/tagsStore'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDetailSection from '~/components/shared/admin/AdminDetailSection.vue'
+import AdminDetailField from '~/components/shared/admin/AdminDetailField.vue'
 import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'
 import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue'
 

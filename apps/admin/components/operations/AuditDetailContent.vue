@@ -12,39 +12,15 @@
   >
     <template v-if="auditLog">
       <AdminDetailSection title="操作概况">
-        <v-list lines="two">
-          <v-list-item prepend-icon="mdi-shield-check-outline" subtitle="操作" :title="auditLog.action" />
-          <v-divider />
-          <v-list-item prepend-icon="mdi-account-outline" subtitle="操作者">
-            <template #title>
-              <AdminResourceLink
-                v-if="auditLog.actor_id"
-                :label="`用户 #${auditLog.actor_id}`"
-                resource-type="user"
-                :resource-id="auditLog.actor_id"
-              />
-              <span v-else>系统</span>
-            </template>
-          </v-list-item>
-          <v-divider />
-          <v-list-item prepend-icon="mdi-target" subtitle="目标资源">
-            <template #title>
-              <AdminResourceLink
-                v-if="auditLog.resource_type"
-                :resource-type="auditLog.resource_type"
-                :resource-id="auditLog.resource_id"
-              />
-              <span v-else>未关联资源</span>
-            </template>
-          </v-list-item>
-          <v-divider />
-          <v-list-item prepend-icon="mdi-clock-outline" subtitle="记录时间">
-            <template #title><AdminTableTime :value="auditLog.created_at" seconds /></template>
-          </v-list-item>
-        </v-list>
+        <v-row dense>
+          <v-col cols="12" sm="6"><AdminDetailField label="操作" :value="auditLog.action" /></v-col>
+          <v-col cols="12" sm="6"><AdminDetailField label="操作者"><AdminResourceLink v-if="auditLog.actor_id" :label="`用户 #${auditLog.actor_id}`" resource-type="user" :resource-id="auditLog.actor_id" /><span v-else>系统</span></AdminDetailField></v-col>
+          <v-col cols="12" sm="6"><AdminDetailField label="目标资源"><AdminResourceLink v-if="auditLog.resource_type" :resource-type="auditLog.resource_type" :resource-id="auditLog.resource_id" /><span v-else>未关联资源</span></AdminDetailField></v-col>
+          <v-col cols="12" sm="6"><AdminDetailField label="记录时间"><AdminTableTime :value="auditLog.created_at" seconds /></AdminDetailField></v-col>
+        </v-row>
       </AdminDetailSection>
 
-      <AdminDetailSection title="状态变化" class="mt-5">
+      <AdminDetailSection title="状态变化">
         <template #actions><v-chip size="small" variant="outlined">服务端已脱敏</v-chip></template>
         <v-row v-if="hasBefore || hasAfter" dense>
           <v-col cols="12" md="6">
@@ -65,27 +41,18 @@
         </v-sheet>
       </AdminDetailSection>
 
-      <AdminDetailSection title="请求链路" class="mt-5">
-        <v-list lines="two">
-          <v-list-item prepend-icon="mdi-identifier" subtitle="Request ID" :title="auditLog.request_id || '未提供'" />
-          <v-divider />
-          <v-list-item prepend-icon="mdi-vector-link" subtitle="Correlation ID" :title="auditLog.correlation_id || '未提供'" />
-        </v-list>
+      <AdminDetailSection title="请求链路">
+        <v-row dense>
+          <v-col cols="12" sm="6"><AdminDetailField label="Request ID" :value="auditLog.request_id || '未提供'" /></v-col>
+          <v-col cols="12" sm="6"><AdminDetailField label="Correlation ID" :value="auditLog.correlation_id || '未提供'" /></v-col>
+        </v-row>
       </AdminDetailSection>
 
-      <AdminDetailSection v-if="hasExtraContext" title="其他受控上下文" class="mt-5">
+      <AdminDetailSection v-if="hasExtraContext" title="其他受控上下文">
         <div class="audit-detail__snapshot"><pre>{{ serialize(extraContext) }}</pre></div>
       </AdminDetailSection>
 
-      <v-alert
-        class="mt-6"
-        icon="mdi-shield-lock-outline"
-        title="敏感信息由服务端统一处理"
-        type="info"
-        variant="tonal"
-      >
-        本页只消费审计资源的受控字段；IP 摘要和未列入资源契约的数据不会由前端请求或展示。
-      </v-alert>
+
     </template>
   </AdminAsyncState>
 </template>
@@ -94,6 +61,7 @@
 import type { OperationsAuditLog } from '@lovecards/sdk'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDetailSection from '~/components/shared/admin/AdminDetailSection.vue'
+import AdminDetailField from '~/components/shared/admin/AdminDetailField.vue'
 import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'
 import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue'
 import { isApiError, useApi } from '~/lib/api'

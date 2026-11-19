@@ -10,8 +10,7 @@
     <EventRecords v-if="activeTab === 'events' && canReadEvents" />
     <EventHandlerCatalog v-if="activeTab === 'handlers' && canReadRuntime" />
 
-    <div v-if="activeTab === 'status' && canReadRuntime" class="d-flex flex-wrap align-center justify-space-between ga-3 mb-4">
-      <h2 class="text-h6">运行状态</h2>
+    <div v-if="activeTab === 'status' && canReadRuntime" class="d-flex flex-wrap justify-end ga-2 mb-4">
       <div class="d-flex flex-wrap align-center ga-2">
         <span v-if="hasUnsavedChanges" class="text-caption text-medium-emphasis">先处理未保存的修改，再刷新</span>
         <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="hasUnsavedChanges" @click="load">刷新运行状态</v-btn>

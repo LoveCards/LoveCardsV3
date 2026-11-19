@@ -11,7 +11,6 @@
       <v-tab v-if="canAccessTab('content')" prepend-icon="mdi-shield-check-outline" value="content">内容规则<span v-if="dirtyTabs.content" class="ml-2">· 未保存</span></v-tab>
       <v-tab v-if="canAccessTab('notifications')" prepend-icon="mdi-bell-cog-outline" value="notifications">通知策略<span v-if="dirtyTabs.notifications" class="ml-2">· 未保存</span></v-tab>
     </v-tabs>
-    <v-divider class="mb-6" />
 
     <v-window v-if="ready && userStore.userInfo && availableTabs.length" v-model="tab">
       <v-window-item value="access">

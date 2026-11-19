@@ -14,78 +14,81 @@
         {{ message.text }}
       </v-alert>
 
-      <AdminConfigSection
-        class="mb-4"
-        :dirty="changed"
-        description="访客浏览决定未登录用户能否访问公开内容。"
-        icon="mdi-account-key-outline"
-        title="访问设置"
-      >
-        <v-select
-          v-model="visitorMode"
-          :disabled="!canUpdateConfig || saving"
-          density="comfortable"
-          item-title="title"
-          item-value="value"
-          :items="switchItems"
-          label="访客浏览"
-          variant="outlined"
-        />
-      </AdminConfigSection>
+      <v-sheet border rounded="lg">
+        <AdminConfigSection
+          joined
+          :dirty="changed"
+          description="访客浏览决定未登录用户能否访问公开内容。"
+          icon="mdi-account-key-outline"
+          title="访问设置"
+        >
+          <v-select
+            v-model="visitorMode"
+            :disabled="!canUpdateConfig || saving"
+            density="comfortable"
+            item-title="title"
+            item-value="value"
+            :items="switchItems"
+            label="访客浏览"
+            variant="outlined"
+          />
+        </AdminConfigSection>
 
-      <AdminConfigSection
-        description="验证要求在验证中心统一修改；这里仅显示当前要求及依赖。"
-        icon="mdi-shield-account-outline"
-        title="验证要求"
-      >
-        <v-alert v-if="!canReadCaptcha" type="info" variant="tonal">
-          当前账号无权查看验证设置。
-        </v-alert>
-        <template v-else>
-          <v-alert v-if="summaryError" class="mb-4" type="warning" variant="tonal">
-            {{ summaryError }}
+        <AdminConfigSection
+          joined
+          description="验证要求在验证中心统一修改；这里仅显示当前要求及依赖。"
+          icon="mdi-shield-account-outline"
+          title="验证要求"
+        >
+          <v-alert v-if="!canReadCaptcha" type="info" variant="tonal">
+            当前账号无权查看验证设置。
           </v-alert>
-          <v-list v-if="summary" bg-color="transparent" density="compact">
-            <v-list-item
-              title="注册邮件验证"
-              :subtitle="summary.emailVerify ? '已要求；新用户注册仅接受邮箱账号' : '未要求'"
-            />
-            <v-list-item
-              title="注册与卡片写入的人机验证"
-              :subtitle="summary.humanVerify ? '已要求' : '未要求；登录尚未接入人机验证'"
-            />
-            <v-list-item
-              title="修改邮箱"
-              subtitle="始终要求邮件验证码，不能在站点策略中关闭"
-            />
-            <v-list-item
-              title="验证码服务与邮件渠道"
-              :subtitle="summary.codeEnabled && summary.codeChannel === 'smtp' ? '已开启邮件渠道；外部投递未验证' : '邮件验证依赖未就绪，注册或修改邮箱可能无法完成'"
-            />
-            <v-list-item
-              title="人机验证驱动"
-              :subtitle="summary.humanReady === null ? '就绪状态未知' : summary.humanReady ? '本地配置已就绪；未检测第三方连通' : '本地配置未就绪'"
-            />
-          </v-list>
-          <p v-if="!summary" class="text-body-2 text-medium-emphasis">验证设置尚未加载，不能推断当前要求。</p>
-          <NuxtLink to="/apps/settings/verification">前往验证中心</NuxtLink>
-        </template>
-      </AdminConfigSection>
+          <template v-else>
+            <v-alert v-if="summaryError" class="mb-4" type="warning" variant="tonal">
+              {{ summaryError }}
+            </v-alert>
+            <v-list v-if="summary" bg-color="transparent" density="compact">
+              <v-list-item
+                title="注册邮件验证"
+                :subtitle="summary.emailVerify ? '已要求；新用户注册仅接受邮箱账号' : '未要求'"
+              />
+              <v-list-item
+                title="注册与卡片写入的人机验证"
+                :subtitle="summary.humanVerify ? '已要求' : '未要求；登录尚未接入人机验证'"
+              />
+              <v-list-item
+                title="修改邮箱"
+                subtitle="始终要求邮件验证码，不能在站点策略中关闭"
+              />
+              <v-list-item
+                title="验证码服务与邮件渠道"
+                :subtitle="summary.codeEnabled && summary.codeChannel === 'smtp' ? '已开启邮件渠道；外部投递未验证' : '邮件验证依赖未就绪，注册或修改邮箱可能无法完成'"
+              />
+              <v-list-item
+                title="人机验证驱动"
+                :subtitle="summary.humanReady === null ? '就绪状态未知' : summary.humanReady ? '本地配置已就绪；未检测第三方连通' : '本地配置未就绪'"
+              />
+            </v-list>
+            <p v-if="!summary" class="text-body-2 text-medium-emphasis">验证设置尚未加载，不能推断当前要求。</p>
+            <NuxtLink to="/apps/settings/verification">前往验证中心</NuxtLink>
+          </template>
+        </AdminConfigSection>
 
-      <AdminConfigSaveBar v-if="canUpdateConfig" class="mt-4" :dirty="changed" label="访问设置">
-        <AdminActionGuard capability="config.update" scope="global">
-          <v-btn
-            color="primary"
-            :disabled="!changed"
-            :loading="saving"
-            prepend-icon="mdi-content-save-outline"
-            variant="flat"
-            @click="saveSettings"
-          >
-            保存访问设置
-          </v-btn>
-        </AdminActionGuard>
-      </AdminConfigSaveBar>
+        <AdminConfigSaveBar v-if="canUpdateConfig" :dirty="changed" label="访问设置">
+          <AdminActionGuard capability="config.update" scope="global">
+            <v-btn
+              color="primary"
+              :disabled="!changed"
+              :loading="saving"
+              prepend-icon="mdi-content-save-outline"
+              variant="flat"
+              @click="saveSettings"
+            >
+              保存访问设置
+            </v-btn>
+          </AdminActionGuard>
+        </AdminConfigSaveBar>
+      </v-sheet>
     </AdminAsyncState>
 
     <AdminUnsavedChangesDialog

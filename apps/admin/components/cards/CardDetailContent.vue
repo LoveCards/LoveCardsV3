@@ -50,16 +50,7 @@
             </v-col>
           </v-row>
 
-          <v-list bg-color="surface-variant" class="mb-4" density="compact" rounded="lg">
-            <v-row class="ma-0" dense>
-              <v-col cols="12" sm="6" md="4"><v-list-item prepend-icon="mdi-account-outline" subtitle="作者"><AdminResourceLink resource-type="user" :resource-id="CardData.origin.user_id" :label="`${CardData.origin.username || '用户'} #${CardData.origin.user_id}`" /></v-list-item></v-col>
-              <v-col cols="12" sm="6" md="4"><v-list-item prepend-icon="mdi-clock-outline" subtitle="发布时间" :title="displayValue(CardData.origin.created_at)" /></v-col>
-              <v-col cols="12" sm="6" md="4"><v-list-item prepend-icon="mdi-ip-network-outline" subtitle="发布 IP" :title="displayValue(CardData.origin.post_ip)" /></v-col>
-              <v-col cols="12" sm="6" md="4"><v-list-item prepend-icon="mdi-heart-outline" subtitle="获赞数" :title="displayValue(CardData.origin.goods)" /></v-col>
-              <v-col cols="12" sm="6" md="4"><v-list-item prepend-icon="mdi-eye-outline" subtitle="浏览数" :title="displayValue(CardData.origin.views)" /></v-col>
-              <v-col cols="12" sm="6" md="4"><v-list-item prepend-icon="mdi-comment-outline" subtitle="评论数" :title="displayValue(CardData.origin.comments)" /></v-col>
-            </v-row>
-          </v-list>
+
 
           <v-expansion-panels v-if="hasCustomData" class="mb-4" variant="accordion">
             <v-expansion-panel title="查看扩展字段（只读）">
@@ -132,9 +123,20 @@
             当前账号没有上传文件权限；仍可编辑正文、标签或移除已有图片。
           </v-alert>
 
-          <v-sheet v-if="mode === 'view' && commands.length" border rounded="lg" class="pa-4 mt-5">
+          <v-divider class="my-5" />
+          <h3 class="text-subtitle-1 font-weight-medium mb-3">发布与关联</h3>
+          <v-row dense>
+            <v-col cols="12" sm="6"><AdminDetailField label="作者"><AdminResourceLink resource-type="user" :resource-id="CardData.origin.user_id" :label="`${CardData.origin.username || '用户'} #${CardData.origin.user_id}`" /></AdminDetailField></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="发布时间" :value="displayValue(CardData.origin.created_at)" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="获赞数" :value="CardData.origin.goods" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="浏览数" :value="CardData.origin.views" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="评论数" :value="CardData.origin.comments" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="发布 IP" :value="displayValue(CardData.origin.post_ip)" /></v-col>
+          </v-row>
+
+          <section v-if="mode === 'view' && commands.length" class="mt-5">
+            <v-divider class="mb-4" />
             <h3 class="text-subtitle-1 font-weight-medium mb-2">卡片治理</h3>
-            <p class="text-body-2 text-medium-emphasis mb-3">审核、封禁、隐藏和置顶是立即生效的命令，提交前会确认影响。</p>
             <v-alert v-if="commandError" class="mb-3" role="alert" type="error" variant="tonal">{{ commandError }}</v-alert>
             <div class="d-flex flex-wrap ga-2">
               <v-btn v-for="command in commands" :key="command.method" :disabled="commandBusy" variant="outlined" @click="pendingCommand = command">{{ command.label }}</v-btn>
@@ -146,7 +148,7 @@
                 <v-btn color="warning" :loading="commandBusy" variant="flat" @click="runCommand">{{ pendingCommand.label }}</v-btn>
               </template>
             </v-alert>
-          </v-sheet>
+          </section>
 
         </AdminAsyncState>
       </v-card-text>
@@ -182,6 +184,7 @@ import type { Card } from '@lovecards/sdk'
 import { cardGovernanceActions, type CardGovernanceAction } from '~/components/cards/cardGovernanceActions'
 import AdminContentStatus from '~/components/content/AdminContentStatus.vue'
 import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'
+import AdminDetailField from '~/components/shared/admin/AdminDetailField.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import { isApiError, useApi } from '~/lib/api'
 import { useAdminNotifier } from '~/composables/useAdminNotifier'

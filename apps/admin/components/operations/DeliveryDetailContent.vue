@@ -23,24 +23,15 @@
         核对最后错误并排除原因后，可以重新运行该处理器。
       </v-alert>
 
-      <v-sheet border rounded="lg" overflow-hidden>
-        <v-list aria-label="任务摘要" lines="two">
-          <v-list-item prepend-icon="mdi-list-status" subtitle="处理结果">
-            <template #title>
-              <span v-if="delivery.policy_decision === 'skipped'">{{ skipLabel(delivery.queue_name) }}</span>
-              <AdminStatusChip v-else :status="delivery.status" />
-            </template>
-            <template #append><span class="text-body-2">已尝试 {{ delivery.attempt_count }} 次</span></template>
-          </v-list-item>
-          <v-divider />
-          <v-list-item prepend-icon="mdi-lightning-bolt-outline" :subtitle="delivery.event_type" :title="delivery.display_name || delivery.event_type" />
-          <v-divider />
-          <v-list-item prepend-icon="mdi-clock-outline" subtitle="创建时间" :title="delivery.created_at" />
-          <v-divider />
-          <v-list-item prepend-icon="mdi-clock-check-outline" subtitle="最早可执行时间" :title="delivery.available_at" />
-          <v-divider />
-          <v-list-item prepend-icon="mdi-update" subtitle="最近更新时间" :title="delivery.updated_at" />
-        </v-list>
+      <v-sheet border rounded="lg" class="pa-6">
+        <v-row dense>
+          <v-col cols="12" sm="6"><AdminDetailField label="处理结果"><span v-if="delivery.policy_decision === 'skipped'">{{ skipLabel(delivery.queue_name) }}</span><AdminStatusChip v-else :status="delivery.status" /></AdminDetailField></v-col>
+          <v-col cols="12" sm="6"><AdminDetailField label="尝试次数" :value="delivery.attempt_count" /></v-col>
+          <v-col cols="12" sm="6"><AdminDetailField label="事件" :value="delivery.display_name || delivery.event_type" /></v-col>
+          <v-col cols="12" sm="6"><AdminDetailField label="创建时间" :value="delivery.created_at" /></v-col>
+          <v-col cols="12" sm="6"><AdminDetailField label="最早可执行时间" :value="delivery.available_at" /></v-col>
+          <v-col cols="12" sm="6"><AdminDetailField label="最近更新时间" :value="delivery.updated_at" /></v-col>
+        </v-row>
       </v-sheet>
 
       <section class="mt-7" aria-labelledby="delivery-error-title">
@@ -69,9 +60,7 @@
         </v-expansion-panel>
       </v-expansion-panels>
 
-      <v-alert class="mt-6" icon="mdi-shield-lock-outline" title="事件内容保持最小可见" type="info" variant="tonal">
-        本页不返回或展示 Outbox payload；故障定位只使用处理器、状态、错误和关联标识。
-      </v-alert>
+
 
       <v-alert v-if="actionError" class="mt-4" type="error" variant="tonal">{{ actionError }}</v-alert>
       <div v-if="canRetry && delivery.status === 'dead'" class="mt-6">
@@ -91,6 +80,7 @@
 <script setup lang="ts">
 import type { OperationsDelivery } from '@lovecards/sdk'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
+import AdminDetailField from '~/components/shared/admin/AdminDetailField.vue'
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
 import { useAdminNotifier } from '~/composables/useAdminNotifier'
 import { isApiError, useApi } from '~/lib/api'

@@ -25,10 +25,10 @@
 
         <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">{{ formError }}</v-alert>
         <template v-if="mode === 'view'">
-          <v-list lines="two" density="comfortable">
-            <v-list-item><AdminSensitiveField label="邮箱" :value="user.email" /></v-list-item>
-            <v-list-item><AdminSensitiveField label="手机号" :value="user.phone" /></v-list-item>
-          </v-list>
+          <v-row dense>
+            <v-col cols="12" sm="6"><AdminSensitiveField label="邮箱" :value="user.email" /></v-col>
+            <v-col cols="12" sm="6"><AdminSensitiveField label="手机号" :value="user.phone" /></v-col>
+          </v-row>
           <div v-if="canEditTarget" class="d-flex justify-end mt-3">
             <v-btn prepend-icon="mdi-pencil" variant="tonal" @click="startEditing">编辑用户</v-btn>
           </div>
@@ -62,7 +62,7 @@
         </template>
       </AdminDetailSection>
 
-      <AdminDetailSection title="账号状态与治理" class="mt-5">
+      <AdminDetailSection title="账号状态与治理">
         <p class="text-body-2 text-medium-emphasis mb-3">封禁、冻结和审核会改变账号访问状态，单独提交并由服务端执行通知与审计规则。</p>
         <div v-if="mode === 'edit' && canEditTarget">
           <v-select v-model="statusDraft" :items="accountStatusOptions" label="目标账号状态" :disabled="statusSaving" variant="outlined" />
@@ -71,7 +71,7 @@
         <span v-else class="text-body-2">{{ accountStatus.label }}</span>
       </AdminDetailSection>
 
-      <AdminDetailSection title="角色归属" class="mt-5">
+      <AdminDetailSection title="角色归属">
         <div v-if="roleLabels.length" class="d-flex flex-wrap ga-2">
           <v-chip v-for="role in roleLabels" :key="role.id" :color="role.slug === 'root' ? 'error' : undefined" variant="tonal">{{ role.label }}</v-chip>
         </div>
@@ -83,7 +83,7 @@
         <v-alert v-else-if="mode === 'edit'" class="mt-4" density="compact" type="info" variant="tonal">当前账号缺少角色读取或分配权限，用户现有角色保持不变。</v-alert>
       </AdminDetailSection>
 
-      <v-alert class="mt-5" icon="mdi-shield-lock-outline" type="info" variant="tonal" title="安全操作独立授权" text="账号安全和会话撤销在独立页面处理，所有写入仍由服务端权限与目标保护规则判定。" />
+
     </template>
   </AdminAsyncState>
   <AdminUnsavedChangesDialog :model-value="confirmDiscard" subject="用户尚未保存的修改" @stay="stayEditing" @discard="discardChanges" />

@@ -5,26 +5,27 @@
         <AdminDetailSection title="文件信息" description="文件元数据只读；审核、公开和回收站操作分别提交。">
           <v-alert v-if="commandError" class="mb-4" type="error" variant="tonal">{{ commandError }}</v-alert>
           <v-row dense>
-            <v-col cols="12" sm="6"><v-list-item subtitle="文件名" :title="file.original_name || `文件 #${file.id}`" /></v-col>
-            <v-col cols="12" sm="6"><v-list-item subtitle="编号" :title="String(file.id)" /></v-col>
-            <v-col cols="12" sm="6"><v-list-item subtitle="上传者"><AdminResourceLink resource-type="user" :resource-id="file.user_id" /></v-list-item></v-col>
-            <v-col cols="12" sm="6"><v-list-item subtitle="渠道" :title="file.channel_slug || '—'" /></v-col>
-            <v-col cols="12" sm="6"><v-list-item subtitle="场景" :title="file.scene || '—'" /></v-col>
-            <v-col cols="12" sm="6"><v-list-item subtitle="媒体类型" :title="file.mime_type || '—'" /></v-col>
-            <v-col cols="12" sm="6"><v-list-item subtitle="文件大小" :title="formatSize(file.file_size)" /></v-col>
-            <v-col cols="12" sm="6"><v-list-item subtitle="创建时间" :title="file.created_at || '—'" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="文件名" :value="file.original_name || `文件 #${file.id}`" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="上传者"><AdminResourceLink resource-type="user" :resource-id="file.user_id" /></AdminDetailField></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="媒体类型" :value="file.mime_type" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="文件大小" :value="formatSize(file.file_size)" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="创建时间" :value="file.created_at" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="审核状态" :value="file.status === 0 ? '审核通过' : '已封禁'" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="公开状态" :value="file.is_public ? '公开' : '非公开'" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="位置" :value="file.is_deleted ? '回收站' : '正常列表'" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="渠道" :value="file.channel_slug" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="场景" :value="file.scene" /></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="编号" :value="`#${file.id}`" /></v-col>
           </v-row>
-          <div class="d-flex flex-wrap ga-2 mt-3">
-            <v-chip size="small" variant="tonal">{{ file.is_deleted ? '回收站' : '正常列表' }}</v-chip>
-            <v-chip size="small" variant="tonal">{{ file.status === 0 ? '审核通过' : '已封禁' }}</v-chip>
-            <v-chip size="small" variant="tonal">{{ file.is_public ? '公开' : '非公开' }}</v-chip>
-          </div>
+
+          <v-divider v-if="hasFileCommands" class="my-5" />
+          <h3 v-if="hasFileCommands" class="text-subtitle-1 font-weight-medium mb-3">文件操作</h3>
           <div v-if="!file.is_deleted && canUpdate" class="d-flex flex-wrap ga-2 mt-4">
             <v-btn v-if="file.status !== 0" variant="outlined" :disabled="busy" @click="selectCommand('approve')">审核通过</v-btn>
             <v-btn v-if="file.status === 0" variant="outlined" :disabled="busy" @click="selectCommand('ban')">封禁文件</v-btn>
             <v-btn variant="outlined" :disabled="busy" @click="selectCommand('toggle_public')">{{ file.is_public ? '设为非公开' : '设为公开' }}</v-btn>
           </div>
-          <div class="d-flex flex-wrap ga-2 mt-3">
+          <div v-if="(!file.is_deleted && canTrash) || (file.is_deleted && (canRestore || canPurge))" class="d-flex flex-wrap ga-2 mt-3">
             <v-btn v-if="!file.is_deleted && canTrash" color="error" variant="text" :disabled="busy" @click="selectCommand('trash')">移入回收站</v-btn>
             <v-btn v-if="file.is_deleted && canRestore" variant="outlined" :disabled="busy" @click="selectCommand('restore')">恢复文件</v-btn>
             <v-btn v-if="file.is_deleted && canPurge" color="error" variant="text" :disabled="busy" @click="selectCommand('hard_delete')">永久删除文件</v-btn>
@@ -38,7 +39,7 @@
           </v-alert>
         </AdminDetailSection>
 
-        <AdminDetailSection v-if="canReadUsage" id="usage" class="mt-5" title="资源引用" description="引用信息由独立权限控制。">
+        <AdminDetailSection v-if="canReadUsage" id="usage" title="资源引用" description="引用信息由独立权限控制。">
           <v-alert v-if="usageError" type="error" variant="tonal">{{ usageError }}</v-alert>
           <v-progress-linear v-else-if="usageLoading" indeterminate />
           <template v-else-if="usage">
@@ -61,6 +62,7 @@
 import type { FileUsage, FilesBatchMethod, LCFile } from '@lovecards/sdk'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDetailSection from '~/components/shared/admin/AdminDetailSection.vue'
+import AdminDetailField from '~/components/shared/admin/AdminDetailField.vue'
 import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'
 import { isApiError, useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
@@ -85,6 +87,7 @@ const canUpdate = computed(() => userStore.hasGrant('files.update', 'all'))
 const canTrash = computed(() => userStore.hasGrant('files.delete', 'all'))
 const canRestore = computed(() => userStore.hasGrant('files.restore', 'all'))
 const canPurge = computed(() => userStore.hasGrant('files.purge', 'all'))
+const hasFileCommands = computed(() => Boolean(file.value && (file.value.is_deleted ? canRestore.value || canPurge.value : canUpdate.value || canTrash.value)))
 const titles: Record<FilesBatchMethod, string> = {
   approve: '审核通过', ban: '封禁文件', toggle_public: '切换公开状态',
   trash: '移入回收站', restore: '恢复文件', hard_delete: '永久删除文件',
