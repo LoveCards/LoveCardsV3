@@ -90,7 +90,7 @@
         </template>
 
         <template #[`item.content`]="{ item }">
-          <AdminContentSummary :content="item.content" :author="item.username" :user-id="item.user_id" :highlight-query="highlightQuery('content')" />
+          <AdminContentSummary :content="item.content" :highlight-query="highlightQuery('content')" />
         </template>
 
         <template #[`item.operate`]="{ item }">
@@ -238,8 +238,8 @@ const queryFilters = (value: unknown): Record<string, unknown> => {
 };
 
 const AllTableHeaders = [
-  { title: '内容', value: 'content', sortable: false, minWidth: 320 },
   { title: 'ID', value: 'id', sortable: true },
+  { title: '内容', value: 'content', sortable: false, minWidth: 320 },
   { title: '用户', value: 'user_id', sortable: true },
   { title: '应用ID', value: 'aid', sortable: true },
   { title: '自定义字段', value: 'data', sortable: false },
@@ -250,7 +250,7 @@ const AllTableHeaders = [
   { title: '状态', value: 'status', sortable: true, minWidth: 112 },
   { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
-const defaultColumns = ['content', 'created_at', 'status', 'operate'];
+const defaultColumns = ['content', 'user_id', 'created_at', 'status', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: ['content', 'operate'].includes(header.value) }));
@@ -269,7 +269,8 @@ const canViewComment = computed(() => userStore.hasGrant('comments.read', 'all')
 const canPin = computed(() => userStore.hasGrant('comments.pin', 'all'));
 const canEditComment = computed(() => userStore.hasGrant('comments.update', 'all'));
 const canModerateComment = computed(() => userStore.hasGrant('comments.moderate', 'all'));
-const commentActionLabels = computed(() => ['查看评论', ...(canEditComment.value ? ['编辑评论'] : []), ...(canModerateComment.value ? ['通过审核', '封禁评论', '解除封禁', '隐藏评论', '取消隐藏'] : []), ...(canPin.value ? ['置顶评论', '取消置顶评论'] : []), ...(canDeleteComment.value ? ['删除评论'] : [])]);
+const conciseGovernanceLabel = (label: string) => label.endsWith('评论') ? label.slice(0, -2) : label;
+const commentActionLabels = computed(() => ['查看', ...(canEditComment.value ? ['编辑'] : []), ...(canModerateComment.value ? ['通过审核', '封禁', '解除封禁', '隐藏', '取消隐藏'] : []), ...(canPin.value ? ['置顶', '取消置顶'] : []), ...(canDeleteComment.value ? ['删除'] : [])]);
 const actionCapacity = ref(1);
 const CommentInspectDialog_state = ref(false);
 const CommentInspectDialog_id = ref<number | null>(null);
@@ -280,16 +281,16 @@ const openCommentInspect = (id: number, mode: 'view' | 'edit' = 'view') => {
   CommentInspectDialog_state.value = true;
 };
 const commentRowActions = (item: Comment) => [
-  ...(canViewComment.value ? [{ key: 'view', label: '查看评论', onClick: () => openCommentInspect(item.id) }] : []),
+  ...(canViewComment.value ? [{ key: 'view', label: '查看', onClick: () => openCommentInspect(item.id) }] : []),
   ...(canEditComment.value
-    ? [{ key: 'edit', label: '编辑评论', disabled: !canMutateRows.value, onClick: () => openCommentInspect(item.id, 'edit') }]
+    ? [{ key: 'edit', label: '编辑', disabled: !canMutateRows.value, onClick: () => openCommentInspect(item.id, 'edit') }]
     : []),
   ...commentGovernanceActions(item, { moderate: canModerateComment.value, pin: false })
-    .map(action => ({ key: action.method, label: action.label, disabled: !canMutateRows.value, onClick: () => void openCommentCommand(item.id, action) })),
+    .map(action => ({ key: action.method, label: conciseGovernanceLabel(action.label), disabled: !canMutateRows.value, onClick: () => void openCommentCommand(item.id, action) })),
   ...(canPin.value && Number(item.status) === 0 && !item.parent_id
-    ? [{ key: 'pin', label: item.is_pinned ? '取消置顶评论' : '置顶评论', disabled: !canMutateRows.value, onClick: () => openPinCommentDialog(item) }]
+    ? [{ key: 'pin', label: item.is_pinned ? '取消置顶' : '置顶', disabled: !canMutateRows.value, onClick: () => openPinCommentDialog(item) }]
     : []),
-  ...(canDeleteComment.value ? [{ key: 'delete', label: '删除评论', disabled: !canMutateRows.value, onClick: () => openDeleteCommentDialog(item) }] : []),
+  ...(canDeleteComment.value ? [{ key: 'delete', label: '删除', disabled: !canMutateRows.value, onClick: () => openDeleteCommentDialog(item) }] : []),
 ];
 const pendingCommentCommand = ref<{ id: number; action: CommentGovernanceAction } | null>(null);
 const commentCommandBusy = ref(false);

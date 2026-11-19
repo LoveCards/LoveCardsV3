@@ -21,8 +21,8 @@
           <template #item.update_notes="{ item }"><span class="release-notes">{{ item.update_notes || '此升级包未提供更新说明' }}</span></template>
           <template #item.status="{ item }">
             <AdminStatusChip :status="item.status" :label="statusLabel(item)" />
-            <div v-if="failedStep(item)?.failure_code" class="text-caption text-error mt-1">{{ failedStep(item)?.failure_code }}</div>
           </template>
+          <template #item.failure_code="{ item }"><code v-if="failedStep(item)?.failure_code" class="text-error">{{ failedStep(item)?.failure_code }}</code><span v-else>—</span></template>
           <template #item.actions="{ item }">
             <div class="d-flex align-center ga-1">
               <AdminActionGuard capability="system.update">
@@ -95,6 +95,7 @@ const headers = [
   { title: '目标版本', key: 'target_version', minWidth: 160 },
   { title: '更新说明', key: 'update_notes', minWidth: 320 },
   { title: '升级状态', key: 'status', minWidth: 144 },
+  { title: '失败代码', key: 'failure_code', sortable: false, minWidth: 160 },
   { title: '操作', key: 'actions', sortable: false, minWidth: 200 },
 ]
 const actionTitle = computed(() => actionType.value === 'contract' ? '批准数据库收缩' : actionType.value === 'recover' ? '恢复旧版本' : '继续升级')

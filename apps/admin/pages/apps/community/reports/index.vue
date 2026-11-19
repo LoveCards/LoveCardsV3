@@ -3,7 +3,7 @@
     <AdminPageHeader title="举报处理" description="按状态审阅举报，处理动作会记录原因与操作者。" :breadcrumbs="[{ title: '内容' }]">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn></template>
     </AdminPageHeader>
-    <AdminResourceTableShell v-model:visible-columns="visibleColumns" v-model:action-capacity="actionCapacity" :action-headers="headers" :action-labels="['查看举报', '处理举报']" :columns="columnOptions" :default-columns="defaultColumns" :result-count="lastSuccessfulKey ? totalItems : null" :result-state="loading && lastSuccessfulKey ? 'loading' : resultState" :view-query-keys="['search_value', 'status', 'resource_type', 'list_rows']" preference-key="community-reports" @apply-view="applySavedView" @reset-view="resetTableView">
+    <AdminResourceTableShell v-model:visible-columns="visibleColumns" v-model:action-capacity="actionCapacity" :action-headers="headers" :action-labels="['查看', '处理']" :columns="columnOptions" :default-columns="defaultColumns" :result-count="lastSuccessfulKey ? totalItems : null" :result-state="loading && lastSuccessfulKey ? 'loading' : resultState" :view-query-keys="['search_value', 'status', 'resource_type', 'list_rows']" preference-key="community-reports" @apply-view="applySavedView" @reset-view="resetTableView">
       <template #search>
         <v-text-field v-model="searchValue" clearable label="搜索原因或补充说明" prepend-inner-icon="mdi-magnify" @keydown.enter="applySearch" @click:clear="clearSearch" />
       </template>
@@ -75,9 +75,9 @@ function openDetail(id: number, mode: 'view' | 'process') {
   detailOpen.value = true
 }
 const reportRowActions = (item: AdminReport) => [
-  { key: 'view', label: '查看举报', onClick: () => openDetail(item.id, 'view') },
+  { key: 'view', label: '查看', onClick: () => openDetail(item.id, 'view') },
   ...(canManage.value && item.status !== 'closed'
-    ? [{ key: 'process', label: '处理举报', disabled: !canWrite.value, onClick: () => openDetail(item.id, 'process') }]
+    ? [{ key: 'process', label: '处理', disabled: !canWrite.value, onClick: () => openDetail(item.id, 'process') }]
     : []),
 ]
 const client = useApi()
@@ -123,10 +123,10 @@ const allHeaders = [
   { title: '原因', key: 'reason', minWidth: 280 }, { title: '状态', key: 'status', minWidth: 112 }, { title: '创建时间', key: 'created_at', minWidth: 176 },
   { title: '操作', key: 'action', minWidth: 112 },
 ].map((header) => ({ ...header, sortable: false }))
-const defaultColumns = allHeaders.map((header) => header.key)
+const defaultColumns = allHeaders.filter((header) => header.key !== 'id').map((header) => header.key)
 const visibleColumns = ref([...defaultColumns])
 const headers = computed(() => allHeaders.filter((header) => visibleColumns.value.includes(header.key)))
-const columnOptions = allHeaders.map((header) => ({ title: header.title, key: header.key, required: header.key === 'id' || header.key === 'action' }))
+const columnOptions = allHeaders.map((header) => ({ title: header.title, key: header.key, required: header.key === 'reason' || header.key === 'action' }))
 let latestRequest = 0
 
 async function load() {

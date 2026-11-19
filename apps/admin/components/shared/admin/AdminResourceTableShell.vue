@@ -118,11 +118,6 @@ onBeforeUnmount(() => observer?.disconnect())
   min-width: 0;
 }
 
-@media (max-width: 599.98px) {
-  :deep(.v-data-table table) { min-width: 0; width: 100%; }
-  /* 无服务端排序的表格不显示 Vuetify 移动端的空排序表头。 */
-  :deep(.admin-table-no-sort thead) { display: none; }
-}
 /* 空态仍在表格单元格中，但窄屏不应要求横向滚动才能阅读和操作。 */
 :deep(.v-data-table-rows-no-data .v-empty-state) {
   position: sticky;

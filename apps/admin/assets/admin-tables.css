@@ -1,35 +1,18 @@
-/* 横向数据表保留完整表头；内容超出时只滚动表格，不挤压列标题。 */
-@media (min-width: 600px) {
-  .v-data-table {
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  .v-data-table .v-table__wrapper {
-    overflow-x: auto;
-  }
-
-  .v-data-table .v-table__wrapper > table {
-    min-width: 100%;
-  }
-
-  .v-data-table .v-data-table__th,
-  .v-data-table .v-data-table-header__content {
-    white-space: nowrap;
-  }
+/* 所有数据表保持横向列式阅读；窄屏只滚动表格容器。 */
+.v-data-table {
+  min-width: 0;
+  max-width: 100%;
 }
 
-/* 移动行中的字段名保持横排，长内容在值侧折行。 */
-@media (max-width: 599.98px) {
-  .v-data-table .v-data-table__td-title {
-    flex: 0 0 auto;
-    min-width: 6rem;
-    white-space: nowrap;
-  }
+.v-data-table .v-table__wrapper {
+  overflow-x: auto;
+}
 
-  .v-data-table .v-data-table__td-value {
-    flex: 1 1 0;
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
+.v-data-table .v-table__wrapper > table {
+  min-width: 100%;
+}
+
+.v-data-table .v-data-table__th,
+.v-data-table .v-data-table-header__content {
+  white-space: nowrap;
 }

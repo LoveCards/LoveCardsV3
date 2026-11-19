@@ -7,7 +7,7 @@
     <v-alert v-if="queryWarning" class="mb-4" type="warning" variant="tonal">URL 中有无效筛选条件，已忽略。</v-alert>
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
-      :columns="columnOptions"
+      :columns="columnOptions" :default-columns="defaultColumns"
       :result-count="lastSuccessfulKey ? totalItems : null"
       :result-state="loading && lastSuccessfulKey ? 'loading' : resultState"
       :view-query-keys="['action', 'actor', 'resource_type', 'resource_id', 'request_id', 'correlation_id', 'from', 'to', 'list_rows']" preference-key="operations-audit"
@@ -60,12 +60,15 @@
         @update:page="changePage"
         @update:items-per-page="changePageSize"
       >
-        <template #item.action="{ item }"><strong class="audit-action" :title="item.action">{{ item.action }}</strong><div class="text-caption text-medium-emphasis">操作者 {{ item.actor_id ? `#${item.actor_id}` : '系统或匿名' }}</div></template>
+        <template #item.id="{ item }"><span class="text-medium-emphasis">#{{ item.id }}</span></template>
+        <template #item.action="{ item }"><strong class="audit-action" :title="item.action">{{ item.action }}</strong></template>
+        <template #item.actor="{ item }">{{ item.actor_id ? `#${item.actor_id}` : '系统或匿名' }}</template>
         <template #item.resource="{ item }"><span v-if="item.resource_type">{{ item.resource_type }} #{{ item.resource_id }}</span><span v-else>—</span></template>
-        <template #item.trace="{ item }"><code class="audit-code">{{ item.request_id || '—' }}</code><div class="audit-code text-caption text-medium-emphasis">{{ item.correlation_id || '—' }}</div></template>
+        <template #item.request_id="{ item }"><code class="audit-code">{{ item.request_id || '—' }}</code></template>
+        <template #item.correlation_id="{ item }"><code class="audit-code">{{ item.correlation_id || '—' }}</code></template>
         <template #item.created_at="{ item }"><AdminTableTime :value="item.created_at" seconds /></template>
         <template #item.detail="{ item }">
-          <v-btn class="audit-row-action" min-height="32" size="small" variant="tonal" @click="openAudit(item.id, $event)">查看审计</v-btn>
+          <v-btn class="audit-row-action" min-height="32" size="small" variant="tonal" @click="openAudit(item.id, $event)">查看</v-btn>
         </template>
         <template #no-data>
           <v-empty-state :icon="error ? 'mdi-cloud-alert-outline' : 'mdi-clipboard-text-clock-outline'" :title="error ? '无法加载审计日志' : '没有匹配的审计记录'" :text="error || '调整查询条件后重试。'">
@@ -160,10 +163,13 @@ watch(auditOpen, async (open) => {
 })
 
 const allHeaders = [
-  { title: '动作', key: 'action', minWidth: 270 }, { title: '资源', key: 'resource', minWidth: 160 }, { title: 'Request / Correlation ID', key: 'trace', minWidth: 270 },
-  { title: '时间', key: 'created_at', minWidth: 176 }, { title: '详情', key: 'detail', minWidth: 112 },
+  { title: 'ID', key: 'id', minWidth: 88 }, { title: '动作', key: 'action', minWidth: 220 },
+  { title: '操作者', key: 'actor', minWidth: 120 }, { title: '资源', key: 'resource', minWidth: 160 },
+  { title: 'Request ID', key: 'request_id', minWidth: 220 }, { title: 'Correlation ID', key: 'correlation_id', minWidth: 220 },
+  { title: '时间', key: 'created_at', minWidth: 176 }, { title: '操作', key: 'detail', minWidth: 112 },
 ].map((header) => ({ ...header, sortable: false }))
-const visibleColumns = ref(allHeaders.map((header) => header.key))
+const defaultColumns = allHeaders.filter((header) => header.key !== 'id').map((header) => header.key)
+const visibleColumns = ref([...defaultColumns])
 const headers = computed(() => allHeaders.filter((header) => visibleColumns.value.includes(header.key)))
 const columnOptions = allHeaders.map((header) => ({ title: header.title, key: header.key, required: header.key === 'action' || header.key === 'detail' }))
 

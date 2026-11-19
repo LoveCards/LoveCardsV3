@@ -215,10 +215,10 @@ const normalizeFilters = (value: unknown): Record<string, unknown> => {
 };
 
 const AllTableHeaders = [
+  { title: 'ID', value: 'id', sortable: true },
   { title: '标签名', value: 'name', sortable: true, minWidth: 240 },
   { title: '状态', value: 'status', sortable: true, minWidth: 112 },
   { title: '创建时间', value: 'created_at', sortable: true, minWidth: 176 },
-  { title: 'ID', value: 'id', sortable: true },
   { title: '应用 ID', value: 'aid', sortable: true },
   { title: '创建用户 ID', value: 'user_id', sortable: true },
   { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
@@ -245,9 +245,9 @@ const canDeleteTag = computed(() => userStore.hasGrant('tags.delete', 'all'));
 const canViewTag = computed(() => userStore.hasGrant('tags.read', 'all'));
 const actionCapacity = ref(1);
 const tagActionLabels = computed(() => [
-  ...(canViewTag.value ? ['查看标签'] : []),
-  ...(canUpdateTag.value ? ['编辑名称'] : []),
-  ...(canDeleteTag.value ? ['删除标签'] : []),
+  ...(canViewTag.value ? ['查看'] : []),
+  ...(canUpdateTag.value ? ['编辑'] : []),
+  ...(canDeleteTag.value ? ['删除'] : []),
 ]);
 const batchCapabilityFor = (method: TagsBatchMethod | '') => method === 'delete' ? 'tags.delete' : 'tags.update';
 const TableBatchOptions = computed(() => BaseTableBatchOptions.filter((option) => userStore.hasGrant(batchCapabilityFor(option.value), 'all')));
@@ -391,9 +391,9 @@ const openTagPanel = (id: number, mode: 'view' | 'edit' = 'view') => {
   TagDetailDialog_state.value = true;
 };
 const tagRowActions = (item: Tag) => [
-  ...(canViewTag.value ? [{ key: 'view', label: '查看标签', onClick: () => openTagPanel(item.id) }] : []),
-  ...(canUpdateTag.value ? [{ key: 'edit', label: '编辑名称', disabled: !allowRowMutation.value, onClick: () => openTagPanel(item.id, 'edit') }] : []),
-  ...(canDeleteTag.value ? [{ key: 'delete', label: '删除标签', disabled: !allowRowMutation.value, onClick: () => openDeleteTagDialog(item) }] : []),
+  ...(canViewTag.value ? [{ key: 'view', label: '查看', onClick: () => openTagPanel(item.id) }] : []),
+  ...(canUpdateTag.value ? [{ key: 'edit', label: '编辑', disabled: !allowRowMutation.value, onClick: () => openTagPanel(item.id, 'edit') }] : []),
+  ...(canDeleteTag.value ? [{ key: 'delete', label: '删除', disabled: !allowRowMutation.value, onClick: () => openDeleteTagDialog(item) }] : []),
 ];
 watch(() => route.query.inspect, (value) => {
   const id = typeof value === 'string' ? Number.parseInt(value, 10) : 0;

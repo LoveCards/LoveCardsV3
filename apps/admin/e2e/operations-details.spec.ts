@@ -220,7 +220,7 @@ test('delivery and audit lists open shared detail dialogs without navigation', a
   await page.goto('./apps/operations/deliveries', { waitUntil: 'domcontentloaded' })
   const deliveryUrl = page.url()
   const deliveryRequest = page.waitForRequest(request => request.url().endsWith('/api/admin/operations/deliveries/77') && request.method() === 'GET')
-  await page.getByRole('button', { name: '查看任务', exact: true }).click()
+  await page.getByRole('button', { name: '查看', exact: true }).click()
   await deliveryRequest
   await expect(page.getByRole('dialog', { name: '查看处理任务' })).toContainText('任务 #77')
   await expect(page).toHaveURL(deliveryUrl)
@@ -231,7 +231,7 @@ test('delivery and audit lists open shared detail dialogs without navigation', a
   await expect(row).toBeVisible({ timeout: 20_000 })
   const listUrl = page.url()
   const detailRequest = page.waitForRequest(request => request.url().endsWith('/api/admin/audit-logs/88') && request.method() === 'GET')
-  await row.getByRole('button', { name: '查看审计', exact: true }).click()
+  await row.getByRole('button', { name: '查看', exact: true }).click()
   await detailRequest
   const dialog = page.getByRole('dialog', { name: '查看审计' })
   await expect(dialog).toBeVisible()

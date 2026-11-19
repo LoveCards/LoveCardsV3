@@ -18,9 +18,10 @@
           <v-data-table :headers="headers" :items="rows" item-value="key" :items-per-page="-1" hide-default-footer>
             <template #item.key="{ item }">
               <strong>{{ item.display_name }}</strong>
-              <div class="text-body-2 text-medium-emphasis">{{ item.impact_text }}</div>
-              <div class="text-caption text-medium-emphasis">{{ item.owner }} · {{ item.topic }}</div>
             </template>
+            <template #item.impact="{ item }">{{ item.impact_text }}</template>
+            <template #item.owner="{ item }">{{ item.owner || '—' }}</template>
+            <template #item.topic="{ item }">{{ item.topic || '—' }}</template>
             <template #item.enabled="{ item }">
               <AdminActionGuard capability="communications.configure">
                 <v-switch :model-value="item.enabled" :aria-label="`${item.display_name}：${item.enabled ? '已开启' : '已关闭'}`" :label="item.enabled ? '已开启' : '已关闭'" density="compact" hide-details color="primary" inset @update:model-value="item.enabled = Boolean($event)" />
@@ -64,7 +65,13 @@ const error = ref<string | null>(null)
 const conflict = ref('')
 const dialogOpen = ref(false)
 const saveError = ref('')
-const headers = [{ title: '主动提示与影响', key: 'key', minWidth: 320, sortRaw: (a: SignalPolicyItem, b: SignalPolicyItem) => a.display_name.localeCompare(b.display_name, 'zh-CN') }, { title: '当前设置', key: 'enabled', sortable: false, minWidth: 160 }]
+const headers = [
+  { title: '主动提示', key: 'key', minWidth: 200, sortRaw: (a: SignalPolicyItem, b: SignalPolicyItem) => a.display_name.localeCompare(b.display_name, 'zh-CN') },
+  { title: '影响', key: 'impact', sortable: false, minWidth: 320 },
+  { title: '负责模块', key: 'owner', sortable: false, minWidth: 144 },
+  { title: '主题', key: 'topic', sortable: false, minWidth: 144 },
+  { title: '当前设置', key: 'enabled', sortable: false, minWidth: 160 },
+]
 const dirty = computed(() => rows.value.some(row => row.enabled !== row.original))
 const impact = computed(() => rows.value.filter(row => row.enabled !== row.original)
   .map(row => `${row.display_name}：${row.original ? '开启 → 关闭' : '关闭 → 开启'}`)

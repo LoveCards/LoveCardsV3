@@ -99,7 +99,7 @@
         </template>
 
         <template #[`item.content`]="{ item }">
-          <AdminContentSummary :content="item.content" :author="item.username" :user-id="item.user_id" :highlight-query="highlightQuery('content')" />
+          <AdminContentSummary :content="item.content" :highlight-query="highlightQuery('content')" />
         </template>
 
         <template #[`item.cover`]="{ item }">
@@ -252,8 +252,8 @@ const queryFilters = (value: unknown): Record<string, unknown> => {
 };
 
 const AllTableHeaders = [
-  { title: '内容', value: 'content', sortable: false, minWidth: 320 },
   { title: 'ID', value: 'id', sortable: true },
+  { title: '内容', value: 'content', sortable: false, minWidth: 320 },
   { title: '用户', value: 'user_id', sortable: true },
   { title: '封面', value: 'cover', sortable: false },
   { title: '自定义字段', value: 'data', sortable: false },
@@ -267,7 +267,7 @@ const AllTableHeaders = [
   { title: '状态', value: 'status', sortable: true, minWidth: 112 },
   { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
-const defaultColumns = ['content', 'created_at', 'status', 'operate'];
+const defaultColumns = ['content', 'user_id', 'created_at', 'status', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: ['content', 'operate'].includes(header.value) }));
@@ -312,7 +312,8 @@ const renderTags = (tags: unknown) => normalizeTagIds(tags).map((item) => {
 const canUpdateCard = computed(() => userStore.hasGrant('cards.update', 'all'));
 const canApproveCard = computed(() => userStore.hasGrant('cards.approve', 'all'));
 const canPinCard = computed(() => userStore.hasGrant('cards.pin', 'all'));
-const cardActionLabels = computed(() => [...new Set(['查看卡片', ...(canUpdateCard.value ? ['编辑卡片'] : []), ...tableItems.value.flatMap(item => cardGovernanceActions(item, { approve: canApproveCard.value, update: canUpdateCard.value, pin: canPinCard.value }).map(action => action.label)), ...(canDeleteCard.value ? ['删除卡片'] : [])])]);
+const conciseGovernanceLabel = (label: string) => label.endsWith('卡片') ? label.slice(0, -2) : label;
+const cardActionLabels = computed(() => [...new Set(['查看', ...(canUpdateCard.value ? ['编辑'] : []), ...tableItems.value.flatMap(item => cardGovernanceActions(item, { approve: canApproveCard.value, update: canUpdateCard.value, pin: canPinCard.value }).map(action => conciseGovernanceLabel(action.label))), ...(canDeleteCard.value ? ['删除'] : [])])]);
 const actionCapacity = ref(1);
 const CardInspectDialog_state = ref(false);
 const CardInspectDialog_id = ref<number | null>(null);
@@ -323,13 +324,13 @@ const openCardInspect = (id: number, mode: 'view' | 'edit' = 'view') => {
   CardInspectDialog_state.value = true;
 };
 const cardRowActions = (item: Card) => [
-  ...(canViewCard.value ? [{ key: 'view', label: '查看卡片', onClick: () => openCardInspect(item.id) }] : []),
+  ...(canViewCard.value ? [{ key: 'view', label: '查看', onClick: () => openCardInspect(item.id) }] : []),
   ...(canUpdateCard.value
-    ? [{ key: 'edit', label: '编辑卡片', disabled: !canMutateRows.value, onClick: () => openCardInspect(item.id, 'edit') }]
+    ? [{ key: 'edit', label: '编辑', disabled: !canMutateRows.value, onClick: () => openCardInspect(item.id, 'edit') }]
     : []),
   ...cardGovernanceActions(item, { approve: canApproveCard.value, update: canUpdateCard.value, pin: canPinCard.value })
-    .map(action => ({ key: action.method, label: action.label, disabled: !canMutateRows.value, onClick: () => void openCardCommand(item.id, action) })),
-  ...(canDeleteCard.value ? [{ key: 'delete', label: '删除卡片', disabled: !canMutateRows.value, onClick: () => openDeleteCardDialog(item) }] : []),
+    .map(action => ({ key: action.method, label: conciseGovernanceLabel(action.label), disabled: !canMutateRows.value, onClick: () => void openCardCommand(item.id, action) })),
+  ...(canDeleteCard.value ? [{ key: 'delete', label: '删除', disabled: !canMutateRows.value, onClick: () => openDeleteCardDialog(item) }] : []),
 ];
 
 const pendingCardCommand = ref<{ id: number; action: CardGovernanceAction } | null>(null);

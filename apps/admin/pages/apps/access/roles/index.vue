@@ -260,7 +260,7 @@ const AllTableHeaders = [
   { title: '创建时间', value: 'created_at', sortable: true, minWidth: 176 },
   { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
-const defaultColumns = ['id', 'name', 'slug', 'is_system', 'description', 'operate'];
+const defaultColumns = ['name', 'slug', 'is_system', 'description', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: ['name', 'operate'].includes(header.value) }));
@@ -472,10 +472,10 @@ const confirmReseed = async () => {
 };
 const actionCapacity = ref(1);
 const roleActionLabels = computed(() => [
-  '查看角色',
-  ...(tableItems.value.some(canEditRole) ? ['编辑角色'] : []),
+  '查看',
+  ...(tableItems.value.some(canEditRole) ? ['编辑'] : []),
   ...(tableItems.value.some(canAssignRole) ? ['分配权限'] : []),
-  ...(tableItems.value.some(canDeleteRole) ? ['删除角色'] : []),
+  ...(tableItems.value.some(canDeleteRole) ? ['删除'] : []),
 ]);
 const RoleDetailDialog_state = ref(false);
 const RoleDetailDialog_id = ref<number | null>(null);
@@ -488,10 +488,10 @@ const openRoleDetail = (item: Role, mode: 'view' | 'edit' | 'assign' = 'view') =
   RoleDetailDialog_state.value = true;
 };
 const roleRowActions = (item: Role) => [
-  { key: 'view', label: '查看角色', onClick: () => openRoleDetail(item) },
-  ...(canEditRole(item) ? [{ key: 'edit', label: '编辑角色', disabled: !allowRowMutation.value, onClick: () => openRoleDetail(item, 'edit') }] : []),
+  { key: 'view', label: '查看', onClick: () => openRoleDetail(item) },
+  ...(canEditRole(item) ? [{ key: 'edit', label: '编辑', disabled: !allowRowMutation.value, onClick: () => openRoleDetail(item, 'edit') }] : []),
   ...(canAssignRole(item) ? [{ key: 'assign', label: '分配权限', disabled: !allowRowMutation.value, onClick: () => openRoleDetail(item, 'assign') }] : []),
-  ...(canDeleteRole(item) ? [{ key: 'delete', label: '删除角色', disabled: !allowRowMutation.value, onClick: () => openDeleteDialog(item) }] : []),
+  ...(canDeleteRole(item) ? [{ key: 'delete', label: '删除', disabled: !allowRowMutation.value, onClick: () => openDeleteDialog(item) }] : []),
 ];
 
 const DeleteDialog_state = ref(false);

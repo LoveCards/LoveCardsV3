@@ -12,7 +12,7 @@
       <p class="mt-2 mb-0 text-caption text-medium-emphasis">通知队列当前累计状态 · 检查于 {{ summary.checked_at }}</p>
     </v-sheet>
     <v-alert v-if="queue === 'notifications' && summaryError" class="mb-4" type="warning" variant="tonal">处理汇总暂不可用：{{ summaryError }}<template #append><v-btn variant="outlined" @click="loadSummary">重试</v-btn></template></v-alert>
-    <AdminResourceTableShell v-model:visible-columns="visibleColumns" :columns="columnOptions" :result-count="resultCount" :result-state="resultState" :view-query-keys="['queue', 'view', 'list_rows']" preference-key="operations-deliveries" @reset-view="resetTableView" @apply-view="applySavedView">
+    <AdminResourceTableShell v-model:visible-columns="visibleColumns" :columns="columnOptions" :default-columns="defaultColumns" :result-count="resultCount" :result-state="resultState" :view-query-keys="['queue', 'view', 'list_rows']" preference-key="operations-deliveries" @reset-view="resetTableView" @apply-view="applySavedView">
       <template #toolbar>
         <v-select :model-value="queue" :items="queueOptions" item-title="title" item-value="value" label="处理队列" variant="outlined" density="compact" hide-details class="mb-3" @update:model-value="setQueue" />
         <v-select :model-value="view" class="d-sm-none w-100" :items="viewOptions" label="处理状态" variant="outlined" density="compact" hide-details @update:model-value="setView" />
@@ -26,11 +26,14 @@
       <AdminAsyncState :loading="loading && !deliveries.length" :error="error && !deliveries.length ? error : null" :empty="!loading && !deliveries.length" :empty-title="view === 'dead' ? '没有失败记录' : '没有匹配的处理记录'" empty-description="试试其他处理状态。" @retry="loadDeliveries">
         <v-alert v-if="error" class="ma-3" type="error" variant="tonal">{{ error }}<template #append><v-btn variant="outlined" @click="loadDeliveries">重试</v-btn></template></v-alert>
         <v-data-table-server class="admin-table-no-sort" v-model:items-per-page="itemsPerPage" v-model:page="page" :headers="headers" :items="deliveries" :items-length="totalItems" :items-per-page-options="[10, 20, 50]" :loading="loading" item-value="id" items-per-page-text="每页行数">
-          <template #item.event="{ item }"><span>{{ item.display_name || item.event_type }}</span><div class="text-caption text-medium-emphasis">{{ item.event_type }} · #{{ item.id }} · {{ queueLabel(item.queue_name) }}</div></template>
+          <template #item.id="{ item }"><span class="text-medium-emphasis">#{{ item.id }}</span></template>
+          <template #item.event="{ item }">{{ item.display_name || item.event_type }}</template>
+          <template #item.event_type="{ item }">{{ item.event_type }}</template>
+          <template #item.queue="{ item }">{{ queueLabel(item.queue_name) }}</template>
           <template #item.status="{ item }"><span v-if="item.policy_decision === 'skipped'">{{ skipLabel(item.queue_name) }}</span><AdminStatusChip v-else :status="item.status" /></template>
           <template #item.error="{ item }"><span class="delivery-error">{{ item.last_error || '—' }}</span></template>
           <template #item.updated_at="{ item }"><AdminTableTime :value="item.updated_at" /></template>
-          <template #item.action="{ item }"><AdminTableRowAction @click="openDelivery(item.id)">查看任务</AdminTableRowAction></template>
+          <template #item.action="{ item }"><AdminTableRowAction @click="openDelivery(item.id)">查看</AdminTableRowAction></template>
         </v-data-table-server>
       </AdminAsyncState>
     </AdminResourceTableShell>
@@ -90,10 +93,14 @@ const resultCount = ref<number | null>(null)
 const resultState = ref<'ready' | 'loading' | 'stale'>('ready')
 let lastSuccessfulKey: string | null = null
 const allHeaders = [
-  { title: '业务事件', key: 'event', minWidth: 240 }, { title: '处理结果', key: 'status', minWidth: 128 }, { title: '尝试', key: 'attempt_count', minWidth: 88 },
-  { title: '最后错误', key: 'error', minWidth: 240 }, { title: '更新时间', key: 'updated_at', minWidth: 176 }, { title: '操作', key: 'action', minWidth: 112 },
+  { title: 'ID', key: 'id', minWidth: 88 }, { title: '业务事件', key: 'event', minWidth: 240 },
+  { title: '事件类型', key: 'event_type', minWidth: 200 }, { title: '队列', key: 'queue', minWidth: 120 },
+  { title: '处理结果', key: 'status', minWidth: 128 }, { title: '尝试', key: 'attempt_count', minWidth: 88 },
+  { title: '最后错误', key: 'error', minWidth: 240 }, { title: '更新时间', key: 'updated_at', minWidth: 176 },
+  { title: '操作', key: 'action', minWidth: 112 },
 ].map((header) => ({ ...header, sortable: false }))
-const visibleColumns = ref(allHeaders.map((header) => header.key))
+const defaultColumns = allHeaders.filter((header) => header.key !== 'id').map((header) => header.key)
+const visibleColumns = ref([...defaultColumns])
 const headers = computed(() => allHeaders.filter((header) => visibleColumns.value.includes(header.key)))
 const columnOptions = allHeaders.map((header) => ({ title: header.title, key: header.key, required: header.key === 'event' || header.key === 'action' }))
 let latestDeliveryRequest = 0

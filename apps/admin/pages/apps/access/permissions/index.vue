@@ -79,7 +79,7 @@
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <AdminTableRowAction @click="openPermission(item)">查看权限</AdminTableRowAction>
+          <AdminTableRowAction @click="openPermission(item)">查看</AdminTableRowAction>
         </template>
         <template #no-data>
           <v-empty-state

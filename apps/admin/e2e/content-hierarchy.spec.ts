@@ -51,12 +51,12 @@ test('comment pin actions retain eligibility and confirmation', async ({ page })
   const unexpected = await contentFixtures(page, 'comments')
   await page.goto('./apps/content/comments')
   const rows = page.locator('tbody tr')
-  const pinButton = rows.first().getByRole('button', { name: '置顶评论', exact: true })
+  const pinButton = rows.first().getByRole('button', { name: '置顶', exact: true })
   if (await pinButton.count()) await pinButton.click()
-  else { await rows.first().getByRole('button', { name: '更多评论操作' }).click(); await page.getByText('置顶评论', { exact: true }).click() }
+  else { await rows.first().getByRole('button', { name: '更多评论操作' }).click(); await page.locator('.v-overlay--active').getByText('置顶', { exact: true }).click() }
   await expect(page.getByRole('dialog', { name: '置顶评论', exact: true })).toBeVisible()
   await page.getByRole('dialog').getByRole('button', { name: '取消', exact: true }).click()
-  await expect(rows.nth(2).getByRole('button', { name: '置顶评论', exact: true })).toHaveCount(0)
+  await expect(rows.nth(2).getByRole('button', { name: '置顶', exact: true })).toHaveCount(0)
   expect(unexpected).toEqual([])
 })
 
@@ -68,16 +68,16 @@ for (const resource of ['cards', 'comments'] as const) {
       await page.goto(`./apps/content/${resource}`)
       await expect(page.locator('tbody tr').first()).toContainText('周末在校园', { timeout: 20_000 })
       await page.screenshot({ path: testInfo.outputPath('content-list.png'), fullPage: true, animations: 'disabled' })
-      if (width >= 600) {
+      {
         const headings = await page.locator('thead tr').first().locator('th, td').allTextContents()
-        expect(headings.map(value => value.trim())).toEqual(['', '内容', '发布时间', '状态', '操作'])
+        expect(headings.map(value => value.trim())).toEqual(['', '内容', '用户', '发布时间', '状态', '操作'])
       }
       await expect(page.locator('tbody tr').first()).toContainText('林晓')
       await expect(page.locator('tbody tr').first().locator('.v-chip')).toHaveCount(0)
       await expect(page.getByText('待审核', { exact: true }).first()).toBeVisible()
       const label = resource === 'cards' ? '卡片' : '评论'
       const row = page.locator('tbody tr').first()
-      const viewButton = row.getByRole('button', { name: `查看${label}`, exact: true })
+      const viewButton = row.getByRole('button', { name: '查看', exact: true })
       await expect(viewButton).toBeVisible()
       const listUrl = page.url()
       await viewButton.click()
@@ -85,9 +85,9 @@ for (const resource of ['cards', 'comments'] as const) {
       await expect(page.getByRole('dialog')).toContainText('周末在校园')
       await expect(page).toHaveURL(listUrl)
       await page.getByRole('dialog').getByRole('button', { name: '关闭', exact: true }).click()
-      const deleteButton = row.getByRole('button', { name: `删除${label}`, exact: true })
+      const deleteButton = row.getByRole('button', { name: '删除', exact: true })
       if (await deleteButton.count()) await deleteButton.click()
-      else { await row.getByRole('button', { name: `更多${label}操作` }).click(); await page.locator('.v-overlay--active').getByText(`删除${label}`, { exact: true }).click() }
+      else { await row.getByRole('button', { name: `更多${label}操作` }).click(); await page.locator('.v-overlay--active').getByText('删除', { exact: true }).click() }
       await expect(page.getByRole('dialog')).toBeVisible()
       await page.getByRole('dialog').getByRole('button', { name: '取消', exact: true }).click()
       expect(unexpected).toEqual([])
@@ -107,7 +107,7 @@ for (const resource of ['cards', 'comments'] as const) {
     await contentFixtures(page, resource, true)
     await page.goto(`./apps/content/${resource}`)
     const label = resource === 'cards' ? '卡片' : '评论'
-    await expect(page.locator('tbody tr').first().getByRole('button', { name: `查看${label}`, exact: true })).toBeVisible({ timeout: 20_000 })
+    await expect(page.locator('tbody tr').first().getByRole('button', { name: '查看', exact: true })).toBeVisible({ timeout: 20_000 })
     await expect(page.getByRole('button', { name: `更多${label}操作` })).toHaveCount(0)
   })
 }
@@ -116,7 +116,7 @@ test('card and comment details reuse the same editing surface in dialogs', async
   const unexpected = await contentFixtures(page, 'cards')
   await page.goto('./apps/content/cards')
   const row = page.locator('tbody tr').first()
-  await row.getByRole('button', { name: '查看卡片', exact: true }).click()
+  await row.getByRole('button', { name: '查看', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: '卡片详情' })
   await expect(dialog.getByText('周末在校园', { exact: false })).toBeVisible()
   await dialog.getByRole('button', { name: '编辑卡片', exact: true }).click()
@@ -130,7 +130,6 @@ test('saved card relation columns display readable names', async ({ page }) => {
   await contentFixtures(page, 'cards')
   await page.goto('./apps/content/cards')
   await page.getByRole('button', { name: '视图设置' }).click()
-  await page.getByRole('checkbox', { name: '显示用户列' }).click()
   await page.getByRole('checkbox', { name: '显示标签列' }).click()
   await page.keyboard.press('Escape')
   await expect(page.locator('tbody tr').first()).toContainText('林晓 #201')

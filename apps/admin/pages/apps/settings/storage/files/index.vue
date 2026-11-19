@@ -94,13 +94,10 @@
         </template>
 
         <template #[`item.original_name`]="{ item }">
-          <v-list-item class="admin-file-cell px-0 py-1" width="280">
-            <v-list-item-title class="admin-file-name text-wrap">
-              <AdminTableSearchHighlight :text="item.original_name || `文件 #${item.id}`" :query="highlightQuery('original_name')" />
-            </v-list-item-title>
-            <v-list-item-subtitle class="text-wrap">{{ item.mime_type || '未知类型' }}</v-list-item-subtitle>
-          </v-list-item>
+          <span class="admin-file-name"><AdminTableSearchHighlight :text="item.original_name || `文件 #${item.id}`" :query="highlightQuery('original_name')" /></span>
         </template>
+
+        <template #[`item.mime_type`]="{ item }">{{ item.mime_type || '未知类型' }}</template>
 
         <template #[`item.preview`]="{ item }">
           <v-img
@@ -248,13 +245,13 @@ const canRestoreFile = computed(() => userStore.hasGrant('files.restore', 'all')
 const canPurgeFile = computed(() => userStore.hasGrant('files.purge', 'all'));
 const actionCapacity = ref(1);
 const fileActionLabels = computed(() => [
-  '查看文件',
+  '查看',
   ...(viewMode.value === 'normal' ? [
     ...(canUpdateFile.value ? ['审核通过', '设为非公开'] : []),
     ...(canTrashFile.value ? ['移入回收站'] : []),
   ] : [
-    ...(canRestoreFile.value ? ['恢复文件'] : []),
-    ...(canPurgeFile.value ? ['永久删除文件'] : []),
+    ...(canRestoreFile.value ? ['恢复'] : []),
+    ...(canPurgeFile.value ? ['永久删除'] : []),
   ]),
 ]);
 
@@ -292,9 +289,10 @@ const normalizeFilters = (value: unknown): Record<string, unknown> => {
 };
 
 const AllTableHeaders = [
-  { title: '文件名', value: 'original_name', sortable: true, minWidth: 240 },
-  { title: '预览', value: 'preview', sortable: false, minWidth: 88 },
   { title: 'ID', value: 'id', sortable: true },
+  { title: '文件名', value: 'original_name', sortable: true, minWidth: 240 },
+  { title: 'MIME 类型', value: 'mime_type', sortable: false, minWidth: 160 },
+  { title: '预览', value: 'preview', sortable: false, minWidth: 88 },
   { title: '大小', value: 'file_size', sortable: true },
   { title: '场景', value: 'scene', sortable: true, minWidth: 120 },
   { title: '渠道', value: 'channel_slug', sortable: true },
@@ -305,7 +303,7 @@ const AllTableHeaders = [
   { title: '创建时间', value: 'created_at', sortable: true, minWidth: 176 },
   { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
-const defaultColumns = ['original_name', 'preview', 'file_size', 'scene', 'status', 'created_at', 'operate'];
+const defaultColumns = ['original_name', 'mime_type', 'preview', 'file_size', 'scene', 'status', 'created_at', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: ['original_name', 'operate'].includes(header.value) }));
@@ -564,16 +562,16 @@ const openDetailDialog = (item: LCFile) => {
   DetailDialog_state.value = true;
 };
 const fileRowActions = (item: LCFile) => [
-  { key: 'view', label: '查看文件', onClick: () => openDetailDialog(item) },
+  { key: 'view', label: '查看', onClick: () => openDetailDialog(item) },
   ...(viewMode.value === 'normal' ? [
     ...(canUpdateFile.value ? [
-      { key: 'review', label: item.status === 0 ? '封禁文件' : '审核通过', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, item.status === 0 ? 'ban' : 'approve') },
+      { key: 'review', label: item.status === 0 ? '封禁' : '审核通过', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, item.status === 0 ? 'ban' : 'approve') },
       { key: 'public', label: item.is_public ? '设为非公开' : '设为公开', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, 'toggle_public') },
     ] : []),
     ...(canTrashFile.value ? [{ key: 'trash', label: '移入回收站', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, 'trash') }] : []),
   ] : [
-    ...(canRestoreFile.value ? [{ key: 'restore', label: '恢复文件', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, 'restore') }] : []),
-    ...(canPurgeFile.value ? [{ key: 'purge', label: '永久删除文件', disabled: !allowRowMutation.value, onClick: () => openHardDeleteDialog(item) }] : []),
+    ...(canRestoreFile.value ? [{ key: 'restore', label: '恢复', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, 'restore') }] : []),
+    ...(canPurgeFile.value ? [{ key: 'purge', label: '永久删除', disabled: !allowRowMutation.value, onClick: () => openHardDeleteDialog(item) }] : []),
   ]),
 ];
 

@@ -16,7 +16,7 @@
       :default-columns="defaultColumns"
       v-model:action-capacity="actionCapacity"
       :action-headers="TableHeaders"
-      :action-labels="['查看用户', '编辑用户', '删除用户']"
+      :action-labels="['查看', '编辑', '删除']"
       :selection-width="48"
       :result-count="tableHasResult ? tableTotalItems : null"
       :result-state="tableResultState"
@@ -121,16 +121,7 @@
         </template>
 
         <template #[`item.username`]="{ item }">
-          <div class="d-flex align-center ga-3 py-3">
-            <v-avatar v-if="!visibleColumns.includes('avatar')" size="36" color="surface-variant">
-              <v-img v-if="item.avatar" :alt="`${item.username}的头像`" :src="item.avatar" />
-              <v-icon v-else icon="mdi-account" aria-label="默认头像" />
-            </v-avatar>
-            <div>
-              <span class="text-body-1 font-weight-medium"><AdminTableSearchHighlight :text="item.username" :query="highlightQuery('username')" /></span>
-              <div v-if="!visibleColumns.includes('number')" class="text-caption text-medium-emphasis">账号 <AdminTableSearchHighlight :text="item.number" :query="highlightQuery('number')" /></div>
-            </div>
-          </div>
+          <span class="text-body-1 font-weight-medium"><AdminTableSearchHighlight :text="item.username" :query="highlightQuery('username')" /></span>
         </template>
 
         <template #[`item.operate`]="{ item }">
@@ -284,8 +275,8 @@ const normalizeFilters = (value: unknown): Record<string, unknown> => {
 };
 
 const AllTableHeaders = [
-  { title: '用户', value: 'username', sortable: true, minWidth: 240 },
   { title: 'ID', value: 'id', sortable: true, minWidth: 88 },
+  { title: '用户', value: 'username', sortable: true, minWidth: 240 },
   { title: '角色', value: 'roles_id', sortable: false, minWidth: 144 },
   { title: '头像', value: 'avatar', sortable: false, minWidth: 80 },
   { title: '账号', value: 'number', sortable: true, minWidth: 144 },
@@ -295,7 +286,7 @@ const AllTableHeaders = [
   { title: '状态', value: 'status', sortable: true, minWidth: 112 },
   { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
-const defaultColumns = ['username', 'roles_id', 'created_at', 'status', 'operate'];
+const defaultColumns = ['username', 'number', 'roles_id', 'created_at', 'status', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({
@@ -563,9 +554,9 @@ const openUserDetail = (id: number, mode: 'view' | 'edit') => {
   quickViewOpen.value = true;
 };
 const userRowActions = (user: User) => [
-  { key: 'view', label: '查看用户', onClick: () => openUserDetail(user.id, 'view') },
-  ...(canEditUser(user) ? [{ key: 'edit', label: '编辑用户', disabled: !allowRowMutation.value, onClick: () => openUserDetail(user.id, 'edit') }] : []),
-  ...(canDeleteUser(user) ? [{ key: 'delete', label: '删除用户', disabled: !allowRowMutation.value, onClick: () => openDeleteUserDialog(user) }] : []),
+  { key: 'view', label: '查看', onClick: () => openUserDetail(user.id, 'view') },
+  ...(canEditUser(user) ? [{ key: 'edit', label: '编辑', disabled: !allowRowMutation.value, onClick: () => openUserDetail(user.id, 'edit') }] : []),
+  ...(canDeleteUser(user) ? [{ key: 'delete', label: '删除', disabled: !allowRowMutation.value, onClick: () => openDeleteUserDialog(user) }] : []),
 ];
 
 const DeleteUserDialog_state = ref(false);

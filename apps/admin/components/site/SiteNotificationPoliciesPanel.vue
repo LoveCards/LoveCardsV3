@@ -18,8 +18,8 @@
             <v-data-table :headers="headers" :items="rows" item-value="event_type" :items-per-page="-1" hide-default-footer>
               <template #item.event_type="{ item }">
                 <strong>{{ policyLabel(item) }}</strong>
-                <div class="text-body-2 text-medium-emphasis">{{ policyImpact(item) }}</div>
               </template>
+              <template #item.impact="{ item }">{{ policyImpact(item) }}</template>
               <template #item.enabled="{ item }">
                 <span v-if="isMissingDescription(item)">待核对（当前{{ item.enabled ? '已开启' : '已关闭' }}）</span>
                 <span v-else-if="item.locked">{{ item.enabled ? '始终开启' : '已锁定（当前关闭）' }}</span>
@@ -89,7 +89,8 @@ const saveError = ref<string | undefined>(undefined)
 const conflictMessage = ref('')
 
 const headers = [
-  { title: '提醒与影响', key: 'event_type', minWidth: 320, sortRaw: (a: NotificationPolicyRule, b: NotificationPolicyRule) => policyLabel(a).localeCompare(policyLabel(b), 'zh-CN') },
+  { title: '提醒', key: 'event_type', minWidth: 200, sortRaw: (a: NotificationPolicyRule, b: NotificationPolicyRule) => policyLabel(a).localeCompare(policyLabel(b), 'zh-CN') },
+  { title: '影响', key: 'impact', sortable: false, minWidth: 320 },
   { title: '当前设置', key: 'enabled', sortable: false, minWidth: 160 },
 ]
 
