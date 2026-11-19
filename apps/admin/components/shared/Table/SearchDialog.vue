@@ -1,5 +1,5 @@
 <template>
-  <v-dialog v-model="thisDialogState" aria-label="搜索与排序" max-width="600">
+  <v-dialog @after-leave="restoreDialogFocus" v-model="thisDialogState" aria-label="搜索与排序" max-width="600">
     <v-card prepend-icon="mdi-filter-outline" title="搜索与排序">
       <v-card-text class="pt-4">
         <v-alert v-if="applyError" class="mb-4" role="alert" type="error" variant="tonal">
@@ -60,6 +60,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
 const ORDER_DESC = [
   { title: '升序', value: false },
   { title: '降序', value: true },
@@ -130,4 +131,5 @@ const submit = async () => {
     applying.value = false
   }
 }
+const restoreDialogFocus = useAdminDialogFocusReturn(thisDialogState)
 </script>

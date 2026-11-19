@@ -35,7 +35,7 @@
             subtitle="保存当前筛选、排序和列设置后可快速恢复"
             title="还没有保存视图"
           />
-          <v-list-item prepend-icon="mdi-content-save-outline" title="保存当前视图" @click="openSaveDialog" />
+          <v-list-item prepend-icon="mdi-content-save-outline" title="保存当前视图" @click="openSaveDialog($event)" />
         </v-list>
         <v-divider v-if="showSavedViews" />
         <v-list density="compact">
@@ -64,7 +64,7 @@
     </v-menu>
   </div>
 
-  <v-dialog v-model="saveDialogOpen" aria-label="保存当前视图" max-width="480">
+  <v-dialog @after-leave="restoreSaveDialogFocus" v-model="saveDialogOpen" aria-label="保存当前视图" max-width="480">
     <v-card>
       <v-card-title>保存当前视图</v-card-title>
       <v-divider />
@@ -96,6 +96,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
 import { useUserStore } from '~/stores/userStore'
 
 export interface AdminTableColumnOption {
@@ -208,7 +209,12 @@ function currentQuery(): Record<string, StoredQueryValue> {
   return normalizeQuery(route.query as Record<string, unknown>)
 }
 
-function openSaveDialog() {
+function openSaveDialog(event: Event) {
+  const menuId = (event.currentTarget as HTMLElement).closest<HTMLElement>('.v-menu')?.id
+  saveDialogTrigger = menuId
+    ? [...document.querySelectorAll<HTMLElement>('[aria-controls]')]
+      .find(element => element.getAttribute('aria-controls') === menuId) ?? null
+    : null
   viewsMenuOpen.value = false
   viewName.value = ''
   viewNameError.value = ''
@@ -274,6 +280,13 @@ watch(localStorageKey, hydrate)
 watch(() => props.columns, () => {
   visibleColumnKeys.value = normalizedVisibleColumns(visibleColumnKeys.value)
 }, { deep: true })
+const restoreDialogFocus = useAdminDialogFocusReturn(saveDialogOpen)
+let saveDialogTrigger: HTMLElement | null = null
+function restoreSaveDialogFocus() {
+  restoreDialogFocus()
+  if (saveDialogTrigger?.isConnected) saveDialogTrigger.focus()
+  saveDialogTrigger = null
+}
 </script>
 
 <style scoped>

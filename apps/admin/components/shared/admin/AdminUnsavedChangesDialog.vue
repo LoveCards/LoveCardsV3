@@ -1,5 +1,5 @@
 <template>
-  <v-dialog :model-value="modelValue" aria-labelledby="admin-unsaved-changes-title" max-width="520" persistent>
+  <v-dialog @after-leave="restoreDialogFocus" :model-value="modelValue" aria-labelledby="admin-unsaved-changes-title" max-width="520" persistent>
     <v-card>
       <v-card-title id="admin-unsaved-changes-title" class="d-flex align-center ga-2 text-h6">
         <v-icon color="warning">mdi-content-save-alert-outline</v-icon>
@@ -21,10 +21,12 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(defineProps<{ modelValue: boolean; subject?: string }>(), { subject: '本页尚未保存的配置' })
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
+const props = withDefaults(defineProps<{ modelValue: boolean; subject?: string }>(), { subject: '本页尚未保存的配置' })
 
 defineEmits<{
   stay: []
   discard: []
 }>()
+const restoreDialogFocus = useAdminDialogFocusReturn(() => props.modelValue)
 </script>

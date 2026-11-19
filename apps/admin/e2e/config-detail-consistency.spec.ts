@@ -82,7 +82,7 @@ test('channel edits use one dirty status, block testing, and preserve failed inp
   await expect(page.getByRole('textbox', { name: /服务地址/ })).toHaveValue('edited.invalid')
   await page.getByRole('button', { name: '搜索管理页面' }).click()
   await page.getByPlaceholder('输入页面名称').fill('站点信息')
-  await page.getByRole('listbox').last().getByRole('link', { name: /^站点信息(?:\s|$)/ }).click()
+  await page.locator('.v-menu.v-overlay--active a[href="/admin/apps/settings/site"]').click()
   await expect(page.getByRole('dialog', { name: '有未保存的修改' })).toBeVisible()
   await page.getByRole('button', { name: '继续编辑', exact: true }).click()
   await expect(page).toHaveURL(/messaging\/demo/)

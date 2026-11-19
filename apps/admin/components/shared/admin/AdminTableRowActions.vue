@@ -30,7 +30,7 @@
             :title="action.label"
             :to="action.to"
             :disabled="action.disabled"
-            @click="action.onClick?.()"
+            @click="runHiddenAction(action, $event)"
           />
         </v-list>
       </v-menu>
@@ -63,6 +63,17 @@ const props = withDefaults(defineProps<{
 
 const visibleActions = computed(() => props.actions.slice(0, Math.max(1, props.capacity)))
 const hiddenActions = computed(() => props.actions.slice(Math.max(1, props.capacity)))
+
+function runHiddenAction(action: AdminRowAction, event: Event) {
+  // 菜单项会随菜单关闭而卸载；先聚焦稳定的行尾入口供后续弹窗回焦。
+  const menuId = (event.currentTarget as HTMLElement).closest<HTMLElement>('.v-menu')?.id
+  if (menuId) {
+    const activator = [...document.querySelectorAll<HTMLElement>('[aria-controls]')]
+      .find(element => element.getAttribute('aria-controls') === menuId)
+    activator?.focus()
+  }
+  action.onClick?.()
+}
 </script>
 
 <style scoped>

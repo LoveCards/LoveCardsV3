@@ -1,6 +1,7 @@
 <template>
   <v-dialog
     v-model="dialogOpen"
+    @after-leave="restoreDialogFocus"
     :aria-label="title"
     :persistent="loading"
     max-width="560"
@@ -42,6 +43,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
 const props = withDefaults(defineProps<{
   modelValue: boolean
   title: string
@@ -70,6 +72,7 @@ const dialogOpen = computed({
 })
 // 规范 D-1：危险确认统一为“影响说明 + 明确动作按钮”，不提供文字输入确认（防误触靠文案说清后果，见 D-2）。
 const canConfirm = computed(() => !props.loading)
+const restoreDialogFocus = useAdminDialogFocusReturn(() => props.modelValue)
 
 const confirm = () => {
   if (!canConfirm.value) return
