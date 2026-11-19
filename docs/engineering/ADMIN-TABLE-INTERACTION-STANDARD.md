@@ -2,7 +2,7 @@
 
 > 状态：2026-11-19 已在云端 dev 实施资源双形态详情、关联文本链接、表格宽度响应操作列，以及关联资源的可读名称。本轮收束所有数据表为横向列式展示，并统一默认列与列表动作文案；验证记录以本次提交说明为准。
 >
-> 范围：`apps/admin` 的资源列表、详情内嵌表、运行诊断表和可编辑策略表。页面宽度与区块顺序遵守 [页面布局规范](ADMIN-LAYOUT-SYSTEM.md)，颜色与 Vuetify 原生外观遵守 [UI 风格锁定](ADMIN-UI-STYLE-LOCK.md)，API 与权限边界遵守 [管理端架构](ADMIN-ARCHITECTURE.md)。本文负责表格内部的信息、导航和操作语义；与旧的 IA 草案、UI 审查记录或表格查询建议冲突时，以本文为准。
+> 范围：`apps/admin` 的资源列表、详情内嵌表、运行诊断表和可编辑策略表。页面宽度与区块顺序遵守 [页面布局规范](ADMIN-LAYOUT-SYSTEM.md)，颜色与 Vuetify 原生外观遵守 [UI 风格锁定](ADMIN-UI-STYLE-LOCK.md)，API 与权限边界遵守 [管理端架构](ADMIN-ARCHITECTURE.md)。详情主体与编辑态的视觉规则以[详情与编辑视觉规范](ADMIN-DETAIL-EDIT-DESIGN-STANDARD.md)为准。本文负责表格内部的信息、导航和操作语义；与旧的 IA 草案、UI 审查记录或表格查询建议冲突时，以本文为准。
 
 ## 1. 目标与不变量
 
