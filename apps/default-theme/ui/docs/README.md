@@ -20,6 +20,7 @@
 
 - [`specifications/INTERACTIONS.md`](./specifications/INTERACTIONS.md)：搜索、评论与移动壳层交互。
 - [`specifications/DIALOGS.md`](./specifications/DIALOGS.md)：Dialog、Modal、Alert、移动 Sheet、焦点与滚动边界。
+- [`specifications/MOTION.md`](./specifications/MOTION.md)：弹窗进出场、页面与 Tab 转场、减少动态效果及验收。
 - [`specifications/COMPOSE.md`](./specifications/COMPOSE.md)：发布形态与媒体工作区。
 - [`specifications/MEDIA-FIT.md`](./specifications/MEDIA-FIT.md)：图片、视频与 GIF 的容器适配。
 - [`specifications/SAVE-ACTION.md`](./specifications/SAVE-ACTION.md)：收藏动作与失败回滚。
@@ -35,6 +36,7 @@
 - [`implementation/COMMUNITY-SDK-MAP.md`](./implementation/COMMUNITY-SDK-MAP.md)：社区页面与 SDK 用例映射。
 - [`implementation/BACKEND-HANDOFF.md`](./implementation/BACKEND-HANDOFF.md)：需要后端正式能力支持的交互。
 - [`implementation/MIGRATION-PLAN.md`](./implementation/MIGRATION-PLAN.md)：从设计真源到 React 的分阶段迁移顺序与完成门槛。
+- [`implementation/MOTION-IMPLEMENTATION-PLAN.md`](./implementation/MOTION-IMPLEMENTATION-PLAN.md)：动效规范的运行落地切片、Astryx 边界、浏览器验收与 dev 交付。
 
 ## 设计决策
 

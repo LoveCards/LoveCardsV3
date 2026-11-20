@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import { useAuth } from '../../app/providers.jsx';
 import { AuthPromptDialog, useToast } from '../../ui/index.js';
 import { FeedStory } from './FeedStory.jsx';
@@ -11,6 +11,7 @@ export function FeedCollection({ items, source, className, ariaLabel }) {
   const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const navigationType = useNavigationType();
   const { isAuthenticated, session } = useAuth();
   const [savedIds, setSavedIds] = useState(() => new Set());
   const [authPromptAction, setAuthPromptAction] = useState('');
@@ -45,7 +46,7 @@ export function FeedCollection({ items, source, className, ariaLabel }) {
   useFeedMasonry(masonryRef, items);
 
   return (
-    <section ref={masonryRef} className={`${className} feed-masonry`} aria-label={ariaLabel}>
+    <section ref={masonryRef} className={`${className} feed-masonry${navigationType === 'POP' ? '' : ' lc-content-enter'}`} aria-label={ariaLabel}>
       <span className="masonry-column-sizer" aria-hidden="true" />
       <span className="masonry-gutter-sizer" aria-hidden="true" />
       {items.map((card) => (

@@ -16,7 +16,11 @@ export function currentLocationPath(location) {
   return `${pathname}${search}${hash}`;
 }
 
-export function ProtectedRoute({ children }) {
+export function canAccessProtectedRoute(auth, allowVisitor = false) {
+  return auth.isAuthenticated || (allowVisitor && auth.isVisitor);
+}
+
+export function ProtectedRoute({ children, allowVisitor = false }) {
   const auth = useAuth();
   const location = useLocation();
   const designPreview = getRuntimeDataMode() === 'design-preview';
@@ -25,9 +29,17 @@ export function ProtectedRoute({ children }) {
   if (designPreview || typeof window === 'undefined') return children;
   if (auth.status === 'checking') return <main className="auth-route-state" aria-label="正在检查登录状态"><ResourceState status="loading" loadingLabel="正在检查登录状态" /></main>;
   if (auth.status === 'error') return <main className="auth-route-state" aria-label="登录状态检查失败"><ResourceState status="error" error={auth.error} onRetry={auth.refresh} /></main>;
-  if (!auth.isAuthenticated) {
+  if (!canAccessProtectedRoute(auth, allowVisitor)) {
     const from = currentLocationPath(location);
     return <Navigate to="/auth/login" replace state={{ from }} />;
   }
   return children;
+}
+
+export function HomeFeedRoute({ children }) {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  return params.get('feed') === 'following' || params.get('channel') === 'following'
+    ? <ProtectedRoute>{children}</ProtectedRoute>
+    : children;
 }

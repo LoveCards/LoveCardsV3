@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { ActionMenu, ChatComposer, ChatComposerInput, ChatSendButton, IconButton } from '../../ui/index.js';
 import { Icon } from '../../ui/icons.jsx';
 import { AuthorIdentity } from '../../components/AuthorIdentity.jsx';
@@ -81,12 +82,15 @@ function CommentRow({ item, replies, depth, source, isAuthenticated, canComment,
 }
 
 export function CommentThread({ comments = [], focusedCommentId, source, isAuthenticated, canComment, canLike, canDeleteComment, canPinComment = false, pinBusy = false, viewerId, commentsUnavailable, onRetryComments, onSubmitComment, onLogin, onToggleLike, likeBusyIds, onRequestDelete, onRequestPinChange, onCopy, canReport = false, onReport }) {
+  const location = useLocation();
+  const loginReturnTo = `${location.pathname}${location.search}${location.hash}`;
   const [replyTarget, setReplyTarget] = useState(null);
   const [draft, setDraft] = useState('');
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
   const [expandedRoots, setExpandedRoots] = useState(() => new Set());
   const commentInputRoot = useRef(null);
+  const submitInFlightRef = useRef(false);
   const commentItems = comments;
   const mentionAdapter = useMemo(() => {
     if (source === 'preview') {
@@ -137,7 +141,50 @@ export function CommentThread({ comments = [], focusedCommentId, source, isAuthe
     return () => window.cancelAnimationFrame(frame);
   }, [expandedRoots, focusedComment, focusedId]);
 
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return undefined;
+    let expandedHeight = viewport.height;
+    let expandedWidth = viewport.width;
+    let frame;
+    const keepFocusedInputVisible = () => {
+      const height = viewport.height;
+      if (height > expandedHeight) {
+        expandedHeight = height;
+        expandedWidth = viewport.width;
+      }
+      const input = commentInputRoot.current;
+      const focused = document.activeElement;
+      if (!input || !focused || (input !== focused && !input.contains(focused))) return;
+      // 仅响应同一方向上的明显视口缩小，避免地址栏和旋转造成跳动。
+      if (expandedHeight - height < 120 || Math.abs(viewport.width - expandedWidth) > 20) return;
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const nav = document.querySelector('.mobile-bottom-nav');
+        const navTop = nav && getComputedStyle(nav).display !== 'none' && !document.querySelector('dialog[open]') ? nav.getBoundingClientRect().top : Infinity;
+        const visibleBottom = Math.min(viewport.offsetTop + viewport.height, navTop) - 12;
+        const composer = focused.closest('.comment-thread-composer-wrap') || focused;
+        const overflow = composer.getBoundingClientRect().bottom - visibleBottom;
+        if (overflow <= 0) return;
+        let scroller = focused.parentElement;
+        while (scroller && scroller !== document.body) {
+          const style = getComputedStyle(scroller);
+          if (/(auto|scroll)/.test(style.overflowY) && scroller.scrollHeight > scroller.clientHeight) break;
+          scroller = scroller.parentElement;
+        }
+        if (scroller && scroller !== document.body) scroller.scrollTop += overflow;
+        else window.scrollBy({ top: overflow, behavior: 'auto' });
+      });
+    };
+    viewport.addEventListener('resize', keepFocusedInputVisible);
+    return () => {
+      viewport.removeEventListener('resize', keepFocusedInputVisible);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+
   const submit = async (value) => {
+    if (submitInFlightRef.current) return;
     if (value.length > 140) {
       setDraft(value);
       setStatus('error');
@@ -145,6 +192,7 @@ export function CommentThread({ comments = [], focusedCommentId, source, isAuthe
       return;
     }
     const parentId = replyTarget?.id || null;
+    submitInFlightRef.current = true;
     setStatus('sending');
     setMessage('');
     try {
@@ -157,6 +205,8 @@ export function CommentThread({ comments = [], focusedCommentId, source, isAuthe
       setDraft(value);
       setStatus('error');
       setMessage(getUserFacingError(error, { fallback: '评论没有发送，正文已保留，请稍后重试。', validationFallback: '评论内容不符合要求，请修改后重试。' }));
+    } finally {
+      submitInFlightRef.current = false;
     }
   };
 
@@ -173,7 +223,7 @@ export function CommentThread({ comments = [], focusedCommentId, source, isAuthe
         <ChatComposer className="comment-chat-composer" value={draft} onChange={setDraft} onSubmit={submit} placeholder={replyTarget ? `回复 @${replyTarget.author}` : '写下你的回复…'} isDisabled={status === 'sending'} density="compact" elevation="none" status={status === 'error' ? { type: 'error', message } : undefined} footerActions={<span className="comment-composer-hint">Enter 发送 · Shift+Enter 换行</span>} sendButton={<ChatSendButton label="发送" isIconOnly={false} sendIcon={null} size="sm" isDisabled={draft.length > 140 || !draft.trim()} />} input={<div className="comment-composer-input-shell"><ChatComposerInput ref={commentInputRoot} label={replyTarget ? `回复 ${replyTarget.author}` : '写下你的回复'} value={draft} onChange={handleCommentInputChange} onKeyDown={(event) => normalizeMentionCaret(event.currentTarget)} triggers={mentionTrigger ? [mentionTrigger] : undefined} debounceMs={180} hasHistory={false} pasteAsToken={false} maxRows={6} /><span className="comment-composer-count" aria-live="polite">{draft.length} / 140</span></div>} />
         {status === 'success' && <span className="comment-thread-success" role="status">{message}</span>}
       </div>
-      : <p className="comment-thread-boundary">{isAuthenticated ? '当前账号没有发表评论的权限。' : <>登录后参与讨论。 <button type="button" onClick={onLogin}>去登录</button></>}</p>;
+      : <p className="comment-thread-boundary">{isAuthenticated ? '当前账号没有发表评论的权限。' : <>登录后参与讨论。 <Link to="/auth/login" state={{ from: loginReturnTo }}>去登录</Link></>}</p>;
 
   return (
     <section className="comment-thread" aria-labelledby="comments-title">

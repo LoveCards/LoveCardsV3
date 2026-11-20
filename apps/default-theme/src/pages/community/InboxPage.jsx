@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigationType } from 'react-router-dom';
 import { useAuth } from '../../app/providers.jsx';
 import { getUserFacingError } from '../../app/user-facing-error.js';
 import { getRuntimeDataMode } from '../../app/runtime-context.js';
@@ -53,6 +53,7 @@ const emptyUnreadByCategory = Object.fromEntries(NOTIFICATION_CATEGORIES.map(({ 
 
 export function InboxPage() {
   const { pathname } = useLocation();
+  const navigationType = useNavigationType();
   const auth = useAuth();
   const designPreview = getRuntimeDataMode() === 'design-preview';
   const activeFilter = pathname === '/inbox/system' ? 'system' : 'engagement';
@@ -184,7 +185,7 @@ export function InboxPage() {
           ? <ResourceState status="error" error={state.error} onRetry={load} />
           : state.items.length
             ? <section className="notification-stream" aria-label={`${filterLabel}列表`}>
-              {groups.map((group) => <section className="notification-group" aria-labelledby={`notification-group-${group.label}`} key={group.label}><header><h2 id={`notification-group-${group.label}`}>{group.label}</h2><span>{group.items.filter((item) => !item.read_at).length ? `${group.items.filter((item) => !item.read_at).length} 条未读` : `${group.items.length} 条`}</span></header><div className="notification-list">{group.items.map((item, index) => <NotificationItem item={item} busy={Boolean(busy)} onRead={markRead} key={item.id || index} />)}</div></section>)}
+              {groups.map((group) => <section className="notification-group" aria-labelledby={`notification-group-${group.label}`} key={group.label}><header><h2 id={`notification-group-${group.label}`}>{group.label}</h2><span>{group.items.filter((item) => !item.read_at).length ? `${group.items.filter((item) => !item.read_at).length} 条未读` : `${group.items.length} 条`}</span></header><div className={`notification-list${navigationType === 'POP' ? '' : ' lc-content-enter'}`}>{group.items.map((item, index) => <NotificationItem item={item} busy={Boolean(busy)} onRead={markRead} key={item.id || index} />)}</div></section>)}
             </section>
             : <ResourceState
               status="empty"

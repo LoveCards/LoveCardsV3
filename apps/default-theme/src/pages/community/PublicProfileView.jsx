@@ -81,7 +81,7 @@ export function PublicProfileView({ relation: relationProp }) {
   const auth = useAuth();
   const toast = useToast();
   const relationPage = relation === 'followers' || relation === 'following';
-  const [state, setState] = useState({ status: 'loading', profile: null, rows: [], error: null, cardsStatus: relationPage ? 'idle' : 'loading', cards: [], cardsError: null, cardsLoadMoreError: null, cardsPage: 1, cardsHasMore: false, cardsLoadingMore: false });
+  const [state, setState] = useState({ status: 'loading', routeHandle: handle, profile: null, rows: [], error: null, cardsStatus: relationPage ? 'idle' : 'loading', cards: [], cardsError: null, cardsLoadMoreError: null, cardsPage: 1, cardsHasMore: false, cardsLoadingMore: false });
   const [following, setFollowing] = useState(false);
   const [busy, setBusy] = useState('');
   const [blocked, setBlocked] = useState(false);
@@ -89,6 +89,10 @@ export function PublicProfileView({ relation: relationProp }) {
   const [reportOpen, setReportOpen] = useState(false);
   const [authPromptAction, setAuthPromptAction] = useState('');
   const requestRef = useRef(0);
+  const relationWriteInFlightRef = useRef(false);
+  const relationMutationVersionRef = useRef(0);
+  const relationWriteUidRef = useRef(null);
+  const loadedHandleRef = useRef(handle);
 
   const shareProfile = useCallback(async () => {
     const url = window.location.href;
@@ -102,7 +106,15 @@ export function PublicProfileView({ relation: relationProp }) {
 
   const load = useCallback(async () => {
     const requestId = ++requestRef.current;
-    setState((current) => ({ ...current, status: 'loading', error: null, cardsStatus: relationPage ? 'idle' : 'loading', cardsError: null, cardsLoadMoreError: null, cardsPage: 1, cardsHasMore: false, cardsLoadingMore: false }));
+    if (loadedHandleRef.current !== handle) {
+      loadedHandleRef.current = handle;
+      setFollowing(false);
+      setBlocked(false);
+      setBlockOpen(false);
+      setReportOpen(false);
+      setAuthPromptAction('');
+    }
+    setState((current) => ({ ...current, routeHandle: handle, profile: current.routeHandle === handle ? current.profile : null, rows: current.routeHandle === handle ? current.rows : [], status: 'loading', error: null, cardsStatus: relationPage ? 'idle' : 'loading', cardsError: null, cardsLoadMoreError: null, cardsPage: 1, cardsHasMore: false, cardsLoadingMore: false }));
     try {
       const profile = await getPublicProfile(handle);
       if (requestId !== requestRef.current) return;
@@ -127,9 +139,17 @@ export function PublicProfileView({ relation: relationProp }) {
         }
       }
       if (requestId !== requestRef.current) return;
-      setState({ status: 'success', profile, rows, error: null, cardsStatus, cards, cardsError, cardsLoadMoreError: null, cardsPage: 1, cardsHasMore, cardsLoadingMore: false });
+      setState({ status: 'success', routeHandle: handle, profile, rows, error: null, cardsStatus, cards, cardsError, cardsLoadMoreError: null, cardsPage: 1, cardsHasMore, cardsLoadingMore: false });
       if (!relationPage && auth.isAuthenticated && auth.session?.uid !== profile.uid) {
-        try { const result = await getUserRelation(profile.uid); if (requestId !== requestRef.current) return; setFollowing(Boolean(result?.following)); setBlocked(Boolean(result?.blocked_by_me)); }
+        try {
+          const relationVersion = relationMutationVersionRef.current;
+          const result = await getUserRelation(profile.uid);
+          if (requestId !== requestRef.current) return;
+          if (relationWriteUidRef.current === profile.uid
+            && (relationVersion !== relationMutationVersionRef.current || relationWriteInFlightRef.current)) return;
+          setFollowing(Boolean(result?.following));
+          setBlocked(Boolean(result?.blocked_by_me));
+        }
         catch { /* Relation state remains unknown until the next successful read. */ }
       }
     } catch (error) {
@@ -159,15 +179,29 @@ export function PublicProfileView({ relation: relationProp }) {
 
   const toggleFollow = async () => {
     const profile = state.profile;
-    if (!profile || busy) return;
+    if (!profile || state.routeHandle !== handle || busy || relationWriteInFlightRef.current) return;
     if (!auth.isAuthenticated) { setAuthPromptAction('关注用户'); return; }
     const previous = following;
     const previousCount = Number(profile.followers ?? profile.counts?.followers ?? 0);
+    const requestId = requestRef.current;
+    relationWriteInFlightRef.current = true;
+    relationWriteUidRef.current = profile.uid;
+    relationMutationVersionRef.current += 1;
     setBusy('follow'); setFollowing(!previous);
     setState((current) => ({ ...current, profile: { ...current.profile, followers: Math.max(0, previousCount + (previous ? -1 : 1)) } }));
     try { if (blocked) throw Object.assign(new Error('关系受到限制'), { reason_code: 'blocked_relationship' }); if (previous) await unfollowUser(profile.uid); else await followUser(profile.uid); }
-    catch (error) { setFollowing(previous); setState((current) => ({ ...current, profile: { ...current.profile, followers: previousCount } })); toast({ body: getUserFacingError(error, { fallback: previous ? '暂时无法取消关注，请稍后重试。' : '暂时无法关注该用户，请稍后重试。' }), type: 'error', uniqueID: 'follow-error' }); }
-    finally { setBusy(''); }
+    catch (error) {
+      if (requestId === requestRef.current) {
+        setFollowing(previous);
+        setState((current) => ({ ...current, profile: { ...current.profile, followers: previousCount } }));
+        toast({ body: getUserFacingError(error, { fallback: previous ? '暂时无法取消关注，请稍后重试。' : '暂时无法关注该用户，请稍后重试。' }), type: 'error', uniqueID: 'follow-error' });
+      }
+    }
+    finally {
+      relationMutationVersionRef.current += 1;
+      relationWriteInFlightRef.current = false;
+      setBusy('');
+    }
   };
   const startMessage = () => {
     if (blocked) { toast({ body: '你与该用户的关系受到限制，暂时无法发送私信。', type: 'error', uniqueID: 'message-blocked' }); return; }
@@ -183,13 +217,32 @@ export function PublicProfileView({ relation: relationProp }) {
     navigate(`/messages/new/${encodeURIComponent(targetHandle)}`);
   };
   const toggleBlock = async () => {
-    if (!state.profile || busy) return;
+    if (!state.profile || state.routeHandle !== handle || busy || relationWriteInFlightRef.current) return;
+    const requestId = requestRef.current;
+    const profileUid = state.profile.uid;
+    relationWriteInFlightRef.current = true;
+    relationWriteUidRef.current = profileUid;
+    relationMutationVersionRef.current += 1;
     setBusy('block');
-    try { if (blocked) await unblockUser(state.profile.uid); else await blockUser(state.profile.uid); setBlocked(!blocked); setBlockOpen(false); toast({ body: blocked ? '已解除拉黑。' : '已拉黑该用户。', uniqueID: 'block-updated' }); }
-    catch (error) { toast({ body: getUserFacingError(error, { fallback: blocked ? '暂时无法解除拉黑，请稍后重试。' : '暂时无法拉黑该用户，请稍后重试。' }), type: 'error', uniqueID: 'block-error' }); }
-    finally { setBusy(''); }
+    try {
+      if (blocked) await unblockUser(profileUid);
+      else await blockUser(profileUid);
+      if (requestId === requestRef.current) {
+        setBlocked(!blocked);
+        setBlockOpen(false);
+        toast({ body: blocked ? '已解除拉黑。' : '已拉黑该用户。', uniqueID: 'block-updated' });
+      }
+    } catch (error) {
+      if (requestId === requestRef.current) toast({ body: getUserFacingError(error, { fallback: blocked ? '暂时无法解除拉黑，请稍后重试。' : '暂时无法拉黑该用户，请稍后重试。' }), type: 'error', uniqueID: 'block-error' });
+    } finally {
+      relationMutationVersionRef.current += 1;
+      relationWriteInFlightRef.current = false;
+      setBusy('');
+    }
   };
-  const profile = state.profile;
+  const routeReady = state.routeHandle === handle;
+  const profile = routeReady ? state.profile : null;
+  const displayStatus = routeReady ? state.status : 'loading';
   const profileHandle = canonicalHandle(profile, handle);
   const relationBackPath = profilePath(profile, '', handle);
   const ownProfile = Boolean(profile && normalizeProfileUid(auth.session?.uid) === normalizeProfileUid(profile.uid));
@@ -198,7 +251,7 @@ export function PublicProfileView({ relation: relationProp }) {
   // The overflow menu is an authenticated action surface. Anonymous visitors
   // should see the public profile and its login affordances, not a menu whose
   // only useful action (sharing/reporting) is unavailable or misleading.
-  const profileMenu = auth.isAuthenticated
+  const profileMenu = auth.isAuthenticated && profile
     ? <ActionMenu items={[{ label: '分享主页', icon: <Icon name="share" size={17} />, onClick: () => { void shareProfile(); } }, ...(!ownProfile ? [{ label: '举报', icon: <Icon name="flag" size={17} />, onClick: () => { if (!busy) setReportOpen(true); } }, { label: blocked ? '解除拉黑' : '拉黑', icon: <Icon name="close" size={17} />, onClick: () => { if (!busy) setBlockOpen(true); } }] : [])]} label="更多主页操作" icon={<Icon name="more" size={19} />} />
     : null;
   if (ownProfile) {
@@ -213,9 +266,9 @@ export function PublicProfileView({ relation: relationProp }) {
     const followingPath = profilePath(profile, 'following', handle) || backPath;
     const ownerLabel = profile?.username || (profile?.uid ? `UID ${profile.uid}` : '该用户');
     const description = relation === 'followers' ? `${ownerLabel} 的粉丝会显示在这里。` : `${ownerLabel} 关注的用户会显示在这里。`;
-    const relationContent = state.status === 'loading'
+    const relationContent = displayStatus === 'loading'
       ? <ProfileRelationSkeleton title={title} />
-      : state.status === 'error'
+      : displayStatus === 'error'
         ? <PublicRelationError error={state.error} onRetry={load} />
         : !auth.isAuthenticated
           ? <ResourceState status="empty" emptyTitle="登录后查看关系列表" emptyDescription="登录后才能查看完整的关系列表。" emptyAction={<Link className="action-link action-link-primary" to="/auth/login">去登录</Link>} />
@@ -226,7 +279,7 @@ export function PublicProfileView({ relation: relationProp }) {
     return <AppShell mobileMode="task"><main className="profile-secondary-page public-profile-relation-page" aria-labelledby="public-profile-relation-title">
       <div className="profile-secondary-mobile-top"><Link to={backPath} aria-label="返回用户主页"><Icon name="arrow" size={19} /></Link><strong>{title}</strong><span aria-hidden="true" /></div>
       <Link className="profile-secondary-back" to={backPath}>← 返回用户主页</Link>
-      <header className="profile-secondary-header"><p>用户关系</p><h1 id="public-profile-relation-title">{title}</h1><span>{state.status === 'success' ? `${count} 人` : '—'} · {description}</span></header>
+      <header className="profile-secondary-header"><p>用户关系</p><h1 id="public-profile-relation-title">{title}</h1><span>{displayStatus === 'success' ? `${count} 人` : '—'} · {description}</span></header>
       <nav className="profile-secondary-switcher" aria-label="关系类型">
         <Link className={relation === 'following' ? 'is-active' : ''} aria-current={relation === 'following' ? 'page' : undefined} to={followingPath}>关注</Link>
         <Link className={relation === 'followers' ? 'is-active' : ''} aria-current={relation === 'followers' ? 'page' : undefined} to={followersPath}>粉丝</Link>
@@ -236,7 +289,7 @@ export function PublicProfileView({ relation: relationProp }) {
   }
 
   return <AppShell mobileMode="standard"><ProfileShell mode="public" title={profile?.username || '用户主页'} ariaLabel={profile?.username || '用户主页'} mobileActions={profileMenu}>
-    {state.status === 'loading' ? <PublicProfileSkeleton handle={handle} /> : state.status === 'error' ? <PublicProfileError error={state.error} onRetry={load} /> : profile && <>
+    {displayStatus === 'loading' ? <PublicProfileSkeleton handle={handle} /> : displayStatus === 'error' ? <PublicProfileError error={state.error} onRetry={load} /> : profile && <>
        <ProfileIdentitySurface
          mode="public"
          ariaLabel={`${profile.username || '用户'}的公开资料`}
@@ -255,8 +308,8 @@ export function PublicProfileView({ relation: relationProp }) {
       <ProfileContentTabs mode="public" handle={profileHandle || handle} label="用户内容分类" />
       <PublicProfileCards status={state.cardsStatus} error={state.cardsError} items={state.cards} profile={profile} hasMore={state.cardsHasMore} loadingMore={state.cardsLoadingMore} loadMoreError={state.cardsLoadMoreError} onRetry={load} onLoadMore={loadMoreCards} onRetryMore={loadMoreCards} />
     </>}
-    <ConfirmActionDialog isOpen={blockOpen} onOpenChange={(open) => { if (!busy) setBlockOpen(open); }} title={blocked ? '解除拉黑这个用户？' : '拉黑这个用户？'} description={blocked ? '解除后仍受隐私设置控制。' : '拉黑后，对方的私信和部分互动会被服务器阻止。'} actionLabel={blocked ? '解除拉黑' : '确认拉黑'} isLoading={busy === 'block'} onAction={toggleBlock} />
-    <AuthPromptDialog isOpen={Boolean(authPromptAction)} action={authPromptAction} onOpenChange={(open) => { if (!open) setAuthPromptAction(''); }} onLogin={() => { const from = profilePath(state.profile, '', handle) || `/user/${handle}`; setAuthPromptAction(''); navigate('/auth/login', { state: { from } }); }} />
-    <ReportResourceDialog isOpen={reportOpen} onOpenChange={setReportOpen} resourceType="user" resourceId={profile?.uid} title="举报用户" onFeedback={(body, type) => toast({ body, type: type === 'error' ? 'error' : undefined, uniqueID: type === 'error' ? 'report-error' : 'report-sent', collisionBehavior: 'overwrite' })} />
+    <ConfirmActionDialog isOpen={blockOpen && routeReady} onOpenChange={(open) => { if (!busy) setBlockOpen(open); }} title={blocked ? '解除拉黑这个用户？' : '拉黑这个用户？'} description={blocked ? '解除后仍受隐私设置控制。' : '拉黑后，对方的私信和部分互动会被服务器阻止。'} actionLabel={blocked ? '解除拉黑' : '确认拉黑'} isLoading={busy === 'block'} onAction={toggleBlock} />
+    <AuthPromptDialog isOpen={routeReady && Boolean(authPromptAction)} action={authPromptAction} onOpenChange={(open) => { if (!open) setAuthPromptAction(''); }} onLogin={() => { const from = profilePath(state.profile, '', handle) || `/user/${handle}`; setAuthPromptAction(''); navigate('/auth/login', { state: { from } }); }} />
+    <ReportResourceDialog isOpen={reportOpen && routeReady} onOpenChange={setReportOpen} resourceType="user" resourceId={profile?.uid} title="举报用户" onFeedback={(body, type) => toast({ body, type: type === 'error' ? 'error' : undefined, uniqueID: type === 'error' ? 'report-error' : 'report-sent', collisionBehavior: 'overwrite' })} />
   </ProfileShell></AppShell>;
 }

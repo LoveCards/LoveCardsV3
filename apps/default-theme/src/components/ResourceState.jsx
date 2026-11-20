@@ -47,6 +47,8 @@ export function ResourceState({
 }) {
   if (status === 'loading') return loadingVariant === 'feed'
     ? <FeedSkeleton className={loadingClassName} label={loadingLabel} />
+    : loadingVariant === 'detail'
+      ? <div className={stateClassName('loading', `${className} detail-loading`)} role="status" aria-live="polite"><span className="sr-only">{loadingLabel}</span><div className="detail-loading-media" aria-hidden="true" /><div className="detail-loading-copy" aria-hidden="true"><i /><i /><i /><i /></div></div>
     : <div className={stateClassName('loading', className)} role="status" aria-live="polite"><span className="sr-only">{loadingLabel}</span><div className="resource-skeleton" aria-hidden="true"><i /><i /><i /></div></div>;
   if (status === 'error') {
     const presentation = getResourceErrorPresentation(error);

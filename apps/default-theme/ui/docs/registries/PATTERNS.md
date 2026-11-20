@@ -17,6 +17,8 @@
 | MobilePageShell | canonical | LocalHeader + content scroll + safe-area + optional task footer | 将 IA depth 与 `standard/task/immersive/gateway` 外壳分离，固定返回和 BottomNav 规则 | 全站移动页面 |
 | AuthorIdentity | canonical | Avatar + Link + Badge/Timestamp | 真实 handle、身份入口、无效用户降级、排版变体 | Feed、详情、评论、关系、会话、通知 |
 | FeedStory | canonical | AuthorIdentity + content + media + actions | 同一 Card 的 compact/standard/detail 身份 | 首页、搜索、主页、收藏、历史、详情 |
+| CardPreviewSurface | canonical | 共享 Card 详情内容 + 评论线程 + 模态阅读外壳；[状态板](../../blueprints/blueprint-10-content-preview.html) | 保留来源列表、滚动与焦点，在 `/post/:id` 展示阅读预览；直接深链仍为完整详情 | 首页、发现/搜索、话题、主页、收藏、历史中的 Card |
+| AuthEntrySurface | canonical | 共享账号密码表单 + Dialog/Sheet、预览层内联区域或 gateway 外壳；[状态板](../../blueprints/blueprint-10-content-preview.html) | 情境内完成登录并恢复来源；独立 `/auth/*` 继续承载完整认证流程 | 公开资源互动、卡片阅读预览、登录页、认证守卫 |
 | ProfileCardFeed | canonical | Grid/Masonry + FeedStory + ResourceState | 首页与用户中心一致的列、gutter、Skeleton 和状态 | 本人/他人主页、资产 Tab |
 | ProfileIdentity | canonical | Shared `ProfileIdentitySurface`: mobile is cover → vertically centered avatar/name/UID group → bio → public metadata → actions → stats; desktop keeps the cover gradient, places the page-state label at top-left and cover/overflow tools at top-right, then uses one avatar + inline name/UID identity group, stacked bio/metadata, and vertically centered right actions | 本人头像、姓名、简介支持就地编辑且只保留一个“编辑资料”主按钮；他人保留关注/私信；分享/举报/拉黑进入 overflow menu；本人和他人都保留简介与元信息空槽，本人可编辑、他人只读；访问本人的 `/user/:uid` 必须重定向到 `/me`，不能渲染第二套可编辑主页 | `/me`、`/user/:uid` |
 | ProfileTabs | canonical | TabList + URL state + ProfileCardFeed | 同页内容/喜欢/收藏/历史切换 | `/me`、公开主页结构锚点 |
@@ -38,6 +40,8 @@
 | MediaViewer | canonical | Lightbox/Overlay + MediaTheme | 图像、图集、视频、GIF、焦点与返回 | `/media/:id` |
 
 ## Pattern 所有权
+
+动效归属按 [`MOTION.md`](../specifications/MOTION.md) 执行：FormDialog、ConfirmAction、CardPreviewSurface 与 AuthEntrySurface 使用各自表面语义；登录位于页面、普通 Dialog/Sheet 或预览层内联区域时共用账号密码表单与认证用例，不额外叠加模态。ProfileTabs、MessageCenterTabs 拥有选中反馈；AppShell 负责页面切换时的稳定壳。CardPreviewSurface 复用 FeedStory 的 Card 身份和详情内容；发布只使用 `/compose` 编辑轴。页面不重复定义这些 Pattern 的时长或轨迹。
 
 | 页面拥有 | Pattern 拥有 |
 |---|---|

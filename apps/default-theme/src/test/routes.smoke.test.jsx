@@ -6,10 +6,11 @@ import { renderRoute } from './renderRoute.jsx';
 describe('route smoke', () => {
   it('keeps lazy production routes aligned with the eager component-test route map', () => {
     const readRoutes = (file) => readFileSync(fileURLToPath(new URL(file, import.meta.url)), 'utf8');
-    const paths = (source) => [...source.matchAll(/<Route\s+path="([^"]+)"/g)].map((match) => match[1]);
+    const paths = (source) => [...new Set([...source.matchAll(/<Route\s+path="([^"]+)"/g)].map((match) => match[1]))];
     const production = readRoutes('../app/router.jsx');
     const eager = readRoutes('../app/router-eager.test.jsx');
     expect(paths(production)).toEqual(paths(eager));
+    expect([...production.matchAll(/<Route\s+path="\/post\/:id"/g)]).toHaveLength(2);
     expect(production.match(/path: '\/compose\/:type'/)?.[0]).toBe("path: '/compose/:type'");
     expect(eager.match(/path: '\/compose\/:type'/)?.[0]).toBe("path: '/compose/:type'");
   });
@@ -25,7 +26,8 @@ describe('route smoke', () => {
   it('renders the discovery surface without fake write actions', () => {
     const html = renderRoute('/explore');
     expect(html).toContain('去发现');
-    expect(html).toContain('暂未开放');
+    expect(html).toContain('从正在发生的城市、兴趣和创作者开始。');
+    expect(html).not.toContain('趋势与个性推荐暂未开放');
     expect(html).not.toContain('12.4 万条讨论');
   });
 

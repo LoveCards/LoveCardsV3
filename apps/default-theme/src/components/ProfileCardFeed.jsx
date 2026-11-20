@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { useNavigationType } from 'react-router-dom';
 import { FeedSkeleton } from '../features/feed/FeedSkeleton.jsx';
 import { FeedStory } from '../features/feed/FeedStory.jsx';
 import { useFeedMasonry } from '../features/feed/use-feed-masonry.js';
@@ -27,8 +28,9 @@ export function ProfileCard({ item, profile, renderAction }) {
 
 export function ProfileCardFeed({ items = [], profile, ariaLabel = '内容流', className = '', renderAction }) {
   const masonryRef = useRef(null);
+  const navigationType = useNavigationType();
   useFeedMasonry(masonryRef, items);
-  return <section ref={masonryRef} className={`profile-post-list profile-feed feed-masonry${className ? ` ${className}` : ''}`} aria-label={ariaLabel}>
+  return <section ref={masonryRef} className={`profile-post-list profile-feed feed-masonry${navigationType === 'POP' ? '' : ' lc-content-enter'}${className ? ` ${className}` : ''}`} aria-label={ariaLabel}>
     <span className="masonry-column-sizer" aria-hidden="true" />
     <span className="masonry-gutter-sizer" aria-hidden="true" />
     {items.map((item, index) => <ProfileCard item={item} profile={profile} renderAction={renderAction} key={item?.id ?? index} />)}
