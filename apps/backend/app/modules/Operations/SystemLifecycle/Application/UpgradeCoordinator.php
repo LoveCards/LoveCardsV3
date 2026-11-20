@@ -74,6 +74,7 @@ final class UpgradeCoordinator
                     false,
                     [
                         'plan_version' => 2,
+                        'scheduler_fence_version' => 1,
                         'target_migration_checksums' => $manifest->migrationChecksums(),
                         'package' => $package->toArray(),
                         'manifest_checksum' => $manifest->documentChecksum(),
@@ -397,11 +398,20 @@ final class UpgradeCoordinator
     {
         $rows = $this->backups->prepare($stored->plan()->planId(), $stored->createdBy());
         $this->backups->assertReady($stored->plan()->planId());
-        return ['backups' => array_map(static fn(array $row): array => [
+        $patch = ['backups' => array_map(static fn(array $row): array => [
             'backup_id' => $row['backup_id'] ?? null,
             'backup_type' => $row['backup_type'] ?? null,
             'status' => $row['status'] ?? null,
         ], $rows), 'backup_gate_at' => gmdate('c')];
+        if (($stored->context()['scheduler_fence_version'] ?? null) === 1) {
+            // backup_gate 的 RUNNING CAS 已暂停新领取；先等旧 run 全部结算，
+            // 再捕获最后一次真实成功运行，避免 proof 与栅栏发布之间留下空窗。
+            $this->compatibility->verifyEventConsumptionQuiescent();
+            $patch['event_consumer_proof'] = $this->compatibility->captureEventConsumptionProof(
+                $stored->previousReleaseId()
+            );
+        }
+        return $patch;
     }
 
     /** @return array{array<string, mixed>, bool, ?string} */
@@ -414,6 +424,10 @@ final class UpgradeCoordinator
         bool $retryFailed = false
     ): array
     {
+        if (($stored->context()['scheduler_fence_version'] ?? null) === 1 && $phase === MigrationPhase::PREFLIGHT) {
+            // backup_gate 的 CAS 已先发布栅栏；所有旧 run 结算后才能执行任何迁移 SQL。
+            $this->compatibility->verifyEventConsumptionQuiescent();
+        }
         $directory = rtrim($releaseRoot, '/\\') . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'migrations';
         $allowContract = $phase === MigrationPhase::CONTRACT;
         if ($allowContract && !$stored->contractApproved()) {
@@ -465,7 +479,14 @@ final class UpgradeCoordinator
     private function activate(StoredUpgradePlan $stored): array
     {
         $this->backups->assertReady($stored->plan()->planId());
-        $this->compatibility->verifyEventConsumptionReady();
+        if (($stored->context()['scheduler_fence_version'] ?? null) === 1) {
+            $this->compatibility->verifyEventConsumptionPaused(
+                (array) ($stored->context()['event_consumer_proof'] ?? []),
+                $stored->previousReleaseId(), $stored->plan()->planId()
+            );
+        } else {
+            $this->compatibility->verifyEventConsumptionReady();
+        }
         $previous = $stored->previousReleaseId();
         $releaseId = $stored->plan()->releaseId();
         $this->pointer->activate($releaseId);
