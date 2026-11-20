@@ -5,17 +5,10 @@ import { InternationalizationProvider } from '@astryxdesign/core/i18n';
 import { neutralTheme } from '@astryxdesign/theme-neutral/built';
 import { checkSession, loadCurrentUser, logout } from '../services/auth-service.js';
 import { getSdkClient } from './sdk-client.js';
+import { toastConfig } from './toast-config.js';
 
 const ThemeModeContext = createContext(null);
 const AuthContext = createContext(null);
-const toastConfig = {
-  position: 'topEnd',
-  maxVisible: 3,
-  inset: {
-    top: 'var(--lc-toast-top-inset)',
-    end: 'var(--lc-toast-inline-end)',
-  },
-};
 const astryxChinese = {
   'zh-CN': {
     '@astryx.moreMenu.label': '更多选项',
