@@ -16,7 +16,7 @@ return [
     ],
     'allow_mime_types' => [
         'type' => 'string',
-        'default' => 'image/jpeg,image/png,image/gif,image/webp,application/pdf',
+        'default' => 'image/jpeg,image/png,image/gif,image/webp,application/pdf,video/mp4,video/webm,video/quicktime,video/x-m4v',
         'description' => '允许的 MIME 类型',
     ],
     'max_file_size' => [
