@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MediaGallery, MediaRouteViewer, MediaViewer } from '../features/media/MediaGallery.jsx';
+import { clampImageScale } from '../features/media/ImageZoomSurface.jsx';
+import { gallerySwipeDirection } from '../features/media/useGalleryPager.js';
 
 function imageItems(count) {
   return Array.from({ length: count }, (_, index) => ({
@@ -84,6 +86,17 @@ describe('detail media gallery', () => {
     expect(html).toContain('aria-label="上一项媒体"');
     expect(html).toContain('aria-label="下一项媒体"');
     expect(html).toContain('aria-label="关闭媒体查看器"');
+    expect(html).toContain('aria-label="图片缩放"');
+    expect(html).toContain('aria-label="放大图片"');
+  });
+
+  it('keeps image scale within a usable range and ignores vertical page gestures', () => {
+    expect(clampImageScale(0.5)).toBe(1);
+    expect(clampImageScale(4)).toBe(3);
+    expect(gallerySwipeDirection({ x: 100, y: 100 }, { x: 180, y: 110 })).toBe(-1);
+    expect(gallerySwipeDirection({ x: 180, y: 100 }, { x: 100, y: 110 })).toBe(1);
+    expect(gallerySwipeDirection({ x: 100, y: 100 }, { x: 155, y: 180 })).toBe(0);
+    expect(gallerySwipeDirection({ x: 100, y: 100 }, { x: 120, y: 100 })).toBe(0);
   });
 
   it('renders the media deep link as an immersive viewer instead of redirect copy', () => {
