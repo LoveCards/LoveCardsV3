@@ -22,8 +22,9 @@
 | 06B | `canonical` | [`blueprint-06-identity-relationships.html`](../../blueprints/blueprint-06-identity-relationships.html) | 本人/他人关注与粉丝、举报与屏蔽 | 已移除失效的独立资料编辑板；本人和他人的关注/粉丝列表统一使用移动 `task` Shell，返回对应主页且无 BottomNav。举报与屏蔽继续使用独立治理任务语义。 |
 | 07 | `canonical` | [`blueprint-07-inbox-messages.html`](../../blueprints/blueprint-07-inbox-messages.html) | `/messages*`、`/inbox`、`/inbox/system` | 方案 A 已落地并完成消息行精修：统一“消息中心”壳与“私信 / 通知”一级 Tab；桌面私信双栏、手机列表进入无 BottomNav 的独立会话页；会话行消费 `last_message_body/last_message_at/unread_count`，手机不默认选中第一条；通知使用连续流，仅保留互动消息（`engagement`）与系统通知（`system`），沿用分类游标、真实未读、错误、登录和发送失败状态。旧细分类路由只重定向。 |
 | 08 | `canonical` | [`blueprint-08-library-settings.html`](../../blueprints/blueprint-08-library-settings.html) | `/settings*` | 已移除废弃个人资产板与无契约假设置；手机整个设置家族使用独立 `task` Shell，无全局顶栏或 BottomNav：总览返回 `/me`，分类返回 `/settings`。桌面保留稳定侧栏；当前真实分类与能力边界继续有效。 |
-| 09 | `review-required` | [`blueprint-09-auth.html`](../../blueprints/blueprint-09-auth.html) | `/auth/*` | 需核对账号恢复和真实错误状态。 |
+| 09 | `needs-sync` | [`blueprint-09-auth.html`](../../blueprints/blueprint-09-auth.html) | `/auth/*`、Contextual Login | 独立登录/注册/恢复页面保留；需要增加情境登录 Dialog/Sheet、从 CardPreviewSurface 接管与恢复状态，并核对真实错误状态。 |
 | 10 | `canonical` | [`blueprint-10-interaction-surfaces.html`](../../blueprints/blueprint-10-interaction-surfaces.html) | 共享组件 | Dialog/Modal 三行骨架、Typeahead、连续评论和移动壳层原则有效；弹窗细则见 [`DIALOGS.md`](../specifications/DIALOGS.md)。 |
+| 10A | `canonical` | [`blueprint-10-content-preview.html`](../../blueprints/blueprint-10-content-preview.html) | Card 阅读预览与情境登录 | 桌面媒体/文字、手机全屏阅读、加载/错误、预览内登录与减动状态板；与 Blueprint 03 的完整详情共用内容和评论。 |
 | X | `review-required` | [`supplemental-content-compose-community.html`](../../blueprints/supplemental-content-compose-community.html) | 补充任务 | 草稿主线已迁入 Blueprint 04；仍含旧社区状态，只能按能力逐项采用。 |
 | S | `canonical` | [`system-state-boards.html`](../../blueprints/system-state-boards.html) | 共享状态 | 加载、空、错误、权限和响应式状态基线。 |
 
