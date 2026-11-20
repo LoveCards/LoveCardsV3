@@ -16,13 +16,13 @@ describe('feed gallery layouts', () => {
     expect(html).not.toContain('story-media-more');
   });
 
-  it('shows one image and separate navigation buttons in pager mode', () => {
+  it('keeps pager cards as a static grid in the feed', () => {
     const html = renderGallery('pager', 3);
-    expect(html).toContain('story-media-pager');
-    expect((html.match(/class="media-fit-asset"/g) || [])).toHaveLength(1);
-    expect(html).toContain('1 / 3');
-    expect(html).toContain('aria-label="下一张图片"');
-    const mediaLinkEnd = html.indexOf('</a>', html.indexOf('class="story-media-page"'));
-    expect(html.slice(0, mediaLinkEnd)).not.toContain('story-media-nav');
+    expect(html).toBe(renderGallery('grid', 3));
+    expect(html).toContain('story-media-grid-3');
+    expect((html.match(/class="media-fit-asset"/g) || [])).toHaveLength(3);
+    expect(html).toContain('href="/post/42"');
+    expect(html).not.toContain('story-media-nav');
+    expect(html).not.toContain('story-media-pager');
   });
 });
