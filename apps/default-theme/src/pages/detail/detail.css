@@ -313,11 +313,9 @@
   .lc-card-preview-media .detail-article { padding: 0; }
   .lc-card-preview-media .detail-author { padding-top: 72px; }
   .lc-card-preview-text .lc-card-preview-header { padding: 12px 36px 0; border-bottom: 0; }
-  .lc-card-preview-text .lc-card-preview-header h2 { color: var(--lc-rose-deep); }
   .lc-card-preview-text .detail-page { padding: 0 36px 32px; }
   .lc-card-preview-text .detail-article:not(.has-media) { padding: 18px 0 0; }
   .lc-card-preview-text .detail-copy { padding-block: 28px 24px; }
-  .lc-card-preview-text .detail-copy .detail-content { font-size: 1.18rem; line-height: 1.85; }
   @media (min-width: 960px) {
     .lc-card-preview-media .lc-card-preview-shell { display: grid; grid-template-columns: var(--lc-card-preview-media-columns); grid-template-rows: minmax(0, 1fr); }
     .lc-card-preview-media .lc-card-preview-header { position: relative; grid-column: 2; grid-row: 1; align-self: start; width: 100%; }
