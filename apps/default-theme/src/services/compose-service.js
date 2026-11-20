@@ -1,6 +1,7 @@
 import { getSdkClient, sdkConfigured } from '../app/sdk-client.js';
 import { getRuntimeDataMode } from '../app/runtime-context.js';
 import { CARD_CONTENT_MAX_LENGTH } from '../features/feed/card-constraints.js';
+import { normalizeGalleryLayout } from '../features/media/gallery-layout.js';
 
 export const COMPOSE_IMAGE_MIME_TYPES = Object.freeze(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 export const COMPOSE_VIDEO_MIME_TYPES = Object.freeze(['video/mp4', 'video/webm', 'video/quicktime', 'video/x-m4v']);
@@ -196,7 +197,7 @@ export async function loadPublishedCardForEdit(id) {
   };
 }
 
-export async function updatePublishedCard({ id, content, tags = [], kind, files = [], media = [], data = {}, mediaChanged = false, visibility, verification = {} }) {
+export async function updatePublishedCard({ id, content, tags = [], kind, files = [], media = [], data = {}, galleryLayout, mediaChanged = false, visibility, verification = {} }) {
   const state = getComposeState();
   if (!state.canPublish) throw new Error(state.message);
   const client = getSdkClient();
@@ -216,6 +217,10 @@ export async function updatePublishedCard({ id, content, tags = [], kind, files 
   try {
     uploads = await uploadComposeMedia(files);
     const allMedia = [...existingMedia, ...uploads];
+    const nextData = { ...readCardData(data), kind: publishKind };
+    if (publishKind !== 'gallery') delete nextData.galleryLayout;
+    else if (galleryLayout !== undefined) nextData.galleryLayout = normalizeGalleryLayout(galleryLayout);
+    else if (nextData.galleryLayout !== undefined) nextData.galleryLayout = normalizeGalleryLayout(nextData.galleryLayout);
     const mediaPayload = mediaChanged ? {
       media_file_ids: allMedia.map((item) => item.id),
       cover_file_id: publishKind !== 'video' && allMedia.length ? allMedia[0].id : 0,
@@ -224,7 +229,7 @@ export async function updatePublishedCard({ id, content, tags = [], kind, files 
       content: normalizedContent,
       tags: normalizedTags,
       ...cardVisibilityPayload,
-      data: { ...readCardData(data), kind: publishKind },
+      data: nextData,
       ...mediaPayload,
       ...verification,
     });
@@ -235,7 +240,7 @@ export async function updatePublishedCard({ id, content, tags = [], kind, files 
   }
 }
 
-export async function publishCard({ content, tags = [], kind, files = [], file = null, media = [], visibility = 'public', verification = {} }) {
+export async function publishCard({ content, tags = [], kind, files = [], file = null, media = [], galleryLayout, visibility = 'public', verification = {} }) {
   const state = getComposeState();
   if (!state.canPublish) throw new Error(state.message);
   const client = getSdkClient();
@@ -265,7 +270,7 @@ export async function publishCard({ content, tags = [], kind, files = [], file =
       content: normalizedContent,
       tags,
       ...cardVisibilityPayload,
-      data: { kind: publishKind },
+      data: { kind: publishKind, ...(publishKind === 'gallery' && galleryLayout !== undefined ? { galleryLayout: normalizeGalleryLayout(galleryLayout) } : {}) },
       ...mediaPayload,
       ...verification,
     });

@@ -15,6 +15,7 @@ import { previewCreators } from '../../fixtures/feed-preview.js';
 import { renderMentionCandidateItem } from '../../features/mentions/MentionCandidateItem.jsx';
 import { Button, ChatComposerInput, ConfirmActionDialog, Icon, IconButton, InfoPopover, MediaDropzone, ScopedBanner, SegmentedControl, SegmentedControlItem, TextInput, useToast } from '../../ui/index.js';
 import { CARD_CONTENT_MAX_LENGTH } from '../../features/feed/card-constraints.js';
+import { normalizeGalleryLayout } from '../../features/media/gallery-layout.js';
 
 const publishTypes = {
   text: { label: '随笔', description: '纯文字，不包含媒体。' },
@@ -96,11 +97,12 @@ export function selectComposeFiles(current, selected, { multiple = false, limit 
   return next;
 }
 
-function composeSignature({ content, tags, publishType, media, files, visibility = 'public' }) {
+function composeSignature({ content, tags, publishType, media, files, galleryLayout = 'grid', visibility = 'public' }) {
   return JSON.stringify({
     content,
     tags,
     publishType,
+    galleryLayout,
     visibility,
     media: media.map((item) => item.id),
     files: files.map((item) => [item.name, item.size, item.type, item.lastModified]),
@@ -137,6 +139,7 @@ export function ComposePage() {
   const [persistedMedia, setPersistedMedia] = useState([]);
   const [removedMediaIds, setRemovedMediaIds] = useState([]);
   const [publishType, setPublishType] = useState('text');
+  const [galleryLayout, setGalleryLayout] = useState('grid');
   const [visibility, setVisibility] = useState('public');
   const [draftId, setDraftId] = useState(null);
   const [publishedCardId, setPublishedCardId] = useState(null);
@@ -217,6 +220,7 @@ export function ComposePage() {
         setPersistedMedia([]);
         setRemovedMediaIds([]);
         setPublishType('text');
+        setGalleryLayout('grid');
         setVisibility('public');
         setSavedSignature(composeSignature({ content: '', tags: '', publishType: 'text', media: [], files: [] }));
         setStatus('idle');
@@ -257,9 +261,11 @@ export function ComposePage() {
       setPersistedMedia(media);
       setRemovedMediaIds([]);
       setPublishType(nextType);
+      const nextGalleryLayout = normalizeGalleryLayout(payload.galleryLayout);
+      setGalleryLayout(nextGalleryLayout);
       const nextVisibility = normalizeCardVisibility(payload.visibility);
       setVisibility(nextVisibility);
-      setSavedSignature(composeSignature({ content: nextContent, tags: nextTags, publishType: nextType, media, files: [], visibility: nextVisibility }));
+      setSavedSignature(composeSignature({ content: nextContent, tags: nextTags, publishType: nextType, galleryLayout: nextGalleryLayout, media, files: [], visibility: nextVisibility }));
       setLoadState('ready');
       setLoadError(null);
       setStatus('success');
@@ -305,9 +311,11 @@ export function ComposePage() {
       setPersistedMedia(card.media);
       setRemovedMediaIds([]);
       setPublishType(card.publishType);
+      const nextGalleryLayout = normalizeGalleryLayout(card.data.galleryLayout);
+      setGalleryLayout(nextGalleryLayout);
       loadedEditVisibilityRef.current = card.visibility;
       setVisibility(card.visibility);
-      setSavedSignature(composeSignature({ content: card.content, tags: nextTags, publishType: card.publishType, media: card.media, files: [], visibility: card.visibility }));
+      setSavedSignature(composeSignature({ content: card.content, tags: nextTags, publishType: card.publishType, galleryLayout: nextGalleryLayout, media: card.media, files: [], visibility: card.visibility }));
       setLoadState('ready');
       setLoadError(null);
       setStatus('success');
@@ -325,7 +333,7 @@ export function ComposePage() {
     ...mediaPreviews.map((item) => ({ ...item, name: item.file.name, type: item.file.type, source: 'local' })),
   ], [mediaPreviews, persistedMedia]);
   const mediaCount = persistedMedia.length + files.length;
-  const currentSignature = composeSignature({ content, tags, publishType, media: persistedMedia, files, visibility });
+  const currentSignature = composeSignature({ content, tags, publishType, galleryLayout, media: persistedMedia, files, visibility });
   const dirty = currentSignature !== savedSignature;
   const topicList = topicsFrom(tags);
   const contentError = validationAttempted && (!content.trim() || content.length > CARD_CONTENT_MAX_LENGTH);
@@ -417,7 +425,7 @@ export function ComposePage() {
       uploadedMedia = await uploadComposeMedia(files);
       const nextMedia = [...persistedMedia, ...uploadedMedia];
       const nextTags = topicsFrom(tags);
-      const payload = { publishType, kind: resolveKind(publishType, nextMedia.length), tags: nextTags, media: nextMedia, visibility };
+      const payload = { publishType, kind: resolveKind(publishType, nextMedia.length), galleryLayout, tags: nextTags, media: nextMedia, visibility };
       const data = { title: draftSummary({ content, payload }), content, payload };
       let nextId = draftId;
       if (nextId) {
@@ -435,7 +443,7 @@ export function ComposePage() {
       setFiles([]);
       setRemovedMediaIds(mediaCleanupSucceeded ? [] : removedMediaIds);
       setTags(normalizedTags);
-      setSavedSignature(composeSignature({ content, tags: normalizedTags, publishType, media: nextMedia, files: [], visibility }));
+      setSavedSignature(composeSignature({ content, tags: normalizedTags, publishType, galleryLayout, media: nextMedia, files: [], visibility }));
       const nextSearchParams = new URLSearchParams(searchParams);
       nextSearchParams.set('draft', String(nextId));
       setSearchParams(nextSearchParams, { replace: true });
@@ -501,6 +509,7 @@ export function ComposePage() {
           files,
           media: persistedMedia,
           data: publishedData,
+          ...(publishType === 'image' && mediaCount > 1 ? { galleryLayout } : {}),
           mediaChanged: files.length > 0 || removedMediaIds.length > 0,
           ...(visibility !== loadedEditVisibilityRef.current ? { visibility } : {}),
           verification,
@@ -512,7 +521,7 @@ export function ComposePage() {
         navigate(`/post/${result.id}`);
         return;
       }
-      const result = await publishCard({ content, tags: topicsFrom(tags), kind: resolveKind(publishType, mediaCount), files, media: persistedMedia, visibility, verification });
+      const result = await publishCard({ content, tags: topicsFrom(tags), kind: resolveKind(publishType, mediaCount), files, media: persistedMedia, ...(publishType === 'image' && mediaCount > 1 ? { galleryLayout } : {}), visibility, verification });
       let draftCleanupFailed = false;
       if (draftId) {
         try {
@@ -553,6 +562,7 @@ export function ComposePage() {
       return;
     }
     setPublishType(nextType);
+    if (nextType !== 'image') setGalleryLayout('grid');
     setMessage('');
   };
   const confirmTypeSwitch = () => {
@@ -560,6 +570,7 @@ export function ComposePage() {
     setFiles([]);
     setPersistedMedia([]);
     setPublishType(pendingPublishType || 'text');
+    if (pendingPublishType !== 'image') setGalleryLayout('grid');
     setPendingPublishType(null);
     setTypeSwitchOpen(false);
     setMessage('');
@@ -616,6 +627,13 @@ export function ComposePage() {
                 {allMediaPreviews.length ? <div className={`compose-media-preview-grid is-${allMediaPreviews.length > 4 ? 'many' : allMediaPreviews.length}`} aria-label={`${allMediaPreviews.length} 个待发布媒体`}>
                   {allMediaPreviews.map((item, index) => <div className={`compose-media-preview is-${item.source}`} key={item.source === 'persisted' ? `media-${item.id}` : `${item.file.name}-${item.file.lastModified}-${index}`}>{publishType === 'video' ? <video src={item.url} muted playsInline preload="metadata" /> : <img src={item.url} alt={`待发布媒体 ${index + 1}：${item.name || '图片'}`} />}<span>{index + 1}</span><IconButton className="lc-upload-preview-remove" type="button" onClick={() => removeMedia(item, index)} label={publishType === 'video' ? '移除视频' : `移除第 ${index + 1} 张图片`} tooltip="移除媒体" variant="ghost" size="lg" icon={<Icon name="close" size={18} />} isDisabled={busy} /></div>)}
                 </div> : null}
+                {publishType === 'image' && mediaCount > 1 && <div className="compose-gallery-layout" aria-labelledby="compose-gallery-layout-title">
+                  <div><h4 id="compose-gallery-layout-title">图片排布</h4><p>宫格展示全部图片；翻页一次聚焦一张，读者可以左右切换。</p></div>
+                  <SegmentedControl value={galleryLayout} onChange={setGalleryLayout} label="图片排布" layout="fill" size="md" isDisabled={busy}>
+                    <SegmentedControlItem value="grid" label="宫格" />
+                    <SegmentedControlItem value="pager" label="翻页" />
+                  </SegmentedControl>
+                </div>}
               </section>}
 
               <section className="compose-content-field" aria-label="正文编辑">

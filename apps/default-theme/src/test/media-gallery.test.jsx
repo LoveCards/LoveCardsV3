@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MediaGallery, MediaRouteViewer, MediaViewer } from '../features/media/MediaGallery.jsx';
+import { clampImageScale } from '../features/media/ImageZoomSurface.jsx';
+import { gallerySwipeDirection } from '../features/media/useGalleryPager.js';
 
 function imageItems(count) {
   return Array.from({ length: count }, (_, index) => ({
@@ -24,12 +26,43 @@ describe('detail media gallery', () => {
     });
   }
 
-  it('shows four real tiles and an overflow count for longer galleries', () => {
+  it('shows all nine image tiles in a nine-image gallery', () => {
     const html = renderToStaticMarkup(<MediaGallery items={imageItems(7)} title="七张照片" />);
-    expect(html).toContain('is-count-4');
-    expect(countTiles(html)).toBe(4);
-    expect(html).toContain('+3');
-    expect(html).toContain('查看第 4 项媒体，共 7 项');
+    expect(html).toContain('is-count-7 is-many');
+    expect(countTiles(html)).toBe(7);
+    expect(html).toContain('查看第 7 项媒体，共 7 项');
+  });
+
+  it('renders the pager with one contained image and named navigation', () => {
+    const html = renderToStaticMarkup(<MediaGallery items={imageItems(3)} title="三张照片" galleryLayout="pager" />);
+    expect(html).toContain('detail-media-grid is-pager');
+    expect(countTiles(html)).toBe(1);
+    expect(html).toContain('1 / 3');
+    expect(html).toContain('aria-label="上一张图片"');
+    expect(html).toContain('aria-label="下一张图片"');
+  });
+
+  it('plays a video card in place on preview and detail without opening a second viewer', () => {
+    const html = renderToStaticMarkup(<MediaGallery items={[{ type: 'video', url: '/media/run.mp4', posterUrl: '/media/run.webp' }]} title="晨跑记录" />);
+    expect(html).toContain('class="detail-media-grid is-count-1 is-video"');
+    expect(html).toContain('<video');
+    expect(html).toContain('controls=""');
+    expect(html).toContain('autoPlay=""');
+    expect(html).toContain('muted=""');
+    expect(html).toContain('playsInline=""');
+    expect(html).toContain('poster="/media/run.webp"');
+    expect(html).not.toContain('detail-media-tile');
+    expect(html).not.toContain('lc-media-viewer');
+  });
+
+  it('opens a gallery preview on the selected image and defaults direct detail to the first', () => {
+    const selected = renderToStaticMarkup(<MediaGallery items={imageItems(3)} title="三张照片" galleryLayout="pager" initialIndex={1} />);
+    const direct = renderToStaticMarkup(<MediaGallery items={imageItems(3)} title="三张照片" galleryLayout="pager" />);
+    expect(selected).toContain('2 / 3');
+    expect(selected).toContain('src="/media/photo-2.webp"');
+    expect(selected).not.toContain('src="/media/photo-1.webp"');
+    expect(direct).toContain('1 / 3');
+    expect(direct).toContain('src="/media/photo-1.webp"');
   });
 
   it('renders video in the viewer with native controls and no autoplay', () => {
@@ -63,6 +96,17 @@ describe('detail media gallery', () => {
     expect(html).toContain('aria-label="上一项媒体"');
     expect(html).toContain('aria-label="下一项媒体"');
     expect(html).toContain('aria-label="关闭媒体查看器"');
+    expect(html).toContain('aria-label="图片缩放"');
+    expect(html).toContain('aria-label="放大图片"');
+  });
+
+  it('keeps image scale within a usable range and ignores vertical page gestures', () => {
+    expect(clampImageScale(0.5)).toBe(1);
+    expect(clampImageScale(4)).toBe(3);
+    expect(gallerySwipeDirection({ x: 100, y: 100 }, { x: 180, y: 110 })).toBe(-1);
+    expect(gallerySwipeDirection({ x: 180, y: 100 }, { x: 100, y: 110 })).toBe(1);
+    expect(gallerySwipeDirection({ x: 100, y: 100 }, { x: 155, y: 180 })).toBe(0);
+    expect(gallerySwipeDirection({ x: 100, y: 100 }, { x: 120, y: 100 })).toBe(0);
   });
 
   it('renders the media deep link as an immersive viewer instead of redirect copy', () => {

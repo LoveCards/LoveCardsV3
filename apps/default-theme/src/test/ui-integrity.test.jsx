@@ -78,7 +78,7 @@ describe('UI integrity', () => {
     expect(composeSource.indexOf('className="compose-media-workspace"')).toBeLessThan(composeSource.indexOf('className="compose-content-field"'));
     expect(composeSource).toContain('再填写必填正文');
     expect(composeSource).toContain('CARD_CONTENT_MAX_LENGTH');
-    expect(composeSource).toContain('payload = { publishType, kind: resolveKind(publishType, nextMedia.length), tags: nextTags, media: nextMedia, visibility }');
+    expect(composeSource).toContain('payload = { publishType, kind: resolveKind(publishType, nextMedia.length), galleryLayout, tags: nextTags, media: nextMedia, visibility }');
     expect(composeSource).toContain("visibility !== loadedEditVisibilityRef.current ? { visibility } : {}");
     expect(composeSource).not.toContain('普通卡片不设置标题');
     expect(composeSource).toContain('content.length >= 800');

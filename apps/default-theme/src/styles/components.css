@@ -54,6 +54,7 @@
   .media-fit-loading {
     position: absolute;
     inset: 0;
+    z-index: 2;
     background: #20242c;
   }
   .media-fit-unavailable {
@@ -77,6 +78,7 @@
   .media-fit-center-crop .media-fit-asset { object-position: 50% 50%; }
   .media-fit-contain .media-fit-asset,
   .media-fit-blur .media-fit-asset { object-fit: contain; }
+  @keyframes lc-gallery-page-enter { from { opacity: .72; transform: translateX(8px); } to { opacity: 1; transform: none; } }
   .media-fit-backdrop {
     z-index: 0;
     object-fit: cover;

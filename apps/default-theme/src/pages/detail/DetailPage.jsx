@@ -19,6 +19,7 @@ import { SaveCardButton } from '../../features/library/SaveCardButton.jsx';
 import { listSavedItems } from '../../services/community-service.js';
 import { topicHref } from '../../services/discovery-service.js';
 import { ContextualLoginForm } from '../../features/auth/ContextualLoginForm.jsx';
+import { readPreviewMediaIndex } from '../../app/card-preview-routing.js';
 
 function DetailBoundary({ title, detail }) {
   return (
@@ -257,8 +258,9 @@ export function DetailPage({ preview = false, loadingFallback = null }) {
   } else if (data.source !== 'loading' && !data.card) {
     content = <DetailBoundary title="没有找到这条内容" detail="它可能已被删除、移动，或当前预览数据中不存在。" />;
   } else if (data.card) {
+    const cardMediaItems = detailMediaItems(data.card);
     content = (
-      <article className={`detail-article${detailMediaItems(data.card).length ? ' has-media' : ''}`}>
+      <article className={`detail-article${cardMediaItems.length ? ' has-media' : ''}`}>
         <header className="detail-author">
           <AuthorIdentity author={data.card.author} uid={data.card.authorUid} handle={data.card.authorHandle} avatarUrl={data.card.authorAvatar} meta={data.card.meta || '时间信息暂未提供'} size="md" variant="byline" className="detail-author-identity" />
           {!data.card.authorUid && <span className="detail-capability">作者主页暂未提供</span>}
@@ -269,7 +271,7 @@ export function DetailPage({ preview = false, loadingFallback = null }) {
           <h1 id="detail-title" className="sr-only" tabIndex={-1}>内容详情</h1>
           <p className="detail-content"><MentionText text={data.card.content || data.card.title} mentions={data.card.mentions} /></p>
         </div>
-        <MediaGallery items={detailMediaItems(data.card)} title={data.card.title} />
+        <MediaGallery key={data.card.id} items={cardMediaItems} title={data.card.title} galleryLayout={data.card.galleryLayout} initialIndex={readPreviewMediaIndex(location, id, cardMediaItems.length)} />
         {data.source === 'preview' && <p className="preview-disclosure">设计预览 · 演示数据 · 操作不会保存</p>}
         <footer className="detail-actions">
           {data.source === 'live' && isAuthenticated && can('likes.create') && can('likes.delete') ? <span className={`detail-like-control${detailLiked ? ' is-active' : ''}`}><ToggleButton label={detailLiked ? '取消喜欢' : '喜欢'} isPressed={detailLiked} icon={<Icon name="heart" size={18} />} pressedIcon={<Icon name="heart" size={18} />} size="lg" pressedChangeAction={toggleDetailLike}>{detailLikeCount}</ToggleButton></span> : data.source === 'live' && !isAuthenticated ? <span className="detail-like-control"><ToggleButton label="登录后喜欢" isPressed={false} icon={<Icon name="heart" size={18} />} size="lg" onPressedChange={(_next, event) => { event.preventDefault(); requestLogin('喜欢内容'); }}>{detailLikeCount}</ToggleButton></span> : <span className="detail-metric" aria-label={`${detailLikeCount} 个喜欢`}><Icon name="heart" size={18} /> {detailLikeCount}</span>}

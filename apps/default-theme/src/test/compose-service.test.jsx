@@ -148,6 +148,17 @@ describe('compose media publishing', () => {
     });
   });
 
+  it('persists pager layout on publish and edit', async () => {
+    const create = vi.fn().mockResolvedValue({ id: 70 });
+    const update = vi.fn().mockResolvedValue(undefined);
+    sdk.getSdkClient.mockReturnValue({ getToken: vi.fn().mockReturnValue('token'), files: { upload: vi.fn(), delete: vi.fn() }, cards: { create, update } });
+    const media = [{ id: 10, url: '/one.webp', type: 'image/webp' }, { id: 11, url: '/two.webp', type: 'image/webp' }];
+    await publishCard({ content: '翻页', kind: 'gallery', media, galleryLayout: 'pager' });
+    await updatePublishedCard({ id: 70, content: '仍是翻页', kind: 'gallery', media, data: { accent: 'rose' }, galleryLayout: 'pager' });
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: { kind: 'gallery', galleryLayout: 'pager' } }));
+    expect(update).toHaveBeenCalledWith(70, expect.objectContaining({ data: { accent: 'rose', kind: 'gallery', galleryLayout: 'pager' } }));
+  });
+
   it('creates one video without treating it as an image cover', async () => {
     const upload = vi.fn().mockResolvedValue({ id: 31, url: '/storage/opaque-video' });
     const create = vi.fn().mockResolvedValue({ id: 89, status: 0 });
