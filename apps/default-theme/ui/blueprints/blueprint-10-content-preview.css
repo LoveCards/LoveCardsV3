@@ -15,7 +15,7 @@
 .author { display: flex; align-items: center; gap: 10px; font-size: 12px; }
 .author i { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: #b43260; background: #f9d9e3; font-style: normal; }
 .author small { display: block; margin-top: 3px; color: #85858d; font-weight: 400; }
-.reading-column p { font-size: 14px; line-height: 1.8; }
+.reading-column p { font-size: 1rem; line-height: 1.78; }
 .actions { padding: 15px 0; border-bottom: 1px solid #eaeaf0; font-size: 12px; }
 .reading-column h3,.phone-frame h3 { margin: 20px 0 12px; font-size: 15px; }
 .reading-column h3 small { color: #85858d; font-size: 10px; }
@@ -26,7 +26,7 @@
 .phone-head span { float: right; color: #b43260; }
 .phone-author { padding: 18px 0; font-size: 12px; font-weight: 750; }
 .phone-author small { display: block; margin: 5px 0 0 25px; color: #86868f; font-weight: 400; }
-.phone-frame p { font-size: 13px; line-height: 1.7; }
+.phone-frame p { font-size: 0.96rem; line-height: 1.78; }
 .phone-media { height: 250px; border-radius: 10px; background: linear-gradient(140deg,#bb91a0,#607c91,#324b5b); }
 .phone-actions { padding: 15px 0; border-bottom: 1px solid #ececf0; font-size: 11px; }
 .phone-frame .comment { height: 36px; }
