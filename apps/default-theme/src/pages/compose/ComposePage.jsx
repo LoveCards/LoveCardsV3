@@ -38,10 +38,20 @@ function topicsFrom(value) {
   });
 }
 
+async function cleanupRemovedMedia(ids) {
+  try {
+    return (await deleteComposeMedia(ids)).length === 0;
+  } catch {
+    return false;
+  }
+}
+
 function focusComposeIssue(sectionId, selector) {
   window.requestAnimationFrame(() => {
     const section = document.getElementById(sectionId);
-    section?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const reduceMotion = document.documentElement.dataset.reduceMotion === 'true'
+      || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    section?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
     section?.querySelector(selector)?.focus({ preventScroll: true });
   });
 }
@@ -64,6 +74,26 @@ function resolveDraftType(payload, media) {
 
 function resolveKind(publishType, mediaCount) {
   return publishType === 'image' && mediaCount > 1 ? 'gallery' : publishType;
+}
+
+function fileIdentity(file) {
+  return [file.name, file.size, file.lastModified, file.type].join('::');
+}
+
+export function selectComposeFiles(current, selected, { multiple = false, limit = 1 } = {}) {
+  if (selected == null) return [];
+  const incoming = Array.isArray(selected) ? selected : [selected];
+  if (!multiple) return incoming.slice(0, limit);
+  const seen = new Set(current.map(fileIdentity));
+  const next = [...current];
+  for (const file of incoming) {
+    const identity = fileIdentity(file);
+    if (seen.has(identity)) continue;
+    seen.add(identity);
+    if (next.length >= limit) break;
+    next.push(file);
+  }
+  return next;
 }
 
 function composeSignature({ content, tags, publishType, media, files, visibility = 'public' }) {
@@ -95,6 +125,7 @@ export function ComposePage() {
   const loadedDraftRef = useRef(null);
   const loadedEditRef = useRef(null);
   const loadedEditVisibilityRef = useRef('public');
+  const writeInFlightRef = useRef(false);
   const [content, setContent] = useState('');
   const [tags, setTags] = useState('');
   const [topicOptions, setTopicOptions] = useState([]);
@@ -365,7 +396,7 @@ export function ComposePage() {
   };
 
   const saveDraft = async () => {
-    if (editMode || designPreview || !isAuthenticated || busy) return;
+    if (editMode || designPreview || !isAuthenticated || busy || writeInFlightRef.current) return;
     if (!hasDraftContent) {
       setStatus('error');
       setMessage('请先填写正文、话题或添加媒体，再存入草稿箱。');
@@ -378,6 +409,7 @@ export function ComposePage() {
       focusComposeIssue('compose-details', 'input');
       return;
     }
+    writeInFlightRef.current = true;
     setStatus('draft-saving');
     setMessage('正在保存草稿…');
     let uploadedMedia = [];
@@ -395,31 +427,42 @@ export function ComposePage() {
         nextId = Number(result?.id);
         if (!Number.isInteger(nextId) || nextId <= 0) throw new Error('草稿接口没有返回有效编号。');
       }
-      await deleteComposeMedia(removedMediaIds);
+      const mediaCleanupSucceeded = await cleanupRemovedMedia(removedMediaIds);
       const normalizedTags = nextTags.join(' ');
       loadedDraftRef.current = nextId;
       setDraftId(nextId);
       setPersistedMedia(nextMedia);
       setFiles([]);
-      setRemovedMediaIds([]);
+      setRemovedMediaIds(mediaCleanupSucceeded ? [] : removedMediaIds);
       setTags(normalizedTags);
       setSavedSignature(composeSignature({ content, tags: normalizedTags, publishType, media: nextMedia, files: [], visibility }));
       const nextSearchParams = new URLSearchParams(searchParams);
       nextSearchParams.set('draft', String(nextId));
       setSearchParams(nextSearchParams, { replace: true });
       setStatus('success');
-      setMessage(draftId ? '草稿已更新。' : '已存入草稿箱。');
+      setMessage(mediaCleanupSucceeded
+        ? (draftId ? '草稿已更新。' : '已存入草稿箱。')
+        : '草稿已保存，但旧媒体清理失败；本页再次保存时会重试。');
     } catch (error) {
       await deleteComposeMedia(uploadedMedia.map((item) => item.id));
       setStatus('error');
       setMessage(getUserFacingError(error, { fallback: '草稿暂时没有保存，当前输入仍保留在页面。', validationFallback: '草稿内容不符合要求，请检查后重试。' }));
+    } finally {
+      writeInFlightRef.current = false;
     }
   };
 
   const submit = async (event) => {
     event.preventDefault();
+    if (busy || writeInFlightRef.current) return;
     setValidationAttempted(true);
     if (topicList.length <= 3) setTopicLimitHit(false);
+    if (publishType !== 'text' && mediaCount === 0) {
+      setStatus('idle');
+      setMessage('');
+      focusComposeIssue('compose-media', 'button');
+      return;
+    }
     if (!content.trim()) {
       setStatus('idle');
       setMessage('');
@@ -430,12 +473,6 @@ export function ComposePage() {
       setStatus('idle');
       setMessage('');
       focusComposeIssue('compose-content', '[contenteditable="true"]');
-      return;
-    }
-    if (publishType !== 'text' && mediaCount === 0) {
-      setStatus('idle');
-      setMessage('');
-      focusComposeIssue('compose-media', 'button');
       return;
     }
     if (topicList.length > 3) {
@@ -450,6 +487,7 @@ export function ComposePage() {
       focusComposeIssue('compose-details', 'input');
       return;
     }
+    writeInFlightRef.current = true;
     setStatus(editMode ? 'saving-edit' : 'publishing');
     setMessage('');
     try {
@@ -467,11 +505,10 @@ export function ComposePage() {
           ...(visibility !== loadedEditVisibilityRef.current ? { visibility } : {}),
           verification,
         });
-        await deleteComposeMedia(removedMediaIds);
-        setRemovedMediaIds([]);
+        const mediaCleanupSucceeded = await cleanupRemovedMedia(removedMediaIds);
         setStatus('success');
-        setMessage('修改已保存。');
-        toast({ body: '修改已保存', uniqueID: 'compose-edit-success' });
+        setMessage(mediaCleanupSucceeded ? '修改已保存。' : '修改已保存，但旧媒体清理失败。');
+        toast({ body: mediaCleanupSucceeded ? '修改已保存' : '修改已保存，旧媒体清理失败', type: mediaCleanupSucceeded ? undefined : 'error', uniqueID: 'compose-edit-success' });
         navigate(`/post/${result.id}`);
         return;
       }
@@ -484,16 +521,22 @@ export function ComposePage() {
           draftCleanupFailed = true;
         }
       }
-      await deleteComposeMedia(removedMediaIds);
+      const mediaCleanupSucceeded = await cleanupRemovedMedia(removedMediaIds);
+      const cleanupNotes = [
+        ...(draftCleanupFailed ? ['原草稿'] : []),
+        ...(!mediaCleanupSucceeded ? ['旧媒体'] : []),
+      ];
       setStatus('success');
-      setMessage(draftCleanupFailed ? '内容已发布，但原草稿需要稍后手动删除。' : '发布成功。');
-      toast({ body: draftCleanupFailed ? '内容已发布，原草稿清理失败' : '内容已发布', type: draftCleanupFailed ? 'error' : undefined, uniqueID: 'compose-success' });
+      setMessage(cleanupNotes.length ? `内容已发布，但${cleanupNotes.join('和')}清理失败。` : '发布成功。');
+      toast({ body: cleanupNotes.length ? `内容已发布，${cleanupNotes.join('和')}清理失败` : '内容已发布', type: cleanupNotes.length ? 'error' : undefined, uniqueID: 'compose-success' });
       navigate(result?.id ? `/post/${result.id}` : '/me');
     } catch (error) {
       setStatus('error');
       setMessage(getUserFacingError(error, editMode
         ? { fallback: '修改暂时没有保存，当前输入仍保留在页面。', validationFallback: '修改内容不符合要求，请检查文字与媒体后重试。' }
         : { fallback: '内容暂时没有发布，当前输入仍保留在页面。', validationFallback: '发布内容不符合要求，请检查文字与媒体后重试。' }));
+    } finally {
+      writeInFlightRef.current = false;
     }
   };
 
@@ -557,14 +600,13 @@ export function ComposePage() {
                   description={publishType === 'video' ? '支持 MP4、WebM、MOV 与 M4V；文件大小以服务端策略为准。' : '支持 JPEG、PNG、WebP 与 GIF；文件大小以服务端策略为准。'}
                   value={publishType === 'video' ? files[0] || null : files}
                   onChange={(value) => {
-                    const next = Array.isArray(value) ? value : value ? [value] : [];
                     const available = Math.max(0, (publishType === 'video' ? 1 : 9) - persistedMedia.length);
-                    setFiles(next.slice(0, available));
+                    setFiles((current) => selectComposeFiles(current, value, { multiple: publishType === 'image', limit: available }));
                   }}
                   accept={publishType === 'video' ? 'video/mp4,video/webm,video/quicktime,video/x-m4v,.mov,.m4v' : 'image/jpeg,image/png,image/webp,image/gif'}
                   maxSize={publishType === 'image' ? 10 * 1024 * 1024 : undefined}
                   isMultiple={publishType === 'image'}
-                  maxFiles={Math.max(1, (publishType === 'image' ? 9 : 1) - persistedMedia.length)}
+                  maxFiles={Math.max(1, (publishType === 'image' ? 9 : 1) - mediaCount)}
                   placeholder={publishType === 'video' ? '拖入视频，或点击选择' : '拖入图片，或点击选择'}
                   isDisabled={busy || !canUploadMedia || mediaCount >= (publishType === 'video' ? 1 : 9)}
                   disabledMessage={!canUploadMedia ? '当前账号没有上传媒体的权限。' : mediaCount >= (publishType === 'video' ? 1 : 9) ? '已达到当前类型的媒体数量上限。' : undefined}

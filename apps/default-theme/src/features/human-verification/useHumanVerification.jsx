@@ -117,19 +117,19 @@ export function useHumanVerification() {
     return new Promise((resolve, reject) => { pending.current = { resolve, reject }; });
   };
 
-  const dialog = image && <FormDialog
-    isOpen
+  const dialog = <FormDialog
+    isOpen={Boolean(image)}
     onOpenChange={(open) => { if (!open) close(); }}
     title="完成人机验证"
     subtitle="请输入图片中的字符，继续刚才的操作。"
     footer={<><Button type="button" label="取消" variant="ghost" size="lg" onClick={close} /><Button type="button" label="继续" variant="primary" size="lg" isDisabled={!code.trim()} onClick={() => {
-      pending.current?.resolve({ captcha_id: image.image_id, captcha_code: code.trim() });
+      pending.current?.resolve({ captcha_id: image?.image_id, captcha_code: code.trim() });
       pending.current = null;
       setImage(null);
       setCode('');
     }} /></>}
   >
-    <img src={image.image_base64} alt="验证码图片" width="120" height="40" />
+    {image && <img src={image.image_base64} alt="验证码图片" width="120" height="40" />}
     <Button type="button" label="换一张" variant="ghost" size="sm" clickAction={refresh} />
     <TextInput label="图片中的字符" value={code} onChange={setCode} width="100%" autoComplete="off" />
     {imageError && <p role="alert">{imageError}</p>}

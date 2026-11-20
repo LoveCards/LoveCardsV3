@@ -27,18 +27,7 @@ function UnavailableFeed({ data }) {
   );
 }
 
-function CommunityRail({ preview }) {
-  if (!preview) {
-    return (
-      <aside className="home-side" aria-label="社区推荐">
-        <section className="home-side-section home-side-unavailable" role="status">
-          <h2>社区推荐暂未开放</h2>
-          <p>当前 SDK 尚未提供趋势讨论量与创作者推荐。</p>
-        </section>
-      </aside>
-    );
-  }
-
+function CommunityRail() {
   return (
     <aside className="home-side" aria-label="社区推荐">
       <section className="home-side-section">
@@ -112,8 +101,8 @@ export function HomePage() {
             <p>{channel === 'following' ? '只显示你关注的人公开发布的内容。' : data.strategy === 'hot' ? '当前按社区热度展示内容。' : data.strategy === 'latest-fallback' ? '推荐暂时不可用，当前显示最新发布的内容。' : '发现值得停留的内容，也遇见值得关注的人。'}</p>
           </div>
           {channel !== 'following' && <div className="home-heading-actions">
+            <Link className="home-compose-link" to="/compose">写随笔</Link>
             {isPreview && <span className="preview-label">设计预览 · 演示数据 · 操作不会保存</span>}
-            <span className="capability-note">推荐调整暂未开放</span>
           </div>}
         </header>
         {data.strategy === 'latest-fallback' && <ScopedBanner
@@ -124,13 +113,13 @@ export function HomePage() {
         />}
         {hasNewContent && !isBoundary && <button className="home-new-content" type="button" onClick={() => { void resource.reload(); }}>有新内容，点击刷新</button>}
         {!hasNewContent && needsSync && !isBoundary && <button className="home-new-content" type="button" onClick={() => { void resource.reload(); }}>查看最新内容</button>}
-        <div className={`home-layout${channel === 'following' ? ' is-following' : ''}`}>
-          <ResourceState status={resource.status} error={resource.error} empty={!isBoundary && !data.items?.length} onRetry={resource.reload} loadingVariant="feed" loadingClassName="home-feed" loadingLabel={channel === 'following' ? '动态加载中' : '首页内容加载中'} emptyTitle={channel === 'following' ? '关注的人还没有新内容' : undefined} emptyDescription={channel === 'following' ? '去发现感兴趣的人，关注后在这里查看他们的公开内容。' : undefined} emptyAction={channel === 'following' ? <Link to="/explore">去发现</Link> : undefined}>
+        <div className={`home-layout${isPreview && channel !== 'following' ? ' has-community-rail' : ''}`}>
+          <ResourceState status={resource.status} error={resource.error} empty={!isBoundary && !data.items?.length} onRetry={resource.reload} loadingVariant="feed" loadingClassName="home-feed" loadingLabel={channel === 'following' ? '动态加载中' : '首页内容加载中'} className={channel === 'following' ? 'home-following-empty' : ''} emptyTitle={channel === 'following' ? '关注的人还没有新内容' : undefined} emptyDescription={channel === 'following' ? '去发现感兴趣的人，关注后在这里查看他们的公开内容。' : undefined} emptyAction={channel === 'following' ? <Link to="/explore">去发现</Link> : undefined}>
             {isBoundary ? <UnavailableFeed data={data} /> : (
               <FeedCollection className={`home-feed${data.source === 'live' ? ' is-live' : ''}`} ariaLabel={`${channelLabel}内容`} items={data.items} source={data.source} />
             )}
           </ResourceState>
-          {channel !== 'following' && <CommunityRail preview={isPreview} />}
+          {channel !== 'following' && isPreview && <CommunityRail />}
         </div>
       </main>
     </AppShell>

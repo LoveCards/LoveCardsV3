@@ -174,7 +174,7 @@ describe('UI integrity', () => {
     expect(profileSource).not.toContain('profileBasePath}/followers');
     expect(profileSource).not.toContain('profile-preview-action');
     expect(profile).not.toContain('href="/me/edit"');
-    expect(profileSource).toContain('clearOpen && <ConfirmActionDialog');
+    expect(profileSource).toContain('<ConfirmActionDialog isOpen={clearOpen}');
   });
 
   it('uses one progressive profile identity hierarchy for owner and public pages', () => {
@@ -347,12 +347,14 @@ describe('UI integrity', () => {
     expect(compose).toContain('!editMode && <Button className="compose-draft-save"');
   });
 
-  it('keeps personal content tabs in one stable, swipeable order', () => {
+  it('keeps personal content tabs in one stable, scrollable order', () => {
     const labels = ['内容', '喜欢', '收藏', '历史'];
     for (const path of ['/me', '/me?tab=likes', '/me?tab=saved', '/me?tab=history']) {
       const nav = renderRoute(path).match(/<nav class="profile-tabs"[\s\S]*?<\/nav>/)?.[0] || '';
       const positions = labels.map((label) => nav.search(new RegExp(`>${label}(?:\\s+\\d+)?<\\/a>`)));
-      expect(nav).toContain('aria-current="page"');
+      expect(nav).toContain('role="tablist"');
+      expect(nav).toContain('aria-selected="true"');
+      expect(nav).toContain('aria-controls="profile-content-panel"');
       expect(positions.every((position) => position >= 0)).toBe(true);
       expect(positions).toEqual([...positions].sort((a, b) => a - b));
     }

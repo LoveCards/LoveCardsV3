@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from '../../ui/icons.jsx';
 import { removeSavedItem, saveCard } from '../../services/community-service.js';
 import { getUserFacingError } from '../../app/user-facing-error.js';
@@ -6,17 +6,19 @@ import { getUserFacingError } from '../../app/user-facing-error.js';
 export function useCardSave({ cardId, source = 'live', isAuthenticated = false, isSaved = false, isStatic = false, onRequireLogin, onFeedback, onSavedChange }) {
   const [saved, setSaved] = useState(Boolean(isSaved));
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const isReadOnly = source !== 'live' || isStatic;
 
   useEffect(() => { setSaved(Boolean(isSaved)); }, [isSaved]);
 
   const toggleSaved = useCallback(async () => {
-    if (busy || isReadOnly) return false;
+    if (busyRef.current || isReadOnly) return false;
     if (!isAuthenticated) {
       onRequireLogin?.('save');
       return false;
     }
     const next = !saved;
+    busyRef.current = true;
     setBusy(true);
     try {
       if (next) await saveCard(cardId);
@@ -30,9 +32,10 @@ export function useCardSave({ cardId, source = 'live', isAuthenticated = false, 
       onFeedback?.(getUserFacingError(error, { fallback: next ? '内容暂时没有收藏，请稍后重试。' : '暂时无法取消收藏，请稍后重试。' }), 'error');
       return false;
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
-  }, [busy, cardId, isAuthenticated, isReadOnly, onFeedback, onRequireLogin, onSavedChange, saved]);
+  }, [cardId, isAuthenticated, isReadOnly, onFeedback, onRequireLogin, onSavedChange, saved]);
 
   return { saved, busy, isReadOnly, toggleSaved };
 }

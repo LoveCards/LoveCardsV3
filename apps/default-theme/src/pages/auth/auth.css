@@ -4,15 +4,14 @@
     padding: 48px 20px;
     display: grid;
     place-items: center;
-    background: linear-gradient(150deg, var(--lc-canvas) 0 62%, var(--lc-rose-soft) 62%);
+    background: var(--lc-canvas);
   }
 
   .auth-panel {
     width: min(420px, 100%);
     padding: 28px;
-    border-radius: 16px;
+    border-radius: var(--lc-radius-panel);
     background: var(--lc-surface);
-    box-shadow: 0 2px 7px rgba(33, 38, 47, 0.08);
   }
 
   .auth-panel-topbar {
@@ -23,7 +22,7 @@
   }
 
   .auth-home-link {
-    min-height: 36px;
+    min-height: 44px;
     padding: 0 10px;
     display: inline-flex;
     align-items: center;
@@ -36,7 +35,7 @@
     font-weight: 680;
     text-decoration: none;
     white-space: nowrap;
-    transition: color 160ms ease, background-color 160ms ease, transform 160ms ease;
+    transition: color var(--lc-motion-state) var(--lc-ease), background-color var(--lc-motion-state) var(--lc-ease), transform var(--lc-motion-press) var(--lc-ease);
   }
 
   .auth-home-link .icon { flex: 0 0 auto; transform: rotate(180deg); }
@@ -67,7 +66,7 @@
   .auth-links .auth-guest { min-height: 44px; flex: 0 0 auto; }
   .auth-links a,
   .auth-register a { color: var(--lc-rose-deep); font-weight: 680; }
-  .auth-register { margin: 20px 0 0; padding: 13px; border-radius: 10px; color: var(--lc-body); background: var(--lc-surface-subtle); font-size: 0.76rem; text-align: center; }
+  .auth-register { margin: 20px 0 0; padding: 20px 0 0; border-top: 1px solid var(--lc-separator); color: var(--lc-body); font-size: 0.76rem; text-align: center; }
 
   @media (max-width: 520px) {
     .auth-page { padding: 0; place-items: stretch; background: var(--lc-surface); }

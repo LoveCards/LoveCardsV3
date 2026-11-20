@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
 import { ResourceState } from '../../components/ResourceState.jsx';
@@ -18,6 +18,7 @@ import { ReportResourceDialog } from '../../features/moderation/ReportResourceDi
 import { SaveCardButton } from '../../features/library/SaveCardButton.jsx';
 import { listSavedItems } from '../../services/community-service.js';
 import { topicHref } from '../../services/discovery-service.js';
+import { ContextualLoginForm } from '../../features/auth/ContextualLoginForm.jsx';
 
 function DetailBoundary({ title, detail }) {
   return (
@@ -50,7 +51,7 @@ function detailTopics(card) {
   }).filter(Boolean);
 }
 
-export function DetailPage() {
+export function DetailPage({ preview = false, loadingFallback = null }) {
   const { id, commentId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -73,8 +74,32 @@ export function DetailPage() {
   const [commentPinBusy, setCommentPinBusy] = useState(false);
   const [replacePinCommentItem, setReplacePinCommentItem] = useState(null);
   const [authPromptAction, setAuthPromptAction] = useState('');
-  const requestLogin = (action) => setAuthPromptAction(action);
+  const inlineLoginRef = useRef(null);
+  const authTriggerRef = useRef(null);
+  const requestLogin = (action) => {
+    authTriggerRef.current = document.activeElement;
+    setAuthPromptAction(action);
+  };
+  const closeInlineLogin = () => {
+    setAuthPromptAction('');
+    requestAnimationFrame(() => authTriggerRef.current?.isConnected && authTriggerRef.current.focus());
+  };
   const loginFrom = `${location.pathname}${location.search}${location.hash}`;
+
+  useEffect(() => {
+    if (!preview || !authPromptAction) return undefined;
+    const frame = requestAnimationFrame(() => {
+      inlineLoginRef.current?.scrollIntoView({ block: 'start', behavior: 'auto' });
+      inlineLoginRef.current?.querySelector('input')?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [authPromptAction, preview]);
+
+  useEffect(() => {
+    if (!preview && location.state?.previewMode === 'full' && resource.status === 'success') {
+      document.getElementById('detail-title')?.focus({ preventScroll: true });
+    }
+  }, [location.state?.previewMode, preview, resource.status]);
 
   useEffect(() => {
     let active = true;
@@ -233,7 +258,7 @@ export function DetailPage() {
     content = <DetailBoundary title="没有找到这条内容" detail="它可能已被删除、移动，或当前预览数据中不存在。" />;
   } else if (data.card) {
     content = (
-      <article className="detail-article">
+      <article className={`detail-article${detailMediaItems(data.card).length ? ' has-media' : ''}`}>
         <header className="detail-author">
           <AuthorIdentity author={data.card.author} uid={data.card.authorUid} handle={data.card.authorHandle} avatarUrl={data.card.authorAvatar} meta={data.card.meta || '时间信息暂未提供'} size="md" variant="byline" className="detail-author-identity" />
           {!data.card.authorUid && <span className="detail-capability">作者主页暂未提供</span>}
@@ -241,7 +266,7 @@ export function DetailPage() {
         </header>
           <div className="detail-copy">
           {topics.length > 0 ? <nav className="detail-topics" aria-label="内容话题">{topics.map((topic) => <Link className="detail-topic" key={topic.id || topic.name} to={topicHref(topic)}>#{topic.name}</Link>)}</nav> : <span className="detail-topic">LoveCards 社区</span>}
-          <h1 id="detail-title" className="sr-only">内容详情</h1>
+          <h1 id="detail-title" className="sr-only" tabIndex={-1}>内容详情</h1>
           <p className="detail-content"><MentionText text={data.card.content || data.card.title} mentions={data.card.mentions} /></p>
         </div>
         <MediaGallery items={detailMediaItems(data.card)} title={data.card.title} />
@@ -252,6 +277,7 @@ export function DetailPage() {
           <SaveCardButton cardId={data.card.id} source={data.source} isAuthenticated={isAuthenticated} isSaved={detailSaved} onRequireLogin={() => requestLogin('收藏内容')} onFeedback={(body, type) => toast({ body, type: type === 'error' ? 'error' : undefined, uniqueID: 'detail-save', collisionBehavior: 'overwrite' })} />
           <Button className="detail-share" type="button" label="分享" variant="ghost" size="lg" clickAction={share} />
         </footer>
+        {preview && authPromptAction && <section ref={inlineLoginRef} className="detail-inline-login" aria-label="登录后继续"><div className="detail-inline-login-heading"><h2>登录后继续{authPromptAction}</h2></div><ContextualLoginForm description="当前内容会留在原位。" onSuccess={closeInlineLogin} onCancel={closeInlineLogin} onFullPage={() => navigate('/auth/login', { state: { from: loginFrom } })} /></section>}
         <CommentThread
           comments={comments}
           focusedCommentId={commentId}
@@ -279,17 +305,18 @@ export function DetailPage() {
     );
   }
 
-  return (
-    <AppShell>
-      <main className="detail-page" aria-labelledby="detail-title">
-        <Link className="detail-back" to="/">← 回到信息流</Link>
-        <ResourceState status={resource.status} error={resource.error} onRetry={resource.reload}>{content}</ResourceState>
+  const detailMain = (
+      <main className={`detail-page${preview ? ' is-preview' : ''}`} aria-labelledby="detail-title">
+        {!preview && <Link className="detail-back" to="/">← 回到信息流</Link>}
+        {preview && resource.status === 'loading' && loadingFallback
+          ? loadingFallback
+          : <ResourceState status={resource.status} error={resource.error} onRetry={resource.reload} loadingVariant="detail" loadingLabel="内容详情加载中">{content}</ResourceState>}
         <ConfirmActionDialog isOpen={deleteCardOpen} onOpenChange={setDeleteCardOpen} title="删除这条内容？" description="内容和相关讨论将不再显示，此操作无法撤销。" actionLabel="删除内容" isLoading={dialogBusy} onAction={removeCard} />
-        {reportTarget && <ReportResourceDialog isOpen onOpenChange={(open) => { if (!open) setReportTarget(null); }} resourceType={reportTarget.type} resourceId={String(reportTarget.id)} onFeedback={(body, type) => toast({ body, type: type === 'error' ? 'error' : undefined, uniqueID: 'detail-report', collisionBehavior: 'overwrite' })} />}
+        <ReportResourceDialog isOpen={Boolean(reportTarget)} onOpenChange={(open) => { if (!open) setReportTarget(null); }} resourceType={reportTarget?.type} resourceId={reportTarget ? String(reportTarget.id) : ''} onFeedback={(body, type) => toast({ body, type: type === 'error' ? 'error' : undefined, uniqueID: 'detail-report', collisionBehavior: 'overwrite' })} />
         <ConfirmActionDialog isOpen={Boolean(deleteCommentItem)} onOpenChange={(open) => { if (!open) setDeleteCommentItem(null); }} title="删除这条评论？" description="评论删除后无法恢复。" actionLabel="删除评论" isLoading={dialogBusy} onAction={removeSelectedComment} />
         <ConfirmActionDialog isOpen={Boolean(replacePinCommentItem)} onOpenChange={(open) => { if (!open && !commentPinBusy) setReplacePinCommentItem(null); }} title="替换置顶评论？" description="当前置顶评论将取消置顶，并把这条评论放到讨论顶部。" actionLabel="替换置顶" isLoading={commentPinBusy} onAction={() => { if (replacePinCommentItem) void changePinnedComment(replacePinCommentItem, true); }} />
-        <AuthPromptDialog isOpen={Boolean(authPromptAction)} action={authPromptAction} onOpenChange={(open) => { if (!open) setAuthPromptAction(''); }} onLogin={() => { setAuthPromptAction(''); navigate('/auth/login', { state: { from: loginFrom } }); }} />
+        {!preview && <AuthPromptDialog isOpen={Boolean(authPromptAction)} action={authPromptAction} onOpenChange={(open) => { if (!open) setAuthPromptAction(''); }} onLogin={() => { setAuthPromptAction(''); navigate('/auth/login', { state: { from: loginFrom } }); }} />}
       </main>
-    </AppShell>
   );
+  return preview ? detailMain : <AppShell>{detailMain}</AppShell>;
 }

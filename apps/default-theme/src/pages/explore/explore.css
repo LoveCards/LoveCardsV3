@@ -39,7 +39,7 @@
     margin-bottom: 18px;
     padding: 7px 8px 7px 14px;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 10px;
     border: 1px solid var(--lc-separator);
@@ -54,6 +54,7 @@
   }
 
   .discovery-search-context { min-width: 0; display: flex; align-items: center; gap: 7px; color: var(--lc-muted); font-size: 0.76rem; white-space: nowrap; }
+  .discovery-search-surface.has-query { grid-template-columns: auto minmax(0, 1fr) auto; }
   .discovery-search-context b { overflow: hidden; max-width: 180px; color: var(--lc-ink); text-overflow: ellipsis; font-weight: 650; }
   .discovery-search-context button { min-width: 32px; min-height: 32px; padding: 0; border: 0; color: var(--lc-muted); background: transparent; font-size: 1.1rem; }
   .discovery-search-typeahead { min-width: 0; }
@@ -148,6 +149,16 @@
     height: 100%;
     min-height: 0;
     display: block;
+  }
+
+  .discovery-feature:has(.media-fit-unavailable) {
+    height: auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .discovery-feature:has(.media-fit-unavailable) .discovery-feature-media { display: none; }
+  .discovery-feature:has(.media-fit-unavailable) > div {
+    min-height: 140px;
+    padding: 22px 24px;
   }
 
   .discovery-feature > div {
@@ -289,6 +300,7 @@
     .discovery-feature { grid-template-columns: 1fr; height: auto; min-height: 0; }
     .discovery-feature-media { min-height: 200px; aspect-ratio: 16 / 10; }
     .discovery-feature > div { padding: 14px; }
+    .discovery-feature:has(.media-fit-unavailable) > div { padding: 16px; }
     .discovery-feature h2 { margin-block: 5px; font-size: 1rem; }
     /* The feed owns its card surfaces; the page remains on the shared canvas. */
     .discovery-section {

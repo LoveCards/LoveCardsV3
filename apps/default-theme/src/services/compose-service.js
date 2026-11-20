@@ -98,10 +98,12 @@ export async function uploadComposeMedia(files = []) {
 }
 
 export async function deleteComposeMedia(ids = []) {
-  const client = getSdkClient();
-  if (!client?.getToken()) return;
   const uniqueIds = [...new Set(ids.map(Number).filter((id) => Number.isInteger(id) && id > 0))];
-  await Promise.allSettled(uniqueIds.map((id) => client.files.delete(id)));
+  if (!uniqueIds.length) return [];
+  const client = getSdkClient();
+  if (!client?.getToken()) return uniqueIds;
+  const results = await Promise.allSettled(uniqueIds.map((id) => client.files.delete(id)));
+  return uniqueIds.filter((_id, index) => results[index].status === 'rejected');
 }
 
 export function getComposeState() {

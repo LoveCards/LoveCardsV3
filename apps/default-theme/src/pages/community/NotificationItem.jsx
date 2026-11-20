@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { AuthorIdentity } from '../../components/AuthorIdentity.jsx';
 import { Avatar, Icon } from '../../ui/icons.jsx';
 import { formatMessageTime } from './message-utils.js';
 import { normalizeNotificationItem } from './notification-model.js';
+import { cardPreviewState } from '../../app/card-preview-routing.js';
 
 function NotificationActor({ item }) {
   if (item.actorState === 'system') {
@@ -29,7 +30,9 @@ function NotificationAction({ item }) {
 }
 
 export function NotificationItem({ item: source, busy = false, onRead }) {
+  const location = useLocation();
   const item = normalizeNotificationItem(source);
+  const previewId = /^\/post\/(\d+)$/.exec(item.actionUrl || '')?.[1];
   const unread = !item.read_at;
   const message = typeof item.payload.message === 'string' && item.payload.message.trim()
     ? item.payload.message.trim()
@@ -42,7 +45,7 @@ export function NotificationItem({ item: source, busy = false, onRead }) {
     <span className="notification-unread-dot" aria-hidden="true" />
     <NotificationActor item={item} />
     {item.actionUrl
-      ? <Link className="notification-copy" to={item.actionUrl} aria-label={`${readStateLabel}，查看：${item.presentation.title}`} onClick={activate}>{copy}</Link>
+      ? <Link className="notification-copy" to={item.actionUrl} state={previewId ? cardPreviewState(location, previewId) : undefined} aria-label={`${readStateLabel}，查看：${item.presentation.title}`} onClick={activate}>{copy}</Link>
       : unread
         ? <button className="notification-copy" type="button" onClick={activate} disabled={busy} aria-label={`标记已读：${item.presentation.title}`}>{copy}</button>
         : <div className="notification-copy is-static">{copy}</div>}

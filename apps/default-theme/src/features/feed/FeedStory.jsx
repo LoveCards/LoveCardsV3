@@ -1,10 +1,11 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useOutletContext } from 'react-router-dom';
 import { Icon } from '../../ui/icons.jsx';
-import { resolveCardPattern } from './card-patterns.js';
+import { inferCardPattern, resolveCardPattern } from './card-patterns.js';
 import { MediaFrame } from '../media/MediaFrame.jsx';
 import { CardMoreMenu } from './CardMoreMenu.jsx';
 import { AuthorIdentity } from '../../components/AuthorIdentity.jsx';
 import { MentionText, mentionSegments } from '../../components/MentionText.jsx';
+import { cardPreviewSession, cardPreviewState, warmCardPreviewDetail } from '../../app/card-preview-routing.js';
 
 function storyFrameRatio(gridCount, index) {
   if (gridCount === 1) return 4 / 5;
@@ -19,7 +20,7 @@ function cardPath(card) {
   return `/post/${encodeURIComponent(String(id))}`;
 }
 
-function StoryMedia({ card, isStaticPreview, href }) {
+function StoryMedia({ card, isStaticPreview, href, previewState, onOpenPreview }) {
   const mediaItems = card.mediaItems?.length
     ? card.mediaItems
     : card.mediaUrl ? [{ url: card.mediaUrl, type: 'image', alt: card.mediaAlt || card.title, fit: card.mediaFit || 'smart' }] : [];
@@ -44,7 +45,7 @@ function StoryMedia({ card, isStaticPreview, href }) {
   return isStaticPreview || !href ? (
     <div className={`story-media story-media-grid-${gridCount}`}>{content}</div>
   ) : (
-    <Link className={`story-media story-media-grid-${gridCount}`} to={href} aria-label={`查看内容：${card.title}`}>
+    <Link className={`story-media story-media-grid-${gridCount}`} to={href} state={previewState} data-card-preview-id={card.id} data-card-preview-trigger="media" onPointerEnter={warmCardPreviewDetail} onFocus={warmCardPreviewDetail} onPointerDown={warmCardPreviewDetail} onClick={(event) => onOpenPreview(event, 'media')} aria-label={`查看内容：${card.title}`}>
       {content}
     </Link>
   );
@@ -56,34 +57,45 @@ function resolveFeedFamily(pattern) {
   return 'text';
 }
 
-function StoryCopy({ card, family, isStaticPreview, href }) {
+function StoryCopy({ card, family, isStaticPreview, href, previewState, onOpenPreview }) {
   const content = card.content || card.title;
   const hasLinkedMention = !isStaticPreview && href && mentionSegments(content, card.mentions).some((segment) => segment.type === 'mention' && segment.actionUrl && segment.mention?.state !== 'unavailable');
   const copy = hasLinkedMention
-    ? <MentionText text={content} mentions={card.mentions} renderText={(value, key) => <Link to={href} key={key}>{value}</Link>} />
+    ? <MentionText text={content} mentions={card.mentions} renderText={(value, key) => <Link to={href} state={previewState} data-card-preview-id={card.id} data-card-preview-trigger="text" onPointerEnter={warmCardPreviewDetail} onFocus={warmCardPreviewDetail} onPointerDown={warmCardPreviewDetail} onClick={(event) => onOpenPreview(event, 'text')} key={key}>{value}</Link>} />
     : <MentionText text={content} mentions={card.mentions} />;
   return (
     <div className={`story-copy story-copy-${family}`}>
       <p className="story-copy-primary">
-        {isStaticPreview || !href || hasLinkedMention ? copy : <Link to={href}>{copy}</Link>}
+        {isStaticPreview || !href || hasLinkedMention ? copy : <Link to={href} state={previewState} data-card-preview-id={card.id} data-card-preview-trigger="text" onPointerEnter={warmCardPreviewDetail} onFocus={warmCardPreviewDetail} onPointerDown={warmCardPreviewDetail} onClick={(event) => onOpenPreview(event, 'text')}>{copy}</Link>}
       </p>
     </div>
   );
 }
 
 export function FeedStory({ card, source, isAuthenticated = false, isSaved = false, isStaticPreview = false, canReport = true, onRequireLogin, onSavedChange, onFeedback, renderAction, showMoreMenu = true, showTopics = false }) {
+  const location = useLocation();
+  const preview = useOutletContext();
+  const navigate = useNavigate();
   const pattern = typeof card.pattern === 'object' ? card.pattern : resolveCardPattern(card.kind);
   const family = resolveFeedFamily(pattern);
   const href = cardPath(card);
+  const previewPending = href && preview?.pathname === href && preview?.state?.previewSession === cardPreviewSession && preview?.state?.previewCardId === String(card.id);
+  const previewKind = inferCardPattern({ requestedKind: card.kind, mediaItems: card.mediaItems?.length ? card.mediaItems : card.mediaUrl ? [{ url: card.mediaUrl, type: card.kind === 'video' ? 'video' : 'image' }] : [] });
+  const previewState = !isStaticPreview && href ? cardPreviewState(location, card.id, previewKind) : undefined;
+  const openPreview = (event, trigger) => {
+    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || !href) return;
+    event.preventDefault();
+    navigate(href, { state: cardPreviewState(location, card.id, previewKind, trigger) });
+  };
   const likeCount = Number.isFinite(Number(card.likes)) ? Number(card.likes) : 0;
   const replyCount = Number.isFinite(Number(card.replies)) ? Number(card.replies) : 0;
   const renderedAction = typeof renderAction === 'function' ? renderAction(card) : null;
   const action = renderedAction && typeof renderedAction.then === 'function' ? null : renderedAction;
 
   return (
-    <article className={`feed-story feed-story-${card.kind} feed-story-family-${family}${card.layout ? ` feed-story-layout-${card.layout}` : ''}${card.unavailable ? ' feed-story-unavailable' : ''}${isStaticPreview ? ' is-static-preview' : ''}`} aria-label={isStaticPreview ? '发布后的卡片预览' : undefined}>
-      <StoryMedia card={card} isStaticPreview={isStaticPreview} href={href} />
-      {family !== 'media' && <StoryCopy card={card} family={family} isStaticPreview={isStaticPreview} href={href} />}
+    <article className={`feed-story feed-story-${card.kind} feed-story-family-${family}${card.layout ? ` feed-story-layout-${card.layout}` : ''}${card.unavailable ? ' feed-story-unavailable' : ''}${isStaticPreview ? ' is-static-preview' : ''}`} data-preview-opening={previewPending || undefined} aria-label={isStaticPreview ? '发布后的卡片预览' : undefined}>
+      <StoryMedia card={card} isStaticPreview={isStaticPreview} href={href} previewState={previewState} onOpenPreview={openPreview} />
+      {family !== 'media' && <StoryCopy card={card} family={family} isStaticPreview={isStaticPreview} href={href} previewState={previewState} onOpenPreview={openPreview} />}
       <footer className="story-meta">
         <AuthorIdentity author={card.author} uid={card.authorUid} handle={card.authorHandle} avatarUrl={card.authorAvatar} tone={card.kind === 'discussion' ? 'ink' : 'rose'} variant="compact" className="story-author" />
         <div className="story-meta-actions">

@@ -10,7 +10,7 @@ const comments = [
   { id: 2, ownerId: 3, author: '摄影小白', content: '回复内容', createdAt: '刚刚', likes: 1, parentId: 1 },
 ];
 
-const renderThread = (props) => renderToStaticMarkup(<MemoryRouter><CommentThread {...props} /></MemoryRouter>);
+const renderThread = (props, path = '/post/42') => renderToStaticMarkup(<MemoryRouter initialEntries={[path]}><CommentThread {...props} /></MemoryRouter>);
 
 describe('comment thread surface', () => {
   it('renders replies as a grouped thread and uses the native chat composer', () => {
@@ -39,6 +39,13 @@ describe('comment thread surface', () => {
     expect(source).toContain('triggers={mentionTrigger ? [mentionTrigger] : undefined}');
     expect(source).toContain('pasteAsToken={false}');
     expect(source).not.toContain('mentioned_user_ids');
+  });
+
+  it('uses an independent login link for the comment permission prompt', () => {
+    const html = renderThread({ comments: [], source: 'live', isAuthenticated: false, canComment: false, onSubmitComment: vi.fn(), onLogin: vi.fn() }, '/post/42?ref=explore#discussion');
+    expect(html).toContain('href="/auth/login"');
+    expect(html).toContain('>去登录</a>');
+    expect(html).not.toContain('>去登录</button>');
   });
 
   it('keeps preview comments read-only', () => {

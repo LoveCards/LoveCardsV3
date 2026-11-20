@@ -4,7 +4,7 @@ import { Brand } from '../components/Brand.jsx';
 import { HeaderSearch } from '../components/HeaderSearch.jsx';
 import { ThemeToggle } from '../features/theme/ThemeToggle.jsx';
 import { Avatar, Icon } from '../ui/icons.jsx';
-import { ActionMenu } from '../ui/interaction.jsx';
+import { ActionMenu, AuthPromptDialog } from '../ui/interaction.jsx';
 import { IconButton } from '../ui/controls.jsx';
 import { useAuth } from '../app/providers.jsx';
 import { endCurrentSession } from '../app/end-current-session.js';
@@ -25,6 +25,13 @@ const desktopNav = [
   { to: '/?feed=following', label: '动态' },
   { to: '/messages', label: '消息', inbox: true },
 ];
+
+const loginActions = {
+  '/?feed=following': '查看动态',
+  '/compose': '发布内容',
+  '/messages': '查看消息',
+  '/me': '查看我的主页',
+};
 
 const protectedNavigationPrefixes = ['/me', '/messages', '/inbox', '/compose', '/drafts', '/settings/profile', '/settings/security', '/settings/session', '/settings/privacy', '/settings/blocked', '/settings/notifications'];
 
@@ -47,9 +54,8 @@ export function AppShell({ children, mobileMode = 'standard' }) {
   const designPreview = getRuntimeDataMode() === 'design-preview';
   const requiresLogin = !designPreview && authStatus === 'ready' && !isAuthenticated;
   const needsNavigationLogin = (target) => requiresLogin && !(isVisitor && target === '/me') && isProtectedNavigationTarget(target);
-  const navigationTarget = (target) => needsNavigationLogin(target) ? '/auth/login' : target;
-  const navigationState = (target) => needsNavigationLogin(target) ? { from: target } : undefined;
   const [authExpired, setAuthExpired] = useState(false);
+  const [loginRequest, setLoginRequest] = useState(null);
   const [notificationUnread, setNotificationUnread] = useState(0);
   const [realtimeFault, setRealtimeFault] = useState(false);
   useEffect(() => {
@@ -100,6 +106,12 @@ export function AppShell({ children, mobileMode = 'standard' }) {
   const endSession = async (destination) => {
     await endCurrentSession(logout, navigate, destination);
   };
+  const openLogin = (target = null) => setLoginRequest({ target, action: loginActions[target] || '' });
+  const handleNavigationClick = (event, target) => {
+    if (!needsNavigationLogin(target) || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    openLogin(target);
+  };
   const accountItems = isAuthenticated ? [
     { label: '我的主页', icon: <Icon name="user" size={17} />, onClick: () => navigate('/me') },
     { label: '设置', icon: <Icon name="settings" size={17} />, onClick: () => navigate('/settings/appearance') },
@@ -109,7 +121,7 @@ export function AppShell({ children, mobileMode = 'standard' }) {
     { label: '设计预览主页', icon: <Icon name="user" size={17} />, onClick: () => navigate('/me') },
     { label: '外观设置', icon: <Icon name="settings" size={17} />, onClick: () => navigate('/settings/appearance') },
   ] : [
-    { label: isVisitor ? '登录正式账号' : '登录', icon: <Icon name="user" size={17} />, onClick: () => navigate('/auth/login') },
+    { label: isVisitor ? '登录正式账号' : '登录', icon: <Icon name="user" size={17} />, onClick: () => openLogin() },
     { label: '创建账号', icon: <Icon name="plus" size={17} />, onClick: () => navigate('/auth/register') },
     { label: '外观设置', icon: <Icon name="settings" size={17} />, onClick: () => navigate('/settings/appearance') },
     ...(isVisitor ? [{ type: 'divider' }, { label: '结束游客会话', icon: <Icon name="logout" size={17} />, onClick: () => { void endSession('/'); } }] : []),
@@ -126,13 +138,14 @@ export function AppShell({ children, mobileMode = 'standard' }) {
               if (item.unavailable) return <span className="nav-unavailable" aria-disabled="true" key={item.label}>{item.label}<small>未开放</small></span>;
               const content = <>{item.label}{item.inbox && notificationUnread > 0 && <span className="nav-unread" aria-label={`${notificationUnread} 条未读通知`}>{notificationUnread > 99 ? '99+' : notificationUnread}</span>}</>;
               const active = item.inbox ? messageCenterActive : item.to === '/' ? homeActive : followingActive;
-              return <Link aria-current={active ? 'page' : undefined} key={item.to} to={navigationTarget(item.to)} state={navigationState(item.to)}>{content}</Link>;
+              return <Link aria-current={active ? 'page' : undefined} key={item.to} to={item.to} onClick={(event) => handleNavigationClick(event, item.to)}>{content}</Link>;
             })}
           </nav>
           <HeaderSearch />
           <div className="header-actions">
             <IconButton className="mobile-search-trigger" type="button" label="打开搜索" tooltip="搜索" variant="ghost" size="lg" icon={<Icon name="search" size={20} />} onClick={() => window.dispatchEvent(new CustomEvent('lc-open-mobile-search'))} />
-            <Link className="header-compose" to={navigationTarget('/compose')} state={navigationState('/compose')}>发布</Link>
+            {!isAuthenticated && !designPreview && <IconButton className="mobile-login-trigger" type="button" label={isVisitor ? '登录正式账号' : '登录'} variant="ghost" size="lg" icon={<Icon name="user" size={20} />} onClick={() => openLogin()} />}
+            <Link className="header-compose" to="/compose" onClick={(event) => handleNavigationClick(event, '/compose')}>发布</Link>
             <ThemeToggle />
             <div className="header-profile"><ActionMenu items={accountItems} label={isAuthenticated ? `${user?.username || '账号'}菜单` : designPreview ? '设计预览菜单' : isVisitor ? '游客菜单' : '登录与设置'} icon={<Avatar label={isAuthenticated ? (user?.username || '我') : designPreview ? '预' : isVisitor ? '访' : '登'} src={isAuthenticated ? user?.avatar : undefined} tone="sand" size="sm" />} /></div>
           </div>
@@ -155,17 +168,18 @@ export function AppShell({ children, mobileMode = 'standard' }) {
             {item.inbox && notificationUnread > 0 && <span className="mobile-nav-unread" aria-label={`${notificationUnread} 条未读通知`}>{notificationUnread > 99 ? '99+' : notificationUnread}</span>}
             {item.compose && <span className="sr-only">{item.label}</span>}
           </>;
-          if (item.inbox) return <Link className={messageCenterActive ? 'is-active' : undefined} aria-current={messageCenterActive ? 'page' : undefined} key={item.to} to={navigationTarget(item.to)} state={navigationState(item.to)}>{content}</Link>;
+          if (item.inbox) return <Link className={messageCenterActive ? 'is-active' : undefined} aria-current={messageCenterActive ? 'page' : undefined} key={item.to} to={item.to} onClick={(event) => handleNavigationClick(event, item.to)}>{content}</Link>;
           const active = item.compose ? composeActive : item.to === '/' ? homeActive : item.to === '/?feed=following' ? followingActive : pathname === item.to;
           return <Link
             className={`${item.compose ? 'is-compose ' : ''}${active ? 'is-active' : ''}`.trim()}
             aria-current={active ? 'page' : undefined}
             key={item.to}
-            to={navigationTarget(item.to)}
-            state={navigationState(item.to)}
+            to={item.to}
+            onClick={(event) => handleNavigationClick(event, item.to)}
           >{content}</Link>;
         })}
       </nav>}
+      <AuthPromptDialog isOpen={Boolean(loginRequest)} action={loginRequest?.action} onOpenChange={(open) => { if (!open) setLoginRequest(null); }} onSuccess={() => { if (loginRequest?.target) navigate(loginRequest.target); }} onLogin={() => { const from = loginRequest?.target || `${pathname}${search}${location.hash}`; setLoginRequest(null); navigate('/auth/login', { state: { from } }); }} />
     </div>
   );
 }

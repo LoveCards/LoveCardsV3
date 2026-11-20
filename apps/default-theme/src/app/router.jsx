@@ -1,7 +1,10 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
 import { HomeFeedRoute, ProtectedRoute } from './auth-routing.jsx';
 import { HomePage } from '../pages/home/HomePage.jsx';
+import { AppShell } from '../layouts/AppShell.jsx';
+import { previewBackground } from './card-preview-routing.js';
+import { CardPreviewSurface } from '../features/feed/CardPreviewSurface.jsx';
 
 const ExplorePage = lazy(() => import('../pages/explore/ExplorePage.jsx').then((module) => ({ default: module.ExplorePage })));
 const DetailPage = lazy(() => import('../pages/detail/DetailPage.jsx').then((module) => ({ default: module.DetailPage })));
@@ -32,13 +35,30 @@ const pendingRoutes = [
 ];
 
 function RouteLoadingState() {
-  return <div className="route-loading-state" role="status" aria-live="polite">页面加载中</div>;
+  const { pathname } = useLocation();
+  const content = <main className="route-loading-state" role="status" aria-live="polite">页面加载中</main>;
+  if (pathname.startsWith('/auth/') || pathname.startsWith('/media/')) return content;
+  const isRelation = /^\/(?:me|user\/[^/]+)\/(?:following|followers)$/.test(pathname);
+  const isMessageTask = pathname === '/messages/search' || pathname === '/messages/requests' || /^\/messages\/[^/]+$/.test(pathname) && !pathname.startsWith('/messages/new/');
+  const mobileMode = pathname.startsWith('/compose') || pathname.startsWith('/messages/new/')
+    ? 'immersive'
+    : pathname.startsWith('/settings') || pathname.startsWith('/drafts') || isRelation || isMessageTask
+      ? 'task'
+      : 'standard';
+  return <AppShell mobileMode={mobileMode}>{content}</AppShell>;
+}
+
+function BackgroundRoutes({ preview }) {
+  return <Outlet context={preview} />;
 }
 
 export function AppRoutes() {
+  const location = useLocation();
+  const background = previewBackground(location);
   return (
     <Suspense fallback={<RouteLoadingState />}>
-      <Routes>
+      <Routes location={background || location}>
+        <Route element={<BackgroundRoutes preview={background ? location : null} />}>
         <Route path="/" element={<HomeFeedRoute><HomePage /></HomeFeedRoute>} />
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/search" element={<ExplorePage search />} />
@@ -98,7 +118,9 @@ export function AppRoutes() {
           />
         ))}
         <Route path="*" element={<NotFoundPage />} />
+        </Route>
       </Routes>
+      {background && <Routes><Route path="/post/:id" element={<CardPreviewSurface />} /></Routes>}
     </Suspense>
   );
 }
