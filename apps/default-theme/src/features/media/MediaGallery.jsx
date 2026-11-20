@@ -91,10 +91,10 @@ export function MediaRouteViewer({ items, title, activeIndex, onIndexChange, onC
   );
 }
 
-export function MediaGallery({ items = [], title, galleryLayout = 'grid', initialIndex = 0 }) {
+export function MediaGallery({ items = [], title, galleryLayout = 'grid' }) {
   const mediaItems = items.filter((item) => item && typeof item.url === 'string' && item.url.trim());
   const [activeIndex, setActiveIndex] = useState(null);
-  const pager = useGalleryPager(mediaItems.length, initialIndex);
+  const pager = useGalleryPager(mediaItems.length);
   if (!mediaItems.length) return null;
   if (mediaItems.length === 1 && getMediaType(mediaItems[0]) === 'video') return <DetailVideoSurface item={mediaItems[0]} />;
 

@@ -19,7 +19,6 @@ import { SaveCardButton } from '../../features/library/SaveCardButton.jsx';
 import { listSavedItems } from '../../services/community-service.js';
 import { topicHref } from '../../services/discovery-service.js';
 import { ContextualLoginForm } from '../../features/auth/ContextualLoginForm.jsx';
-import { readPreviewMediaIndex } from '../../app/card-preview-routing.js';
 
 function DetailBoundary({ title, detail }) {
   return (
@@ -271,7 +270,7 @@ export function DetailPage({ preview = false, loadingFallback = null }) {
           <h1 id="detail-title" className="sr-only" tabIndex={-1}>内容详情</h1>
           <p className="detail-content"><MentionText text={data.card.content || data.card.title} mentions={data.card.mentions} /></p>
         </div>
-        <MediaGallery key={data.card.id} items={cardMediaItems} title={data.card.title} galleryLayout={data.card.galleryLayout} initialIndex={readPreviewMediaIndex(location, id, cardMediaItems.length)} />
+        <MediaGallery key={data.card.id} items={cardMediaItems} title={data.card.title} galleryLayout={data.card.galleryLayout} />
         {data.source === 'preview' && <p className="preview-disclosure">设计预览 · 演示数据 · 操作不会保存</p>}
         <footer className="detail-actions">
           {data.source === 'live' && isAuthenticated && can('likes.create') && can('likes.delete') ? <span className={`detail-like-control${detailLiked ? ' is-active' : ''}`}><ToggleButton label={detailLiked ? '取消喜欢' : '喜欢'} isPressed={detailLiked} icon={<Icon name="heart" size={18} />} pressedIcon={<Icon name="heart" size={18} />} size="lg" pressedChangeAction={toggleDetailLike}>{detailLikeCount}</ToggleButton></span> : data.source === 'live' && !isAuthenticated ? <span className="detail-like-control"><ToggleButton label="登录后喜欢" isPressed={false} icon={<Icon name="heart" size={18} />} size="lg" onPressedChange={(_next, event) => { event.preventDefault(); requestLogin('喜欢内容'); }}>{detailLikeCount}</ToggleButton></span> : <span className="detail-metric" aria-label={`${detailLikeCount} 个喜欢`}><Icon name="heart" size={18} /> {detailLikeCount}</span>}
