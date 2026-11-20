@@ -101,7 +101,7 @@ final class StorageAdmin
         return [
             ['key' => 'root', 'label' => '存储根目录', 'type' => 'text', 'default' => 'public/storage'],
             ['key' => 'url_prefix', 'label' => 'URL前缀', 'type' => 'text', 'default' => '/storage'],
-            ['key' => 'allow_mime_types', 'label' => '允许的MIME类型', 'type' => 'text', 'default' => 'image/jpeg,image/png,image/gif,image/webp,application/pdf'],
+            ['key' => 'allow_mime_types', 'label' => '允许的MIME类型', 'type' => 'text', 'default' => 'image/jpeg,image/png,image/gif,image/webp,application/pdf,video/mp4,video/webm,video/quicktime,video/x-m4v'],
             ['key' => 'max_file_size', 'label' => '最大文件大小(字节)', 'type' => 'number', 'default' => 10485760],
             ['key' => 'path_template', 'label' => '路径模板', 'type' => 'text', 'default' => '{date}/{uuid}.{ext}'],
         ];

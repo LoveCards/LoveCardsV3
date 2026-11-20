@@ -266,6 +266,37 @@ namespace
     };
 
     // ------------------------------------------------------------
+    // 视频仅允许卡片场景，不放宽评论、私信或无场景直传
+    // ------------------------------------------------------------
+    $tests['E2: card videos do not expand other content scenes'] = static function (): void {
+        ConfigService::reset();
+        ConfigService::$rows = [
+            'upload.content_size' => 4,
+            'upload.content_ext' => 'jpg,png',
+        ];
+        foreach (['mp4', 'webm', 'mov', 'm4v'] as $extension) {
+            UploadLimits::enforce(uploadedFile(1024, $extension), 'card');
+            foreach (['comment', 'direct', ''] as $scene) {
+                expectRejected(
+                    static fn () => UploadLimits::enforce(uploadedFile(1024, $extension), $scene),
+                    '文件格式错误',
+                    "E2 {$scene} {$extension}"
+                );
+            }
+            expectRejected(
+                static fn () => UploadLimits::enforcePending("test.{$extension}", 1024),
+                '文件格式错误',
+                "E2 pending {$extension}"
+            );
+        }
+        expectRejected(
+            static fn () => UploadLimits::enforce(uploadedFile(4 * 1024 * 1000 + 1, 'webm'), 'card'),
+            '超出上传限制',
+            'E2 card video size'
+        );
+    };
+
+    // ------------------------------------------------------------
     // 错误文案兼容前台 user-facing-error.js 的关键词映射
     // ------------------------------------------------------------
     $tests['F1: error wording stays compatible with frontend regex mapping'] = static function (): void {

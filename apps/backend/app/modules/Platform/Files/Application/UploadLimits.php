@@ -21,6 +21,7 @@ final class UploadLimits
     private const IDENTITY_SCENES = ['avatar', 'profile_cover'];
     private const DEFAULT_SIZE_MB = 2;
     private const DEFAULT_EXTENSIONS = 'jpg,png,gif,webp,jpeg';
+    private const CARD_VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'm4v'];
 
     public static function bucket(string $scene): string
     {
@@ -41,7 +42,8 @@ final class UploadLimits
         self::assertWithin(
             (int) $file->getSize(),
             strtolower((string) $file->getOriginalExtension()),
-            self::bucket($scene)
+            self::bucket($scene),
+            $scene
         );
     }
 
@@ -54,13 +56,17 @@ final class UploadLimits
         self::assertWithin($size, $extension, 'content');
     }
 
-    private static function assertWithin(int $size, string $extension, string $bucket): void
+    private static function assertWithin(int $size, string $extension, string $bucket, string $scene = ''): void
     {
         $limitMb = self::sizeMb($bucket);
         if ($size > $limitMb * 1024 * 1000) {
             throw ApiException::badRequest('文件超出上传限制（单文件不超过 ' . $limitMb . 'MB）');
         }
-        if (!in_array($extension, self::extensions($bucket), true)) {
+        $allowed = self::extensions($bucket);
+        if ($scene === 'card') {
+            $allowed = array_merge($allowed, self::CARD_VIDEO_EXTENSIONS);
+        }
+        if (!in_array($extension, $allowed, true)) {
             throw ApiException::badRequest('文件格式错误');
         }
     }
