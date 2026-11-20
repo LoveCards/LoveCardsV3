@@ -26,6 +26,8 @@ LoveCards 的安装、数据库迁移、Release 导入、激活和恢复属于�
 
 栅栏由当前活动的**源 Release**执行。若站点仍运行不含栅栏的 r6，须先通过 r6 原升级器部署与 r6 相同 Migration Catalog/target_schema、无新增迁移的签名 bridge Release，并在健康检查及新 Release 定时触发成功后确认它成为 active；随后才可创建包含新迁移的升级计划。签名包中已经包含新代码，或仅合并仓库分支，都不会改变旧 Release 在激活前运行的 Coordinator 与 cron。禁止直接从 r6 对包含新增迁移的目标 Release 执行升级。
 
+桥接包必须按站点现有账本选择不可变源码：仍在 61 项完整迁移账本的 r5 站点，可从生命周期栅栏合入时的 `0c53ce04` 构建 61 项同 Catalog bridge；dev r6 已有第 62 项 `20261120000001.sql`，必须从包含视频迁移与栅栏的组合源码构建 62 项同 Catalog bridge。两种桥接包不能互换。发布前逐项比较活动 Release Manifest、数据库已完成账本与候选 Manifest 的 migration ID/checksum，并确认 target_schema 相同；sequence 必须高于该站点 `system_releases.sequenceFloor`，签发时间、有效期、受信任签名及备份状态须通过旧源 Release 的升级门禁。桥接包激活和新 Release cron/健康通过后，才能从该站点的新活动 Release 创建后续含新增迁移的计划。
+
 新装种子中的 root 账号仅有不可登录的密码占位值；安装向导在创建安装锁前要求管理员输入 12 至 128 字符的新密码，由 Auth 公开入口核对账号启用状态与 root 角色后写入实际哈希并增加凭据版本。缺失密码、角色或写入失败时安装锁不得创建。旧站点已安装账号不由该步骤修改。
 
 ## 持久目录与不可变 Release
