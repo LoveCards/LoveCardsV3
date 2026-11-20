@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Dialog, Icon, IconButton } from '../../ui/index.js';
 import { MediaFrame } from './MediaFrame.jsx';
+import { DetailVideoSurface } from './DetailVideoSurface.jsx';
 import { getMediaType } from './media-fit.js';
 
 function ViewerMedia({ item, title, index }) {
@@ -86,6 +87,7 @@ export function MediaGallery({ items = [], title }) {
   const mediaItems = items.filter((item) => item && typeof item.url === 'string' && item.url.trim());
   const [activeIndex, setActiveIndex] = useState(null);
   if (!mediaItems.length) return null;
+  if (mediaItems.length === 1 && getMediaType(mediaItems[0]) === 'video') return <DetailVideoSurface item={mediaItems[0]} />;
 
   const visibleItems = mediaItems.slice(0, 4);
   const gridCount = Math.min(mediaItems.length, 4);

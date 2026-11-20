@@ -32,6 +32,19 @@ describe('detail media gallery', () => {
     expect(html).toContain('查看第 4 项媒体，共 7 项');
   });
 
+  it('plays a video card in place on preview and detail without opening a second viewer', () => {
+    const html = renderToStaticMarkup(<MediaGallery items={[{ type: 'video', url: '/media/run.mp4', posterUrl: '/media/run.webp' }]} title="晨跑记录" />);
+    expect(html).toContain('class="detail-media-grid is-count-1 is-video"');
+    expect(html).toContain('<video');
+    expect(html).toContain('controls=""');
+    expect(html).toContain('autoPlay=""');
+    expect(html).toContain('muted=""');
+    expect(html).toContain('playsInline=""');
+    expect(html).toContain('poster="/media/run.webp"');
+    expect(html).not.toContain('detail-media-tile');
+    expect(html).not.toContain('lc-media-viewer');
+  });
+
   it('renders video in the viewer with native controls and no autoplay', () => {
     const html = renderToStaticMarkup(
       <MediaViewer

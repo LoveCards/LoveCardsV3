@@ -13,6 +13,10 @@ export function MediaFrame({
   loading = 'lazy',
   fetchPriority = 'auto',
   controls = false,
+  autoPlay = false,
+  videoRef,
+  onVideoPlay,
+  onVideoPause,
   muted = false,
   playsInline = true,
   preload = 'metadata',
@@ -59,7 +63,7 @@ export function MediaFrame({
       {backdrop && !unavailable && <img className="media-fit-backdrop" src={backdrop} alt="" aria-hidden="true" loading="lazy" />}
       {imageLoading && <span className="media-fit-loading" aria-hidden="true" />}
       {unavailable ? <span className="media-fit-unavailable" role={ariaHidden ? undefined : 'img'} aria-label={ariaHidden ? undefined : unavailableLabel} aria-hidden={ariaHidden || undefined}><span aria-hidden="true">▧</span><span>{unavailableLabel}</span></span> : type === 'video' ? (
-        <video {...common} src={source} onError={renew} onLoadedMetadata={(event) => { if (restoreTime.current) event.currentTarget.currentTime = restoreTime.current; }} poster={getMediaPoster(item) || undefined} controls={controls} muted={muted} playsInline={playsInline} preload={preload} />
+        <video {...common} ref={videoRef} src={source} onError={renew} onLoadedMetadata={(event) => { if (restoreTime.current) event.currentTarget.currentTime = restoreTime.current; }} onPlay={onVideoPlay} onPause={onVideoPause} poster={getMediaPoster(item) || undefined} controls={controls} autoPlay={autoPlay} muted={muted} playsInline={playsInline} preload={preload} />
       ) : (
         <img {...common} src={source} onLoad={() => setLoadedUrl(source)} onError={renew} alt={ariaHidden ? '' : alt} loading={loading} fetchPriority={fetchPriority} />
       )}
