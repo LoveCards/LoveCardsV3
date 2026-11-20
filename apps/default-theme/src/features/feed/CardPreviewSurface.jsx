@@ -103,7 +103,7 @@ export function CardPreviewSurface() {
   return <Dialog ref={dialogRef} className={`lc-card-preview lc-card-preview-${presentation} lc-card-preview-${kind}`} data-lc-preview-phase={closing ? 'closing' : 'open'} aria-label="内容预览" isOpen onOpenChange={(open) => { if (!open) close(); }} width={presentation === 'media' ? 'min(1080px, calc(100vw - 48px))' : 'min(760px, calc(100vw - 48px))'} maxHeight="min(92dvh, 940px)" padding={0}>
     <div className="lc-card-preview-shell">
       <header className="lc-card-preview-header">
-        <h2 ref={titleRef} tabIndex={-1}>{presentation === 'media' ? kind === 'video' ? '视频' : kind === 'gallery' ? '图集' : '图文' : kind === 'discussion' ? '讨论' : '随笔'}</h2>
+        <h2 ref={titleRef} tabIndex={-1}>{presentation === 'media' ? kind === 'video' ? '视频' : '图文' : kind === 'discussion' ? '讨论' : '随笔'}</h2>
         <div className="lc-card-preview-header-actions">
           <button type="button" onClick={openFull}>查看完整详情</button>
           <button type="button" onClick={close} aria-label="关闭内容预览" disabled={closing}>×</button>
