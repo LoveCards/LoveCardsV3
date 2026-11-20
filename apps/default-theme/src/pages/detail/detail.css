@@ -69,8 +69,9 @@
   .detail-article,
   .detail-boundary { margin-top: 8px; padding: 24px; border-radius: var(--lc-radius-panel); background: var(--lc-surface); }
   .detail-author { display: flex; align-items: center; gap: 10px; }
-  .detail-author-identity { flex: 1; color: var(--lc-ink); font-size: 0.78rem; }
-  .detail-author > div { min-width: 0; display: grid; gap: 3px; }
+  .detail-author-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; }
+  .detail-author-identity { flex: 0 1 auto; min-width: 0; color: var(--lc-ink); font-size: 0.78rem; }
+  .detail-follow-button { flex: 0 0 auto; min-width: 56px; min-height: 36px; padding-inline: 10px; color: var(--lc-rose-deep); }
   .detail-author small { color: var(--lc-muted); font-size: 0.7rem; }
   .detail-capability { color: var(--lc-muted); font-size: 0.7rem; }
   .detail-copy { padding: 22px 0 18px; }
@@ -275,6 +276,7 @@
     .detail-copy .detail-content { font-size: 0.96rem; }
     .detail-capability { max-width: 96px; text-align: right; }
     .detail-actions { gap: 14px; }
+    .detail-follow-button { min-height: 44px; }
     .detail-share { min-height: 44px; }
     .comment-thread { padding-top: 16px; }
     .comment-thread-row { padding-block: 14px; }

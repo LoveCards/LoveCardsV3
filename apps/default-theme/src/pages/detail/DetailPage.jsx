@@ -16,6 +16,7 @@ import { MediaGallery } from '../../features/media/MediaGallery.jsx';
 import { CommentThread } from '../../features/comments/CommentThread.jsx';
 import { ReportResourceDialog } from '../../features/moderation/ReportResourceDialog.jsx';
 import { SaveCardButton } from '../../features/library/SaveCardButton.jsx';
+import { DetailFollowButton } from '../../features/social/DetailFollowButton.jsx';
 import { listSavedItems } from '../../services/community-service.js';
 import { topicHref } from '../../services/discovery-service.js';
 import { ContextualLoginForm } from '../../features/auth/ContextualLoginForm.jsx';
@@ -76,6 +77,7 @@ export function DetailPage({ preview = false, loadingFallback = null }) {
   const [authPromptAction, setAuthPromptAction] = useState('');
   const inlineLoginRef = useRef(null);
   const authTriggerRef = useRef(null);
+  const authorGroupRef = useRef(null);
   const requestLogin = (action) => {
     authTriggerRef.current = document.activeElement;
     setAuthPromptAction(action);
@@ -261,7 +263,10 @@ export function DetailPage({ preview = false, loadingFallback = null }) {
     content = (
       <article className={`detail-article${cardMediaItems.length ? ' has-media' : ''}`}>
         <header className="detail-author">
-          <AuthorIdentity author={data.card.author} uid={data.card.authorUid} handle={data.card.authorHandle} avatarUrl={data.card.authorAvatar} meta={data.card.meta || '时间信息暂未提供'} size="md" variant="byline" className="detail-author-identity" />
+          <div className="detail-author-main" ref={authorGroupRef}>
+            <AuthorIdentity author={data.card.author} uid={data.card.authorUid} handle={data.card.authorHandle} avatarUrl={data.card.authorAvatar} meta={data.card.meta || '时间信息暂未提供'} size="md" variant="byline" className="detail-author-identity" />
+            <DetailFollowButton authorUid={data.card.authorUid} viewerUid={session?.uid} isAuthenticated={isAuthenticated} source={data.source} onRequireLogin={() => requestLogin('关注用户')} onFollowed={() => requestAnimationFrame(() => authorGroupRef.current?.querySelector('a.author-identity')?.focus({ preventScroll: true }))} />
+          </div>
           {!data.card.authorUid && <span className="detail-capability">作者主页暂未提供</span>}
           {contentMenuItems.length > 0 && <ActionMenu items={contentMenuItems} label="内容操作" />}
         </header>
