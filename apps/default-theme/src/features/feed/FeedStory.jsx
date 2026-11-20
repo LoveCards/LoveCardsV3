@@ -6,8 +6,6 @@ import { CardMoreMenu } from './CardMoreMenu.jsx';
 import { AuthorIdentity } from '../../components/AuthorIdentity.jsx';
 import { MentionText, mentionSegments } from '../../components/MentionText.jsx';
 import { cardPreviewSession, cardPreviewState, warmCardPreviewDetail } from '../../app/card-preview-routing.js';
-import { normalizeGalleryLayout } from '../media/gallery-layout.js';
-import { useGalleryPager } from '../media/useGalleryPager.js';
 
 function storyFrameRatio(gridCount) {
   if (gridCount === 1) return 4 / 5;
@@ -24,24 +22,10 @@ function cardPath(card) {
 }
 
 function StoryMedia({ card, isStaticPreview, href, previewState, onOpenPreview }) {
-  const pager = useGalleryPager(card.mediaItems?.length || (card.mediaUrl ? 1 : 0));
   const mediaItems = card.mediaItems?.length
     ? card.mediaItems
     : card.mediaUrl ? [{ url: card.mediaUrl, type: 'image', alt: card.mediaAlt || card.title, fit: card.mediaFit || 'smart' }] : [];
   if (!mediaItems.length) return null;
-  const isPager = mediaItems.length > 1 && mediaItems.every((item) => item.type !== 'video') && normalizeGalleryLayout(card.galleryLayout) === 'pager';
-  if (isPager) {
-    const pageIndex = Math.min(pager.index, mediaItems.length - 1);
-    const item = mediaItems[pageIndex];
-    const frame = <MediaFrame key={item.url} className="story-media-item" item={item} fit="contain" loading={pageIndex === 0 && card.layout === 'lead' ? 'eager' : 'lazy'} muted ariaHidden={!isStaticPreview} alt={item.alt || card.mediaAlt || card.title} />;
-    const page = isStaticPreview || !href ? <div className="story-media-page">{frame}</div> : <Link className="story-media-page" to={href} state={{ ...previewState, previewTrigger: 'media', previewMediaIndex: pageIndex }} data-card-preview-id={card.id} data-card-preview-trigger="media" onPointerEnter={warmCardPreviewDetail} onFocus={warmCardPreviewDetail} onPointerDown={warmCardPreviewDetail} onClick={(event) => { if (!pager.consumeSwipeClick(event)) onOpenPreview(event, 'media', pageIndex); }} aria-label={`查看内容：${card.title}，第 ${pageIndex + 1} 张图片`}>{frame}</Link>;
-    return <div className="story-media story-media-pager" role="group" aria-label={`图片翻页，共 ${mediaItems.length} 张`} onKeyDown={pager.onKeyDown} onTouchStart={pager.onTouchStart} onTouchMove={pager.onTouchMove} onTouchEnd={pager.onTouchEnd} onTouchCancel={pager.onTouchCancel}>
-      {page}
-      <span className="story-media-count" aria-live="polite">{pageIndex + 1} / {mediaItems.length}</span>
-      <button className="story-media-nav is-previous" type="button" aria-label="上一张图片" onClick={(event) => { if (!pager.consumeSwipeClick(event)) pager.move(-1); }} disabled={pageIndex === 0}>‹</button>
-      <button className="story-media-nav is-next" type="button" aria-label="下一张图片" onClick={(event) => { if (!pager.consumeSwipeClick(event)) pager.move(1); }} disabled={pageIndex === mediaItems.length - 1}>›</button>
-    </div>;
-  }
   const visibleItems = mediaItems.slice(0, 9);
   const gridCount = visibleItems.length;
   const moreCount = mediaItems.length - visibleItems.length;
@@ -99,10 +83,10 @@ export function FeedStory({ card, source, isAuthenticated = false, isSaved = fal
   const previewPending = href && preview?.pathname === href && preview?.state?.previewSession === cardPreviewSession && preview?.state?.previewCardId === String(card.id);
   const previewKind = inferCardPattern({ requestedKind: card.kind, mediaItems: card.mediaItems?.length ? card.mediaItems : card.mediaUrl ? [{ url: card.mediaUrl, type: card.kind === 'video' ? 'video' : 'image' }] : [] });
   const previewState = !isStaticPreview && href ? cardPreviewState(location, card.id, previewKind) : undefined;
-  const openPreview = (event, trigger, mediaIndex = null) => {
+  const openPreview = (event, trigger) => {
     if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || !href) return;
     event.preventDefault();
-    navigate(href, { state: cardPreviewState(location, card.id, previewKind, trigger, mediaIndex) });
+    navigate(href, { state: cardPreviewState(location, card.id, previewKind, trigger) });
   };
   const likeCount = Number.isFinite(Number(card.likes)) ? Number(card.likes) : 0;
   const replyCount = Number.isFinite(Number(card.replies)) ? Number(card.replies) : 0;

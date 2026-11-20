@@ -13,14 +13,13 @@ export function warmCardPreviewDetail() {
   void preloadCardPreviewDetail().catch(() => undefined);
 }
 
-export function cardPreviewState(location, cardId, kind = 'text', trigger = null, mediaIndex = null) {
+export function cardPreviewState(location, cardId, kind = 'text', trigger = null) {
   if (!location || !cardId) return undefined;
   return {
     previewSession: cardPreviewSession,
     previewCardId: String(cardId),
     previewKind: ['image', 'gallery', 'video'].includes(kind) ? kind : ['discussion', 'quote', 'link'].includes(kind) ? kind : 'text',
     previewTrigger: trigger,
-    ...(trigger === 'media' && Number.isSafeInteger(mediaIndex) && mediaIndex >= 0 ? { previewMediaIndex: mediaIndex } : {}),
     backgroundLocation: {
       pathname: location.pathname,
       search: location.search,
@@ -29,13 +28,6 @@ export function cardPreviewState(location, cardId, kind = 'text', trigger = null
       key: location.key,
     },
   };
-}
-
-export function readPreviewMediaIndex(location, cardId, mediaCount) {
-  const state = location?.state;
-  if (state?.previewSession !== cardPreviewSession || state.previewCardId !== String(cardId) || state.previewTrigger !== 'media') return 0;
-  const index = state.previewMediaIndex;
-  return Number.isSafeInteger(index) && index >= 0 && index < mediaCount ? index : 0;
 }
 
 export function previewBackground(location) {
