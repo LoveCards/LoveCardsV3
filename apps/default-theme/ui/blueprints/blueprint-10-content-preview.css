@@ -22,7 +22,7 @@
 .comment { width: 100%; height: 48px; margin: 12px 0; border-radius: 8px; background: #f1f1f4; }
 .comment.short { width: 76%; }
 .phone-frame { position: relative; padding: 0 16px; color: #252630; background: white; }
-.phone-head { height: 58px; margin: 0 -16px; padding: 18px 16px; border-bottom: 1px solid #ececf0; font-size: 12px; font-weight: 800; }
+.phone-head { height: 58px; margin: 0 -16px; padding: 18px 16px; border-bottom: 1px solid #ececf0; font-size: 0.84rem; font-weight: 600; }
 .phone-head span { float: right; color: #b43260; }
 .phone-author { padding: 18px 0; font-size: 12px; font-weight: 750; }
 .phone-author small { display: block; margin: 5px 0 0 25px; color: #86868f; font-weight: 400; }
