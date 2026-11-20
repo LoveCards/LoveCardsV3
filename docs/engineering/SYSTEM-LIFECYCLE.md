@@ -239,3 +239,11 @@ Contract开始后全部新领取暂停。Native runtime必须有部署者配置�
 现有Lease增加数据库名隔离的MySQL会话GET_LOCK，获取不等待，续租同时验证连接ID及锁所有者；900秒TTL过期不能让第二个活会话执行同一步。计划在副作用前持久化execution_in_progress；进程崩溃/失联且无法确认结算时禁止凭TTL重放，迁移账本遗留running同样拒绝自动继续。外部备份/部署子进程可能在MySQL连接中断后仍存活，当前没有通用跨进程fencing或自动处置工具：操作者必须核实SQL、子进程及文件结果后按受审恢复流程处置，不允许直接清标记后盲重试。
 
 恢复先持久化pointer_restored_at和service_recovered=false；旧Release完整事件健康验证通过后才写recovered_at。扩展账本导致旧代码失权时，恢复仅代表文件指针已回切，服务仍未恢复。管理协议明确暴露两个结果；不得删除新账本来让旧代码通过。历史未实现claim门禁的旧Worker必须由部署drain停止或先部署桥接版本，新PHP代码不能隔空撤销其已运行逻辑。
+
+### Expand 后旧 Release 定时器与激活门禁自锁（2026-11-20 dev 发现）
+
+`dev-main-r5-20261118` 升级至 `dev-main-r6-20261120` 时，新增 expand 迁移在 `verify_migrations` 后已进入账本，active pointer 仍为 r5。旧 r5 cron 的 `SchemaIdentity` 因其 Catalog 不含新迁移而记录 failed；`EventConsumption::assertUpgradeActivationReady()` 只检查最新一条 `scheduler_runs` 是否为近一小时的 ok，于是 `activate_release` 被拒绝。此时正式 `think` 经 `ReleaseBootstrap` 固定跳转到 r5，目标源码的门禁修正不能通过常规 CLI 生效。数据库备份后已有新内容，不能用全库恢复；系统也未提供数据库自动恢复能力。
+
+本次 dev 经用户授权，用固定升级计划、固定类哈希的一次性维护入口预加载经核对的门禁类，之后仍由原 `think` / `ReleaseBootstrap` / `UpgradeCoordinator` 只执行该计划的 `activate_release`。入口随后删除；原升级计划通过后续运行时与健康检查，r6 cron 成功。这个例外是该次 dev 事件的审计记录，不是常规升级步骤或通用绕过方式。
+
+长期修复需在 `scheduler_runs` 持久记录可审计失败原因及运行 Release 身份，并使升级门禁仅在已验证 expand/verify 且旧 Release 因目标迁移产生明确 schema-identity 失败时，接受迁移前同源、近一小时的成功触发证据。其他失败仍必须拒绝；激活后健康检查继续要求新 Release 的成功运行。当前表没有失败原因，直接改成“近一小时任意成功”会掩盖真实 cron 故障，因此未部署该宽松修复。后续应先补失败原因契约、状态机测试与旧 Release 升级演练，再纳入签名 Release。
