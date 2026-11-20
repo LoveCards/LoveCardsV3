@@ -101,8 +101,7 @@ describe('detail interaction hierarchy', () => {
 
   it('renders normalized media items through the real detail gallery', () => {
     const html = renderRoute('/post/42');
-    expect(html).toContain('detail-media-grid is-count-4');
-    expect(html.match(/class="detail-media-tile"/g)).toHaveLength(4);
-    expect(html).toContain('+1');
+    expect(html).toContain('detail-media-grid is-count-5 is-many');
+    expect(html.match(/class="detail-media-tile"/g)).toHaveLength(5);
   });
 });

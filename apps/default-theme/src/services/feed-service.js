@@ -4,6 +4,7 @@ import { feedMediaByKey, previewFeed } from '../fixtures/feed-preview.js';
 import { inferCardPattern, resolveCardPattern } from '../features/feed/card-patterns.js';
 import { normalizeCardInteractions } from '../features/feed/card-interactions.js';
 import { normalizeMediaFit } from '../features/media/media-fit.js';
+import { normalizeGalleryLayout } from '../features/media/gallery-layout.js';
 
 export const HOME_CHANNELS = [
   { id: 'recommended', label: '推荐' },
@@ -186,6 +187,7 @@ export function normalizeSdkCard(card) {
     replies: Number(card?.comments || 0),
     viewerLiked: null,
     mediaItems,
+    galleryLayout: normalizeGalleryLayout(data.galleryLayout),
     mediaFit: normalizeMediaFit(data.mediaFit || data.media_fit || data.contentMode || data.content_mode),
     mediaUrl: mediaItems[0]?.url || null,
     mediaAlt,

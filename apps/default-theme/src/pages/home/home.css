@@ -167,14 +167,35 @@
   .story-media-grid-1 { grid-template-columns: 1fr; }
   .story-media-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .story-media-grid-3 {
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-    grid-template-rows: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .story-media-grid-3 .story-media-item:first-child { grid-row: 1 / 3; }
   .story-media-grid-4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: repeat(2, minmax(0, 1fr));
   }
+  .story-media-grid-5, .story-media-grid-6, .story-media-grid-7,
+  .story-media-grid-8, .story-media-grid-9 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-rows: repeat(3, minmax(0, 1fr));
+  }
+  .story-media-grid-5, .story-media-grid-6 { grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  .story-media-pager { display: block; background: #101216; }
+  .story-media-page, .story-media-page > .story-media-item { width: 100%; height: 100%; display: block; }
+  .story-media-pager .story-media-item { animation: lc-gallery-page-enter 180ms var(--lc-ease) both; }
+  @keyframes lc-gallery-page-enter { from { opacity: .72; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+  .story-media-page .media-fit-asset { object-fit: contain; }
+  .story-media-nav {
+    position: absolute; top: 50%; z-index: 2; width: 36px; height: 44px;
+    transform: translateY(-50%); border: 0; border-radius: 50%;
+    color: #fff; background: rgba(20, 22, 27, .7); font: inherit;
+    font-size: 1.6rem; cursor: pointer;
+  }
+  .story-media-nav.is-previous { left: 8px; }
+  .story-media-nav.is-next { right: 8px; }
+  .story-media-nav:disabled { opacity: .35; cursor: default; }
+  .story-media-nav:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .story-media-pager .story-media-item { animation: none; } }
+  :root[data-reduce-motion='true'] .story-media-pager .story-media-item { animation: none; }
 
   .story-media-item {
     position: relative;
