@@ -25,12 +25,39 @@
     font: inherit;
     font-size: 0.76rem;
     cursor: pointer;
+    transition: color var(--lc-motion-state) var(--lc-ease), background-color var(--lc-motion-state) var(--lc-ease);
   }
+  .save-card-button .icon { transition: fill var(--lc-motion-state) var(--lc-ease); }
 
   .save-card-button:hover:not(:disabled) { color: var(--lc-ink); }
   .save-card-button.is-saved { color: var(--lc-ink); }
   .save-card-button.is-saved .icon { fill: currentColor; }
   .save-card-button:disabled { cursor: default; opacity: 0.72; }
+
+  .story-media[data-card-preview-trigger],
+  .story-copy:has([data-card-preview-trigger='text']),
+  .discovery-feature { transition: opacity var(--lc-motion-press) var(--lc-ease), background-color var(--lc-motion-press) var(--lc-ease); }
+  .story-media[data-card-preview-trigger]:active,
+  .discovery-feature:active { opacity: .78; }
+  .story-copy:has([data-card-preview-trigger='text']:active) { background-color: var(--lc-surface-subtle); }
+  .feed-story[data-preview-opening='true'],
+  .discovery-feature[data-preview-opening='true'] { position: relative; }
+  .feed-story[data-preview-opening='true']::after,
+  .discovery-feature[data-preview-opening='true']::after {
+    content: '';
+    position: absolute;
+    z-index: 3;
+    top: 12px;
+    right: 12px;
+    width: 20px;
+    height: 20px;
+    border: 3px solid var(--lc-rose-soft);
+    border-top-color: var(--lc-rose);
+    border-radius: 50%;
+    background: var(--lc-surface);
+    animation: lc-loading-spin .85s linear infinite;
+    pointer-events: none;
+  }
 
   .lc-file-dropzone {
     width: 100%;
@@ -63,6 +90,83 @@
 
   .lc-status-banner { width: 100%; }
   .lc-status-banner .astryx-button { min-height: 40px; }
+
+  .lc-content-enter { animation: lc-content-enter var(--lc-motion-state) var(--lc-ease) both; }
+  .home-page .home-layout,
+  .discovery-page .discovery-layout { animation: lc-content-enter var(--lc-motion-state) var(--lc-ease) both; }
+  @keyframes lc-content-enter { from { opacity: 0; transform: translateY(var(--lc-motion-content-lift)); } to { opacity: 1; transform: none; } }
+
+  .media-fit-loading,
+  .resource-skeleton i,
+  .detail-loading-media,
+  .detail-loading-copy i,
+  .feed-skeleton-media-block,
+  .feed-skeleton-line,
+  .feed-skeleton-avatar,
+  .lc-card-preview-loading-copy i { animation: lc-loading-pulse 1.3s ease-in-out infinite; }
+  .resource-skeleton i:nth-child(2),
+  .detail-loading-copy i:nth-child(2),
+  .feed-skeleton-line:nth-child(2) { animation-delay: -0.22s; }
+  .resource-skeleton i:nth-child(3),
+  .detail-loading-copy i:nth-child(3),
+  .feed-skeleton-line:nth-child(3) { animation-delay: -0.44s; }
+  @keyframes lc-loading-pulse { 0%, 100% { opacity: .52; } 50% { opacity: 1; } }
+
+  .route-loading-state::before {
+    content: '';
+    width: 24px;
+    height: 24px;
+    border: 3px solid var(--lc-rose-soft);
+    border-top-color: var(--lc-rose);
+    border-radius: 50%;
+    animation: lc-loading-spin .85s linear infinite;
+  }
+  @keyframes lc-loading-spin { to { transform: rotate(1turn); } }
+
+  .lc-motion-dialog {
+    --lc-dialog-motion-lift: var(--lc-motion-dialog-lift);
+    animation-name: none;
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity var(--lc-motion-control) var(--lc-ease), transform var(--lc-motion-control) var(--lc-ease);
+  }
+
+  .lc-motion-dialog::backdrop {
+    background-color: var(--lc-backdrop);
+    backdrop-filter: none;
+    transition: background-color var(--lc-motion-state) var(--lc-ease);
+  }
+
+  .lc-motion-dialog[data-lc-motion-phase='opening'] {
+    opacity: 0;
+    transform: translateY(var(--lc-dialog-motion-lift));
+    transition: none;
+  }
+
+  .lc-motion-dialog[data-lc-motion-phase='opening']::backdrop {
+    background-color: transparent;
+    transition: none;
+  }
+
+  @starting-style {
+    .lc-motion-dialog[open] {
+      opacity: 0;
+      transform: translateY(var(--lc-dialog-motion-lift));
+    }
+    .lc-motion-dialog[open]::backdrop { background-color: transparent; }
+  }
+
+  .lc-motion-dialog[data-lc-motion-phase='closing'] {
+    opacity: 0;
+    transform: translateY(var(--lc-dialog-motion-lift));
+    transition-duration: var(--lc-motion-state);
+    pointer-events: none;
+  }
+
+  .lc-motion-dialog[data-lc-motion-phase='closing']::backdrop { background-color: transparent; }
+
+  .mobile-search-dialog,
+  .lc-media-viewer { animation-name: none; }
 
   .lc-alert-dialog,
   .lc-form-dialog {
@@ -119,6 +223,19 @@
     border-top: 1px solid var(--lc-separator);
     background: var(--lc-surface);
   }
+  .lc-context-login { display: grid; gap: 16px; color: var(--lc-body); }
+  .lc-context-login > p:first-child { margin: 0; font-size: 0.82rem; line-height: 1.6; }
+  .lc-context-login-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .lc-context-login-actions > * { min-height: 44px; }
+  .lc-context-login-error { margin: 0; color: var(--lc-danger); font-size: 0.76rem; }
+  .lc-context-login-full { justify-self: start; min-height: 44px; padding: 0; border: 0; color: var(--lc-rose-deep); background: transparent; font: inherit; font-size: 0.76rem; cursor: pointer; }
+  .lc-context-login-full:hover { text-decoration: underline; }
+  .lc-auth-prompt-dialog { border-radius: var(--lc-radius-panel); }
+  .lc-auth-prompt-dialog .astryx-layout-header { border-bottom: 0; padding-bottom: 4px; }
+  .lc-auth-prompt-dialog .lc-dialog-body { padding-top: 4px; }
+  .lc-context-login-actions > .astryx-button { min-width: 100px; }
+  .lc-context-login-actions > .astryx-button:last-child { flex: 1; }
+  .lc-context-login-full { margin-top: -6px; }
 
   .lc-upload-preview {
     position: relative;
@@ -163,6 +280,7 @@
     .lc-status-banner .astryx-button { min-height: 44px; }
     .lc-dialog-actions > * { min-height: 44px; }
     .lc-form-dialog {
+      --lc-dialog-motion-lift: var(--lc-motion-sheet-lift);
       width: 100% !important;
       max-width: 100%;
       max-height: min(92dvh, 760px);
@@ -184,6 +302,27 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .story-media[data-card-preview-trigger],
+    .story-copy:has([data-card-preview-trigger='text']),
+    .discovery-feature { transition: none; }
+    .feed-story[data-preview-opening='true']::after,
+    .discovery-feature[data-preview-opening='true']::after { animation: none; }
+    .lc-content-enter,
+    .home-page .home-layout,
+    .discovery-page .discovery-layout,
+    .media-fit-loading,
+    .resource-skeleton i,
+    .detail-loading-media,
+    .detail-loading-copy i,
+    .feed-skeleton-media-block,
+    .feed-skeleton-line,
+    .feed-skeleton-avatar,
+    .lc-card-preview-loading-copy i,
+    .route-loading-state::before { animation: none; }
+    .lc-motion-dialog,
+    .lc-motion-dialog[data-lc-motion-phase='closing'] { opacity: 1; transform: none; transition: none; }
+    .lc-motion-dialog::backdrop,
+    .lc-motion-dialog[data-lc-motion-phase='closing']::backdrop { background-color: var(--lc-backdrop); transition: none; }
     .lc-action-menu .astryx-button:active,
     .lc-alert-dialog .astryx-button:active,
     .lc-form-dialog .astryx-button:active,
@@ -194,6 +333,28 @@
 
   [data-reduce-motion='true'] [popover],
   [data-reduce-motion='true'] dialog { animation-name: none !important; }
+  [data-reduce-motion='true'] .story-media[data-card-preview-trigger],
+  [data-reduce-motion='true'] .story-copy:has([data-card-preview-trigger='text']),
+  [data-reduce-motion='true'] .discovery-feature { transition: none; }
+  [data-reduce-motion='true'] .feed-story[data-preview-opening='true']::after,
+  [data-reduce-motion='true'] .discovery-feature[data-preview-opening='true']::after { animation: none; }
+  [data-reduce-motion='true'] .lc-content-enter,
+  [data-reduce-motion='true'] .home-page .home-layout,
+  [data-reduce-motion='true'] .discovery-page .discovery-layout,
+  [data-reduce-motion='true'] .media-fit-loading,
+  [data-reduce-motion='true'] .resource-skeleton i,
+  [data-reduce-motion='true'] .detail-loading-media,
+  [data-reduce-motion='true'] .detail-loading-copy i,
+  [data-reduce-motion='true'] .feed-skeleton-media-block,
+  [data-reduce-motion='true'] .feed-skeleton-line,
+  [data-reduce-motion='true'] .feed-skeleton-avatar,
+  [data-reduce-motion='true'] .lc-card-preview-loading-copy i,
+  [data-reduce-motion='true'] .route-loading-state::before { animation: none; }
+
+  [data-reduce-motion='true'] .lc-motion-dialog,
+  [data-reduce-motion='true'] .lc-motion-dialog[data-lc-motion-phase='closing'] { opacity: 1; transform: none; transition: none; }
+  [data-reduce-motion='true'] .lc-motion-dialog::backdrop,
+  [data-reduce-motion='true'] .lc-motion-dialog[data-lc-motion-phase='closing']::backdrop { background-color: var(--lc-backdrop); transition: none; }
 
   [data-reduce-motion='true'] .lc-action-menu .astryx-button:active,
   [data-reduce-motion='true'] .lc-alert-dialog .astryx-button:active,

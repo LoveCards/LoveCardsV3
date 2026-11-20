@@ -7,6 +7,7 @@ import { useAuth } from '../../app/providers.jsx';
 import { getUserFacingError } from '../../app/user-facing-error.js';
 import { Button, FormLayout, Icon, TextInput } from '../../ui/index.js';
 import { safeReturnPath } from '../../app/auth-routing.jsx';
+import { CredentialFields, validateCredentials } from '../../features/auth/CredentialFields.jsx';
 
 export function AuthPage({ mode = 'login' }) {
   const navigate = useNavigate();
@@ -50,9 +51,8 @@ export function AuthPage({ mode = 'login' }) {
 
   const submit = async (event) => {
     event.preventDefault();
-    const nextErrors = {};
-    if (!account.trim()) nextErrors.account = '请输入手机号、邮箱或用户名。';
-    if (!password) nextErrors.password = '请输入密码。';
+    const form = event.currentTarget;
+    const nextErrors = validateCredentials(account, password);
     if (isRegister && password !== passwordConfirm) nextErrors.passwordConfirm = '两次输入的密码不一致。';
     if (isRegister && policy?.registration?.email_verification_required && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account.trim())) nextErrors.account = '请输入有效邮箱。';
     if (isRegister && policy?.registration?.email_verification_required && !emailCode.trim()) nextErrors.emailCode = '请输入邮箱验证码。';
@@ -60,6 +60,8 @@ export function AuthPage({ mode = 'login' }) {
       setFieldErrors(nextErrors);
       setStatus('error');
       setMessage('');
+      const firstInvalid = Object.keys(nextErrors)[0];
+      requestAnimationFrame(() => form.querySelector(`[name="${firstInvalid}"]`)?.focus({ preventScroll: false }));
       return;
     }
 
@@ -133,41 +135,13 @@ export function AuthPage({ mode = 'login' }) {
         </header>
         <form className="auth-form" onSubmit={submit}>
           <FormLayout className="auth-fields">
-            <TextInput
-              autoComplete={isRegister && policy?.registration?.email_verification_required ? 'email' : 'username'}
-              htmlName="account"
-              isDisabled={!capability.canLogin || registrationBlocked || Boolean(pendingAction)}
-              isRequired
-              label={isRegister && policy?.registration?.email_verification_required ? '邮箱' : '手机号、邮箱或用户名'}
-              onChange={(value) => { setAccount(value); setFieldErrors((current) => current.account ? { ...current, account: '' } : current); }}
-              placeholder={isRegister && policy?.registration?.email_verification_required ? 'name@example.com' : '输入你的账号'}
-              size="lg"
-              status={fieldErrors.account ? { type: 'error', message: fieldErrors.account } : undefined}
-              statusVariant="detached"
-              value={account}
-              width="100%"
-            />
-            <TextInput
-              autoComplete={isRegister ? 'new-password' : 'current-password'}
-              htmlName="password"
-              isDisabled={!capability.canLogin || registrationBlocked || Boolean(pendingAction)}
-              isRequired
-              label="密码"
-              minLength={isRegister ? 6 : undefined}
-              onChange={(value) => { setPassword(value); setFieldErrors((current) => current.password ? { ...current, password: '' } : current); }}
-              placeholder="输入密码"
-              size="lg"
-              status={fieldErrors.password ? { type: 'error', message: fieldErrors.password } : undefined}
-              statusVariant="detached"
-              type="password"
-              value={password}
-              width="100%"
-            />
+            <CredentialFields account={account} password={password} onAccountChange={(value) => { setAccount(value); setFieldErrors((current) => current.account ? { ...current, account: '' } : current); }} onPasswordChange={(value) => { setPassword(value); setFieldErrors((current) => current.password ? { ...current, password: '' } : current); }} errors={fieldErrors} disabled={!capability.canLogin || registrationBlocked || Boolean(pendingAction)} register={isRegister} emailRequired={Boolean(policy?.registration?.email_verification_required)} />
             {isRegister && <TextInput
               autoComplete="new-password"
               isDisabled={!capability.canLogin || registrationBlocked || Boolean(pendingAction)}
               isRequired
               label="确认密码"
+              htmlName="passwordConfirm"
               minLength={6}
               onChange={(value) => { setPasswordConfirm(value); setFieldErrors((current) => current.passwordConfirm ? { ...current, passwordConfirm: '' } : current); }}
               placeholder="再次输入密码"
@@ -179,11 +153,11 @@ export function AuthPage({ mode = 'login' }) {
               width="100%"
             />}
             {isRegister && policy?.registration?.email_verification_required && <div className="auth-email-code">
-              <TextInput label="邮箱验证码" value={emailCode} onChange={(value) => { setEmailCode(value); setFieldErrors((current) => current.emailCode ? { ...current, emailCode: '' } : current); }} isDisabled={registrationBlocked || Boolean(pendingAction)} isRequired status={fieldErrors.emailCode ? { type: 'error', message: fieldErrors.emailCode } : undefined} width="100%" />
+              <TextInput label="邮箱验证码" htmlName="emailCode" value={emailCode} onChange={(value) => { setEmailCode(value); setFieldErrors((current) => current.emailCode ? { ...current, emailCode: '' } : current); }} isDisabled={registrationBlocked || Boolean(pendingAction)} isRequired status={fieldErrors.emailCode ? { type: 'error', message: fieldErrors.emailCode } : undefined} width="100%" />
               <Button type="button" label="发送验证码" variant="secondary" size="lg" isDisabled={registrationBlocked || Boolean(pendingAction)} isLoading={pendingAction === 'email-code'} clickAction={sendCode} />
             </div>}
           </FormLayout>
-          <p className={`auth-message is-${status}`} aria-live="polite">{message}</p>
+          {message && <p className={`auth-message is-${status}`} aria-live="polite">{message}</p>}
           {registrationBlocked && <div className="auth-policy-status" role="status"><p className={policyStatus === 'loading' ? 'auth-message' : 'auth-message is-error'}>{registrationMessage}</p>{policyStatus === 'error' && <Button type="button" label="重试策略检查" variant="ghost" size="sm" onClick={() => setPolicyRetry((value) => value + 1)} />}</div>}
           <Button className="auth-submit" type="submit" label={isRegister ? '创建账号' : '登录'} variant="primary" size="lg" width="100%" isDisabled={!capability.canLogin || registrationBlocked || Boolean(pendingAction)} isLoading={pendingAction === 'submit'} />
         </form>

@@ -5,6 +5,7 @@ import { AppProviders } from './app/providers.jsx';
 import { applyThemeRuntimeConfig } from './app/runtime-context.js';
 import './styles/index.css';
 
+document.documentElement.dataset.reduceMotion = String(window.localStorage.getItem('lc-reduce-motion') === 'true');
 applyThemeRuntimeConfig();
 
 createRoot(document.getElementById('root')).render(

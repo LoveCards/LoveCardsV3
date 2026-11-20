@@ -20,6 +20,7 @@
 | Primary Ink | `#1d1d1f` | 标题、正文 |
 | Muted Ink | `#6e6e73` | 时间、来源、次级文字 |
 | Separator | `rgba(60,60,67,.16)` | 必要的 1px 结构线 |
+| Backdrop | `rgba(0,0,0,.4)` | 模态遮罩；暗色映射为 `rgba(0,0,0,.6)` |
 | Deep Rose | `#c92c60` | 主行动、焦点、选中、可读玫瑰文字 |
 | Signal Rose | `#e63d63` | 喜欢和小面积高光 |
 | Rose Mist | `#fff0f4` | 选中背景、引用、社区邀请 |
@@ -56,14 +57,19 @@ Deep Rose/white 对比度 5.23:1；Signal Rose/white 为 4.03:1，Signal Rose �
 
 ## Motion
 
-| 状态 | 时长 | 规则 |
-|---|---:|---|
-| Press | 120ms | `scale(.97)`，不改布局 |
-| State | 180ms | Hover、Focus、Like、Save |
-| Control | 220ms | 媒体控制淡入 |
-| Matched expand | 300ms | 卡片到详情 |
+时长、位移与曲线以 [`DESIGN.md`](../DESIGN.md) frontmatter 的 `motion` Token 为准；运行时映射为 `--lc-motion-press`、`--lc-motion-state`、`--lc-motion-control`、`--lc-motion-matched-expand`、`--lc-motion-content-lift`、`--lc-motion-dialog-lift`、`--lc-motion-sheet-lift` 和 `--lc-ease`。这些是目标 Token，现有运行码尚未全部映射。
 
-统一 `cubic-bezier(.22,1,.36,1)`，动画可中断，不动画布局属性。`prefers-reduced-motion: reduce` 下取消位移、缩放、GIF 自动播放和 Skeleton 闪烁，只保留即时状态或短淡化。
+| Token | 用途 |
+|---|---|
+| `motion.press` | 按下反馈；允许 `scale(.97)`，不改布局 |
+| `motion.state` | Hover、Focus、Like、Save、Tab 指示器、内容状态淡化、弹窗退场与遮罩 |
+| `motion.control` | 媒体控制淡入、弹窗入场 |
+| `motion.matchedExpand` | 信息流卡片到阅读预览层的匹配展开 |
+| `motion.contentLift` | 路由内容区与锚定浮层的短距离入场 |
+| `motion.dialogLift` / `motion.sheetLift` | 居中弹窗 / 底部 Sheet 的入场距离 |
+| `motion.easing` | 非线性状态与空间动效的统一曲线 |
+
+动画必须可中断，只动画 `opacity`、`transform`、`color`、`background-color`、`border-color` 等不触发布局重排的属性；不能动画尺寸、位置或网格轨道来完成转场。系统 `prefers-reduced-motion: reduce` 或站内减少动态效果任一生效时，取消位移、缩放、GIF 自动播放和 Skeleton 闪烁，直接呈现最终状态。场景选择、退出时序与验收见 [`../docs/specifications/MOTION.md`](../docs/specifications/MOTION.md)。
 
 ## Foundation 验收
 

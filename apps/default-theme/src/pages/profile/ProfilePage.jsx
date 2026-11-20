@@ -523,10 +523,12 @@ export function ProfilePage({ initialSection = 'content' }) {
           />
           <div className="profile-layout"><div className="profile-content">
             <ProfileContentTabs mode="self" contentCount={contentCount} />
-            {activeTab === 'history' && currentTabState?.status === 'success' && currentTabState.items?.length > 0 && <div className="profile-tab-toolbar"><span>最近浏览的内容</span><button className="profile-clear-history" type="button" disabled={clearing} onClick={() => setClearOpen(true)}>清空历史</button></div>}
-            <ProfileTabContent section={activeTab} state={currentTabState} profile={profileUser} onRetry={retryTab} onRemoveSaved={activeTab === 'saved' ? renderSavedAction : undefined} />
+            <div id="profile-content-panel" role="tabpanel" aria-labelledby={`profile-tab-${activeTab}`} tabIndex={0}>
+              {activeTab === 'history' && currentTabState?.status === 'success' && currentTabState.items?.length > 0 && <div className="profile-tab-toolbar"><span>最近浏览的内容</span><button className="profile-clear-history" type="button" disabled={clearing} onClick={() => setClearOpen(true)}>清空历史</button></div>}
+              <ProfileTabContent section={activeTab} state={currentTabState} profile={profileUser} onRetry={retryTab} onRemoveSaved={activeTab === 'saved' ? renderSavedAction : undefined} />
+            </div>
           </div></div>
-          {clearOpen && <ConfirmActionDialog isOpen onOpenChange={(open) => { if (!clearing) setClearOpen(open); }} title="清空全部浏览历史？" description="此操作只删除你的历史记录，不会影响收藏、喜欢或原内容。" actionLabel="清空历史" isLoading={clearing} onAction={clearHistoryAction} />}
+          <ConfirmActionDialog isOpen={clearOpen} onOpenChange={(open) => { if (!clearing) setClearOpen(open); }} title="清空全部浏览历史？" description="此操作只删除你的历史记录，不会影响收藏、喜欢或原内容。" actionLabel="清空历史" isLoading={clearing} onAction={clearHistoryAction} />
         </>}
       </ResourceState>}
     </ProfileShell>

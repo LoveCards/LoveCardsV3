@@ -11,6 +11,7 @@ colors:
   ink: "#1d1d1f"
   ink-muted: "#6e6e73"
   separator: "rgba(60,60,67,.16)"
+  backdrop: "rgba(0,0,0,.4)"
   danger: "#c93642"
   success: "#24835b"
   warning: "#9a6700"
@@ -20,6 +21,7 @@ colors:
   ink-on-dark: "#f5f7fa"
   ink-muted-on-dark: "#a7b0bd"
   separator-dark: "rgba(255,255,255,.12)"
+  backdrop-dark: "rgba(0,0,0,.6)"
   rose-soft-dark: "#2b171d"
 typography:
   headline:
@@ -67,6 +69,15 @@ spacing:
   lg: "24px"
   xl: "32px"
   wide: "48px"
+motion:
+  press: "120ms"
+  state: "220ms"
+  control: "280ms"
+  matchedExpand: "300ms"
+  contentLift: "12px"
+  dialogLift: "16px"
+  sheetLift: "28px"
+  easing: "cubic-bezier(0.2, 0.7, 0.2, 1)"
 components:
   button-primary:
     backgroundColor: "{colors.primary-rose}"
@@ -245,9 +256,11 @@ LoveCards 像一套成熟操作系统中的社区信息流：结构熟悉、反�
 
 ### State and motion
 
-常规状态过渡为 150–250ms，使用 `cubic-bezier(0.22, 1, 0.36, 1)`；按下反馈为 100–140ms。喜欢、收藏、播放和展开必须保留组件身份，展开卡优先使用匹配位置与匹配圆角的连续转换。所有动画可被中断；`prefers-reduced-motion: reduce` 下取消位移、缩放和路径动画，只保留即时状态或短交叉淡化。
+常规状态过渡使用 `motion.state` 或 `motion.control`；按下反馈使用 `motion.press`。喜欢、收藏、播放和展开必须保留组件身份，展开卡优先使用匹配位置与匹配圆角的连续转换。所有动画可被中断；系统或站内减少动态效果开启时直接呈现最终状态。
 
-**The Matched-Identity Rule.** 卡片进入详情时保持媒体、作者与操作的视觉身份，不闪白、不从无关方向飞入，也不让用户丢失原信息流位置。
+弹窗、页面与 Tab 的场景决策及减少动态效果验收见 [`docs/specifications/MOTION.md`](./docs/specifications/MOTION.md)。
+
+**The Matched-Identity Rule.** 信息流卡片展开阅读预览层时保持媒体或文字表面的视觉身份；进入完整详情仍使用同一内容资源，不闪白、不从无关方向飞入，也不让用户丢失原信息流位置。
 
 ## Do's and Don'ts
 

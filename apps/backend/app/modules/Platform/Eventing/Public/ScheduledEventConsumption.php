@@ -8,6 +8,8 @@ use app\modules\Platform\Eventing\Application\RequestExecutor;
 use app\modules\Platform\Eventing\Domain\RequestExecutionBudget;
 use think\facade\Db;
 use app\modules\Platform\Config\Public\DeploymentNamespace;
+use app\modules\Operations\SystemLifecycle\Contract\UpgradePlanRepository;
+use app\modules\Operations\SystemLifecycle\Public\UpgradeConsumerFence;
 
 /** CLI cron 与受认证 HTTP cron 共用的唯一一次性消费用例。 */
 final class ScheduledEventConsumption
@@ -16,11 +18,6 @@ final class ScheduledEventConsumption
     {
         if (!in_array($source, ['cli', 'http'], true)) {
             throw new EventConsumptionConflict('invalid-trigger', '定时触发源不合法');
-        }
-        $state = app(EventConsumption::class)->current();
-        if ($state === null || $state['mode'] !== 'scheduled' || $state['state'] !== 'active'
-            || $state['scheduled_trigger'] !== $source) {
-            throw new EventConsumptionConflict('mode-not-selected', '当前未启用该定时消费入口');
         }
         if ($maxJobs < 1 || $maxJobs > 20 || $maxMilliseconds < 1 || $maxMilliseconds > 1000) {
             throw new \InvalidArgumentException('一次性消费预算超出上限');
@@ -36,7 +33,44 @@ final class ScheduledEventConsumption
         try {
             $workerId = 'scheduler-' . $source . '-' . getmypid();
             $ledger = app(ScheduledRunLedger::class);
-            $runId = $ledger->startRun($workerId, $source);
+            // 与 Upgrade Plan 的状态切换共用行锁，避免迁移栅栏与新 run 交错。
+            Db::startTrans();
+            try {
+                $plan = app(UpgradePlanRepository::class)->unsettled(true);
+                if (UpgradeConsumerFence::blocks($plan)) {
+                    // backup_gate 的 RUNNING CAS 已发布栅栏，但成功 run 证明尚未捕获。
+                    // 此阶段不写心跳，避免覆盖待捕获的最近一次真实运行。
+                    if (UpgradeConsumerFence::capturingProof($plan)) {
+                        Db::commit();
+                        return 0;
+                    }
+                    $proof = $plan->context()['event_consumer_proof'] ?? null;
+                    $previous = $plan->previousReleaseId();
+                    $release = (string) (getenv('LC_ACTIVE_RELEASE_ID') ?: '');
+                    if (!is_array($proof) || ($proof['mode'] ?? null) !== 'scheduled'
+                        || ($proof['trigger'] ?? null) !== $source
+                        || ($proof['previous_release_id'] ?? null) !== $previous
+                        || ($previous === null
+                            ? !in_array($release, ['', 'legacy'], true)
+                            : !hash_equals($previous, $release))) {
+                        throw new EventConsumptionConflict('upgrade-pause-unavailable', '升级暂停证明与当前定时入口不匹配');
+                    }
+                    $pausedId = $ledger->startRun('upgrade-pause-' . $plan->plan()->planId(), $source);
+                    $ledger->finishRun($pausedId, 'paused', 0);
+                    Db::commit();
+                    return 0;
+                }
+                $state = app(EventConsumption::class)->current();
+                if ($state === null || $state['mode'] !== 'scheduled' || $state['state'] !== 'active'
+                    || $state['scheduled_trigger'] !== $source) {
+                    throw new EventConsumptionConflict('mode-not-selected', '当前未启用该定时消费入口');
+                }
+                $runId = $ledger->startRun($workerId, $source);
+                Db::commit();
+            } catch (\Throwable $exception) {
+                Db::rollback();
+                throw $exception;
+            }
             try {
                 $executionModes = [ExecutionMode::REQUEST_SAFE, ExecutionMode::DAEMON_REQUIRED];
                 $report = app(RequestExecutor::class)->run(new RequestExecutionBudget(
@@ -69,6 +103,8 @@ final class ScheduledEventConsumption
                 ->find();
             if (!is_array($row)) return null;
             return [
+                'run_id' => (int) ($row['run_id'] ?? 0),
+                'worker_id' => (string) ($row['worker_id'] ?? ''),
                 'trigger_source' => (string) ($row['trigger_source'] ?? ''),
                 'release_id' => (string) ($row['release_id'] ?? ''),
                 'outcome' => (string) ($row['outcome'] ?? ''),
@@ -79,5 +115,16 @@ final class ScheduledEventConsumption
         } catch (\Throwable $ignored) {
             return null;
         }
+    }
+
+    /** 栅栏发布并捕获成功 run 后，任何非本计划暂停心跳都撤销激活资格。 */
+    public function hasUnexpectedRunsAfter(int $runId, string $workerId, string $source, string $releaseId): bool
+    {
+        $rows = Db::query(
+            'SELECT COUNT(*) AS total FROM scheduler_runs WHERE run_id > ? '
+            . 'AND (outcome <> ? OR worker_id <> ? OR trigger_source <> ? OR release_id <> ?)',
+            [$runId, 'paused', $workerId, $source, $releaseId]
+        );
+        return (int) ($rows[0]['total'] ?? 0) > 0;
     }
 }

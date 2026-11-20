@@ -174,7 +174,7 @@ describe('UI integrity', () => {
     expect(profileSource).not.toContain('profileBasePath}/followers');
     expect(profileSource).not.toContain('profile-preview-action');
     expect(profile).not.toContain('href="/me/edit"');
-    expect(profileSource).toContain('clearOpen && <ConfirmActionDialog');
+    expect(profileSource).toContain('<ConfirmActionDialog isOpen={clearOpen}');
   });
 
   it('uses one progressive profile identity hierarchy for owner and public pages', () => {
@@ -270,8 +270,8 @@ describe('UI integrity', () => {
     expect(relations).toContain("!designPreview && auth.status === 'error'");
     expect(relations).toContain("(auth.isAuthenticated || designPreview) && <RelationSwitcher");
     expect(profile).toContain("!designPreview && authStatus === 'error' ? <ResourceState status=\"error\" error={authError}");
-    expect(router).toContain("import { ProtectedRoute } from './auth-routing.jsx';");
-    expect(router).toContain('<Route path="/me" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />');
+    expect(router).toContain("import { HomeFeedRoute, ProtectedRoute } from './auth-routing.jsx';");
+    expect(router).toContain('<Route path="/me" element={<ProtectedRoute allowVisitor><MePage /></ProtectedRoute>} />');
     expect(navigationSpec).toContain('登录边界');
     expect(navigationSpec).toContain('`from` 只接受单斜杠开头');
     expect(feedbackSpec).toContain('认证边界');
@@ -347,12 +347,14 @@ describe('UI integrity', () => {
     expect(compose).toContain('!editMode && <Button className="compose-draft-save"');
   });
 
-  it('keeps personal content tabs in one stable, swipeable order', () => {
+  it('keeps personal content tabs in one stable, scrollable order', () => {
     const labels = ['内容', '喜欢', '收藏', '历史'];
     for (const path of ['/me', '/me?tab=likes', '/me?tab=saved', '/me?tab=history']) {
       const nav = renderRoute(path).match(/<nav class="profile-tabs"[\s\S]*?<\/nav>/)?.[0] || '';
       const positions = labels.map((label) => nav.search(new RegExp(`>${label}(?:\\s+\\d+)?<\\/a>`)));
-      expect(nav).toContain('aria-current="page"');
+      expect(nav).toContain('role="tablist"');
+      expect(nav).toContain('aria-selected="true"');
+      expect(nav).toContain('aria-controls="profile-content-panel"');
       expect(positions.every((position) => position >= 0)).toBe(true);
       expect(positions).toEqual([...positions].sort((a, b) => a - b));
     }
@@ -413,7 +415,7 @@ describe('UI integrity', () => {
     expect(inbox).toContain('互动消息');
     expect(inbox).toContain('系统通知');
     expect(inbox).not.toContain('>全部</a>');
-    expect(inbox).not.toContain('>关注</a>');
+    expect(inbox.match(/<nav class="notification-filters"[\s\S]*?<\/nav>/)?.[0] || '').not.toContain('>关注</a>');
 
     const messagesSource = readFileSync(fileURLToPath(new URL('../pages/community/MessagesPage.jsx', import.meta.url)), 'utf8');
     const panelSource = readFileSync(fileURLToPath(new URL('../pages/community/ConversationPanel.jsx', import.meta.url)), 'utf8');

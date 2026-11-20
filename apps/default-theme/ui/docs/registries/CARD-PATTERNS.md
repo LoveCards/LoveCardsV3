@@ -114,6 +114,8 @@ Feed、Detail、Search 接收同一个 `CardViewModel`：
 
 Pattern 组件只负责轮廓和状态；评论线程、媒体查看器和喜欢由共享 feature 提供。一个新模式应优先复用这些槽位，而不是复制一套评论或弹窗。
 
+信息流主表面激活后的 Content Preview 与完整详情共享此 `CardViewModel` 及评论、互动能力。`compact/standard/detail` 是展示密度，不是第二套 Card 数据或另一种资源 URL。预览层的打开条件、历史与返回见 [`../specifications/NAVIGATION.md`](../specifications/NAVIGATION.md)，结构和滚动见 [`../specifications/DIALOGS.md`](../specifications/DIALOGS.md)，匹配展开见 [`../specifications/MOTION.md`](../specifications/MOTION.md)。
+
 媒体画框与裁切策略统一遵循 [`../specifications/MEDIA-FIT.md`](../specifications/MEDIA-FIT.md)。Pattern 只声明是否存在单媒体或媒体集合，不自行决定 `object-fit`。
 
 ## 6. 完成门槛

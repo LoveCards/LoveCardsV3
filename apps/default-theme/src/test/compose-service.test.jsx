@@ -7,7 +7,8 @@ const sdk = vi.hoisted(() => ({
 
 vi.mock('../app/sdk-client.js', () => sdk);
 
-import { loadPublishedCardForEdit, normalizeCardVisibility, publishCard, updatePublishedCard } from '../services/compose-service.js';
+import { deleteComposeMedia, loadPublishedCardForEdit, normalizeCardVisibility, publishCard, updatePublishedCard } from '../services/compose-service.js';
+import { selectComposeFiles } from '../pages/compose/ComposePage.jsx';
 
 beforeEach(() => {
   vi.stubEnv('VITE_DATA_MODE', 'api');
@@ -18,6 +19,57 @@ beforeEach(() => {
 afterEach(() => {
   vi.clearAllMocks();
   vi.unstubAllEnvs();
+});
+
+describe('compose media selection', () => {
+  it('keeps sequential image selections and publishes both media ids in order', async () => {
+    const first = new File(['first'], 'first.webp', { type: 'image/webp', lastModified: 1 });
+    const second = new File(['second'], 'second.webp', { type: 'image/webp', lastModified: 2 });
+    let files = selectComposeFiles([], [first], { multiple: true, limit: 9 });
+    files = selectComposeFiles(files, [second], { multiple: true, limit: 9 });
+    files = selectComposeFiles(files, [first], { multiple: true, limit: 9 });
+    expect(files).toEqual([first, second]);
+
+    const upload = vi.fn()
+      .mockResolvedValueOnce({ id: 41, url: '/media/first' })
+      .mockResolvedValueOnce({ id: 42, url: '/media/second' });
+    const create = vi.fn().mockResolvedValue({ id: 99 });
+    sdk.getSdkClient.mockReturnValue({ getToken: vi.fn().mockReturnValue('token'), files: { upload, delete: vi.fn() }, cards: { create } });
+    await publishCard({ content: '两张图片', kind: 'gallery', files });
+    expect(upload).toHaveBeenCalledTimes(2);
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({
+      media_file_ids: [41, 42],
+      cover_file_id: 41,
+      data: { kind: 'gallery' },
+    }));
+  });
+
+  it('enforces the nine-image cap and clears or replaces files when requested', () => {
+    const images = Array.from({ length: 10 }, (_, index) => new File(['x'], `image-${index}.webp`, { type: 'image/webp', lastModified: index }));
+    const firstBatch = selectComposeFiles([], images.slice(0, 8), { multiple: true, limit: 9 });
+    const capped = selectComposeFiles(firstBatch, images.slice(8), { multiple: true, limit: 9 });
+    expect(capped).toEqual(images.slice(0, 9));
+    expect(selectComposeFiles(capped, null, { multiple: true, limit: 9 })).toEqual([]);
+    expect(selectComposeFiles(capped, images[9], { limit: 1 })).toEqual([images[9]]);
+  });
+});
+
+describe('compose media cleanup', () => {
+  it('reports failed deletions without masking successful deletions', async () => {
+    const remove = vi.fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('cleanup offline'));
+    sdk.getSdkClient.mockReturnValue({ getToken: vi.fn().mockReturnValue('token'), files: { delete: remove } });
+
+    await expect(deleteComposeMedia([11, 11, 12, 0, 'invalid'])).resolves.toEqual([12]);
+    expect(remove.mock.calls.map(([id]) => id)).toEqual([11, 12]);
+  });
+
+  it('keeps requested media ids for a later retry when authentication expires', async () => {
+    sdk.getSdkClient.mockReturnValue({ getToken: vi.fn().mockReturnValue('') });
+
+    await expect(deleteComposeMedia([21, 21, 22])).resolves.toEqual([21, 22]);
+  });
 });
 
 describe('compose media publishing', () => {

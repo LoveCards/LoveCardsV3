@@ -451,12 +451,77 @@ try {
   let ranFinalConsumer = false
   let previousRevision = Number(plan.revision || 0)
   let negativeStage = 'collision'
+  let rejectedFailedCron = false
+  let rejectedPostFenceOk = false
+  let rogueRunId = 0
+  let verifiedPausedWithoutStateTable = false
   let contractGuardStage = 'inject'
   let cleanupStage = 'pending'
   const observations = []
   for (let attempt = 0; attempt < 128; attempt++) {
     if (plan.status === 'completed') break
+    if (plan.current_step === 'preflight_migrations' && !rogueRunId) {
+      const inject = connectScript
+        + '$now=gmdate("Y-m-d H:i:s");'
+        + '$q=$pdo->prepare("INSERT INTO scheduler_runs (worker_id,trigger_source,started_at,finished_at,outcome,jobs_processed,release_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)");'
+        + '$q->execute(["e2e-post-fence-rogue","cli",$now,$now,"ok",0,"legacy",$now,$now]);'
+        + 'echo $pdo->lastInsertId();'
+      rogueRunId = Number(await run(php, ['-r', inject], dbEnv))
+    }
+    if (['preflight_migrations', 'expand_migrations', 'backfill', 'verify_migrations', 'drain_runtime', 'activate_release'].includes(plan.current_step)) {
+      const hideState = plan.current_step === 'preflight_migrations' && !verifiedPausedWithoutStateTable
+      if (hideState) await run(php, ['-r', connectScript + '$pdo->exec("RENAME TABLE eventing_consumer_state TO eventing_consumer_state_e2e_paused");'], dbEnv)
+      let output
+      try {
+        output = await run(php, [path.join('apps', 'backend', 'think'), 'lc:scheduler:run-once', '--max-jobs=1', '--max-ms=100'], dbEnv)
+      } finally {
+        if (hideState) await run(php, ['-r', connectScript + '$pdo->exec("RENAME TABLE eventing_consumer_state_e2e_paused TO eventing_consumer_state");'], dbEnv)
+      }
+      if (hideState) verifiedPausedWithoutStateTable = true
+      if (!output.includes('claimed=0')) throw new Error('Old scheduler did not pause during migration')
+      const pause = connectScript
+        + '$row=$pdo->query("SELECT worker_id,outcome FROM scheduler_runs ORDER BY run_id DESC LIMIT 1")->fetch(PDO::FETCH_ASSOC);'
+        + `if(!is_array($row)||$row["worker_id"]!==${JSON.stringify(`upgrade-pause-${planId}`)}||$row["outcome"]!=="paused")exit(1);`
+      await run(php, ['-r', pause], dbEnv)
+    }
+    if (plan.current_step === 'activate_release' && !rejectedPostFenceOk) {
+      await api(`/admin/operations/upgrades/${planId}/advance`, { token, method: 'POST', expected: [500] })
+      plan = (await api(`/admin/operations/upgrades/${planId}`, { token })).data
+      if (plan.status !== 'failed' || plan.current_step !== 'activate_release') {
+        throw new Error('Post-fence successful cron did not block release activation')
+      }
+      const pointer = existsSync(path.join(instanceRoot, 'current'))
+        ? (await readFile(path.join(instanceRoot, 'current'), 'utf8')).trim() : ''
+      if (pointer.includes(releaseId)) throw new Error('Post-fence successful cron moved the active pointer')
+      const clean = connectScript + `$pdo->exec("DELETE FROM scheduler_runs WHERE run_id=${rogueRunId} AND worker_id='e2e-post-fence-rogue'");`
+      await run(php, ['-r', clean], dbEnv)
+      rejectedPostFenceOk = true
+      console.log('[upgrade-e2e] post-fence successful cron rejected before pointer activation')
+      continue
+    }
+    if (plan.current_step === 'activate_release' && !rejectedFailedCron) {
+      const inject = connectScript
+        + '$now=gmdate("Y-m-d H:i:s");'
+        + '$q=$pdo->prepare("INSERT INTO scheduler_runs (worker_id,trigger_source,started_at,finished_at,outcome,jobs_processed,release_id,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)");'
+        + '$q->execute(["e2e-failed-cron","cli",$now,$now,"failed",0,"legacy",$now,$now]);'
+        + 'echo $pdo->lastInsertId();'
+      const failedRunId = Number(await run(php, ['-r', inject], dbEnv))
+      await api(`/admin/operations/upgrades/${planId}/advance`, { token, method: 'POST', expected: [400] })
+      plan = (await api(`/admin/operations/upgrades/${planId}`, { token })).data
+      if (plan.status !== 'failed' || plan.current_step !== 'activate_release') {
+        throw new Error('Failed cron did not block release activation')
+      }
+      const pointer = existsSync(path.join(instanceRoot, 'current'))
+        ? (await readFile(path.join(instanceRoot, 'current'), 'utf8')).trim() : ''
+      if (pointer.includes(releaseId)) throw new Error('Failed cron moved the active pointer')
+      const clean = connectScript + `$pdo->exec("DELETE FROM scheduler_runs WHERE run_id=${failedRunId} AND worker_id='e2e-failed-cron'");`
+      await run(php, ['-r', clean], dbEnv)
+      rejectedFailedCron = true
+      console.log('[upgrade-e2e] failed cron rejected before pointer activation')
+      continue
+    }
     if (plan.status === 'failed' && ((plan.current_step === 'preflight_migrations' && negativeStage !== 'finished')
+      || (plan.current_step === 'activate_release' && (rejectedPostFenceOk || rejectedFailedCron))
       || (plan.current_step === 'contract_migrations' && (contractGuardStage === 'retry' || cleanupStage === 'retry')))) {
       // 清除失败原因后，由下一次 advance 显式重试。
     } else if (plan.status === 'failed' || plan.status === 'recovered') {

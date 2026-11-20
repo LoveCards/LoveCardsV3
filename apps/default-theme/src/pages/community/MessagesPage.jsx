@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../app/providers.jsx';
-import { ResourceState } from '../../components/ResourceState.jsx';
+import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
 import { AuthorIdentity } from '../../components/AuthorIdentity.jsx';
 import { AppShell } from '../../layouts/AppShell.jsx';
 import { getRuntimeDataMode } from '../../app/runtime-context.js';
@@ -54,18 +54,23 @@ export function MessagesPage() {
   const [state, setState] = useState({ status: 'loading', items: [], error: null });
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState('');
-  const load = useCallback(async () => {
+  const loadRequestRef = useRef(0);
+  const load = useCallback(async ({ background = false } = {}) => {
     if (!auth.isAuthenticated) return;
-    setState((current) => ({ ...current, status: 'loading', error: null }));
+    const requestId = ++loadRequestRef.current;
+    setState((current) => ({ ...current, status: background && current.status === 'success' ? 'success' : 'loading', error: null }));
     try {
       const result = await listConversations();
+      if (requestId !== loadRequestRef.current) return;
       setState({ status: 'success', items: result.items, error: null });
       setSelectedId((current) => {
         const ids = result.items.map(conversationIdOf).filter(Boolean);
         return ids.includes(current) ? current : (isCompactViewport() ? null : (ids[0] || null));
       });
+    } catch (error) {
+      if (requestId !== loadRequestRef.current) return;
+      setState((current) => ({ ...current, status: current.status === 'success' ? 'success' : 'error', error }));
     }
-    catch (error) { setState((current) => ({ ...current, status: 'error', error })); }
   }, [auth.isAuthenticated]);
   const visibleItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -80,7 +85,7 @@ export function MessagesPage() {
   useEffect(() => {
     if (designPreview || !auth.isAuthenticated) return undefined;
     const runtime = getCommunicationRuntime();
-    const unsubscribe = runtime.subscribe((topic) => { if (topic === SIGNAL_MESSAGES) void load(); });
+    const unsubscribe = runtime.subscribe((topic) => { if (topic === SIGNAL_MESSAGES) void load({ background: true }); });
     void runtime.start();
     return () => unsubscribe();
   }, [auth.isAuthenticated, designPreview, load]);
@@ -139,6 +144,7 @@ export function MessagesPage() {
     {searchMode
       ? <header className="message-search-page-header"><Link to="/messages" aria-label="返回私信列表">←</Link>{canSearchMessages ? <div className="message-search-page-field"><label htmlFor="message-search-page">搜索会话</label><input id="message-search-page" type="search" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索用户名或消息" /></div> : <strong className="message-search-page-title">搜索会话</strong>}</header>
       : <div className="message-center-chrome"><MessageCenterHeader description="私信按最近活动排列。" actions={canSearchMessages ? <Link className="message-search-trigger" to="/messages/search" aria-label="搜索会话"><Icon name="search" size={20} /></Link> : null} /><MessageCenterTabs messageUnread={messageUnread} /></div>}
+    {state.status === 'success' && state.error && <ResourceErrorBanner error={state.error} onRetry={() => void load({ background: true })} />}
     {content}
   </main></AppShell>;
 }

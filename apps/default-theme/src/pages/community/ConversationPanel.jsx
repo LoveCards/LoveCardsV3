@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../app/providers.jsx';
 import { getUserFacingError } from '../../app/user-facing-error.js';
 import { AuthorIdentity } from '../../components/AuthorIdentity.jsx';
-import { ResourceState } from '../../components/ResourceState.jsx';
+import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
 import { ensureClientMessageId, listConversations, listMessages, sendMessage } from '../../services/community-service.js';
 import { getCommunicationRuntime, SIGNAL_MESSAGES } from '../../services/communication-runtime.js';
 import { Button, ChatComposer, ChatComposerInput, ChatSendButton } from '../../ui/index.js';
@@ -58,12 +58,16 @@ export function ConversationPanel({ conversationId, initialRecipientId = null, s
   const [pending, setPending] = useState([]);
   const [busy, setBusy] = useState(false);
   const threadRef = useRef(null);
+  const loadRequestRef = useRef(0);
+  const sendingRef = useRef(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ background = false } = {}) => {
     if (!auth.isAuthenticated || !validId) return;
-    setState((current) => ({ ...current, status: 'loading', error: null }));
+    const requestId = ++loadRequestRef.current;
+    setState((current) => ({ ...current, status: background && current.status === 'success' ? 'success' : 'loading', error: null }));
     try {
       const [messages, conversations] = await Promise.all([listMessages(numericId), listConversations()]);
+      if (requestId !== loadRequestRef.current) return;
       const currentUserId = String(auth.session?.uid || '');
       const conversation = conversations.items.find((item) => conversationIdOf(item) === numericId);
       const nextPeer = conversationPeerOf(conversation, currentUserId);
@@ -71,37 +75,45 @@ export function ConversationPanel({ conversationId, initialRecipientId = null, s
       setPeer(nextPeer);
       setRecipientId((current) => current || nextPeer?.recipientId || fromMessages || null);
       setState({ status: 'success', items: [...messages.items].sort((a, b) => Number(a.id || 0) - Number(b.id || 0)), error: null });
-      setPending((current) => current.filter((item) => item.status === 'failed' || !messages.items.some((row) => row.client_message_id === item.client_message_id)));
-    } catch (error) { setState((current) => ({ ...current, status: 'error', error })); }
+      setPending((current) => current.filter((item) => !messages.items.some((row) => row.client_message_id === item.client_message_id)));
+    } catch (error) {
+      if (requestId !== loadRequestRef.current) return;
+      setState((current) => ({ ...current, status: current.status === 'success' ? 'success' : 'error', error }));
+    }
   }, [auth.isAuthenticated, auth.session?.uid, numericId, validId]);
-
   useEffect(() => { if (auth.status === 'ready' && auth.isAuthenticated && validId) void load(); }, [auth.isAuthenticated, auth.status, load, validId]);
   useEffect(() => {
     if (!auth.isAuthenticated || !validId) return undefined;
     const runtime = getCommunicationRuntime();
-    const unsubscribe = runtime.subscribe((topic) => { if (topic === SIGNAL_MESSAGES) void load(); });
+    const unsubscribe = runtime.subscribe((topic) => { if (topic === SIGNAL_MESSAGES) void load({ background: true }); });
     void runtime.start();
     return () => unsubscribe();
   }, [auth.isAuthenticated, load, validId]);
 
   const transmit = async (message) => {
-    if (!recipientId || busy) return;
+    if (!recipientId || sendingRef.current) return;
+    sendingRef.current = true;
     setBusy(true);
     setPending((current) => current.map((item) => item.client_message_id === message.client_message_id ? { ...item, status: 'sending', error: '' } : item));
     try {
       const result = await sendMessage({ recipientUid: recipientId, body: message.body, clientMessageId: message.client_message_id });
       setPending((current) => current.map((item) => item.client_message_id === message.client_message_id ? { ...item, id: result?.id, status: 'sent' } : item));
-      await load();
+      void load({ background: true });
     } catch (error) {
       setPending((current) => current.map((item) => item.client_message_id === message.client_message_id ? { ...item, status: 'failed', error: getUserFacingError(error, { fallback: '私信没有发送，点击重试。', validationFallback: '私信内容不符合要求，请修改后重试。' }) } : item));
-    } finally { setBusy(false); }
+    } finally {
+      sendingRef.current = false;
+      setBusy(false);
+    }
   };
 
   const send = async () => {
     const value = body.trim();
-    if (!value || !recipientId || busy) return;
+    if (!value || !recipientId || sendingRef.current) return;
     const message = { client_message_id: ensureClientMessageId(''), body: value, sender_uid: auth.session?.uid, status: 'sending', created_at: new Date().toISOString() };
-    setPending((current) => [...current, message]); setBody(''); await transmit(message);
+    setPending((current) => [...current, message]);
+    setBody('');
+    await transmit(message);
   };
   const rows = useMemo(() => [...state.items, ...pending.filter((item) => !state.items.some((row) => row.client_message_id === item.client_message_id))], [pending, state.items]);
 
@@ -130,6 +142,7 @@ export function ConversationPanel({ conversationId, initialRecipientId = null, s
         {standalone && <Link className="message-chat-back" to="/messages" aria-label="返回私信列表">←</Link>}
         <AuthorIdentity author={peer?.title || `会话 ${numericId}`} uid={peer?.uid} handle={peer?.handle} avatarUrl={peer?.avatar} meta={peer?.status} size="md" variant="list" className="message-chat-identity" />
       </header>
+      {state.error && <ResourceErrorBanner error={state.error} onRetry={() => void load({ background: true })} />}
       <section className="message-thread" ref={threadRef} tabIndex={0} aria-label="消息记录" aria-live="polite">
         {rows.length ? rows.map((item, index) => { const own = String(item.sender_uid || '') === String(auth.session?.uid || ''); return <article className={`message-bubble${own ? ' is-own' : ''}${item.status === 'failed' ? ' is-failed' : ''}`} key={item.id || item.client_message_id || index}><p>{item.body || item.content}</p><footer><span>{item.status === 'sending' ? '发送中…' : item.status === 'failed' ? item.error : formatMessageTime(item.created_at)}</span>{item.status === 'failed' && <Button type="button" label="重试" variant="ghost" size="sm" isDisabled={busy} onClick={() => void transmit(item)} />}</footer></article>; }) : <div className="message-empty"><strong>还没有消息</strong><span>{recipientId ? '发送第一条消息开始对话。' : '服务端尚未提供该会话的对方用户标识，因此暂时不能发送。'}</span></div>}
       </section>

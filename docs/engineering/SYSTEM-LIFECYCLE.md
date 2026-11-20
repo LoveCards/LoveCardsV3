@@ -18,6 +18,14 @@ LoveCards 的安装、数据库迁移、Release 导入、激活和恢复属于�
 
 旧 realtime 站点按 resident 初始化；新 Worker 无法在 pointer 激活和 reload 之前宣称与目标 Release/Schema/Catalog 匹配，因此事件消费策略门禁不把此作为激活前判定。激活后的 `health_check` 另执行事件消费运行门禁：定时模式要求激活时间之后出现来源匹配、成功且新鲜的 CLI/HTTP 运行；常驻模式要求 Worker 心跳匹配当前 Release、Schema 和 Handler Catalog。若站点选择实时通信，还须在此时通过 Redis、Gateway、Worker 等实时依赖检查。未满足时计划保持失败/待重试状态，不得报告升级成功；管理员修复后重试健康检查或按现有 pointer 恢复协议处理。
 
+### 跨 Schema 升级的旧消费者栅栏
+
+新建 v2 Upgrade Plan 在 context 中固定 `scheduler_fence_version=1`。`backup_gate` 开始执行的计划 CAS 即发布栅栏；此后旧消费者不得新领取任务。备份完成后先等旧 run 和事件处理全部结算，再在任何迁移 SQL 前捕获最近一小时同触发源、同旧 Release 的成功 cron。若备份门禁失败，栅栏解除且未执行迁移，可在修复后重试。`ScheduledEventConsumption` 在持有计划行锁的事务内决定正常运行或暂停：备份门禁执行期间直接跳过；证明持久化后只读该证明并写绑定 plan ID 的 `paused` 心跳，不查询可能正在迁移的事件消费状态。计划步骤 CAS 使用同一行锁，因此正常 run 与栅栏发布不会交错。Resident Worker 的领取事务同样在计划行锁下拒绝新领取。
+
+暂停期间外部 CLI/HTTP cron 仍定时触发，但只写 `paused` 心跳，不访问已变化的 Schema 或 Handler Catalog。激活要求最新心跳在一小时内、来源及旧 Release 和 plan ID 匹配，而且迁移前成功 run 之后没有任何非本计划 `paused` 的运行记录；真实 failed/running 不能被后续成功心跳掩盖。暂停期间无触发、旧进程未停止、事件处理未结算或模式发生变化时保持旧 pointer 并失败关闭。`health_check` 和 `final_health` 仍分别要求目标 Release 的成功运行。已有未带栅栏标志的 v1/v2 计划保持原门禁语义，以便无迁移桥接 Release 能由旧 Coordinator 完成。
+
+栅栏由当前活动的**源 Release**执行。若站点仍运行不含栅栏的 r6，须先通过 r6 原升级器部署与 r6 相同 Migration Catalog/target_schema、无新增迁移的签名 bridge Release，并在健康检查及新 Release 定时触发成功后确认它成为 active；随后才可创建包含新迁移的升级计划。签名包中已经包含新代码，或仅合并仓库分支，都不会改变旧 Release 在激活前运行的 Coordinator 与 cron。禁止直接从 r6 对包含新增迁移的目标 Release 执行升级。
+
 新装种子中的 root 账号仅有不可登录的密码占位值；安装向导在创建安装锁前要求管理员输入 12 至 128 字符的新密码，由 Auth 公开入口核对账号启用状态与 root 角色后写入实际哈希并增加凭据版本。缺失密码、角色或写入失败时安装锁不得创建。旧站点已安装账号不由该步骤修改。
 
 ## 持久目录与不可变 Release

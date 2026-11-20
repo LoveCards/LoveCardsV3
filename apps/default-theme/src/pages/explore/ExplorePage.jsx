@@ -1,12 +1,14 @@
 import { useCallback, useMemo } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
+import { ContentChannels } from '../../components/ContentChannels.jsx';
 import { ResourceState } from '../../components/ResourceState.jsx';
 import { FeedCollection } from '../../features/feed/FeedCollection.jsx';
 import { useResource } from '../../app/use-resource.js';
 import { getDiscoverySnapshot, loadDiscovery, topicHref } from '../../services/discovery-service.js';
 import { DiscoverySearchSurface } from '../../features/search/DiscoverySearchSurface.jsx';
 import { MediaFrame } from '../../features/media/MediaFrame.jsx';
+import { cardPreviewSession, cardPreviewState, warmCardPreviewDetail } from '../../app/card-preview-routing.js';
 
 function Boundary({ data }) {
   return (
@@ -22,6 +24,8 @@ export function ExplorePage({ search = false, topic = false }) {
   const [params, setParams] = useSearchParams();
   const routeParams = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const preview = useOutletContext();
   const scope = ['posts', 'media', 'topics'].includes(routeParams.scope) ? routeParams.scope : 'posts';
   const query = topic ? routeParams.slug || '' : params.get('q') || '';
   const loader = useCallback((signal) => loadDiscovery({ query, signal, topic }), [query, topic]);
@@ -46,12 +50,12 @@ export function ExplorePage({ search = false, topic = false }) {
   return (
     <AppShell>
       <main className="discovery-page" aria-labelledby="discovery-title">
+        {!search && !topic && <ContentChannels active="explore" />}
         <header className="discovery-heading">
           <div>
             <h1 id="discovery-title">{topic ? `# ${data.topic?.name || query}` : (search && query ? `搜索“${query}”` : '去发现，今天的新鲜事')}</h1>
             <p>{topic ? '围绕同一兴趣继续浏览内容。' : '从正在发生的城市、兴趣和创作者开始。'}</p>
           </div>
-          <span className="capability-note">关注、趋势与个性推荐暂未开放</span>
         </header>
 
         {!topic && <DiscoverySearchSurface query={query} onSubmit={updateQuery} />}
@@ -74,7 +78,7 @@ export function ExplorePage({ search = false, topic = false }) {
           <div className="discovery-layout">
             <section className="discovery-main">
               {featured && (
-                <Link className="discovery-feature" to={`/post/${featured.id}`}>
+                <Link className="discovery-feature" to={`/post/${featured.id}`} state={cardPreviewState(location, featured.id, featured.mediaItems?.length > 1 ? 'gallery' : featured.kind === 'video' ? 'video' : 'image', 'feature')} data-card-preview-id={featured.id} data-card-preview-trigger="feature" data-preview-opening={preview?.pathname === `/post/${featured.id}` && preview?.state?.previewSession === cardPreviewSession && preview?.state?.previewCardId === String(featured.id) || undefined} onPointerEnter={warmCardPreviewDetail} onFocus={warmCardPreviewDetail} onPointerDown={warmCardPreviewDetail}>
                   <MediaFrame className="discovery-feature-media" item={featured.mediaItems?.[0] || { url: featured.mediaUrl, type: 'image', fit: featured.mediaFit }} frameRatio={4 / 3} alt={featured.mediaAlt || featured.title} />
                   <div>
                     <span>编辑精选</span>
@@ -114,16 +118,16 @@ export function ExplorePage({ search = false, topic = false }) {
                   ))}</ol>
                 ) : <p className="muted-copy">趋势数据暂未开放</p>}
               </section>
-              <section>
+              {data.creators.length > 0 && <section>
                 <header><h2>值得认识</h2><span>关注暂未开放</span></header>
-                {data.creators.length ? data.creators.map((creator) => (
+                {data.creators.map((creator) => (
                   <div className="discovery-creator" key={creator.id}>
                     <span className={`creator-avatar tone-${creator.tone}`} aria-hidden="true">{creator.name.slice(0, 1)}</span>
                     <div><b>{creator.name}</b><small>{creator.meta}</small></div>
                     <span className="capability-inline">未开放</span>
                   </div>
-                )) : <p className="muted-copy">创作者推荐与关注关系暂未开放</p>}
-              </section>
+                ))}
+              </section>}
             </aside>
           </div>
         )}

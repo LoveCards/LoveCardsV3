@@ -65,11 +65,11 @@ export function DiscoverySearchSurface({ query = '', onSubmit }) {
   };
 
   return (
-    <form ref={surfaceRef} className={`discovery-search-surface${suggestionsOpen ? ' is-suggestions-open' : ''}`} onSubmit={submit} role="search" onCompositionStart={() => { composingRef.current = true; }} onCompositionEnd={() => { composingRef.current = false; }}>
-      <div className="discovery-search-context">
+    <form ref={surfaceRef} className={`discovery-search-surface${suggestionsOpen ? ' is-suggestions-open' : ''}${query ? ' has-query' : ''}`} onSubmit={submit} role="search" onCompositionStart={() => { composingRef.current = true; }} onCompositionEnd={() => { composingRef.current = false; }}>
+      {query && <div className="discovery-search-context">
         <Icon name="search" size={18} />
-        {query ? <><span>正在搜索</span><b>“{query}”</b><button type="button" aria-label="清除当前搜索" onClick={() => onSubmit('')}>×</button></> : <span>搜索内容、作者或话题</span>}
-      </div>
+        <span>正在搜索</span><b>“{query}”</b><button type="button" aria-label="清除当前搜索" onClick={() => onSubmit('')}>×</button>
+      </div>}
       <Typeahead
         className="discovery-search-typeahead"
         label="搜索内容、作者或话题"
