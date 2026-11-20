@@ -178,6 +178,10 @@
   [data-highlighted="true"] .lc-mention-menu-copy strong { color: var(--lc-rose-deep); }
 
   .compose-media-workspace { display: grid; gap: 12px; }
+  .compose-gallery-layout { display: grid; gap: 8px; padding-top: 4px; }
+  .compose-gallery-layout h4 { margin: 0; font-size: 0.78rem; }
+  .compose-gallery-layout p { margin: 3px 0 0; color: var(--lc-muted); font-size: 0.68rem; line-height: 1.5; }
+  .compose-gallery-layout [role='radiogroup'] { width: min(100%, 320px); }
   .compose-media-workspace > header > span { color: var(--lc-muted); font-size: 0.68rem; font-variant-numeric: tabular-nums; }
   .compose-media-workspace .lc-file-dropzone {
     min-height: 68px;

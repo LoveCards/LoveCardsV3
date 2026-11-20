@@ -24,12 +24,20 @@ describe('detail media gallery', () => {
     });
   }
 
-  it('shows four real tiles and an overflow count for longer galleries', () => {
+  it('shows all nine image tiles in a nine-image gallery', () => {
     const html = renderToStaticMarkup(<MediaGallery items={imageItems(7)} title="七张照片" />);
-    expect(html).toContain('is-count-4');
-    expect(countTiles(html)).toBe(4);
-    expect(html).toContain('+3');
-    expect(html).toContain('查看第 4 项媒体，共 7 项');
+    expect(html).toContain('is-count-7 is-many');
+    expect(countTiles(html)).toBe(7);
+    expect(html).toContain('查看第 7 项媒体，共 7 项');
+  });
+
+  it('renders the pager with one contained image and named navigation', () => {
+    const html = renderToStaticMarkup(<MediaGallery items={imageItems(3)} title="三张照片" galleryLayout="pager" />);
+    expect(html).toContain('detail-media-grid is-pager');
+    expect(countTiles(html)).toBe(1);
+    expect(html).toContain('1 / 3');
+    expect(html).toContain('aria-label="上一张图片"');
+    expect(html).toContain('aria-label="下一张图片"');
   });
 
   it('plays a video card in place on preview and detail without opening a second viewer', () => {

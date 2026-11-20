@@ -224,6 +224,13 @@ describe('home feed data boundary', () => {
     });
 
     expect(gallery.mediaItems.map((item) => item.url)).toEqual(['one.jpg', 'two.jpg', 'three.jpg']);
+    expect(gallery.galleryLayout).toBe('grid');
+  });
+
+  it('reads a supported gallery layout and falls back for invalid values', () => {
+    const base = { id: 121, user_id: 4, content: '两张图', pictures: ['one.jpg', 'two.jpg'], goods: 0, comments: 0 };
+    expect(normalizeSdkCard({ ...base, data: { kind: 'gallery', galleryLayout: 'pager' } }).galleryLayout).toBe('pager');
+    expect(normalizeSdkCard({ ...base, data: { kind: 'gallery', galleryLayout: 'unknown' } }).galleryLayout).toBe('grid');
   });
 
   it('prefers the typed card media contract when the backend provides it', () => {
