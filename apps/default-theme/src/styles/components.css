@@ -54,6 +54,7 @@
   .media-fit-loading {
     position: absolute;
     inset: 0;
+    z-index: 2;
     background: #20242c;
   }
   .media-fit-unavailable {
