@@ -2,7 +2,7 @@
   <div class="admin-table-view-controls">
     <v-menu v-model="viewsMenuOpen" :close-on-content-click="false" location="bottom end">
       <template #activator="{ props: activatorProps }">
-        <v-btn v-bind="activatorProps" prepend-icon="mdi-tune-variant" variant="text">
+        <v-btn v-bind="activatorProps" aria-label="视图设置" prepend-icon="mdi-tune-variant" variant="text">
           视图设置
           <v-chip v-if="savedViews.length" class="ml-2" size="x-small" variant="tonal">{{ savedViews.length }}</v-chip>
         </v-btn>
@@ -57,6 +57,9 @@
           </v-list-item>
         </v-list>
         <v-divider />
+        <v-card-text class="py-2 text-caption text-medium-emphasis">
+          恢复默认视图会重置筛选、排序、每页行数和显示列；已保存视图仍保留。
+        </v-card-text>
         <v-card-actions>
           <v-btn prepend-icon="mdi-restore" variant="text" @click="resetView">恢复默认视图</v-btn>
         </v-card-actions>

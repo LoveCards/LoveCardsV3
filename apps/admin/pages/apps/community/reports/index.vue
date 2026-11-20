@@ -196,7 +196,6 @@ function applySavedView(query: Record<string, string | null | (string | null)[]>
   resetAndLoad()
 }
 function resetTableView() {
-  visibleColumns.value = [...defaultColumns]
   itemsPerPage.value = 20
   clearFilters()
 }
