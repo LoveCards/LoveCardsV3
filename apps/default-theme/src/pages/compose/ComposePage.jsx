@@ -627,8 +627,8 @@ export function ComposePage() {
                 {allMediaPreviews.length ? <div className={`compose-media-preview-grid is-${allMediaPreviews.length > 4 ? 'many' : allMediaPreviews.length}`} aria-label={`${allMediaPreviews.length} 个待发布媒体`}>
                   {allMediaPreviews.map((item, index) => <div className={`compose-media-preview is-${item.source}`} key={item.source === 'persisted' ? `media-${item.id}` : `${item.file.name}-${item.file.lastModified}-${index}`}>{publishType === 'video' ? <video src={item.url} muted playsInline preload="metadata" /> : <img src={item.url} alt={`待发布媒体 ${index + 1}：${item.name || '图片'}`} />}<span>{index + 1}</span><IconButton className="lc-upload-preview-remove" type="button" onClick={() => removeMedia(item, index)} label={publishType === 'video' ? '移除视频' : `移除第 ${index + 1} 张图片`} tooltip="移除媒体" variant="ghost" size="lg" icon={<Icon name="close" size={18} />} isDisabled={busy} /></div>)}
                 </div> : null}
-                {publishType === 'image' && mediaCount > 1 && <div className="compose-gallery-layout" aria-labelledby="compose-gallery-layout-title">
-                  <div><h4 id="compose-gallery-layout-title">图片排布</h4><p>宫格展示全部图片；翻页一次聚焦一张，读者可以左右切换。</p></div>
+                {publishType === 'image' && <div className="compose-gallery-layout" aria-labelledby="compose-gallery-layout-title">
+                  <div><h4 id="compose-gallery-layout-title">图片排布</h4><p>选择两张及以上图片时生效；单图按单图展示。宫格展示全部图片，翻页在阅读弹窗与详情中逐张查看。</p></div>
                   <SegmentedControl value={galleryLayout} onChange={setGalleryLayout} label="图片排布" layout="fill" size="md" isDisabled={busy}>
                     <SegmentedControlItem value="grid" label="宫格" />
                     <SegmentedControlItem value="pager" label="翻页" />
