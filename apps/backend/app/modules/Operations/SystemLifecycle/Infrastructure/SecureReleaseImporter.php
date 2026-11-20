@@ -9,6 +9,7 @@ use app\modules\Operations\SystemLifecycle\Domain\ReleaseManifest;
 use app\modules\Operations\SystemLifecycle\Domain\VerifiedReleaseManifest;
 use app\modules\Operations\SystemLifecycle\Exception\ReleaseManifestException;
 use app\shared\SystemPaths\SystemPaths;
+use app\shared\SystemPaths\ReleaseReadAccess;
 
 /** 验签并发布不可变系统 Release；本类不负责激活 Release。 */
 final class SecureReleaseImporter implements ReleasePackageImporter
@@ -239,6 +240,8 @@ final class SecureReleaseImporter implements ReleasePackageImporter
         if (is_link($instanceRoot)) throw new \RuntimeException('LoveCards 实例目录不能是 symlink');
         $instanceReal = realpath($instanceRoot);
         if ($instanceReal === false) throw new \RuntimeException('LoveCards 实例目录无效');
+        $readAccess = new ReleaseReadAccess($this->paths);
+        $readAccess->prepareInstanceRoot();
 
         $releasesRoot = $this->paths->releasesRoot();
         if (!is_dir($releasesRoot) && !mkdir($releasesRoot, 0750, true) && !is_dir($releasesRoot)) {
@@ -249,6 +252,7 @@ final class SecureReleaseImporter implements ReleasePackageImporter
         if ($releasesReal === false || !$this->isWithin($releasesReal, $instanceReal)) {
             throw new \RuntimeException('系统 Release 根目录逃逸实例目录');
         }
+        $readAccess->prepareDirectory($releasesReal, 0050);
         return $releasesReal;
     }
 
@@ -470,6 +474,7 @@ final class SecureReleaseImporter implements ReleasePackageImporter
         if (is_link($root) || !is_dir($root)) {
             throw new \RuntimeException('不可变 Release 根目录不合法');
         }
+        $readAccess = new ReleaseReadAccess($this->paths);
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS),
             \RecursiveIteratorIterator::CHILD_FIRST
@@ -477,6 +482,7 @@ final class SecureReleaseImporter implements ReleasePackageImporter
         foreach ($iterator as $item) {
             $path = $item->getPathname();
             if (is_link($path)) throw new \RuntimeException('不可变 Release 包含 symlink');
+            $readAccess->apply($path);
             if ($item->isDir()) {
                 if (!@chmod($path, 0550) && DIRECTORY_SEPARATOR !== '\\') {
                     throw new \RuntimeException('无法冻结 Release 目录权限');
@@ -488,6 +494,7 @@ final class SecureReleaseImporter implements ReleasePackageImporter
                 throw new \RuntimeException('无法冻结 Release 文件权限');
             }
         }
+        $readAccess->apply($root);
         if (!@chmod($root, 0550) && DIRECTORY_SEPARATOR !== '\\') {
             throw new \RuntimeException('无法冻结 Release 根目录权限');
         }

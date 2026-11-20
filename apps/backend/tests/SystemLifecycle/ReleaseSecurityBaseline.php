@@ -100,16 +100,57 @@ $verifier = new ReleaseManifestVerifier(new OpenSslReleaseSignatureVerifier(['te
 $limits = new ReleaseArchiveLimits(8 * 1024 * 1024, 100, 2 * 1024 * 1024, 4 * 1024 * 1024, 1024 * 1024);
 
 $test('valid signed ZIP is verified, hash-checked and staged immutably', static function () use ($zipPath, $paths, $verifier, $limits, $manifest, $assert): void {
+    $priorReadGroup = getenv('LC_RELEASE_READ_GROUP');
+    if (DIRECTORY_SEPARATOR !== '\\') putenv('LC_RELEASE_READ_GROUP=' . (string) filegroup(dirname($zipPath)));
+    try {
+        $importer = new SecureReleaseImporter($paths, $verifier, $limits);
+        $inspected = $importer->inspect($zipPath);
+        $assert($inspected->documentChecksum() === $manifest->documentChecksum(), 'inspect checksum mismatch');
+        $verified = $importer->import($zipPath, 0, new DateTimeImmutable('2026-08-19T01:00:00Z'));
+        $assert($verified->manifest()->releaseId() === 'release-test-001', 'wrong release ID');
+        $destination = $paths->releaseRoot('release-test-001');
+        $assert(is_file($destination . DIRECTORY_SEPARATOR . 'app.txt'), 'staged file missing');
+        if (DIRECTORY_SEPARATOR !== '\\') {
+            $group = filegroup($paths->instanceRoot());
+            foreach ([$paths->releasesRoot(), $destination, $destination . DIRECTORY_SEPARATOR . 'database', $destination . DIRECTORY_SEPARATOR . 'app.txt'] as $path) {
+                clearstatcache(true, $path);
+                $assert(filegroup($path) === $group, 'staged Release path lost runtime read group: ' . $path);
+            }
+        }
+        $second = $importer->import($zipPath, 0, new DateTimeImmutable('2026-08-19T01:00:00Z'));
+        $assert($second->manifest()->documentChecksum() === $verified->manifest()->documentChecksum(), 'idempotent import mismatch');
+        if (DIRECTORY_SEPARATOR !== '\\') $assert((fileperms($destination) & 0222) === 0, 'release root remains writable');
+    } finally {
+        if ($priorReadGroup === false) putenv('LC_RELEASE_READ_GROUP');
+        else putenv('LC_RELEASE_READ_GROUP=' . $priorReadGroup);
+    }
+});
+
+$test('invalid runtime read group rejects idempotent import without changing release', static function () use ($zipPath, $paths, $verifier, $limits, $assertThrows, $assert): void {
+    if (DIRECTORY_SEPARATOR === '\\') return;
+    $release = $paths->releaseRoot('release-test-001');
+    $before = hash_file('sha256', $release . DIRECTORY_SEPARATOR . 'app.txt');
+    $priorReadGroup = getenv('LC_RELEASE_READ_GROUP');
+    putenv('LC_RELEASE_READ_GROUP=missing_lc_release_group_8826');
+    try {
+        $importer = new SecureReleaseImporter($paths, $verifier, $limits);
+        $assertThrows(RuntimeException::class, static fn() => $importer->import($zipPath, 0, new DateTimeImmutable('2026-08-19T01:00:00Z')));
+        $assert(hash_file('sha256', $release . DIRECTORY_SEPARATOR . 'app.txt') === $before, 'failed permission setup changed immutable release');
+    } finally {
+        if ($priorReadGroup === false) putenv('LC_RELEASE_READ_GROUP');
+        else putenv('LC_RELEASE_READ_GROUP=' . $priorReadGroup);
+    }
+});
+
+$test('existing private releases root becomes traversable by runtime group', static function () use ($zipPath, $paths, $verifier, $limits, $assert): void {
+    if (DIRECTORY_SEPARATOR === '\\') return;
+    $releasesRoot = $paths->releasesRoot();
+    chmod($releasesRoot, 0770);
     $importer = new SecureReleaseImporter($paths, $verifier, $limits);
-    $inspected = $importer->inspect($zipPath);
-    $assert($inspected->documentChecksum() === $manifest->documentChecksum(), 'inspect checksum mismatch');
-    $verified = $importer->import($zipPath, 0, new DateTimeImmutable('2026-08-19T01:00:00Z'));
-    $assert($verified->manifest()->releaseId() === 'release-test-001', 'wrong release ID');
-    $destination = $paths->releaseRoot('release-test-001');
-    $assert(is_file($destination . DIRECTORY_SEPARATOR . 'app.txt'), 'staged file missing');
-    $second = $importer->import($zipPath, 0, new DateTimeImmutable('2026-08-19T01:00:00Z'));
-    $assert($second->manifest()->documentChecksum() === $verified->manifest()->documentChecksum(), 'idempotent import mismatch');
-    if (DIRECTORY_SEPARATOR !== '\\') $assert((fileperms($destination) & 0222) === 0, 'release root remains writable');
+    $importer->import($zipPath, 0, new DateTimeImmutable('2026-08-19T01:00:00Z'));
+    clearstatcache(true, $releasesRoot);
+    $assert((fileperms($releasesRoot) & 0050) === 0050, 'existing releases root remains inaccessible to read group');
+    $assert((fileperms($releasesRoot) & 0022) === 0, 'runtime read group can modify releases root');
 });
 
 $test('path traversal is rejected before extraction', static function () use ($tmp, $manifestData, $makeZip, $paths, $verifier, $limits, $assertThrows): void {
