@@ -42,6 +42,16 @@ describe('detail media gallery', () => {
     expect(html).toContain('aria-label="下一张图片"');
   });
 
+  it('opens a gallery preview on the selected image and defaults direct detail to the first', () => {
+    const selected = renderToStaticMarkup(<MediaGallery items={imageItems(3)} title="三张照片" galleryLayout="pager" initialIndex={1} />);
+    const direct = renderToStaticMarkup(<MediaGallery items={imageItems(3)} title="三张照片" galleryLayout="pager" />);
+    expect(selected).toContain('2 / 3');
+    expect(selected).toContain('src="/media/photo-2.webp"');
+    expect(selected).not.toContain('src="/media/photo-1.webp"');
+    expect(direct).toContain('1 / 3');
+    expect(direct).toContain('src="/media/photo-1.webp"');
+  });
+
   it('renders video in the viewer with native controls and no autoplay', () => {
     const html = renderToStaticMarkup(
       <MediaViewer
