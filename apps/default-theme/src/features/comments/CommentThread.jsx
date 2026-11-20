@@ -215,6 +215,15 @@ export function CommentThread({ comments = [], focusedCommentId, source, isAuthe
     normalizeMentionCaret(commentInputRoot.current);
   };
 
+  const replyTo = (item) => {
+    setReplyTarget(item);
+    const input = commentInputRoot.current?.querySelector?.('[contenteditable="true"]');
+    if (!input) return;
+    input.focus({ preventScroll: true });
+    const reducedMotion = document.documentElement.dataset.reduceMotion === 'true' || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    input.closest('.comment-thread-composer-wrap')?.scrollIntoView({ block: 'start', behavior: reducedMotion ? 'auto' : 'smooth' });
+  };
+
   const composer = source === 'preview'
     ? <p className="comment-thread-boundary">设计预览不会发送评论；连接 API 后会显示真实讨论。</p>
     : isAuthenticated && canComment
@@ -228,11 +237,11 @@ export function CommentThread({ comments = [], focusedCommentId, source, isAuthe
   return (
     <section className="comment-thread" aria-labelledby="comments-title">
       <header className="comment-thread-heading"><div><h2 id="comments-title">讨论</h2><span>{commentItems.length} 条</span></div><span className="comment-thread-sort">置顶优先</span></header>
+      {composer}
       {commentsUnavailable ? <ResourceErrorBanner className="comment-thread-boundary" error={commentsUnavailable} onRetry={onRetryComments} /> : <>
         {Number.isInteger(focusedId) && !focusedComment && <p className="comment-thread-boundary" role="status">这条评论当前不可见，可能已被删除或尚未通过审核。</p>}
-        {roots.length > 0 ? <div className="comment-thread-list">{roots.map((item) => <CommentRow key={item.id} item={item} replies={repliesByRoot.get(item.id)} depth={0} source={source} isAuthenticated={isAuthenticated} canComment={isAuthenticated && canComment} canLike={isAuthenticated && canLike} canDeleteComment={isAuthenticated && canDeleteComment} canPinComment={isAuthenticated && canPinComment} pinBusy={pinBusy} viewerId={viewerId} focusedCommentId={focusedId} onReply={setReplyTarget} onLogin={isAuthenticated ? undefined : onLogin} onToggleLike={onToggleLike} likeBusyIds={likeBusyIds} onRequestDelete={onRequestDelete} onRequestPinChange={onRequestPinChange} onCopy={onCopy} canReport={canReport} onReport={onReport} isRepliesExpanded={expandedRoots.has(item.id)} onToggleReplies={() => setExpandedRoots((current) => { const next = new Set(current); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} />)}</div> : <p className="comment-thread-empty">还没有讨论，成为第一个回复的人。</p>}
+        {roots.length > 0 ? <div className="comment-thread-list">{roots.map((item) => <CommentRow key={item.id} item={item} replies={repliesByRoot.get(item.id)} depth={0} source={source} isAuthenticated={isAuthenticated} canComment={isAuthenticated && canComment} canLike={isAuthenticated && canLike} canDeleteComment={isAuthenticated && canDeleteComment} canPinComment={isAuthenticated && canPinComment} pinBusy={pinBusy} viewerId={viewerId} focusedCommentId={focusedId} onReply={replyTo} onLogin={isAuthenticated ? undefined : onLogin} onToggleLike={onToggleLike} likeBusyIds={likeBusyIds} onRequestDelete={onRequestDelete} onRequestPinChange={onRequestPinChange} onCopy={onCopy} canReport={canReport} onReport={onReport} isRepliesExpanded={expandedRoots.has(item.id)} onToggleReplies={() => setExpandedRoots((current) => { const next = new Set(current); if (next.has(item.id)) next.delete(item.id); else next.add(item.id); return next; })} />)}</div> : <p className="comment-thread-empty">还没有讨论，成为第一个回复的人。</p>}
       </>}
-      {composer}
     </section>
   );
 }

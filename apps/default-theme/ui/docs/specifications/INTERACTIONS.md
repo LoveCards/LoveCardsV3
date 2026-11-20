@@ -82,13 +82,15 @@
 
 ```text
 讨论标题 / 数量
+Composer（新评论或回复）
 └─ RootComment
    ├─ ReplyComment
    └─ ReplyComment
 └─ RootComment
-Composer（新评论或回复）
 ```
 
+- Composer 位于讨论区内部、评论内容之前；完整详情与阅读弹窗共用这条顺序。无评论时，空状态仍在 Composer 之后。评论加载失败时，错误与重试显示在 Composer 之后。
+- 点击评论行的“回复”定位并聚焦顶部的同一个 Composer，回复对象紧贴输入框；不增加第二套输入器或遮挡评论的固定栏。手机软键盘打开后输入框和当前回复均可通过同一阅读轴访问。
 - Root 评论与回复使用同一行语法，不使用每条评论一张卡片。
 - Root 行：头像 32px、作者/时间、正文、轻量动作；回复缩进 20px，左侧只用 1px 分隔线，不做彩色粗侧条。
 - 只有存在回复时才显示“2 条回复”；默认展示首层和最多 3 条回复，更多回复进入同页展开，不跳到黑色中转页。
@@ -99,7 +101,7 @@ Composer（新评论或回复）
 - 使用 Astryx `ChatComposer` + `ChatComposerInput` + `ChatSendButton`，`elevation="none"`，内容面与详情同源。
 - 新评论 placeholder：“写下你的回复”；回复状态显示 `回复 @用户名` 和 44px 取消按钮。
 - Enter 发送，Shift+Enter 换行；IME 组合期间 Enter 不发送；发送中保留内容并禁用重复提交。
-- 错误显示在 composer 下方，输入内容不清空；成功后清空并把焦点留在 composer。
+- 错误显示在 composer 内输入框下方，输入内容不清空；成功后清空并把焦点留在 composer。
 - 右侧显示“已回复 / 140”计数，达到限制时仅禁用发送，不截断用户文本；与当前后端评论校验保持一致。
 
 #### 5.2.1 @ 提及

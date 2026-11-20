@@ -156,7 +156,7 @@
   .comment-thread-heading h2 { margin: 0; font-size: 1rem; }
   .comment-thread-heading span { color: var(--lc-muted); font-size: 0.7rem; }
   .comment-thread-sort { padding: 5px 8px; border-radius: 7px; background: var(--lc-surface-subtle); }
-  .comment-thread-list { margin-top: 10px; border-top: 1px solid var(--lc-separator); }
+  .comment-thread-list { margin-top: 18px; border-top: 1px solid var(--lc-separator); }
   .comment-thread-row { padding: 16px 0; border-bottom: 1px solid var(--lc-separator); }
   .comment-thread-row.is-reply { padding: 10px 0 0; border-bottom: 0; }
   .comment-thread-row.is-focused {
@@ -189,7 +189,7 @@
   .comment-thread-boundary a { color: var(--lc-rose-deep); font-weight: 700; text-decoration: none; }
   .comment-thread-boundary a:hover { text-decoration: underline; }
   .comment-thread-boundary a:focus-visible { outline: 2px solid var(--lc-rose); outline-offset: 3px; }
-  .comment-thread-composer-wrap { margin-top: 16px; padding: 12px; border: 1px solid var(--lc-separator); border-radius: 12px; background: var(--lc-surface-subtle); }
+  .comment-thread-composer-wrap { margin-top: 16px; padding: 12px; scroll-margin-top: 84px; border: 1px solid var(--lc-separator); border-radius: 12px; background: var(--lc-surface-subtle); }
   .comment-thread-context { min-height: 28px; margin-bottom: 7px; padding: 0 2px; display: flex; align-items: center; justify-content: space-between; color: var(--lc-muted); font-size: 0.72rem; }
   .comment-thread-context > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .comment-thread-context b { color: var(--lc-rose-deep); }
