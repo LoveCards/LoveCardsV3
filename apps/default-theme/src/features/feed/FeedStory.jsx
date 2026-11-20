@@ -35,11 +35,11 @@ function StoryMedia({ card, isStaticPreview, href, previewState, onOpenPreview }
     const item = mediaItems[pageIndex];
     const frame = <MediaFrame key={item.url} className="story-media-item" item={item} fit="contain" loading={pageIndex === 0 && card.layout === 'lead' ? 'eager' : 'lazy'} muted ariaHidden={!isStaticPreview} alt={item.alt || card.mediaAlt || card.title} />;
     const page = isStaticPreview || !href ? <div className="story-media-page">{frame}</div> : <Link className="story-media-page" to={href} state={previewState} data-card-preview-id={card.id} data-card-preview-trigger="media" onPointerEnter={warmCardPreviewDetail} onFocus={warmCardPreviewDetail} onPointerDown={warmCardPreviewDetail} onClick={(event) => { if (!pager.consumeSwipeClick(event)) onOpenPreview(event, 'media'); }} aria-label={`查看内容：${card.title}，第 ${pageIndex + 1} 张图片`}>{frame}</Link>;
-    return <div className="story-media story-media-pager" role="group" aria-label={`图片翻页，共 ${mediaItems.length} 张`} onKeyDown={pager.onKeyDown} onTouchStart={pager.onTouchStart} onTouchEnd={pager.onTouchEnd}>
+    return <div className="story-media story-media-pager" role="group" aria-label={`图片翻页，共 ${mediaItems.length} 张`} onKeyDown={pager.onKeyDown} onTouchStart={pager.onTouchStart} onTouchMove={pager.onTouchMove} onTouchEnd={pager.onTouchEnd} onTouchCancel={pager.onTouchCancel}>
       {page}
       <span className="story-media-count" aria-live="polite">{pageIndex + 1} / {mediaItems.length}</span>
-      <button className="story-media-nav is-previous" type="button" aria-label="上一张图片" onClick={() => pager.move(-1)} disabled={pageIndex === 0}>‹</button>
-      <button className="story-media-nav is-next" type="button" aria-label="下一张图片" onClick={() => pager.move(1)} disabled={pageIndex === mediaItems.length - 1}>›</button>
+      <button className="story-media-nav is-previous" type="button" aria-label="上一张图片" onClick={(event) => { if (!pager.consumeSwipeClick(event)) pager.move(-1); }} disabled={pageIndex === 0}>‹</button>
+      <button className="story-media-nav is-next" type="button" aria-label="下一张图片" onClick={(event) => { if (!pager.consumeSwipeClick(event)) pager.move(1); }} disabled={pageIndex === mediaItems.length - 1}>›</button>
     </div>;
   }
   const visibleItems = mediaItems.slice(0, 9);
