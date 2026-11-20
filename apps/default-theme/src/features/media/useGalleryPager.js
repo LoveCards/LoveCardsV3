@@ -8,12 +8,13 @@ export function gallerySwipeDirection(start, end) {
   return dx > 0 ? -1 : 1;
 }
 
-export function useGalleryPager(count) {
-  const [index, setIndex] = useState(0);
+export function useGalleryPager(count, initialIndex = 0) {
+  const [index, setIndex] = useState(() => Number.isSafeInteger(initialIndex) && initialIndex >= 0 ? initialIndex : 0);
   const touchStart = useRef(null);
   const swipedAt = useRef(0);
 
-  useEffect(() => { setIndex((current) => Math.min(current, Math.max(0, count - 1))); }, [count]);
+  useEffect(() => { if (count > 0) setIndex((current) => Math.min(current, count - 1)); }, [count]);
+  useEffect(() => { setIndex(Number.isSafeInteger(initialIndex) && initialIndex >= 0 ? initialIndex : 0); }, [initialIndex]);
   const move = (offset) => setIndex((current) => Math.max(0, Math.min(count - 1, current + offset)));
   const onKeyDown = (event) => {
     if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
