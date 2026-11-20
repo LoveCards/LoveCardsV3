@@ -3,6 +3,7 @@ declare(strict_types=1);
 namespace app\modules\Operations\SystemLifecycle\Application;
 use app\modules\Operations\SystemLifecycle\Contract\ReleasePointer;
 use app\shared\SystemPaths\SystemPaths;
+use app\shared\SystemPaths\ReleaseReadAccess;
 
 /** Stable, dependency-light release pointer and recovery operations. */
 final class RecoveryKernel implements ReleasePointer
@@ -72,6 +73,8 @@ final class RecoveryKernel implements ReleasePointer
         if (is_link($root)) throw new \RuntimeException('实例持久目录不能是 symlink');
         if (is_link($pointer)) throw new \RuntimeException('active Release 指针不能是 symlink');
         if (!is_dir($root) && !mkdir($root,0750,true) && !is_dir($root)) throw new \RuntimeException('无法创建实例目录');
+        $readAccess = new ReleaseReadAccess($this->paths);
+        $readAccess->prepareInstanceRoot();
         $tmp=$pointer.'.next.'.bin2hex(random_bytes(8));
         $handle = fopen($tmp, 'xb');
         if ($handle === false) throw new \RuntimeException('无法创建 active Release 临时指针');
@@ -89,7 +92,15 @@ final class RecoveryKernel implements ReleasePointer
         } finally {
             fclose($handle);
         }
-        @chmod($tmp, 0640);
+        try {
+            $readAccess->apply($tmp);
+            if (!@chmod($tmp, 0640) && DIRECTORY_SEPARATOR !== '\\') {
+                throw new \RuntimeException('无法设置 active Release 指针权限');
+            }
+        } catch (\Throwable $exception) {
+            @unlink($tmp);
+            throw $exception;
+        }
         if (!rename($tmp, $pointer)) {
             @unlink($tmp);
             throw new \RuntimeException('切换 active Release 失败');

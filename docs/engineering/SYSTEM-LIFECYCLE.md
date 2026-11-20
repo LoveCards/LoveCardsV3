@@ -54,6 +54,14 @@ LC_INSTANCE_ROOT/
 
 `RecoveryKernel` 只接受合法 Release ID、真实 Release 目录和匹配 Manifest 的指针；写指针采用同目录临时文件、flush/fsync 与原子 rename。恢复也必须校验备份路径位于备份根目录内且 SHA-256 匹配。
 
+root CLI 与独立 PHP-FPM 用户运行时，**进程环境**必须设置 `LC_RELEASE_READ_GROUP` 为 PHP-FPM 所在的受信任 Unix 组（不能只写在 ThinkPHP `.env`），并保证 `LC_INSTANCE_ROOT` 的父目录可遍历。未设置时导入器和指针写入器沿用实例目录的组；此默认值仅适用于该组已经让 Web 用户读取的部署。导入器给实例根目录的该组添加遍历权限，并只给 `releases/`、新 Release 树设置该组；新树保持目录 `0550`、文件 `0440/0550`。指针先给临时文件设置该组与 `0640`，成功后才原子切换。组设置失败会阻止导入或切换，恢复指针遵守同一规则；不得递归放宽 `shared/keys`、备份或其他实例资产。
+实例根与 `releases/` 赋组时清除组和其他用户的写权限，Web 组不得能改写 `current` 或不可变 Release；生产实例根应由部署身份持有，Web 用户只取得组遍历权。`shared/runtime`、`shared/logs` 的写权限单独配置。
+更换 Web 读取组会改变实例根目录的组，必须先协调 PHP-FPM 进程组与目录访问权，在维护窗口执行并分别验证旧、新 Web 进程；不能把组切换视为无中断操作。
+
+**过渡发布：**当前 dev r7 bridge 仍包含旧权限实现，用它升级到首个带本修复的 Release 时，旧导入器不会读取 `LC_RELEASE_READ_GROUP`。运维须在导入前按实际 PHP-FPM 组给实例根目录及 `releases/` 设置组继承位，并验证根目录可遍历，使旧 CLI 创建的 staging 树和临时指针继承该组；激活后立即核对真实 Web 入口。仅在该过渡升级使用此主机级准备，不能把它当成新版本的长期权限实现。升级前还须核对 PHP-FPM 能写 `shared/runtime` 与 `shared/logs`；若不满足，只修正这两个目录的写权限，不递归开放整个 `shared/`。
+
+升级器的 CLI 健康检查在 `LC_RUNTIME_HEALTH_URL` 为空时只核对 CLI 当前 Release，不能证明 PHP-FPM 有读取权限。每次激活后必须从实际 Web 入口请求 `/_lc/release-health` 与一个业务 API，核对 HTTP 200、`X-LoveCards-Release-Id` 和目标 Release；若 Nginx 使用虚拟主机，本机探测须带正确 `Host`。dev 的本机探测示例为 `curl -H 'Host: testtt.chizg.cn' http://127.0.0.1:20080/_lc/release-health`，同时应检查前台代理入口。若 Web 失败，即使计划与 cron 显示成功也不能宣布发布完成。
+
 `public/index.php` 与 `think` 在 Composer/ThinkPHP 启动前调用 `ReleaseBootstrap`。没有 pointer 的旧安装/开发目录继续从当前源码运行；一旦进入托管模式，非法 pointer、symlink、缺失 Release 或 Manifest 不匹配会 fail-closed（Web 返回 503，CLI 以失败退出），不会静默退回旧代码。托管 Release 的响应携带 `X-LoveCards-Release-Id`，`GET /_lc/release-health` 返回当前启动 Release，供升级健康检查使用。
 
 ## Release ZIP 信任边界

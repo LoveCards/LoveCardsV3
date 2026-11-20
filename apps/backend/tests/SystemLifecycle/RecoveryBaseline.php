@@ -22,11 +22,43 @@ file_put_contents($backup, "release-old\n");
 $checksum = hash_file('sha256', $backup);
 $kernel = new RecoveryKernel($paths);
 $failures = 0;
+$priorReadGroup = getenv('LC_RELEASE_READ_GROUP');
 try {
+    if (DIRECTORY_SEPARATOR !== '\\') {
+        putenv('LC_RELEASE_READ_GROUP=' . (string) filegroup($tmp));
+        chmod($paths->instanceRoot(), 0770);
+    }
     $kernel->activate('release-new');
     if ($kernel->activeReleaseId() !== 'release-new') throw new RuntimeException('new release pointer was not activated');
+    if (DIRECTORY_SEPARATOR !== '\\') {
+        $pointer = $paths->activeReleasePointer();
+        clearstatcache(true, $pointer);
+        if (filegroup($pointer) !== filegroup($tmp) || (fileperms($pointer) & 0777) !== 0640) {
+            throw new RuntimeException('active pointer is not readable by the configured group');
+        }
+        clearstatcache(true, $paths->instanceRoot());
+        if ((fileperms($paths->instanceRoot()) & 0010) === 0) {
+            throw new RuntimeException('runtime read group cannot traverse instance root');
+        }
+        if ((fileperms($paths->instanceRoot()) & 0022) !== 0) {
+            throw new RuntimeException('runtime read group can modify instance root');
+        }
+        putenv('LC_RELEASE_READ_GROUP=missing_lc_release_group_8826');
+        try {
+            $kernel->activate('release-old');
+            throw new RuntimeException('invalid read group switched pointer');
+        } catch (RuntimeException $exception) {
+            if ($exception->getMessage() === 'invalid read group switched pointer') throw $exception;
+        }
+        if ($kernel->activeReleaseId() !== 'release-new') throw new RuntimeException('failed permission setup changed pointer');
+        putenv('LC_RELEASE_READ_GROUP=' . (string) filegroup($tmp));
+    }
     $restored = $kernel->restore($backup, $checksum);
     if ($restored !== 'release-old' || $kernel->activeReleaseId() !== 'release-old') throw new RuntimeException('pointer backup was not restored');
+    if (DIRECTORY_SEPARATOR !== '\\') {
+        clearstatcache(true, $paths->activeReleasePointer());
+        if (filegroup($paths->activeReleasePointer()) !== filegroup($tmp)) throw new RuntimeException('restored pointer lost read group');
+    }
     try { $kernel->restore($backup, str_repeat('0', 64)); throw new RuntimeException('invalid checksum accepted'); }
     catch (RuntimeException $exception) {
         if ($exception->getMessage() === 'invalid checksum accepted') throw $exception;
@@ -36,6 +68,8 @@ try {
     $failures++;
     fwrite(STDERR, "FAIL RecoveryKernel: {$exception->getMessage()}\n");
 } finally {
+    if ($priorReadGroup === false) putenv('LC_RELEASE_READ_GROUP');
+    else putenv('LC_RELEASE_READ_GROUP=' . $priorReadGroup);
     $cleanup = static function (string $directory) use (&$cleanup): void {
         if (!is_dir($directory) || is_link($directory)) { if (is_file($directory)) @unlink($directory); return; }
         foreach (scandir($directory) ?: [] as $name) {
