@@ -14,5 +14,8 @@ interface ReleaseCompatibility
     public function verifyPreContractMigrationsComplete(ReleaseManifest $manifest): void;
     public function verifyMigrationsComplete(ReleaseManifest $manifest): void;
     public function verifyEventConsumptionReady(): void;
+    public function captureEventConsumptionProof(?string $previousReleaseId): array;
+    public function verifyEventConsumptionPaused(array $proof, ?string $previousReleaseId, string $planId): void;
+    public function verifyEventConsumptionQuiescent(): void;
     public function verifyEventConsumptionOperational(string $activatedAt, string $releaseId): void;
 }

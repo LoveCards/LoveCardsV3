@@ -80,6 +80,9 @@ final class SchemaIdentity
 
         // 先锁计划再读账本，与 Contract 步骤开始/结束的 CAS 串行。
         $plan = $runtime ? ($this->plans ?? app(UpgradePlanRepository::class))->unsettled($lock) : null;
+        if ($lock && UpgradeConsumerFence::blocks($plan)) {
+            throw new \RuntimeException('升级迁移期间已暂停旧消费者领取');
+        }
         $rows = $readOnly ? $this->ledger->allReadOnly() : $this->ledger->all();
         $preContract = false;
         if ($runtime) {
@@ -89,7 +92,10 @@ final class SchemaIdentity
             if ($plan !== null) {
                 $current = $plan->plan()->current();
                 if ($current?->state() === UpgradeStepState::FAILED
-                    && !in_array($current->name(), [UpgradeStep::HEALTH_CHECK, UpgradeStep::FINAL_HEALTH], true)) {
+                    && !in_array($current->name(), [UpgradeStep::HEALTH_CHECK, UpgradeStep::FINAL_HEALTH], true)
+                    && !($current->name() === UpgradeStep::BACKUP_GATE
+                        && ($plan->context()['scheduler_fence_version'] ?? null) === 1
+                        && ($plan->context()['execution_in_progress'] ?? false) === false)) {
                     throw new \RuntimeException('当前升级步骤失败，消费者资格已撤销');
                 }
                 if ($current?->name() === UpgradeStep::CONTRACT_MIGRATIONS

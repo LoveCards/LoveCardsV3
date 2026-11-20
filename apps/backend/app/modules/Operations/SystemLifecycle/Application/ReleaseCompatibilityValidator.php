@@ -14,6 +14,7 @@ use app\modules\Operations\SystemLifecycle\Domain\MigrationStatus;
 use app\modules\Operations\SystemLifecycle\Domain\ReleaseManifest;
 use app\modules\Operations\SystemLifecycle\Exception\ReleaseVerificationException;
 use app\modules\Operations\SystemLifecycle\Domain\HandlerCatalogHasher;
+use app\modules\Operations\SystemLifecycle\Domain\ScheduledUpgradeProof;
 use app\modules\Platform\Eventing\Public\EventConsumption;
 use app\modules\Platform\Eventing\Public\ScheduledEventConsumption;
 use app\modules\Operations\Runtime\Public\RuntimeCommunication;
@@ -88,6 +89,38 @@ final class ReleaseCompatibilityValidator implements ReleaseCompatibility
     public function verifyEventConsumptionReady(): void
     {
         (new EventConsumption())->assertUpgradeActivationReady();
+    }
+
+    public function captureEventConsumptionProof(?string $previousReleaseId): array
+    {
+        $state = (new EventConsumption())->current();
+        if (!is_array($state)) throw new ReleaseVerificationException('事件消费者未就绪');
+        return ScheduledUpgradeProof::capture(
+            $state, (new ScheduledEventConsumption())->latestRun(), $previousReleaseId,
+            new \DateTimeImmutable('now', new \DateTimeZone('UTC'))
+        );
+    }
+
+    public function verifyEventConsumptionPaused(array $proof, ?string $previousReleaseId, string $planId): void
+    {
+        $state = (new EventConsumption())->current();
+        if (!is_array($state)) throw new ReleaseVerificationException('事件消费者未就绪');
+        $scheduler = new ScheduledEventConsumption();
+        ScheduledUpgradeProof::assertForActivation(
+            $state, $scheduler->latestRun(), $proof, $previousReleaseId, $planId,
+            new \DateTimeImmutable('now', new \DateTimeZone('UTC'))
+        );
+        if ($state['mode'] === 'scheduled' && $scheduler->hasUnexpectedRunsAfter(
+            (int) $proof['run_id'], 'upgrade-pause-' . $planId,
+            (string) $proof['trigger'], (string) $previousReleaseId
+        )) {
+            throw new ReleaseVerificationException('迁移栅栏后出现非预期定时运行，禁止激活');
+        }
+    }
+
+    public function verifyEventConsumptionQuiescent(): void
+    {
+        EventConsumption::assertQuiescent();
     }
 
     public function verifyEventConsumptionOperational(string $activatedAt, string $releaseId): void

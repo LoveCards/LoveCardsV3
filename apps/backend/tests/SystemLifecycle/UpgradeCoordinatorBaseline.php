@@ -24,6 +24,7 @@ use app\modules\Operations\SystemLifecycle\Domain\StoredUpgradePlan;
 use app\modules\Operations\SystemLifecycle\Domain\UpgradePlan;
 use app\modules\Operations\SystemLifecycle\Domain\UpgradeStep;
 use app\modules\Operations\SystemLifecycle\Domain\UpgradeStepState;
+use app\modules\Operations\SystemLifecycle\Public\UpgradeConsumerFence;
 use app\modules\Operations\SystemLifecycle\Domain\VerifiedReleaseManifest;
 use app\shared\SystemPaths\SystemPaths;
 
@@ -75,6 +76,8 @@ final class UpgradeCoordinatorFakeCompatibility implements ReleaseCompatibility
     public int $migrationChecks = 0;
     public bool $failEventConsumption = false;
     public bool $failEventConsumerOperational = false;
+    public bool $failPausedHeartbeat = false;
+    public bool $failQuiescent = false;
     public function verifyEnvironment(ReleaseManifest $manifest): void { $this->environmentChecks++; }
     public function verifyStagedRelease(ReleaseManifest $manifest, string $releaseRoot): void { $this->stagedChecks++; $this->trace[] = 'schema_check'; }
     public function verifyRuntimeHandlerCatalog(ReleaseManifest $manifest): void { $this->trace[] = 'runtime_catalog'; }
@@ -85,6 +88,25 @@ final class UpgradeCoordinatorFakeCompatibility implements ReleaseCompatibility
     {
         $this->trace[] = 'event_consumer_ready';
         if ($this->failEventConsumption) throw new \LogicException('event consumer has no verified trigger');
+    }
+    public function captureEventConsumptionProof(?string $previousReleaseId): array
+    {
+        $this->trace[] = 'event_consumer_proof';
+        if ($this->failEventConsumption) throw new \LogicException('event consumer has no verified trigger');
+        return ['mode' => 'scheduled', 'previous_release_id' => $previousReleaseId, 'run_id' => 7];
+    }
+    public function verifyEventConsumptionPaused(array $proof, ?string $previousReleaseId, string $planId): void
+    {
+        $this->trace[] = 'event_consumer_paused';
+        if (($proof['previous_release_id'] ?? null) !== $previousReleaseId || ($proof['run_id'] ?? null) !== 7) {
+            throw new \LogicException('missing migration gate proof');
+        }
+        if ($this->failPausedHeartbeat) throw new \LogicException('paused heartbeat unavailable');
+    }
+    public function verifyEventConsumptionQuiescent(): void
+    {
+        $this->trace[] = 'event_consumer_quiescent';
+        if ($this->failQuiescent) throw new \LogicException('scheduler run still in progress');
     }
     public function verifyEventConsumptionOperational(string $activatedAt, string $releaseId): void
     {
@@ -467,7 +489,7 @@ $tests['health-check failure persists a failed upgrade step'] = static function 
     $assert($current?->failureCode() === 'logicexception', 'health failure code was not persisted');
 };
 
-$tests['event consumer gate fails before release pointer activation'] = static function () use (
+$tests['event consumer proof fails before any migration'] = static function () use (
     $fixture, $source, $assert, $assertThrows
 ): void {
     $state = $fixture(false);
@@ -477,9 +499,76 @@ $tests['event consumer gate fails before release pointer activation'] = static f
     $assertThrows(static fn() => $state->coordinator->runUntilSettled($planId), 'event consumer has no verified trigger');
     $failed = $state->coordinator->find($planId);
     $assert($failed !== null && $failed->plan()->status() === UpgradePlan::FAILED, 'event consumer gate failure was not persisted');
-    $assert($failed->plan()->current()?->name() === UpgradeStep::ACTIVATE_RELEASE, 'event consumer gate did not stop activation');
+    $assert($failed->plan()->current()?->name() === UpgradeStep::BACKUP_GATE, 'event consumer proof did not stop before migrations');
     $assert($state->pointer->active === 'release-old-001', 'pointer changed before event consumer gate passed');
     $assert(!in_array('activate', $state->trace, true), 'activation occurred after the event consumer gate failed');
+};
+
+$tests['fenced plan waits for old runs before the first migration'] = static function () use ($fixture, $source, $assert, $assertThrows): void {
+    $state = $fixture(false);
+    $plan = $state->coordinator->createPlan($source, 7);
+    $id = $plan->plan()->planId();
+    while ($plan->plan()->current()?->name() !== UpgradeStep::BACKUP_GATE) {
+        $plan = $state->coordinator->advance($id);
+    }
+    $assert(!UpgradeConsumerFence::blocks($plan), 'pending backup gate must not pause a healthy cron');
+    $runningBackup = $plan->withPlan($plan->plan()->start(UpgradeStep::BACKUP_GATE));
+    $assert(UpgradeConsumerFence::blocks($runningBackup), 'backup gate RUNNING CAS must publish the fence');
+    $state->compatibility->failQuiescent = true;
+    $assertThrows(static fn() => $state->coordinator->advance($id), 'scheduler run still in progress');
+    $failedBackup = $state->coordinator->find($id);
+    $assert($failedBackup->plan()->current()?->name() === UpgradeStep::BACKUP_GATE,
+        'unsettled old run must fail before proof capture');
+    $assert(!UpgradeConsumerFence::blocks($failedBackup), 'failed backup gate must release the pre-migration fence');
+    $state->compatibility->failQuiescent = false;
+    while ($plan->plan()->current()?->name() !== UpgradeStep::PREFLIGHT_MIGRATIONS) {
+        $plan = $state->coordinator->advance($id);
+    }
+    $assert(isset($plan->context()['event_consumer_proof']), 'backup gate did not persist scheduler proof');
+    $state->compatibility->failQuiescent = true;
+    $assertThrows(static fn() => $state->coordinator->advance($id), 'scheduler run still in progress');
+    $assert($state->coordinator->find($id)->plan()->current()?->name() === UpgradeStep::PREFLIGHT_MIGRATIONS,
+        'first migration ran before old consumers settled');
+    $assert(!in_array('migration:' . MigrationPhase::PREFLIGHT, $state->trace, true),
+        'migration SQL started while old scheduler was running');
+    $state->compatibility->failQuiescent = false;
+    $state->coordinator->advance($id);
+    $assert(in_array('migration:' . MigrationPhase::PREFLIGHT, $state->trace, true),
+        'quiescent retry did not permit preflight');
+};
+
+$tests['fenced plan rejects missing paused heartbeat at activation'] = static function () use ($fixture, $source, $assert, $assertThrows): void {
+    $state = $fixture(false);
+    $plan = $state->coordinator->createPlan($source, 7);
+    $id = $plan->plan()->planId();
+    while ($plan->plan()->current()?->name() !== UpgradeStep::ACTIVATE_RELEASE) {
+        $plan = $state->coordinator->advance($id);
+    }
+    $state->compatibility->failPausedHeartbeat = true;
+    $assertThrows(static fn() => $state->coordinator->advance($id), 'paused heartbeat unavailable');
+    $assert($state->pointer->active === 'release-old-001', 'pointer moved without paused heartbeat');
+    $state->compatibility->failPausedHeartbeat = false;
+    $state->coordinator->advance($id);
+    $assert($state->pointer->active === 'release-new-001', 'healthy paused heartbeat did not permit activation');
+};
+
+$tests['unfenced v2 bridge plan retains the old activation gate'] = static function () use ($fixture, $source, $assert): void {
+    $state = $fixture(false);
+    $plan = $state->coordinator->createPlan($source, 7);
+    $id = $plan->plan()->planId();
+    $context = $plan->context();
+    unset($context['scheduler_fence_version']);
+    $plan = $state->plans->save($plan->withContext($context), $plan->plan()->revision());
+    while ($plan->plan()->current()?->name() !== UpgradeStep::PREFLIGHT_MIGRATIONS) {
+        $plan = $state->coordinator->advance($id);
+    }
+    $assert(!UpgradeConsumerFence::blocks($plan), 'old v2 bridge plan must not be fenced retroactively');
+    while ($plan->plan()->current()?->name() !== UpgradeStep::ACTIVATE_RELEASE) {
+        $plan = $state->coordinator->advance($id);
+    }
+    $state->coordinator->advance($id);
+    $assert(in_array('event_consumer_ready', $state->trace, true), 'old v2 plan bypassed its original activation gate');
+    $assert(!in_array('event_consumer_paused', $state->trace, true), 'old v2 plan adopted the new pause gate');
 };
 
 $tests['event consumer health failure cannot complete upgrade'] = static function () use (
@@ -536,7 +625,8 @@ $tests['only one unsettled upgrade plan may exist or advance'] = static function
 
 $tests['v2 final health and quiescence are mandatory, legacy shape is explicit'] = static function () use ($fixture,$source,$assert,$assertThrows): void {
     $state=$fixture(); $plan=$state->coordinator->createPlan($source,7); $id=$plan->plan()->planId();
-    $assert($plan->planVersion()===2 && $plan->toArray()['legacy_plan']===false,'new plans must use v2');
+    $assert($plan->planVersion()===2 && ($plan->context()['scheduler_fence_version'] ?? null)===1
+        && $plan->toArray()['legacy_plan']===false,'new plans must use fenced v2');
     $state->coordinator->runUntilSettled($id);
     $state->coordinator->approveContract($id);
     $state->runtime->failQuiescence=true;
