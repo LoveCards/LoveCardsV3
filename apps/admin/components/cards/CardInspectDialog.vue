@@ -1,5 +1,5 @@
 <template>
-  <v-dialog @after-leave="restoreDialogFocus" :model-value="modelValue" :fullscreen="xs" :persistent="busy" aria-label="卡片详情" max-width="1040" scrollable @update:model-value="requestClose">
+  <v-dialog @after-leave="restoreDialogFocus" :model-value="modelValue" :fullscreen="xs" :persistent="busy" aria-label="卡片详情" max-width="880" scrollable @update:model-value="requestClose">
     <v-card>
       <v-card-title class="d-flex align-center justify-space-between ga-2">
         <span>卡片 #{{ cardId }}</span>
@@ -14,14 +14,10 @@
           embedded
           :initial-mode="initialMode"
           @dirty-change="dirty = $event"
-          @busy-change="busy = $event" @editing-change="editing = $event"
-          @saved="emit('saved')"
+          @busy-change="busy = $event"
+          @saved="onSaved"
         />
       </v-card-text>
-      <v-divider v-if="cardId && !editing && !dirty" />
-      <v-card-actions v-if="cardId && !editing && !dirty" class="pa-4">
-        <v-btn v-if="cardId && !editing && !dirty" :to="{ path: `/apps/content/cards/${cardId}`, state: { listSource: sourcePath } }" variant="text">打开完整页面</v-btn>
-      </v-card-actions>
       <v-alert v-if="confirmClose" class="ma-4" type="warning" variant="tonal">
         卡片有未保存修改，确定关闭并放弃吗？
         <template #append>
@@ -41,13 +37,11 @@ import CardDetailContent from '~/components/cards/CardDetailContent.vue'
 const props = withDefaults(defineProps<{
   modelValue: boolean
   cardId: number | null
-  sourcePath: string
   initialMode?: 'view' | 'edit'
 }>(), { initialMode: 'view' })
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; saved: [] }>()
 const { xs } = useDisplay()
 const dirty = ref(false)
-const editing = ref(props.initialMode === 'edit')
 const busy = ref(false)
 const confirmClose = ref(false)
 
@@ -57,14 +51,18 @@ function requestClose(open: boolean) {
   if (dirty.value) { confirmClose.value = true; return }
   emit('update:modelValue', false)
 }
+function onSaved() {
+  dirty.value = false
+  emit('saved')
+  emit('update:modelValue', false)
+}
 function discardAndClose() {
   confirmClose.value = false
   dirty.value = false
   emit('update:modelValue', false)
 }
 watch(() => props.modelValue, open => {
-  if (open) editing.value = props.initialMode === 'edit'
-  else { dirty.value = false; editing.value = false; busy.value = false; confirmClose.value = false }
+  if (!open) { dirty.value = false; busy.value = false; confirmClose.value = false }
 })
 const restoreDialogFocus = useAdminDialogFocusReturn(() => props.modelValue)
 </script>

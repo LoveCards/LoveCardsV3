@@ -151,7 +151,7 @@
     </AdminResourceTableShell>
   </AdminPageContainer>
 
-  <CardInspectDialog v-model="CardInspectDialog_state" :card-id="CardInspectDialog_id" :initial-mode="CardInspectDialog_mode" :source-path="route.fullPath" @saved="getTableData" />
+  <CardInspectDialog v-model="CardInspectDialog_state" :card-id="CardInspectDialog_id" :initial-mode="CardInspectDialog_mode" @saved="getTableData" />
   <AdminDangerActionDialog
     :model-value="Boolean(pendingCardCommand)"
     :title="pendingCardCommand?.action.label ?? '确认卡片操作'"
