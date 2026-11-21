@@ -144,6 +144,8 @@
 
 自动检查至少运行 `npm run check`；修改管理端运行码再运行 `npm run build:admin` 和相关 E2E。构建通过不能代替上述截图人工审查。
 
+卡片垂直切片的已执行检查与待人工确认项见[卡片详情验收基线](ADMIN-CARD-DETAIL-ACCEPTANCE-BASELINE.md)。
+
 ## 6. 官方参考与本仓库决策
 
 - [Vuetify Cards](https://vuetifyjs.com/en/components/cards/)：标题、正文和动作分区及 flat／outlined 等表面能力。
