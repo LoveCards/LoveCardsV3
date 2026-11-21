@@ -7,7 +7,7 @@
       </v-card-title>
       <v-divider />
       <v-card-text class="pa-0">
-        <RoleDetailContent v-if="modelValue && roleId" :key="`${roleId}:${initialMode}`" :role-id="roleId" :initial-mode="initialMode" @dirty-change="dirty = $event" @busy-change="busy = $event" @saved="onSaved" />
+        <RoleDetailContent v-if="modelValue && roleId" :key="`${roleId}:${initialMode}`" :role-id="roleId" :initial-mode="initialMode" @dirty-change="dirty = $event" @busy-change="busy = $event" @saved="onSaved" @write-applied="emit('saved')" />
       </v-card-text>
     </v-card>
   </v-dialog>

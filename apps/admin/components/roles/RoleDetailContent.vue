@@ -81,7 +81,7 @@ import { useUserStore } from '~/stores/userStore'
 
 type Mode = 'view' | 'edit' | 'assign'
 const props = withDefaults(defineProps<{ roleId: number; initialMode?: Mode }>(), { initialMode: 'view' })
-const emit = defineEmits<{ saved: []; loaded: [role: Role | null]; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean] }>()
+const emit = defineEmits<{ saved: []; 'write-applied': []; loaded: [role: Role | null]; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean] }>()
 const client = useApi()
 const userStore = useUserStore()
 const role = ref<Role | null>(null)
@@ -153,7 +153,7 @@ async function load() {
   loading.value = true
   try {
     const [nextRole, nextGrants] = await Promise.all([client.roles.get(id), client.roles.getGrants(id)])
-    if (request !== latestLoad || props.roleId !== id) return
+    if (request !== latestLoad || props.roleId !== id) return false
     role.value = nextRole
     grants.value = [...nextGrants].sort((a, b) => grantKey(a).localeCompare(grantKey(b)))
     resetDraft()
@@ -205,12 +205,13 @@ async function reloadAfterWrite(id: number, failure: string) {
   const request = ++latestLoad
   try {
     const [nextRole, nextGrants] = await Promise.all([client.roles.get(id), client.roles.getGrants(id)])
-    if (request !== latestLoad || props.roleId !== id) return
+    if (request !== latestLoad || props.roleId !== id) return false
     role.value = nextRole
     grants.value = nextGrants
     resetDraft()
     emit('loaded', nextRole)
-  } catch { if (request === latestLoad && props.roleId === id) loadError.value = failure }
+    return true
+  } catch { if (request === latestLoad && props.roleId === id) actionError.value = failure; return false }
 }
 async function saveBasics() {
   const current = role.value
@@ -224,10 +225,9 @@ async function saveBasics() {
   try {
     await client.roles.update(current.id, params)
     if (props.roleId !== current.id) return
-    role.value = { ...current, ...params }
-    mode.value = 'view'; resetDraft()
-    await reloadAfterWrite(current.id, '修改已保存，但最新角色详情读取失败，请重试确认。')
-    if (!loadError.value && role.value) emit('saved')
+    if (await reloadAfterWrite(current.id, '修改已保存，但最新角色详情读取失败，请重试确认。')) {
+      mode.value = 'view'; emit('saved')
+    } else if (props.roleId === current.id) emit('write-applied')
   } catch (cause) { actionError.value = message(cause, '角色修改失败，请稍后重试。') }
   finally { busy.value = false }
 }
@@ -242,10 +242,9 @@ async function saveGrants() {
   try {
     await client.roles.assignGrants(current.id, { grants: nextGrants })
     if (props.roleId !== current.id) return
-    grants.value = nextGrants
-    mode.value = 'view'; resetDraft()
-    await reloadAfterWrite(current.id, '权限已保存，但最新角色详情读取失败，请重试确认。')
-    if (!loadError.value && role.value) emit('saved')
+    if (await reloadAfterWrite(current.id, '权限已保存，但最新角色详情读取失败，请重试确认。')) {
+      mode.value = 'view'; emit('saved')
+    } else if (props.roleId === current.id) emit('write-applied')
   } catch (cause) { actionError.value = message(cause, '角色权限保存失败，请稍后重试。') }
   finally { busy.value = false }
 }

@@ -94,7 +94,7 @@ test('deleting a user confirms without typed input and removes the row after the
 
   await page.getByRole('row').filter({ hasText: '普通用户七' }).getByRole('button', { name: '更多用户操作' }).click()
   // Vuetify v-list-item 在 menu 内的 role 不稳定，按文案定位菜单项。
-  await page.getByText('删除用户', { exact: true }).click()
+  await page.getByText('删除', { exact: true }).click()
 
   const dialog = page.getByRole('dialog').filter({ hasText: '确认删除' })
   await expect(dialog.getByText('账号记录为软删除，当前用户列表不提供恢复入口。')).toBeVisible()

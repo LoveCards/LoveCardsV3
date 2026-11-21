@@ -7,7 +7,7 @@
       </v-card-title>
       <v-divider />
       <v-card-text class="pa-0">
-        <TagDetailContent v-if="modelValue && tagId" :key="`${tagId}:${initialMode}`" :tag-id="tagId" :initial-mode="initialMode" @dirty-change="dirty = $event" @busy-change="busy = $event" @saved="onSaved" @command-applied="emit('saved')" />
+        <TagDetailContent v-if="modelValue && tagId" :key="`${tagId}:${initialMode}`" :tag-id="tagId" :initial-mode="initialMode" @dirty-change="dirty = $event" @busy-change="busy = $event" @saved="onSaved" @write-applied="emit('saved')" @command-applied="emit('saved')" />
       </v-card-text>
     </v-card>
   </v-dialog>

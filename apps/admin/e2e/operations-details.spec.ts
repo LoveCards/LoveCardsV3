@@ -98,7 +98,7 @@ test('delivery detail keeps payload private and retries without a manual reason'
 
   await page.goto('./apps/operations/deliveries/77', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '处理任务 #77', exact: true, level: 1 })).toBeVisible()
-  await expect(page.getByRole('listbox', { name: '任务摘要' }).getByText('死信', { exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: '处理概况' }).getByText('死信', { exact: true })).toBeVisible()
   await expect(page.getByText('recipient projection unavailable')).toBeVisible()
   await expect(page.locator('body')).not.toContainText('this value must never be rendered')
 
@@ -108,7 +108,7 @@ test('delivery detail keeps payload private and retries without a manual reason'
   await confirm.click()
 
   await expect.poll(() => retried).toBe(true)
-  await expect(page.getByRole('listbox', { name: '任务摘要' }).getByText('待处理', { exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: '处理概况' }).getByText('待处理', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: '重试任务', exact: true })).toHaveCount(0)
 })
 
@@ -145,7 +145,7 @@ test('audit query keeps filters in the URL and sends only supported API fields',
   })
   await page.goto('./apps/operations/audit', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '审计日志', exact: true })).toBeVisible({ timeout: 20_000 })
-  await page.getByRole('textbox', { name: /动作代码（前缀）/ }).fill('auth.recovery')
+  await page.getByRole('combobox', { name: /动作代码（前缀）/ }).fill('auth.recovery')
   await page.getByRole('combobox').filter({ hasText: '全部操作者' }).click()
   await page.getByRole('option', { name: '系统或匿名' }).click()
   await page.getByRole('textbox', { name: /开始时间（站点时间）/ }).fill('2026-11-08T09:00')
@@ -162,7 +162,7 @@ test('audit query keeps filters in the URL and sends only supported API fields',
   expect(params.has('search_value')).toBe(false)
   await expect(page).toHaveURL(/request_id=request-audit-88/)
   await page.reload()
-  await expect(page.getByRole('textbox', { name: /动作代码（前缀）/ })).toHaveValue('auth.recovery')
+  await expect(page.getByRole('combobox', { name: /动作代码（前缀）/ })).toHaveValue('auth.recovery')
   await page.getByRole('button', { name: '清除筛选' }).click()
   await expect.poll(() => requests.at(-1)?.searchParams.has('action')).toBe(false)
   await expect(page).not.toHaveURL(/request_id=/)
@@ -224,7 +224,7 @@ test('delivery and audit lists open shared detail dialogs without navigation', a
   await deliveryRequest
   await expect(page.getByRole('dialog', { name: '查看处理任务' })).toContainText('任务 #77')
   await expect(page).toHaveURL(deliveryUrl)
-  await page.getByRole('button', { name: '关闭处理任务' }).click()
+  await page.getByRole('dialog', { name: '查看处理任务' }).getByRole('button', { name: '关闭' }).click()
 
   await page.goto('./apps/operations/audit', { waitUntil: 'domcontentloaded' })
   const row = page.getByRole('row').filter({ hasText: 'cards.update' })

@@ -59,7 +59,7 @@ import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue'
 
 type GovernanceAction = { method: TagsBatchMethod; label: string; targetLabel: string }
 const props = withDefaults(defineProps<{ tagId: number; initialMode?: 'view' | 'edit' }>(), { initialMode: 'view' })
-const emit = defineEmits<{ saved: []; 'command-applied': []; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean] }>()
+const emit = defineEmits<{ saved: []; 'write-applied': []; 'command-applied': []; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean] }>()
 const client = useApi()
 const userStore = useUserStore()
 const tagsStore = useTagsStore()
@@ -122,13 +122,14 @@ async function reloadAfterWrite(id: number, failureMessage: string) {
   const requestId = ++latestLoad
   try {
     const result = await client.tags.getManaged(id)
-    if (requestId !== latestLoad || props.tagId !== id) return
+    if (requestId !== latestLoad || props.tagId !== id) return false
     tag.value = result
     draftName.value = result.name
+    return true
   } catch {
-    if (requestId !== latestLoad || props.tagId !== id) return
-    tag.value = null
-    loadError.value = failureMessage
+    if (requestId !== latestLoad || props.tagId !== id) return false
+    actionError.value = failureMessage
+    return false
   }
 }
 function startEditing() { if (tag.value && canUpdate.value) { selectedAction.value = null; confirmCancel.value = false; draftName.value = tag.value.name; mode.value = 'edit' } }
@@ -136,22 +137,20 @@ function cancelEditing() { if (dirty.value) { confirmCancel.value = true; return
 function discardEditing() { if (tag.value) draftName.value = tag.value.name; confirmCancel.value = false; mode.value = 'view' }
 async function saveName() {
   if (!tag.value || !canSave.value) return
-  const originalTag = tag.value
-  const id = originalTag.id
+  const id = tag.value.id
   const name = draftName.value.trim()
   pending.value = true
   actionError.value = null
   try {
     await client.tags.updateManaged(id, { name })
-    if (props.tagId !== id) { emit('saved'); return }
-    tag.value = { ...originalTag, name }
-    draftName.value = name
-    mode.value = 'view'
-    initialModePending = false
-    confirmCancel.value = false
+    if (props.tagId !== id) return
     void tagsStore.getIndex().catch(() => undefined)
-    await reloadAfterWrite(id, '名称已保存，但最新详情读取失败。请重试确认。')
-    if (tag.value) emit('saved')
+    if (await reloadAfterWrite(id, '名称已保存，但最新详情读取失败。请重试确认。')) {
+      mode.value = 'view'
+      initialModePending = false
+      confirmCancel.value = false
+      emit('saved')
+    } else if (props.tagId === id) emit('write-applied')
   } catch (cause) { if (props.tagId === id) actionError.value = isApiError(cause) ? cause.message : '标签名称保存失败。' }
   finally { pending.value = false }
 }

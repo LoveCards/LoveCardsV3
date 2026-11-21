@@ -3,7 +3,7 @@ import type { MaybeRefOrGetter } from 'vue'
 
 export function useAdminUnsavedChanges(
   dirty: MaybeRefOrGetter<boolean>,
-  options: { guardQuery?: boolean; onDiscard?: () => void } = {},
+  options: { guardQuery?: boolean } = {},
 ) {
   const dialogOpen = ref(false)
   let resolveNavigation: ((allow: boolean) => void) | null = null
@@ -52,7 +52,7 @@ export function useAdminUnsavedChanges(
   return {
     unsavedChangesDialog: readonly(dialogOpen),
     continueEditing: () => settleNavigation(false),
-    discardChanges: () => { options.onDiscard?.(); settleNavigation(true) },
+    discardChanges: () => settleNavigation(true),
     confirmUnsavedChanges: confirmNavigation,
   }
 }
