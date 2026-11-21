@@ -1,5 +1,5 @@
 <template>
-  <v-card :border="!embedded" rounded="lg" variant="flat">
+  <div :class="{ 'comment-detail__page-surface': !embedded }">
     <v-card-text class="pa-4 pa-sm-6">
       <AdminAsyncState :loading="loading" :error="loadError" :empty="!comment" empty-title="评论不存在" @retry="load">
         <template v-if="comment">
@@ -49,7 +49,7 @@
       <v-btn v-if="mode === 'edit'" color="primary" :loading="saving" :disabled="!dirty || busy" variant="flat" @click="save">保存修改</v-btn>
     </v-card-actions>
     <v-alert v-if="confirmDiscard" class="ma-4" type="warning" variant="tonal">评论有未保存修改，确定放弃吗？<template #append><v-btn variant="text" @click="confirmDiscard = false">继续编辑</v-btn><v-btn color="warning" variant="flat" @click="discardEdit">放弃修改</v-btn></template></v-alert>
-  </v-card>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -65,7 +65,7 @@ import { isApiError, useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 
 const props = withDefaults(defineProps<{ commentId: number; initialMode?: 'view' | 'edit'; embedded?: boolean }>(), { initialMode: 'view', embedded: false })
-const emit = defineEmits<{ saved: []; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean]; 'editing-change': [value: boolean] }>()
+const emit = defineEmits<{ saved: []; 'command-applied': []; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean]; 'editing-change': [value: boolean] }>()
 const client = useApi()
 const notifier = useAdminNotifier()
 const userStore = useUserStore()
@@ -114,10 +114,8 @@ async function save() {
   formError.value = ''
   try {
     await client.comments.moderateManaged(comment.value.id, { content: draft.value })
-    mode.value = 'view'
-    saving.value = false
-    emit('saved')
     await load()
+    if (!loadError.value) { mode.value = 'view'; emit('saved') }
   } catch (cause) { formError.value = isApiError(cause) ? cause.message : '评论保存失败，请稍后重试。' }
   finally { saving.value = false }
 }
@@ -135,7 +133,7 @@ async function runCommand() {
     else if (action.method === 'unpin') await client.comments.unpinManaged(current.card_id)
     else await client.comments.batchManaged({ method: action.method, ids: [current.id] })
     pendingCommand.value = null
-    emit('saved')
+    emit('command-applied')
     try {
       const refreshed = await client.comments.getManaged(id)
       if (id !== props.commentId) return
@@ -154,6 +152,7 @@ watch(() => props.commentId, openComment)
 </script>
 
 <style scoped>
+.comment-detail__page-surface { border: 1px solid rgb(var(--v-theme-outline-variant)); border-radius: 4px; background: rgb(var(--v-theme-surface)); }
 .text-wrap { overflow-wrap: anywhere; white-space: pre-wrap; }
 .comment-detail__body { max-width: 76ch; font-size: 1.0625rem; line-height: 1.75; overflow-wrap: anywhere; }
 </style>

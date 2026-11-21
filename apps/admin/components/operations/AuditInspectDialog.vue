@@ -16,11 +16,6 @@
       <v-card-text class="pa-0">
         <AuditDetailContent v-if="modelValue && auditId" :audit-id="auditId" />
       </v-card-text>
-      <v-divider v-if="auditId" />
-      <v-card-actions v-if="auditId" class="pa-4">
-
-        <v-btn v-if="auditId" variant="text" @click="openFullPage">打开完整页面</v-btn>
-      </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
@@ -33,14 +28,7 @@ import AuditDetailContent from '~/components/operations/AuditDetailContent.vue'
 const props = defineProps<{ modelValue: boolean; auditId: number | null; sourcePath: string }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
 const { xs } = useDisplay()
-const router = useRouter()
 
-async function openFullPage() {
-  if (!props.auditId) return
-  const path = `/apps/operations/audit/${props.auditId}`
-  emit('update:modelValue', false)
-  await nextTick()
-  await router.push({ path, state: { listSource: props.sourcePath } })
-}
+
 const restoreDialogFocus = useAdminDialogFocusReturn(() => props.modelValue)
 </script>

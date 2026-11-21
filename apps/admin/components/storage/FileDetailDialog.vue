@@ -9,10 +9,6 @@
       <v-card-text class="pa-0">
         <FileDetailContent v-if="modelValue && fileId" :key="fileId" :file-id="fileId" @changed="emit('changed')" @removed="handleRemoved" @busy-change="busy = $event" />
       </v-card-text>
-      <v-divider v-if="fileId" />
-      <v-card-actions v-if="fileId" class="pa-4">
-        <v-btn v-if="fileId" :to="`/apps/settings/storage/files/${fileId}`" variant="text">打开完整页面</v-btn>
-      </v-card-actions>
     </v-card>
   </v-dialog>
 </template>

@@ -15,7 +15,6 @@
             <v-col cols="12" sm="6"><AdminDetailField label="位置" :value="file.is_deleted ? '回收站' : '正常列表'" /></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="渠道" :value="file.channel_slug" /></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="场景" :value="file.scene" /></v-col>
-            <v-col cols="12" sm="6"><AdminDetailField label="编号" :value="`#${file.id}`" /></v-col>
           </v-row>
 
           <v-divider v-if="hasFileCommands" class="my-5" />

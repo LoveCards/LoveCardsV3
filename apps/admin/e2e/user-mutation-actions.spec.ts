@@ -163,3 +163,37 @@ test('revoking one session confirms without typed input and marks the session cl
   await expect.poll(() => revokedId).toBe('31')
   await expect(row.getByText('已撤销或过期', { exact: true })).toBeVisible()
 })
+
+test('user status command keeps profile draft in the edit dialog', async ({ page }) => {
+  test.slow()
+  let status = 0
+  let profilePatches = 0
+  await page.route('**/api/admin/users/7', async (route) => {
+    if (route.request().method() === 'PATCH') {
+      const patch = route.request().postDataJSON() as { status?: number; username?: string }
+      if (typeof patch.status === 'number') status = patch.status
+      if (patch.username) profilePatches += 1
+      return route.fulfill({ status: 204, body: '' })
+    }
+    return route.fulfill({ json: { success: true, data: { ...userRow, status } } })
+  })
+  await page.route('**/api/admin/users?**', async (route) => {
+    await route.fulfill({ json: { success: true, data: { data: [{ ...userRow, status }], pagination: { total: 1, page: 1, list_rows: 10 } } } })
+  })
+  await page.goto('./apps/users', { waitUntil: 'domcontentloaded' })
+  const row = page.getByRole('row').filter({ hasText: '普通用户七' })
+  await expect(row).toBeVisible({ timeout: 25_000 })
+  await row.getByRole('button', { name: '编辑', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '用户详情' })
+  await dialog.getByRole('textbox', { name: '用户名' }).fill('尚未保存的用户名')
+  const statusSelect = dialog.getByRole('combobox', { name: '调整账号状态' })
+  await expect(statusSelect).toBeEnabled()
+  await dialog.locator('.v-select').filter({ hasText: '调整账号状态' }).click()
+  await page.getByRole('option', { name: '封禁' }).click()
+  await page.getByRole('dialog', { name: '封禁用户' }).getByTestId('danger-confirm').click()
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('textbox', { name: '用户名' })).toHaveValue('尚未保存的用户名')
+  await expect(statusSelect).toHaveValue('已封禁')
+  expect(status).toBe(1)
+  expect(profilePatches).toBe(0)
+})

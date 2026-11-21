@@ -170,3 +170,22 @@ test('report list opens the current report in a dialog and preserves its filters
   await expect(dialog).toBeHidden()
   await expect(page).toHaveURL(listUrl)
 })
+
+test('report processing and note scopes guard draft switches', async ({ page }) => {
+  await page.route('**/api/admin/reports/55', async (route) => {
+    await route.fulfill({ json: { success: true, data: reportFixture('open') } })
+  })
+  await page.goto('./apps/community/reports/55', { waitUntil: 'domcontentloaded' })
+  await page.getByRole('button', { name: '更新处理状态', exact: true }).click()
+  const processing = page.getByRole('region', { name: '处理操作' })
+  await processing.getByLabel('处理原因或结论').fill('尚未提交的处理结论')
+  await processing.getByRole('button', { name: '改为追加备注' }).click()
+  const guard = page.getByRole('dialog', { name: '有未保存的修改' })
+  await expect(guard).toBeVisible()
+  await guard.getByRole('button', { name: '继续编辑' }).click()
+  await expect(processing.getByLabel('处理原因或结论')).toHaveValue('尚未提交的处理结论')
+  await processing.getByRole('button', { name: '改为追加备注' }).click()
+  await guard.getByRole('button', { name: '放弃修改' }).click()
+  await expect(processing.getByLabel('备注内容')).toBeVisible()
+  await expect(processing.getByLabel('处理原因或结论')).toHaveCount(0)
+})

@@ -19,11 +19,6 @@
           @updated="$emit('updated')"
         />
       </v-card-text>
-      <v-divider v-if="report" />
-      <v-card-actions v-if="report" class="pa-4">
-
-        <v-btn v-if="report" variant="text" @click="openFullPage">打开完整页面</v-btn>
-      </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
@@ -38,19 +33,12 @@ withDefaults(defineProps<{ reportId: number | null; initialMode?: 'view' | 'proc
 defineEmits<{ updated: [] }>()
 const open = defineModel<boolean>({ default: false })
 const { xs } = useDisplay()
-const route = useRoute()
-const router = useRouter()
 const report = ref<AdminReport | null>(null)
 const content = ref<InstanceType<typeof ReportDetailContent> | null>(null)
 async function close() {
   if (await content.value?.requestClose() ?? true) open.value = false
 }
-async function openFullPage() {
-  if (!report.value || !(await content.value?.requestClose() ?? true)) return
-  const id = report.value.id
-  open.value = false
-  await router.push({ path: '/apps/community/reports/' + id, state: { listSource: route.fullPath } })
-}
+
 function onDialogChange(value: boolean) {
   if (value) open.value = true
   else void close()

@@ -19,19 +19,15 @@
           @command-applied="emit('saved')"
         />
       </v-card-text>
-      <v-alert v-if="confirmClose" class="ma-4" type="warning" variant="tonal">
-        卡片有未保存修改，确定关闭并放弃吗？
-        <template #append>
-          <v-btn variant="text" @click="confirmClose = false">继续编辑</v-btn>
-          <v-btn color="warning" variant="flat" @click="discardAndClose">放弃修改</v-btn>
-        </template>
-      </v-alert>
     </v-card>
   </v-dialog>
+  <AdminUnsavedChangesDialog :model-value="unsavedChangesDialog" @stay="continueEditing" @discard="discardChanges" />
 </template>
 
 <script setup lang="ts">
 import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
+import { useAdminUnsavedChanges } from '~/composables/useAdminUnsavedChanges'
+import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
 import { useDisplay } from 'vuetify'
 import CardDetailContent from '~/components/cards/CardDetailContent.vue'
 
@@ -44,12 +40,10 @@ const emit = defineEmits<{ 'update:modelValue': [value: boolean]; saved: [] }>()
 const { xs } = useDisplay()
 const dirty = ref(false)
 const busy = ref(false)
-const confirmClose = ref(false)
+const { unsavedChangesDialog, continueEditing, discardChanges, confirmUnsavedChanges } = useAdminUnsavedChanges(dirty, { guardQuery: true })
 
-function requestClose(open: boolean) {
-  if (open) return
-  if (busy.value) return
-  if (dirty.value) { confirmClose.value = true; return }
+async function requestClose(open: boolean) {
+  if (open || busy.value || !(await confirmUnsavedChanges())) return
   emit('update:modelValue', false)
 }
 function onSaved() {
@@ -57,13 +51,8 @@ function onSaved() {
   emit('saved')
   emit('update:modelValue', false)
 }
-function discardAndClose() {
-  confirmClose.value = false
-  dirty.value = false
-  emit('update:modelValue', false)
-}
 watch(() => props.modelValue, open => {
-  if (!open) { dirty.value = false; busy.value = false; confirmClose.value = false }
+  if (!open) { dirty.value = false; busy.value = false }
 })
 const restoreDialogFocus = useAdminDialogFocusReturn(() => props.modelValue)
 </script>

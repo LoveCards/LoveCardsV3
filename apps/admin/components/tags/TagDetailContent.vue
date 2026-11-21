@@ -25,7 +25,6 @@
           <v-row dense class="mt-2">
             <v-col cols="12" sm="6"><AdminDetailField label="创建用户"><AdminResourceLink resource-type="user" :resource-id="tag.user_id" :label="`用户 #${tag.user_id}`" /></AdminDetailField></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="创建时间"><AdminTableTime :value="tag.created_at" /></AdminDetailField></v-col>
-            <v-col cols="12" sm="6"><AdminDetailField label="编号" :value="`#${tag.id}`" /></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="应用 ID" :value="tag.aid" /></v-col>
           </v-row>
         </AdminDetailSection>
@@ -60,7 +59,7 @@ import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue'
 
 type GovernanceAction = { method: TagsBatchMethod; label: string; targetLabel: string }
 const props = withDefaults(defineProps<{ tagId: number; initialMode?: 'view' | 'edit' }>(), { initialMode: 'view' })
-const emit = defineEmits<{ saved: []; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean] }>()
+const emit = defineEmits<{ saved: []; 'command-applied': []; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean] }>()
 const client = useApi()
 const userStore = useUserStore()
 const tagsStore = useTagsStore()
@@ -151,8 +150,8 @@ async function saveName() {
     initialModePending = false
     confirmCancel.value = false
     void tagsStore.getIndex().catch(() => undefined)
-    emit('saved')
     await reloadAfterWrite(id, '名称已保存，但最新详情读取失败。请重试确认。')
+    if (tag.value) emit('saved')
   } catch (cause) { if (props.tagId === id) actionError.value = isApiError(cause) ? cause.message : '标签名称保存失败。' }
   finally { pending.value = false }
 }
@@ -181,7 +180,7 @@ async function applyGovernance() {
     await client.tags.batchManaged({ method: action.method, ids: [id] })
     selectedAction.value = null
     void tagsStore.getIndex().catch(() => undefined)
-    emit('saved')
+    emit('command-applied')
     try {
       const result = await client.tags.getManaged(id)
       if (props.tagId !== id) return

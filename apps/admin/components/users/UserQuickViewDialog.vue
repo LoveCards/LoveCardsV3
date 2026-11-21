@@ -16,13 +16,13 @@
           :initial-mode="initialMode"
           @loaded="loadedUser = $event"
           @updated="$emit('updated')"
+          @saved="onSaved"
         />
       </v-card-text>
-      <v-divider v-if="loadedUser" />
-      <v-card-actions v-if="loadedUser" class="pa-4">
+      <v-divider v-if="loadedUser && canReadSecurity" />
+      <v-card-actions v-if="loadedUser && canReadSecurity" class="pa-4">
         <v-btn v-if="loadedUser && canReadSecurity" variant="text" @click="navigateAfterConfirm('/apps/users/' + loadedUser.id + '/security')">账号安全</v-btn>
 
-        <v-btn v-if="loadedUser" variant="text" @click="navigateAfterConfirm('/apps/users/' + loadedUser.id, true)">打开完整页面</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -35,24 +35,26 @@ import { useDisplay } from 'vuetify'
 import UserDetailContent from '~/components/users/UserDetailContent.vue'
 import { useUserStore } from '~/stores/userStore'
 
-withDefaults(defineProps<{ userId: number | null; initialMode?: 'view' | 'edit' }>(), { initialMode: 'view' })
+const props = withDefaults(defineProps<{ userId: number | null; initialMode?: 'view' | 'edit' }>(), { initialMode: 'view' })
 defineEmits<{ updated: [] }>()
 const open = defineModel<boolean>({ default: false })
 const { xs } = useDisplay()
-const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const canReadSecurity = computed(() => userStore.hasGrant('users.security.read', 'global'))
 const loadedUser = ref<User | null>(null)
 const content = ref<InstanceType<typeof UserDetailContent> | null>(null)
 watch([open, () => loadedUser.value?.id], () => { if (!open.value) loadedUser.value = null })
+function onSaved(scope: 'profile' | 'roles') {
+  if (props.initialMode === 'edit' && scope === 'profile') open.value = false
+}
 async function close() {
   if (await content.value?.requestClose() ?? true) open.value = false
 }
-async function navigateAfterConfirm(path: string, withSource = false) {
+async function navigateAfterConfirm(path: string) {
   if (!(await content.value?.requestClose() ?? true)) return
   open.value = false
-  await router.push(withSource ? { path, state: { adminSource: route.fullPath } } : { path })
+  await router.push({ path })
 }
 function onDialogChange(value: boolean) {
   if (value) open.value = true

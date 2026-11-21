@@ -34,6 +34,7 @@
           <v-btn prepend-icon="mdi-note-text-outline" variant="outlined" @click="startNote">追加备注</v-btn>
         </div>
         <template v-else-if="mode === 'process'">
+          <v-btn variant="text" class="mb-2" @click="startNote">改为追加备注</v-btn>
           <v-select v-model="nextStatus" :items="availableStatusItems" label="目标状态" variant="outlined" />
           <v-textarea v-model="resolution" class="mt-3" label="处理原因或结论" maxlength="255" rows="4" variant="outlined" />
           <v-alert class="mt-3" type="info" variant="tonal">状态变化和原因将写入审计记录；进入对用户有意义的终态时，由后端按通知规范处理。</v-alert>
@@ -41,6 +42,7 @@
           <div class="d-flex justify-end ga-2 mt-4"><v-btn variant="text" :disabled="saving" @click="cancelAction">取消</v-btn><v-btn color="primary" variant="flat" :disabled="!nextStatus || !resolution.trim()" :loading="saving" @click="transition">确认处理</v-btn></div>
         </template>
         <template v-else>
+          <v-btn v-if="canTransition" variant="text" class="mb-2" @click="startProcessing">改为更新处理状态</v-btn>
           <v-textarea v-model="note" label="备注内容" maxlength="1000" rows="4" variant="outlined" />
           <v-alert class="mt-3" type="info" variant="tonal">备注不改变处理状态，将写入审计记录，不发送用户通知。</v-alert>
           <v-alert v-if="actionError" class="mt-3" type="error" variant="tonal">{{ actionError }}</v-alert>
@@ -82,6 +84,7 @@ const nextStatus = ref('')
 const resolution = ref('')
 const note = ref('')
 const confirmDiscard = ref(false)
+const pendingMode = ref<'process' | 'note' | null>(null)
 let latestLoad = 0
 let resolveDiscard: ((allow: boolean) => void) | null = null
 const statusItems = [
@@ -159,18 +162,22 @@ const dirty = computed(() => mode.value === 'process'
   ? Boolean(resolution.value.trim() || (nextStatus.value && nextStatus.value !== availableStatusItems.value[0]?.value))
   : mode.value === 'note' && Boolean(note.value.trim()))
 
-function startProcessing() {
-  if (!canManage.value || !canTransition.value) return
+function activateMode(next: 'process' | 'note') {
   nextStatus.value = availableStatusItems.value[0]?.value ?? ''
   resolution.value = ''
-  actionError.value = ''
-  mode.value = 'process'
-}
-function startNote() {
-  if (!canManage.value) return
   note.value = ''
   actionError.value = ''
-  mode.value = 'note'
+  mode.value = next
+}
+function startProcessing() {
+  if (!canManage.value || !canTransition.value || saving.value) return
+  if (dirty.value) { pendingMode.value = 'process'; confirmDiscard.value = true; return }
+  activateMode('process')
+}
+function startNote() {
+  if (!canManage.value || saving.value) return
+  if (dirty.value) { pendingMode.value = 'note'; confirmDiscard.value = true; return }
+  activateMode('note')
 }
 async function requestClose(): Promise<boolean> {
   if (saving.value) return false
@@ -180,16 +187,22 @@ async function requestClose(): Promise<boolean> {
 }
 function stayEditing() {
   confirmDiscard.value = false
+  pendingMode.value = null
   resolveDiscard?.(false)
   resolveDiscard = null
 }
 function discardChanges() {
   confirmDiscard.value = false
-  mode.value = 'view'
-  nextStatus.value = ''
-  resolution.value = ''
-  note.value = ''
-  resolveDiscard?.(true)
+  const next = pendingMode.value
+  pendingMode.value = null
+  if (next) activateMode(next)
+  else {
+    mode.value = 'view'
+    nextStatus.value = ''
+    resolution.value = ''
+    note.value = ''
+  }
+  resolveDiscard?.(!next)
   resolveDiscard = null
 }
 async function cancelAction() {

@@ -559,10 +559,8 @@ const submit = async () => {
     const boundIds = new Set(CardMediaData.value.edit.map(item => item.fileId))
     uploadedFileIds.value = uploadedFileIds.value.filter(id => !boundIds.has(id))
     reportUnsavedUpload()
-    mode.value = 'view'
-    saving.value = false
-    emit('saved')
     await loadCard()
+    if (loaded.value && !loadError.value) { mode.value = 'view'; emit('saved') }
   } catch (cause) {
     if (!jsonError.value) formError.value = errorMessage(cause, '卡片保存失败，请检查字段后重试。')
   } finally {

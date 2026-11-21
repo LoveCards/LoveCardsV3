@@ -29,7 +29,7 @@
             <v-col cols="12" sm="6"><AdminSensitiveField label="邮箱" :value="user.email" /></v-col>
             <v-col cols="12" sm="6"><AdminSensitiveField label="手机号" :value="user.phone" /></v-col>
           </v-row>
-          <div v-if="mode === 'view' && canEditTarget" class="d-flex justify-end mt-3">
+          <div v-if="canEditTarget" class="d-flex justify-end mt-3">
             <v-btn prepend-icon="mdi-pencil" variant="tonal" @click="startEditing('profile')">编辑资料</v-btn>
           </div>
         </template>
@@ -64,19 +64,22 @@
 
       <AdminDetailSection title="账号状态与治理">
         <p class="text-body-2 text-medium-emphasis mb-3">封禁、冻结和审核会改变账号访问状态，单独提交并由服务端执行通知与审计规则。</p>
-        <template v-if="mode === 'status' && canEditTarget">
-          <v-select v-model="statusDraft" :items="accountStatusOptions" label="目标账号状态" :disabled="statusSaving" variant="outlined" />
-          <div class="d-flex justify-end ga-2">
-            <v-btn variant="text" :disabled="statusSaving" @click="cancelEditing">取消</v-btn>
-            <v-btn color="primary" variant="flat" :disabled="!statusDirty || statusSaving" @click="statusConfirm = true">{{ statusActionLabel }}</v-btn>
-          </div>
-        </template>
-        <template v-else>
-          <span class="text-body-2">{{ accountStatus.label }}</span>
-          <div v-if="mode === 'view' && canEditTarget" class="d-flex justify-end mt-3">
-            <v-btn variant="outlined" @click="startEditing('status')">调整账号状态</v-btn>
-          </div>
-        </template>
+        <v-row dense align="center">
+          <v-col cols="12" sm="6"><AdminDetailField label="当前状态" :value="accountStatus.label" /></v-col>
+          <v-col v-if="canEditTarget" cols="12" sm="6">
+            <v-select
+              :model-value="null"
+              :items="accountStatusCommandOptions"
+              :disabled="saving || rolesSaving || statusSaving || avatarUploading"
+              label="调整账号状态"
+              item-title="title"
+              item-value="value"
+              variant="outlined"
+              @update:model-value="requestStatusCommand"
+            />
+          </v-col>
+        </v-row>
+        <p v-if="dirty && canEditTarget" class="text-caption text-medium-emphasis mt-2">账号状态单独提交；当前未保存的字段修改仍需另行保存。</p>
       </AdminDetailSection>
 
       <AdminDetailSection title="角色归属">
@@ -91,7 +94,7 @@
             <v-btn color="primary" variant="flat" :loading="rolesSaving" :disabled="!rolesDirty || rolesLoading" @click="saveRoles">保存角色分配</v-btn>
           </div>
         </template>
-        <div v-else-if="mode === 'view' && canManageRoles && canEditTarget" class="d-flex justify-end mt-3">
+        <div v-else-if="mode !== 'roles' && canManageRoles && canEditTarget" class="d-flex justify-end mt-3">
           <v-btn variant="outlined" @click="startEditing('roles')">调整角色</v-btn>
         </div>
       </AdminDetailSection>
@@ -128,14 +131,14 @@ import { useUserStore } from '~/stores/userStore'
 import { classifyUserTargetRole, parseUserRoleIds } from '~/utils/userTargetProtection'
 
 const props = withDefaults(defineProps<{ userId: number; initialMode?: 'view' | 'edit' }>(), { initialMode: 'view' })
-const emit = defineEmits<{ loaded: [user: User | null]; updated: [] }>()
+const emit = defineEmits<{ loaded: [user: User | null]; updated: []; saved: [scope: 'profile' | 'roles'] }>()
 const client = useApi()
 const notifier = useAdminNotifier()
 const userStore = useUserStore()
 const user = ref<User | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
-type EditScope = 'profile' | 'status' | 'roles'
+type EditScope = 'profile' | 'roles'
 const mode = ref<'view' | EditScope>('view')
 const draft = ref<Partial<User>>({})
 const roleDraft = ref<number[]>([])
@@ -169,6 +172,16 @@ const accountStatus = computed(() => {
   }
   return labels[Number(user.value?.status)] ?? { status: 'unknown', label: '未知状态' }
 })
+const accountStatusCommandOptions = computed(() => [
+  { title: accountStatus.value.label, value: null },
+  ...accountStatusOptions.filter((item) => item.value !== Number(user.value?.status)),
+])
+function requestStatusCommand(value: number | null) {
+  if (value === null || !canEditTarget.value || saving.value || rolesSaving.value || statusSaving.value || avatarUploading.value) return
+  statusDraft.value = value
+  statusError.value = ''
+  statusConfirm.value = true
+}
 const roleIds = computed(() => parseUserRoleIds(user.value?.roles_id) ?? [])
 const roleLabels = computed(() => {
   if (!user.value) return []
@@ -191,7 +204,7 @@ const rolesDirty = computed(() => JSON.stringify([...roleDraft.value].sort()) !=
 const statusDirty = computed(() => !!user.value && statusDraft.value !== Number(user.value.status))
 const statusTargetLabel = computed(() => accountStatusOptions.find((item) => item.value === statusDraft.value)?.title ?? '未知状态')
 const statusActionLabel = computed(() => statusDraft.value === 0 ? '恢复账号' : statusDraft.value === 1 ? '封禁用户' : statusDraft.value === 2 ? '冻结用户' : '提交账号审核')
-const dirty = computed(() => mode.value === 'profile' ? profileDirty.value : mode.value === 'roles' ? rolesDirty.value : mode.value === 'status' ? statusDirty.value : false)
+const dirty = computed(() => mode.value === 'profile' ? profileDirty.value : mode.value === 'roles' ? rolesDirty.value : false)
 
 function resetDraft() {
   if (!user.value) return
@@ -246,8 +259,9 @@ async function load() {
     if (requestId === latestLoad) loading.value = false
   }
 }
-function startEditing(scope: EditScope) {
-  if (!canEditTarget.value || mode.value !== 'view' || (scope === 'roles' && !canManageRoles.value)) return
+async function startEditing(scope: EditScope) {
+  if (!canEditTarget.value || mode.value === scope || (scope === 'roles' && !canManageRoles.value)) return
+  if (mode.value !== 'view' && !(await requestClose())) return
   resetDraft()
   mode.value = scope
 }
@@ -318,7 +332,7 @@ async function saveProfile() {
       if (JSON.stringify(draft.value[key]) !== JSON.stringify(user.value[key])) changes[key] = draft.value[key]
     }
     await client.users.updateManaged(user.value.id, changes as Parameters<typeof client.users.updateManaged>[1])
-    if (await refreshAfterSave()) notifier.success('用户资料已保存')
+    if (await refreshAfterSave()) { notifier.success('用户资料已保存'); emit('saved', 'profile') }
   } catch (cause) {
     formError.value = isApiError(cause) ? cause.message : '用户资料保存失败，请检查字段后重试。'
   } finally {
@@ -332,7 +346,17 @@ async function saveStatus() {
   try {
     await client.users.updateManaged(user.value.id, { status: statusDraft.value })
     statusConfirm.value = false
-    if (await refreshAfterSave()) notifier.success('账号状态已更新')
+    try {
+      const refreshed = await client.users.getManaged(user.value.id)
+      if (user.value?.id !== refreshed.id) return
+      user.value.status = refreshed.status
+      statusDraft.value = Number(refreshed.status)
+      emit('updated')
+      notifier.success('账号状态已更新')
+    } catch {
+      formError.value = '账号状态已提交，但无法读取最新状态；请刷新后核对结果。'
+      emit('updated')
+    }
   } catch (cause) {
     statusError.value = isApiError(cause) ? cause.message : '账号状态更新失败，请稍后重试。'
   } finally {
@@ -345,7 +369,7 @@ async function saveRoles() {
   rolesError.value = ''
   try {
     await client.users.assignRoles(user.value.id, { roles_id: roleDraft.value })
-    if (await refreshAfterSave()) notifier.success('角色分配已保存')
+    if (await refreshAfterSave()) { notifier.success('角色分配已保存'); emit('saved', 'roles') }
   } catch (cause) {
     rolesError.value = isApiError(cause) ? cause.message : '角色分配失败，请稍后重试。'
   } finally {

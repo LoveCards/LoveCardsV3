@@ -11,13 +11,12 @@
                 {{ classification === 'system' ? '系统角色' : classification === 'custom' ? '自定义角色' : '类型未知' }}
               </v-chip>
             </div>
-            <v-btn v-if="mode === 'view' && canEdit" variant="tonal" prepend-icon="mdi-pencil-outline" @click="startEdit">编辑角色</v-btn>
+            <v-btn v-if="mode !== 'edit' && canEdit" variant="tonal" prepend-icon="mdi-pencil-outline" @click="startEdit">编辑角色</v-btn>
           </div>
           <v-alert v-if="classification === 'unknown'" class="mb-4" type="warning" variant="tonal">无法确认角色类型，编辑与分配权限已锁定。</v-alert>
           <v-alert v-else-if="classification === 'system' && mode === 'edit'" class="mb-4" type="info" variant="tonal">系统角色的标识由服务端固定，只允许超级管理员修改名称和说明。</v-alert>
           <v-row v-if="mode !== 'edit'" dense>
             <v-col cols="12" sm="6"><AdminDetailField label="稳定标识" :value="role.slug" /></v-col>
-            <v-col cols="12" sm="6"><AdminDetailField label="编号" :value="`#${role.id}`" /></v-col>
             <v-col cols="12"><AdminDetailField label="职责说明" :value="role.description || '未填写职责说明'" /></v-col>
           </v-row>
           <template v-else>
@@ -36,7 +35,7 @@
         <AdminDetailSection title="已授予能力" description="权限分配独立保存，会影响角色可见数据和可执行操作。">
           <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-3">
             <v-chip size="small" variant="outlined">{{ grants.length }} 项</v-chip>
-            <v-btn v-if="mode === 'view' && canAssign" variant="outlined" prepend-icon="mdi-shield-key-outline" @click="startAssign">分配权限</v-btn>
+            <v-btn v-if="mode !== 'assign' && canAssign" variant="outlined" prepend-icon="mdi-shield-key-outline" @click="startAssign">分配权限</v-btn>
           </div>
           <template v-if="mode === 'assign'">
             <v-alert class="mb-3" type="info" variant="tonal">权限调整会影响该角色可见的页面、数据范围和可执行操作，请在保存前核对选择范围。</v-alert>
@@ -65,7 +64,7 @@
         </AdminDetailSection>
         <v-alert v-if="confirmCancel" class="mt-4" type="warning" variant="tonal">
           当前修改尚未保存，确定放弃吗？
-          <template #append><v-btn variant="text" @click="confirmCancel = false">继续编辑</v-btn><v-btn color="warning" variant="flat" @click="discardMode">放弃修改</v-btn></template>
+          <template #append><v-btn variant="text" @click="stayEditing">继续编辑</v-btn><v-btn color="warning" variant="flat" @click="discardMode">放弃修改</v-btn></template>
         </v-alert>
       </template>
     </AdminAsyncState>
@@ -100,6 +99,7 @@ const loadError = ref<string | null>(null)
 const permissionsError = ref<string | null>(null)
 const actionError = ref<string | null>(null)
 const confirmCancel = ref(false)
+const pendingMode = ref<'edit' | 'assign' | null>(null)
 let latestLoad = 0
 let latestPermissionsLoad = 0
 let initialModePending = true
@@ -181,10 +181,25 @@ async function loadPermissions() {
   } catch (cause) { if (request === latestPermissionsLoad && props.roleId === id) permissionsError.value = message(cause, '无法加载权限目录，请稍后重试。') }
   finally { if (request === latestPermissionsLoad) permissionsLoading.value = false }
 }
-function startEdit() { if (!canEdit.value || dirty.value) return; resetDraft(); mode.value = 'edit'; actionError.value = null }
-function startAssign() { if (!canAssign.value || dirty.value) return; resetDraft(); mode.value = 'assign'; actionError.value = null; void loadPermissions() }
-function cancelMode() { if (dirty.value) { confirmCancel.value = true; return }; discardMode() }
-function discardMode() { resetDraft(); confirmCancel.value = false; mode.value = 'view'; actionError.value = null }
+function startEdit() {
+  if (!canEdit.value || busy.value || mode.value === 'edit') return
+  if (dirty.value) { pendingMode.value = 'edit'; confirmCancel.value = true; return }
+  resetDraft(); mode.value = 'edit'; actionError.value = null
+}
+function startAssign() {
+  if (!canAssign.value || busy.value || mode.value === 'assign') return
+  if (dirty.value) { pendingMode.value = 'assign'; confirmCancel.value = true; return }
+  resetDraft(); mode.value = 'assign'; actionError.value = null; void loadPermissions()
+}
+function stayEditing() { confirmCancel.value = false; pendingMode.value = null }
+function cancelMode() { pendingMode.value = null; if (dirty.value) { confirmCancel.value = true; return }; discardMode() }
+function discardMode() {
+  const next = pendingMode.value
+  pendingMode.value = null
+  resetDraft(); confirmCancel.value = false; mode.value = 'view'; actionError.value = null
+  if (next === 'edit') startEdit()
+  if (next === 'assign') startAssign()
+}
 function toggleAll() { selectedGrantKeys.value = allSelected.value ? [] : permissions.value.map(grantKey) }
 async function reloadAfterWrite(id: number, failure: string) {
   const request = ++latestLoad
@@ -210,8 +225,9 @@ async function saveBasics() {
     await client.roles.update(current.id, params)
     if (props.roleId !== current.id) return
     role.value = { ...current, ...params }
-    mode.value = 'view'; resetDraft(); emit('saved')
+    mode.value = 'view'; resetDraft()
     await reloadAfterWrite(current.id, '修改已保存，但最新角色详情读取失败，请重试确认。')
+    if (!loadError.value && role.value) emit('saved')
   } catch (cause) { actionError.value = message(cause, '角色修改失败，请稍后重试。') }
   finally { busy.value = false }
 }
@@ -227,8 +243,9 @@ async function saveGrants() {
     await client.roles.assignGrants(current.id, { grants: nextGrants })
     if (props.roleId !== current.id) return
     grants.value = nextGrants
-    mode.value = 'view'; resetDraft(); emit('saved')
+    mode.value = 'view'; resetDraft()
     await reloadAfterWrite(current.id, '权限已保存，但最新角色详情读取失败，请重试确认。')
+    if (!loadError.value && role.value) emit('saved')
   } catch (cause) { actionError.value = message(cause, '角色权限保存失败，请稍后重试。') }
   finally { busy.value = false }
 }

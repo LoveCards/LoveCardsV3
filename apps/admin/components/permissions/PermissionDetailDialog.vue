@@ -16,11 +16,6 @@
       <v-card-text class="pa-0">
         <PermissionDetailContent v-if="modelValue && capability && scope" :capability="capability" :scope="scope" />
       </v-card-text>
-      <v-divider v-if="capability && scope" />
-      <v-card-actions v-if="capability && scope" class="pa-4">
-
-        <v-btn v-if="capability && scope" variant="text" @click="openFullPage">打开完整页面</v-btn>
-      </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
@@ -33,14 +28,7 @@ import PermissionDetailContent from '~/components/permissions/PermissionDetailCo
 const props = defineProps<{ modelValue: boolean; capability: string | null; scope: string | null; sourcePath: string }>()
 const emit = defineEmits<{ 'update:modelValue': [value: boolean] }>()
 const { xs } = useDisplay()
-const router = useRouter()
 
-async function openFullPage() {
-  if (!props.capability || !props.scope) return
-  const path = `/apps/access/permissions/${encodeURIComponent(props.capability)}/${encodeURIComponent(props.scope)}`
-  emit('update:modelValue', false)
-  await nextTick()
-  await router.push({ path, state: { listSource: props.sourcePath } })
-}
+
 const restoreDialogFocus = useAdminDialogFocusReturn(() => props.modelValue)
 </script>

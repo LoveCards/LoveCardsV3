@@ -9,6 +9,7 @@ async function cardFixtures(page: Page, mediaIds: number[] = [], coverFileId: nu
   const grants = [
     { capability: 'admin.access', scope: 'global' },
     { capability: 'cards.read', scope: 'all' },
+    { capability: 'users.read', scope: 'all' },
     { capability: 'cards.update', scope: 'all' },
     { capability: 'cards.approve', scope: 'all' },
     { capability: 'cards.pin', scope: 'all' },
@@ -203,4 +204,22 @@ test('card dialog keeps edited content open after a governance command', async (
   await expect(dialog.getByRole('textbox', { name: '正文' })).toHaveValue('弹窗中的未保存正文')
   expect(commands).toEqual(['top'])
   expect(patches).toHaveLength(0)
+})
+
+test('dirty card dialog guards a linked user navigation', async ({ page }) => {
+  await cardFixtures(page)
+  await page.goto('./apps/content/cards')
+  const row = page.locator('tbody tr').first()
+  await expect(row).toContainText('周末在校园', { timeout: 20_000 })
+  await row.getByRole('button', { name: '编辑', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '卡片详情' })
+  await dialog.getByRole('textbox', { name: '正文' }).fill('尚未保存的内容')
+  await dialog.getByRole('link', { name: /林晓/ }).click()
+  const guard = page.getByRole('dialog', { name: '有未保存的修改' })
+  await expect(guard).toBeVisible()
+  await guard.getByRole('button', { name: '继续编辑' }).click()
+  await expect(dialog.getByRole('textbox', { name: '正文' })).toHaveValue('尚未保存的内容')
+  await dialog.getByRole('link', { name: /林晓/ }).click()
+  await guard.getByRole('button', { name: '放弃修改' }).click()
+  await expect(page).toHaveURL(/\/apps\/users\/201$/)
 })
