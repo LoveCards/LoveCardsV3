@@ -10,59 +10,50 @@
   >
     <template v-if="user">
       <AdminDetailSection title="用户资料">
-        <div class="d-flex flex-wrap align-center ga-3 mb-4">
-          <v-avatar color="surface-variant" size="48">
+        <template #actions>
+          <v-btn v-if="mode === 'view' && canEditTarget" prepend-icon="mdi-pencil-outline" variant="tonal" @click="startEditing('profile')">编辑资料</v-btn>
+        </template>
+        <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">{{ formError }}</v-alert>
+        <div class="user-detail__identity d-flex flex-wrap align-center ga-4 mb-4">
+          <v-avatar color="surface-variant" size="64">
             <v-img v-if="mode === 'profile' ? draft.avatar : user.avatar" :src="String(mode === 'profile' ? draft.avatar : user.avatar)" :alt="`${user.username} 的头像`" />
             <v-icon v-else icon="mdi-account" aria-label="默认头像" />
           </v-avatar>
-          <div class="user-detail__identity">
-            <v-text-field v-if="mode === 'profile'" v-model="draft.username" label="用户名" required :disabled="saving" variant="outlined" hide-details class="mb-1" />
-            <div v-else class="text-subtitle-1 font-weight-medium">{{ user.username }}</div>
-            <div class="text-body-2 text-medium-emphasis">用户 #{{ user.id }} · 账号 {{ user.number }}</div>
+          <div class="user-detail__primary min-w-0">
+            <v-text-field v-if="mode === 'profile'" v-model="draft.username" label="用户名" required :disabled="saving" variant="outlined" hide-details />
+            <AdminDetailField v-else label="用户名" :value="user.username" />
+            <div class="text-body-2 text-medium-emphasis mt-1">用户 #{{ user.id }} · 账号 {{ user.number }}</div>
           </div>
-
+          <div v-if="mode === 'profile' && canUploadFiles" class="user-detail__avatar-editor min-w-0">
+            <v-file-input
+              :model-value="selectedAvatar"
+              accept="image/*"
+              label="更换头像"
+              prepend-icon=""
+              :disabled="saving || avatarUploading"
+              :loading="avatarUploading"
+              :error-messages="avatarUploadError ? [avatarUploadError] : []"
+              :hide-details="!avatarUploadError"
+              show-size
+              variant="outlined"
+              @update:model-value="uploadAvatar"
+            />
+            <p class="text-caption text-medium-emphasis mt-1 mb-0">头像选择后立即上传；取消编辑不会删除已上传文件。</p>
+          </div>
         </div>
-
-        <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">{{ formError }}</v-alert>
-        <template v-if="mode !== 'profile'">
-          <v-row dense>
-            <v-col cols="12" sm="6"><AdminSensitiveField label="邮箱" :value="user.email" /></v-col>
-            <v-col cols="12" sm="6"><AdminSensitiveField label="手机号" :value="user.phone" /></v-col>
-          </v-row>
-          <div v-if="canEditTarget" class="d-flex justify-end mt-3">
-            <v-btn prepend-icon="mdi-pencil" variant="tonal" @click="startEditing('profile')">编辑资料</v-btn>
-          </div>
-        </template>
-        <template v-else>
-          <v-row dense>
-            <v-col cols="12" sm="6"><v-text-field v-model="draft.email" label="邮箱" type="email" :disabled="saving" variant="outlined" /></v-col>
-            <v-col cols="12" sm="6"><v-text-field v-model="draft.phone" label="手机号" type="tel" :disabled="saving" variant="outlined" /></v-col>
-            <v-col cols="12">
-              <v-file-input
-                v-if="canUploadFiles"
-                :model-value="selectedAvatar"
-                accept="image/*"
-                label="更换头像"
-                prepend-icon="mdi-camera-outline"
-                :disabled="saving || avatarUploading"
-                :loading="avatarUploading"
-                :error-messages="avatarUploadError ? [avatarUploadError] : []"
-                show-size
-                variant="outlined"
-                @update:model-value="uploadAvatar"
-              />
-              <p v-if="canUploadFiles" class="text-caption text-medium-emphasis">头像文件选择后立即上传，取消编辑不会自动删除已上传文件。</p>
-            </v-col>
-          </v-row>
-          <div class="d-flex justify-end ga-2 mt-3">
-            <v-btn variant="text" :disabled="saving || avatarUploading" @click="cancelEditing">取消</v-btn>
-            <v-btn color="primary" variant="flat" :loading="saving" :disabled="avatarUploading || !profileDirty" @click="saveProfile">保存资料</v-btn>
-          </div>
-        </template>
-      <v-divider class="my-5" />
-        <v-row dense align="center">
-          <v-col v-if="canEditTarget" cols="12" sm="6">
+        <v-row class="align-start">
+          <v-col cols="12" sm="6">
+            <v-text-field v-if="mode === 'profile'" v-model="draft.email" label="邮箱" type="email" :disabled="saving" variant="outlined" hide-details />
+            <AdminSensitiveField v-else label="邮箱" :value="user.email" />
+          </v-col>
+          <v-col cols="12" sm="6">
+            <v-text-field v-if="mode === 'profile'" v-model="draft.phone" label="手机号" type="tel" :disabled="saving" variant="outlined" hide-details />
+            <AdminSensitiveField v-else label="手机号" :value="user.phone" />
+          </v-col>
+          <v-col cols="12"><v-divider class="my-1" /></v-col>
+          <v-col cols="12" sm="6">
             <v-select
+              v-if="canEditTarget"
               :model-value="Number(user.status)"
               :items="accountStatusOptions"
               :disabled="saving || rolesSaving || statusSaving || avatarUploading"
@@ -70,31 +61,47 @@
               item-title="title"
               item-value="value"
               variant="outlined"
+              hide-details
               @update:model-value="requestStatusCommand"
             />
+            <AdminDetailField v-else label="账号状态" :value="accountStatus.label" />
           </v-col>
-          <v-col v-else cols="12" sm="6"><AdminDetailField label="账号状态" :value="accountStatus.label" /></v-col>
+          <v-col cols="12" sm="6">
+            <v-select
+              v-if="mode === 'roles' && canManageRoles && canEditTarget"
+              v-model="roleDraft"
+              :items="roleOptions"
+              item-title="title"
+              item-value="value"
+              label="角色"
+              multiple
+              chips
+              clearable
+              :loading="rolesLoading"
+              :error-messages="rolesError ? [rolesError] : []"
+              :disabled="rolesSaving"
+              variant="outlined"
+            />
+            <div v-else class="user-detail__roles-field">
+              <div class="user-detail__field-label">角色</div>
+              <div class="d-flex flex-wrap align-center ga-2">
+                <v-chip v-for="role in roleLabels" :key="role.id" :color="role.slug === 'root' ? 'error' : undefined" variant="tonal">{{ role.label }}</v-chip>
+                <span v-if="!roleLabels.length" class="text-body-2 text-medium-emphasis">未分配角色</span>
+                <v-btn v-if="canManageRoles && canEditTarget" class="ms-auto" size="small" variant="text" @click="startEditing('roles')">调整角色</v-btn>
+              </div>
+            </div>
+          </v-col>
         </v-row>
-        <p v-if="dirty && canEditTarget" class="text-caption text-medium-emphasis mt-2">账号状态单独提交；当前未保存的字段修改仍需另行保存。</p>
-      <v-divider class="my-5" />
-        <div class="text-body-2 text-medium-emphasis mb-2">角色</div>
-        <div v-if="mode !== 'roles' && roleLabels.length" class="d-flex flex-wrap ga-2">
-          <v-chip v-for="role in roleLabels" :key="role.id" :color="role.slug === 'root' ? 'error' : undefined" variant="tonal">{{ role.label }}</v-chip>
+        <p v-if="dirty && canEditTarget" class="text-caption text-medium-emphasis mt-3 mb-0">账号状态单独提交；当前未保存的字段修改仍需另行保存。</p>
+        <div v-if="mode === 'profile'" class="d-flex justify-end ga-2 mt-5">
+          <v-btn variant="text" :disabled="saving || avatarUploading" @click="cancelEditing">取消</v-btn>
+          <v-btn color="primary" variant="flat" :loading="saving" :disabled="avatarUploading || !profileDirty" @click="saveProfile">保存资料</v-btn>
         </div>
-        <span v-else-if="mode !== 'roles'" class="text-body-2 text-medium-emphasis">未分配角色</span>
-        <template v-if="mode === 'roles' && canManageRoles && canEditTarget">
-          <v-select v-model="roleDraft" class="mt-4" :items="roleOptions" item-title="title" item-value="value" label="权限组" multiple chips clearable :loading="rolesLoading" :error-messages="rolesError ? [rolesError] : []" :disabled="rolesSaving" variant="outlined" />
-          <div class="d-flex justify-end ga-2">
-            <v-btn variant="text" :disabled="rolesSaving" @click="cancelEditing">取消</v-btn>
-            <v-btn color="primary" variant="flat" :loading="rolesSaving" :disabled="!rolesDirty || rolesLoading" @click="saveRoles">保存角色分配</v-btn>
-          </div>
-        </template>
-        <div v-else-if="mode !== 'roles' && canManageRoles && canEditTarget" class="d-flex justify-end mt-3">
-          <v-btn variant="outlined" @click="startEditing('roles')">调整角色</v-btn>
+        <div v-else-if="mode === 'roles'" class="d-flex justify-end ga-2 mt-5">
+          <v-btn variant="text" :disabled="rolesSaving" @click="cancelEditing">取消</v-btn>
+          <v-btn color="primary" variant="flat" :loading="rolesSaving" :disabled="!rolesDirty || rolesLoading" @click="saveRoles">保存角色分配</v-btn>
         </div>
       </AdminDetailSection>
-
-
     </template>
   </AdminAsyncState>
   <AdminUnsavedChangesDialog :model-value="confirmDiscard" subject="用户尚未保存的修改" @stay="stayEditing" @discard="discardChanges" />
@@ -380,5 +387,12 @@ defineExpose({ requestClose })
 </script>
 
 <style scoped>
-.user-detail__identity { flex: 1 1 280px; max-width: 420px; min-width: min(280px, 100%); }
+.user-detail__primary { flex: 1 1 260px; }
+.user-detail__avatar-editor { flex: 0 1 320px; }
+.user-detail__roles-field { min-height: 56px; }
+@media (max-width: 600px) {
+  .user-detail__primary { flex-basis: calc(100% - 80px); }
+  .user-detail__avatar-editor { flex: 1 1 100%; }
+}
+.user-detail__field-label { margin-bottom: 4px; color: rgb(var(--v-theme-on-surface-variant)); font-size: 0.875rem; line-height: 1.4; }
 </style>

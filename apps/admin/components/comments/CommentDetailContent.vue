@@ -4,7 +4,8 @@
       <AdminAsyncState :loading="loading && !comment" :error="!comment ? loadError : ''" :empty="!comment" empty-title="评论不存在" @retry="load">
         <template v-if="comment">
           <v-alert v-if="loadError" class="mb-4" role="alert" type="error" variant="tonal">{{ loadError }}</v-alert>
-          <section v-if="mode === 'view'" aria-label="评论内容" class="mb-5">
+          <section v-if="mode === 'view'" aria-label="评论内容">
+            <div class="text-body-2 text-medium-emphasis mb-2">评论正文</div>
             <p class="comment-detail__body text-pre-wrap mb-3">{{ comment.content || '—' }}</p>
             <div v-if="canUpdate && !comment.deleted" class="d-flex justify-end">
               <v-btn prepend-icon="mdi-pencil-outline" variant="tonal" @click="mode = 'edit'">编辑</v-btn>
@@ -12,22 +13,25 @@
           </section>
           <template v-else>
             <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">{{ formError }}</v-alert>
-            <v-textarea v-model="draft" auto-grow :disabled="saving" label="评论正文" maxlength="140" rows="4" variant="outlined" />
+            <v-textarea v-model="draft" auto-grow :disabled="saving" label="评论正文" maxlength="140" rows="3" variant="outlined" hide-details />
           </template>
           <v-divider class="my-5" />
-          <v-row dense>
+          <v-row class="align-start">
             <v-col cols="12" sm="6"><AdminDetailField label="作者"><AdminResourceLink resource-type="user" :resource-id="comment.user_id" :label="`${comment.username || '用户'} #${comment.user_id}`" /></AdminDetailField></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="所属卡片"><AdminResourceLink resource-type="card" :resource-id="comment.card_id" /></AdminDetailField></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="父评论"><AdminResourceLink v-if="comment.parent_id" resource-type="comment" :resource-id="comment.parent_id" /><span v-else>—</span></AdminDetailField></v-col>
+            <v-col cols="12" sm="6"><AdminDetailField label="点赞数" :value="comment.goods" /></v-col>
+            <v-col cols="12">
+              <v-divider class="my-1" />
+            </v-col>
             <v-col cols="12" sm="6">
-              <v-select v-if="statusCommands.length" :model-value="'current'" :items="[{ title: statusLabel, value: 'current' }, ...statusCommands.map(action => ({ title: action.label, value: action.method }))]" :disabled="busy || saving" label="审核状态" variant="outlined" @update:model-value="selectCommand" />
+              <v-select v-if="statusCommands.length" :model-value="'current'" :items="[{ title: statusLabel, value: 'current' }, ...statusCommands.map(action => ({ title: action.label, value: action.method }))]" :disabled="busy || saving" label="审核状态" variant="outlined" hide-details @update:model-value="selectCommand" />
               <AdminDetailField v-else label="审核状态" :value="statusLabel" />
             </v-col>
             <v-col cols="12" sm="6">
-              <v-select v-if="pinCommand" :model-value="'current'" :items="[{ title: comment.is_pinned ? '已置顶' : '未置顶', value: 'current' }, { title: pinCommand.label, value: pinCommand.method }]" :disabled="busy || saving" label="置顶状态" variant="outlined" @update:model-value="selectCommand" />
+              <v-select v-if="pinCommand" :model-value="'current'" :items="[{ title: comment.is_pinned ? '已置顶' : '未置顶', value: 'current' }, { title: pinCommand.label, value: pinCommand.method }]" :disabled="busy || saving" label="置顶状态" variant="outlined" hide-details @update:model-value="selectCommand" />
               <AdminDetailField v-else label="置顶状态" :value="comment.parent_id ? '回复不可置顶' : comment.is_pinned ? '已置顶' : '未置顶'" />
             </v-col>
-            <v-col cols="12" sm="6"><AdminDetailField label="点赞数" :value="comment.goods" /></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="发布时间"><AdminTableTime :value="comment.created_at" /></AdminDetailField></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="更新时间"><AdminTableTime :value="comment.updated_at" /></AdminDetailField></v-col>
             <v-col v-if="comment.post_ip" cols="12" sm="6"><AdminDetailField label="发布 IP" :value="comment.post_ip" /></v-col>

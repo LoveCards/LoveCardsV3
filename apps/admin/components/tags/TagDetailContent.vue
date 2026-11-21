@@ -4,41 +4,43 @@
       <template v-if="tag">
         <v-alert v-if="actionError" class="mb-4" role="alert" type="error" variant="tonal">{{ actionError }}</v-alert>
         <AdminDetailSection title="标签信息">
-          <div class="d-flex flex-wrap align-start justify-space-between ga-3 mb-4">
-            <AdminDetailField v-if="mode === 'view'" label="名称" :value="tag.name" />
-            <v-text-field v-else v-model="draftName" class="flex-grow-1" :disabled="pending" density="comfortable" label="标签名称" maxlength="50" required variant="outlined" />
-            <v-btn v-if="mode === 'view' && canUpdate && !pending" variant="text" @click="startEditing">编辑</v-btn>
-          </div>
-          <template v-if="mode === 'edit'">
-            <v-alert v-if="confirmCancel" class="mb-3" type="warning" variant="tonal">
-              标签名称有未保存修改，确定放弃吗？
-              <template #append>
-                <v-btn variant="text" @click="confirmCancel = false">继续编辑</v-btn>
-                <v-btn color="warning" variant="flat" @click="discardEditing">放弃修改</v-btn>
-              </template>
-            </v-alert>
-            <div class="d-flex justify-end ga-2">
-              <v-btn :disabled="pending" variant="text" @click="cancelEditing">取消编辑</v-btn>
-              <v-btn color="primary" :disabled="!canSave" :loading="pending" variant="flat" @click="saveName">保存名称</v-btn>
-            </div>
-          </template>
-          <v-row dense class="mt-2">
+          <v-row class="align-start">
+            <v-col cols="12" sm="6">
+              <AdminDetailField v-if="mode === 'view'" label="标签名称" :value="tag.name" />
+              <v-text-field v-else v-model="draftName" :disabled="pending" label="标签名称" maxlength="50" required variant="outlined" hide-details />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-if="canUpdate"
+                :model-value="'current'"
+                :items="[{ title: statusLabel, value: 'current' }, ...governanceActions.map(action => ({ title: action.targetLabel, value: action.method }))]"
+                :disabled="pending"
+                label="治理状态"
+                variant="outlined"
+                hide-details
+                @update:model-value="selectGovernance"
+              />
+              <AdminDetailField v-else label="治理状态" :value="statusLabel" />
+              <p class="text-caption text-medium-emphasis mt-2 mb-0">状态变更单独执行并记录审核结果。</p>
+            </v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="创建用户"><AdminResourceLink resource-type="user" :resource-id="tag.user_id" :label="`用户 #${tag.user_id}`" /></AdminDetailField></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="创建时间"><AdminTableTime :value="tag.created_at" /></AdminDetailField></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="应用 ID" :value="tag.aid" /></v-col>
           </v-row>
-          <v-divider class="my-5" />
-          <v-select
-            v-if="canUpdate"
-            :model-value="'current'"
-            :items="[{ title: statusLabel, value: 'current' }, ...governanceActions.map(action => ({ title: action.targetLabel, value: action.method }))]"
-            :disabled="pending"
-            label="治理状态"
-            variant="outlined"
-            @update:model-value="selectGovernance"
-          />
-          <AdminDetailField v-else label="治理状态" :value="statusLabel" />
-          <p class="text-caption text-medium-emphasis mb-0">状态变更单独执行并记录审核结果。</p>
+          <v-alert v-if="confirmCancel" class="mt-4" type="warning" variant="tonal">
+            标签名称有未保存修改，确定放弃吗？
+            <template #append>
+              <v-btn variant="text" @click="confirmCancel = false">继续编辑</v-btn>
+              <v-btn color="warning" variant="flat" @click="discardEditing">放弃修改</v-btn>
+            </template>
+          </v-alert>
+          <div v-if="mode === 'edit'" class="d-flex justify-end ga-2 mt-5">
+            <v-btn :disabled="pending" variant="text" @click="cancelEditing">取消编辑</v-btn>
+            <v-btn color="primary" :disabled="!canSave" :loading="pending" variant="flat" @click="saveName">保存名称</v-btn>
+          </div>
+          <div v-else-if="canUpdate && !pending" class="d-flex justify-end mt-5">
+            <v-btn variant="tonal" prepend-icon="mdi-pencil-outline" @click="startEditing">编辑</v-btn>
+          </div>
         </AdminDetailSection>
         <v-alert v-if="selectedAction" class="mt-4" type="warning" variant="tonal">
           确认将标签「{{ tag.name }}」从“{{ statusLabel }}”改为“{{ selectedAction.targetLabel }}”？<span v-if="dirty">当前未保存的名称修改会保留，仍需单独保存。</span>
