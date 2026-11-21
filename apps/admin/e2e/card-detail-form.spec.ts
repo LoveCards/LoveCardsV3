@@ -24,6 +24,7 @@ async function cardFixtures(page: Page, mediaIds: number[] = [], coverFileId: nu
   }
   const uploads: string[] = []
   const patches: Array<Record<string, unknown>> = []
+  const commands: string[] = []
   await page.route('**/api/**', async route => {
     const request = route.request()
     const path = new URL(request.url()).pathname
@@ -31,6 +32,13 @@ async function cardFixtures(page: Page, mediaIds: number[] = [], coverFileId: nu
     if (request.method() === 'POST' && path === '/api/me/files') {
       uploads.push(request.postDataBuffer()?.toString('utf8') ?? '')
       return route.fulfill({ json: { success: true, data: { id: 501, url: 'data:image/png;base64,' + png.toString('base64') } } })
+    }
+    if (request.method() === 'POST' && path === '/api/admin/cards/batch') {
+      const method = (request.postDataJSON() as { method: string }).method
+      commands.push(method)
+      if (method === 'top') card.is_top = card.is_top === 1 ? 0 : 1
+      if (method === 'hide') card.status = card.status === 2 ? 0 : 2
+      return route.fulfill({ status: 204, body: '' })
     }
     if (request.method() === 'PATCH' && path === '/api/admin/cards/101') {
       const patch = request.postDataJSON() as Record<string, unknown>
@@ -49,7 +57,7 @@ async function cardFixtures(page: Page, mediaIds: number[] = [], coverFileId: nu
     } else if (path === '/api/admin/cards/101') data = card
     await route.fulfill({ json: { success: true, data } })
   })
-  return { uploads, patches }
+  return { uploads, patches, commands }
 }
 
 test('card dialog uploads in card scene and saves image binding', async ({ page }, testInfo) => {
@@ -145,4 +153,54 @@ test('editing text keeps a historical cover until media order changes', async ({
   expect(patches[0]).toMatchObject({ content: '只编辑正文。' })
   expect(patches[0]).not.toHaveProperty('cover_file_id')
   expect(patches[0]).not.toHaveProperty('media_file_ids')
+})
+
+
+test('card governance remains available while content edits stay in draft', async ({ page }) => {
+  const { commands, patches } = await cardFixtures(page)
+  await page.goto('./apps/content/cards/101')
+  await expect(page.getByRole('heading', { name: '卡片 #101' })).toBeVisible({ timeout: 20_000 })
+  await page.getByRole('button', { name: '编辑', exact: true }).click()
+  await page.getByRole('textbox', { name: '正文' }).fill('未保存的正文修改。')
+
+  const pin = page.getByRole('combobox', { name: '置顶状态' })
+  await expect(pin).toBeEnabled()
+  await page.locator('.v-select').filter({ has: pin }).click()
+  await page.getByRole('option', { name: '置顶卡片' }).click()
+  await page.getByRole('button', { name: '置顶卡片', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: '正文' })).toHaveValue('未保存的正文修改。')
+  await expect(pin).toHaveValue('已置顶')
+
+  const status = page.getByRole('combobox', { name: '审核与发布状态' })
+  await expect(status).toBeEnabled()
+  await page.locator('.v-select').filter({ has: status }).click()
+  await page.getByRole('option', { name: '隐藏卡片' }).click()
+  await page.getByRole('button', { name: '隐藏卡片', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: '正文' })).toHaveValue('未保存的正文修改。')
+  await expect(status).toHaveValue('已隐藏')
+  expect(commands).toEqual(['top', 'hide'])
+  expect(patches).toHaveLength(0)
+
+  await page.getByRole('button', { name: '保存修改' }).click()
+  expect(patches).toHaveLength(1)
+  expect(patches[0]).toMatchObject({ content: '未保存的正文修改。' })
+})
+
+test('card dialog keeps edited content open after a governance command', async ({ page }) => {
+  const { commands, patches } = await cardFixtures(page)
+  await page.goto('./apps/content/cards')
+  const row = page.locator('tbody tr').first()
+  await expect(row).toContainText('周末在校园', { timeout: 20_000 })
+  await row.getByRole('button', { name: '编辑', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '卡片详情' })
+  await dialog.getByRole('textbox', { name: '正文' }).fill('弹窗中的未保存正文')
+  const pin = dialog.getByRole('combobox', { name: '置顶状态' })
+  await expect(pin).toBeEnabled()
+  await page.locator('.v-select').filter({ has: page.getByRole('combobox', { name: '置顶状态' }) }).click()
+  await page.getByRole('option', { name: '置顶卡片' }).click()
+  await dialog.getByRole('button', { name: '置顶卡片', exact: true }).click()
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('textbox', { name: '正文' })).toHaveValue('弹窗中的未保存正文')
+  expect(commands).toEqual(['top'])
+  expect(patches).toHaveLength(0)
 })

@@ -154,20 +154,20 @@
 
           <v-row dense>
             <v-col cols="12" sm="6"><div class="card-record__label">审核与发布状态</div>
-              <v-select v-if="statusOptions.length > 1" :model-value="null" :items="statusOptions" :disabled="commandBusy || dirty" density="comfortable" item-title="title" item-value="value" aria-label="审核与发布状态" variant="outlined" @update:model-value="requestCommand" />
+              <v-select v-if="statusOptions.length > 1" :model-value="null" :items="statusOptions" :disabled="commandBusy || saving || uploadingImages" density="comfortable" item-title="title" item-value="value" aria-label="审核与发布状态" variant="outlined" @update:model-value="requestCommand" />
               <div v-else class="card-record__read">{{ statusLabel }}</div>
             </v-col>
             <v-col cols="12" sm="6"><div class="card-record__label">置顶状态</div>
-              <v-select v-if="pinOptions.length > 1" :model-value="null" :items="pinOptions" :disabled="commandBusy || dirty || Number(CardData.origin.status) !== 0" density="comfortable" item-title="title" item-value="value" aria-label="置顶状态" variant="outlined" @update:model-value="requestCommand" />
+              <v-select v-if="pinOptions.length > 1" :model-value="null" :items="pinOptions" :disabled="commandBusy || saving || uploadingImages || Number(CardData.origin.status) !== 0" density="comfortable" item-title="title" item-value="value" aria-label="置顶状态" variant="outlined" @update:model-value="requestCommand" />
               <div v-else class="card-record__read">{{ Number(CardData.origin.is_top) === 1 ? '已置顶' : '未置顶' }}</div>
             </v-col>
           </v-row>
           <v-alert v-if="commandError" role="alert" type="error" variant="tonal">{{ commandError }}</v-alert>
           <v-alert v-if="pendingCommand" type="warning" variant="tonal">
-            {{ pendingCommand.impact }}确定对卡片 #{{ cardId }}执行“{{ pendingCommand.label }}”吗？此操作立即生效。
+            {{ pendingCommand.impact }}确定对卡片 #{{ cardId }}执行“{{ pendingCommand.label }}”吗？此操作立即生效。<span v-if="dirty">当前未保存的字段修改会保留，仍需单独保存。</span>
             <template #append>
               <v-btn :disabled="commandBusy" variant="text" @click="pendingCommand = null">取消</v-btn>
-              <v-btn color="warning" :loading="commandBusy" variant="flat" @click="runCommand">{{ pendingCommand.label }}</v-btn>
+              <v-btn color="warning" :disabled="saving || uploadingImages" :loading="commandBusy" variant="flat" @click="runCommand">{{ pendingCommand.label }}</v-btn>
             </template>
           </v-alert>
 
@@ -186,8 +186,8 @@
         <v-spacer />
         <v-btn v-if="mode === 'view' && canEditCard" variant="tonal" @click="beginEdit">编辑</v-btn>
         <template v-if="mode === 'edit'">
-          <v-btn :disabled="saving || uploadingImages" variant="text" @click="cancelEdit">取消编辑</v-btn>
-          <v-btn color="primary" :disabled="saving || uploadingImages || !dirty" :loading="saving" variant="flat" @click="submit">保存修改</v-btn>
+          <v-btn :disabled="saving || uploadingImages || commandBusy" variant="text" @click="cancelEdit">取消编辑</v-btn>
+          <v-btn color="primary" :disabled="saving || uploadingImages || commandBusy || !dirty" :loading="saving" variant="flat" @click="submit">保存修改</v-btn>
         </template>
       </v-card-actions>
     </template>
@@ -231,7 +231,7 @@ const client = useApi()
 const notifier = useAdminNotifier()
 const userStore = useUserStore()
 const props = withDefaults(defineProps<{ cardId: number; initialMode?: 'view' | 'edit'; embedded?: boolean }>(), { initialMode: 'view', embedded: false })
-const emit = defineEmits<{ saved: []; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean]; 'editing-change': [value: boolean] }>()
+const emit = defineEmits<{ saved: []; 'command-applied': []; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean]; 'editing-change': [value: boolean] }>()
 const tagsStore = useTagsStore()
 const viewTags = computed(() => {
   const byId = new Map<number, { id: number; name: string }>()
@@ -291,7 +291,7 @@ const pinOptions = computed(() => [
   ...commands.value.filter(item => item.method === 'top').map(item => ({ title: item.label, value: item.method })),
 ])
 const requestCommand = (method: CardGovernanceAction['method'] | null) => {
-  if (!method || dirty.value || commandBusy.value) return
+  if (!method || commandBusy.value || saving.value || uploadingImages.value) return
   pendingCommand.value = commands.value.find(item => item.method === method) ?? null
 }
 const visibilityLabel = computed(() => ({ public: '公开', followers: '仅关注者', private: '仅自己' })[CardData.value.origin.visibility ?? 'public'])
@@ -550,7 +550,7 @@ const patchCard = async () => {
 }
 
 const submit = async () => {
-  if (saving.value || !canUpdateContent.value || !loaded.value) return
+  if (saving.value || commandBusy.value || !canUpdateContent.value || !loaded.value) return
   saving.value = true
   formError.value = ''
   try {
@@ -572,18 +572,30 @@ const submit = async () => {
 
 const runCommand = async () => {
   const command = pendingCommand.value
-  if (!command || commandBusy.value || dirty.value) return
+  if (!command || commandBusy.value || saving.value || uploadingImages.value) return
   commandBusy.value = true
   commandError.value = ''
+  const id = props.cardId
   try {
-    const current = await client.cards.getManaged(props.cardId)
+    const current = await client.cards.getManaged(id)
+    if (id !== props.cardId) return
     const stillAllowed = cardGovernanceActions(current, { approve: canApproveCard.value, update: canUpdateContent.value, pin: canPinCard.value })
       .some(action => action.method === command.method && action.label === command.label)
     if (!stillAllowed) throw new Error('卡片状态已变化，请刷新后重新选择操作。')
-    await client.cards.batchManaged({ method: command.method, ids: [props.cardId] })
+    await client.cards.batchManaged({ method: command.method, ids: [id] })
     pendingCommand.value = null
-    emit('saved')
-    await loadCard()
+    emit('command-applied')
+    try {
+      const refreshed = await client.cards.getManaged(id)
+      if (id !== props.cardId) return
+      // 治理命令单独提交；只刷新其状态字段，避免覆盖正文、标签和媒体草稿。
+      CardData.value.origin.status = refreshed.status
+      CardData.value.origin.is_top = refreshed.is_top
+      CardData.value.edit.status = refreshed.status
+      CardData.value.edit.is_top = refreshed.is_top
+    } catch {
+      commandError.value = '操作已执行，但状态刷新失败。请刷新页面确认。'
+    }
   } catch (cause) {
     commandError.value = errorMessage(cause, '卡片操作失败，请稍后重试。')
   } finally {

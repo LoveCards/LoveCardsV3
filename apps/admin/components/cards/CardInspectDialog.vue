@@ -16,6 +16,7 @@
           @dirty-change="dirty = $event"
           @busy-change="busy = $event"
           @saved="onSaved"
+          @command-applied="emit('saved')"
         />
       </v-card-text>
       <v-alert v-if="confirmClose" class="ma-4" type="warning" variant="tonal">

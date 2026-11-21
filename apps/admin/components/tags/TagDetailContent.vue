@@ -31,12 +31,12 @@
         </AdminDetailSection>
         <AdminDetailSection title="治理状态" description="状态变更单独执行并记录审核结果。">
           <v-chip size="small" variant="tonal" :color="statusColor">{{ statusLabel }}</v-chip>
-          <div v-if="canUpdate && mode === 'view'" class="d-flex flex-wrap ga-2 mt-4">
+          <div v-if="canUpdate" class="d-flex flex-wrap ga-2 mt-4">
             <v-btn v-for="action in governanceActions" :key="action.method" :disabled="pending" size="small" variant="outlined" @click="selectedAction = action">{{ action.label }}</v-btn>
           </div>
         </AdminDetailSection>
         <v-alert v-if="selectedAction" class="mt-4" type="warning" variant="tonal">
-          确认将标签「{{ tag.name }}」从“{{ statusLabel }}”改为“{{ selectedAction.targetLabel }}”？
+          确认将标签「{{ tag.name }}」从“{{ statusLabel }}”改为“{{ selectedAction.targetLabel }}”？<span v-if="dirty">当前未保存的名称修改会保留，仍需单独保存。</span>
           <template #append>
             <v-btn :disabled="pending" variant="text" @click="selectedAction = null">取消</v-btn>
             <v-btn color="warning" :loading="pending" variant="flat" @click="applyGovernance">确认{{ selectedAction.label }}</v-btn>
@@ -158,7 +158,7 @@ async function saveName() {
 }
 async function applyGovernance() {
   const action = selectedAction.value
-  if (!tag.value || !action || !canUpdate.value) return
+  if (!tag.value || !action || !canUpdate.value || pending.value) return
   const id = tag.value.id
   const expectedStatus = tag.value.status
   pending.value = true
@@ -182,7 +182,15 @@ async function applyGovernance() {
     selectedAction.value = null
     void tagsStore.getIndex().catch(() => undefined)
     emit('saved')
-    await reloadAfterWrite(id, '状态操作已提交，但最新详情读取失败。请重试确认。')
+    try {
+      const result = await client.tags.getManaged(id)
+      if (props.tagId !== id) return
+      // 治理状态刷新不覆盖尚未保存的名称草稿。
+      if (!dirty.value) draftName.value = result.name
+      tag.value = result
+    } catch {
+      if (props.tagId === id) actionError.value = '状态操作已提交，但最新详情读取失败。请刷新后确认。'
+    }
   } catch (cause) { if (props.tagId === id) actionError.value = isApiError(cause) ? cause.message : '标签状态更新失败。' }
   finally { pending.value = false }
 }
