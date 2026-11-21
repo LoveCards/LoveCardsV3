@@ -84,9 +84,9 @@ for (const resource of ['cards', 'comments'] as const) {
       const listUrl = page.url()
       await editButton.click()
       await expect(page.getByRole('dialog', { name: `${label}详情` })).toBeVisible()
-      await expect(page.getByRole('dialog').getByRole('textbox', { name: `${label}正文` })).toHaveValue(/周末在校园/)
+      await expect(page.getByRole('dialog').getByRole('textbox', { name: resource === 'cards' ? '正文' : '评论正文' })).toHaveValue(/周末在校园/)
       await expect(page).toHaveURL(listUrl)
-      await page.getByRole('dialog').getByRole('button', { name: '关闭', exact: true }).click()
+      await page.getByRole('dialog').locator('.v-card-title').getByRole('button', { name: '关闭', exact: true }).click()
       const deleteButton = row.getByRole('button', { name: '删除', exact: true })
       if (await deleteButton.count()) await deleteButton.click()
       else { await row.getByRole('button', { name: `更多${label}操作` }).click(); await page.locator('.v-overlay--active').getByText('删除', { exact: true }).click() }
