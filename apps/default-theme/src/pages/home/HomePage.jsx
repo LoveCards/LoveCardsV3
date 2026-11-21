@@ -100,10 +100,7 @@ export function HomePage() {
             <h1 id="home-title">{channelLabel}</h1>
             <p>{channel === 'following' ? '只显示你关注的人公开发布的内容。' : data.strategy === 'hot' ? '当前按社区热度展示内容。' : data.strategy === 'latest-fallback' ? '推荐暂时不可用，当前显示最新发布的内容。' : '发现值得停留的内容，也遇见值得关注的人。'}</p>
           </div>
-          {channel !== 'following' && <div className="home-heading-actions">
-            <Link className="home-compose-link" to="/compose">写随笔</Link>
-            {isPreview && <span className="preview-label">设计预览 · 演示数据 · 操作不会保存</span>}
-          </div>}
+          {channel !== 'following' && isPreview && <span className="preview-label">设计预览 · 演示数据 · 操作不会保存</span>}
         </header>
         {data.strategy === 'latest-fallback' && <ScopedBanner
           className="home-feed-degraded"

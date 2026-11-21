@@ -269,6 +269,7 @@
 
   .header-compose:hover { background: var(--lc-rose-deep); }
   .header-compose:active { transform: scale(0.97); }
+  .app-shell.is-compose-route .header-compose { display: none; }
 
   .header-profile {
     width: 44px;

@@ -4,14 +4,15 @@ import { HomeFeedRoute, ProtectedRoute } from './auth-routing.jsx';
 import { HomePage } from '../pages/home/HomePage.jsx';
 import { AppShell } from '../layouts/AppShell.jsx';
 import { previewBackground } from './card-preview-routing.js';
+import { composeModalBackground } from './compose-modal-routing.js';
 import { CardPreviewSurface } from '../features/feed/CardPreviewSurface.jsx';
+import { ComposePage } from '../pages/compose/ComposePage.jsx';
 
 const ExplorePage = lazy(() => import('../pages/explore/ExplorePage.jsx').then((module) => ({ default: module.ExplorePage })));
 const DetailPage = lazy(() => import('../pages/detail/DetailPage.jsx').then((module) => ({ default: module.DetailPage })));
 const MediaPage = lazy(() => import('../pages/detail/MediaPage.jsx').then((module) => ({ default: module.MediaPage })));
 const MePage = lazy(() => import('../pages/profile/MePage.jsx').then((module) => ({ default: module.MePage })));
 const ProfileRelationPage = lazy(() => import('../pages/profile/ProfileSecondaryPage.jsx').then((module) => ({ default: module.ProfileRelationPage })));
-const ComposePage = lazy(() => import('../pages/compose/ComposePage.jsx').then((module) => ({ default: module.ComposePage })));
 const AuthPage = lazy(() => import('../pages/auth/AuthPage.jsx').then((module) => ({ default: module.AuthPage })));
 const BlueprintPendingPage = lazy(() => import('../pages/system/BlueprintPendingPage.jsx').then((module) => ({ default: module.BlueprintPendingPage })));
 const RecoveryFlowPage = lazy(() => import('../pages/auth/RecoveryFlowPage.jsx').then((module) => ({ default: module.RecoveryFlowPage })));
@@ -54,11 +55,13 @@ function BackgroundRoutes({ preview }) {
 
 export function AppRoutes() {
   const location = useLocation();
-  const background = previewBackground(location);
+  const preview = previewBackground(location);
+  const composeBackground = composeModalBackground(location);
+  const background = preview || composeBackground;
   return (
     <Suspense fallback={<RouteLoadingState />}>
       <Routes location={background || location}>
-        <Route element={<BackgroundRoutes preview={background ? location : null} />}>
+        <Route element={<BackgroundRoutes preview={preview ? location : null} />}>
         <Route path="/" element={<HomeFeedRoute><HomePage /></HomeFeedRoute>} />
         <Route path="/explore" element={<ExplorePage />} />
         <Route path="/search" element={<ExplorePage search />} />
@@ -120,7 +123,8 @@ export function AppRoutes() {
         <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
-      {background && <Routes><Route path="/post/:id" element={<CardPreviewSurface />} /></Routes>}
+      {preview && <Routes><Route path="/post/:id" element={<CardPreviewSurface />} /></Routes>}
+      {composeBackground && <Routes><Route path="/compose" element={<ProtectedRoute><ComposePage surface="dialog" /></ProtectedRoute>} /></Routes>}
     </Suspense>
   );
 }

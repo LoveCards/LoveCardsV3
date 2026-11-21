@@ -80,15 +80,6 @@
     font-size: 0.78rem;
   }
 
-  .home-heading-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .home-compose-link { min-height: 44px; padding: 0 15px; display: inline-flex; align-items: center; border-radius: 999px; color: #fff; background: var(--lc-rose); font-size: 0.76rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
-  .home-compose-link:hover { background: var(--lc-rose-deep); }
-  .home-compose-link:focus-visible { outline: 2px solid var(--lc-rose); outline-offset: 3px; }
-
   .preview-label,
   .capability-note {
     color: var(--lc-muted);
@@ -487,7 +478,6 @@
     .home-channels-note { margin-left: 6px; font-size: 0.62rem; }
     .home-heading { display: none; }
     .home-heading.is-following { display: block; min-height: 0; padding: 17px 0 7px; }
-    .home-heading.is-following .home-heading-actions { display: none; }
     .home-preview-disclosure {
       position: relative;
       top: 5px;

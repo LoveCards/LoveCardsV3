@@ -5,6 +5,14 @@
     padding: 28px 0 112px;
   }
 
+  .lc-compose-dialog { max-height: min(90dvh, 900px); color: var(--lc-ink); background: var(--lc-surface); }
+  .lc-compose-dialog::backdrop { background-color: rgba(18, 20, 25, 0.72); }
+  .lc-compose-dialog > div { min-height: 0; overflow: hidden; }
+  .lc-compose-dialog .compose-page { width: 100%; max-height: min(90dvh, 900px); margin: 0; padding: 0 24px; overflow-y: auto; overscroll-behavior: contain; }
+  .lc-compose-dialog .compose-heading { position: sticky; top: 0; z-index: 2; min-height: 82px; background: var(--lc-surface); border-bottom: 1px solid var(--lc-separator); }
+  .lc-compose-dialog .compose-editor-surface { overflow: visible; border: 0; border-radius: 0; padding: 0; }
+  .lc-compose-dialog .compose-actions { position: sticky; bottom: 0; z-index: 2; background: var(--lc-surface); }
+
   .compose-heading {
     min-height: 74px;
     display: grid;
@@ -308,6 +316,8 @@
   .compose-skeleton footer i { width: 112px; height: 44px; }
 
   @media (max-width: 760px) {
+    .lc-compose-dialog { width: 100% !important; max-width: 100%; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
+    .lc-compose-dialog .compose-page { max-height: 100dvh; padding: 0 0 calc(96px + env(safe-area-inset-bottom)); }
     .app-shell.is-compose-route > .product-header { display: none; }
     .compose-page {
       width: 100%;

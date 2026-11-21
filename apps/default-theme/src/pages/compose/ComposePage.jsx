@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, UNSAFE_DataRouterContext, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
 import { deleteComposeMedia, getComposeState, loadComposeTopics, loadPublishedCardForEdit, loadTopicPolicy, normalizeCardVisibility, normalizeDraftMedia, publishCard, updatePublishedCard, uploadComposeMedia } from '../../services/compose-service.js';
 import { createDraft, deleteDraft, draftSummary, getDraft, normalizeDraftPayload, updateDraft } from '../../services/community-service.js';
@@ -16,6 +16,8 @@ import { renderMentionCandidateItem } from '../../features/mentions/MentionCandi
 import { Button, ChatComposerInput, ConfirmActionDialog, Icon, IconButton, InfoPopover, MediaDropzone, ScopedBanner, SegmentedControl, SegmentedControlItem, TextInput, useToast } from '../../ui/index.js';
 import { CARD_CONTENT_MAX_LENGTH } from '../../features/feed/card-constraints.js';
 import { normalizeGalleryLayout } from '../../features/media/gallery-layout.js';
+import { ComposeDialogShell } from './ComposeDialogShell.jsx';
+import { ComposePageNavigationGuard } from './ComposePageNavigationGuard.jsx';
 
 const publishTypes = {
   text: { label: '随笔', description: '纯文字，不包含媒体。' },
@@ -109,8 +111,15 @@ function composeSignature({ content, tags, publishType, media, files, galleryLay
   });
 }
 
-export function ComposePage() {
+export function ComposePage({ surface = 'page' }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const dataRouter = useContext(UNSAFE_DataRouterContext);
+  const isDialog = surface === 'dialog';
+  const [dialogOpen, setDialogOpen] = useState(true);
+  const allowLeaveRef = useRef(false);
+  const blockedNavigationRef = useRef(null);
+  const discardActionRef = useRef('leave');
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const { verify, dialog: humanVerificationDialog } = useHumanVerification();
@@ -446,7 +455,8 @@ export function ComposePage() {
       setSavedSignature(composeSignature({ content, tags: normalizedTags, publishType, galleryLayout, media: nextMedia, files: [], visibility }));
       const nextSearchParams = new URLSearchParams(searchParams);
       nextSearchParams.set('draft', String(nextId));
-      setSearchParams(nextSearchParams, { replace: true });
+      allowLeaveRef.current = true;
+      setSearchParams(nextSearchParams, { replace: true, state: isDialog ? location.state : undefined });
       setStatus('success');
       setMessage(mediaCleanupSucceeded
         ? (draftId ? '草稿已更新。' : '已存入草稿箱。')
@@ -518,7 +528,8 @@ export function ComposePage() {
         setStatus('success');
         setMessage(mediaCleanupSucceeded ? '修改已保存。' : '修改已保存，但旧媒体清理失败。');
         toast({ body: mediaCleanupSucceeded ? '修改已保存' : '修改已保存，旧媒体清理失败', type: mediaCleanupSucceeded ? undefined : 'error', uniqueID: 'compose-edit-success' });
-        navigate(`/post/${result.id}`);
+        allowLeaveRef.current = true;
+        navigate(`/post/${result.id}`, { replace: isDialog, state: null });
         return;
       }
       const result = await publishCard({ content, tags: topicsFrom(tags), kind: resolveKind(publishType, mediaCount), files, media: persistedMedia, ...(publishType === 'image' && mediaCount > 1 ? { galleryLayout } : {}), visibility, verification });
@@ -538,7 +549,8 @@ export function ComposePage() {
       setStatus('success');
       setMessage(cleanupNotes.length ? `内容已发布，但${cleanupNotes.join('和')}清理失败。` : '发布成功。');
       toast({ body: cleanupNotes.length ? `内容已发布，${cleanupNotes.join('和')}清理失败` : '内容已发布', type: cleanupNotes.length ? 'error' : undefined, uniqueID: 'compose-success' });
-      navigate(result?.id ? `/post/${result.id}` : '/me');
+      allowLeaveRef.current = true;
+      navigate(result?.id ? `/post/${result.id}` : '/me', { replace: isDialog, state: null });
     } catch (error) {
       setStatus('error');
       setMessage(getUserFacingError(error, editMode
@@ -550,10 +562,30 @@ export function ComposePage() {
   };
 
   const returnDestination = editMode && (publishedCardId || requestedEditId) ? `/post/${publishedCardId || requestedEditId}` : '/';
-  const requestDiscard = useCallback((destination = returnDestination) => {
+  const requestDiscard = useCallback((destination = returnDestination, action = 'leave') => {
+    discardActionRef.current = action;
     setDiscardDestination(destination);
     setDiscardOpen(true);
   }, [returnDestination]);
+  const onNavigationBlocked = useCallback((blocker) => {
+    discardActionRef.current = 'leave';
+    blockedNavigationRef.current = blocker;
+    setDiscardOpen(true);
+  }, []);
+  useEffect(() => {
+    if (dirty) allowLeaveRef.current = false;
+  }, [dirty]);
+  const requestClose = useCallback(() => {
+    if (busy) return;
+    if (dirty) requestDiscard(returnDestination, 'close');
+    else setDialogOpen(false);
+  }, [busy, dirty, requestDiscard, returnDestination]);
+  const closeOrReturn = () => {
+    if (isDialog) requestClose();
+    else if (dirty) requestDiscard(returnDestination);
+    else navigate(returnDestination);
+  };
+  const onDialogExited = useCallback(() => navigate(-1), [navigate]);
   const selectPublishType = (nextType) => {
     if (nextType === publishType) return;
     if (mediaCount) {
@@ -576,13 +608,13 @@ export function ComposePage() {
     setMessage('');
   };
   const canWriteCard = editMode ? can('cards.update') : can('cards.create');
-  useUnsavedChanges(dirty, requestDiscard);
+  useUnsavedChanges(dirty, requestDiscard, { interceptLinks: !dataRouter && !isDialog });
 
-  return (
-    <AppShell mobileMode="immersive">
+  const editorContent = (
       <main className="compose-page" aria-labelledby="compose-title">
+        {!isDialog && dataRouter && <ComposePageNavigationGuard dirty={dirty} allowLeaveRef={allowLeaveRef} onBlocked={onNavigationBlocked} />}
         <header className="compose-heading">
-          <button className="compose-back" type="button" onClick={() => dirty ? requestDiscard(returnDestination) : navigate(returnDestination)} aria-label={editMode ? '取消编辑并返回内容详情' : '取消发布并返回首页'}><span aria-hidden="true">←</span><span>返回</span></button>
+          <button className="compose-back" type="button" onClick={closeOrReturn} aria-label={isDialog ? '关闭发布窗口' : editMode ? '取消编辑并返回内容详情' : '取消发布并返回首页'}><span aria-hidden="true">{isDialog ? '×' : '←'}</span><span>{isDialog ? '关闭' : '返回'}</span></button>
           <div className="compose-heading-copy">
             <h1 id="compose-title">{editMode ? '编辑内容' : draftId ? '继续完成发布' : '发布新内容'}</h1>
             <p>{showComposerHeading ? editMode ? '修改会直接更新这张卡片。' : '把想法整理成一张卡片。' : '登录后即可分享文字、图片和话题。'}</p>
@@ -682,7 +714,7 @@ export function ComposePage() {
 
               <footer className={`compose-actions${saveState ? ' has-save-state' : ''}${editMode ? ' is-edit' : ''}`}>
                 <span className="sr-only" role="status" aria-live="polite">{status === 'saving-edit' ? '正在保存修改' : status === 'publishing' ? '正在发布内容' : status === 'success' ? message : ''}</span>
-                <Button className="compose-cancel" type="button" label="取消" variant="secondary" size="lg" onClick={() => dirty ? requestDiscard(returnDestination) : navigate(returnDestination)} isDisabled={busy} />
+                <Button className="compose-cancel" type="button" label="取消" variant="secondary" size="lg" onClick={closeOrReturn} isDisabled={busy} />
                 {saveState ? <span className={`compose-save-state is-${saveState.tone}`} role="status" aria-live="polite"><Icon name={saveState.tone === 'saved' ? 'check' : 'info'} size={14} />{saveState.label}</span> : <span className="compose-actions-spacer" aria-hidden="true" />}
                 {!editMode && <Button className="compose-draft-save" type="button" label={draftId ? '更新草稿' : '存入草稿箱'} variant="secondary" size="lg" onClick={() => void saveDraft()} isDisabled={designPreview || !isAuthenticated || busy || !dirty} isLoading={status === 'draft-saving'} />}
                 <Button className="compose-submit" type="submit" label={editMode ? '保存修改' : '确认发布'} variant="primary" size="lg" isDisabled={!capability.canPublish || busy || editMode && !dirty} isLoading={editMode ? status === 'saving-edit' : status === 'publishing'} />
@@ -690,9 +722,11 @@ export function ComposePage() {
             </section>
         </form>}
         <ConfirmActionDialog isOpen={typeSwitchOpen} onOpenChange={(open) => { setTypeSwitchOpen(open); if (!open) setPendingPublishType(null); }} title={`切换为${publishTypes[pendingPublishType]?.label || '其他类型'}？`} description="当前已选媒体与新类型不兼容，继续切换会移除这些文件，正文和话题会保留。" actionLabel="移除媒体并切换" onAction={confirmTypeSwitch} />
-        <ConfirmActionDialog isOpen={discardOpen} onOpenChange={setDiscardOpen} title="放弃这次编辑？" description={editMode ? '尚未保存的修改将不会保留。' : '尚未发布的文字、话题和媒体将不会保留。'} actionLabel="放弃编辑" onAction={() => { setDiscardOpen(false); navigate(discardDestination); }} />
+        <ConfirmActionDialog isOpen={discardOpen} onOpenChange={(open) => { setDiscardOpen(open); if (!open && blockedNavigationRef.current?.state === 'blocked') { blockedNavigationRef.current.reset(); blockedNavigationRef.current = null; } }} title="放弃这次编辑？" description={editMode ? '尚未保存的修改将不会保留。' : '尚未发布的文字、话题和媒体将不会保留。'} actionLabel="放弃编辑" onAction={() => { setDiscardOpen(false); if (isDialog && discardActionRef.current === 'close') { allowLeaveRef.current = true; setDialogOpen(false); } else if (blockedNavigationRef.current?.state === 'blocked') { allowLeaveRef.current = true; blockedNavigationRef.current.proceed(); blockedNavigationRef.current = null; } else { allowLeaveRef.current = true; navigate(discardDestination); } }} />
         {humanVerificationDialog}
       </main>
-    </AppShell>
   );
+  return isDialog
+    ? <ComposeDialogShell isOpen={dialogOpen} dirty={dirty} busy={busy} allowLeaveRef={allowLeaveRef} onRequestClose={requestClose} onNavigationBlocked={onNavigationBlocked} onExited={onDialogExited}>{editorContent}</ComposeDialogShell>
+    : <AppShell mobileMode="immersive">{editorContent}</AppShell>;
 }

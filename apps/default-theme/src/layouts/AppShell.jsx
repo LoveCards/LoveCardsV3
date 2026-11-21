@@ -11,6 +11,7 @@ import { endCurrentSession } from '../app/end-current-session.js';
 import { getRuntimeDataMode } from '../app/runtime-context.js';
 import { getSdkClient, sdkConfigured } from '../app/sdk-client.js';
 import { getCommunicationRuntime, SIGNAL_UNREAD } from '../services/communication-runtime.js';
+import { composeModalState } from '../app/compose-modal-routing.js';
 
 const bottomNav = [
   { to: '/', label: '首页', icon: 'home', end: true },
@@ -112,6 +113,14 @@ export function AppShell({ children, mobileMode = 'standard' }) {
     event.preventDefault();
     openLogin(target);
   };
+  const handleComposeClick = (event) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (needsNavigationLogin('/compose')) { handleNavigationClick(event, '/compose'); return; }
+    if (window.matchMedia('(min-width: 761px)').matches) {
+      event.preventDefault();
+      navigate('/compose', { state: composeModalState(location) });
+    }
+  };
   const accountItems = isAuthenticated ? [
     { label: '我的主页', icon: <Icon name="user" size={17} />, onClick: () => navigate('/me') },
     { label: '设置', icon: <Icon name="settings" size={17} />, onClick: () => navigate('/settings/appearance') },
@@ -145,7 +154,7 @@ export function AppShell({ children, mobileMode = 'standard' }) {
           <div className="header-actions">
             <IconButton className="mobile-search-trigger" type="button" label="打开搜索" tooltip="搜索" variant="ghost" size="lg" icon={<Icon name="search" size={20} />} onClick={() => window.dispatchEvent(new CustomEvent('lc-open-mobile-search'))} />
             {!isAuthenticated && !designPreview && <IconButton className="mobile-login-trigger" type="button" label={isVisitor ? '登录正式账号' : '登录'} variant="ghost" size="lg" icon={<Icon name="user" size={20} />} onClick={() => openLogin()} />}
-            <Link className="header-compose" to="/compose" onClick={(event) => handleNavigationClick(event, '/compose')}>发布</Link>
+            <Link className="header-compose" to="/compose" onClick={handleComposeClick}>发布</Link>
             <ThemeToggle />
             <div className="header-profile"><ActionMenu items={accountItems} label={isAuthenticated ? `${user?.username || '账号'}菜单` : designPreview ? '设计预览菜单' : isVisitor ? '游客菜单' : '登录与设置'} icon={<Avatar label={isAuthenticated ? (user?.username || '我') : designPreview ? '预' : isVisitor ? '访' : '登'} src={isAuthenticated ? user?.avatar : undefined} tone="sand" size="sm" />} /></div>
           </div>
@@ -179,7 +188,7 @@ export function AppShell({ children, mobileMode = 'standard' }) {
           >{content}</Link>;
         })}
       </nav>}
-      <AuthPromptDialog isOpen={Boolean(loginRequest)} action={loginRequest?.action} onOpenChange={(open) => { if (!open) setLoginRequest(null); }} onSuccess={() => { if (loginRequest?.target) navigate(loginRequest.target); }} onLogin={() => { const from = loginRequest?.target || `${pathname}${search}${location.hash}`; setLoginRequest(null); navigate('/auth/login', { state: { from } }); }} />
+      <AuthPromptDialog isOpen={Boolean(loginRequest)} action={loginRequest?.action} onOpenChange={(open) => { if (!open) setLoginRequest(null); }} onSuccess={() => { if (loginRequest?.target) navigate(loginRequest.target, loginRequest.target === '/compose' && window.matchMedia('(min-width: 761px)').matches ? { state: composeModalState(location) } : undefined); }} onLogin={() => { const from = loginRequest?.target || `${pathname}${search}${location.hash}`; setLoginRequest(null); navigate('/auth/login', { state: { from } }); }} />
     </div>
   );
 }
