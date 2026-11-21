@@ -43,5 +43,5 @@ export function DetailFollowButton({ authorUid, viewerUid, isAuthenticated, sour
     }
   };
 
-  return <Button className="detail-follow-button" type="button" label="关注" variant="secondary" size="sm" isDisabled={relation.status === 'submitting'} isLoading={relation.status === 'submitting'} onClick={follow} />;
+  return <Button className="detail-follow-button" type="button" label="+ 关注" variant="ghost" size="sm" isDisabled={relation.status === 'submitting'} isLoading={relation.status === 'submitting'} onClick={follow} />;
 }

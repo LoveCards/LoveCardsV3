@@ -264,8 +264,11 @@ export function DetailPage({ preview = false, loadingFallback = null }) {
       <article className={`detail-article${cardMediaItems.length ? ' has-media' : ''}`}>
         <header className="detail-author">
           <div className="detail-author-main" ref={authorGroupRef}>
-            <AuthorIdentity author={data.card.author} uid={data.card.authorUid} handle={data.card.authorHandle} avatarUrl={data.card.authorAvatar} meta={data.card.meta || '时间信息暂未提供'} size="md" variant="byline" className="detail-author-identity" />
-            <DetailFollowButton authorUid={data.card.authorUid} viewerUid={session?.uid} isAuthenticated={isAuthenticated} source={data.source} onRequireLogin={() => requestLogin('关注用户')} onFollowed={() => requestAnimationFrame(() => authorGroupRef.current?.querySelector('a.author-identity')?.focus({ preventScroll: true }))} />
+            <div className="detail-author-top">
+              <AuthorIdentity author={data.card.author} uid={data.card.authorUid} handle={data.card.authorHandle} avatarUrl={data.card.authorAvatar} size="md" variant="byline" className="detail-author-identity" />
+              <DetailFollowButton authorUid={data.card.authorUid} viewerUid={session?.uid} isAuthenticated={isAuthenticated} source={data.source} onRequireLogin={() => requestLogin('关注用户')} onFollowed={() => requestAnimationFrame(() => authorGroupRef.current?.querySelector('a.author-identity')?.focus({ preventScroll: true }))} />
+            </div>
+            <small className="detail-author-meta">{data.card.meta || '时间信息暂未提供'}</small>
           </div>
           {!data.card.authorUid && <span className="detail-capability">作者主页暂未提供</span>}
           {contentMenuItems.length > 0 && <ActionMenu items={contentMenuItems} label="内容操作" />}
