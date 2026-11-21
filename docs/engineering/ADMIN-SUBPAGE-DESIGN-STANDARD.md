@@ -160,3 +160,63 @@
 - 用户资料编辑时账号状态命令仍可触达；执行后只更新状态并保留资料草稿。用户资料／角色授权、角色基础字段／能力授权、举报处理／备注的切换均要求先处理当前草稿。
 - 主列表编辑入口普通保存以服务端重读成功为关闭条件；独立页留在本记录。立即生效命令留在当前容器。只读权限、审计和处理任务保留必要查看入口。
 - 管理端类型检查与构建通过。卡片跨资源草稿导航、Esc 确认、用户状态命令保留资料草稿、举报处理／备注切换、角色保存范围切换、角色与标签写入后详情重读失败仍保留编辑范围和草稿的专项浏览器回归通过；审计、处理任务与用户操作的旧选择器已按当前语义更新并通过。标签与角色的普通写入成功但详情重读失败时，列表仍刷新，弹窗留在当前编辑范围并显示错误。角色创建测试需要隔离运行器登录态，不能直接使用无依赖的模拟 API 测试命令。根检查仍受 PHP 8.5 弃用报错和缺失 mime_content_type() 阻断。人工视觉签收继续按第 8.3 节执行，不以构建替代。
+
+## 9. 全路由与弹窗代码复审（2026-11-22，施工前）
+
+本次重新读取 `apps/admin/pages/apps` 的 **66 个路由文件**，逐一查看 37 个实际页面的模板、业务主体与相关 Dialog；29 个旧路由只核对重定向目标。下面的“结构可沿用”是代码层判断，**不表示已完成浅／深主题或人工视觉签收**。A 类继续执行第 8 节，用户、评论的字段级方案见[详情与编辑规范 §2.8](ADMIN-DETAIL-EDIT-DESIGN-STANDARD.md)。所有修改按页面所属业务切片完成，不能一次重做 37 页或把不同任务硬套同一表单。
+
+### 9.1 实际页面逐项账本
+
+下表路径均相对 `apps/admin/pages/apps/`；每行是一个真实页面，合计 **10 个列表 + 10 个详情 + 4 个动态配置 + 1 个安全专题 + 1 个策略页 + 11 个父页 = 37**。
+
+| 页面 | 类型 | 代码复审结果与下一步 |
+| --- | --- | --- |
+| `users/index.vue` | A 列表 | 已用资源表格壳；编辑入口连 `UserQuickViewDialog`。随用户主体核对弹窗身份、保存后列表刷新和回焦。 |
+| `content/cards/index.vue` | A 列表 | 已用资源表格壳和 `CardInspectDialog`；以已确认的卡片字段顺序作为内容型样板。 |
+| `content/comments/index.vue` | A 列表 | 已用资源表格壳和 `CommentInspectDialog`；随评论主体核对编辑直入、命令保留草稿。 |
+| `content/tags/index.vue` | A 列表 | 已用资源表格壳和 `TagDetailDialog`；随标签主体核对简单字段与治理动作。 |
+| `community/reports/index.vue` | A 列表 | 已用资源表格壳和 `ReportDetailDialog`；处理入口仍区分状态转换与内部备注。 |
+| `access/roles/index.vue` | A 列表 | 已用资源表格壳和 `RoleDetailDialog`；基础信息与权限授权仍分别保存。 |
+| `access/permissions/index.vue` | A 列表 | 已用资源表格壳和只读详情弹窗；保留必要的查看入口。 |
+| `settings/storage/files/index.vue` | A 列表／D | 已用资源表格壳，正常／回收站为同一父页视图；详情连 `FileDetailDialog`。 |
+| `operations/audit/index.vue` | A 列表 | 已用资源表格壳和只读诊断弹窗；多字段筛选属允许的局部例外。 |
+| `operations/deliveries/index.vue` | A 列表 | 已用资源表格壳和任务详情弹窗；状态视图继续留在列表工具区。 |
+| `users/[id]/index.vue` | A 详情 | `UserDetailContent` 目前分三段、头像与编辑输入分离；按详情规范 §2.8 改为单记录连续表单，保留状态命令和角色独立保存。 |
+| `content/cards/[id].vue` | A 详情 | `CardDetailContent` 已是单一字段表面；保持正文、媒体、标签、JSON 和状态命令的已确认顺序，后续作为对照。 |
+| `content/comments/[id].vue` | A 详情 | `CommentDetailContent` 的状态 chip、正文、关联和治理按钮断层；按 §2.8 重排，修复写入成功但重读失败遮蔽草稿。 |
+| `content/tags/[id].vue` | A 详情 | 名称与状态分成两张相似表面；改为名称、当前状态、创建者、时间的一张简洁记录表，状态选择仍走原命令。 |
+| `community/reports/[id].vue` | A 详情 | 证据快照、处理历史有独立阅读价值；保留事实、证据、时间线的层级，收紧底部处理／备注两个互斥任务的视觉与草稿切换。 |
+| `access/roles/[id].vue` | A 详情 | 基础字段和授权为真实双保存范围；改进身份、字段与授权摘要的连续性，权限清单仍作为受权编辑区，不合并保存。 |
+| `access/permissions/[capability]/[scope].vue` | A 只读详情 | 三个事实字段、一层表面，无虚假编辑；结构可沿用，核对独立页与弹窗同序。 |
+| `settings/storage/files/[id]/index.vue` | A 详情 | `FileDetailContent` 目前以元数据开头、无可用媒体预览，审核／公开均是分散按钮；先核对可访问 URL，再按媒体预览／名称／状态／引用／诊断排序，公开和审核仍为命令，删除／恢复保持独立确认。 |
+| `operations/audit/[id].vue` | A 只读详情 | 状态快照和请求链路需要各自数据边界；保持诊断型结构，压制重复边框，绝不增加编辑。 |
+| `operations/deliveries/[id].vue` | A 诊断详情 | 结果、失败、执行元数据和重试属于一个诊断任务；技术信息可折叠，重试确认从正文警告中收束为明确的任务确认，不伪装为字段保存。 |
+| `settings/appearance/themes/[slug].vue` | B 动态配置 | 已用 `AdminConfigSection`、单一保存栏与离开保护；保持服务端 schema 顺序，核对暗色和窄屏。 |
+| `settings/messaging/[slug].vue` | B 动态配置／E | 已用配置区、保存栏及测试弹窗；测试只读取已保存配置，保留脏态限制与就近说明。 |
+| `settings/storage/[slug].vue` | B 动态配置／E | 已用配置区、保存栏及连接测试；保持 Secret 与已保存配置语义，核对测试错误位置。 |
+| `settings/verification/[slug].vue` | B 动态配置 | 已用配置区、保存栏与离开保护；保持驱动 schema 和只读权限语义。 |
+| `users/[id]/security.vue` | C 专题 | 身份与保护状态、Session 表、受限撤销命令的任务顺序可沿用；不并入用户资料表单。 |
+| `settings/site/policies.vue` | B／D 策略 | 三个 Tab 含多个保存范围；父页直接切换 `tab`，通知与主动更新子面板仍用 `window.confirm`。统一 Tab、路由离开与浏览器卸载的草稿决策，保留各范围独立保存。 |
+| `dashboard.vue` | 工作台父页 | 按工作台双列和待办优先的既定骨架验收；不套单记录表单。 |
+| `community/insights.vue` | 只读父页 | 聚合数据以单一列表面呈现，没有单记录编辑；保留隐私边界，核对空态。 |
+| `operations/communication.vue` | C 专题 | `form` 形成运行策略草稿，但收起设置或路由离开未处理脏状态；补明确决策，维持当前状态 → 配置 → 依赖诊断顺序。 |
+| `operations/eventing.vue` | C／D 专题 | `form` 形成事件策略草稿；切至事件／处理器 Tab、收起设置或离开未统一保护。沿用专题状态与队列诊断，补同一草稿决策。 |
+| `operations/upgrade.vue` | C／E 专题 | 版本、升级计划和上传短任务顺序可沿用；`AdminDangerActionDialog` 调用传入未声明的 `confirm-text`，需移除无效属性并核对确认文案。 |
+| `settings/appearance/index.vue` | 目录父页 | 主题目录卡片有对象归属与配置入口；按目录卡片例外核对，不套详情表单。 |
+| `settings/messaging/index.vue` | 目录父页 | 发送渠道目录、扫描与默认切换是目录任务；保持与四个配置详情不同的表面。 |
+| `settings/redis.vue` | B 配置父页 | 单一配置区、保存栏和离开保护已有；核对测试只读取已保存配置以及 Secret 清除语义。 |
+| `settings/site/index.vue` | B 配置父页 | 站点信息单一配置区、保存栏和离开保护已有；继续按配置页骨架，不改为单记录弹窗。 |
+| `settings/storage/index.vue` | D 目录／配置 | “基础设置”有 `settingsChanged` 草稿，却无 Tab／离开保护，且保存栏采用页内自制按钮；按同类配置保存范围收束，保留渠道目录。 |
+| `settings/verification/index.vue` | D 目录／配置 | 站点验证要求和服务设置有两个草稿范围，却无 Tab／离开保护；补跨范围决策和局部反馈，保留场景、要求、驱动、设置四个真实视图。 |
+
+### 9.2 旧路由与短任务浮层
+
+29 个旧路由都只承载 `definePageMeta.redirect`，不能成为第二份页面。**需要修正的例外：** `cards/[id].vue` 与 `comments/[id].vue` 目前把旧单记录地址重定向为列表 `?inspect=:id`；按第 1.1 节，旧详情链接和书签应分别到 `content/cards/[id]`、`content/comments/[id]` 的独立页，保留可安全继承的 query／hash。其余旧路由核对目标归属和参数即可，不复制视觉；特别检查经过两级旧地址的 `system/runtime` 是否最终到规范路由。
+
+已逐项查看十种资源详情 Dialog，以及 `CreateRoleDialog`、`CreateTagDialog`、发送测试、升级上传、危险确认、Secret 显隐、列表搜索和视图设置浮层。十种详情 Dialog 应继续挂各自同一 `*DetailContent`，由容器承担标题、滚动、Esc 和回焦；只读诊断保留查看。创建角色／标签在取消后目前保留输入草稿，重开又只清错误，需明确“取消即放弃并重置”或显式保留草稿，不能让两者语义随机。搜索与保存视图已有独立输入草稿；不因本轮记录表单改动而改其 URL、列偏好和应用规则。`AdminDangerActionDialog` 仅确认已选命令，不承载完整编辑字段。
+
+### 9.3 收束顺序与验收口径
+
+1. **先修入口与草稿安全：** 旧卡片／评论详情跳转、策略 Tab、存储与验证两个设置父页、通信与事件运行策略的离开／收起行为。每处先锁定可复现操作，再改守卫；取消后必须保留当前值与焦点。
+2. **再按 A 类垂直切片收束外观：** 用户、评论按 §2.8；标签、角色、文件按上表各自语义；举报、权限、审计、任务只调整已列出的层级或确认入口。每一资源同时核对独立页、主列表弹窗、只读权限、失败与保存后刷新。
+3. **最后校验 B–E：** 动态配置、账号安全、目录、创建／测试／上传／筛选／视图工具只修真实不一致；不新建全局 schema 或重复弹窗引擎。`npm run check`、管理端构建与相关 E2E 是代码门禁；人工还须在浅／深色、1440／960／600／390px、200% 缩放和键盘条件下逐页看实际截图。未取得截图和人工反馈的页面记为“代码复审”，不得写成“视觉验收通过”。
