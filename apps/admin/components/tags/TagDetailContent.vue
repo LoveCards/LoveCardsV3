@@ -27,12 +27,18 @@
             <v-col cols="12" sm="6"><AdminDetailField label="创建时间"><AdminTableTime :value="tag.created_at" /></AdminDetailField></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="应用 ID" :value="tag.aid" /></v-col>
           </v-row>
-        </AdminDetailSection>
-        <AdminDetailSection title="治理状态" description="状态变更单独执行并记录审核结果。">
-          <v-chip size="small" variant="tonal" :color="statusColor">{{ statusLabel }}</v-chip>
-          <div v-if="canUpdate" class="d-flex flex-wrap ga-2 mt-4">
-            <v-btn v-for="action in governanceActions" :key="action.method" :disabled="pending" size="small" variant="outlined" @click="selectedAction = action">{{ action.label }}</v-btn>
-          </div>
+          <v-divider class="my-5" />
+          <v-select
+            v-if="canUpdate"
+            :model-value="'current'"
+            :items="[{ title: statusLabel, value: 'current' }, ...governanceActions.map(action => ({ title: action.targetLabel, value: action.method }))]"
+            :disabled="pending"
+            label="治理状态"
+            variant="outlined"
+            @update:model-value="selectGovernance"
+          />
+          <AdminDetailField v-else label="治理状态" :value="statusLabel" />
+          <p class="text-caption text-medium-emphasis mb-0">状态变更单独执行并记录审核结果。</p>
         </AdminDetailSection>
         <v-alert v-if="selectedAction" class="mt-4" type="warning" variant="tonal">
           确认将标签「{{ tag.name }}」从“{{ statusLabel }}”改为“{{ selectedAction.targetLabel }}”？<span v-if="dirty">当前未保存的名称修改会保留，仍需单独保存。</span>
@@ -82,7 +88,6 @@ const statusOptions = [
   { value: 3, label: '待审核', color: 'warning' },
 ]
 const statusLabel = computed(() => statusOptions.find(item => item.value === tag.value?.status)?.label ?? '未知状态')
-const statusColor = computed(() => statusOptions.find(item => item.value === tag.value?.status)?.color)
 const dirty = computed(() => mode.value === 'edit' && draftName.value !== (tag.value?.name ?? ''))
 const canSave = computed(() => canUpdate.value && draftName.value.trim() !== (tag.value?.name ?? '') && Boolean(draftName.value.trim()) && !pending.value)
 const governanceActions = computed<GovernanceAction[]>(() => {
@@ -153,6 +158,10 @@ async function saveName() {
     } else if (props.tagId === id) emit('write-applied')
   } catch (cause) { if (props.tagId === id) actionError.value = isApiError(cause) ? cause.message : '标签名称保存失败。' }
   finally { pending.value = false }
+}
+function selectGovernance(value: string) {
+  if (value === 'current') return
+  selectedAction.value = governanceActions.value.find(action => action.method === value) ?? null
 }
 async function applyGovernance() {
   const action = selectedAction.value

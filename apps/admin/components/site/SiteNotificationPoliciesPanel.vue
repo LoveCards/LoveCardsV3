@@ -195,12 +195,5 @@ onMounted(() => {
 watch(() => props.active, (active) => {
   if (active && !catalog.value && !loading.value) void load()
 })
-onBeforeRouteLeave(() => !dirty.value || window.confirm('有未保存的提醒规则修改，确定离开吗？'))
-function warnBeforeUnload(event: BeforeUnloadEvent) {
-  if (!dirty.value) return
-  event.preventDefault()
-  event.returnValue = ''
-}
-onMounted(() => window.addEventListener('beforeunload', warnBeforeUnload))
-onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnload))
+
 </script>

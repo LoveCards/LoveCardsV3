@@ -61,7 +61,7 @@
       </v-card>
     </v-dialog>
 
-    <AdminDangerActionDialog v-model="actionDialog" :title="actionTitle" :action-label="actionTitle" :resource-label="selectedPlan?.target_version || selectedPlan?.release_id || ''" :impact="actionImpact" :confirm-text="actionType === 'contract' ? '批准 CONTRACT' : undefined" :color="actionType === 'advance' ? 'primary' : 'error'" :loading="actionPlanId !== null" :error="actionError" @confirm="confirmAction" />
+    <AdminDangerActionDialog v-model="actionDialog" :title="actionTitle" :action-label="actionTitle" :resource-label="selectedPlan?.target_version || selectedPlan?.release_id || ''" :impact="actionImpact" :color="actionType === 'advance' ? 'primary' : 'error'" :loading="actionPlanId !== null" :error="actionError" @confirm="confirmAction" />
   </AdminPageContainer>
 </template>
 

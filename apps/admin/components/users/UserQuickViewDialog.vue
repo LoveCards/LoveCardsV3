@@ -2,7 +2,7 @@
   <v-dialog @after-leave="restoreDialogFocus" :model-value="open" aria-label="用户详情" :fullscreen="xs" max-width="880" @update:model-value="onDialogChange">
     <v-card>
       <v-card-title class="d-flex align-center ga-3">
-        <span>{{ initialMode === 'edit' ? '编辑资料' : '查看用户' }}</span>
+        <span>{{ loadedUser ? '用户 · ' + loadedUser.username : '用户详情' }}</span>
         <v-spacer />
         <v-btn icon="mdi-close" variant="text" aria-label="关闭" @click="close" />
       </v-card-title>

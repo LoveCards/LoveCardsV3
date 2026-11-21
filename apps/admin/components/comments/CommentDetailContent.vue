@@ -1,16 +1,13 @@
 <template>
   <div :class="{ 'comment-detail__page-surface': !embedded }">
     <v-card-text class="pa-4 pa-sm-6">
-      <AdminAsyncState :loading="loading" :error="loadError" :empty="!comment" empty-title="评论不存在" @retry="load">
+      <AdminAsyncState :loading="loading && !comment" :error="!comment ? loadError : ''" :empty="!comment" empty-title="评论不存在" @retry="load">
         <template v-if="comment">
-          <div class="d-flex flex-wrap align-center ga-3 mb-4">
-            <AdminContentStatus :status="comment.status" :pinned="comment.is_pinned" />
-            <span v-if="comment.deleted" class="text-body-2 text-medium-emphasis">已删除</span>
-          </div>
+          <v-alert v-if="loadError" class="mb-4" role="alert" type="error" variant="tonal">{{ loadError }}</v-alert>
           <section v-if="mode === 'view'" aria-label="评论内容" class="mb-5">
             <p class="comment-detail__body text-pre-wrap mb-3">{{ comment.content || '—' }}</p>
             <div v-if="canUpdate && !comment.deleted" class="d-flex justify-end">
-              <v-btn prepend-icon="mdi-pencil-outline" variant="tonal" @click="mode = 'edit'">编辑内容</v-btn>
+              <v-btn prepend-icon="mdi-pencil-outline" variant="tonal" @click="mode = 'edit'">编辑</v-btn>
             </div>
           </section>
           <template v-else>
@@ -18,22 +15,26 @@
             <v-textarea v-model="draft" auto-grow :disabled="saving" label="评论正文" maxlength="140" rows="4" variant="outlined" />
           </template>
           <v-divider class="my-5" />
-          <h3 class="text-subtitle-1 font-weight-medium mb-3">关联与发布</h3>
           <v-row dense>
             <v-col cols="12" sm="6"><AdminDetailField label="作者"><AdminResourceLink resource-type="user" :resource-id="comment.user_id" :label="`${comment.username || '用户'} #${comment.user_id}`" /></AdminDetailField></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="所属卡片"><AdminResourceLink resource-type="card" :resource-id="comment.card_id" /></AdminDetailField></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="父评论"><AdminResourceLink v-if="comment.parent_id" resource-type="comment" :resource-id="comment.parent_id" /><span v-else>—</span></AdminDetailField></v-col>
+            <v-col cols="12" sm="6">
+              <v-select v-if="statusCommands.length" :model-value="'current'" :items="[{ title: statusLabel, value: 'current' }, ...statusCommands.map(action => ({ title: action.label, value: action.method }))]" :disabled="busy || saving" label="审核状态" variant="outlined" @update:model-value="selectCommand" />
+              <AdminDetailField v-else label="审核状态" :value="statusLabel" />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select v-if="pinCommand" :model-value="'current'" :items="[{ title: comment.is_pinned ? '已置顶' : '未置顶', value: 'current' }, { title: pinCommand.label, value: pinCommand.method }]" :disabled="busy || saving" label="置顶状态" variant="outlined" @update:model-value="selectCommand" />
+              <AdminDetailField v-else label="置顶状态" :value="comment.parent_id ? '回复不可置顶' : comment.is_pinned ? '已置顶' : '未置顶'" />
+            </v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="点赞数" :value="comment.goods" /></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="发布时间"><AdminTableTime :value="comment.created_at" /></AdminDetailField></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="更新时间"><AdminTableTime :value="comment.updated_at" /></AdminDetailField></v-col>
             <v-col v-if="comment.post_ip" cols="12" sm="6"><AdminDetailField label="发布 IP" :value="comment.post_ip" /></v-col>
           </v-row>
           <v-expansion-panels v-if="comment.data" class="my-4" variant="accordion"><v-expansion-panel title="查看扩展字段（只读）"><v-expansion-panel-text><pre class="text-wrap">{{ displayJson(comment.data) }}</pre></v-expansion-panel-text></v-expansion-panel></v-expansion-panels>
-          <section v-if="commands.length" class="mt-5">
-            <v-divider class="mb-4" />
-            <h3 class="text-subtitle-1 font-weight-medium mb-2">评论治理</h3>
+          <section v-if="commandError || pendingCommand" class="mt-5">
             <v-alert v-if="commandError" class="mb-3" role="alert" type="error" variant="tonal">{{ commandError }}</v-alert>
-            <div class="d-flex flex-wrap ga-2"><v-btn v-for="action in commands" :key="action.method" :disabled="busy || saving" variant="outlined" @click="pendingCommand = action">{{ action.label }}</v-btn></div>
             <v-alert v-if="pendingCommand" class="mt-4" type="warning" variant="tonal">
               {{ pendingCommand.impact }}确定对评论 #{{ commentId }}执行“{{ pendingCommand.label }}”吗？<span v-if="dirty">当前未保存的正文修改会保留，仍需单独保存。</span>
               <template #append><v-btn :disabled="busy" variant="text" @click="pendingCommand = null">取消</v-btn><v-btn color="warning" :disabled="saving" :loading="busy" variant="flat" @click="runCommand">{{ pendingCommand.label }}</v-btn></template>
@@ -55,7 +56,6 @@
 <script setup lang="ts">
 import type { Comment } from '@lovecards/sdk'
 import { commentGovernanceActions, type CommentGovernanceAction } from '~/components/comments/commentGovernanceActions'
-import AdminContentStatus from '~/components/content/AdminContentStatus.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'
 import AdminDetailField from '~/components/shared/admin/AdminDetailField.vue'
@@ -85,6 +85,14 @@ const canModerate = computed(() => userStore.hasGrant('comments.moderate', 'all'
 const canPin = computed(() => userStore.hasGrant('comments.pin', 'all'))
 const dirty = computed(() => mode.value === 'edit' && comment.value !== null && draft.value !== comment.value.content)
 const commands = computed(() => comment.value ? commentGovernanceActions(comment.value, { moderate: canModerate.value, pin: canPin.value }) : [])
+const statusCommands = computed(() => commands.value.filter(action => action.method !== 'pin' && action.method !== 'unpin'))
+const pinCommand = computed(() => commands.value.find(action => action.method === 'pin' || action.method === 'unpin'))
+const statusLabel = computed(() => ({ 0: '正常', 1: '封禁', 2: '隐藏', 3: '待审核' })[Number(comment.value?.status) as 0 | 1 | 2 | 3] ?? '未知状态')
+function selectCommand(value: string) {
+  if (value === 'current') return
+  pendingCommand.value = commands.value.find(action => action.method === value) ?? null
+}
+
 watch(dirty, value => emit('dirty-change', value), { immediate: true })
 watch(mode, value => emit('editing-change', value === 'edit'), { immediate: true })
 watch(() => loading.value || saving.value || busy.value, value => emit('busy-change', value), { immediate: true })
@@ -116,6 +124,7 @@ async function save() {
     await client.comments.moderateManaged(comment.value.id, { content: draft.value })
     await load()
     if (!loadError.value) { mode.value = 'view'; emit('saved') }
+    else { loadError.value = ''; formError.value = '修改已提交，但无法读取最新评论；请刷新后核对结果。'; emit('command-applied') }
   } catch (cause) { formError.value = isApiError(cause) ? cause.message : '评论保存失败，请稍后重试。' }
   finally { saving.value = false }
 }

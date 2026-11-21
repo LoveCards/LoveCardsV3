@@ -6,13 +6,13 @@
       :breadcrumbs="[{ title: '站点' }]"
     />
 
-    <v-tabs v-model="tab" color="primary" class="mb-4" density="comfortable">
+    <v-tabs :model-value="tab" @update:model-value="selectTab" color="primary" class="mb-4" density="comfortable">
       <v-tab v-if="canAccessTab('access')" prepend-icon="mdi-account-check-outline" value="access">访问设置<span v-if="dirtyTabs.access" class="ml-2">· 未保存</span></v-tab>
       <v-tab v-if="canAccessTab('content')" prepend-icon="mdi-shield-check-outline" value="content">内容规则<span v-if="dirtyTabs.content" class="ml-2">· 未保存</span></v-tab>
       <v-tab v-if="canAccessTab('notifications')" prepend-icon="mdi-bell-cog-outline" value="notifications">通知策略<span v-if="dirtyTabs.notifications" class="ml-2">· 未保存</span></v-tab>
     </v-tabs>
 
-    <v-window v-if="ready && userStore.userInfo && availableTabs.length" v-model="tab">
+    <v-window v-if="ready && userStore.userInfo && availableTabs.length" :model-value="tab" @update:model-value="selectTab">
       <v-window-item value="access">
         <SiteAccessPolicyPanel v-if="canAccessTab('access') && mountedTabs.has('access')" :active="tab === 'access'" @dirty-change="dirtyTabs.access = $event" />
       </v-window-item>
@@ -27,11 +27,14 @@
       </v-window-item>
     </v-window>
   </AdminPageContainer>
+  <AdminUnsavedChangesDialog :model-value="unsavedChangesDialog" subject="站点策略" @stay="continueEditing" @discard="discardChanges" />
 </template>
 
 <script setup lang="ts">
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
+import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
+import { useAdminUnsavedChanges } from '~/composables/useAdminUnsavedChanges'
 import SiteAccessPolicyPanel from '~/components/site/SiteAccessPolicyPanel.vue'
 import SiteContentRulesPanel from '~/components/site/SiteContentRulesPanel.vue'
 import SiteNotificationPoliciesPanel from '~/components/site/SiteNotificationPoliciesPanel.vue'
@@ -48,6 +51,17 @@ const notificationDirty = ref(false)
 const signalDirty = ref(false)
 watch([notificationDirty, signalDirty], () => { dirtyTabs.notifications = notificationDirty.value || signalDirty.value })
 const ready = ref(false)
+const anyDirty = computed(() => Object.values(dirtyTabs).some(Boolean))
+const { unsavedChangesDialog, continueEditing, discardChanges, confirmUnsavedChanges } = useAdminUnsavedChanges(anyDirty, { guardQuery: true })
+async function selectTab(value: unknown) {
+  if (typeof value !== 'string' || !availableTabs.value.includes(value as SitePolicyTab) || value === tab.value) return
+  if (!(await confirmUnsavedChanges())) return
+  for (const key of ['access', 'content', 'notifications'] as const) dirtyTabs[key] = false
+  notificationDirty.value = false
+  signalDirty.value = false
+  mountedTabs.value = new Set([value as SitePolicyTab])
+  tab.value = value as SitePolicyTab
+}
 
 const canAccessTab = (candidate: SitePolicyTab): boolean => {
   if (candidate === 'access') {
@@ -87,7 +101,13 @@ watch(tab, async (value) => {
 
 watch(() => route.query.tab, (value) => {
   if (typeof value !== 'string' || !availableTabs.value.includes(value as SitePolicyTab)) return
-  if (tab.value !== value) tab.value = value as SitePolicyTab
+  if (tab.value !== value) {
+    for (const key of ['access', 'content', 'notifications'] as const) dirtyTabs[key] = false
+    notificationDirty.value = false
+    signalDirty.value = false
+    mountedTabs.value = new Set([value as SitePolicyTab])
+    tab.value = value as SitePolicyTab
+  }
 })
 
 onMounted(() => {

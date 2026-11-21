@@ -4,26 +4,31 @@
       <template v-if="file">
         <AdminDetailSection title="文件信息" description="文件元数据只读；审核、公开和回收站操作分别提交。">
           <v-alert v-if="commandError" class="mb-4" type="error" variant="tonal">{{ commandError }}</v-alert>
+          <v-sheet v-if="previewUrl && file.mime_type?.startsWith('image/')" border rounded class="mb-5 overflow-hidden">
+            <v-img :src="previewUrl" :alt="file.original_name || '文件预览'" max-height="320" contain />
+          </v-sheet>
+          <video v-else-if="previewUrl && file.mime_type?.startsWith('video/')" :src="previewUrl" controls preload="metadata" class="file-detail__video mb-5" />
           <v-row dense>
             <v-col cols="12" sm="6"><AdminDetailField label="文件名" :value="file.original_name || `文件 #${file.id}`" /></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="上传者"><AdminResourceLink resource-type="user" :resource-id="file.user_id" /></AdminDetailField></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="媒体类型" :value="file.mime_type" /></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="文件大小" :value="formatSize(file.file_size)" /></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="创建时间" :value="file.created_at" /></v-col>
-            <v-col cols="12" sm="6"><AdminDetailField label="审核状态" :value="file.status === 0 ? '审核通过' : '已封禁'" /></v-col>
-            <v-col cols="12" sm="6"><AdminDetailField label="公开状态" :value="file.is_public ? '公开' : '非公开'" /></v-col>
+            <v-col cols="12" sm="6">
+              <v-select v-if="!file.is_deleted && canUpdate" :model-value="'current'" :items="[{ title: file.status === 0 ? '审核通过' : '已封禁', value: 'current' }, { title: file.status === 0 ? '封禁文件' : '审核通过', value: file.status === 0 ? 'ban' : 'approve' }]" :disabled="busy" label="审核状态" variant="outlined" @update:model-value="selectStatusCommand" />
+              <AdminDetailField v-else label="审核状态" :value="file.status === 0 ? '审核通过' : '已封禁'" />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select v-if="!file.is_deleted && canUpdate" :model-value="'current'" :items="[{ title: file.is_public ? '公开' : '非公开', value: 'current' }, { title: file.is_public ? '非公开' : '公开', value: 'toggle_public' }]" :disabled="busy" label="公开状态" variant="outlined" @update:model-value="selectPublicCommand" />
+              <AdminDetailField v-else label="公开状态" :value="file.is_public ? '公开' : '非公开'" />
+            </v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="位置" :value="file.is_deleted ? '回收站' : '正常列表'" /></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="渠道" :value="file.channel_slug" /></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="场景" :value="file.scene" /></v-col>
           </v-row>
 
-          <v-divider v-if="hasFileCommands" class="my-5" />
-          <h3 v-if="hasFileCommands" class="text-subtitle-1 font-weight-medium mb-3">文件操作</h3>
-          <div v-if="!file.is_deleted && canUpdate" class="d-flex flex-wrap ga-2 mt-4">
-            <v-btn v-if="file.status !== 0" variant="outlined" :disabled="busy" @click="selectCommand('approve')">审核通过</v-btn>
-            <v-btn v-if="file.status === 0" variant="outlined" :disabled="busy" @click="selectCommand('ban')">封禁文件</v-btn>
-            <v-btn variant="outlined" :disabled="busy" @click="selectCommand('toggle_public')">{{ file.is_public ? '设为非公开' : '设为公开' }}</v-btn>
-          </div>
+          <v-divider v-if="canTrash || canRestore || canPurge" class="my-5" />
+          <h3 v-if="canTrash || canRestore || canPurge" class="text-subtitle-1 font-weight-medium mb-3">文件操作</h3>
           <div v-if="(!file.is_deleted && canTrash) || (file.is_deleted && (canRestore || canPurge))" class="d-flex flex-wrap ga-2 mt-3">
             <v-btn v-if="!file.is_deleted && canTrash" color="error" variant="text" :disabled="busy" @click="selectCommand('trash')">移入回收站</v-btn>
             <v-btn v-if="file.is_deleted && canRestore" variant="outlined" :disabled="busy" @click="selectCommand('restore')">恢复文件</v-btn>
@@ -86,7 +91,16 @@ const canUpdate = computed(() => userStore.hasGrant('files.update', 'all'))
 const canTrash = computed(() => userStore.hasGrant('files.delete', 'all'))
 const canRestore = computed(() => userStore.hasGrant('files.restore', 'all'))
 const canPurge = computed(() => userStore.hasGrant('files.purge', 'all'))
-const hasFileCommands = computed(() => Boolean(file.value && (file.value.is_deleted ? canRestore.value || canPurge.value : canUpdate.value || canTrash.value)))
+const previewUrl = computed(() => {
+  const value = file.value?.url || file.value?.file_url || ''
+  return /^(https?:\/\/|\/)/.test(value) ? value : ''
+})
+function selectStatusCommand(value: string) {
+  if (value === 'approve' || value === 'ban') selectCommand(value)
+}
+function selectPublicCommand(value: string) {
+  if (value === 'toggle_public') selectCommand(value)
+}
 const titles: Record<FilesBatchMethod, string> = {
   approve: '审核通过', ban: '封禁文件', toggle_public: '切换公开状态',
   trash: '移入回收站', restore: '恢复文件', hard_delete: '永久删除文件',
@@ -166,3 +180,7 @@ watch(busy, value => emit('busy-change', value), { immediate: true })
 watch(() => props.fileId, () => { void load() })
 onMounted(() => { void load() })
 </script>
+
+<style scoped>
+.file-detail__video { display: block; width: 100%; max-height: 320px; background: rgb(var(--v-theme-surface-variant)); }
+</style>

@@ -63,6 +63,7 @@ const submit = async () => {
 
 watch(thisDialogState, (open) => {
   if (open) formError.value = ''
+  else if (!saving.value) { tagName.value = ''; formError.value = '' }
 })
 const restoreDialogFocus = useAdminDialogFocusReturn(thisDialogState)
 </script>

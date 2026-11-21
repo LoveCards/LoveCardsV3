@@ -37,7 +37,7 @@
               <div class="text-body-2 text-medium-emphasis">轮询由浏览器定时读取 API；实时由 Gateway 推送变化提示。发送和读取完整业务数据仍走 PHP API。</div>
             </div>
             <AdminActionGuard capability="operations.runtime.configure">
-              <v-btn :color="settingsOpen ? undefined : 'primary'" :variant="settingsOpen ? 'outlined' : 'flat'" @click="settingsOpen = !settingsOpen">{{ settingsOpen ? '收起设置' : '修改通信设置' }}</v-btn>
+              <v-btn :color="settingsOpen ? undefined : 'primary'" :variant="settingsOpen ? 'outlined' : 'flat'" @click="toggleSettings">{{ settingsOpen ? '收起设置' : '修改通信设置' }}</v-btn>
             </AdminActionGuard>
           </div>
           <v-alert v-if="eventProcessing && (eventProcessing.mode !== 'resident' || eventProcessing.state !== 'active')" class="mt-4" type="info" variant="tonal">
@@ -104,6 +104,7 @@
       </template>
     </AdminAsyncState>
   </AdminPageContainer>
+  <AdminUnsavedChangesDialog :model-value="unsavedChangesDialog" subject="通信设置" @stay="continueEditing" @discard="discardChanges" />
 </template>
 
 <script setup lang="ts">
@@ -112,6 +113,8 @@ import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTabl
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue'
+import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
+import { useAdminUnsavedChanges } from '~/composables/useAdminUnsavedChanges'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
@@ -164,6 +167,13 @@ const hasChanges = computed(() => {
   if (form.desired_mode !== current.desired_mode) return true
   return Object.entries(current.settings).some(([key, value]) => String(form[key as keyof typeof form]) !== String(value))
 })
+const { unsavedChangesDialog, continueEditing, discardChanges, confirmUnsavedChanges } = useAdminUnsavedChanges(hasChanges)
+async function toggleSettings() {
+  if (!settingsOpen.value) { settingsOpen.value = true; return }
+  if (!(await confirmUnsavedChanges())) return
+  if (hasChanges.value) syncFormFromSnapshot(communication.value)
+  settingsOpen.value = false
+}
 const reasonLabels: Record<string, string> = {
   'config-locked': '环境变量已锁定运行模式',
   'schema-not-ready': '运行时配置表未就绪（请先执行迁移）',

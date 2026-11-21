@@ -33,7 +33,7 @@
               <div v-if="eventProcessing?.mode === 'scheduled'" class="text-body-2 text-medium-emphasis mt-1">触发方式：{{ triggerLabel(eventProcessing.scheduled_trigger) }} · 最近执行：{{ eventProcessing.note?.finished_at ?? '尚无记录' }}</div>
             </div>
             <AdminActionGuard capability="operations.runtime.configure">
-              <v-btn :variant="settingsOpen ? 'outlined' : 'flat'" :color="settingsOpen ? undefined : 'primary'" @click="settingsOpen = !settingsOpen">{{ settingsOpen ? '收起设置' : '修改事件处理' }}</v-btn>
+              <v-btn :variant="settingsOpen ? 'outlined' : 'flat'" :color="settingsOpen ? undefined : 'primary'" @click="toggleSettings">{{ settingsOpen ? '收起设置' : '修改事件处理' }}</v-btn>
             </AdminActionGuard>
           </div>
           <v-alert v-if="eventProcessing?.status === 'degraded'" class="mt-4" type="warning" variant="tonal">
@@ -103,6 +103,7 @@
       </template>
     </AdminAsyncState>
   </AdminPageContainer>
+  <AdminUnsavedChangesDialog :model-value="unsavedChangesDialog" subject="事件处理设置" @stay="continueEditing" @discard="discardChanges" />
 </template>
 
 <script setup lang="ts">
@@ -112,6 +113,8 @@ import EventHandlerCatalog from '~/components/operations/EventHandlerCatalog.vue
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue'
+import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
+import { useAdminUnsavedChanges } from '~/composables/useAdminUnsavedChanges'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue'
@@ -133,11 +136,15 @@ const activeTab = computed<EventTab>(() => {
   if (requested === 'handlers' && canReadRuntime.value) return 'handlers'
   return canReadRuntime.value ? 'status' : 'events'
 })
-function selectTab(tab: string | null) {
+async function selectTab(tab: string | null) {
   if (tab !== 'status' && tab !== 'events' && tab !== 'handlers') return
   if (tab === 'events' && !canReadEvents.value) return
   if (tab !== 'events' && !canReadRuntime.value) return
-  if (route.query.tab !== tab) void router.push({ query: { ...route.query, tab } })
+  if (route.query.tab === tab) return
+  if (!(await confirmUnsavedChanges())) return
+  if (hasUnsavedChanges.value) syncForm()
+  settingsOpen.value = false
+  await router.push({ query: { ...route.query, tab } })
 }
 const notifier = useAdminNotifier()
 const runtime = ref<OperationsRuntimeStatus | null>(null)
@@ -167,6 +174,13 @@ const hasUnsavedChanges = computed(() => {
   return form.mode !== (current.state === 'draining' && current.target_mode ? current.target_mode : current.mode)
     || (form.mode === 'scheduled' && form.scheduled_trigger !== current.scheduled_trigger)
 })
+const { unsavedChangesDialog, continueEditing, discardChanges, confirmUnsavedChanges } = useAdminUnsavedChanges(hasUnsavedChanges, { guardQuery: true })
+async function toggleSettings() {
+  if (!settingsOpen.value) { settingsOpen.value = true; return }
+  if (!(await confirmUnsavedChanges())) return
+  if (hasUnsavedChanges.value) syncForm()
+  settingsOpen.value = false
+}
 const onlineWorkerCount = computed(() => runtime.value?.workers.filter(worker => worker.worker_type === 'eventing' && worker.online).length ?? 0)
 const queueHeaders = [
   { title: '队列', key: 'queue_name', minWidth: 176 }, { title: '执行模式', key: 'execution_mode', minWidth: 128 },

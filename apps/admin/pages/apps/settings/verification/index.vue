@@ -28,7 +28,7 @@
     </v-alert>
 
     <div>
-      <v-tabs v-model="tab" color="primary">
+      <v-tabs :model-value="tab" color="primary" @update:model-value="selectTab">
         <v-tab prepend-icon="mdi-shield-check-outline" value="usages">使用场景</v-tab>
         <v-tab prepend-icon="mdi-account-check-outline" value="requirements">验证要求</v-tab>
         <v-tab prepend-icon="mdi-puzzle-outline" value="drivers">驱动管理</v-tab>
@@ -44,7 +44,7 @@
           skeleton-type="heading, article@3"
           @retry="loadPage"
         >
-          <v-window v-model="tab">
+          <v-window :model-value="tab" @update:model-value="selectTab">
             <v-window-item value="usages">
               <v-alert v-if="siteSettingsChanged || settingsChanged" class="mb-4" type="info" variant="tonal">
                 以下状态以最近一次读取或保存的配置为准；未保存的修改尚未生效。
@@ -234,8 +234,7 @@
                       邮件验证码用于注册及修改邮箱。关闭服务或改为短信渠道时，这些流程可能无法完成；配置存在不代表邮件投递成功。
                       <NuxtLink v-if="canReadSender" to="/apps/settings/messaging">查看站外发送</NuxtLink>
                     </p>
-                    <v-divider class="mb-4" />
-                    <div class="d-flex justify-end">
+                    <AdminConfigSaveBar v-if="canUpdateConfig" :dirty="settingsChanged" label="验证服务设置">
                       <AdminActionGuard capability="config.update" scope="global">
                         <v-btn
                           color="primary"
@@ -248,7 +247,7 @@
                           保存验证设置
                         </v-btn>
                       </AdminActionGuard>
-                    </div>
+                    </AdminConfigSaveBar>
                   </v-form>
                 </v-card-text>
               </v-card>
@@ -258,6 +257,7 @@
       </div>
     </div>
   </AdminPageContainer>
+  <AdminUnsavedChangesDialog :model-value="unsavedChangesDialog" subject="验证设置" @stay="continueEditing" @discard="discardChanges" />
 </template>
 
 <script setup lang="ts">
@@ -268,6 +268,8 @@ import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminConfigSaveBar from '~/components/shared/admin/AdminConfigSaveBar.vue'
 import AdminConfigSection from '~/components/shared/admin/AdminConfigSection.vue'
+import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
+import { useAdminUnsavedChanges } from '~/composables/useAdminUnsavedChanges'
 import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import CommonUtils from '~/utils/common'
@@ -306,6 +308,17 @@ const canInstallCaptcha = computed(() => userStore.hasGrant('captcha.install', '
 const canReadSender = computed(() => userStore.hasGrant('sender.read', 'global'))
 const settingsChanged = computed(() => JSON.stringify(settings.value) !== JSON.stringify(originSettings.value))
 const siteSettingsChanged = computed(() => JSON.stringify(siteSettings.value) !== JSON.stringify(originSiteSettings.value))
+const anySettingsChanged = computed(() => settingsChanged.value || siteSettingsChanged.value)
+const { unsavedChangesDialog, continueEditing, discardChanges, confirmUnsavedChanges } = useAdminUnsavedChanges(anySettingsChanged)
+async function selectTab(value: unknown) {
+  if (typeof value !== 'string' || value === tab.value) return
+  if (!(await confirmUnsavedChanges())) return
+  if (anySettingsChanged.value) {
+    settings.value = CommonUtils.deepClone(originSettings.value)
+    siteSettings.value = CommonUtils.deepClone(originSiteSettings.value)
+  }
+  tab.value = value
+}
 const mailReady = computed(() => settings.value.code_enabled && settings.value.code_channel === 'smtp')
 const savedMailReady = computed(() => originSettings.value.code_enabled && originSettings.value.code_channel === 'smtp')
 const mailStatus = computed(() => savedMailReady.value
@@ -372,7 +385,11 @@ const loadPage = async () => {
 }
 
 const setDefault = async (type: string, slug: string) => {
-  if (!canUpdateConfig.value || changingDefault.value) return
+  if (!canUpdateConfig.value || changingDefault.value || !(await confirmUnsavedChanges())) return
+  if (anySettingsChanged.value) {
+    settings.value = CommonUtils.deepClone(originSettings.value)
+    siteSettings.value = CommonUtils.deepClone(originSiteSettings.value)
+  }
   changingDefault.value = `${type}:${slug}`
   actionMessage.value = null
   try {
@@ -431,7 +448,11 @@ const saveSiteSettings = async () => {
   }
 }
 const scanDrivers = async () => {
-  if (!canInstallCaptcha.value || scanning.value) return
+  if (!canInstallCaptcha.value || scanning.value || !(await confirmUnsavedChanges())) return
+  if (anySettingsChanged.value) {
+    settings.value = CommonUtils.deepClone(originSettings.value)
+    siteSettings.value = CommonUtils.deepClone(originSiteSettings.value)
+  }
   scanning.value = true
   scanMessage.value = null
   try {

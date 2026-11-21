@@ -98,7 +98,9 @@ const submit = async () => {
 }
 
 watch(thisDialogState, (open) => {
-  if (open) {
+  if (open) formError.value = ''
+  else if (!saving.value) {
+    createData.value = { name: '', slug: '', description: '' }
     formError.value = ''
   }
 })

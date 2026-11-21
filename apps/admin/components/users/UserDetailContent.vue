@@ -9,18 +9,18 @@
     @retry="load"
   >
     <template v-if="user">
-      <AdminDetailSection title="账号概况">
+      <AdminDetailSection title="用户资料">
         <div class="d-flex flex-wrap align-center ga-3 mb-4">
           <v-avatar color="surface-variant" size="48">
-            <v-img v-if="user.avatar" :src="user.avatar" :alt="`${user.username} 的头像`" />
+            <v-img v-if="mode === 'profile' ? draft.avatar : user.avatar" :src="String(mode === 'profile' ? draft.avatar : user.avatar)" :alt="`${user.username} 的头像`" />
             <v-icon v-else icon="mdi-account" aria-label="默认头像" />
           </v-avatar>
-          <div>
-            <div class="text-subtitle-1 font-weight-medium">{{ user.username }}</div>
+          <div class="user-detail__identity">
+            <v-text-field v-if="mode === 'profile'" v-model="draft.username" label="用户名" required :disabled="saving" variant="outlined" hide-details class="mb-1" />
+            <div v-else class="text-subtitle-1 font-weight-medium">{{ user.username }}</div>
             <div class="text-body-2 text-medium-emphasis">用户 #{{ user.id }} · 账号 {{ user.number }}</div>
           </div>
-          <v-spacer />
-          <AdminStatusChip :status="accountStatus.status" :label="accountStatus.label" />
+
         </div>
 
         <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">{{ formError }}</v-alert>
@@ -35,7 +35,6 @@
         </template>
         <template v-else>
           <v-row dense>
-            <v-col cols="12" sm="6"><v-text-field v-model="draft.username" label="用户名" required :disabled="saving" variant="outlined" /></v-col>
             <v-col cols="12" sm="6"><v-text-field v-model="draft.email" label="邮箱" type="email" :disabled="saving" variant="outlined" /></v-col>
             <v-col cols="12" sm="6"><v-text-field v-model="draft.phone" label="手机号" type="tel" :disabled="saving" variant="outlined" /></v-col>
             <v-col cols="12">
@@ -60,33 +59,29 @@
             <v-btn color="primary" variant="flat" :loading="saving" :disabled="avatarUploading || !profileDirty" @click="saveProfile">保存资料</v-btn>
           </div>
         </template>
-      </AdminDetailSection>
-
-      <AdminDetailSection title="账号状态与治理">
-        <p class="text-body-2 text-medium-emphasis mb-3">封禁、冻结和审核会改变账号访问状态，单独提交并由服务端执行通知与审计规则。</p>
+      <v-divider class="my-5" />
         <v-row dense align="center">
-          <v-col cols="12" sm="6"><AdminDetailField label="当前状态" :value="accountStatus.label" /></v-col>
           <v-col v-if="canEditTarget" cols="12" sm="6">
             <v-select
-              :model-value="null"
-              :items="accountStatusCommandOptions"
+              :model-value="Number(user.status)"
+              :items="accountStatusOptions"
               :disabled="saving || rolesSaving || statusSaving || avatarUploading"
-              label="调整账号状态"
+              label="账号状态"
               item-title="title"
               item-value="value"
               variant="outlined"
               @update:model-value="requestStatusCommand"
             />
           </v-col>
+          <v-col v-else cols="12" sm="6"><AdminDetailField label="账号状态" :value="accountStatus.label" /></v-col>
         </v-row>
         <p v-if="dirty && canEditTarget" class="text-caption text-medium-emphasis mt-2">账号状态单独提交；当前未保存的字段修改仍需另行保存。</p>
-      </AdminDetailSection>
-
-      <AdminDetailSection title="角色归属">
-        <div v-if="roleLabels.length" class="d-flex flex-wrap ga-2">
+      <v-divider class="my-5" />
+        <div class="text-body-2 text-medium-emphasis mb-2">角色</div>
+        <div v-if="mode !== 'roles' && roleLabels.length" class="d-flex flex-wrap ga-2">
           <v-chip v-for="role in roleLabels" :key="role.id" :color="role.slug === 'root' ? 'error' : undefined" variant="tonal">{{ role.label }}</v-chip>
         </div>
-        <span v-else class="text-body-2 text-medium-emphasis">未分配角色</span>
+        <span v-else-if="mode !== 'roles'" class="text-body-2 text-medium-emphasis">未分配角色</span>
         <template v-if="mode === 'roles' && canManageRoles && canEditTarget">
           <v-select v-model="roleDraft" class="mt-4" :items="roleOptions" item-title="title" item-value="value" label="权限组" multiple chips clearable :loading="rolesLoading" :error-messages="rolesError ? [rolesError] : []" :disabled="rolesSaving" variant="outlined" />
           <div class="d-flex justify-end ga-2">
@@ -123,7 +118,6 @@ import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDetailSection from '~/components/shared/admin/AdminDetailSection.vue'
 import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue'
 import AdminSensitiveField from '~/components/shared/admin/AdminSensitiveField.vue'
-import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
 import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
 import { useAdminNotifier } from '~/composables/useAdminNotifier'
 import { isApiError, useApi } from '~/lib/api'
@@ -172,10 +166,6 @@ const accountStatus = computed(() => {
   }
   return labels[Number(user.value?.status)] ?? { status: 'unknown', label: '未知状态' }
 })
-const accountStatusCommandOptions = computed(() => [
-  { title: accountStatus.value.label, value: null },
-  ...accountStatusOptions.filter((item) => item.value !== Number(user.value?.status)),
-])
 function requestStatusCommand(value: number | null) {
   if (value === null || !canEditTarget.value || saving.value || rolesSaving.value || statusSaving.value || avatarUploading.value) return
   statusDraft.value = value
@@ -188,7 +178,7 @@ const roleLabels = computed(() => {
   const embedded = new Map((user.value.roles ?? []).map((role) => [role.id, role]))
   return roleIds.value.map((id) => {
     const role = roleCatalog.value.find((item) => item.id === id) ?? embedded.get(id)
-    return { id, slug: role?.slug ?? '', label: role?.name ? `${role.name} · ${role.slug}` : `角色 #${id}` }
+    return { id, slug: role?.slug ?? '', label: role?.name ? `${role.name} #${id}` : `角色 #${id}` }
   })
 })
 const isRootActor = computed(() => userStore.roles.some((role) => role.slug === 'root'))
@@ -231,7 +221,7 @@ async function loadRoles() {
     } while (page <= totalPages)
     roleCatalog.value = roles
     roleCatalogLoaded.value = true
-    roleOptions.value = roles.map((role) => ({ title: `#${role.id} ${role.name}`, value: role.id }))
+    roleOptions.value = roles.map((role) => ({ title: `${role.name} #${role.id}`, value: role.id }))
   } catch (cause) {
     roleCatalogLoaded.value = false
     rolesError.value = isApiError(cause) ? cause.message : '无法加载角色目录。'
@@ -388,3 +378,7 @@ onBeforeRouteUpdate((to, from) => JSON.stringify(to.params) !== JSON.stringify(f
 watch(() => props.userId, () => { void load() }, { immediate: true })
 defineExpose({ requestClose })
 </script>
+
+<style scoped>
+.user-detail__identity { flex: 1 1 280px; max-width: 420px; min-width: min(280px, 100%); }
+</style>

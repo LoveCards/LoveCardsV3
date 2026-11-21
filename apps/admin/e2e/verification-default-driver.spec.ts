@@ -150,3 +150,36 @@ test('verification conflict preserves unsaved requirements', async ({ page }) =>
   await expect(page.locator('.v-list-item').filter({ hasText: '新用户注册：邮件验证码' })).toContainText('未要求')
   expect(writes).toBe(1)
 })
+
+test('verification draft is protected when switching tabs', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('token', 'verification-draft-fixture'))
+  const grants = ['admin.access', 'config.read', 'config.update', 'captcha.read']
+    .map(capability => ({ capability, scope: 'global' }))
+  await page.route('**/api/**', async route => {
+    const path = new URL(route.request().url()).pathname
+    const data: Record<string, unknown> = {
+      '/api/me': { id: 9001, username: '配置管理员', roles: [], grants, status: 0 },
+      '/api/admin/config': {
+        user: { __revision: 1, captcha: false },
+        captcha: { __revision: 1, captcha_enabled: false, code_enabled: true, code_channel: 'smtp' },
+      },
+      '/api/captcha/config': { human_ready: true },
+      '/api/admin/captcha/drivers': [],
+    }
+    await route.fulfill({ json: { success: true, data: data[path] ?? [] } })
+  })
+  await page.goto('./apps/settings/verification')
+  await page.getByRole('tab', { name: '服务设置' }).click()
+  const service = page.locator('.v-select').filter({ hasText: '验证码服务' }).first()
+  await service.click()
+  await page.getByRole('option', { name: '关闭' }).click()
+  await page.getByRole('tab', { name: '使用场景' }).click()
+  await expect(page.getByRole('dialog', { name: '有未保存的修改' })).toBeVisible()
+  await page.getByRole('button', { name: '继续编辑' }).click()
+  await expect(page.getByRole('tab', { name: '服务设置' })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('tab', { name: '使用场景' }).click()
+  await page.getByRole('button', { name: '放弃修改' }).click()
+  await expect(page.getByRole('tab', { name: '使用场景' })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('tab', { name: '服务设置' }).click()
+  await expect(page.getByRole('combobox', { name: '验证码服务' })).toHaveValue('开启')
+})

@@ -30,9 +30,9 @@
               <v-btn color="primary" variant="flat" :disabled="!canSaveBasics" :loading="busy" @click="saveBasics">保存修改</v-btn>
             </div>
           </template>
-        </AdminDetailSection>
-
-        <AdminDetailSection title="已授予能力" description="权限分配独立保存，会影响角色可见数据和可执行操作。">
+          <v-divider class="my-5" />
+          <h3 class="text-subtitle-1 font-weight-medium mb-2">已授予能力</h3>
+          <p class="text-body-2 text-medium-emphasis mb-4">权限分配独立保存，会影响角色可见数据和可执行操作。</p>
           <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-3">
             <v-chip size="small" variant="outlined">{{ grants.length }} 项</v-chip>
             <v-btn v-if="mode !== 'assign' && canAssign" variant="outlined" prepend-icon="mdi-shield-key-outline" @click="startAssign">分配权限</v-btn>

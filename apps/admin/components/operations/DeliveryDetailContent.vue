@@ -62,25 +62,28 @@
       </AdminDetailSection>
 
       <AdminDetailSection v-if="actionError || (canRetry && delivery.status === 'dead')" title="任务操作">
-        <v-alert v-if="actionError" class="mb-4" type="error" variant="tonal">{{ actionError }}</v-alert>
-        <div v-if="canRetry && delivery.status === 'dead'">
-        <v-btn v-if="!confirmRetry" prepend-icon="mdi-refresh" variant="tonal" @click="openRetry">重试任务</v-btn>
-        <v-alert v-else title="重试处理任务" type="warning" variant="tonal">
-          {{ delivery.event_type }} · 任务 #{{ delivery.id }} 将再次进入待处理队列。请先确认失败原因已解除，并确保处理器能够幂等执行。
-          <template #append>
-            <v-btn :disabled="retrying" variant="text" @click="confirmRetry = false">取消</v-btn>
-            <v-btn :loading="retrying" color="warning" variant="flat" @click="retry">加入待处理队列</v-btn>
-          </template>
-        </v-alert>
-        </div>
+        <v-alert v-if="actionError && !confirmRetry" class="mb-4" type="error" variant="tonal">{{ actionError }}</v-alert>
+        <v-btn v-if="canRetry && delivery.status === 'dead'" prepend-icon="mdi-refresh" variant="tonal" @click="openRetry">重试任务</v-btn>
       </AdminDetailSection>
     </template>
   </AdminAsyncState>
+  <AdminDangerActionDialog
+    v-model="confirmRetry"
+    title="重试处理任务"
+    action-label="加入待处理队列"
+    :resource-label="delivery ? `任务 #${delivery.id}` : ''"
+    :impact="delivery ? `${delivery.event_type} 将再次进入待处理队列。请先确认失败原因已解除，并确保处理器能够幂等执行。` : ''"
+    color="warning"
+    :loading="retrying"
+    :error="actionError"
+    @confirm="retry"
+  />
 </template>
 
 <script setup lang="ts">
 import type { OperationsDelivery } from '@lovecards/sdk'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
+import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue'
 import AdminDetailField from '~/components/shared/admin/AdminDetailField.vue'
 import AdminDetailSection from '~/components/shared/admin/AdminDetailSection.vue'
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
