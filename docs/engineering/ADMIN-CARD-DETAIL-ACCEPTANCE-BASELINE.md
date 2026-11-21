@@ -15,7 +15,7 @@
 
 - 普通草稿只通过 SDK 的 `cards.updateManaged` 保存受权可写字段。JSON 完整显示，顶层必须是对象；解析失败不得发 PATCH，错误只在该字段附近显示一次。
 - 标签使用搜索多选与 chip；已关联标签即使候选加载失败也保留可读名称或 ID。
-- 新图片由 SDK `files.upload` 上传，multipart 必须带 `scene=card`；卡片保存再提交 `media_file_ids` 和 `cover_file_id`。顺序、封面和移除在草稿中管理。上传已产生文件副作用，取消草稿不等于撤销上传；缺少可靠 `file_id` 的旧媒体不得猜测并重新绑定。
+- 新图片由 SDK `files.upload` 上传，multipart 必须带 `scene=card`；卡片保存再提交 `media_file_ids` 和 `cover_file_id`。媒体在缩略图网格中拖动排序，方向键也能调整；排序后的第一张图片自动成为封面，视频不参与封面选择。上传成功、移除或改变顺序后按该规则更新草稿，保存时依序提交 `media_file_ids` 和对应 `cover_file_id`，后端通过 `file_references.position` 显式持久化顺序。历史卡片若封面不在首位，仅改正文等非媒体字段时保留原封面；首次改动媒体后才切换到首图规则。上传已产生文件副作用，取消草稿不等于撤销上传；缺少可靠 `file_id` 的旧媒体不得猜测并重新绑定。
 - 审核、隐藏、封禁、恢复和置顶按现有能力与状态显示为独立命令，经确认后立即执行；不混入普通草稿保存。通知仅由后端按 [通知规范](NOTIFICATIONS.md) 判定和投递。
 - 无写权限时，状态呈只读事实，不展示虚假的可编辑下拉框；后端继续裁决权限、状态和文件场景。
 
@@ -25,7 +25,7 @@
 | --- | --- | --- |
 | Resource 与 PHP | `php apps/backend/tests/Api/ResourceContractBaseline.php`；受影响 PHP 文件逐个 `php -l` | 管理端单条读取的 `cover_file_id` 契约与语法 |
 | 架构、契约、类型和构建 | `npm run check`；`npm run build:admin` | 模块依赖、Route/Resource/SDK 一致性、管理端类型与产物 |
-| Mock 浏览器 | `apps/admin/e2e/card-detail-form.spec.ts` 与 `content-hierarchy.spec.ts` | 列表弹窗和独立页复用、上传场景及媒体绑定、非法 JSON 拒绝、脏状态、焦点回归、390px 无横向溢出 |
+| Mock 浏览器 | `apps/admin/e2e/card-detail-form.spec.ts` 与 `content-hierarchy.spec.ts` | 列表弹窗和独立页复用、上传场景、拖动与键盘排序、首图封面、历史封面保留、非法 JSON 拒绝、脏状态、焦点回归、390px 无横向溢出 |
 | 真实 HTTP 与数据库 | 一次性隔离环境中的 `npm run test:sdk:integration` 和 `npm run test:admin:e2e` | 后端实际文件场景校验、封面引用持久化、权限与状态命令、重新读取的最终事实 |
 
 Mock 浏览器测试拦截 `/api/**`，证明前端请求与交互，不证明真实数据库写入。真实集成测试只能按 [后端测试规范](BACKEND-TESTING.md) 在一次性本地数据库中运行；不得以 20089 共享 dev 数据库为目标执行写入测试。`npm run check` 需要仓库支持的 PHP 版本及 `fileinfo` 扩展；云端默认 PHP 8.5 缺少该扩展时，其失败不能解释为本切片通过或失败，须换用完整的 PHP 运行时重跑并记录结果。
@@ -43,7 +43,7 @@ npx playwright test -c apps/admin/playwright.config.ts --project=chromium --no-d
 
 1. 在浅色和暗色、1440／960／600／390px、200% 缩放下分别看独立页和弹窗：只有一层主表面，正文优先，字段标签不重复，动作可触达且无整页横向滚动。
 2. 用真实有权与只读账号检查：编辑、上传、治理命令只在对应权限下可用；错误、加载、保存和刷新状态连续。
-3. 用一条含多张图片和标签的卡片检查：添加、排序、设封面、移除、保存、重新打开，最终顺序及封面与后端一致；再检查旧媒体缺 ID 的安全限制。
+3. 用一条含多张图片和标签的卡片检查：添加、触摸／鼠标拖动、键盘排序、移除、保存、重新打开，最终顺序及首张图片封面与后端一致；视频排在前面时封面仍是第一张图片。再检查历史非首图封面仅编辑正文时保持原值、首次调整媒体后转为首图封面，以及旧媒体缺 ID 的安全限制。
 4. 分别验证非法 JSON、保存失败、上传部分失败、Esc／遮罩／关闭按钮、切换对象及独立页离开时的草稿处理和焦点回归。
 5. 核对审核、隐藏、封禁、恢复、置顶的可用状态、确认文案、服务端结果、审计和按通知规范产生的后端副作用。
 

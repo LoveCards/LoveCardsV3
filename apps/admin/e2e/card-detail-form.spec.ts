@@ -4,7 +4,7 @@ test.use({ storageState: { cookies: [], origins: [] } })
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/9YcAAAAASUVORK5CYII=', 'base64')
 
-async function cardFixtures(page: Page) {
+async function cardFixtures(page: Page, mediaIds: number[] = [], coverFileId: number | null = mediaIds[0] ?? null) {
   await page.addInitScript(() => localStorage.setItem('token', 'card-detail-fixture'))
   const grants = [
     { capability: 'admin.access', scope: 'global' },
@@ -17,8 +17,9 @@ async function cardFixtures(page: Page) {
   const card = {
     id: 101, user_id: 201, username: '林晓', content: '周末在校园里读书。',
     status: 0, is_top: 0, visibility: 'public', data: { mood: 'calm' },
-    tags: [7], topics: [{ id: 7, name: '校园' }], media: [] as Array<Record<string, unknown>>,
-    pictures: [], cover: null, cover_file_id: null as number | null,
+    tags: [7], topics: [{ id: 7, name: '校园' }],
+    media: mediaIds.map((id, index) => ({ file_id: id, type: 'image', url: `data:image/png;base64,${png.toString('base64')}#${id}`, position: index + 1 })),
+    pictures: [], cover: null, cover_file_id: coverFileId,
     goods: 2, comments: 0, views: 5, created_at: '2026-09-18 09:20:00', updated_at: '',
   }
   const uploads: string[] = []
@@ -35,7 +36,7 @@ async function cardFixtures(page: Page) {
       const patch = request.postDataJSON() as Record<string, unknown>
       patches.push(patch)
       if (patch.media_file_ids) {
-        card.media = [{ file_id: 501, type: 'image', url: 'data:image/png;base64,' + png.toString('base64'), position: 0 }]
+        card.media = (patch.media_file_ids as number[]).map((id, index) => ({ file_id: id, type: 'image', url: `data:image/png;base64,${png.toString('base64')}#${id}`, position: index + 1 }))
         card.cover_file_id = Number(patch.cover_file_id)
       }
       return route.fulfill({ status: 204, body: '' })
@@ -61,7 +62,7 @@ test('card dialog uploads in card scene and saves image binding', async ({ page 
   await expect(dialog.getByRole('textbox', { name: '正文' })).toHaveValue('周末在校园里读书。')
   await page.screenshot({ path: testInfo.outputPath('card-dialog-desktop.png'), animations: 'disabled' })
   await dialog.locator('input[type=file]').setInputFiles({ name: 'sample.png', mimeType: 'image/png', buffer: png })
-  await expect(dialog.getByText('图片 #501')).toBeVisible()
+  await expect(dialog.locator('.card-record__media[data-file-id="501"]')).toBeVisible()
   await expect.poll(() => uploads.length).toBe(1)
   expect(uploads[0]).toMatch(/name="scene"\r?\n\r?\ncard/)
   await dialog.getByRole('button', { name: '保存修改' }).click()
@@ -100,4 +101,48 @@ test('invalid card JSON blocks save without changing the record', async ({ page 
   await page.getByRole('button', { name: '保存修改' }).click()
   await expect(page.getByText('扩展数据顶层必须是 JSON 对象。')).toBeVisible()
   expect(patches).toHaveLength(0)
+})
+
+
+test('dragging card media changes order and derives cover from first image', async ({ page }) => {
+  const { patches } = await cardFixtures(page, [501, 502, 503])
+  await page.goto('./apps/content/cards')
+  const row = page.locator('tbody tr').first()
+  await expect(row).toContainText('周末在校园', { timeout: 20_000 })
+  await row.getByRole('button', { name: '编辑', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '卡片详情' })
+  const media = dialog.locator('.card-record__media')
+  await expect(media.first()).toHaveAttribute('data-file-id', '501')
+  await media.nth(1).locator('.card-record__drag-handle').dragTo(media.first(), { targetPosition: { x: 20, y: 20 } })
+  await expect(media.first()).toHaveAttribute('data-file-id', '502')
+  await expect(media.first()).toContainText('封面')
+  await dialog.getByRole('button', { name: '保存修改' }).click()
+  await expect(dialog).toBeHidden()
+  expect(patches).toHaveLength(1)
+  expect(patches[0]).toMatchObject({ media_file_ids: [502, 501, 503], cover_file_id: 502 })
+})
+
+test('keyboard media reorder retains the same cover rule', async ({ page }) => {
+  const { patches } = await cardFixtures(page, [501, 502])
+  await page.goto('./apps/content/cards/101')
+  await expect(page.getByRole('heading', { name: '卡片 #101' })).toBeVisible({ timeout: 20_000 })
+  await page.getByRole('button', { name: '编辑', exact: true }).click()
+  const handle = page.getByRole('button', { name: '调整第 2 项顺序，拖动或按方向键' })
+  await handle.focus()
+  await handle.press('ArrowLeft')
+  await expect(page.locator('.card-record__media').first()).toHaveAttribute('data-file-id', '502')
+  await page.getByRole('button', { name: '保存修改' }).click()
+  expect(patches[0]).toMatchObject({ media_file_ids: [502, 501], cover_file_id: 502 })
+})
+
+test('editing text keeps a historical cover until media order changes', async ({ page }) => {
+  const { patches } = await cardFixtures(page, [501, 502], 502)
+  await page.goto('./apps/content/cards/101')
+  await expect(page.getByRole('heading', { name: '卡片 #101' })).toBeVisible({ timeout: 20_000 })
+  await page.getByRole('button', { name: '编辑', exact: true }).click()
+  await page.getByRole('textbox', { name: '正文' }).fill('只编辑正文。')
+  await page.getByRole('button', { name: '保存修改' }).click()
+  expect(patches[0]).toMatchObject({ content: '只编辑正文。' })
+  expect(patches[0]).not.toHaveProperty('cover_file_id')
+  expect(patches[0]).not.toHaveProperty('media_file_ids')
 })

@@ -30,25 +30,58 @@
             <div class="card-record__label">图片与媒体</div>
             <v-alert v-if="uploadError" class="mb-3" role="alert" type="error" variant="tonal">{{ uploadError }}</v-alert>
             <v-alert v-if="mode === 'edit' && hasUnboundMedia" class="mb-3" role="alert" type="warning" variant="tonal">旧媒体缺少文件 ID，暂不能调整媒体；正文、标签和 JSON 仍可保存。</v-alert>
-            <v-row dense>
-              <v-col v-for="(item, index) in CardMediaData.edit" :key="`${item.fileId ?? 'legacy'}:${index}`" cols="6" sm="4" md="3">
-                <v-sheet border rounded="sm" class="card-record__media">
+            <p v-if="mode === 'edit'" class="card-record__media-hint text-medium-emphasis">拖动图片调整顺序；排序后的首张图片成为封面。聚焦拖动手柄后也可用方向键调整。</p>
+            <p v-if="mode === 'edit' && legacyCoverOutOfOrder && !mediaChanged" class="card-record__media-hint text-medium-emphasis">这张历史卡片的封面不在首位；调整媒体后将按首张图片更新封面。</p>
+            <VueDraggable
+              v-model="editableMedia"
+              tag="div"
+              class="card-record__media-grid"
+              :disabled="mode !== 'edit' || !canUpdateContent || hasUnboundMedia || uploadingImages || saving"
+              handle=".card-record__drag-handle"
+              :animation="reducedMotion ? 0 : 160"
+              :delay="120"
+              :delay-on-touch-only="true"
+              ghost-class="card-record__media--ghost"
+              @end="announceMediaOrder"
+            >
+              <v-sheet v-for="(item, index) in CardMediaData.edit" :key="item.key" :data-file-id="item.fileId" border rounded="sm" class="card-record__media">
+                <div class="card-record__media-preview">
                   <v-img v-if="item.type === 'image'" :alt="`第 ${index + 1} 张图片`" :src="item.url" aspect-ratio="16/10" cover>
-                    <v-chip v-if="item.fileId && item.fileId === coverFileId" class="ma-2" color="surface" size="x-small">封面</v-chip>
-                    <v-progress-circular v-if="item.fileId === 0" class="ma-2" color="primary" indeterminate size="24" />
                     <template #error><div class="d-flex align-center justify-center h-100 text-medium-emphasis">图片暂不可预览</div></template>
                   </v-img>
                   <div v-else class="d-flex align-center justify-center text-medium-emphasis card-record__video">视频媒体</div>
-                  <div class="card-record__media-name text-caption">{{ index + 1 }}. {{ item.type === 'image' ? '图片' : '视频' }} #{{ item.fileId ?? '旧记录' }}</div>
-                  <div v-if="mode === 'edit' && canUpdateContent" class="d-flex flex-wrap ga-1 px-1 pb-1">
-                    <v-btn :disabled="hasUnboundMedia || index === 0 || uploadingImages" size="x-small" variant="text" @click="moveCardImage(index, -1)">上移</v-btn>
-                    <v-btn :disabled="hasUnboundMedia || index === CardMediaData.edit.length - 1 || uploadingImages" size="x-small" variant="text" @click="moveCardImage(index, 1)">下移</v-btn>
-                    <v-btn v-if="item.type === 'image' && item.fileId !== coverFileId" :disabled="hasUnboundMedia || !item.fileId || uploadingImages" size="x-small" variant="text" @click="setCover(item.fileId)">设封面</v-btn>
-                    <v-btn :disabled="hasUnboundMedia || uploadingImages" size="x-small" variant="text" @click="removeCardImage(index)">移除</v-btn>
-                  </div>
-                </v-sheet>
-              </v-col>
-            </v-row>
+                  <v-chip v-if="item.type === 'image' && item.fileId && item.fileId === coverFileId" class="card-record__cover-badge" color="surface" size="x-small">封面</v-chip>
+                  <v-progress-circular v-if="item.fileId === 0" class="card-record__upload-progress" color="primary" indeterminate size="24" />
+                </div>
+                <div class="card-record__media-footer">
+                  <span class="text-caption text-medium-emphasis">{{ index + 1 }} / {{ CardMediaData.edit.length }} · {{ item.type === 'image' ? '图片' : '视频' }}</span>
+                  <v-spacer />
+                  <v-btn
+                    v-if="mode === 'edit' && canUpdateContent && CardMediaData.edit.length > 1"
+                    class="card-record__drag-handle"
+                    :disabled="hasUnboundMedia || uploadingImages || saving"
+                    :aria-label="`调整第 ${index + 1} 项顺序，拖动或按方向键`"
+                    icon="mdi-drag"
+                    size="small"
+                    variant="text"
+                    @keydown.left.prevent="moveCardImage(index, -1)"
+                    @keydown.up.prevent="moveCardImage(index, -1)"
+                    @keydown.right.prevent="moveCardImage(index, 1)"
+                    @keydown.down.prevent="moveCardImage(index, 1)"
+                  />
+                  <v-btn
+                    v-if="mode === 'edit' && canUpdateContent"
+                    :disabled="hasUnboundMedia || uploadingImages || saving"
+                    :aria-label="`移除第 ${index + 1} 项媒体`"
+                    icon="mdi-delete-outline"
+                    size="small"
+                    variant="text"
+                    @click="removeCardImage(index)"
+                  />
+                </div>
+              </v-sheet>
+            </VueDraggable>
+            <span class="sr-only" role="status" aria-live="polite">{{ mediaOrderAnnouncement }}</span>
             <v-file-input
               v-if="mode === 'edit' && canUpdateContent && canUploadFiles"
               v-model="viewCardFiles"
@@ -170,6 +203,7 @@
 
 <script setup lang="ts">
 import type { Card } from '@lovecards/sdk'
+import { VueDraggable } from 'vue-draggable-plus'
 import { cardGovernanceActions, type CardGovernanceAction } from '~/components/cards/cardGovernanceActions'
 import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
@@ -179,6 +213,7 @@ import { useUserStore } from '~/stores/userStore'
 import CommonUtils from '~/utils/common'
 
 interface ManagedMedia {
+  key: string
   fileId: number | null
   url: string
   type: 'image' | 'video'
@@ -209,6 +244,10 @@ const emptyCard = {} as ManagedCard
 const CardData = ref<{ edit: ManagedCard; origin: ManagedCard }>({ edit: emptyCard, origin: emptyCard })
 const CardMediaData = ref<{ edit: ManagedMedia[]; origin: ManagedMedia[] }>({ edit: [], origin: [] })
 const coverFileId = ref<number | null>(null)
+const mediaOrderAnnouncement = ref('')
+const reducedMotion = ref(false)
+let motionQuery: MediaQueryList | null = null
+let nextUploadKey = 0
 const originalCoverFileId = ref<number | null>(null)
 const dataText = ref('{}')
 const jsonError = ref('')
@@ -258,9 +297,24 @@ const requestCommand = (method: CardGovernanceAction['method'] | null) => {
 const visibilityLabel = computed(() => ({ public: '公开', followers: '仅关注者', private: '仅自己' })[CardData.value.origin.visibility ?? 'public'])
 const selectedTags = computed(() => (CardData.value.origin.tags ?? []).map(id => ({ id, name: viewTags.value.find(tag => tag.id === id)?.name ?? '标签' })))
 const hasUnboundMedia = computed(() => CardMediaData.value.edit.some(item => item.fileId === null))
+const firstImageId = (media: ManagedMedia[]): number | null => media.find(item => item.type === 'image' && item.fileId && item.fileId > 0)?.fileId ?? null
+const mediaChanged = computed(() => JSON.stringify(CardMediaData.value.edit.map(item => item.fileId)) !== JSON.stringify(CardMediaData.value.origin.map(item => item.fileId)))
+const syncCoverToFirstImage = () => { coverFileId.value = mediaChanged.value ? firstImageId(CardMediaData.value.edit) : originalCoverFileId.value }
+const editableMedia = computed({
+  get: () => CardMediaData.value.edit,
+  set: (media: ManagedMedia[]) => { CardMediaData.value.edit = media; syncCoverToFirstImage() },
+})
+const legacyCoverOutOfOrder = computed(() => {
+  const first = firstImageId(CardMediaData.value.origin)
+  return first !== null && originalCoverFileId.value !== null && first !== originalCoverFileId.value
+})
+const announceMediaOrder = () => {
+  mediaOrderAnnouncement.value = `图片顺序已更新；首张图片将作为封面。`
+}
+
 const dirty = computed(() => mode.value === 'edit' && (
   JSON.stringify({ content: CardData.value.edit.content, tags: CardData.value.edit.tags }) !== JSON.stringify({ content: CardData.value.origin.content, tags: CardData.value.origin.tags })
-  || JSON.stringify(CardMediaData.value.edit.map(item => item.fileId)) !== JSON.stringify(CardMediaData.value.origin.map(item => item.fileId))
+  || mediaChanged.value
   || coverFileId.value !== originalCoverFileId.value
   || dataText.value !== displayJson(CardData.value.origin.data ?? {})
 ))
@@ -278,6 +332,7 @@ const discardEdit = () => {
   CardData.value.edit = CommonUtils.deepClone(CardData.value.origin)
   CardMediaData.value.edit = CommonUtils.deepClone(CardMediaData.value.origin)
   coverFileId.value = originalCoverFileId.value
+  mediaOrderAnnouncement.value = ''
   dataText.value = displayJson(CardData.value.origin.data ?? {})
   jsonError.value = ''
   viewCardFiles.value = []
@@ -349,7 +404,8 @@ const hydrateMedia = (card: Card): ManagedMedia[] => {
     ? [...card.media].sort((left, right) => left.position - right.position)
     : []
   if (media.length > 0) {
-    return media.map(item => ({
+    return media.map((item, index) => ({
+      key: positiveId(item.file_id) ? `file:${item.file_id}` : `legacy:${index}:${item.url}`,
       fileId: positiveId(item.file_id),
       url: item.url,
       type: item.type === 'video' ? 'video' : 'image',
@@ -357,7 +413,7 @@ const hydrateMedia = (card: Card): ManagedMedia[] => {
   }
 
   // 旧数据只有 URL 时仅用于展示；没有可验证 file_id 时绝不猜测或提交媒体绑定。
-  return normalizeStringArray(card.pictures).map(url => ({ fileId: null, url, type: 'image' }))
+  return normalizeStringArray(card.pictures).map((url, index) => ({ key: `legacy:${index}:${url}`, fileId: null, url, type: 'image' }))
 }
 
 const loadCard = async () => {
@@ -387,6 +443,7 @@ const loadCard = async () => {
     CardMediaData.value.edit = CommonUtils.deepClone(media)
     CardMediaData.value.origin = CommonUtils.deepClone(media)
     coverFileId.value = positiveId(card.cover_file_id)
+    mediaOrderAnnouncement.value = ''
     originalCoverFileId.value = coverFileId.value
     dataText.value = displayJson(card.data ?? {})
     jsonError.value = ''
@@ -409,7 +466,7 @@ const uploadSelectedImages = async (value: File | File[] | null) => {
   try {
     const results = await Promise.allSettled(files.map(async (file) => {
       const previewUrl = URL.createObjectURL(file)
-      const image: ManagedMedia = { fileId: 0, url: previewUrl, type: 'image' }
+      const image: ManagedMedia = { key: `upload:${++nextUploadKey}`, fileId: 0, url: previewUrl, type: 'image' }
       CardMediaData.value.edit.push(image)
       try {
         const formData = new FormData()
@@ -421,12 +478,13 @@ const uploadSelectedImages = async (value: File | File[] | null) => {
           return
         }
         const currentIndex = CardMediaData.value.edit.findIndex(item => item.url === previewUrl && item.fileId === 0)
-        if (currentIndex >= 0) CardMediaData.value.edit[currentIndex] = { fileId: result.id, url: result.url, type: 'image' }
-        if (coverFileId.value === null) coverFileId.value = result.id
+        if (currentIndex >= 0) CardMediaData.value.edit[currentIndex] = { ...image, fileId: result.id, url: result.url }
+        syncCoverToFirstImage()
         uploadedFileIds.value = [...uploadedFileIds.value, result.id]
       } catch (cause) {
         const index = CardMediaData.value.edit.findIndex(item => item.url === previewUrl && item.fileId === 0)
         if (index >= 0) CardMediaData.value.edit.splice(index, 1)
+        syncCoverToFirstImage()
         throw cause
       } finally {
         URL.revokeObjectURL(previewUrl)
@@ -444,8 +502,8 @@ const uploadSelectedImages = async (value: File | File[] | null) => {
 const removeCardImage = (index: number) => {
   if (!canUpdateContent.value || hasUnboundMedia.value) return
   if (index >= 0 && index < CardMediaData.value.edit.length) {
-    const [removed] = CardMediaData.value.edit.splice(index, 1)
-    if (removed?.fileId === coverFileId.value) coverFileId.value = CardMediaData.value.edit.find(item => item.type === 'image')?.fileId ?? null
+    CardMediaData.value.edit.splice(index, 1)
+    syncCoverToFirstImage()
   }
 }
 const moveCardImage = (index: number, direction: -1 | 1) => {
@@ -454,10 +512,8 @@ const moveCardImage = (index: number, direction: -1 | 1) => {
   if (index < 0 || target < 0 || target >= CardMediaData.value.edit.length) return
   const media = CardMediaData.value.edit
   ;[media[index], media[target]] = [media[target]!, media[index]!]
-}
-const setCover = (fileId: number | null) => {
-  if (!canUpdateContent.value || hasUnboundMedia.value || !fileId || fileId <= 0) return
-  if (CardMediaData.value.edit.some(item => item.type === 'image' && item.fileId === fileId)) coverFileId.value = fileId
+  syncCoverToFirstImage()
+  mediaOrderAnnouncement.value = `第 ${target + 1} 项已调整顺序；首张图片将作为封面。`
 }
 
 const patchCard = async () => {
@@ -477,14 +533,12 @@ const patchCard = async () => {
     }
   }
   const params = CommonUtils.removeCommonProperties(editInput, originInput)
-  const originMediaIds = CardMediaData.value.origin.map(item => item.fileId)
   const editMediaIds = CardMediaData.value.edit.map(item => item.fileId)
-  const mediaChanged = JSON.stringify(originMediaIds) !== JSON.stringify(editMediaIds)
-  if (canUpdateContent.value && (mediaChanged || coverFileId.value !== originalCoverFileId.value)) {
+  if (canUpdateContent.value && (mediaChanged.value || coverFileId.value !== originalCoverFileId.value)) {
     if (editMediaIds.some(id => id === null || id <= 0)) {
       throw new Error('媒体集合包含缺失或无效的文件 ID，已阻止保存以保护现有媒体。')
     }
-    if (mediaChanged) params.media_file_ids = editMediaIds as number[]
+    if (mediaChanged.value) params.media_file_ids = editMediaIds as number[]
     params.cover_file_id = coverFileId.value ?? 0
   }
   if (Object.keys(params).length === 0) {
@@ -537,9 +591,15 @@ const runCommand = async () => {
   }
 }
 const openCard = () => { mode.value = props.initialMode === 'edit' && canEditCard.value ? 'edit' : 'view'; void loadCard(); void loadTagOptions() }
-onMounted(openCard)
+const updateReducedMotion = () => { reducedMotion.value = motionQuery?.matches ?? false }
+onMounted(() => {
+  openCard()
+  motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
+  updateReducedMotion()
+  motionQuery.addEventListener('change', updateReducedMotion)
+})
 watch(() => props.cardId, openCard)
-onBeforeUnmount(reportUnsavedUpload)
+onBeforeUnmount(() => { motionQuery?.removeEventListener('change', updateReducedMotion); reportUnsavedUpload() })
 </script>
 
 <style scoped>
@@ -551,8 +611,19 @@ onBeforeUnmount(reportUnsavedUpload)
 .card-record__read--long { white-space: pre-wrap; line-height: 1.75; }
 .card-record__json-read { white-space: pre-wrap; font: .8rem/1.65 ui-monospace, SFMono-Regular, Consolas, monospace; }
 .card-record__json :deep(textarea) { font: .8rem/1.6 ui-monospace, SFMono-Regular, Consolas, monospace; }
-.card-record__media { overflow: hidden; }
-.card-record__media-name { padding: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.card-record__media-hint { font-size: .8rem; margin: 0 0 12px; }
+.card-record__media-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.card-record__media { min-width: 0; overflow: hidden; }
+.card-record__media--ghost { opacity: .45; }
+.card-record__media-preview { position: relative; overflow: hidden; }
+.card-record__cover-badge { position: absolute; top: 8px; left: 8px; }
+.card-record__upload-progress { position: absolute; top: 8px; right: 8px; }
+.card-record__media-footer { min-height: 44px; display: flex; align-items: center; gap: 4px; padding: 2px 6px; }
+.card-record__drag-handle { cursor: grab; touch-action: none; }
+.card-record__drag-handle:active { cursor: grabbing; }
+@media (max-width: 959px) { .card-record__media-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 599px) { .card-record__media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .card-record__video { aspect-ratio: 16 / 10; }
 .card-record__actions--embedded { position: sticky; bottom: 0; z-index: 1; background: rgb(var(--v-theme-surface)); }
 </style>
