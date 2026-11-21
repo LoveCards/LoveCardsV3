@@ -259,6 +259,15 @@ class Cards
         return self::hydratePaginated($result->toArray());
     }
 
+    /** 管理端详情补充封面文件 ID，避免根据 URL 猜测可写媒体引用。 */
+    public static function getManaged(int $id, array $caps): array
+    {
+        $card = self::get($id, $caps);
+        $coverIds = PublicFiles::referenceFileIds('card', (string) $id, 'cover');
+        $card['cover_file_id'] = $coverIds[0] ?? null;
+        return $card;
+    }
+
     public static function getOwn(int $id, int $uid): array
     {
         $result = CardsModel::where('id', $id)->where('user_id', $uid)->findOrEmpty();

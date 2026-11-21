@@ -76,6 +76,7 @@ $test('card resource decodes json fields and exposes the public card contract', 
         'tags' => '[13,14]',
         'pictures' => '["/a.jpg"]',
         'media' => '[]',
+        'cover_file_id' => 42,
         'password' => 'secret',
         'deleted_at' => '2026-01-01',
     ]);
@@ -84,6 +85,7 @@ $test('card resource decodes json fields and exposes the public card contract', 
     $assertSame([13, 14], $result['tags']);
     $assertSame(['/a.jpg'], $result['pictures']);
     $assertSame([], $result['media']);
+    $assertSame(42, $result['cover_file_id']);
     $assertSame('卡卡旅行记', $result['username']);
     $assertFalse(array_key_exists('password', $result));
     $assertFalse(array_key_exists('deleted_at', $result));
