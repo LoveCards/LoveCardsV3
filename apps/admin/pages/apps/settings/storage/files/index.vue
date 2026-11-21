@@ -108,7 +108,9 @@
             cover
             :src="item.file_url"
             :alt="item.original_name || '文件预览'"
-          />
+          >
+            <template #error><v-avatar color="surface-variant" rounded="sm" size="40"><v-icon icon="mdi-image-off-outline" aria-label="预览不可用" /></v-avatar></template>
+          </v-img>
           <v-avatar v-else color="surface-variant" rounded="sm" size="40">
             <v-icon icon="mdi-file-outline" aria-label="普通文件" />
           </v-avatar>
@@ -553,7 +555,8 @@ const openDetailDialog = (item: LCFile) => {
   DetailDialog_state.value = true;
 };
 const fileRowActions = (item: LCFile) => [
-  ...(!(viewMode.value === 'normal' ? canUpdateFile.value || canTrashFile.value : canRestoreFile.value || canPurgeFile.value) ? [{ key: 'view', label: '查看', onClick: () => openDetailDialog(item) }] : []),
+  ...(viewMode.value === 'normal' && canUpdateFile.value ? [{ key: 'edit', label: '编辑', disabled: !allowRowMutation.value, onClick: () => openDetailDialog(item) }] : []),
+  ...(viewMode.value !== 'normal' || !canUpdateFile.value ? [{ key: 'view', label: '查看', onClick: () => openDetailDialog(item) }] : []),
   ...(viewMode.value === 'normal' ? [
     ...(canUpdateFile.value ? [
       { key: 'review', label: item.status === 0 ? '封禁' : '审核通过', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, item.status === 0 ? 'ban' : 'approve') },

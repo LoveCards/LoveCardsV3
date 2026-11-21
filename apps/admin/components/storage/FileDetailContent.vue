@@ -4,10 +4,11 @@
       <template v-if="file">
         <AdminDetailSection title="文件信息" description="文件元数据只读；审核、公开和回收站操作分别提交。">
           <v-alert v-if="commandError" class="mb-4" type="error" variant="tonal">{{ commandError }}</v-alert>
-          <v-sheet v-if="previewUrl && file.mime_type?.startsWith('image/')" border rounded class="mb-5 overflow-hidden">
-            <v-img :src="previewUrl" :alt="file.original_name || '文件预览'" max-height="320" contain />
+          <v-alert v-if="previewFailed" class="mb-5" type="info" density="compact" variant="tonal">预览不可用，文件信息仍可查看。</v-alert>
+          <v-sheet v-else-if="previewUrl && file.mime_type?.startsWith('image/')" border rounded class="mb-5 overflow-hidden">
+            <v-img :src="previewUrl" :alt="file.original_name || '文件预览'" max-height="320" contain @error="previewFailed = true" />
           </v-sheet>
-          <video v-else-if="previewUrl && file.mime_type?.startsWith('video/')" :src="previewUrl" controls preload="metadata" class="file-detail__video mb-5" />
+          <video v-else-if="previewUrl && file.mime_type?.startsWith('video/')" :src="previewUrl" controls preload="metadata" class="file-detail__video mb-5" @error="previewFailed = true" />
           <v-row dense>
             <v-col cols="12" sm="6"><AdminDetailField label="文件名" :value="file.original_name || `文件 #${file.id}`" /></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="上传者"><AdminResourceLink resource-type="user" :resource-id="file.user_id" /></AdminDetailField></v-col>
@@ -83,6 +84,7 @@ const busy = ref(false)
 const loadError = ref('')
 const usageError = ref('')
 const commandError = ref('')
+const previewFailed = ref(false)
 const pendingCommand = ref<FilesBatchMethod | null>(null)
 let loadSequence = 0
 
@@ -122,6 +124,7 @@ async function load() {
   const sequence = ++loadSequence
   file.value = null
   usage.value = null
+  previewFailed.value = false
   loadError.value = ''
   usageError.value = ''
   if (!Number.isSafeInteger(props.fileId) || props.fileId <= 0) { loadError.value = '文件 ID 无效。'; return }
