@@ -13,7 +13,7 @@
         <v-btn aria-label="关闭" icon="mdi-close" variant="text" @click="emit('update:modelValue', false)" />
       </v-card-title>
       <v-divider />
-      <v-card-text>
+      <v-card-text class="pa-0">
         <PermissionDetailContent v-if="modelValue && capability && scope" :capability="capability" :scope="scope" />
       </v-card-text>
       <v-divider v-if="capability && scope" />

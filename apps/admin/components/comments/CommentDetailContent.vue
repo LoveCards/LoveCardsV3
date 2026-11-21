@@ -1,13 +1,18 @@
 <template>
   <v-card :border="!embedded" rounded="lg" variant="flat">
-    <v-card-text class="pt-4">
+    <v-card-text class="pa-4 pa-sm-6">
       <AdminAsyncState :loading="loading" :error="loadError" :empty="!comment" empty-title="评论不存在" @retry="load">
         <template v-if="comment">
           <div class="d-flex flex-wrap align-center ga-3 mb-4">
             <AdminContentStatus :status="comment.status" :pinned="comment.is_pinned" />
             <span v-if="comment.deleted" class="text-body-2 text-medium-emphasis">已删除</span>
           </div>
-          <p v-if="mode === 'view'" class="text-body-1 text-pre-wrap mb-4">{{ comment.content || '—' }}</p>
+          <section v-if="mode === 'view'" aria-label="评论内容" class="mb-5">
+            <p class="comment-detail__body text-pre-wrap mb-3">{{ comment.content || '—' }}</p>
+            <div v-if="canUpdate && !comment.deleted" class="d-flex justify-end">
+              <v-btn prepend-icon="mdi-pencil-outline" variant="tonal" @click="mode = 'edit'">编辑内容</v-btn>
+            </div>
+          </section>
           <template v-else>
             <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">{{ formError }}</v-alert>
             <v-textarea v-model="draft" auto-grow :disabled="saving" label="评论正文" maxlength="140" rows="4" variant="outlined" />
@@ -38,11 +43,10 @@
       </AdminAsyncState>
     </v-card-text>
     <v-divider />
-    <v-card-actions v-if="comment && !loading" class="pa-4">
+    <v-card-actions v-if="comment && !loading && mode === 'edit'" class="pa-4 pa-sm-6">
       <v-spacer />
-      <v-btn v-if="mode === 'view' && canUpdate && !comment.deleted" variant="tonal" @click="mode = 'edit'">编辑评论</v-btn>
       <v-btn v-if="mode === 'edit'" :disabled="saving" variant="text" @click="cancelEdit">取消编辑</v-btn>
-      <v-btn v-if="mode === 'edit'" color="primary" :loading="saving" variant="flat" @click="save">保存修改</v-btn>
+      <v-btn v-if="mode === 'edit'" color="primary" :loading="saving" :disabled="!dirty" variant="flat" @click="save">保存修改</v-btn>
     </v-card-actions>
     <v-alert v-if="confirmDiscard" class="ma-4" type="warning" variant="tonal">评论有未保存修改，确定放弃吗？<template #append><v-btn variant="text" @click="confirmDiscard = false">继续编辑</v-btn><v-btn color="warning" variant="flat" @click="discardEdit">放弃修改</v-btn></template></v-alert>
   </v-card>
@@ -61,7 +65,7 @@ import { isApiError, useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 
 const props = withDefaults(defineProps<{ commentId: number; initialMode?: 'view' | 'edit'; embedded?: boolean }>(), { initialMode: 'view', embedded: false })
-const emit = defineEmits<{ saved: []; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean] }>()
+const emit = defineEmits<{ saved: []; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean]; 'editing-change': [value: boolean] }>()
 const client = useApi()
 const notifier = useAdminNotifier()
 const userStore = useUserStore()
@@ -82,6 +86,7 @@ const canPin = computed(() => userStore.hasGrant('comments.pin', 'all'))
 const dirty = computed(() => mode.value === 'edit' && comment.value !== null && draft.value !== comment.value.content)
 const commands = computed(() => comment.value ? commentGovernanceActions(comment.value, { moderate: canModerate.value, pin: canPin.value }) : [])
 watch(dirty, value => emit('dirty-change', value), { immediate: true })
+watch(mode, value => emit('editing-change', value === 'edit'), { immediate: true })
 watch(() => loading.value || saving.value || busy.value, value => emit('busy-change', value), { immediate: true })
 const displayJson = (value: unknown) => { try { return JSON.stringify(value, null, 2) } catch { return String(value) } }
 let latestLoad = 0
@@ -138,4 +143,7 @@ onMounted(openComment)
 watch(() => props.commentId, openComment)
 </script>
 
-<style scoped>.text-wrap { overflow-wrap: anywhere; white-space: pre-wrap; }</style>
+<style scoped>
+.text-wrap { overflow-wrap: anywhere; white-space: pre-wrap; }
+.comment-detail__body { max-width: 76ch; font-size: 1.0625rem; line-height: 1.75; overflow-wrap: anywhere; }
+</style>

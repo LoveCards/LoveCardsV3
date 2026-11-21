@@ -14,13 +14,13 @@
           embedded
           :initial-mode="initialMode"
           @dirty-change="dirty = $event"
-          @busy-change="busy = $event"
+          @busy-change="busy = $event" @editing-change="editing = $event"
           @saved="emit('saved')"
         />
       </v-card-text>
-      <v-divider v-if="cardId && !dirty" />
-      <v-card-actions v-if="cardId && !dirty" class="pa-4">
-        <v-btn v-if="cardId && !dirty" :to="{ path: `/apps/content/cards/${cardId}`, state: { listSource: sourcePath } }" variant="text">打开完整页面</v-btn>
+      <v-divider v-if="cardId && !editing && !dirty" />
+      <v-card-actions v-if="cardId && !editing && !dirty" class="pa-4">
+        <v-btn v-if="cardId && !editing && !dirty" :to="{ path: `/apps/content/cards/${cardId}`, state: { listSource: sourcePath } }" variant="text">打开完整页面</v-btn>
       </v-card-actions>
       <v-alert v-if="confirmClose" class="ma-4" type="warning" variant="tonal">
         卡片有未保存修改，确定关闭并放弃吗？
@@ -47,6 +47,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; saved: [] }>()
 const { xs } = useDisplay()
 const dirty = ref(false)
+const editing = ref(props.initialMode === 'edit')
 const busy = ref(false)
 const confirmClose = ref(false)
 
@@ -61,6 +62,9 @@ function discardAndClose() {
   dirty.value = false
   emit('update:modelValue', false)
 }
-watch(() => props.modelValue, open => { if (!open) { dirty.value = false; busy.value = false; confirmClose.value = false } })
+watch(() => props.modelValue, open => {
+  if (open) editing.value = props.initialMode === 'edit'
+  else { dirty.value = false; editing.value = false; busy.value = false; confirmClose.value = false }
+})
 const restoreDialogFocus = useAdminDialogFocusReturn(() => props.modelValue)
 </script>

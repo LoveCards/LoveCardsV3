@@ -8,7 +8,7 @@
         <v-btn icon="mdi-close" variant="text" aria-label="关闭" @click="close" />
       </v-card-title>
       <v-divider />
-      <v-card-text class="admin-report-detail-body">
+      <v-card-text class="admin-report-detail-body pa-0">
         <ReportDetailContent
           v-if="open && reportId"
           :key="reportId + '-' + initialMode"

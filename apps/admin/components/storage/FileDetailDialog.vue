@@ -6,7 +6,7 @@
         <v-btn aria-label="关闭" icon="mdi-close" variant="text" :disabled="busy" @click="requestClose(false)" />
       </v-card-title>
       <v-divider />
-      <v-card-text>
+      <v-card-text class="pa-0">
         <FileDetailContent v-if="modelValue && fileId" :key="fileId" :file-id="fileId" @changed="emit('changed')" @removed="handleRemoved" @busy-change="busy = $event" />
       </v-card-text>
       <v-divider v-if="fileId" />

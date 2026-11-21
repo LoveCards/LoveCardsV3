@@ -11,8 +11,9 @@
     @retry="load"
   >
     <template v-if="delivery">
-      <p class="mb-4 text-body-2">处理记录只说明服务端如何执行；不表示浏览器已接收或用户已阅读。</p>
-      <v-alert
+      <AdminDetailSection title="处理概况">
+        <p class="mb-4 text-body-2">处理记录只说明服务端如何执行；不表示浏览器已接收或用户已阅读。</p>
+        <v-alert
         v-if="delivery.status === 'dead'"
         class="mb-5"
         icon="mdi-email-alert-outline"
@@ -21,9 +22,8 @@
         variant="tonal"
       >
         核对最后错误并排除原因后，可以重新运行该处理器。
-      </v-alert>
+        </v-alert>
 
-      <v-sheet border rounded="lg" class="pa-6">
         <v-row dense>
           <v-col cols="12" sm="6"><AdminDetailField label="处理结果"><span v-if="delivery.policy_decision === 'skipped'">{{ skipLabel(delivery.queue_name) }}</span><AdminStatusChip v-else :status="delivery.status" /></AdminDetailField></v-col>
           <v-col cols="12" sm="6"><AdminDetailField label="尝试次数" :value="delivery.attempt_count" /></v-col>
@@ -32,18 +32,18 @@
           <v-col cols="12" sm="6"><AdminDetailField label="最早可执行时间" :value="delivery.available_at" /></v-col>
           <v-col cols="12" sm="6"><AdminDetailField label="最近更新时间" :value="delivery.updated_at" /></v-col>
         </v-row>
-      </v-sheet>
+      </AdminDetailSection>
 
-      <section class="mt-7" aria-labelledby="delivery-error-title">
-        <h2 id="delivery-error-title" class="mb-3 text-h6">最后失败信息</h2>
+      <AdminDetailSection v-if="delivery.last_error || delivery.status === 'dead'" title="最后失败信息">
         <v-alert v-if="delivery.last_error" type="error" variant="tonal">
           <pre class="delivery-detail__error">{{ delivery.last_error }}</pre>
         </v-alert>
         <v-sheet v-else border class="pa-4 text-body-2 text-medium-emphasis" rounded="lg">当前记录没有失败详情。</v-sheet>
-      </section>
+      </AdminDetailSection>
 
-      <v-expansion-panels class="mt-6">
-        <v-expansion-panel title="技术信息">
+      <AdminDetailSection title="技术信息">
+        <v-expansion-panels>
+        <v-expansion-panel title="展开执行元数据">
           <v-expansion-panel-text>
             <dl class="delivery-detail__metadata">
               <dt>事件 ID</dt><dd>{{ delivery.event_id }}</dd>
@@ -58,12 +58,12 @@
             </dl>
           </v-expansion-panel-text>
         </v-expansion-panel>
-      </v-expansion-panels>
+        </v-expansion-panels>
+      </AdminDetailSection>
 
-
-
-      <v-alert v-if="actionError" class="mt-4" type="error" variant="tonal">{{ actionError }}</v-alert>
-      <div v-if="canRetry && delivery.status === 'dead'" class="mt-6">
+      <AdminDetailSection v-if="actionError || (canRetry && delivery.status === 'dead')" title="任务操作">
+        <v-alert v-if="actionError" class="mb-4" type="error" variant="tonal">{{ actionError }}</v-alert>
+        <div v-if="canRetry && delivery.status === 'dead'">
         <v-btn v-if="!confirmRetry" prepend-icon="mdi-refresh" variant="tonal" @click="openRetry">重试任务</v-btn>
         <v-alert v-else title="重试处理任务" type="warning" variant="tonal">
           {{ delivery.event_type }} · 任务 #{{ delivery.id }} 将再次进入待处理队列。请先确认失败原因已解除，并确保处理器能够幂等执行。
@@ -72,7 +72,8 @@
             <v-btn :loading="retrying" color="warning" variant="flat" @click="retry">加入待处理队列</v-btn>
           </template>
         </v-alert>
-      </div>
+        </div>
+      </AdminDetailSection>
     </template>
   </AdminAsyncState>
 </template>
@@ -81,6 +82,7 @@
 import type { OperationsDelivery } from '@lovecards/sdk'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDetailField from '~/components/shared/admin/AdminDetailField.vue'
+import AdminDetailSection from '~/components/shared/admin/AdminDetailSection.vue'
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
 import { useAdminNotifier } from '~/composables/useAdminNotifier'
 import { isApiError, useApi } from '~/lib/api'

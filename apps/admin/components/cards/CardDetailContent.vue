@@ -1,6 +1,6 @@
 <template>
   <v-card :border="!embedded" rounded="lg" variant="flat">
-      <v-card-text class="pt-4">
+      <v-card-text class="pa-4 pa-sm-6">
         <AdminAsyncState
           :error="loadError"
           error-title="卡片加载失败"
@@ -17,10 +17,13 @@
             <span class="text-body-2 text-medium-emphasis">{{ visibilityLabel }}</span>
           </div>
 
-          <div v-if="mode === 'view'" class="mb-4">
-            <p class="text-body-1 text-pre-wrap mb-3">{{ CardData.origin.content || '—' }}</p>
+          <section v-if="mode === 'view'" class="mb-5" aria-label="卡片内容">
+            <p class="card-detail__body text-pre-wrap mb-3">{{ CardData.origin.content || '—' }}</p>
             <p class="text-body-2 text-medium-emphasis mb-0">标签：{{ tagNames || '—' }}</p>
-          </div>
+            <div v-if="canEditCard" class="d-flex justify-end mt-4">
+              <v-btn prepend-icon="mdi-pencil-outline" variant="tonal" @click="beginEdit">编辑内容</v-btn>
+            </div>
+          </section>
           <v-row v-else dense>
             <v-col cols="12">
               <v-select
@@ -52,19 +55,12 @@
 
 
 
-          <v-expansion-panels v-if="hasCustomData" class="mb-4" variant="accordion">
-            <v-expansion-panel title="查看扩展字段（只读）">
-              <v-expansion-panel-text>
-                <pre class="ma-0 text-body-2 text-wrap">{{ displayJson(CardData.edit.data) }}</pre>
-              </v-expansion-panel-text>
-            </v-expansion-panel>
-          </v-expansion-panels>
-
+          <template v-if="CardMediaData.edit.length || mode === 'edit'">
           <v-divider class="mb-4" />
           <div class="mb-3 d-flex align-center justify-space-between ga-3">
             <div>
-              <h3 class="text-subtitle-1 font-weight-medium">卡片图片</h3>
-              <p class="mb-0 text-body-2 text-medium-emphasis">第一张图片会作为封面；已有视频会保留，当前仅支持增删图片。</p>
+              <h3 class="text-subtitle-1 font-weight-medium">媒体</h3>
+              <p v-if="mode === 'edit'" class="mb-0 text-body-2 text-medium-emphasis">第一张图片会作为封面；已有视频会保留，当前仅支持增删图片。</p>
             </div>
             <v-chip size="small" variant="outlined">{{ CardMediaData.edit.length }} 项</v-chip>
           </div>
@@ -96,6 +92,12 @@
                       @click="removeCardImage(index)"
                     />
                   </div>
+                  <template #error>
+                    <div class="d-flex flex-column align-center justify-center text-medium-emphasis media-placeholder">
+                      <v-icon icon="mdi-image-off-outline" size="32" />
+                      <span class="mt-2 text-caption">图片暂不可预览</span>
+                    </div>
+                  </template>
                 </v-img>
                 <div v-else class="d-flex flex-column align-center justify-center pa-4 text-medium-emphasis media-placeholder">
                   <v-icon icon="mdi-video-outline" size="36" />
@@ -122,6 +124,7 @@
           <v-alert v-else-if="mode === 'edit' && canUpdateContent" density="compact" type="info" variant="tonal">
             当前账号没有上传文件权限；仍可编辑正文、标签或移除已有图片。
           </v-alert>
+          </template>
 
           <v-divider class="my-5" />
           <h3 class="text-subtitle-1 font-weight-medium mb-3">发布与关联</h3>
@@ -133,6 +136,14 @@
             <v-col cols="12" sm="6"><AdminDetailField label="评论数" :value="CardData.origin.comments" /></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="发布 IP" :value="displayValue(CardData.origin.post_ip)" /></v-col>
           </v-row>
+
+          <v-expansion-panels v-if="hasCustomData" class="mt-5" variant="accordion">
+            <v-expansion-panel title="查看扩展字段（只读）">
+              <v-expansion-panel-text>
+                <pre class="ma-0 text-body-2 text-wrap">{{ displayJson(CardData.edit.data) }}</pre>
+              </v-expansion-panel-text>
+            </v-expansion-panel>
+          </v-expansion-panels>
 
           <section v-if="mode === 'view' && commands.length" class="mt-5">
             <v-divider class="mb-4" />
@@ -154,14 +165,13 @@
       </v-card-text>
 
       <v-divider />
-      <v-card-actions v-if="loaded && !loading && !loadError" class="pa-4">
+      <v-card-actions v-if="loaded && !loading && !loadError && mode === 'edit'" class="pa-4 pa-sm-6">
         <v-spacer />
-        <v-btn v-if="mode === 'view' && canEditCard" variant="tonal" @click="beginEdit">{{ editLabel }}</v-btn>
         <v-btn v-if="mode === 'edit'" :disabled="saving || uploadingImages" variant="text" @click="cancelEdit">取消编辑</v-btn>
         <v-btn
           v-if="mode === 'edit' && canEditCard"
           color="primary"
-          :disabled="loading || Boolean(loadError) || uploadingImages || !canEditCard"
+          :disabled="loading || Boolean(loadError) || uploadingImages || !canEditCard || !dirty"
           :loading="saving"
           variant="flat"
           @click="submit"
@@ -208,7 +218,7 @@ const client = useApi()
 const notifier = useAdminNotifier()
 const userStore = useUserStore()
 const props = withDefaults(defineProps<{ cardId: number; initialMode?: 'view' | 'edit'; embedded?: boolean }>(), { initialMode: 'view', embedded: false })
-const emit = defineEmits<{ saved: []; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean] }>()
+const emit = defineEmits<{ saved: []; 'dirty-change': [value: boolean]; 'busy-change': [value: boolean]; 'editing-change': [value: boolean] }>()
 const tagsStore = useTagsStore()
 const viewTags = computed(() => Array.isArray(tagsStore.tags) ? tagsStore.tags : [])
 const emptyCard = {} as ManagedCard
@@ -235,7 +245,6 @@ const canPinCard = computed(() => userStore.hasGrant('cards.pin', 'all'))
 const canApproveCard = computed(() => userStore.hasGrant('cards.approve', 'all'))
 const canUploadFiles = computed(() => userStore.hasGrant('files.upload', 'global'))
 const canEditCard = canUpdateContent
-const editLabel = '编辑卡片'
 const commands = computed<CardGovernanceAction[]>(() => {
   if (!loaded.value) return []
   return cardGovernanceActions(CardData.value.origin, { approve: canApproveCard.value, update: canUpdateContent.value, pin: canPinCard.value })
@@ -250,6 +259,7 @@ const reportUnsavedUpload = () => {
   uploadedFileIds.value = []
 }
 watch(dirty, emitDirtyChange, { immediate: true })
+watch(mode, value => emit('editing-change', value === 'edit'), { immediate: true })
 watch(() => saving.value || uploadingImages.value || commandBusy.value, value => emit('busy-change', value), { immediate: true })
 const beginEdit = () => { if (canEditCard.value) mode.value = 'edit' }
 const discardEdit = () => {
@@ -491,5 +501,12 @@ onBeforeUnmount(reportUnsavedUpload)
 
 .media-placeholder {
   aspect-ratio: 1;
+}
+
+.card-detail__body {
+  max-width: 76ch;
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
 }
 </style>

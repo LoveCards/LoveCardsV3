@@ -2,12 +2,12 @@
   <v-dialog @after-leave="restoreDialogFocus" :model-value="open" aria-label="用户详情" :fullscreen="xs" max-width="880" @update:model-value="onDialogChange">
     <v-card>
       <v-card-title class="d-flex align-center ga-3">
-        <span>{{ initialMode === 'edit' ? '编辑用户' : '查看用户' }}</span>
+        <span>{{ initialMode === 'edit' ? '编辑资料' : '查看用户' }}</span>
         <v-spacer />
         <v-btn icon="mdi-close" variant="text" aria-label="关闭" @click="close" />
       </v-card-title>
       <v-divider />
-      <v-card-text class="admin-user-detail-body">
+      <v-card-text class="admin-user-detail-body pa-0">
         <UserDetailContent
           v-if="open && userId"
           :key="userId + '-' + initialMode"

@@ -14,7 +14,7 @@
         <v-btn aria-label="关闭" :disabled="busy" icon="mdi-close" variant="text" @click="requestClose(false)" />
       </v-card-title>
       <v-divider />
-      <v-card-text>
+      <v-card-text class="pa-0">
         <DeliveryDetailContent v-if="modelValue && deliveryId" :delivery-id="deliveryId" @busy-change="busy = $event" @updated="emit('updated')" />
       </v-card-text>
       <v-divider v-if="deliveryId" />

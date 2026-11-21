@@ -31,11 +31,8 @@ const headingId = useId()
   border-radius: 8px 8px 0 0;
 }
 
-.admin-detail-section:not(:first-of-type)::before {
-  display: block;
-  margin-bottom: 24px;
+.admin-detail-section:not(:first-of-type) {
   border-top: 1px solid rgb(var(--v-theme-outline));
-  content: '';
 }
 
 .admin-detail-section:last-of-type {
@@ -50,6 +47,10 @@ const headingId = useId()
 :global(.v-dialog) .admin-detail-section {
   border: 0;
   border-radius: 0;
+}
+
+:global(.v-dialog) .admin-detail-section + .admin-detail-section {
+  border-top: 1px solid rgb(var(--v-theme-outline));
 }
 
 @media (max-width: 600px) {

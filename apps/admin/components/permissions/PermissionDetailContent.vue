@@ -9,13 +9,13 @@
     @retry="load"
   >
     <template v-if="permission">
-      <v-sheet border rounded="lg" class="pa-6">
+      <AdminDetailSection title="权限信息">
         <v-row dense>
           <v-col cols="12" sm="6"><AdminDetailField label="能力标识" :value="permission.capability" /></v-col>
           <v-col cols="12" sm="6"><AdminDetailField label="作用域" :value="scopeLabel" /></v-col>
           <v-col cols="12"><AdminDetailField label="服务端说明" :value="permission.description" /></v-col>
         </v-row>
-      </v-sheet>
+      </AdminDetailSection>
 
     </template>
   </AdminAsyncState>
@@ -25,6 +25,7 @@
 import type { AuthorizationScope, CapabilityItem } from '@lovecards/sdk'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDetailField from '~/components/shared/admin/AdminDetailField.vue'
+import AdminDetailSection from '~/components/shared/admin/AdminDetailSection.vue'
 import { isApiError, useApi } from '~/lib/api'
 
 const props = defineProps<{ capability: string; scope: string }>()
