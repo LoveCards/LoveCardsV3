@@ -11,20 +11,20 @@
     <template v-if="user">
       <AdminDetailSection title="用户资料">
         <template #actions>
-          <v-btn v-if="mode === 'view' && canEditTarget" prepend-icon="mdi-pencil-outline" variant="tonal" @click="startEditing('profile')">编辑资料</v-btn>
+          <v-btn v-if="mode === 'view' && canEditTarget" prepend-icon="mdi-pencil-outline" variant="tonal" @click="startEditing">编辑</v-btn>
         </template>
         <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">{{ formError }}</v-alert>
         <div class="user-detail__identity d-flex flex-wrap align-center ga-4 mb-4">
           <v-avatar color="surface-variant" size="64">
-            <v-img v-if="mode === 'profile' ? draft.avatar : user.avatar" :src="String(mode === 'profile' ? draft.avatar : user.avatar)" :alt="`${user.username} 的头像`" />
+            <v-img v-if="mode === 'edit' ? draft.avatar : user.avatar" :src="String(mode === 'edit' ? draft.avatar : user.avatar)" :alt="`${user.username} 的头像`" />
             <v-icon v-else icon="mdi-account" aria-label="默认头像" />
           </v-avatar>
           <div class="user-detail__primary min-w-0">
-            <v-text-field v-if="mode === 'profile'" v-model="draft.username" label="用户名" required :disabled="saving" variant="outlined" hide-details />
+            <v-text-field v-if="mode === 'edit'" v-model="draft.username" label="用户名" required :disabled="saving" variant="outlined" hide-details />
             <AdminDetailField v-else label="用户名" :value="user.username" />
             <div class="text-body-2 text-medium-emphasis mt-1">用户 #{{ user.id }} · 账号 {{ user.number }}</div>
           </div>
-          <div v-if="mode === 'profile' && canUploadFiles" class="user-detail__avatar-editor min-w-0">
+          <div v-if="mode === 'edit' && canUploadFiles" class="user-detail__avatar-editor min-w-0">
             <v-file-input
               :model-value="selectedAvatar"
               accept="image/*"
@@ -43,11 +43,11 @@
         </div>
         <v-row class="align-start">
           <v-col cols="12" sm="6">
-            <v-text-field v-if="mode === 'profile'" v-model="draft.email" label="邮箱" type="email" :disabled="saving" variant="outlined" hide-details />
+            <v-text-field v-if="mode === 'edit'" v-model="draft.email" label="邮箱" type="email" :disabled="saving" variant="outlined" hide-details />
             <AdminSensitiveField v-else label="邮箱" :value="user.email" />
           </v-col>
           <v-col cols="12" sm="6">
-            <v-text-field v-if="mode === 'profile'" v-model="draft.phone" label="手机号" type="tel" :disabled="saving" variant="outlined" hide-details />
+            <v-text-field v-if="mode === 'edit'" v-model="draft.phone" label="手机号" type="tel" :disabled="saving" variant="outlined" hide-details />
             <AdminSensitiveField v-else label="手机号" :value="user.phone" />
           </v-col>
           <v-col cols="12"><v-divider class="my-1" /></v-col>
@@ -56,7 +56,7 @@
               v-if="canEditTarget"
               :model-value="Number(user.status)"
               :items="accountStatusOptions"
-              :disabled="saving || rolesSaving || statusSaving || avatarUploading"
+              :disabled="saving || statusSaving || avatarUploading"
               label="账号状态"
               item-title="title"
               item-value="value"
@@ -68,7 +68,7 @@
           </v-col>
           <v-col cols="12" sm="6">
             <v-select
-              v-if="mode === 'roles' && canManageRoles && canEditTarget"
+              v-if="mode === 'edit' && canManageRoles && canEditTarget"
               v-model="roleDraft"
               :items="roleOptions"
               item-title="title"
@@ -79,7 +79,7 @@
               clearable
               :loading="rolesLoading"
               :error-messages="rolesError ? [rolesError] : []"
-              :disabled="rolesSaving"
+              :disabled="saving"
               variant="outlined"
             />
             <div v-else class="user-detail__roles-field">
@@ -87,19 +87,14 @@
               <div class="d-flex flex-wrap align-center ga-2">
                 <v-chip v-for="role in roleLabels" :key="role.id" :color="role.slug === 'root' ? 'error' : undefined" variant="tonal">{{ role.label }}</v-chip>
                 <span v-if="!roleLabels.length" class="text-body-2 text-medium-emphasis">未分配角色</span>
-                <v-btn v-if="canManageRoles && canEditTarget" class="ms-auto" size="small" variant="text" @click="startEditing('roles')">调整角色</v-btn>
               </div>
             </div>
           </v-col>
         </v-row>
         <p v-if="dirty && canEditTarget" class="text-caption text-medium-emphasis mt-3 mb-0">账号状态单独提交；当前未保存的字段修改仍需另行保存。</p>
-        <div v-if="mode === 'profile'" class="d-flex justify-end ga-2 mt-5">
+        <div v-if="mode === 'edit'" class="d-flex justify-end ga-2 mt-5">
           <v-btn variant="text" :disabled="saving || avatarUploading" @click="cancelEditing">取消</v-btn>
-          <v-btn color="primary" variant="flat" :loading="saving" :disabled="avatarUploading || !profileDirty" @click="saveProfile">保存资料</v-btn>
-        </div>
-        <div v-else-if="mode === 'roles'" class="d-flex justify-end ga-2 mt-5">
-          <v-btn variant="text" :disabled="rolesSaving" @click="cancelEditing">取消</v-btn>
-          <v-btn color="primary" variant="flat" :loading="rolesSaving" :disabled="!rolesDirty || rolesLoading" @click="saveRoles">保存角色分配</v-btn>
+          <v-btn color="primary" variant="flat" :loading="saving" :disabled="avatarUploading || !dirty || (canManageRoles && (rolesLoading || !!rolesError))" @click="saveChanges">保存修改</v-btn>
         </div>
       </AdminDetailSection>
     </template>
@@ -132,15 +127,14 @@ import { useUserStore } from '~/stores/userStore'
 import { classifyUserTargetRole, parseUserRoleIds } from '~/utils/userTargetProtection'
 
 const props = withDefaults(defineProps<{ userId: number; initialMode?: 'view' | 'edit' }>(), { initialMode: 'view' })
-const emit = defineEmits<{ loaded: [user: User | null]; updated: []; saved: [scope: 'profile' | 'roles'] }>()
+const emit = defineEmits<{ loaded: [user: User | null]; updated: []; saved: [] }>()
 const client = useApi()
 const notifier = useAdminNotifier()
 const userStore = useUserStore()
 const user = ref<User | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
-type EditScope = 'profile' | 'roles'
-const mode = ref<'view' | EditScope>('view')
+const mode = ref<'view' | 'edit'>('view')
 const draft = ref<Partial<User>>({})
 const roleDraft = ref<number[]>([])
 const statusDraft = ref(0)
@@ -152,7 +146,6 @@ const roleCatalogLoaded = ref(false)
 const roleOptions = ref<Array<{ title: string; value: number }>>([])
 const rolesLoading = ref(false)
 const rolesError = ref('')
-const rolesSaving = ref(false)
 const saving = ref(false)
 const formError = ref('')
 const avatarUploading = ref(false)
@@ -174,7 +167,7 @@ const accountStatus = computed(() => {
   return labels[Number(user.value?.status)] ?? { status: 'unknown', label: '未知状态' }
 })
 function requestStatusCommand(value: number | null) {
-  if (value === null || !canEditTarget.value || saving.value || rolesSaving.value || statusSaving.value || avatarUploading.value) return
+  if (value === null || !canEditTarget.value || saving.value || statusSaving.value || avatarUploading.value) return
   statusDraft.value = value
   statusError.value = ''
   statusConfirm.value = true
@@ -201,7 +194,7 @@ const rolesDirty = computed(() => JSON.stringify([...roleDraft.value].sort()) !=
 const statusDirty = computed(() => !!user.value && statusDraft.value !== Number(user.value.status))
 const statusTargetLabel = computed(() => accountStatusOptions.find((item) => item.value === statusDraft.value)?.title ?? '未知状态')
 const statusActionLabel = computed(() => statusDraft.value === 0 ? '恢复账号' : statusDraft.value === 1 ? '封禁用户' : statusDraft.value === 2 ? '冻结用户' : '提交账号审核')
-const dirty = computed(() => mode.value === 'profile' ? profileDirty.value : mode.value === 'roles' ? rolesDirty.value : false)
+const dirty = computed(() => mode.value === 'edit' && (profileDirty.value || (canManageRoles.value && rolesDirty.value)))
 
 function resetDraft() {
   if (!user.value) return
@@ -248,22 +241,22 @@ async function load() {
     user.value = next
     emit('loaded', next)
     resetDraft()
-    if (props.initialMode === 'edit' && !canEditTarget.value && userStore.hasGrant('roles.read', 'global') && !rolesLoading.value && !roleCatalogLoaded.value) await loadRoles()
-    mode.value = props.initialMode === 'edit' && canEditTarget.value ? 'profile' : 'view'
+    if (props.initialMode === 'edit' && userStore.hasGrant('roles.read', 'global') && !roleCatalogLoaded.value) await loadRoles()
+    mode.value = props.initialMode === 'edit' && canEditTarget.value ? 'edit' : 'view'
   } catch (cause) {
     if (requestId === latestLoad) error.value = isApiError(cause) ? cause.message : '无法加载用户详情。'
   } finally {
     if (requestId === latestLoad) loading.value = false
   }
 }
-async function startEditing(scope: EditScope) {
-  if (!canEditTarget.value || mode.value === scope || (scope === 'roles' && !canManageRoles.value)) return
-  if (mode.value !== 'view' && !(await requestClose())) return
+function startEditing() {
+  if (!canEditTarget.value || mode.value === 'edit') return
+  if (canManageRoles.value && !roleCatalogLoaded.value && !rolesLoading.value) void loadRoles()
   resetDraft()
-  mode.value = scope
+  mode.value = 'edit'
 }
 async function requestClose(): Promise<boolean> {
-  if (saving.value || rolesSaving.value || statusSaving.value || avatarUploading.value) return false
+  if (saving.value || statusSaving.value || avatarUploading.value) return false
   if (!dirty.value) return true
   confirmDiscard.value = true
   return new Promise<boolean>((resolve) => { resolveDiscard = resolve })
@@ -319,19 +312,22 @@ async function refreshAfterSave(): Promise<boolean> {
     return false
   }
 }
-async function saveProfile() {
-  if (!user.value || !canEditTarget.value || !profileDirty.value || saving.value) return
+async function saveChanges() {
+  if (!user.value || !canEditTarget.value || !dirty.value || saving.value || avatarUploading.value) return
+  if (canManageRoles.value && (rolesLoading.value || rolesError.value)) return
   saving.value = true
   formError.value = ''
+  rolesError.value = ''
   try {
     const changes: Record<string, unknown> = {}
     for (const key of ['username', 'email', 'phone', 'avatar'] as const) {
       if (JSON.stringify(draft.value[key]) !== JSON.stringify(user.value[key])) changes[key] = draft.value[key]
     }
+    if (canManageRoles.value && rolesDirty.value) changes.roles_id = roleDraft.value
     await client.users.updateManaged(user.value.id, changes as Parameters<typeof client.users.updateManaged>[1])
-    if (await refreshAfterSave()) { notifier.success('用户资料已保存'); emit('saved', 'profile') }
+    if (await refreshAfterSave()) { notifier.success('用户修改已保存'); emit('saved') }
   } catch (cause) {
-    formError.value = isApiError(cause) ? cause.message : '用户资料保存失败，请检查字段后重试。'
+    formError.value = isApiError(cause) ? cause.message : '用户修改保存失败，请检查字段后重试。'
   } finally {
     saving.value = false
   }
@@ -360,25 +356,12 @@ async function saveStatus() {
     statusSaving.value = false
   }
 }
-async function saveRoles() {
-  if (!user.value || !canEditTarget.value || !canManageRoles.value || !rolesDirty.value || rolesSaving.value) return
-  rolesSaving.value = true
-  rolesError.value = ''
-  try {
-    await client.users.assignRoles(user.value.id, { roles_id: roleDraft.value })
-    if (await refreshAfterSave()) { notifier.success('角色分配已保存'); emit('saved', 'roles') }
-  } catch (cause) {
-    rolesError.value = isApiError(cause) ? cause.message : '角色分配失败，请稍后重试。'
-  } finally {
-    rolesSaving.value = false
-  }
-}
 const beforeUnload = (event: BeforeUnloadEvent) => {
   if (!dirty.value) return
   event.preventDefault()
   event.returnValue = ''
 }
-onMounted(() => { window.addEventListener('beforeunload', beforeUnload); void loadRoles() })
+onMounted(() => { window.addEventListener('beforeunload', beforeUnload); if (props.initialMode !== 'edit') void loadRoles() })
 onBeforeUnmount(() => { latestLoad += 1; window.removeEventListener('beforeunload', beforeUnload); resolveDiscard?.(false) })
 onBeforeRouteLeave(requestClose)
 onBeforeRouteUpdate((to, from) => JSON.stringify(to.params) !== JSON.stringify(from.params) ? requestClose() : true)

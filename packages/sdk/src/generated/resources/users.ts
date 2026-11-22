@@ -15,7 +15,7 @@ export class Users extends BaseResource {
   getManaged(id: number): Promise<ApiTypes.User> {
     return this._get<ApiTypes.User>(`/admin/users/${id}`)
   }
-  updateManaged(id: number, data?: { avatar?: string; email?: string; phone?: string; username?: string; status?: number }): Promise<void> {
+  updateManaged(id: number, data?: { avatar?: string; number?: string; password?: string; email?: string; phone?: string; username?: string; status?: number; roles_id?: number[] }): Promise<void> {
     return this._patch<void>(`/admin/users/${id}`, data)
   }
   assignRoles(id: number, data: { roles_id: number[] }): Promise<void> {

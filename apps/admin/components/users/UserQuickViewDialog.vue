@@ -45,8 +45,8 @@ const canReadSecurity = computed(() => userStore.hasGrant('users.security.read',
 const loadedUser = ref<User | null>(null)
 const content = ref<InstanceType<typeof UserDetailContent> | null>(null)
 watch([open, () => loadedUser.value?.id], () => { if (!open.value) loadedUser.value = null })
-function onSaved(scope: 'profile' | 'roles') {
-  if (props.initialMode === 'edit' && scope === 'profile') open.value = false
+function onSaved() {
+  if (props.initialMode === 'edit') open.value = false
 }
 async function close() {
   if (await content.value?.requestClose() ?? true) open.value = false
