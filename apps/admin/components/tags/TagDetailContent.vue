@@ -36,7 +36,7 @@
           </v-alert>
           <div v-if="mode === 'edit'" class="d-flex justify-end ga-2 mt-5">
             <v-btn :disabled="pending" variant="text" @click="cancelEditing">取消编辑</v-btn>
-            <v-btn color="primary" :disabled="!canSave" :loading="pending" variant="flat" @click="saveName">保存名称</v-btn>
+            <v-btn color="primary" :disabled="!canSave" :loading="pending" variant="flat" @click="saveName">保存修改</v-btn>
           </div>
           <div v-else-if="canUpdate && !pending" class="d-flex justify-end mt-5">
             <v-btn variant="tonal" prepend-icon="mdi-pencil-outline" @click="startEditing">编辑</v-btn>
