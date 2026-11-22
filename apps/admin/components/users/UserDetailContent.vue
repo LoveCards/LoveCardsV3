@@ -68,7 +68,7 @@
           </v-col>
           <v-col cols="12" sm="6">
             <v-select
-              v-if="mode === 'edit' && canManageRoles && canEditTarget"
+              v-if="mode === 'edit' && canManageRoles && canEditTarget && !rolesError"
               v-model="roleDraft"
               :items="roleOptions"
               item-title="title"
@@ -78,7 +78,6 @@
               chips
               clearable
               :loading="rolesLoading"
-              :error-messages="rolesError ? [rolesError] : []"
               :disabled="saving"
               variant="outlined"
             />
@@ -89,12 +88,13 @@
                 <span v-if="!roleLabels.length" class="text-body-2 text-medium-emphasis">未分配角色</span>
               </div>
             </div>
+            <p v-if="mode === 'edit' && canManageRoles && rolesError" class="text-caption text-error mt-2 mb-0">{{ rolesError }}</p>
           </v-col>
         </v-row>
         <p v-if="dirty && canEditTarget" class="text-caption text-medium-emphasis mt-3 mb-0">账号状态单独提交；当前未保存的字段修改仍需另行保存。</p>
         <div v-if="mode === 'edit'" class="d-flex justify-end ga-2 mt-5">
           <v-btn variant="text" :disabled="saving || avatarUploading" @click="cancelEditing">取消</v-btn>
-          <v-btn color="primary" variant="flat" :loading="saving" :disabled="avatarUploading || !dirty || (canManageRoles && (rolesLoading || !!rolesError))" @click="saveChanges">保存修改</v-btn>
+          <v-btn color="primary" variant="flat" :loading="saving" :disabled="avatarUploading || !dirty || (canManageRoles && rolesDirty && (rolesLoading || !!rolesError))" @click="saveChanges">保存修改</v-btn>
         </div>
       </AdminDetailSection>
     </template>
@@ -314,10 +314,9 @@ async function refreshAfterSave(): Promise<boolean> {
 }
 async function saveChanges() {
   if (!user.value || !canEditTarget.value || !dirty.value || saving.value || avatarUploading.value) return
-  if (canManageRoles.value && (rolesLoading.value || rolesError.value)) return
+  if (canManageRoles.value && rolesDirty.value && (rolesLoading.value || rolesError.value)) return
   saving.value = true
   formError.value = ''
-  rolesError.value = ''
   try {
     const changes: Record<string, unknown> = {}
     for (const key of ['username', 'email', 'phone', 'avatar'] as const) {
