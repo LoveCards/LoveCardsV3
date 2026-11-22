@@ -10,9 +10,6 @@
   >
     <template v-if="user">
       <AdminDetailSection title="用户资料">
-        <template #actions>
-          <v-btn v-if="mode === 'view' && canEditTarget" prepend-icon="mdi-pencil-outline" variant="tonal" @click="startEditing">编辑</v-btn>
-        </template>
         <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">{{ formError }}</v-alert>
         <div class="user-detail__identity d-flex flex-wrap align-center ga-4 mb-4">
           <v-avatar color="surface-variant" size="64">
@@ -92,10 +89,17 @@
           </v-col>
         </v-row>
         <p v-if="dirty && canEditTarget" class="text-caption text-medium-emphasis mt-3 mb-0">账号状态单独提交；当前未保存的字段修改仍需另行保存。</p>
-        <div v-if="mode === 'edit'" class="d-flex justify-end ga-2 mt-5">
-          <v-btn variant="text" :disabled="saving || avatarUploading" @click="cancelEditing">取消</v-btn>
-          <v-btn color="primary" variant="flat" :loading="saving" :disabled="avatarUploading || !dirty || (canManageRoles && rolesDirty && (rolesLoading || !!rolesError))" @click="saveChanges">保存修改</v-btn>
-        </div>
+        <template v-if="canEditTarget">
+          <v-divider class="mt-5" />
+          <v-card-actions class="pa-0 pt-4">
+            <v-spacer />
+            <v-btn v-if="mode === 'view'" variant="tonal" :disabled="statusSaving" @click="startEditing">编辑</v-btn>
+            <template v-else>
+              <v-btn variant="text" :disabled="saving || avatarUploading" @click="cancelEditing">取消编辑</v-btn>
+              <v-btn color="primary" variant="flat" :loading="saving" :disabled="avatarUploading || !dirty || (canManageRoles && rolesDirty && (rolesLoading || !!rolesError))" @click="saveChanges">保存修改</v-btn>
+            </template>
+          </v-card-actions>
+        </template>
       </AdminDetailSection>
     </template>
   </AdminAsyncState>

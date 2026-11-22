@@ -4,14 +4,13 @@
       <template v-if="role">
         <v-alert v-if="actionError" class="mb-4" type="error" variant="tonal">{{ actionError }}</v-alert>
         <AdminDetailSection title="角色信息">
-          <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-4">
+          <div class="d-flex flex-wrap align-center ga-2 mb-4">
             <div class="d-flex flex-wrap align-center ga-2">
               <strong>{{ role.name }}</strong>
               <v-chip size="small" variant="tonal" :color="classification === 'system' ? 'warning' : classification === 'unknown' ? 'error' : undefined">
                 {{ classification === 'system' ? '系统角色' : classification === 'custom' ? '自定义角色' : '类型未知' }}
               </v-chip>
             </div>
-            <v-btn v-if="mode !== 'edit' && canEdit" variant="tonal" prepend-icon="mdi-pencil-outline" @click="startEdit">编辑角色</v-btn>
           </div>
           <v-alert v-if="classification === 'unknown'" class="mb-4" type="warning" variant="tonal">无法确认角色类型，编辑与分配权限已锁定。</v-alert>
           <v-alert v-else-if="classification === 'system' && mode === 'edit'" class="mb-4" type="info" variant="tonal">系统角色的标识由服务端固定，只允许超级管理员修改名称和说明。</v-alert>
@@ -25,17 +24,12 @@
               <v-col cols="12" sm="6"><v-text-field v-if="classification === 'custom'" v-model="draftSlug" label="角色标识（Slug）" maxlength="50" required variant="outlined" :disabled="busy" /><div v-else><div class="text-caption text-medium-emphasis">稳定标识</div>{{ role.slug }}</div></v-col>
               <v-col cols="12"><v-textarea v-model="draftDescription" label="角色描述" maxlength="255" rows="3" auto-grow variant="outlined" :disabled="busy" /></v-col>
             </v-row>
-            <div class="d-flex justify-end ga-2 mt-3">
-              <v-btn variant="text" :disabled="busy" @click="cancelMode">取消编辑</v-btn>
-              <v-btn color="primary" variant="flat" :disabled="!canSaveBasics" :loading="busy" @click="saveBasics">保存修改</v-btn>
-            </div>
           </template>
           <v-divider class="my-5" />
           <h3 class="text-subtitle-1 font-weight-medium mb-2">已授予能力</h3>
           <p class="text-body-2 text-medium-emphasis mb-4">权限分配独立保存，会影响角色可见数据和可执行操作。</p>
-          <div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-3">
+          <div class="d-flex flex-wrap align-center ga-2 mb-3">
             <v-chip size="small" variant="outlined">{{ grants.length }} 项</v-chip>
-            <v-btn v-if="mode !== 'assign' && canAssign" variant="outlined" prepend-icon="mdi-shield-key-outline" @click="startAssign">分配权限</v-btn>
           </div>
           <template v-if="mode === 'assign'">
             <v-alert class="mb-3" type="info" variant="tonal">权限调整会影响该角色可见的页面、数据范围和可执行操作，请在保存前核对选择范围。</v-alert>
@@ -52,15 +46,28 @@
                 </v-list-item>
               </v-list>
             </AdminAsyncState>
-            <div class="d-flex justify-end ga-2 mt-3">
-              <v-btn variant="text" :disabled="busy" @click="cancelMode">取消分配</v-btn>
-              <v-btn color="primary" variant="flat" :disabled="!canSaveGrants" :loading="busy" @click="saveGrants">保存权限</v-btn>
-            </div>
           </template>
           <v-list v-else-if="grants.length" density="compact">
             <v-list-item v-for="grant in grants" :key="grantKey(grant)" :title="grant.capability" :subtitle="scopeLabel(grant.scope)" :to="permissionPath(grant)" />
           </v-list>
           <p v-else class="text-body-2 text-medium-emphasis">该角色没有单独授予的能力。</p>
+          <template v-if="canEdit || canAssign">
+            <v-divider class="mt-5" />
+            <v-card-actions class="pa-0 pt-4">
+              <v-btn v-if="mode !== 'assign' && canAssign" variant="outlined" :disabled="busy" @click="startAssign">分配权限</v-btn>
+              <v-btn v-if="mode === 'assign' && canEdit" variant="outlined" :disabled="busy" @click="startEdit">编辑</v-btn>
+              <v-spacer />
+              <v-btn v-if="mode === 'view' && canEdit" variant="tonal" :disabled="busy" @click="startEdit">编辑</v-btn>
+              <template v-if="mode === 'edit'">
+                <v-btn variant="text" :disabled="busy" @click="cancelMode">取消编辑</v-btn>
+                <v-btn color="primary" variant="flat" :disabled="!canSaveBasics" :loading="busy" @click="saveBasics">保存修改</v-btn>
+              </template>
+              <template v-if="mode === 'assign'">
+                <v-btn variant="text" :disabled="busy" @click="cancelMode">取消分配</v-btn>
+                <v-btn color="primary" variant="flat" :disabled="!canSaveGrants" :loading="busy" @click="saveGrants">保存权限</v-btn>
+              </template>
+            </v-card-actions>
+          </template>
         </AdminDetailSection>
         <v-alert v-if="confirmCancel" class="mt-4" type="warning" variant="tonal">
           当前修改尚未保存，确定放弃吗？

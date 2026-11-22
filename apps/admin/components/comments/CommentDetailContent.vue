@@ -7,9 +7,6 @@
           <section v-if="mode === 'view'" aria-label="评论内容">
             <div class="text-body-2 text-medium-emphasis mb-2">评论正文</div>
             <p class="comment-detail__body text-pre-wrap mb-3">{{ comment.content || '—' }}</p>
-            <div v-if="canUpdate && !comment.deleted" class="d-flex justify-end">
-              <v-btn prepend-icon="mdi-pencil-outline" variant="tonal" @click="mode = 'edit'">编辑</v-btn>
-            </div>
           </section>
           <template v-else>
             <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">{{ formError }}</v-alert>
@@ -47,11 +44,14 @@
         </template>
       </AdminAsyncState>
     </v-card-text>
-    <v-divider />
-    <v-card-actions v-if="comment && !loading && mode === 'edit'" class="pa-4 pa-sm-6">
+    <v-divider v-if="comment && !loading && canUpdate && (mode === 'edit' || !comment.deleted)" />
+    <v-card-actions v-if="comment && !loading && canUpdate && (mode === 'edit' || !comment.deleted)" class="pa-4 pa-sm-6">
       <v-spacer />
-      <v-btn v-if="mode === 'edit'" :disabled="saving || busy" variant="text" @click="cancelEdit">取消编辑</v-btn>
-      <v-btn v-if="mode === 'edit'" color="primary" :loading="saving" :disabled="!dirty || busy" variant="flat" @click="save">保存修改</v-btn>
+      <v-btn v-if="mode === 'view'" variant="tonal" :disabled="busy" @click="mode = 'edit'">编辑</v-btn>
+      <template v-else>
+        <v-btn :disabled="saving || busy" variant="text" @click="cancelEdit">取消编辑</v-btn>
+        <v-btn color="primary" :loading="saving" :disabled="!dirty || busy || comment.deleted" variant="flat" @click="save">保存修改</v-btn>
+      </template>
     </v-card-actions>
     <v-alert v-if="confirmDiscard" class="ma-4" type="warning" variant="tonal">评论有未保存修改，确定放弃吗？<template #append><v-btn variant="text" @click="confirmDiscard = false">继续编辑</v-btn><v-btn color="warning" variant="flat" @click="discardEdit">放弃修改</v-btn></template></v-alert>
   </div>

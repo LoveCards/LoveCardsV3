@@ -46,8 +46,6 @@ test('created custom role persists grants across reload', async ({ page }) => {
     await checkbox.check()
   }
   await assignDialog.getByRole('button', { name: '保存权限' }).click()
-  await expect(assignDialog.getByRole('button', { name: '分配权限' })).toBeVisible({ timeout: 15_000 })
-  await assignDialog.getByRole('button', { name: '关闭', exact: true }).click()
   await expect(assignDialog).toBeHidden({ timeout: 15_000 })
 
   // 4. 重开授权对话框：勾选状态来自服务端回读，证明持久化
@@ -71,15 +69,13 @@ test('role list exposes the new role through the detail page', async ({ page }) 
   await expect(roleRow).toBeVisible({ timeout: 15_000 })
 
   // 编辑入口：修改名称后列表回读（第二个写动作，防止写链路只测一半）
-  await openRoleAction(page, roleRow, '编辑角色')
+  await openRoleAction(page, roleRow, '编辑')
   const editDialog = page.locator('.v-dialog:visible')
   await expect(editDialog).toBeVisible({ timeout: 15_000 })
   await expect(editDialog.getByLabel('角色名称')).toBeVisible()
   const renamed = `${roleName}_已改名`
   await editDialog.getByLabel('角色名称').fill(renamed)
   await editDialog.getByRole('button', { name: '保存修改' }).click()
-  await expect(editDialog.getByRole('button', { name: '编辑角色' })).toBeVisible({ timeout: 15_000 })
-  await editDialog.getByRole('button', { name: '关闭', exact: true }).click()
   await expect(editDialog).toBeHidden({ timeout: 15_000 })
 
   await page.getByRole('textbox', { name: '搜索角色名称' }).fill(renamed)

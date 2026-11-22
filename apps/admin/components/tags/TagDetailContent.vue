@@ -34,13 +34,17 @@
               <v-btn color="warning" variant="flat" @click="discardEditing">放弃修改</v-btn>
             </template>
           </v-alert>
-          <div v-if="mode === 'edit'" class="d-flex justify-end ga-2 mt-5">
-            <v-btn :disabled="pending" variant="text" @click="cancelEditing">取消编辑</v-btn>
-            <v-btn color="primary" :disabled="!canSave" :loading="pending" variant="flat" @click="saveName">保存修改</v-btn>
-          </div>
-          <div v-else-if="canUpdate && !pending" class="d-flex justify-end mt-5">
-            <v-btn variant="tonal" prepend-icon="mdi-pencil-outline" @click="startEditing">编辑</v-btn>
-          </div>
+          <template v-if="canUpdate">
+            <v-divider class="mt-5" />
+            <v-card-actions class="pa-0 pt-4">
+              <v-spacer />
+              <v-btn v-if="mode === 'view'" variant="tonal" :disabled="pending" @click="startEditing">编辑</v-btn>
+              <template v-else>
+                <v-btn :disabled="pending" variant="text" @click="cancelEditing">取消编辑</v-btn>
+                <v-btn color="primary" :disabled="!canSave" :loading="pending" variant="flat" @click="saveName">保存修改</v-btn>
+              </template>
+            </v-card-actions>
+          </template>
         </AdminDetailSection>
         <v-alert v-if="selectedAction" class="mt-4" type="warning" variant="tonal">
           确认将标签「{{ tag.name }}」从“{{ statusLabel }}”改为“{{ selectedAction.targetLabel }}”？<span v-if="dirty">当前未保存的名称修改会保留，仍需单独保存。</span>

@@ -38,6 +38,7 @@ test('comment governance stays available without discarding an edited body', asy
 
   await page.goto('./apps/content/comments/101')
   await expect(page.getByText('原评论', { exact: true })).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByRole('button', { name: '编辑', exact: true }).locator('xpath=ancestor::*[contains(@class, "v-card-actions")]')).toBeVisible()
   await page.getByRole('button', { name: '编辑', exact: true }).click()
   await page.getByRole('textbox', { name: '评论正文' }).fill('未保存的评论')
   await page.locator('.v-select').filter({ hasText: '审核状态' }).click()

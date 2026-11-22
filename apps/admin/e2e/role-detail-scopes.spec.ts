@@ -27,7 +27,8 @@ test('role detail guards switching from unsaved basics to grants', async ({ page
   })
   await page.goto('./apps/access/roles/7')
   await expect(page.getByRole('heading', { name: '角色 · 内容编辑' })).toBeVisible({ timeout: 20_000 })
-  await page.getByRole('button', { name: '编辑角色' }).click()
+  await expect(page.getByRole('button', { name: '编辑', exact: true }).locator('xpath=ancestor::*[contains(@class, "v-card-actions")]')).toBeVisible()
+  await page.getByRole('button', { name: '编辑', exact: true }).click()
   await page.getByRole('textbox', { name: '角色名称' }).fill('尚未保存的角色名称')
   await page.getByRole('button', { name: '分配权限' }).click()
   await expect(page.getByText('当前修改尚未保存，确定放弃吗？')).toBeVisible()
@@ -70,7 +71,7 @@ test('role write keeps the edit scope when the detail reread fails', async ({ pa
 
   await page.goto('./apps/access/roles/7')
   await expect(page.getByRole('heading', { name: '角色 · 内容编辑' })).toBeVisible({ timeout: 20_000 })
-  await page.getByRole('button', { name: '编辑角色' }).click()
+  await page.getByRole('button', { name: '编辑', exact: true }).click()
   await page.getByRole('textbox', { name: '角色名称' }).fill('更新后的角色')
   await page.getByRole('button', { name: '保存修改' }).click()
   await expect(page.getByText('修改已保存，但最新角色详情读取失败，请重试确认。')).toBeVisible()
