@@ -189,3 +189,29 @@ test('report processing and note scopes guard draft switches', async ({ page }) 
   await expect(processing.getByLabel('备注内容')).toBeVisible()
   await expect(processing.getByLabel('处理原因或结论')).toHaveCount(0)
 })
+
+test('report submission locks its inputs and task switching', async ({ page }) => {
+  let release: (() => void) | undefined
+  let submitted = false
+  await page.route('**/api/admin/reports/55', route => route.fulfill({ json: { success: true, data: reportFixture('open') } }))
+  await page.route('**/api/admin/reports/55/transition', async route => {
+    submitted = true
+    await new Promise<void>(resolve => { release = resolve })
+    await route.fulfill({ status: 422, json: { code: 1, message: '模拟处理失败' } })
+  })
+  await page.goto('./apps/community/reports/55')
+  await page.getByRole('button', { name: '更新处理状态', exact: true }).click()
+  const input = page.getByRole('textbox', { name: '处理原因或结论' })
+  await input.fill('处理中保持这段草稿')
+  await page.getByRole('button', { name: '确认处理', exact: true }).click()
+  try {
+    await expect.poll(() => submitted).toBe(true)
+    await expect(input).toBeDisabled()
+    await expect(page.getByRole('combobox', { name: '目标状态' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: '改为追加备注' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: '取消', exact: true })).toBeDisabled()
+  } finally { release?.() }
+  await expect(input).toBeEnabled()
+  await expect(input).toHaveValue('处理中保持这段草稿')
+  await expect(page.getByText('模拟处理失败', { exact: true })).toBeVisible()
+})

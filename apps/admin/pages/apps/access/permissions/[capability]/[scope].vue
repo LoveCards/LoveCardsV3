@@ -10,7 +10,7 @@
       ]"
     >
       <template #actions>
-        <v-btn prepend-icon="mdi-arrow-left" to="/apps/access/permissions" variant="outlined">返回目录</v-btn>
+        <v-btn prepend-icon="mdi-arrow-left" to="/apps/access/permissions" variant="text">返回目录</v-btn>
       </template>
     </AdminPageHeader>
     <PermissionDetailContent :capability="capability" :scope="scope" />

@@ -28,9 +28,9 @@
             <v-col cols="12" sm="6"><AdminDetailField label="场景" :value="file.scene" /></v-col>
           </v-row>
 
-          <v-divider v-if="canTrash || canRestore || canPurge" class="my-5" />
-          <h3 v-if="canTrash || canRestore || canPurge" class="text-subtitle-1 font-weight-medium mb-3">文件操作</h3>
-          <div v-if="(!file.is_deleted && canTrash) || (file.is_deleted && (canRestore || canPurge))" class="d-flex flex-wrap ga-2 mt-3">
+          <v-divider v-if="hasFileActions" class="my-5" />
+          <h3 v-if="hasFileActions" class="text-subtitle-1 font-weight-medium mb-3">文件操作</h3>
+          <div v-if="hasFileActions" class="d-flex flex-wrap ga-2 mt-3">
             <v-btn v-if="!file.is_deleted && canTrash" color="error" variant="text" :disabled="busy" @click="selectCommand('trash')">移入回收站</v-btn>
             <v-btn v-if="file.is_deleted && canRestore" variant="outlined" :disabled="busy" @click="selectCommand('restore')">恢复文件</v-btn>
             <v-btn v-if="file.is_deleted && canPurge" color="error" variant="text" :disabled="busy" @click="selectCommand('hard_delete')">永久删除文件</v-btn>
@@ -93,6 +93,10 @@ const canUpdate = computed(() => userStore.hasGrant('files.update', 'all'))
 const canTrash = computed(() => userStore.hasGrant('files.delete', 'all'))
 const canRestore = computed(() => userStore.hasGrant('files.restore', 'all'))
 const canPurge = computed(() => userStore.hasGrant('files.purge', 'all'))
+const hasFileActions = computed(() => {
+  const current = file.value
+  return current !== null && (!current.is_deleted ? canTrash.value : canRestore.value || canPurge.value)
+})
 const previewUrl = computed(() => {
   const value = file.value?.url || file.value?.file_url || ''
   return /^(https?:\/\/|\/)/.test(value) ? value : ''

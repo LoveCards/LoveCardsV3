@@ -10,10 +10,7 @@
       ]"
     >
       <template #actions>
-        <v-btn prepend-icon="mdi-arrow-left" variant="outlined" @click="returnToAdminSource(router, '/apps/users')">{{ sourcePath ? '返回来源' : '返回列表' }}</v-btn>
-        <AdminActionGuard capability="users.security.read" scope="global">
-          <v-btn v-if="user" prepend-icon="mdi-shield-account-outline" :to="'/apps/users/' + user.id + '/security'" variant="tonal">账号安全</v-btn>
-        </AdminActionGuard>
+        <v-btn prepend-icon="mdi-arrow-left" variant="text" @click="returnToAdminSource(router, '/apps/users')">{{ sourcePath ? '返回来源' : '返回列表' }}</v-btn>
       </template>
     </AdminPageHeader>
     <UserDetailContent v-if="userId" :user-id="userId" @loaded="user = $event" />
@@ -23,7 +20,6 @@
 
 <script setup lang="ts">
 import type { User } from '@lovecards/sdk'
-import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import UserDetailContent from '~/components/users/UserDetailContent.vue'

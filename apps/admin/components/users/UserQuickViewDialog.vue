@@ -19,11 +19,6 @@
           @saved="onSaved"
         />
       </v-card-text>
-      <v-divider v-if="loadedUser && canReadSecurity" />
-      <v-card-actions v-if="loadedUser && canReadSecurity" class="pa-4">
-        <v-btn v-if="loadedUser && canReadSecurity" variant="text" @click="navigateAfterConfirm('/apps/users/' + loadedUser.id + '/security')">账号安全</v-btn>
-
-      </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
@@ -33,15 +28,11 @@ import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusRetu
 import type { User } from '@lovecards/sdk'
 import { useDisplay } from 'vuetify'
 import UserDetailContent from '~/components/users/UserDetailContent.vue'
-import { useUserStore } from '~/stores/userStore'
 
 const props = withDefaults(defineProps<{ userId: number | null; initialMode?: 'view' | 'edit' }>(), { initialMode: 'view' })
 defineEmits<{ updated: [] }>()
 const open = defineModel<boolean>({ default: false })
 const { xs } = useDisplay()
-const router = useRouter()
-const userStore = useUserStore()
-const canReadSecurity = computed(() => userStore.hasGrant('users.security.read', 'global'))
 const loadedUser = ref<User | null>(null)
 const content = ref<InstanceType<typeof UserDetailContent> | null>(null)
 watch([open, () => loadedUser.value?.id], () => { if (!open.value) loadedUser.value = null })
@@ -50,11 +41,6 @@ function onSaved() {
 }
 async function close() {
   if (await content.value?.requestClose() ?? true) open.value = false
-}
-async function navigateAfterConfirm(path: string) {
-  if (!(await content.value?.requestClose() ?? true)) return
-  open.value = false
-  await router.push({ path })
 }
 function onDialogChange(value: boolean) {
   if (value) open.value = true

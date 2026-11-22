@@ -34,19 +34,19 @@
           <v-btn prepend-icon="mdi-note-text-outline" variant="outlined" @click="startNote">追加备注</v-btn>
         </div>
         <template v-else-if="mode === 'process'">
-          <v-btn variant="text" class="mb-2" @click="startNote">改为追加备注</v-btn>
-          <v-select v-model="nextStatus" :items="availableStatusItems" label="目标状态" variant="outlined" />
-          <v-textarea v-model="resolution" class="mt-3" label="处理原因或结论" maxlength="255" rows="4" variant="outlined" />
+          <v-btn :disabled="saving" variant="text" class="mb-2" @click="startNote">改为追加备注</v-btn>
+          <v-select :disabled="saving" v-model="nextStatus" :items="availableStatusItems" label="目标状态" variant="outlined" />
+          <v-textarea :disabled="saving" v-model="resolution" class="mt-3" label="处理原因或结论" maxlength="255" rows="4" variant="outlined" />
           <v-alert class="mt-3" type="info" variant="tonal">状态变化和原因将写入审计记录；进入对用户有意义的终态时，由后端按通知规范处理。</v-alert>
           <v-alert v-if="actionError" class="mt-3" type="error" variant="tonal">{{ actionError }}</v-alert>
-          <div class="d-flex justify-end ga-2 mt-4"><v-btn variant="text" :disabled="saving" @click="cancelAction">取消</v-btn><v-btn color="primary" variant="flat" :disabled="!nextStatus || !resolution.trim()" :loading="saving" @click="transition">确认处理</v-btn></div>
+          <div class="d-flex justify-end ga-2 mt-4"><v-btn variant="text" :disabled="saving" @click="cancelAction">取消</v-btn><v-btn color="primary" variant="flat" :disabled="saving || !nextStatus || !resolution.trim()" :loading="saving" @click="transition">确认处理</v-btn></div>
         </template>
         <template v-else>
-          <v-btn v-if="canTransition" variant="text" class="mb-2" @click="startProcessing">改为更新处理状态</v-btn>
-          <v-textarea v-model="note" label="备注内容" maxlength="1000" rows="4" variant="outlined" />
+          <v-btn v-if="canTransition" :disabled="saving" variant="text" class="mb-2" @click="startProcessing">改为更新处理状态</v-btn>
+          <v-textarea :disabled="saving" v-model="note" label="备注内容" maxlength="1000" rows="4" variant="outlined" />
           <v-alert class="mt-3" type="info" variant="tonal">备注不改变处理状态，将写入审计记录，不发送用户通知。</v-alert>
           <v-alert v-if="actionError" class="mt-3" type="error" variant="tonal">{{ actionError }}</v-alert>
-          <div class="d-flex justify-end ga-2 mt-4"><v-btn variant="text" :disabled="saving" @click="cancelAction">取消</v-btn><v-btn color="primary" variant="flat" :disabled="!note.trim()" :loading="saving" @click="addNote">保存备注</v-btn></div>
+          <div class="d-flex justify-end ga-2 mt-4"><v-btn variant="text" :disabled="saving" @click="cancelAction">取消</v-btn><v-btn color="primary" variant="flat" :disabled="saving || !note.trim()" :loading="saving" @click="addNote">保存备注</v-btn></div>
         </template>
       </AdminDetailSection>
     </template>
@@ -242,7 +242,7 @@ async function refreshAfterAction() {
   emit('updated')
 }
 async function transition() {
-  if (!report.value || !canManage.value || !availableStatusItems.value.some((item) => item.value === nextStatus.value) || !resolution.value.trim()) return
+  if (saving.value || !report.value || !canManage.value || !availableStatusItems.value.some((item) => item.value === nextStatus.value) || !resolution.value.trim()) return
   saving.value = true
   actionError.value = ''
   try {
@@ -263,7 +263,7 @@ async function transition() {
   }
 }
 async function addNote() {
-  if (!report.value || !canManage.value || !note.value.trim()) return
+  if (saving.value || !report.value || !canManage.value || !note.value.trim()) return
   saving.value = true
   actionError.value = ''
   try {

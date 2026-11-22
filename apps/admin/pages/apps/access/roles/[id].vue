@@ -2,10 +2,10 @@
   <AdminPageContainer :max-width="1040">
     <AdminPageHeader
       :title="role ? `角色 · ${role.name}` : `角色 #${route.params.id}`"
-      description="查看角色职责与授权范围；基础信息和权限分配在各自区块中修改。"
+      description="查看角色职责与授权范围；基础信息与能力授权通过底部操作区进入各自任务。"
       :breadcrumbs="[{ title: '用户' }, { title: '角色', to: '/apps/access/roles' }, { title: role?.name || `#${route.params.id}` }]"
     >
-      <template #actions><v-btn prepend-icon="mdi-arrow-left" to="/apps/access/roles" variant="outlined">返回列表</v-btn></template>
+      <template #actions><v-btn prepend-icon="mdi-arrow-left" to="/apps/access/roles" variant="text">返回列表</v-btn></template>
     </AdminPageHeader>
     <RoleDetailContent :role-id="roleId" @loaded="role = $event" @dirty-change="dirty = $event" />
     <AdminUnsavedChangesDialog :model-value="unsavedChangesDialog" subject="角色尚未保存的修改" @stay="continueEditing" @discard="discardChanges" />

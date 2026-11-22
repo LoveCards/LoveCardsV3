@@ -35,15 +35,13 @@
             </template>
           </v-alert>
           <template v-if="canUpdate">
-            <v-divider class="mt-5" />
-            <v-card-actions class="pa-0 pt-4">
-              <v-spacer />
+            <AdminDetailActions inset>
               <v-btn v-if="mode === 'view'" variant="tonal" :disabled="pending" @click="startEditing">编辑</v-btn>
               <template v-else>
                 <v-btn :disabled="pending" variant="text" @click="cancelEditing">取消编辑</v-btn>
                 <v-btn color="primary" :disabled="!canSave" :loading="pending" variant="flat" @click="saveName">保存修改</v-btn>
               </template>
-            </v-card-actions>
+            </AdminDetailActions>
           </template>
         </AdminDetailSection>
         <v-alert v-if="selectedAction" class="mt-4" type="warning" variant="tonal">
@@ -59,6 +57,7 @@
 </template>
 
 <script setup lang="ts">
+import AdminDetailActions from '~/components/shared/admin/AdminDetailActions.vue'
 import type { Tag, TagsBatchMethod } from '@lovecards/sdk'
 import { isApiError, useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'

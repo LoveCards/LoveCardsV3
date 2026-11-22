@@ -10,7 +10,7 @@
       ]"
     >
       <template #actions>
-        <v-btn prepend-icon="mdi-arrow-left" to="/apps/operations/deliveries" variant="outlined">返回列表</v-btn>
+        <v-btn prepend-icon="mdi-arrow-left" to="/apps/operations/deliveries" variant="text">返回列表</v-btn>
       </template>
     </AdminPageHeader>
     <DeliveryDetailContent :delivery-id="deliveryId" />

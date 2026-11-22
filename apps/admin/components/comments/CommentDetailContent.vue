@@ -44,20 +44,19 @@
         </template>
       </AdminAsyncState>
     </v-card-text>
-    <v-divider v-if="comment && !loading && canUpdate && (mode === 'edit' || !comment.deleted)" />
-    <v-card-actions v-if="comment && !loading && canUpdate && (mode === 'edit' || !comment.deleted)" class="pa-4 pa-sm-6">
-      <v-spacer />
+    <AdminDetailActions v-if="comment && !loading && canUpdate && (mode === 'edit' || !comment.deleted)">
       <v-btn v-if="mode === 'view'" variant="tonal" :disabled="busy" @click="mode = 'edit'">编辑</v-btn>
       <template v-else>
         <v-btn :disabled="saving || busy" variant="text" @click="cancelEdit">取消编辑</v-btn>
         <v-btn color="primary" :loading="saving" :disabled="!dirty || busy || comment.deleted" variant="flat" @click="save">保存修改</v-btn>
       </template>
-    </v-card-actions>
+    </AdminDetailActions>
     <v-alert v-if="confirmDiscard" class="ma-4" type="warning" variant="tonal">评论有未保存修改，确定放弃吗？<template #append><v-btn variant="text" @click="confirmDiscard = false">继续编辑</v-btn><v-btn color="warning" variant="flat" @click="discardEdit">放弃修改</v-btn></template></v-alert>
   </div>
 </template>
 
 <script setup lang="ts">
+import AdminDetailActions from '~/components/shared/admin/AdminDetailActions.vue'
 import type { Comment } from '@lovecards/sdk'
 import { commentGovernanceActions, type CommentGovernanceAction } from '~/components/comments/commentGovernanceActions'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'

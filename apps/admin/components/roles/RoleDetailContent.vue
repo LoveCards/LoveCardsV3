@@ -4,27 +4,25 @@
       <template v-if="role">
         <v-alert v-if="actionError" class="mb-4" type="error" variant="tonal">{{ actionError }}</v-alert>
         <AdminDetailSection title="角色信息">
-          <div class="d-flex flex-wrap align-center ga-2 mb-4">
-            <div class="d-flex flex-wrap align-center ga-2">
-              <strong>{{ role.name }}</strong>
-              <v-chip size="small" variant="tonal" :color="classification === 'system' ? 'warning' : classification === 'unknown' ? 'error' : undefined">
-                {{ classification === 'system' ? '系统角色' : classification === 'custom' ? '自定义角色' : '类型未知' }}
-              </v-chip>
-            </div>
-          </div>
+          <v-chip class="mb-4" size="small" variant="tonal" :color="classification === 'system' ? 'warning' : classification === 'unknown' ? 'error' : undefined">
+            {{ classification === 'system' ? '系统角色' : classification === 'custom' ? '自定义角色' : '类型未知' }}
+          </v-chip>
           <v-alert v-if="classification === 'unknown'" class="mb-4" type="warning" variant="tonal">无法确认角色类型，编辑与分配权限已锁定。</v-alert>
           <v-alert v-else-if="classification === 'system' && mode === 'edit'" class="mb-4" type="info" variant="tonal">系统角色的标识由服务端固定，只允许超级管理员修改名称和说明。</v-alert>
-          <v-row v-if="mode !== 'edit'" dense>
-            <v-col cols="12" sm="6"><AdminDetailField label="稳定标识" :value="role.slug" /></v-col>
-            <v-col cols="12"><AdminDetailField label="职责说明" :value="role.description || '未填写职责说明'" /></v-col>
+          <v-row dense>
+            <v-col cols="12" sm="6">
+              <v-text-field v-if="mode === 'edit'" v-model="draftName" label="角色名称" maxlength="50" required variant="outlined" :disabled="busy" />
+              <AdminDetailField v-else label="角色名称" :value="role.name" />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field v-if="mode === 'edit' && classification === 'custom'" v-model="draftSlug" label="角色标识（Slug）" maxlength="50" required variant="outlined" :disabled="busy" />
+              <AdminDetailField v-else label="角色标识（Slug）" :value="role.slug" />
+            </v-col>
+            <v-col cols="12">
+              <v-textarea v-if="mode === 'edit'" v-model="draftDescription" label="角色描述" maxlength="255" rows="3" auto-grow variant="outlined" :disabled="busy" />
+              <AdminDetailField v-else label="角色描述" :value="role.description" />
+            </v-col>
           </v-row>
-          <template v-else>
-            <v-row dense>
-              <v-col cols="12" sm="6"><v-text-field v-model="draftName" label="角色名称" maxlength="50" required variant="outlined" :disabled="busy" /></v-col>
-              <v-col cols="12" sm="6"><v-text-field v-if="classification === 'custom'" v-model="draftSlug" label="角色标识（Slug）" maxlength="50" required variant="outlined" :disabled="busy" /><div v-else><div class="text-caption text-medium-emphasis">稳定标识</div>{{ role.slug }}</div></v-col>
-              <v-col cols="12"><v-textarea v-model="draftDescription" label="角色描述" maxlength="255" rows="3" auto-grow variant="outlined" :disabled="busy" /></v-col>
-            </v-row>
-          </template>
           <v-divider class="my-5" />
           <h3 class="text-subtitle-1 font-weight-medium mb-2">已授予能力</h3>
           <p class="text-body-2 text-medium-emphasis mb-4">权限分配独立保存，会影响角色可见数据和可执行操作。</p>
@@ -52,11 +50,10 @@
           </v-list>
           <p v-else class="text-body-2 text-medium-emphasis">该角色没有单独授予的能力。</p>
           <template v-if="canEdit || canAssign">
-            <v-divider class="mt-5" />
-            <v-card-actions class="pa-0 pt-4">
-              <v-btn v-if="mode !== 'assign' && canAssign" variant="outlined" :disabled="busy" @click="startAssign">分配权限</v-btn>
-              <v-btn v-if="mode === 'assign' && canEdit" variant="outlined" :disabled="busy" @click="startEdit">编辑</v-btn>
-              <v-spacer />
+            <AdminDetailActions inset>
+              <template v-if="mode !== 'assign' && canAssign" #secondary>
+                <v-btn variant="outlined" :disabled="busy" @click="startAssign">分配权限</v-btn>
+              </template>
               <v-btn v-if="mode === 'view' && canEdit" variant="tonal" :disabled="busy" @click="startEdit">编辑</v-btn>
               <template v-if="mode === 'edit'">
                 <v-btn variant="text" :disabled="busy" @click="cancelMode">取消编辑</v-btn>
@@ -66,7 +63,7 @@
                 <v-btn variant="text" :disabled="busy" @click="cancelMode">取消分配</v-btn>
                 <v-btn color="primary" variant="flat" :disabled="!canSaveGrants" :loading="busy" @click="saveGrants">保存权限</v-btn>
               </template>
-            </v-card-actions>
+            </AdminDetailActions>
           </template>
         </AdminDetailSection>
         <v-alert v-if="confirmCancel" class="mt-4" type="warning" variant="tonal">
@@ -79,6 +76,7 @@
 </template>
 
 <script setup lang="ts">
+import AdminDetailActions from '~/components/shared/admin/AdminDetailActions.vue'
 import type { AuthorizationScope, CapabilityItem, Grant, Role } from '@lovecards/sdk'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminDetailSection from '~/components/shared/admin/AdminDetailSection.vue'

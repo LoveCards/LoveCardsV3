@@ -17,7 +17,7 @@
             <v-icon v-else icon="mdi-account" aria-label="默认头像" />
           </v-avatar>
           <div class="user-detail__primary min-w-0">
-            <v-text-field v-if="mode === 'edit'" v-model="draft.username" label="用户名" required :disabled="saving" variant="outlined" hide-details />
+            <v-text-field v-if="mode === 'edit'" v-model="draft.username" label="用户名" required :disabled="saving || statusSaving" variant="outlined" hide-details />
             <AdminDetailField v-else label="用户名" :value="user.username" />
             <div class="text-body-2 text-medium-emphasis mt-1">用户 #{{ user.id }} · 账号 {{ user.number }}</div>
           </div>
@@ -27,7 +27,7 @@
               accept="image/*"
               label="更换头像"
               prepend-icon=""
-              :disabled="saving || avatarUploading"
+              :disabled="saving || statusSaving || avatarUploading"
               :loading="avatarUploading"
               :error-messages="avatarUploadError ? [avatarUploadError] : []"
               :hide-details="!avatarUploadError"
@@ -40,11 +40,11 @@
         </div>
         <v-row class="align-start">
           <v-col cols="12" sm="6">
-            <v-text-field v-if="mode === 'edit'" v-model="draft.email" label="邮箱" type="email" :disabled="saving" variant="outlined" hide-details />
+            <v-text-field v-if="mode === 'edit'" v-model="draft.email" label="邮箱" type="email" :disabled="saving || statusSaving" variant="outlined" hide-details />
             <AdminSensitiveField v-else label="邮箱" :value="user.email" />
           </v-col>
           <v-col cols="12" sm="6">
-            <v-text-field v-if="mode === 'edit'" v-model="draft.phone" label="手机号" type="tel" :disabled="saving" variant="outlined" hide-details />
+            <v-text-field v-if="mode === 'edit'" v-model="draft.phone" label="手机号" type="tel" :disabled="saving || statusSaving" variant="outlined" hide-details />
             <AdminSensitiveField v-else label="手机号" :value="user.phone" />
           </v-col>
           <v-col cols="12"><v-divider class="my-1" /></v-col>
@@ -75,7 +75,7 @@
               chips
               clearable
               :loading="rolesLoading"
-              :disabled="saving"
+              :disabled="saving || statusSaving"
               variant="outlined"
             />
             <div v-else class="user-detail__roles-field">
@@ -89,16 +89,17 @@
           </v-col>
         </v-row>
         <p v-if="dirty && canEditTarget" class="text-caption text-medium-emphasis mt-3 mb-0">账号状态单独提交；当前未保存的字段修改仍需另行保存。</p>
-        <template v-if="canEditTarget">
-          <v-divider class="mt-5" />
-          <v-card-actions class="pa-0 pt-4">
-            <v-spacer />
-            <v-btn v-if="mode === 'view'" variant="tonal" :disabled="statusSaving" @click="startEditing">编辑</v-btn>
-            <template v-else>
-              <v-btn variant="text" :disabled="saving || avatarUploading" @click="cancelEditing">取消编辑</v-btn>
-              <v-btn color="primary" variant="flat" :loading="saving" :disabled="avatarUploading || !dirty || (canManageRoles && rolesDirty && (rolesLoading || !!rolesError))" @click="saveChanges">保存修改</v-btn>
+        <template v-if="canEditTarget || canReadSecurity">
+          <AdminDetailActions inset>
+            <template v-if="canReadSecurity" #secondary>
+              <v-btn variant="text" :disabled="saving || statusSaving || avatarUploading" :to="`/apps/users/${user.id}/security`">账号安全</v-btn>
             </template>
-          </v-card-actions>
+            <v-btn v-if="mode === 'view' && canEditTarget" variant="tonal" :disabled="statusSaving" @click="startEditing">编辑</v-btn>
+            <template v-if="mode === 'edit'">
+              <v-btn variant="text" :disabled="saving || statusSaving || avatarUploading" @click="cancelEditing">取消编辑</v-btn>
+              <v-btn color="primary" variant="flat" :loading="saving" :disabled="statusSaving || avatarUploading || !dirty || (canManageRoles && rolesDirty && (rolesLoading || !!rolesError))" @click="saveChanges">保存修改</v-btn>
+            </template>
+          </AdminDetailActions>
         </template>
       </AdminDetailSection>
     </template>
@@ -118,6 +119,7 @@
 </template>
 
 <script setup lang="ts">
+import AdminDetailActions from '~/components/shared/admin/AdminDetailActions.vue'
 import type { Role, UploadResult, User } from '@lovecards/sdk'
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
@@ -171,7 +173,7 @@ const accountStatus = computed(() => {
   return labels[Number(user.value?.status)] ?? { status: 'unknown', label: '未知状态' }
 })
 function requestStatusCommand(value: number | null) {
-  if (value === null || !canEditTarget.value || saving.value || statusSaving.value || avatarUploading.value) return
+  if (value === null || value === Number(user.value?.status) || !canEditTarget.value || saving.value || statusSaving.value || avatarUploading.value) return
   statusDraft.value = value
   statusError.value = ''
   statusConfirm.value = true
@@ -192,6 +194,7 @@ const canEditTarget = computed(() => {
   return state !== 'unknown' && (state !== 'root' || isRootActor.value)
 })
 const canManageRoles = computed(() => userStore.hasGrant('users.roles.assign', 'global') && userStore.hasGrant('roles.read', 'global'))
+const canReadSecurity = computed(() => userStore.hasGrant('users.security.read', 'global'))
 const canUploadFiles = computed(() => userStore.hasGrant('files.upload', 'global'))
 const profileDirty = computed(() => !!user.value && ['username', 'email', 'phone', 'avatar'].some((key) => JSON.stringify(draft.value[key as keyof User]) !== JSON.stringify(user.value?.[key as keyof User])))
 const rolesDirty = computed(() => JSON.stringify([...roleDraft.value].sort()) !== JSON.stringify([...roleIds.value].sort()))
@@ -254,7 +257,7 @@ async function load() {
   }
 }
 function startEditing() {
-  if (!canEditTarget.value || mode.value === 'edit') return
+  if (!canEditTarget.value || mode.value === 'edit' || saving.value || statusSaving.value || avatarUploading.value) return
   if (canManageRoles.value && !roleCatalogLoaded.value && !rolesLoading.value) void loadRoles()
   resetDraft()
   mode.value = 'edit'
@@ -282,7 +285,7 @@ async function cancelEditing() {
   await requestClose()
 }
 async function uploadAvatar(value: File | File[] | null) {
-  if (!canUploadFiles.value) return
+  if (!canUploadFiles.value || saving.value || statusSaving.value || avatarUploading.value) return
   selectedAvatar.value = value
   const file = Array.isArray(value) ? value[0] : value
   if (!file) return
@@ -317,7 +320,7 @@ async function refreshAfterSave(): Promise<boolean> {
   }
 }
 async function saveChanges() {
-  if (!user.value || !canEditTarget.value || !dirty.value || saving.value || avatarUploading.value) return
+  if (!user.value || !canEditTarget.value || !dirty.value || saving.value || statusSaving.value || avatarUploading.value) return
   if (canManageRoles.value && rolesDirty.value && (rolesLoading.value || rolesError.value)) return
   saving.value = true
   formError.value = ''
@@ -336,7 +339,7 @@ async function saveChanges() {
   }
 }
 async function saveStatus() {
-  if (!user.value || !canEditTarget.value || !statusDirty.value || statusSaving.value) return
+  if (!user.value || !canEditTarget.value || !statusDirty.value || statusSaving.value || saving.value || avatarUploading.value) return
   statusSaving.value = true
   statusError.value = ''
   try {

@@ -180,16 +180,14 @@
         </div>
       </AdminAsyncState>
     </v-card-text>
-    <template v-if="loaded && !loading && !loadError">
-      <v-divider />
-      <v-card-actions class="pa-4 pa-sm-6" :class="{ 'card-record__actions--embedded': embedded }">
-        <v-spacer />
-        <v-btn v-if="mode === 'view' && canEditCard" variant="tonal" @click="beginEdit">编辑</v-btn>
+    <template v-if="loaded && !loading && !loadError && (canEditCard || mode === 'edit')">
+      <AdminDetailActions>
+        <v-btn v-if="mode === 'view' && canEditCard" variant="tonal" :disabled="commandBusy || uploadingImages || saving" @click="beginEdit">编辑</v-btn>
         <template v-if="mode === 'edit'">
           <v-btn :disabled="saving || uploadingImages || commandBusy" variant="text" @click="cancelEdit">取消编辑</v-btn>
           <v-btn color="primary" :disabled="saving || uploadingImages || commandBusy || !dirty" :loading="saving" variant="flat" @click="submit">保存修改</v-btn>
         </template>
-      </v-card-actions>
+      </AdminDetailActions>
     </template>
     <v-alert v-if="showDiscardConfirm" class="ma-4" type="warning" variant="tonal">
       当前修改尚未保存，确定放弃吗？
@@ -202,6 +200,7 @@
 </template>
 
 <script setup lang="ts">
+import AdminDetailActions from '~/components/shared/admin/AdminDetailActions.vue'
 import type { Card } from '@lovecards/sdk'
 import { VueDraggable } from 'vue-draggable-plus'
 import { cardGovernanceActions, type CardGovernanceAction } from '~/components/cards/cardGovernanceActions'
@@ -326,7 +325,7 @@ const reportUnsavedUpload = () => {
 watch(dirty, emitDirtyChange, { immediate: true })
 watch(mode, value => emit('editing-change', value === 'edit'), { immediate: true })
 watch(() => saving.value || uploadingImages.value || commandBusy.value, value => emit('busy-change', value), { immediate: true })
-const beginEdit = () => { if (canEditCard.value) mode.value = 'edit' }
+const beginEdit = () => { if (canEditCard.value && !commandBusy.value && !saving.value && !uploadingImages.value) mode.value = 'edit' }
 const discardEdit = () => {
   reportUnsavedUpload()
   CardData.value.edit = CommonUtils.deepClone(CardData.value.origin)
@@ -635,5 +634,4 @@ onBeforeUnmount(() => { motionQuery?.removeEventListener('change', updateReduced
 @media (max-width: 959px) { .card-record__media-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 599px) { .card-record__media-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .card-record__video { aspect-ratio: 16 / 10; }
-.card-record__actions--embedded { position: sticky; bottom: 0; z-index: 1; background: rgb(var(--v-theme-surface)); }
 </style>

@@ -44,16 +44,19 @@ const headingId = useId()
   border-radius: 8px;
 }
 
-:global(.v-dialog) .admin-detail-section {
+/* global 包含完整目标；首尾选择器用于覆盖 scoped 表面的边框优先级。 */
+:global(.v-dialog .admin-detail-section),
+:global(.v-dialog .admin-detail-section:first-of-type),
+:global(.v-dialog .admin-detail-section:last-of-type) {
   border: 0;
   border-radius: 0;
 }
 
-:global(.v-dialog) .admin-detail-section + .admin-detail-section {
+:global(.v-dialog .admin-detail-section + .admin-detail-section) {
   border-top: 1px solid rgb(var(--v-theme-outline));
 }
 
-@media (max-width: 600px) {
+@media (max-width: 599.98px) {
   .admin-detail-section {
     padding: 16px;
   }
