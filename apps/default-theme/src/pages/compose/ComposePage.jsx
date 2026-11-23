@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, UNSAFE_DataRouterContext, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
-import { deleteComposeMedia, getComposeState, loadComposeTopics, loadPublishedCardForEdit, loadTopicPolicy, normalizeCardVisibility, normalizeDraftMedia, publishCard, updatePublishedCard, uploadComposeMedia } from '../../services/compose-service.js';
+import { composeMediaKey, deleteComposeMedia, getComposeState, loadComposeTopics, loadPublishedCardForEdit, loadTopicPolicy, normalizeCardVisibility, normalizeDraftMedia, orderComposeMedia, publishCard, updatePublishedCard, uploadComposeMedia } from '../../services/compose-service.js';
 import { createDraft, deleteDraft, draftSummary, getDraft, normalizeDraftPayload, updateDraft } from '../../services/community-service.js';
 import { useAuth } from '../../app/providers.jsx';
 import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
@@ -13,9 +13,12 @@ import { useHumanVerification } from '../../features/human-verification/useHuman
 import { createMentionTrigger, createPreviewMentionAdapter, createSdkMentionAdapter, normalizeMentionCaret } from '../../services/mentions-service.js';
 import { previewCreators } from '../../fixtures/feed-preview.js';
 import { renderMentionCandidateItem } from '../../features/mentions/MentionCandidateItem.jsx';
-import { Button, ChatComposerInput, ConfirmActionDialog, Icon, IconButton, InfoPopover, MediaDropzone, ScopedBanner, SegmentedControl, SegmentedControlItem, TextInput, useToast } from '../../ui/index.js';
+import { Button, ChatComposerInput, ConfirmActionDialog, Icon, IconButton, MediaDropzone, ScopedBanner, SegmentedControl, SegmentedControlItem, TextInput, useToast } from '../../ui/index.js';
 import { CARD_CONTENT_MAX_LENGTH } from '../../features/feed/card-constraints.js';
-import { normalizeGalleryLayout } from '../../features/media/gallery-layout.js';
+import { restoreComposeGalleryLayout } from '../../features/media/gallery-layout.js';
+import { gallerySwipeDirection } from '../../features/media/useGalleryPager.js';
+import { ComposeDialogShell } from './ComposeDialogShell.jsx';
+import { ComposePageNavigationGuard } from './ComposePageNavigationGuard.jsx';
 
 const publishTypes = {
   text: { label: '随笔', description: '纯文字，不包含媒体。' },
@@ -77,18 +80,14 @@ function resolveKind(publishType, mediaCount) {
   return publishType === 'image' && mediaCount > 1 ? 'gallery' : publishType;
 }
 
-function fileIdentity(file) {
-  return [file.name, file.size, file.lastModified, file.type].join('::');
-}
-
 export function selectComposeFiles(current, selected, { multiple = false, limit = 1 } = {}) {
   if (selected == null) return [];
   const incoming = Array.isArray(selected) ? selected : [selected];
   if (!multiple) return incoming.slice(0, limit);
-  const seen = new Set(current.map(fileIdentity));
+  const seen = new Set(current.map((file) => composeMediaKey(file, 'local')));
   const next = [...current];
   for (const file of incoming) {
-    const identity = fileIdentity(file);
+    const identity = composeMediaKey(file, 'local');
     if (seen.has(identity)) continue;
     seen.add(identity);
     if (next.length >= limit) break;
@@ -97,23 +96,29 @@ export function selectComposeFiles(current, selected, { multiple = false, limit 
   return next;
 }
 
-function composeSignature({ content, tags, publishType, media, files, galleryLayout = 'grid', visibility = 'public' }) {
+function composeSignature({ content, tags, publishType, media, files, mediaOrder = [], galleryLayout = 'pager', visibility = 'public' }) {
   return JSON.stringify({
     content,
     tags,
     publishType,
     galleryLayout,
     visibility,
-    media: media.map((item) => item.id),
-    files: files.map((item) => [item.name, item.size, item.type, item.lastModified]),
+    mediaOrder: orderComposeMedia(media, files, mediaOrder).map((entry) => entry.key),
   });
 }
 
-export function ComposePage() {
+export function ComposePage({ surface = 'page' }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const dataRouter = useContext(UNSAFE_DataRouterContext);
+  const isDialog = surface === 'dialog';
+  const [dialogOpen, setDialogOpen] = useState(true);
+  const allowLeaveRef = useRef(false);
+  const blockedNavigationRef = useRef(null);
+  const discardActionRef = useRef('leave');
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
-  const { verify, dialog: humanVerificationDialog } = useHumanVerification();
+  const { verify, dialog: humanVerificationDialog, step: verificationStep } = useHumanVerification();
   const { isAuthenticated, status: authStatus, can, error: authError, refresh: refreshAuth } = useAuth();
   const capability = useMemo(() => getComposeState(), []);
   const designPreview = capability.source === 'preview';
@@ -137,9 +142,14 @@ export function ComposePage() {
   const [files, setFiles] = useState([]);
   const [mediaPreviews, setMediaPreviews] = useState([]);
   const [persistedMedia, setPersistedMedia] = useState([]);
+  const [mediaOrder, setMediaOrder] = useState([]);
+  const [dragTarget, setDragTarget] = useState(null);
+  const dragSourceRef = useRef(null);
+  const previewTouchRef = useRef(null);
+  const [previewKey, setPreviewKey] = useState(null);
   const [removedMediaIds, setRemovedMediaIds] = useState([]);
   const [publishType, setPublishType] = useState('text');
-  const [galleryLayout, setGalleryLayout] = useState('grid');
+  const [galleryLayout, setGalleryLayout] = useState('pager');
   const [visibility, setVisibility] = useState('public');
   const [draftId, setDraftId] = useState(null);
   const [publishedCardId, setPublishedCardId] = useState(null);
@@ -148,7 +158,6 @@ export function ComposePage() {
   const [loadError, setLoadError] = useState(null);
   const [savedSignature, setSavedSignature] = useState(composeSignature({ content: '', tags: '', publishType: 'text', media: [], files: [] }));
   const [pendingPublishType, setPendingPublishType] = useState(null);
-  const [typeSwitchOpen, setTypeSwitchOpen] = useState(false);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [topicLimitHit, setTopicLimitHit] = useState(false);
   const [status, setStatus] = useState('idle');
@@ -218,9 +227,11 @@ export function ComposePage() {
         setTags('');
         setFiles([]);
         setPersistedMedia([]);
+        setMediaOrder([]);
+        setPreviewKey(null);
         setRemovedMediaIds([]);
         setPublishType('text');
-        setGalleryLayout('grid');
+        setGalleryLayout('pager');
         setVisibility('public');
         setSavedSignature(composeSignature({ content: '', tags: '', publishType: 'text', media: [], files: [] }));
         setStatus('idle');
@@ -259,9 +270,11 @@ export function ComposePage() {
       setTags(nextTags);
       setFiles([]);
       setPersistedMedia(media);
+      setMediaOrder(media.map((item) => composeMediaKey(item, 'persisted')));
+      setPreviewKey(null);
       setRemovedMediaIds([]);
       setPublishType(nextType);
-      const nextGalleryLayout = normalizeGalleryLayout(payload.galleryLayout);
+      const nextGalleryLayout = restoreComposeGalleryLayout(payload.galleryLayout, media.length, nextType);
       setGalleryLayout(nextGalleryLayout);
       const nextVisibility = normalizeCardVisibility(payload.visibility);
       setVisibility(nextVisibility);
@@ -309,9 +322,11 @@ export function ComposePage() {
       setTags(nextTags);
       setFiles([]);
       setPersistedMedia(card.media);
+      setMediaOrder(card.media.map((item) => composeMediaKey(item, 'persisted')));
+      setPreviewKey(null);
       setRemovedMediaIds([]);
       setPublishType(card.publishType);
-      const nextGalleryLayout = normalizeGalleryLayout(card.data.galleryLayout);
+      const nextGalleryLayout = restoreComposeGalleryLayout(card.data.galleryLayout, card.media.length, card.publishType);
       setGalleryLayout(nextGalleryLayout);
       loadedEditVisibilityRef.current = card.visibility;
       setVisibility(card.visibility);
@@ -328,12 +343,16 @@ export function ComposePage() {
     return () => { active = false; };
   }, [authStatus, designPreview, editMode, hasConflictingQuery, isAuthenticated, requestedEditId]);
 
-  const allMediaPreviews = useMemo(() => [
-    ...persistedMedia.map((item) => ({ ...item, source: 'persisted' })),
-    ...mediaPreviews.map((item) => ({ ...item, name: item.file.name, type: item.file.type, source: 'local' })),
-  ], [mediaPreviews, persistedMedia]);
+  const orderedMedia = useMemo(() => orderComposeMedia(persistedMedia, files, mediaOrder), [persistedMedia, files, mediaOrder]);
+  const allMediaPreviews = useMemo(() => orderedMedia.map((entry) => entry.source === 'persisted'
+    ? { ...entry.item, key: entry.key, source: entry.source }
+    : { ...mediaPreviews[entry.index], key: entry.key, file: entry.item, name: entry.item.name, type: entry.item.type, source: entry.source }), [mediaPreviews, orderedMedia]);
+  const previewIndex = Math.max(0, allMediaPreviews.findIndex((item) => item.key === previewKey));
+  const activePreview = allMediaPreviews[previewIndex];
+  const isPagerPreview = publishType === 'image' && galleryLayout === 'pager';
   const mediaCount = persistedMedia.length + files.length;
-  const currentSignature = composeSignature({ content, tags, publishType, galleryLayout, media: persistedMedia, files, visibility });
+  const currentSignature = composeSignature({ content, tags, publishType, galleryLayout, media: persistedMedia, files, mediaOrder, visibility });
+  const mediaOrderChanged = JSON.stringify(orderedMedia.map((entry) => entry.key)) !== JSON.stringify(JSON.parse(savedSignature).mediaOrder);
   const dirty = currentSignature !== savedSignature;
   const topicList = topicsFrom(tags);
   const contentError = validationAttempted && (!content.trim() || content.length > CARD_CONTENT_MAX_LENGTH);
@@ -357,7 +376,6 @@ export function ComposePage() {
     ? `当前不支持创建新话题：#${unknownTopics.join('、#')} 尚不存在，请从已有话题中选择。`
     : '最多添加 3 个话题，请移除多余话题。';
   const topicSuggestions = topicOptions.filter((topic) => !topicList.some((selected) => selected.toLowerCase() === topic.name.toLowerCase())).slice(0, 6);
-  const showComposerHeading = designPreview || isAuthenticated;
   const busy = status === 'publishing' || status === 'draft-saving' || status === 'saving-edit';
   const hasDraftContent = Boolean(content.trim() || tags.trim() || mediaCount || publishType !== 'text');
   const saveState = editMode
@@ -376,14 +394,41 @@ export function ComposePage() {
           ? { tone: 'dirty', label: draftId ? '有未保存的修改' : '尚未存入草稿箱' }
           : null;
 
-  const removeMedia = (item, index) => {
+  const removeMedia = (item) => {
+    if (item.key === previewKey) setPreviewKey(null);
+    setMediaOrder((current) => current.filter((key) => key !== item.key));
     if (item.source === 'persisted') {
       setPersistedMedia((current) => current.filter((value) => value.id !== item.id));
       setRemovedMediaIds((current) => [...new Set([...current, item.id])]);
       return;
     }
-    const localIndex = index - persistedMedia.length;
-    setFiles((current) => current.filter((_value, itemIndex) => itemIndex !== localIndex));
+    setFiles((current) => current.filter((value) => composeMediaKey(value, 'local') !== item.key));
+  };
+
+  const moveMedia = (sourceKey, targetKey) => {
+    if (busy || sourceKey === targetKey) return;
+    const keys = orderedMedia.map((entry) => entry.key);
+    const sourceIndex = keys.indexOf(sourceKey);
+    const targetIndex = keys.indexOf(targetKey);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+    keys.splice(sourceIndex, 1);
+    keys.splice(targetIndex, 0, sourceKey);
+    setMediaOrder(keys);
+  };
+
+  const movePreview = (offset) => {
+    const nextIndex = Math.max(0, Math.min(allMediaPreviews.length - 1, previewIndex + offset));
+    if (allMediaPreviews[nextIndex]) setPreviewKey(allMediaPreviews[nextIndex].key);
+  };
+
+  const finishMediaDrag = (event) => {
+    const sourceKey = dragSourceRef.current;
+    if (sourceKey) {
+      const targetKey = document.elementFromPoint(event.clientX, event.clientY)?.closest('[data-compose-media-key]')?.dataset.composeMediaKey;
+      if (targetKey) moveMedia(sourceKey, targetKey);
+    }
+    dragSourceRef.current = null;
+    setDragTarget(null);
   };
 
   const addTopic = (name) => {
@@ -423,7 +468,7 @@ export function ComposePage() {
     let uploadedMedia = [];
     try {
       uploadedMedia = await uploadComposeMedia(files);
-      const nextMedia = [...persistedMedia, ...uploadedMedia];
+      const nextMedia = orderComposeMedia(persistedMedia, files, mediaOrder).map((entry) => entry.source === 'persisted' ? entry.item : uploadedMedia[entry.index]);
       const nextTags = topicsFrom(tags);
       const payload = { publishType, kind: resolveKind(publishType, nextMedia.length), galleryLayout, tags: nextTags, media: nextMedia, visibility };
       const data = { title: draftSummary({ content, payload }), content, payload };
@@ -440,13 +485,15 @@ export function ComposePage() {
       loadedDraftRef.current = nextId;
       setDraftId(nextId);
       setPersistedMedia(nextMedia);
+      setMediaOrder(nextMedia.map((item) => composeMediaKey(item, 'persisted')));
       setFiles([]);
       setRemovedMediaIds(mediaCleanupSucceeded ? [] : removedMediaIds);
       setTags(normalizedTags);
       setSavedSignature(composeSignature({ content, tags: normalizedTags, publishType, galleryLayout, media: nextMedia, files: [], visibility }));
       const nextSearchParams = new URLSearchParams(searchParams);
       nextSearchParams.set('draft', String(nextId));
-      setSearchParams(nextSearchParams, { replace: true });
+      allowLeaveRef.current = true;
+      setSearchParams(nextSearchParams, { replace: true, state: isDialog ? location.state : undefined });
       setStatus('success');
       setMessage(mediaCleanupSucceeded
         ? (draftId ? '草稿已更新。' : '已存入草稿箱。')
@@ -508,9 +555,10 @@ export function ComposePage() {
           kind: resolveKind(publishType, mediaCount),
           files,
           media: persistedMedia,
+          mediaOrder,
           data: publishedData,
-          ...(publishType === 'image' && mediaCount > 1 ? { galleryLayout } : {}),
-          mediaChanged: files.length > 0 || removedMediaIds.length > 0,
+          ...(publishType === 'image' ? { galleryLayout } : {}),
+          mediaChanged: files.length > 0 || removedMediaIds.length > 0 || mediaOrderChanged,
           ...(visibility !== loadedEditVisibilityRef.current ? { visibility } : {}),
           verification,
         });
@@ -518,10 +566,11 @@ export function ComposePage() {
         setStatus('success');
         setMessage(mediaCleanupSucceeded ? '修改已保存。' : '修改已保存，但旧媒体清理失败。');
         toast({ body: mediaCleanupSucceeded ? '修改已保存' : '修改已保存，旧媒体清理失败', type: mediaCleanupSucceeded ? undefined : 'error', uniqueID: 'compose-edit-success' });
-        navigate(`/post/${result.id}`);
+        allowLeaveRef.current = true;
+        navigate(`/post/${result.id}`, { replace: isDialog, state: null });
         return;
       }
-      const result = await publishCard({ content, tags: topicsFrom(tags), kind: resolveKind(publishType, mediaCount), files, media: persistedMedia, ...(publishType === 'image' && mediaCount > 1 ? { galleryLayout } : {}), visibility, verification });
+      const result = await publishCard({ content, tags: topicsFrom(tags), kind: resolveKind(publishType, mediaCount), files, media: persistedMedia, mediaOrder, ...(publishType === 'image' ? { galleryLayout } : {}), visibility, verification });
       let draftCleanupFailed = false;
       if (draftId) {
         try {
@@ -538,7 +587,8 @@ export function ComposePage() {
       setStatus('success');
       setMessage(cleanupNotes.length ? `内容已发布，但${cleanupNotes.join('和')}清理失败。` : '发布成功。');
       toast({ body: cleanupNotes.length ? `内容已发布，${cleanupNotes.join('和')}清理失败` : '内容已发布', type: cleanupNotes.length ? 'error' : undefined, uniqueID: 'compose-success' });
-      navigate(result?.id ? `/post/${result.id}` : '/me');
+      allowLeaveRef.current = true;
+      navigate(result?.id ? `/post/${result.id}` : '/me', { replace: isDialog, state: null });
     } catch (error) {
       setStatus('error');
       setMessage(getUserFacingError(error, editMode
@@ -550,47 +600,98 @@ export function ComposePage() {
   };
 
   const returnDestination = editMode && (publishedCardId || requestedEditId) ? `/post/${publishedCardId || requestedEditId}` : '/';
-  const requestDiscard = useCallback((destination = returnDestination) => {
+  const requestDiscard = useCallback((destination = returnDestination, action = 'leave') => {
+    discardActionRef.current = action;
     setDiscardDestination(destination);
     setDiscardOpen(true);
   }, [returnDestination]);
+  const onNavigationBlocked = useCallback((blocker) => {
+    setPendingPublishType(null);
+    discardActionRef.current = 'leave';
+    blockedNavigationRef.current = blocker;
+    setDiscardOpen(true);
+  }, []);
+  useEffect(() => {
+    if (dirty) allowLeaveRef.current = false;
+  }, [dirty]);
+  const requestClose = useCallback(() => {
+    if (busy) return;
+    if (dirty) requestDiscard(returnDestination, 'close');
+    else setDialogOpen(false);
+  }, [busy, dirty, requestDiscard, returnDestination]);
+  const closeOrReturn = () => {
+    if (isDialog) requestClose();
+    else if (dirty) requestDiscard(returnDestination);
+    else navigate(returnDestination);
+  };
+  const onDialogExited = useCallback(() => navigate(-1), [navigate]);
   const selectPublishType = (nextType) => {
     if (nextType === publishType) return;
     if (mediaCount) {
       setPendingPublishType(nextType);
-      setTypeSwitchOpen(true);
       return;
     }
     setPublishType(nextType);
-    if (nextType !== 'image') setGalleryLayout('grid');
+    setGalleryLayout('pager');
     setMessage('');
   };
   const confirmTypeSwitch = () => {
     setRemovedMediaIds((current) => [...new Set([...current, ...persistedMedia.map((item) => item.id)])]);
     setFiles([]);
     setPersistedMedia([]);
+    setMediaOrder([]);
+    setPreviewKey(null);
     setPublishType(pendingPublishType || 'text');
-    if (pendingPublishType !== 'image') setGalleryLayout('grid');
+    setGalleryLayout('pager');
     setPendingPublishType(null);
-    setTypeSwitchOpen(false);
     setMessage('');
   };
+  const cancelDiscard = () => {
+    setDiscardOpen(false);
+    const blocker = blockedNavigationRef.current;
+    if (blocker?.state === 'blocked') blocker.reset();
+    blockedNavigationRef.current = null;
+  };
+  const confirmDiscard = () => {
+    setDiscardOpen(false);
+    allowLeaveRef.current = true;
+    if (isDialog && discardActionRef.current === 'close') setDialogOpen(false);
+    else if (blockedNavigationRef.current?.state === 'blocked') {
+      blockedNavigationRef.current.proceed();
+      blockedNavigationRef.current = null;
+    } else navigate(discardDestination);
+  };
+  const confirmation = discardOpen ? {
+    title: '放弃这次编辑？',
+    description: editMode ? '尚未保存的修改将不会保留。' : '尚未发布的文字、话题和媒体将不会保留。',
+    actionLabel: '放弃编辑',
+    onCancel: cancelDiscard,
+    onAction: confirmDiscard,
+  } : pendingPublishType ? {
+    title: `切换为${publishTypes[pendingPublishType].label}？`,
+    description: '当前已选媒体与新类型不兼容，继续切换会移除这些文件，正文和话题会保留。',
+    actionLabel: '移除媒体并切换',
+    onCancel: () => setPendingPublishType(null),
+    onAction: confirmTypeSwitch,
+  } : null;
+  const step = verificationStep || (confirmation && {
+    ...confirmation,
+    footer: <><Button type="button" label="取消" variant="secondary" size="lg" onClick={confirmation.onCancel} /><Button type="button" label={confirmation.actionLabel} variant="primary" size="lg" onClick={confirmation.onAction} /></>,
+  });
   const canWriteCard = editMode ? can('cards.update') : can('cards.create');
-  useUnsavedChanges(dirty, requestDiscard);
+  const showDraftsLink = !editMode && (designPreview || (authStatus === 'ready' && isAuthenticated && canWriteCard));
+  useUnsavedChanges(dirty, requestDiscard, { interceptLinks: !dataRouter && !isDialog });
 
-  return (
-    <AppShell mobileMode="immersive">
+  const editorContent = (
       <main className="compose-page" aria-labelledby="compose-title">
+        {!isDialog && dataRouter && <ComposePageNavigationGuard dirty={dirty} allowLeaveRef={allowLeaveRef} onBlocked={onNavigationBlocked} />}
         <header className="compose-heading">
-          <button className="compose-back" type="button" onClick={() => dirty ? requestDiscard(returnDestination) : navigate(returnDestination)} aria-label={editMode ? '取消编辑并返回内容详情' : '取消发布并返回首页'}><span aria-hidden="true">←</span><span>返回</span></button>
+          <button className="compose-back" type="button" onClick={closeOrReturn} aria-label={isDialog ? '关闭发布窗口' : editMode ? '取消编辑并返回内容详情' : '取消发布并返回首页'}><Icon name={isDialog ? 'close' : 'arrowLeft'} size={18} /><span>{isDialog ? '关闭' : '返回'}</span></button>
           <div className="compose-heading-copy">
             <h1 id="compose-title">{editMode ? '编辑内容' : draftId ? '继续完成发布' : '发布新内容'}</h1>
-            <p>{showComposerHeading ? editMode ? '修改会直接更新这张卡片。' : '把想法整理成一张卡片。' : '登录后即可分享文字、图片和话题。'}</p>
+            <p>{editMode ? '修改会直接更新这张卡片。' : '把想法整理成一张卡片。'}</p>
           </div>
-          {showComposerHeading && <div className="compose-heading-tools">
-          <InfoPopover label={editMode ? '编辑说明' : '发布说明'}><strong>先选择内容类型</strong><span>随笔为纯文字；图文和视频先添加媒体，再填写正文；图文支持 1–9 张图片或 GIF，视频支持一个视频文件。切换类型前会确认是否清除已选媒体。</span></InfoPopover>
-            {!editMode && <Link className="compose-drafts-link" to="/drafts"><Icon name="edit" size={15} />草稿箱</Link>}
-          </div>}
+          {showDraftsLink && <Link className="compose-drafts-link" to="/drafts" aria-disabled={busy} tabIndex={busy ? -1 : undefined} onClick={(event) => { if (busy) event.preventDefault(); }}><Icon name="edit" size={15} />草稿箱</Link>}
         </header>
 
         {!designPreview && authStatus === 'checking' ? <ComposeSkeleton /> : !designPreview && authStatus === 'error' ? <ResourceState status="error" error={authError} onRetry={refreshAuth} /> : !designPreview && !isAuthenticated ? <section className="profile-boundary"><h2>登录后{editMode ? '编辑' : '发布'}内容</h2><p>游客可以浏览公开内容；发布、评论和管理个人内容需要正式账号。</p><Link className="action-link action-link-primary" to="/auth/login">去登录</Link></section> : !designPreview && !canWriteCard ? <section className="profile-boundary"><h2>当前账号不能{editMode ? '编辑' : '发布'}</h2><p>你的账号暂时没有{editMode ? '修改这张卡片' : '发布内容'}的权限。</p><Link className="action-link" to={returnDestination}>返回</Link></section> : loadState === 'loading' ? <ComposeSkeleton /> : loadState === 'error' ? <ResourceState className="profile-boundary" status="error" error={loadError} title={editMode ? '编辑链接无效' : '草稿链接无效'} description={message} actionLabel="返回" onRetry={loadError ? () => window.location.reload() : () => navigate(editMode ? returnDestination : '/drafts')} /> : loadState === 'forbidden' ? <section className="profile-boundary"><h2>不能编辑这张卡片</h2><p>它不属于当前账号，或当前账号没有修改权限。</p><Link className="action-link" to="/me">返回我的主页</Link></section> : loadState === 'not-found' ? <section className="profile-boundary"><h2>{editMode ? '这张卡片不存在' : '这份草稿不存在'}</h2><p>它可能已被删除，或不属于当前账号。</p><Link className="action-link" to={editMode ? '/me' : '/drafts'}>返回</Link></section> : <form className="compose-form" onSubmit={submit}>
@@ -605,14 +706,19 @@ export function ComposePage() {
               </section>
 
               {publishType !== 'text' && <section className="compose-media-workspace" id="compose-media" aria-labelledby="compose-media-title">
-                <header><div><h3 id="compose-media-title">{publishType === 'video' ? '视频' : '图片'}<span aria-hidden="true"> *</span></h3><p>{publishType === 'video' ? '必选：选择一个视频，发布后使用原生播放控制。' : '必选：按选择顺序发布，最多添加 9 张。'}</p></div><span>{mediaCount}/{publishType === 'video' ? 1 : 9}</span></header>
+                <header><div><h3 id="compose-media-title">{publishType === 'video' ? '视频' : '图片'}<span aria-hidden="true"> *</span></h3><p>{publishType === 'video' ? '必选：选择一个视频，发布后使用原生播放控制。' : '必选：最多 9 张。拖动图片调整顺序，第一张为封面；也可用前移、后移按钮。'}</p></div><span>{mediaCount}/{publishType === 'video' ? 1 : 9}</span></header>
                 <MediaDropzone
                   label={publishType === 'video' ? mediaCount ? '更换视频' : '添加视频' : mediaCount ? '继续添加图片或 GIF' : '添加图片或 GIF'}
                   description={publishType === 'video' ? '支持 MP4、WebM、MOV 与 M4V；文件大小以服务端策略为准。' : '支持 JPEG、PNG、WebP 与 GIF；文件大小以服务端策略为准。'}
                   value={publishType === 'video' ? files[0] || null : files}
                   onChange={(value) => {
                     const available = Math.max(0, (publishType === 'video' ? 1 : 9) - persistedMedia.length);
-                    setFiles((current) => selectComposeFiles(current, value, { multiple: publishType === 'image', limit: available }));
+                    const nextFiles = selectComposeFiles(files, value, { multiple: publishType === 'image', limit: available });
+                    setFiles(nextFiles);
+                    const nextKeys = nextFiles.map((file) => composeMediaKey(file, 'local'));
+                    setMediaOrder((current) => publishType === 'video'
+                      ? nextKeys
+                      : [...current.filter((key) => !key.startsWith('file:') || nextKeys.includes(key)), ...nextKeys.filter((key) => !current.includes(key))]);
                   }}
                   accept={publishType === 'video' ? 'video/mp4,video/webm,video/quicktime,video/x-m4v,.mov,.m4v' : 'image/jpeg,image/png,image/webp,image/gif'}
                   maxSize={publishType === 'image' ? 10 * 1024 * 1024 : undefined}
@@ -624,16 +730,42 @@ export function ComposePage() {
                   isLoading={busy}
                   status={mediaError ? { type: 'error', message: publishType === 'video' ? '请添加一个视频后再发布。' : '请至少添加一张图片后再发布。' } : undefined}
                 />
-                {allMediaPreviews.length ? <div className={`compose-media-preview-grid is-${allMediaPreviews.length > 4 ? 'many' : allMediaPreviews.length}`} aria-label={`${allMediaPreviews.length} 个待发布媒体`}>
-                  {allMediaPreviews.map((item, index) => <div className={`compose-media-preview is-${item.source}`} key={item.source === 'persisted' ? `media-${item.id}` : `${item.file.name}-${item.file.lastModified}-${index}`}>{publishType === 'video' ? <video src={item.url} muted playsInline preload="metadata" /> : <img src={item.url} alt={`待发布媒体 ${index + 1}：${item.name || '图片'}`} />}<span>{index + 1}</span><IconButton className="lc-upload-preview-remove" type="button" onClick={() => removeMedia(item, index)} label={publishType === 'video' ? '移除视频' : `移除第 ${index + 1} 张图片`} tooltip="移除媒体" variant="ghost" size="lg" icon={<Icon name="close" size={18} />} isDisabled={busy} /></div>)}
-                </div> : null}
                 {publishType === 'image' && <div className="compose-gallery-layout" aria-labelledby="compose-gallery-layout-title">
-                  <div><h4 id="compose-gallery-layout-title">图片排布</h4><p>选择两张及以上图片时生效；单图按单图展示。宫格展示全部图片，翻页在阅读弹窗与详情中逐张查看。</p></div>
+                  <div><h4 id="compose-gallery-layout-title">图片排布</h4><p>默认翻页；只有一张时只显示这一页。宫格和翻页均可在发布前查看，图片顺序以缩略图为准。</p></div>
                   <SegmentedControl value={galleryLayout} onChange={setGalleryLayout} label="图片排布" layout="fill" size="md" isDisabled={busy}>
-                    <SegmentedControlItem value="grid" label="宫格" />
                     <SegmentedControlItem value="pager" label="翻页" />
+                    <SegmentedControlItem value="grid" label="宫格" />
                   </SegmentedControl>
                 </div>}
+                {isPagerPreview && activePreview && <div className="compose-media-pager" role="group" aria-label={`图片翻页预览，共 ${allMediaPreviews.length} 张`} tabIndex={allMediaPreviews.length > 1 ? 0 : undefined}
+                  onKeyDown={(event) => { if (event.target === event.currentTarget && ['ArrowLeft', 'ArrowRight'].includes(event.key)) { event.preventDefault(); movePreview(event.key === 'ArrowLeft' ? -1 : 1); } }}
+                  onTouchStart={(event) => { const touch = event.touches.length === 1 ? event.touches[0] : null; previewTouchRef.current = touch ? { id: touch.identifier, x: touch.clientX, y: touch.clientY } : null; }}
+                  onTouchMove={(event) => { if (event.touches.length !== 1) previewTouchRef.current = null; }}
+                  onTouchEnd={(event) => { const start = previewTouchRef.current; previewTouchRef.current = null; const touch = event.changedTouches.length === 1 ? event.changedTouches[0] : null; if (start && touch?.identifier === start.id) movePreview(gallerySwipeDirection(start, { x: touch.clientX, y: touch.clientY })); }}
+                  onTouchCancel={() => { previewTouchRef.current = null; }}>
+                  <img key={activePreview.key} src={activePreview.url} alt={`排布预览：第 ${previewIndex + 1} 张，${activePreview.name || '图片'}`} draggable="false" />
+                  {allMediaPreviews.length > 1 && <>
+                    <span className="compose-media-pager-count" aria-live="polite">{previewIndex + 1} / {allMediaPreviews.length}</span>
+                    <button className="compose-media-pager-previous" type="button" aria-label="上一张图片" disabled={previewIndex === 0} onClick={() => movePreview(-1)}><Icon name="arrow" size={18} /></button>
+                    <button className="compose-media-pager-next" type="button" aria-label="下一张图片" disabled={previewIndex === allMediaPreviews.length - 1} onClick={() => movePreview(1)}><Icon name="arrow" size={18} /></button>
+                  </>}
+                </div>}
+                {allMediaPreviews.length ? <div className={`compose-media-preview-grid is-${allMediaPreviews.length > 4 ? 'many' : allMediaPreviews.length}${isPagerPreview ? ' is-pager-strip' : ''}`} role="group" aria-label={isPagerPreview ? `${allMediaPreviews.length} 张可排序图片` : `${allMediaPreviews.length} 个待发布媒体`}>
+                  {allMediaPreviews.map((item, index) => <div className={`compose-media-preview is-${item.source}${dragTarget === item.key ? ' is-drag-target' : ''}`} key={item.key} data-compose-media-key={item.key}>
+                    {publishType === 'video' ? <video src={item.url} muted playsInline preload="metadata" /> : isPagerPreview ? <button className={`compose-media-thumbnail-select${previewIndex === index ? ' is-active' : ''}`} type="button" aria-label={`预览第 ${index + 1} 张图片`} aria-current={previewIndex === index ? 'true' : undefined} onClick={() => setPreviewKey(item.key)}><img src={item.url} alt="" draggable="false" /></button> : <img src={item.url} alt={`待发布媒体 ${index + 1}：${item.name || '图片'}`} draggable="false" />}
+                    <span className="compose-media-position">{publishType === 'image' && index === 0 ? '封面 · 1' : index + 1}</span>
+                    {publishType === 'image' && allMediaPreviews.length > 1 && <div className="compose-media-sort-actions">
+                      <button type="button" className="compose-media-drag-handle" aria-label={`拖动第 ${index + 1} 张图片排序`} title="拖动排序" disabled={busy}
+                        onPointerDown={(event) => { dragSourceRef.current = item.key; event.currentTarget.setPointerCapture(event.pointerId); }}
+                        onPointerMove={(event) => { if (dragSourceRef.current) setDragTarget(document.elementFromPoint(event.clientX, event.clientY)?.closest('[data-compose-media-key]')?.dataset.composeMediaKey || null); }}
+                        onPointerUp={finishMediaDrag}
+                        onPointerCancel={() => { dragSourceRef.current = null; setDragTarget(null); }}><Icon name="grip" size={16} /></button>
+                      <button type="button" className="compose-media-sort-previous" aria-label={`第 ${index + 1} 张图片前移`} title="前移" disabled={busy || index === 0} onClick={() => moveMedia(item.key, allMediaPreviews[index - 1].key)}><Icon name="arrow" size={16} /></button>
+                      <button type="button" aria-label={`第 ${index + 1} 张图片后移`} title="后移" disabled={busy || index === allMediaPreviews.length - 1} onClick={() => moveMedia(item.key, allMediaPreviews[index + 1].key)}><Icon name="arrow" size={16} /></button>
+                    </div>}
+                    <IconButton className="lc-upload-preview-remove" type="button" onClick={() => removeMedia(item)} label={publishType === 'video' ? '移除视频' : `移除第 ${index + 1} 张图片`} tooltip="移除媒体" variant="ghost" size="lg" icon={<Icon name="close" size={18} />} isDisabled={busy} />
+                  </div>)}
+                </div> : null}
               </section>}
 
               <section className="compose-content-field" aria-label="正文编辑">
@@ -682,17 +814,17 @@ export function ComposePage() {
 
               <footer className={`compose-actions${saveState ? ' has-save-state' : ''}${editMode ? ' is-edit' : ''}`}>
                 <span className="sr-only" role="status" aria-live="polite">{status === 'saving-edit' ? '正在保存修改' : status === 'publishing' ? '正在发布内容' : status === 'success' ? message : ''}</span>
-                <Button className="compose-cancel" type="button" label="取消" variant="secondary" size="lg" onClick={() => dirty ? requestDiscard(returnDestination) : navigate(returnDestination)} isDisabled={busy} />
                 {saveState ? <span className={`compose-save-state is-${saveState.tone}`} role="status" aria-live="polite"><Icon name={saveState.tone === 'saved' ? 'check' : 'info'} size={14} />{saveState.label}</span> : <span className="compose-actions-spacer" aria-hidden="true" />}
                 {!editMode && <Button className="compose-draft-save" type="button" label={draftId ? '更新草稿' : '存入草稿箱'} variant="secondary" size="lg" onClick={() => void saveDraft()} isDisabled={designPreview || !isAuthenticated || busy || !dirty} isLoading={status === 'draft-saving'} />}
                 <Button className="compose-submit" type="submit" label={editMode ? '保存修改' : '确认发布'} variant="primary" size="lg" isDisabled={!capability.canPublish || busy || editMode && !dirty} isLoading={editMode ? status === 'saving-edit' : status === 'publishing'} />
               </footer>
             </section>
         </form>}
-        <ConfirmActionDialog isOpen={typeSwitchOpen} onOpenChange={(open) => { setTypeSwitchOpen(open); if (!open) setPendingPublishType(null); }} title={`切换为${publishTypes[pendingPublishType]?.label || '其他类型'}？`} description="当前已选媒体与新类型不兼容，继续切换会移除这些文件，正文和话题会保留。" actionLabel="移除媒体并切换" onAction={confirmTypeSwitch} />
-        <ConfirmActionDialog isOpen={discardOpen} onOpenChange={setDiscardOpen} title="放弃这次编辑？" description={editMode ? '尚未保存的修改将不会保留。' : '尚未发布的文字、话题和媒体将不会保留。'} actionLabel="放弃编辑" onAction={() => { setDiscardOpen(false); navigate(discardDestination); }} />
-        {humanVerificationDialog}
+        {!isDialog && <ConfirmActionDialog isOpen={Boolean(confirmation)} onOpenChange={(open) => { if (!open) confirmation?.onCancel(); }} title={confirmation?.title} description={confirmation?.description} actionLabel={confirmation?.actionLabel} onAction={confirmation?.onAction} />}
+        {!isDialog && humanVerificationDialog}
       </main>
-    </AppShell>
   );
+  return isDialog
+    ? <ComposeDialogShell isOpen={dialogOpen} step={step} dirty={dirty} busy={busy} allowLeaveRef={allowLeaveRef} onRequestClose={requestClose} onNavigationBlocked={onNavigationBlocked} onExited={onDialogExited}>{editorContent}</ComposeDialogShell>
+    : <AppShell mobileMode="immersive">{editorContent}</AppShell>;
 }

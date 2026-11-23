@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
+import { TaskPageHeader } from '../../components/TaskPageHeader.jsx';
 import { ResourceState } from '../../components/ResourceState.jsx';
 import { Icon } from '../../ui/icons.jsx';
 import { AuthorIdentity } from '../../components/AuthorIdentity.jsx';
@@ -16,8 +17,11 @@ import { MediaGallery } from '../../features/media/MediaGallery.jsx';
 import { CommentThread } from '../../features/comments/CommentThread.jsx';
 import { ReportResourceDialog } from '../../features/moderation/ReportResourceDialog.jsx';
 import { SaveCardButton } from '../../features/library/SaveCardButton.jsx';
+import { DetailFollowButton } from '../../features/social/DetailFollowButton.jsx';
 import { listSavedItems } from '../../services/community-service.js';
 import { topicHref } from '../../services/discovery-service.js';
+import { browseTaskState } from '../../app/browse-task-routing.js';
+import { cardReturnSource } from '../../app/card-preview-routing.js';
 import { ContextualLoginForm } from '../../features/auth/ContextualLoginForm.jsx';
 
 function DetailBoundary({ title, detail }) {
@@ -55,6 +59,14 @@ export function DetailPage({ preview = false, loadingFallback = null }) {
   const { id, commentId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
+  const source = cardReturnSource(location);
+  const backTo = source ? { pathname: source.pathname, search: source.search, hash: source.hash } : '/';
+  const backLabel = source ? '返回来源页' : '回到信息流';
+  const returnToSource = (event) => {
+    if (!source || !(window.history.state?.idx > 0) || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    navigate(-1);
+  };
   const toast = useToast();
   const { isAuthenticated, session, can } = useAuth();
   const loader = useCallback((signal) => loadDetail({ id, commentId, signal }), [commentId, id]);
@@ -76,6 +88,7 @@ export function DetailPage({ preview = false, loadingFallback = null }) {
   const [authPromptAction, setAuthPromptAction] = useState('');
   const inlineLoginRef = useRef(null);
   const authTriggerRef = useRef(null);
+  const authorGroupRef = useRef(null);
   const requestLogin = (action) => {
     authTriggerRef.current = document.activeElement;
     setAuthPromptAction(action);
@@ -261,12 +274,18 @@ export function DetailPage({ preview = false, loadingFallback = null }) {
     content = (
       <article className={`detail-article${cardMediaItems.length ? ' has-media' : ''}`}>
         <header className="detail-author">
-          <AuthorIdentity author={data.card.author} uid={data.card.authorUid} handle={data.card.authorHandle} avatarUrl={data.card.authorAvatar} meta={data.card.meta || '时间信息暂未提供'} size="md" variant="byline" className="detail-author-identity" />
+          <div className="detail-author-main" ref={authorGroupRef}>
+            <div className="detail-author-top">
+              <AuthorIdentity author={data.card.author} uid={data.card.authorUid} handle={data.card.authorHandle} avatarUrl={data.card.authorAvatar} size="md" variant="byline" className="detail-author-identity" />
+              <DetailFollowButton authorUid={data.card.authorUid} viewerUid={session?.uid} isAuthenticated={isAuthenticated} source={data.source} onRequireLogin={() => requestLogin('关注用户')} onFollowed={() => requestAnimationFrame(() => authorGroupRef.current?.querySelector('a.author-identity')?.focus({ preventScroll: true }))} />
+            </div>
+            <small className="detail-author-meta">{data.card.meta || '时间信息暂未提供'}</small>
+          </div>
           {!data.card.authorUid && <span className="detail-capability">作者主页暂未提供</span>}
           {contentMenuItems.length > 0 && <ActionMenu items={contentMenuItems} label="内容操作" />}
         </header>
           <div className="detail-copy">
-          {topics.length > 0 ? <nav className="detail-topics" aria-label="内容话题">{topics.map((topic) => <Link className="detail-topic" key={topic.id || topic.name} to={topicHref(topic)}>#{topic.name}</Link>)}</nav> : <span className="detail-topic">LoveCards 社区</span>}
+          {topics.length > 0 ? <nav className="detail-topics" aria-label="内容话题">{topics.map((topic) => <Link className="detail-topic" key={topic.id || topic.name} to={topicHref(topic)} state={browseTaskState(location)}>#{topic.name}</Link>)}</nav> : <span className="detail-topic">LoveCards 社区</span>}
           <h1 id="detail-title" className="sr-only" tabIndex={-1}>内容详情</h1>
           <p className="detail-content"><MentionText text={data.card.content || data.card.title} mentions={data.card.mentions} /></p>
         </div>
@@ -308,7 +327,10 @@ export function DetailPage({ preview = false, loadingFallback = null }) {
 
   const detailMain = (
       <main className={`detail-page${preview ? ' is-preview' : ''}`} aria-labelledby="detail-title">
-        {!preview && <Link className="detail-back" to="/">← 回到信息流</Link>}
+        {!preview && <>
+          <TaskPageHeader title="内容详情" back={{ to: backTo, label: backLabel, state: source?.state }} onBack={returnToSource} />
+          <Link className="detail-back" to={backTo} state={source?.state} onClick={returnToSource}><Icon name="arrowLeft" size={16} />{backLabel}</Link>
+        </>}
         {preview && resource.status === 'loading' && loadingFallback
           ? loadingFallback
           : <ResourceState status={resource.status} error={resource.error} onRetry={resource.reload} loadingVariant="detail" loadingLabel="内容详情加载中">{content}</ResourceState>}
@@ -319,5 +341,5 @@ export function DetailPage({ preview = false, loadingFallback = null }) {
         {!preview && <AuthPromptDialog isOpen={Boolean(authPromptAction)} action={authPromptAction} onOpenChange={(open) => { if (!open) setAuthPromptAction(''); }} onLogin={() => { setAuthPromptAction(''); navigate('/auth/login', { state: { from: loginFrom } }); }} />}
       </main>
   );
-  return preview ? detailMain : <AppShell>{detailMain}</AppShell>;
+  return preview ? detailMain : <AppShell mobileMode="task">{detailMain}</AppShell>;
 }

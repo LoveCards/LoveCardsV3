@@ -32,6 +32,8 @@ describe('comment thread surface', () => {
     expect(html).toContain('aria-pressed="false"');
     expect(html).toContain('comment-pinned-badge');
     expect(html).toContain('置顶优先');
+    expect(html.indexOf('id="comments-title"')).toBeLessThan(html.indexOf('comment-thread-composer-wrap'));
+    expect(html.indexOf('comment-thread-composer-wrap')).toBeLessThan(html.indexOf('comment-thread-list'));
   });
 
   it('wires the same raw-text @ mention trigger into comments and replies', () => {
@@ -46,6 +48,7 @@ describe('comment thread surface', () => {
     expect(html).toContain('href="/auth/login"');
     expect(html).toContain('>去登录</a>');
     expect(html).not.toContain('>去登录</button>');
+    expect(html.indexOf('>去登录</a>')).toBeLessThan(html.indexOf('comment-thread-empty'));
   });
 
   it('keeps preview comments read-only', () => {

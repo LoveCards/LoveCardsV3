@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { renderRoute } from './renderRoute.jsx';
 import { settingsPathFromLegacyHash } from '../pages/settings/SettingsPage.jsx';
 import { currentLocationPath, safeReturnPath } from '../app/auth-routing.jsx';
+import { canonicalSearchPath, searchHref } from '../pages/search/search-route.js';
 
 function filesBelow(directory, extension) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -36,11 +37,10 @@ describe('UI integrity', () => {
   });
 
   it('keeps search scopes semantically distinct', () => {
-    const posts = renderRoute('/search/posts?q=人类简史');
-    const media = renderRoute('/search/media?q=人类简史');
-    expect(posts).toContain('最近在读《人类简史》');
-    expect(media).not.toContain('最近在读《人类简史》');
-    expect(posts).not.toContain('/search/users');
+    expect(searchHref('all', '人类简史')).toBe('/search?q=%E4%BA%BA%E7%B1%BB%E7%AE%80%E5%8F%B2');
+    expect(searchHref('posts', '人类简史')).toBe('/search/posts?q=%E4%BA%BA%E7%B1%BB%E7%AE%80%E5%8F%B2');
+    expect(searchHref('users', '人类简史')).toBe('/search/users?q=%E4%BA%BA%E7%B1%BB%E7%AE%80%E5%8F%B2');
+    expect(canonicalSearchPath({ scope: 'media', search: '?q=人类简史' })).toBe('/search?q=%E4%BA%BA%E7%B1%BB%E7%AE%80%E5%8F%B2');
   });
 
   it('renders compose and keeps the legacy profile edit URL as a redirect', () => {
@@ -50,7 +50,7 @@ describe('UI integrity', () => {
     const composeSpec = readFileSync(fileURLToPath(new URL('../../ui/docs/specifications/COMPOSE.md', import.meta.url)), 'utf8');
     const composeBlueprint = readFileSync(fileURLToPath(new URL('../../ui/blueprints/blueprint-04-compose.html', import.meta.url)), 'utf8');
     expect(compose).toContain('发布新内容');
-    expect(compose).toContain('app-shell is-mobile-immersive is-compose-route');
+    expect(compose).toContain('app-shell is-mobile-immersive');
     expect(compose).not.toContain('class="mobile-bottom-nav"');
     expect(composeSource).toContain('<AppShell mobileMode="immersive">');
     expect(compose).toContain('compose-content');
@@ -93,6 +93,12 @@ describe('UI integrity', () => {
     expect(composeSource).toContain('className={`compose-save-state is-${saveState.tone}`} role="status" aria-live="polite"');
     expect(composeSource).toContain("label: '已保存到草稿箱'");
     expect(composeSource).toContain("label: draftId ? '有未保存的修改' : '尚未存入草稿箱'");
+    expect(composeSource).toContain('<Link className="compose-drafts-link" to="/drafts" aria-disabled={busy}');
+    expect(compose).toMatch(/<header class="compose-heading">[\s\S]*?<a[^>]*class="compose-drafts-link"[^>]*>[\s\S]*?草稿箱<\/a>[\s\S]*?<\/header>/);
+    expect(compose.match(/class="compose-drafts-link"/g)).toHaveLength(1);
+    expect(compose).not.toContain('发布说明');
+    expect(renderRoute('/compose?edit=42')).not.toContain('class="compose-drafts-link"');
+    expect(composeSource).not.toContain('className="compose-cancel"');
     expect(composeSpec).toContain('一条连续编辑轴');
     expect(composeSpec).toContain('正文最多 1000 字');
     expect(composeSpec).toContain('正文紧随其后且必填');
@@ -114,7 +120,7 @@ describe('UI integrity', () => {
     const spec = readFileSync(fileURLToPath(new URL('../../ui/docs/specifications/COMPOSE.md', import.meta.url)), 'utf8');
     const blueprint = readFileSync(fileURLToPath(new URL('../../ui/blueprints/blueprint-04-compose.html', import.meta.url)), 'utf8');
     expect(html).toContain('drafts-page-head');
-    expect(html).toContain('class="drafts-back" href="/compose"');
+    expect(html).toMatch(/<a(?=[^>]*class="drafts-back")(?=[^>]*href="\/compose")[^>]*>/);
     expect(html).not.toContain('class="mobile-bottom-nav"');
     expect(source).toContain('<AppShell mobileMode="task">');
     expect(source).toContain('function DraftsSkeleton()');
@@ -122,16 +128,24 @@ describe('UI integrity', () => {
     expect(source).toContain('className="draft-delete-button"');
     expect(source).toContain('normalizeDraftMedia(payload.media)');
     expect(source).toContain('formatDraftTime(item.updated_at)');
+    expect(source).toContain('excerpt && <span>{excerpt}</span>');
+    expect(source).toContain('draft-thumb-count');
     expect(source).toContain('<ScopedBanner className="drafts-delete-feedback"');
     expect(source).not.toContain('drafts-summary');
     expect(source).not.toContain('云端同步正常');
     expect(source).not.toContain('创作空间');
     expect(css).toContain('.community-page.drafts-page { width: min(860px');
     expect(css).toContain('grid-template-columns: 44px minmax(0, 1fr) 44px;');
-    expect(css).toContain('.drafts-new { width: 44px; min-width: 44px;');
-    expect(css).toContain('.drafts-list { border-right: 0; border-left: 0; border-radius: 0; }');
+    expect(css).toContain('.drafts-list { margin: 0 16px; }');
+    expect(css).toContain('.drafts-list { display: grid; gap: 12px; }');
+    expect(css).toContain('border-radius: var(--lc-radius-panel); background: var(--lc-surface);');
+    expect(source).not.toContain('drafts-list-meta');
+    expect(source).not.toContain('drafts-new');
+    expect(source).not.toContain('drafts-mobile-intro');
+    expect(source).not.toContain('emptyAction={<Link className="action-link action-link-primary" to="/compose">');
+    expect(spec).toContain('空列表只在页面底色上说明');
     expect(spec).toContain('不展示没有服务端依据的“云端同步正常”');
-    expect(blueprint).toContain('Drafts · Continuous List');
+    expect(blueprint).toContain('drafts-v2-prototype.html');
     expect(blueprint).not.toContain('drafts-summary');
   });
 
@@ -256,10 +270,11 @@ describe('UI integrity', () => {
     expect(privacy).toContain('action={auth.status === \'ready\' && auth.isAuthenticated ?');
     expect(privacy).toContain("auth.status === 'error' ? <ResourceErrorBanner error={auth.error}");
     expect(blocked).toContain("auth.status === 'error' ? <ResourceErrorBanner error={auth.error}");
-    expect(drafts).toContain('{auth.isAuthenticated && <Link className="drafts-new"');
+    expect(renderRoute('/drafts')).toMatch(/<a(?=[^>]*aria-label="返回发布")(?=[^>]*href="\/compose")[^>]*>/);
+    expect(drafts).not.toContain('className="drafts-new"');
     expect(messages).toContain('const canSearchMessages = designPreview || (auth.status === \'ready\' && auth.isAuthenticated);');
     expect(messages).toContain('className="message-search-page-field"');
-    expect(messages).toContain('className="message-search-page-title"');
+    expect(renderRoute('/messages/search')).toMatch(/<h1 id="message-search-title"[^>]*>搜索会话<\/h1>/);
     expect(messages).toContain("auth.status === 'error'");
     expect(messages).toContain('error={auth.error} onRetry={auth.refresh}');
     expect(inbox).toContain("const canRead = designPreview || (auth.status === 'ready' && auth.isAuthenticated);");
@@ -270,7 +285,7 @@ describe('UI integrity', () => {
     expect(relations).toContain("!designPreview && auth.status === 'error'");
     expect(relations).toContain("(auth.isAuthenticated || designPreview) && <RelationSwitcher");
     expect(profile).toContain("!designPreview && authStatus === 'error' ? <ResourceState status=\"error\" error={authError}");
-    expect(router).toContain("import { HomeFeedRoute, ProtectedRoute } from './auth-routing.jsx';");
+    expect(router).toContain("import { HomeFeedRoute, LegacyFeedRoute, ProtectedRoute } from './auth-routing.jsx';");
     expect(router).toContain('<Route path="/me" element={<ProtectedRoute allowVisitor><MePage /></ProtectedRoute>} />');
     expect(navigationSpec).toContain('登录边界');
     expect(navigationSpec).toContain('`from` 只接受单斜杠开头');
@@ -435,17 +450,21 @@ describe('UI integrity', () => {
   it('keeps message surfaces and skeleton geometry on the shared radius system', () => {
     const communityCss = readFileSync(fileURLToPath(new URL('../pages/community/community.css', import.meta.url)), 'utf8');
     const patternSpec = readFileSync(fileURLToPath(new URL('../../ui/docs/registries/PATTERNS.md', import.meta.url)), 'utf8');
-    expect(communityCss).toContain('Final cascade guard: the message family shares one surface grammar.');
-    expect(communityCss).toContain('--_chat-composer-radius: var(--lc-radius-control) !important;');
     expect(communityCss).toContain('.message-workspace-skeleton .conversation-list-skeleton');
     expect(communityCss).toContain('border-radius: 0; background: var(--lc-surface);');
     expect(patternSpec).toContain('输入器是独立控件，使用 `--lc-radius-control`');
     expect(patternSpec).toContain('ConversationRow 与其 skeleton 必须共享同一层级和几何');
   });
 
-  it('keeps the mobile discovery feed on the page canvas instead of a full-width panel', () => {
+  it('keeps discovery and search results on the page canvas with shared feed columns', () => {
     const css = readFileSync(fileURLToPath(new URL('../pages/explore/explore.css', import.meta.url)), 'utf8');
-    expect(css).toMatch(/\.discovery-section\s*\{[\s\S]*?background:\s*var\(--lc-canvas\)/);
+    const source = readFileSync(fileURLToPath(new URL('../pages/explore/ExplorePage.jsx', import.meta.url)), 'utf8');
+    expect(source).not.toContain('className="discovery-section"');
+    expect(renderRoute('/explore')).toMatch(/class="discovery-feed feed-masonry/);
+    expect(css).toContain('.discovery-main .resource-state.discovery-result-state { padding-inline: 0; border: 0; border-radius: 0; background: transparent; }');
+    expect(css).not.toContain('.discovery-feed.is-results > .feed-story');
+    expect(source).toContain('<FeedCollection className={feedClass}');
+    expect(source).not.toContain("'内容结果'");
   });
 
   it('keeps profile and relation surfaces on the shared mobile feed gutter', () => {
@@ -458,26 +477,20 @@ describe('UI integrity', () => {
     expect(profileCss).toContain('width: calc(100% - var(--lc-feed-mobile-gutter) - var(--lc-feed-mobile-gutter));');
     expect(profileCss).toContain('margin-inline: var(--lc-feed-mobile-gutter);');
     expect(profileCss).toContain('padding: 10px 0 28px;');
-    expect(profileCss).toContain('.profile-feed > .feed-story { width: calc((100% - 9px) / 2); }');
-    expect(profileCss).not.toMatch(/\.profile-feed\s*>\s*\.feed-story\s*\{\s*width:\s*100%/);
+    expect(renderRoute('/user/demo')).toContain('feed-masonry');
     expect(profileCss).toContain('padding: 0 0 calc(88px + env(safe-area-inset-bottom));');
     expect(communityCss).not.toContain('.public-profile-page .profile-feed');
     expect(communityCss).toContain('.public-profile-card-state { margin-inline: var(--lc-feed-mobile-gutter); }');
     expect(cardSpec).toContain('禁止卡片直接贴住视口边缘');
-    expect(cardSpec).toContain('最窄宽度也不以 `359px` 断点退化为单列大卡');
-    expect(cardSpec).toContain('Masonry 容器自身的内容宽度必须能完整容纳两列');
   });
 
   it('keeps compose as an immersive mobile task above the safe area', () => {
     const composeCss = readFileSync(fileURLToPath(new URL('../pages/compose/compose.css', import.meta.url)), 'utf8');
     expect(composeCss).toContain('border-radius: var(--lc-radius-panel);');
-    expect(composeCss).toContain('.app-shell.is-compose-route > .product-header { display: none; }');
     expect(composeCss).toContain('.compose-editor-surface { padding: 0 16px; }');
-    expect(composeCss).toMatch(/\.compose-drafts-link\s*\{[\s\S]*?width: 60px;[\s\S]*?justify-content: center;/);
     expect(composeCss).toContain('.compose-content-control {');
     expect(composeCss).toContain('background: var(--lc-surface-subtle);');
-    expect(composeCss).toContain('padding: 0 0 calc(96px + env(safe-area-inset-bottom));');
-    expect(composeCss).toContain('scroll-padding-bottom: calc(108px + env(safe-area-inset-bottom));');
+    expect(composeCss).toContain('scroll-padding-bottom: calc(var(--compose-footer-clearance) + env(safe-area-inset-bottom));');
     expect(composeCss).toContain('bottom: env(safe-area-inset-bottom);');
     expect(composeCss).not.toContain('bottom: calc(64px + env(safe-area-inset-bottom));');
     expect(composeCss).toContain('grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);');
@@ -500,24 +513,23 @@ describe('UI integrity', () => {
     expect(errorSpec).toContain('状态标题 + 具体原因 + 下一步动作');
   });
 
-  it('reserves the measured suggestion height above mobile search scopes', () => {
+  it('keeps the submitted search query in one editable field', () => {
     const searchSurface = readFileSync(fileURLToPath(new URL('../features/search/DiscoverySearchSurface.jsx', import.meta.url)), 'utf8');
-    const css = readFileSync(fileURLToPath(new URL('../pages/explore/explore.css', import.meta.url)), 'utf8');
-    expect(searchSurface).toContain('onOpenChange={setSuggestionsOpen}');
-    expect(searchSurface).toContain("--discovery-suggestions-height");
-    expect(searchSurface).toContain('new ResizeObserver(updateHeight)');
-    expect(css).toMatch(/\.discovery-search-surface\.is-suggestions-open\s*\{[\s\S]*?var\(--discovery-suggestions-height/);
+    expect(searchSurface).toContain('type="search" value={draft}');
+    expect(searchSurface).toContain('useEffect(() => setDraft(query), [query])');
+    expect(searchSurface).not.toContain('正在搜索');
   });
 
-  it('keeps the mobile search subtitle above its input field', () => {
-    const css = readFileSync(fileURLToPath(new URL('../styles/components.css', import.meta.url)), 'utf8');
-    expect(css).toContain('.mobile-search-dialog-inner .astryx-layout-header');
-    expect(css).toMatch(/\.mobile-search-dialog-inner \.astryx-layout-header[\s\S]*?margin-bottom:\s*14px;/);
-    expect(css).not.toContain('.mobile-search-dialog-inner .astryx-dialog-header');
-    expect(css).toMatch(/\.mobile-search-field \.astryx-typeahead\s*\{[\s\S]*?height:\s*48px[\s\S]*?min-height:\s*48px[\s\S]*?border-radius:\s*10px/);
-    expect(css).toContain('.mobile-search-field .astryx-typeahead-dropdown');
-    expect(css).toContain(".mobile-search-dialog-inner .astryx-layout-header [role='tooltip']");
-    expect(css).toMatch(/\.header-search-field \.astryx-typeahead\s*\{[\s\S]*?height:\s*42px[\s\S]*?min-height:\s*42px[\s\S]*?border-radius:\s*10px/);
+  it('uses a real search route with a shared task header and desktop suggestions', () => {
+    const home = renderRoute('/');
+    const search = renderRoute('/search');
+    const topic = renderRoute('/topic/sample');
+    const settings = renderRoute('/settings/appearance');
+    expect(home).toMatch(/class="mobile-search-trigger"[^>]+href="\/search"/);
+    expect(home).toContain('header-search-field');
+    expect(search).toContain('mobile-search-entry');
+    for (const html of [search, topic, settings]) expect(html).toContain('class="route-task-heading"');
+    expect(search).not.toContain('mobile-search-dialog');
   });
 
   it('keeps settings on one extensible task axis with shared real navigation', () => {
@@ -537,7 +549,8 @@ describe('UI integrity', () => {
       expect(html).toContain('settings-sidebar');
       expect(html).toContain('settings-panel');
       expect(html).not.toContain('settings-mobile-navigation');
-      expect(html.match(/aria-current="page"/g)).toHaveLength(1);
+      const localNav = html.match(/<nav class="settings-navigation"[\s\S]*?<\/nav>/)?.[0] || '';
+      expect(localNav.match(/aria-current="page"/g)).toHaveLength(1);
       expect(html).not.toContain('class="mobile-bottom-nav"');
     }
     expect(profileSource).toContain('gender: form.gender || null');
@@ -587,7 +600,7 @@ describe('UI integrity', () => {
     expect(renderRoute('/messages/requests')).toContain('class="detail-back pending-back" href="/messages"');
     const draftRoute = readFileSync(fileURLToPath(new URL('../pages/community/DraftEditorPage.jsx', import.meta.url)), 'utf8');
     expect(draftRoute).toContain("/compose?draft=");
-    expect(renderRoute('/drafts')).toContain('class="drafts-back" href="/compose"');
+    expect(renderRoute('/drafts')).toMatch(/<a(?=[^>]*aria-label="返回发布")(?=[^>]*href="\/compose")[^>]*>/);
     expect(renderRoute('/drafts')).not.toContain('新建草稿');
     expect(renderRoute('/user/demo/followers')).toContain('class="profile-secondary-back" href="/user/demo"');
     expect(renderRoute('/user/demo/followers')).not.toContain('这里还没有记录');
@@ -639,6 +652,8 @@ describe('UI integrity', () => {
     const srcDirectory = fileURLToPath(new URL('../', import.meta.url));
     const css = filesBelow(srcDirectory, '.css').map((path) => readFileSync(path, 'utf8')).join('\n');
     const defined = new Set([...css.matchAll(/(--[a-z0-9-]+)\s*:/gi)].map((match) => match[1]));
+    const runtime = readFileSync(join(srcDirectory, 'app/runtime-context.js'), 'utf8');
+    for (const [, name] of runtime.matchAll(/\.setProperty\('(--[a-z0-9-]+)'/g)) defined.add(name);
     const used = new Set([...css.matchAll(/var\((--[a-z0-9-]+)/gi)].map((match) => match[1]));
     expect([...used].filter((name) => !defined.has(name))).toEqual([]);
   });

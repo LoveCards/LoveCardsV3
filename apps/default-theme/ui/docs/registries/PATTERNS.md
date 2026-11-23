@@ -36,7 +36,7 @@
 | MessageThread | canonical | ChatLayout/Message/Composer + ResourceState | 游标消息、发送、重试、阻止和空会话 | `/messages/:id` |
 | RelationshipList | canonical | MobilePageShell(task) + List/Item + AuthorIdentity + relation action | 本人/他人关注与粉丝使用同一独立任务壳、连续列表和动作反馈 | followers/following |
 | SettingsGroup | canonical | MobilePageShell(task) + SettingsLayout + SettingsNavigation + Section + FormLayout + Switch/Selector | 独立设置栈、分类扩展、保存、权限、会话和危险区 | `/settings*` |
-| SearchSurface | canonical | Typeahead + results + Empty/ResourceState | IME、防抖、取消旧请求、桌面锚定/移动全屏 | 顶栏、发现、完整搜索 |
+| SearchSurface | canonical | 顶栏 Typeahead + 搜索页可编辑输入 + 分类结果状态 | IME、防抖、取消旧请求、桌面锚定/移动全屏；搜索页用当前词提交，发现频道仅复用顶栏入口 | 顶栏、完整搜索；发现频道经顶栏触达|
 | MediaViewer | canonical | Lightbox/Overlay + MediaTheme | 图像、图集、视频、GIF、焦点与返回 | `/media/:id` |
 
 ## Pattern 所有权

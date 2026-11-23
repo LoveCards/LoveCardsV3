@@ -7,6 +7,7 @@ use app\api\ApiResponse;
 use app\api\controller\BaseController;
 use app\api\controller\BatchOperateTrait;
 use app\modules\Platform\User\Service\Users as UsersService;
+use app\modules\Platform\User\Service\PublicUserSearch;
 use app\modules\Platform\User\Transport\Api\UserResource;
 
 final class Users extends BaseController
@@ -14,6 +15,14 @@ final class Users extends BaseController
     use BatchOperateTrait;
 
     protected function getBatchService(): string { return UsersService::class; }
+
+    /** 搜索当前访客有权访问的公开用户主页。 */
+    public function searchPublic()
+    {
+        $auth = request()->auth ?? null;
+        $viewerId = $auth !== null && !$auth->isVisitor() ? $auth->uid() : 0;
+        return $this->respond(PublicUserSearch::search($this->validated(), $viewerId));
+    }
 
     /** Return server-filtered candidates for the authenticated @ mention helper. */
     public function searchMentionCandidates()

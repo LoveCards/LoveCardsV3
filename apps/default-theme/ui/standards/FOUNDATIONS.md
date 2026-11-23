@@ -27,6 +27,8 @@
 
 Deep Rose/white 对比度 5.23:1；Signal Rose/white 为 4.03:1，Signal Rose 禁止普通正文和白字按钮。暗色映射见 `DESIGN.md`，不增加霓虹、紫色渐变或发光。
 
+实心玫瑰色操作与未读角标使用成对的 `--lc-rose` / `--lc-on-rose`。亮色用白字，暗色用深色字，悬停同样使用配对前景。
+
 ### 尺度
 
 间距：4/8/12/16/24/32/48px。控制圆角以 9px 为基准，字段可为 10px，媒体 12px，内容面板 14px，标签和头像使用全圆/50%。文字角色为 24/21/17/15/13/12/11px，正文行宽 65–75ch。固定层级：Content 0、Sticky 30/40、Overlay 60、Backdrop 70、Modal 80、Toast 100、Tooltip 110。
@@ -61,6 +63,7 @@ Deep Rose/white 对比度 5.23:1；Signal Rose/white 为 4.03:1，Signal Rose �
 
 | Token | 用途 |
 |---|---|
+| `motion.loadingPulse` | 信息流、主页、通知、消息的加载骨架共享透明度脉冲；系统或站内减动时为静态 |
 | `motion.press` | 按下反馈；允许 `scale(.97)`，不改布局 |
 | `motion.state` | Hover、Focus、Like、Save、Tab 指示器、内容状态淡化、弹窗退场与遮罩 |
 | `motion.control` | 媒体控制淡入、弹窗入场 |

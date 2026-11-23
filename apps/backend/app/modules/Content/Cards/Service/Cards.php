@@ -34,6 +34,49 @@ class Cards
     {
         return (int) CardsModel::count();
     }
+
+    /** 公开搜索固定可见范围，管理员能力也不得扩大查询范围。 */
+    public static function searchPublic(array $params, int $viewerId = 0): array
+    {
+        $term = trim((string) ($params['search_value'] ?? ''));
+        $topicOnly = str_starts_with($term, '#');
+        $keyword = $topicOnly ? trim(substr($term, 1)) : $term;
+        if ($keyword === '' || (!$topicOnly && mb_strlen($keyword) < 2) || mb_strlen($term) > 100) {
+            throw \app\api\ApiException::badRequest('请输入 2-100 个字符，或使用 #话题名称');
+        }
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $keyword);
+        // 与卡片展示一致，仅正文为空的历史数据允许回退到旧标题。
+        $text = "COALESCE(NULLIF(TRIM(cards.content), ''), CASE WHEN JSON_TYPE(JSON_EXTRACT(cards.data, '$.title')) = 'STRING'
+            THEN TRIM(JSON_UNQUOTE(JSON_EXTRACT(cards.data, '$.title'))) ELSE '' END)";
+        $topicMatch = "EXISTS (SELECT 1 FROM tags_map search_tm INNER JOIN tags search_t ON search_t.id = search_tm.tag_id
+            WHERE search_tm.aid = 1 AND search_tm.pid = cards.id AND search_tm.deleted_at IS NULL AND search_t.aid = 1
+            AND search_t.status = 0 AND search_t.deleted_at IS NULL AND search_t.name = :card_search_topic)";
+        $query = CardsModel::where('cards.status', PublicationStatus::visible())
+            ->where('cards.visibility', CardVisibilityPolicy::PUBLIC)
+            ->whereNull('cards.deleted_at');
+        CardVisibilityPolicy::apply($query, max(0, $viewerId));
+        if ($topicOnly) {
+            $query->whereRaw($topicMatch, ['card_search_topic' => $keyword]);
+        } else {
+            $query->whereRaw("({$text} LIKE :card_search_contains ESCAPE '\\\\' OR {$topicMatch})", [
+                'card_search_contains' => '%' . $escaped . '%',
+                'card_search_topic' => $keyword,
+            ]);
+            if (($params['sort'] ?? 'match') === 'match') {
+                $query->orderRaw("CASE WHEN {$text} LIKE :card_search_prefix ESCAPE '\\\\' THEN 0
+                    WHEN {$text} LIKE :card_search_rank_contains ESCAPE '\\\\' THEN 1 ELSE 2 END", [
+                    'card_search_prefix' => $escaped . '%',
+                    'card_search_rank_contains' => '%' . $escaped . '%',
+                ]);
+            }
+        }
+        $result = $query->order('cards.created_at', 'desc')->order('cards.id', 'desc')
+            ->paginate([
+                'page' => max(1, (int) ($params['page'] ?? 1)),
+                'list_rows' => min(30, max(1, (int) ($params['list_rows'] ?? 24))),
+            ]);
+        return self::hydratePaginated($result->toArray(), true);
+    }
     public static function requiresApproval(): bool
     {
         return (bool) ConfigService::get('cards.approve');
@@ -75,6 +118,12 @@ class Cards
     public static function list(array $params, array $caps = [], int $viewerId = 0): array
     {
         $params['search_default_key'] = 'content';
+        // 公开列表固定为可翻页的三种排序；同分再按 id 降序。
+        // 互动计数变更可能改变跨请求页边界，浏览器需按卡片 id 去重。
+        $sortKey = (string) ($params['order_key'] ?? 'created_at');
+        $params['order_key'] = in_array($sortKey, ['created_at', 'goods', 'comments'], true)
+            ? $sortKey : 'created_at';
+        $params['stable_order'] = true;
 
         if (isset($params['tag_id'])) {
             $tagId = (int) $params['tag_id'];

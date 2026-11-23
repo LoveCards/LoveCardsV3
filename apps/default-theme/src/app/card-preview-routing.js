@@ -20,6 +20,7 @@ export function cardPreviewState(location, cardId, kind = 'text', trigger = null
     previewCardId: String(cardId),
     previewKind: ['image', 'gallery', 'video'].includes(kind) ? kind : ['discussion', 'quote', 'link'].includes(kind) ? kind : 'text',
     previewTrigger: trigger,
+    sourceScrollY: typeof window === 'undefined' ? 0 : window.scrollY,
     backgroundLocation: {
       pathname: location.pathname,
       search: location.search,
@@ -30,13 +31,18 @@ export function cardPreviewState(location, cardId, kind = 'text', trigger = null
   };
 }
 
-export function previewBackground(location) {
+export function cardReturnSource(location) {
   const state = location?.state;
   const background = state?.backgroundLocation;
-  if (state?.previewSession !== cardPreviewSession || state?.previewMode === 'full') return null;
+  if (state?.previewSession !== cardPreviewSession) return null;
   if (!/^\/post\/[^/]+$/.test(location.pathname)) return null;
   const routeCardId = location.pathname.slice(6);
   if (!/^\d+$/.test(routeCardId) || state?.previewCardId !== routeCardId) return null;
-  if (!background?.pathname?.startsWith('/') || background.pathname.startsWith('//') || background.pathname.startsWith('/post/')) return null;
+  const path = background?.pathname;
+  if (typeof path !== 'string' || !/^\/(?!\/)/.test(path) || path.includes('\\') || path.startsWith('/post/')) return null;
   return background;
+}
+
+export function previewBackground(location) {
+  return location?.state?.previewMode === 'full' ? null : cardReturnSource(location);
 }

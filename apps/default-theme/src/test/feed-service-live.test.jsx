@@ -45,12 +45,12 @@ describe('live home feed SDK contract', () => {
     await expect(loadHomeFeed({ channel: 'recommended' })).rejects.toThrow('cards.hot() 应返回数组');
   });
 
-  it('maps latest to the paginated list contract', async () => {
-    const client = { cards: { hot: vi.fn(), list: vi.fn().mockResolvedValue({ data: [card], pagination: { currentPage: 1 } }) } };
+  it('maps activity to the following feed contract', async () => {
+    const client = { cards: { hot: vi.fn(), listFollowing: vi.fn().mockResolvedValue({ data: [card], pagination: { currentPage: 1 } }) } };
     sdk.getSdkClient.mockReturnValue(client);
-    const result = await loadHomeFeed({ channel: 'latest' });
-    expect(result).toMatchObject({ source: 'live', strategy: 'latest', items: [{ id: '12' }] });
-    expect(client.cards.list).toHaveBeenCalledWith(expect.objectContaining({ page: 1, list_rows: 30, order_key: 'created_at', order_desc: true }));
+    const result = await loadHomeFeed({ channel: 'following' });
+    expect(result).toMatchObject({ source: 'live', strategy: 'following', items: [{ id: '12' }] });
+    expect(client.cards.listFollowing).toHaveBeenCalledWith({ page: 1, list_rows: 30 });
   });
 
   it('uses cards.like and cards.unlike with the card id', async () => {

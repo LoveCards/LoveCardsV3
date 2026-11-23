@@ -209,7 +209,7 @@
     display: inline-grid;
     place-items: center;
     border-radius: 50%;
-    color: #fff;
+    color: var(--lc-on-rose);
     background: var(--lc-rose);
     font-size: .58rem;
     line-height: 1;
@@ -268,7 +268,7 @@
     gap: 8px;
   }
   .message-search-page-field { min-width: 0; }
-  .message-search-page-title { color: var(--lc-ink); font-size: .88rem; }
+  .message-search-page-title { margin: 0; color: var(--lc-ink); font-size: .88rem; }
   .message-search-page-header > a {
     width: 44px;
     height: 44px;
@@ -344,7 +344,7 @@
     flex: 0 0 auto;
     place-items: center;
     border-radius: 999px;
-    color: #fff;
+    color: var(--lc-on-rose);
     background: var(--lc-rose);
     font-size: .58rem;
     font-weight: 750;
@@ -404,7 +404,6 @@
 
   @media (max-width: 760px) {
     .app-shell.is-message-route { min-width: 0; overflow-x: clip; background: var(--lc-canvas); }
-    .app-shell.is-message-route > .product-header { display: none; }
     .message-center-page {
       width: 100%;
       max-width: 100%;
@@ -503,8 +502,9 @@
     }
     .message-center-page.messages-page .message-workspace .conversation-row,
     .message-workspace-skeleton .conversation-skeleton-row {
-      min-height: 72px;
-      padding: 12px 0;
+      min-height: 96px;
+      padding: 4px 0;
+      row-gap: 0;
       border: 0;
       border-bottom: 1px solid var(--lc-separator);
       border-radius: 0;
@@ -518,9 +518,10 @@
       padding-inline: 16px;
       background: var(--lc-rose-soft);
     }
-    .message-center-page.messages-page .conversation-row-open { min-height: 20px; padding: 0 62px 0 52px; display: block; font-size: .7rem; }
+    .message-center-page.messages-page .message-workspace .conversation-row .conversation-identity { min-width: 44px; min-height: 44px; }
+    .message-center-page.messages-page .conversation-row-open { min-height: 44px; padding: 0 62px 0 52px; display: block; font-size: .7rem; }
     .message-center-page.messages-page .conversation-preview { display: block; }
-    .message-center-page.messages-page .conversation-row-status { position: absolute; top: 14px; right: 0; gap: 6px; }
+    .message-center-page.messages-page .conversation-row-status { pointer-events: none; position: absolute; top: 14px; right: 0; gap: 6px; }
     .message-center-page.messages-page .conversation-unread { min-width: 7px; width: 7px; height: 7px; padding: 0; overflow: hidden; font-size: 0; }
     .message-center-page.messages-page .message-workspace-desktop-panel,
     .message-workspace-skeleton .message-workspace-desktop-panel { display: none; }

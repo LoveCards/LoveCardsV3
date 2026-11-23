@@ -1,6 +1,6 @@
 # API Contract Audit
 
-- Routes inspected: 209
+- Routes inspected: 212
 - P0: 0
 - P1: 0
 - P2: 0
@@ -130,6 +130,7 @@
 | POST | `/cards/:id/like` | `cards.like` | grants:likes.create:global | no | LikeCountResource::make | — |
 | POST | `/cards/:id/media-access` | `cards.mediaAccess` | grants:authenticated | no | CardMediaAccessResource::make | — |
 | GET | `/cards/hot` | `cards.hot` | public | no | CardResource::collection | — |
+| GET | `/cards/search-public` | `cards.searchPublic` | public | yes | CardResource::paginate | — |
 | GET | `/cards/search` | `cards.search` | public | yes | CardResource::paginate | — |
 | GET | `/comments/:id` | `comments.get` | public | no | CommentResource::make | — |
 | DELETE | `/comments/:id/like` | `comments.unlike` | grants:likes.delete:global | no | createNoContent | — |
@@ -205,6 +206,7 @@
 | GET | `/tags` | `tags.list` | public | no | TagResource::collection | — |
 | GET | `/tags/:id` | `tags.get` | public | no | TagResource::make | — |
 | GET | `/tags/policy` | `tags.policy` | public | no | TagsPolicyResource::make | — |
+| GET | `/tags/search` | `tags.search` | public | yes | PublicTagSearchResource::paginate | — |
 | GET | `/theme/config` | `theme.publicConfig` | public | no | ThemeConfigResource::make | — |
 | DELETE | `/users/:uid/block` | `safety.unblock` | grants:authenticated | no | createNoContent | — |
 | POST | `/users/:uid/block` | `safety.block` | grants:authenticated | no | createNoContent | — |
@@ -218,3 +220,4 @@
 | GET | `/users/by-handle/:handle` | `social.profileByHandle` | public | no | PublicUserProfileResource::make | — |
 | GET | `/users/by-handle/:handle/cards` | `cards.publicByHandle` | public | yes | CardResource::paginate | — |
 | GET | `/users/mention-candidates` | `users.searchMentionCandidates` | grants:authenticated | yes | MentionCandidateResource::paginate | — |
+| GET | `/users/search` | `users.searchPublic` | public | yes | PublicUserSearchResource::paginate | — |

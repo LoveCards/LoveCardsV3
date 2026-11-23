@@ -68,6 +68,21 @@
   .auth-register a { color: var(--lc-rose-deep); font-weight: 680; }
   .auth-register { margin: 20px 0 0; padding: 20px 0 0; border-top: 1px solid var(--lc-separator); color: var(--lc-body); font-size: 0.76rem; text-align: center; }
 
+  @media (max-width: 760px) {
+    .auth-form .astryx-button,
+    .auth-form .astryx-text-input,
+    .auth-policy-status .astryx-button { min-height: 44px; }
+    .auth-links > a,
+    .auth-links > button,
+    .auth-register > a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 44px;
+      min-height: 44px;
+    }
+  }
+
   @media (max-width: 520px) {
     .auth-page { padding: 0; place-items: stretch; background: var(--lc-surface); }
     .auth-panel { width: 100%; min-height: 100vh; padding: 28px 22px calc(36px + env(safe-area-inset-bottom)); border-radius: 0; box-shadow: none; }

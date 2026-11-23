@@ -9,7 +9,6 @@ import { normalizeGalleryLayout } from '../features/media/gallery-layout.js';
 export const HOME_CHANNELS = [
   { id: 'recommended', label: '推荐' },
   { id: 'following', label: '动态' },
-  { id: 'latest', label: '最新' },
 ];
 
 export class FeatureUnavailableError extends Error {
@@ -187,7 +186,7 @@ export function normalizeSdkCard(card) {
     replies: Number(card?.comments || 0),
     viewerLiked: null,
     mediaItems,
-    galleryLayout: normalizeGalleryLayout(data.galleryLayout),
+    galleryLayout: normalizeGalleryLayout(data.galleryLayout, kind === 'image' && mediaItems.length === 1 ? 1 : 2),
     mediaFit: normalizeMediaFit(data.mediaFit || data.media_fit || data.contentMode || data.content_mode),
     mediaUrl: mediaItems[0]?.url || null,
     mediaAlt,
@@ -208,7 +207,6 @@ export function stabilizeFeedLayouts(cards) {
 }
 
 function filterCards(cards, channel) {
-  if (channel === 'latest') return [...cards];
   if (channel === 'gallery' || channel === 'video' || channel === 'discussion') {
     return cards.filter((card) => card.kind === channel);
   }
@@ -294,25 +292,20 @@ export async function loadHomeFeed({ channel = 'recommended', signal } = {}) {
     ? await loadRecommendedCards(client, signal)
     : null;
   const response = channel === 'following'
-      ? await client.cards.listFollowing({ page: 1, list_rows: 30 })
-    : channel === 'latest' ? await client.cards.list({
-      page: 1,
-      list_rows: 30,
-      order_key: 'created_at',
-      order_desc: true,
-    }) : null;
+    ? await client.cards.listFollowing({ page: 1, list_rows: 30 })
+    : null;
   abortIfNeeded(signal);
 
   let rawItems;
   if (channel === 'recommended') {
     rawItems = recommended.rawItems;
   } else {
-    if (!response || !Array.isArray(response.data)) throw new Error(`SDK 契约错误：cards.${channel === 'following' ? 'listFollowing' : 'list'}() 应返回 ListResult。`);
+    if (!response || !Array.isArray(response.data)) throw new Error('SDK 契约错误：cards.listFollowing() 应返回 ListResult。');
     rawItems = response.data;
   }
   return {
     source: 'live',
-    strategy: channel === 'recommended' ? recommended.strategy : channel === 'following' ? 'following' : 'latest',
+    strategy: channel === 'recommended' ? recommended.strategy : 'following',
     degradedError: recommended?.degradedError || null,
     items: stabilizeFeedLayouts(filterCards(rawItems.map(normalizeSdkCard), channel)),
   };

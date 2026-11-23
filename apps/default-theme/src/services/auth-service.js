@@ -62,12 +62,13 @@ export async function startGuestSession() {
 
 export async function checkSession() {
   const client = getSdkClient();
-  if (!client?.getToken()) return null;
+  const token = client?.getToken();
+  if (!token) return null;
   try {
     return await client.session.check();
   } catch (error) {
     if (error?.status === 401) {
-      client.clearToken();
+      if (client.getToken() === token) client.clearToken();
       return null;
     }
     throw error;

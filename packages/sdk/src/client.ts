@@ -105,13 +105,10 @@ export function createClient(config: LCClientConfig): LCClient {
     (error) => {
       const apiErr = ApiError.from(error)
       const headers = error?.config?.headers
-      const sentWithToken = Boolean(
-        headers?.Authorization
-        || headers?.authorization
-        || headers?.['X-Token']
-        || headers?.['x-token'],
-      )
-      if (apiErr.status === 401 && sentWithToken && config.onAuthError) config.onAuthError()
+      const requestToken = headers?.['X-Token'] ?? headers?.['x-token']
+        ?? String(headers?.Authorization ?? headers?.authorization ?? '').replace(/^Bearer\s+/i, '')
+      // 旧会话的延迟响应不能使登录后刚获得的凭证失效。
+      if (apiErr.status === 401 && requestToken && requestToken === tokenStore.get()) config.onAuthError?.()
       return Promise.reject(apiErr)
     }
   )
@@ -162,6 +159,7 @@ class LCClientImpl implements LCClient {
   readonly hooks: HookRegistration
 
   private _tokenStore: TokenStore
+  private _requestOptions: ResourceOptions
   private _getRole: () => string | null
   private _setRole: (r: string) => void
 
@@ -173,6 +171,7 @@ class LCClientImpl implements LCClient {
     setRole: (r: string) => void,
   ) {
     this._tokenStore = tokenStore
+    this._requestOptions = opts
     this._getRole = getRole
     this._setRole = setRole
     this.session = new Session(instance, opts)
@@ -231,10 +230,12 @@ class LCClientImpl implements LCClient {
   }
 
   setToken(token: string): void {
+    if (this._tokenStore.get() !== token) this._requestOptions.dedupe = new Deduplicator()
     this._tokenStore.set(token)
   }
 
   clearToken(): void {
+    if (this._tokenStore.get()) this._requestOptions.dedupe = new Deduplicator()
     this._tokenStore.clear()
   }
 

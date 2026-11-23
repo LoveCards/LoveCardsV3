@@ -3,6 +3,8 @@ name: LoveCards System Material Feed
 description: 以系统级精度承载真实内容的社区信息流设计系统
 colors:
   primary-rose: "#c92c60"
+  on-primary-rose: "#ffffff"
+  on-primary-rose-dark: "#171717"
   highlight-rose: "#e63d63"
   rose-soft: "#fff0f4"
   canvas: "#f5f5f7"
@@ -72,6 +74,7 @@ spacing:
 motion:
   press: "120ms"
   state: "220ms"
+  loadingPulse: "1300ms"
   control: "280ms"
   matchedExpand: "300ms"
   contentLift: "12px"
@@ -81,7 +84,7 @@ motion:
 components:
   button-primary:
     backgroundColor: "{colors.primary-rose}"
-    textColor: "{colors.surface}"
+    textColor: "{colors.on-primary-rose}"
     typography: "{typography.label}"
     rounded: "{rounded.control}"
     padding: "10px 16px"

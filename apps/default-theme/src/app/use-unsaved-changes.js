@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 
-export function useUnsavedChanges(dirty, onNavigationAttempt) {
+export function useUnsavedChanges(dirty, onNavigationAttempt, { interceptLinks = true } = {}) {
   useEffect(() => {
     if (!dirty) return undefined;
 
@@ -24,10 +24,10 @@ export function useUnsavedChanges(dirty, onNavigationAttempt) {
     };
 
     window.addEventListener('beforeunload', beforeUnload);
-    document.addEventListener('click', interceptLink, true);
+    if (interceptLinks) document.addEventListener('click', interceptLink, true);
     return () => {
       window.removeEventListener('beforeunload', beforeUnload);
-      document.removeEventListener('click', interceptLink, true);
+      if (interceptLinks) document.removeEventListener('click', interceptLink, true);
     };
-  }, [dirty, onNavigationAttempt]);
+  }, [dirty, onNavigationAttempt, interceptLinks]);
 }

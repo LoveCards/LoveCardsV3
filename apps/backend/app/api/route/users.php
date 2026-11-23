@@ -2,6 +2,7 @@
 
 use think\facade\Route;
 use app\api\middleware\JwtAuthCheck;
+use app\api\middleware\OptionalJwtAuth;
 use app\api\middleware\PermissionCheck;
 use app\modules\Platform\User\Transport\Api\Profile;
 use app\modules\Platform\User\Transport\Api\ProfileResource;
@@ -10,6 +11,8 @@ use app\modules\Platform\User\Transport\Api\Users as UsersValidate;
 use app\modules\Platform\User\Transport\Api\UserResource;
 use app\modules\Platform\User\Transport\Api\MentionCandidates as MentionCandidatesValidate;
 use app\modules\Platform\User\Transport\Api\MentionCandidateResource;
+use app\modules\Platform\User\Transport\Api\PublicUsersSearch;
+use app\modules\Platform\User\Transport\Api\PublicUserSearchResource;
 use app\shared\Authorization\Scope;
 use app\shared\Transport\Http\ApiResource;
 use app\shared\Transport\Validation\PaginationInput;
@@ -37,6 +40,12 @@ Route::group('me', function () use ($required, $grant) {
         ->setOption('contract', ['request' => ['validate' => Profile::class, 'scene' => 'emailCaptcha'], 'response' => ['resource' => EmailCaptchaResource::class, 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => '邮箱验证码', 'group' => '用户', 'access' => $required([$grant('users.update', Scope::OWN)])]);
 })->middleware(JwtAuthCheck::class)->middleware(PermissionCheck::class);
+
+// 搜索结果只包含当前访客可访问的主页，认证身份是可选的。
+Route::get('users/search', 'User.Users/searchPublic')->name('users.searchPublic')
+    ->setOption('contract', ['request' => ['validate' => PublicUsersSearch::class, 'scene' => 'search'], 'response' => ['resource' => PublicUserSearchResource::class, 'shape' => 'paginated', 'status' => 200]])
+    ->setOption('meta', ['name' => '搜索用户', 'group' => '用户', 'access' => ['auth' => 'public']])
+    ->middleware(OptionalJwtAuth::class);
 
 // 普通用户的 @ 提及候选。只经过登录校验，隐私、屏蔽和账号状态由业务层统一筛选。
 Route::get('users/mention-candidates', 'User.Users/searchMentionCandidates')->name('users.searchMentionCandidates')

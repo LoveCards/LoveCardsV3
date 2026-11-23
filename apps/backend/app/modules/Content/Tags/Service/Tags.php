@@ -18,6 +18,26 @@ use app\shared\Observability\AdminMutationAudit;
 
 class Tags
 {
+    /** 按名称检索公开话题，查询范围与排序由服务端固定。 */
+    public static function searchPublic(array $params): array
+    {
+        $value = $params['search_value'] ?? null;
+        $query = is_string($value) ? trim(ltrim(trim($value), '#')) : '';
+        if ($query === '') throw \app\api\ApiException::badRequest('请输入搜索关键词');
+
+        $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $query);
+        return TagsModel::where('aid', 1)->where('status', 0)->whereNull('deleted_at')
+            ->whereRaw("name LIKE :topic_search_contains ESCAPE '\\\\'", ['topic_search_contains' => '%' . $escaped . '%'])
+            ->orderRaw("CASE WHEN name = :topic_rank_exact THEN 0 WHEN name LIKE :topic_rank_prefix ESCAPE '\\\\' THEN 1 ELSE 2 END", [
+                'topic_rank_exact' => $query,
+                'topic_rank_prefix' => $escaped . '%',
+            ])
+            ->order('name', 'asc')->order('id', 'asc')->paginate([
+            'page' => max(1, (int) ($params['page'] ?? 1)),
+            'list_rows' => min(50, max(1, (int) ($params['list_rows'] ?? 20))),
+        ])->toArray();
+    }
+
     public static function noPaginateIndex($params): array
     {
         $params['search_default_key'] = 'name';

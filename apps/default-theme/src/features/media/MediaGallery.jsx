@@ -98,7 +98,7 @@ export function MediaGallery({ items = [], title, galleryLayout = 'grid' }) {
   if (!mediaItems.length) return null;
   if (mediaItems.length === 1 && getMediaType(mediaItems[0]) === 'video') return <DetailVideoSurface item={mediaItems[0]} />;
 
-  const isPager = mediaItems.length > 1 && mediaItems.every((item) => getMediaType(item) !== 'video') && normalizeGalleryLayout(galleryLayout) === 'pager';
+  const isPager = mediaItems.every((item) => getMediaType(item) !== 'video') && normalizeGalleryLayout(galleryLayout) === 'pager';
   const pageIndex = Math.min(pager.index, mediaItems.length - 1);
   const visibleItems = mediaItems.slice(0, 9);
   const gridCount = visibleItems.length;
@@ -109,9 +109,11 @@ export function MediaGallery({ items = [], title, galleryLayout = 'grid' }) {
         <button className="detail-media-tile" type="button" onClick={(event) => { if (!pager.consumeSwipeClick(event)) setActiveIndex(pageIndex); }} aria-label={`放大第 ${pageIndex + 1} 张图片，共 ${mediaItems.length} 张`}>
           <MediaFrame key={mediaItems[pageIndex].url} className="detail-media-frame" item={mediaItems[pageIndex]} fit="contain" ariaHidden />
         </button>
-        <span className="detail-media-page-count" aria-live="polite">{pageIndex + 1} / {mediaItems.length}</span>
-        <button className="detail-media-page-nav is-previous" type="button" aria-label="上一张图片" onClick={(event) => { if (!pager.consumeSwipeClick(event)) pager.move(-1); }} disabled={pageIndex === 0}>‹</button>
-        <button className="detail-media-page-nav is-next" type="button" aria-label="下一张图片" onClick={(event) => { if (!pager.consumeSwipeClick(event)) pager.move(1); }} disabled={pageIndex === mediaItems.length - 1}>›</button>
+        {mediaItems.length > 1 && <>
+          <span className="detail-media-page-count" aria-live="polite">{pageIndex + 1} / {mediaItems.length}</span>
+          <button className="detail-media-page-nav is-previous" type="button" aria-label="上一张图片" onClick={(event) => { if (!pager.consumeSwipeClick(event)) pager.move(-1); }} disabled={pageIndex === 0}><Icon name="arrowLeft" size={20} /></button>
+          <button className="detail-media-page-nav is-next" type="button" aria-label="下一张图片" onClick={(event) => { if (!pager.consumeSwipeClick(event)) pager.move(1); }} disabled={pageIndex === mediaItems.length - 1}><Icon name="arrow" size={20} /></button>
+        </>}
       </div> : <div className={`detail-media-grid is-count-${gridCount}${gridCount > 4 ? ' is-many' : ''}`} role="group" aria-label={`媒体，共 ${mediaItems.length} 项`}>
         {visibleItems.map((item, index) => {
           const type = getMediaType(item);

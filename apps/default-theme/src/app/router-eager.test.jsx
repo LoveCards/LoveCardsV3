@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { HomePage } from '../pages/home/HomePage.jsx';
 import { ExplorePage } from '../pages/explore/ExplorePage.jsx';
+import { SearchPage } from '../pages/search/SearchPage.jsx';
 import { DetailPage } from '../pages/detail/DetailPage.jsx';
 import { MediaPage } from '../pages/detail/MediaPage.jsx';
 import { MePage } from '../pages/profile/MePage.jsx';
@@ -22,7 +23,8 @@ import { MessagesPage } from '../pages/community/MessagesPage.jsx';
 import { NewMessagePage } from '../pages/community/NewMessagePage.jsx';
 import { PrivacyPage } from '../pages/community/PrivacyPage.jsx';
 import { PublicProfileView } from '../pages/community/PublicProfileView.jsx';
-import { HomeFeedRoute, ProtectedRoute } from './auth-routing.jsx';
+import { HomeFeedRoute, LegacyFeedRoute, ProtectedRoute } from './auth-routing.jsx';
+import { ActivityPage } from '../pages/activity/ActivityPage.jsx';
 
 const pendingRoutes = [
   { path: '/compose/:type', title: '发布类型', description: '针对不同媒体类型提供对应编辑体验。', capability: '分类发布编辑器暂未开放，请使用通用发布页。', backTo: '/compose', backLabel: '返回发布', mobileMode: 'immersive', protected: true },
@@ -34,9 +36,12 @@ export function EagerAppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomeFeedRoute><HomePage /></HomeFeedRoute>} />
+      <Route path="/feed/latest" element={<LegacyFeedRoute to="/explore" />} />
+      <Route path="/feed/following" element={<LegacyFeedRoute to="/activity" />} />
+      <Route path="/activity" element={<ProtectedRoute><ActivityPage /></ProtectedRoute>} />
       <Route path="/explore" element={<ExplorePage />} />
-      <Route path="/search" element={<ExplorePage search />} />
-      <Route path="/search/:scope" element={<ExplorePage search />} />
+      <Route path="/search" element={<SearchPage />} />
+      <Route path="/search/:scope" element={<SearchPage />} />
       <Route path="/topic/:slug" element={<ExplorePage topic />} />
       <Route path="/post/:id" element={<DetailPage />} />
       <Route path="/post/:id/thread/:commentId" element={<DetailPage />} />

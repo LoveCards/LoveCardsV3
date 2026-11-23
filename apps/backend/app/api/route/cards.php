@@ -8,6 +8,7 @@ use app\api\middleware\OptionalJwtAuth;
 use app\modules\Content\Cards\Transport\Api\Cards as CardsValidate;
 use app\modules\Content\Cards\Transport\Api\PublicUserCards as PublicUserCardsValidate;
 use app\modules\Content\Cards\Transport\Api\FollowingFeed as FollowingFeedValidate;
+use app\modules\Content\Cards\Transport\Api\PublicCardsQuery as PublicCardsQueryValidate;
 use app\modules\Content\Cards\Transport\Api\CardResource;
 use app\modules\Content\Cards\Transport\Api\CardCreatedResource;
 use app\modules\Content\Comments\Transport\Api\Comments as CommentsValidate;
@@ -29,9 +30,15 @@ Route::get('cards/hot', 'Content.Cards/hotList')
     ->setOption('meta', ['name' => '热门卡片', 'group' => '卡片', 'access' => ['auth' => 'public']])
     ->middleware(OptionalJwtAuth::class);
 
+Route::get('cards/search-public', 'Content.Cards/searchPublic')
+    ->name('cards.searchPublic')
+    ->setOption('contract', ['request' => ['validate' => \app\modules\Content\Cards\Transport\Api\PublicCardSearchQuery::class, 'scene' => 'search'], 'response' => ['resource' => CardResource::class, 'shape' => 'paginated', 'status' => 200]])
+    ->setOption('meta', ['name' => '搜索公开内容', 'group' => '卡片', 'access' => ['auth' => 'public']])
+    ->middleware(OptionalJwtAuth::class);
+
 Route::get('cards/search', 'Content.Cards/search')
     ->name('cards.search')
-    ->setOption('contract', ['request' => ['validate' => PaginationInput::class, 'scene' => 'Defult'], 'response' => ['resource' => CardResource::class, 'shape' => 'paginated', 'status' => 200]])
+    ->setOption('contract', ['request' => ['validate' => PublicCardsQueryValidate::class, 'scene' => 'list'], 'response' => ['resource' => CardResource::class, 'shape' => 'paginated', 'status' => 200]])
     ->setOption('meta', ['name' => '搜索卡片', 'group' => '卡片', 'access' => ['auth' => 'public']])
     ->middleware(OptionalJwtAuth::class);
 
@@ -67,7 +74,7 @@ Route::get('cards/:id', 'Content.Cards/get')
 
 Route::get('cards', 'Content.Cards/list')
     ->name('cards.list')
-    ->setOption('contract', ['request' => ['validate' => PaginationInput::class, 'scene' => 'Defult'], 'response' => ['resource' => CardResource::class, 'shape' => 'paginated', 'status' => 200]])
+    ->setOption('contract', ['request' => ['validate' => PublicCardsQueryValidate::class, 'scene' => 'list'], 'response' => ['resource' => CardResource::class, 'shape' => 'paginated', 'status' => 200]])
     ->setOption('meta', ['name' => '卡片列表', 'group' => '卡片', 'access' => ['auth' => 'public']])
     ->middleware(OptionalJwtAuth::class);
 

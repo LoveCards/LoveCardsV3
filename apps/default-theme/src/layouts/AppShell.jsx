@@ -2,60 +2,60 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Brand } from '../components/Brand.jsx';
 import { HeaderSearch } from '../components/HeaderSearch.jsx';
-import { ThemeToggle } from '../features/theme/ThemeToggle.jsx';
+import { ContentChannels } from '../components/ContentChannels.jsx';
 import { Avatar, Icon } from '../ui/icons.jsx';
-import { ActionMenu, AuthPromptDialog } from '../ui/interaction.jsx';
 import { IconButton } from '../ui/controls.jsx';
 import { useAuth } from '../app/providers.jsx';
-import { endCurrentSession } from '../app/end-current-session.js';
 import { getRuntimeDataMode } from '../app/runtime-context.js';
 import { getSdkClient, sdkConfigured } from '../app/sdk-client.js';
 import { getCommunicationRuntime, SIGNAL_UNREAD } from '../services/communication-runtime.js';
+import { composeModalState } from '../app/compose-modal-routing.js';
+import { browseTaskState } from '../app/browse-task-routing.js';
+import { useNavigationLogin } from '../app/NavigationLoginProvider.jsx';
 
-const bottomNav = [
-  { to: '/', label: '首页', icon: 'home', end: true },
-  { to: '/?feed=following', label: '动态', icon: 'users' },
-  { to: '/compose', label: '发布', icon: 'plus', compose: true },
-  { to: '/messages', label: '消息', icon: 'mail', inbox: true },
-  { to: '/me', label: '我的', icon: 'user' },
-];
+const recommend = { to: '/', label: '推荐', icon: 'home' };
+const activity = { to: '/activity', label: '动态', icon: 'users' };
+const compose = { to: '/compose', label: '发布', icon: 'plus', compose: true };
+const messages = { to: '/messages', label: '消息', icon: 'mail', inbox: true };
+const profile = { to: '/me', label: '我的', icon: 'user' };
+const bottomNav = [{ ...recommend, label: '首页' }, activity, compose, messages, profile];
 
 const desktopNav = [
-  { to: '/', label: '首页', end: true },
-  { to: '/?feed=following', label: '动态' },
-  { to: '/messages', label: '消息', inbox: true },
+  recommend,
+  { to: '/explore', label: '发现', icon: 'compass' },
+  activity,
+  messages,
+  compose,
+  profile,
 ];
 
-const loginActions = {
-  '/?feed=following': '查看动态',
-  '/compose': '发布内容',
-  '/messages': '查看消息',
-  '/me': '查看我的主页',
-};
-
-const protectedNavigationPrefixes = ['/me', '/messages', '/inbox', '/compose', '/drafts', '/settings/profile', '/settings/security', '/settings/session', '/settings/privacy', '/settings/blocked', '/settings/notifications'];
+const protectedNavigationPrefixes = ['/activity', '/me', '/messages', '/inbox', '/compose', '/drafts', '/settings/profile', '/settings/security', '/settings/session', '/settings/privacy', '/settings/blocked', '/settings/notifications'];
 
 function isProtectedNavigationTarget(target) {
-  if (target.startsWith('/?') && new URLSearchParams(target.slice(2)).get('feed') === 'following') return true;
   return protectedNavigationPrefixes.some((prefix) => target === prefix || target.startsWith(`${prefix}/`) || target.startsWith(`${prefix}?`));
 }
 
-export function AppShell({ children, mobileMode = 'standard' }) {
+export function AppShell({ children, mobileMode = 'standard', pendingIdentity = false, desktopSearch }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { pathname, search } = location;
-  const feedParams = new URLSearchParams(search);
-  const followingActive = pathname === '/' && (feedParams.get('feed') === 'following' || feedParams.get('channel') === 'following');
-  const homeActive = (pathname === '/' && !followingActive) || pathname === '/explore' || pathname === '/search' || pathname.startsWith('/search/') || pathname.startsWith('/topic/');
+  const searchRoute = pathname === '/search' || pathname.startsWith('/search/');
+  const activityActive = pathname === '/activity';
+  const browseChannel = pathname === '/' ? 'recommended' : pathname === '/explore' ? 'explore' : null;
+  const exploreActive = pathname === '/explore' || pathname.startsWith('/topic/');
   const hasMobileBottomNav = mobileMode === 'standard';
   const messageCenterActive = pathname === '/messages' || pathname.startsWith('/messages/') || pathname === '/inbox' || pathname.startsWith('/inbox/');
   const composeActive = pathname === '/compose' || pathname.startsWith('/compose/');
-  const { isAuthenticated, isVisitor, user, logout, status: authStatus } = useAuth();
+  const meActive = pathname === '/me' || pathname.startsWith('/me/');
+  const auth = useAuth();
+  const { user, status: authStatus } = auth;
+  const isAuthenticated = !pendingIdentity && auth.isAuthenticated;
+  const isVisitor = !pendingIdentity && auth.isVisitor;
   const designPreview = getRuntimeDataMode() === 'design-preview';
   const requiresLogin = !designPreview && authStatus === 'ready' && !isAuthenticated;
   const needsNavigationLogin = (target) => requiresLogin && !(isVisitor && target === '/me') && isProtectedNavigationTarget(target);
   const [authExpired, setAuthExpired] = useState(false);
-  const [loginRequest, setLoginRequest] = useState(null);
+  const openLogin = useNavigationLogin();
   const [notificationUnread, setNotificationUnread] = useState(0);
   const [realtimeFault, setRealtimeFault] = useState(false);
   useEffect(() => {
@@ -103,58 +103,57 @@ export function AppShell({ children, mobileMode = 'standard' }) {
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [isAuthenticated]);
-  const endSession = async (destination) => {
-    await endCurrentSession(logout, navigate, destination);
-  };
-  const openLogin = (target = null) => setLoginRequest({ target, action: loginActions[target] || '' });
   const handleNavigationClick = (event, target) => {
     if (!needsNavigationLogin(target) || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     openLogin(target);
   };
-  const accountItems = isAuthenticated ? [
-    { label: '我的主页', icon: <Icon name="user" size={17} />, onClick: () => navigate('/me') },
-    { label: '设置', icon: <Icon name="settings" size={17} />, onClick: () => navigate('/settings/appearance') },
-    { type: 'divider' },
-    { label: '退出登录', icon: <Icon name="logout" size={17} />, onClick: () => { void endSession('/auth/login'); } },
-  ] : designPreview ? [
-    { label: '设计预览主页', icon: <Icon name="user" size={17} />, onClick: () => navigate('/me') },
-    { label: '外观设置', icon: <Icon name="settings" size={17} />, onClick: () => navigate('/settings/appearance') },
-  ] : [
-    { label: isVisitor ? '登录正式账号' : '登录', icon: <Icon name="user" size={17} />, onClick: () => openLogin() },
-    { label: '创建账号', icon: <Icon name="plus" size={17} />, onClick: () => navigate('/auth/register') },
-    { label: '外观设置', icon: <Icon name="settings" size={17} />, onClick: () => navigate('/settings/appearance') },
-    ...(isVisitor ? [{ type: 'divider' }, { label: '结束游客会话', icon: <Icon name="logout" size={17} />, onClick: () => { void endSession('/'); } }] : []),
-  ];
-
+  const handleComposeClick = (event) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (needsNavigationLogin('/compose')) { handleNavigationClick(event, '/compose'); return; }
+    if (window.matchMedia('(min-width: 761px)').matches) {
+      event.preventDefault();
+      navigate('/compose', { state: composeModalState(location) });
+    }
+  };
   const profileRoute = pathname === '/me' || pathname.startsWith('/user/');
+  const activeDesktopPath = browseChannel === 'recommended' ? '/' : exploreActive ? '/explore' : activityActive ? '/activity' : messageCenterActive ? '/messages' : composeActive ? '/compose' : meActive ? '/me' : null;
   return (
-    <div className={`app-shell is-mobile-${mobileMode}${profileRoute ? ' is-profile-route' : ''}${messageCenterActive ? ' is-message-route' : ''}${composeActive ? ' is-compose-route' : ''}${hasMobileBottomNav ? '' : ' is-secondary-route'}`}>
-      <header className="product-header">
-        <div className="product-header-inner">
-          <Brand />
-          <nav className="desktop-nav" aria-label="主要导航">
-            {desktopNav.map((item) => {
-              if (item.unavailable) return <span className="nav-unavailable" aria-disabled="true" key={item.label}>{item.label}<small>未开放</small></span>;
-              const content = <>{item.label}{item.inbox && notificationUnread > 0 && <span className="nav-unread" aria-label={`${notificationUnread} 条未读通知`}>{notificationUnread > 99 ? '99+' : notificationUnread}</span>}</>;
-              const active = item.inbox ? messageCenterActive : item.to === '/' ? homeActive : followingActive;
-              return <Link aria-current={active ? 'page' : undefined} key={item.to} to={item.to} onClick={(event) => handleNavigationClick(event, item.to)}>{content}</Link>;
-            })}
-          </nav>
-          <HeaderSearch />
-          <div className="header-actions">
-            <IconButton className="mobile-search-trigger" type="button" label="打开搜索" tooltip="搜索" variant="ghost" size="lg" icon={<Icon name="search" size={20} />} onClick={() => window.dispatchEvent(new CustomEvent('lc-open-mobile-search'))} />
-            {!isAuthenticated && !designPreview && <IconButton className="mobile-login-trigger" type="button" label={isVisitor ? '登录正式账号' : '登录'} variant="ghost" size="lg" icon={<Icon name="user" size={20} />} onClick={() => openLogin()} />}
-            <Link className="header-compose" to="/compose" onClick={(event) => handleNavigationClick(event, '/compose')}>发布</Link>
-            <ThemeToggle />
-            <div className="header-profile"><ActionMenu items={accountItems} label={isAuthenticated ? `${user?.username || '账号'}菜单` : designPreview ? '设计预览菜单' : isVisitor ? '游客菜单' : '登录与设置'} icon={<Avatar label={isAuthenticated ? (user?.username || '我') : designPreview ? '预' : isVisitor ? '访' : '登'} src={isAuthenticated ? user?.avatar : undefined} tone="sand" size="sm" />} /></div>
+    <div className={`app-shell is-mobile-${mobileMode}${profileRoute ? ' is-profile-route' : ''}${messageCenterActive ? ' is-message-route' : ''}${hasMobileBottomNav ? '' : ' is-secondary-route'}`}>
+      <aside className="product-sidebar" aria-label="桌面侧栏">
+        <Brand />
+        <nav className="desktop-nav" aria-label="主要导航">
+          {desktopNav.map((item) => (
+            <Link className={item.compose ? 'header-compose' : undefined} aria-current={item.to === activeDesktopPath ? 'page' : undefined} key={item.to} to={item.to} onClick={item.compose ? handleComposeClick : (event) => handleNavigationClick(event, item.to)}>
+              <span className="sidebar-nav-icon" aria-hidden="true">
+                {item === profile && isAuthenticated ? <Avatar label={user?.username || '我'} src={user?.avatar} tone="rose" size="sm" /> : <Icon name={item.icon} size={19} />}
+              </span>
+              <span>{item.label}</span>
+              {item.inbox && notificationUnread > 0 && <span className="nav-unread" aria-label={`${notificationUnread} 条未读通知`}>{notificationUnread > 99 ? '99+' : notificationUnread}</span>}
+            </Link>
+          ))}
+        </nav>
+        <footer className="product-sidebar-footer">
+          <Link className="sidebar-theme" to="/settings/appearance" aria-current={pathname === '/settings/appearance' ? 'page' : undefined}><Icon name="settings" size={17} /><span>主题设置</span></Link>
+          <small>© LoveCards</small>
+        </footer>
+      </aside>
+      <div className="app-workspace">
+        {!messageCenterActive && <header className="product-header">
+          <div className="product-header-inner">
+            <div className="desktop-search">{desktopSearch || <HeaderSearch />}</div>
+            <div className="mobile-product-header">
+              <Brand iconOnly />
+              {browseChannel ? <ContentChannels active={browseChannel} /> : activityActive ? <strong>动态</strong> : <span />}
+              {!searchRoute && <Link className="mobile-search-trigger" to="/search" state={browseTaskState(location)} aria-label="打开搜索"><Icon name="search" size={20} /></Link>}
+            </div>
           </div>
-        </div>
-      </header>
-      {location.state?.logoutUnconfirmed && <div className="session-notice" role="alert"><span>本机凭证已清除，但服务器退出未确认。</span><IconButton className="session-notice-dismiss" type="button" onClick={() => navigate(`${pathname}${search}${location.hash}`, { replace: true, state: null })} label="关闭退出状态提示" variant="ghost" size="lg" icon={<Icon name="close" size={17} />} /></div>}
-      {authExpired && <div className="session-notice" role="alert"><span>登录状态已失效，部分操作暂不可用。</span><Link to="/auth/login">重新登录</Link><IconButton className="session-notice-dismiss" type="button" onClick={() => setAuthExpired(false)} label="关闭登录状态提示" variant="ghost" size="lg" icon={<Icon name="close" size={17} />} /></div>}
-      {realtimeFault && <div className="session-notice" role="status"><span>实时更新暂不可用；手动刷新仍可查看最新内容。</span></div>}
-      {children}
+        </header>}
+        {location.state?.logoutUnconfirmed && <div className="session-notice" role="alert"><span>本机凭证已清除，但服务器退出未确认。</span><IconButton className="session-notice-dismiss" type="button" onClick={() => navigate(`${pathname}${search}${location.hash}`, { replace: true, state: null })} label="关闭退出状态提示" variant="ghost" size="lg" icon={<Icon name="close" size={17} />} /></div>}
+        {authExpired && <div className="session-notice" role="alert"><span>登录状态已失效，部分操作暂不可用。</span><Link to="/auth/login">重新登录</Link><IconButton className="session-notice-dismiss" type="button" onClick={() => setAuthExpired(false)} label="关闭登录状态提示" variant="ghost" size="lg" icon={<Icon name="close" size={17} />} /></div>}
+        {realtimeFault && <div className="session-notice" role="status"><span>实时更新暂不可用；手动刷新仍可查看最新内容。</span></div>}
+        {children}
+      </div>
       {hasMobileBottomNav && <nav className="mobile-bottom-nav" aria-label="移动端产品导航">
         {bottomNav.map((item) => {
           if (item.unavailable) return <span className="mobile-nav-unavailable" aria-disabled="true" key={item.label}>
@@ -169,7 +168,7 @@ export function AppShell({ children, mobileMode = 'standard' }) {
             {item.compose && <span className="sr-only">{item.label}</span>}
           </>;
           if (item.inbox) return <Link className={messageCenterActive ? 'is-active' : undefined} aria-current={messageCenterActive ? 'page' : undefined} key={item.to} to={item.to} onClick={(event) => handleNavigationClick(event, item.to)}>{content}</Link>;
-          const active = item.compose ? composeActive : item.to === '/' ? homeActive : item.to === '/?feed=following' ? followingActive : pathname === item.to;
+          const active = item.compose ? composeActive : item.to === '/' ? Boolean(browseChannel) : item.to === '/activity' ? activityActive : pathname === item.to;
           return <Link
             className={`${item.compose ? 'is-compose ' : ''}${active ? 'is-active' : ''}`.trim()}
             aria-current={active ? 'page' : undefined}
@@ -179,7 +178,6 @@ export function AppShell({ children, mobileMode = 'standard' }) {
           >{content}</Link>;
         })}
       </nav>}
-      <AuthPromptDialog isOpen={Boolean(loginRequest)} action={loginRequest?.action} onOpenChange={(open) => { if (!open) setLoginRequest(null); }} onSuccess={() => { if (loginRequest?.target) navigate(loginRequest.target); }} onLogin={() => { const from = loginRequest?.target || `${pathname}${search}${location.hash}`; setLoginRequest(null); navigate('/auth/login', { state: { from } }); }} />
     </div>
   );
 }

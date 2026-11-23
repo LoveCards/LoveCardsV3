@@ -1,136 +1,133 @@
-import { useCallback, useMemo } from 'react';
-import { Link, useLocation, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { browseTaskBack } from '../../app/browse-task-routing.js';
+import { TaskPageHeader } from '../../components/TaskPageHeader.jsx';
 import { AppShell } from '../../layouts/AppShell.jsx';
-import { ContentChannels } from '../../components/ContentChannels.jsx';
-import { ResourceState } from '../../components/ResourceState.jsx';
+import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
 import { FeedCollection } from '../../features/feed/FeedCollection.jsx';
+import { FeedLayoutControl } from '../../features/feed/FeedLayout.jsx';
 import { useResource } from '../../app/use-resource.js';
-import { getDiscoverySnapshot, loadDiscovery, topicHref } from '../../services/discovery-service.js';
-import { DiscoverySearchSurface } from '../../features/search/DiscoverySearchSurface.jsx';
-import { MediaFrame } from '../../features/media/MediaFrame.jsx';
-import { cardPreviewSession, cardPreviewState, warmCardPreviewDetail } from '../../app/card-preview-routing.js';
+import { getDiscoverySnapshot, loadDiscovery, normalizeDiscoverySort } from '../../services/discovery-service.js';
+import { Button } from '../../ui/index.js';
 
-function Boundary({ data }) {
+export { canonicalSearchPath } from '../search/search-route.js';
+
+const sortOptions = [
+  { value: 'latest', label: '最新发布' },
+  { value: 'liked', label: '最多喜欢' },
+  { value: 'discussed', label: '讨论最多' },
+];
+
+export function canonicalExplorePath({ search = '', hash = '' }) {
+  const params = new URLSearchParams(search);
+  const query = params.get('q')?.trim();
+  if (query) {
+    params.delete('sort');
+    params.set('q', query);
+    return `/search?${params}${hash}`;
+  }
+  const requested = params.get('sort');
+  const normalized = normalizeDiscoverySort(requested);
+  if (requested === null || (requested === normalized && requested !== 'latest' && params.getAll('sort').length === 1)) return null;
+  if (normalized === 'latest') params.delete('sort');
+  else params.set('sort', normalized);
+  const next = params.toString();
+  return `/explore${next ? `?${next}` : ''}${hash}`;
+}
+
+function DiscoveryFeed({ initial, topic, query, sort }) {
+  const loader = useCallback((signal) => loadDiscovery({ query, signal, topic, sort }), [query, topic, sort]);
+  const { data, status, error, reload } = useResource(loader, initial);
+  const [more, setMore] = useState({ items: [], page: 1, loading: false, error: null });
+  const moreController = useRef(null);
+  useEffect(() => () => moreController.current?.abort(), []);
+
+  const feedClass = `discovery-feed${topic ? ' is-topic' : ''}`;
+  const feedItems = [...data.items, ...more.items];
+  const topicName = data.topic?.name || query.replace(/^\d+-(?=.)/, '');
+  const hasMore = !topic && status === 'success' && more.page < Number(data.pagination?.totalPages || 1);
+
+  const loadMore = async () => {
+    if (!hasMore || moreController.current) return;
+    const controller = new AbortController();
+    moreController.current = controller;
+    setMore((current) => ({ ...current, loading: true, error: null }));
+    try {
+      const next = await loadDiscovery({ sort, page: more.page + 1, signal: controller.signal });
+      if (controller.signal.aborted) return;
+      const seen = new Set(feedItems.map((item) => item.id));
+      setMore({ items: [...more.items, ...next.items.filter((item) => !seen.has(item.id))], page: next.pagination.currentPage, loading: false, error: null });
+    } catch (reason) {
+      if (!controller.signal.aborted) setMore((current) => ({ ...current, loading: false, error: reason }));
+    } finally {
+      moreController.current = null;
+    }
+  };
+
   return (
-    <section className="discovery-boundary" role="status">
-      <h2>{data.message}</h2>
-      <p>{data.detail}</p>
-      <Link className="discovery-link" to="/">回到首页</Link>
+    <section className="discovery-main" aria-label={topic ? '话题内容' : '发现内容'}>
+      {topic && <header className="discovery-heading">
+        <h1 id="discovery-title"># {topicName}</h1>
+        <FeedLayoutControl />
+      </header>}
+      {data.topicMissing ? <section className="discovery-boundary" role="status">
+        <h2>这个话题不存在</h2><p>它可能已被删除，或链接已经失效。</p>
+        <Link className="discovery-link" to="/explore">回到发现</Link>
+      </section> : <>
+        <ResourceState status={status} error={error} empty={!feedItems.length} onRetry={reload}
+          loadingVariant="feed" loadingClassName={feedClass} loadingLabel={topic ? '话题内容加载中' : '发现内容加载中'}
+          className="discovery-result-state" emptyTitle={topic ? '这个话题还没有内容' : '还没有公开内容'} emptyDescription="稍后再来看看。">
+          <FeedCollection className={feedClass} ariaLabel={topic ? '话题内容' : '发现内容'} items={feedItems} source={data.source} />
+        </ResourceState>
+        {hasMore && !more.error && <div className="discovery-load-more"><Button type="button" label="加载更多" variant="secondary" size="lg" isDisabled={more.loading} isLoading={more.loading} onClick={() => void loadMore()} /></div>}
+        {more.error && <ResourceErrorBanner className="discovery-more-error" error={more.error} onRetry={() => void loadMore()} />}
+      </>}
     </section>
   );
 }
 
-export function ExplorePage({ search = false, topic = false }) {
-  const [params, setParams] = useSearchParams();
-  const routeParams = useParams();
-  const navigate = useNavigate();
+export function ExplorePage({ topic = false }) {
+  const [params] = useSearchParams();
   const location = useLocation();
-  const preview = useOutletContext();
-  const scope = ['posts', 'media', 'topics'].includes(routeParams.scope) ? routeParams.scope : 'posts';
-  const query = topic ? routeParams.slug || '' : params.get('q') || '';
-  const loader = useCallback((signal) => loadDiscovery({ query, signal, topic }), [query, topic]);
-  const initial = useMemo(() => getDiscoverySnapshot(query), [query]);
-  const resource = useResource(loader, initial);
-  const data = resource.data || initial;
-  const featured = !search && !topic ? data.items.find((item) => item.mediaUrl) : null;
-  const baseItems = featured ? data.items.filter((item) => item.id !== featured.id) : data.items;
-  const feedItems = scope === 'media' ? baseItems.filter((item) => item.mediaUrl) : baseItems;
-  const topicResults = data.trends.filter((trend) => !query || trend.label.toLowerCase().includes(query.toLowerCase()));
-  const feedClass = `discovery-feed${search ? ' is-results' : ''}${topic ? ' is-topic' : ''}`;
+  const navigate = useNavigate();
+  const { slug } = useParams();
+  const query = topic ? slug || '' : '';
+  const sort = topic ? 'latest' : normalizeDiscoverySort(params.get('sort'));
+  const initial = useMemo(() => getDiscoverySnapshot(query, sort), [query, sort]);
+  const redirect = !topic && canonicalExplorePath({ search: location.search, hash: location.hash });
+  if (redirect) return <Navigate replace to={redirect} state={location.state} />;
 
-  const updateQuery = (value) => {
-    const nextValue = String(value || '').trim();
+  const updateSort = (event) => {
     const next = new URLSearchParams(params);
-    if (nextValue) next.set('q', nextValue);
-    else next.delete('q');
-    if (search) setParams(next);
-    else navigate(nextValue ? `/search?q=${encodeURIComponent(nextValue)}` : '/search');
+    const value = normalizeDiscoverySort(event.target.value);
+    if (value === 'latest') next.delete('sort');
+    else next.set('sort', value);
+    navigate({ pathname: '/explore', search: next.toString(), hash: location.hash });
   };
 
   return (
-    <AppShell>
-      <main className="discovery-page" aria-labelledby="discovery-title">
-        {!search && !topic && <ContentChannels active="explore" />}
-        <header className="discovery-heading">
-          <div>
-            <h1 id="discovery-title">{topic ? `# ${data.topic?.name || query}` : (search && query ? `搜索“${query}”` : '去发现，今天的新鲜事')}</h1>
-            <p>{topic ? '围绕同一兴趣继续浏览内容。' : '从正在发生的城市、兴趣和创作者开始。'}</p>
-          </div>
-        </header>
-
-        {!topic && <DiscoverySearchSurface query={query} onSubmit={updateQuery} />}
-
-        {data.source === 'preview' && <p className="preview-disclosure" role="status">设计预览 · 演示数据 · 操作不会保存</p>}
-
-        {search && query && (
-          <nav className="search-scope-nav" aria-label="搜索结果类型">
-            {[
-              ['posts', '内容'],
-              ['media', '媒体'],
-              ['topics', '话题'],
-            ].map(([value, label]) => (
-              <Link key={value} className={scope === value ? 'is-active' : ''} aria-current={scope === value ? 'page' : undefined} to={`/search/${value}?q=${encodeURIComponent(query)}`}>{label}</Link>
-            ))}
-          </nav>
-        )}
-
-        {data.source === 'configuration-error' ? <Boundary data={data} /> : data.topicMissing ? <section className="discovery-boundary" role="status"><h2>这个话题不存在</h2><p>它可能已被删除，或链接已经失效。</p><Link className="discovery-link" to="/explore">回到发现</Link></section> : (
-          <div className="discovery-layout">
-            <section className="discovery-main">
-              {featured && (
-                <Link className="discovery-feature" to={`/post/${featured.id}`} state={cardPreviewState(location, featured.id, featured.mediaItems?.length > 1 ? 'gallery' : featured.kind === 'video' ? 'video' : 'image', 'feature')} data-card-preview-id={featured.id} data-card-preview-trigger="feature" data-preview-opening={preview?.pathname === `/post/${featured.id}` && preview?.state?.previewSession === cardPreviewSession && preview?.state?.previewCardId === String(featured.id) || undefined} onPointerEnter={warmCardPreviewDetail} onFocus={warmCardPreviewDetail} onPointerDown={warmCardPreviewDetail}>
-                  <MediaFrame className="discovery-feature-media" item={featured.mediaItems?.[0] || { url: featured.mediaUrl, type: 'image', fit: featured.mediaFit }} frameRatio={4 / 3} alt={featured.mediaAlt || featured.title} />
-                  <div>
-                    <span>编辑精选</span>
-                    <h2>{featured.title}</h2>
-                    <p>{featured.body || `${featured.author} · ${featured.topic || '社区精选'}`}</p>
-                  </div>
-                </Link>
-              )}
-
-              <section className="discovery-section" aria-labelledby="discovery-feed-title">
-                <header>
-                  <div>
-                    <h2 id="discovery-feed-title">{scope === 'topics' ? '话题结果' : (search && query ? '内容结果' : (topic ? '话题内容' : '为你展开'))}</h2>
-                    <p>内容形态和密度随兴趣变化</p>
-                  </div>
-                  <span>{scope === 'topics' ? topicResults.length : feedItems.length} 条</span>
-                </header>
-                <ResourceState status={resource.status} error={resource.error} empty={data.source !== 'loading' && (scope === 'topics' ? !topicResults.length : !feedItems.length)} onRetry={resource.reload} loadingVariant={scope === 'topics' ? 'generic' : 'feed'} loadingClassName={feedClass} loadingLabel="发现内容加载中">
-                  {scope === 'topics' ? (
-                    <div className="topic-result-list">{topicResults.map((trend) => <Link key={trend.label} to={topicHref({ id: trend.tagId, name: trend.name || trend.label })}><strong>{trend.label}</strong><span>{trend.count || '查看话题内容'}</span></Link>)}</div>
-                  ) : <FeedCollection className={feedClass} ariaLabel="发现内容" items={feedItems} source={data.source} />}
-                </ResourceState>
-              </section>
-            </section>
-
-            <aside className="discovery-side" aria-label="发现辅助信息">
-              <section>
-                <header><h2>此刻正在发生</h2><span>{data.source === 'live' ? '实时' : '预览'}</span></header>
-                {data.trends.length ? (
-                  <ol>{data.trends.map((trend) => (
-                    <li key={`${trend.rank}-${trend.label}`}>
-                      <b>{String(trend.rank).padStart(2, '0')}</b>
-                      <Link to={topicHref({ id: trend.tagId, name: trend.name || trend.label })}>
-                        <strong>{trend.label}</strong><small>{trend.count || '话题详情'}</small>
-                      </Link>
-                    </li>
-                  ))}</ol>
-                ) : <p className="muted-copy">趋势数据暂未开放</p>}
-              </section>
-              {data.creators.length > 0 && <section>
-                <header><h2>值得认识</h2><span>关注暂未开放</span></header>
-                {data.creators.map((creator) => (
-                  <div className="discovery-creator" key={creator.id}>
-                    <span className={`creator-avatar tone-${creator.tone}`} aria-hidden="true">{creator.name.slice(0, 1)}</span>
-                    <div><b>{creator.name}</b><small>{creator.meta}</small></div>
-                    <span className="capability-inline">未开放</span>
-                  </div>
-                ))}
-              </section>}
-            </aside>
-          </div>
-        )}
+    <AppShell mobileMode={topic ? 'task' : 'standard'}>
+      <main className={topic ? 'discovery-page topic-page' : 'discovery-page'} aria-labelledby="discovery-title">
+        {topic && <TaskPageHeader title="话题" back={browseTaskBack(location.state, 'topic')} />}
+        {!topic && <>
+          <h1 id="discovery-title" className="sr-only">发现</h1>
+          <header className="feed-toolbar">
+            <div className="feed-toolbar-actions">
+              <select className="discovery-sort" aria-label="发现内容排序" value={sort} onChange={updateSort}>
+                {sortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+              <FeedLayoutControl />
+            </div>
+          </header>
+        </>}
+        {initial.source === 'preview' && <p className="preview-disclosure" role="status">设计预览 · 演示数据 · 操作不会保存</p>}
+        {initial.source === 'configuration-error' ? <section className="discovery-boundary" role="status">
+          {topic && <h1 id="discovery-title"># {query}</h1>}
+          <h2>{initial.message}</h2><p>{initial.detail}</p>
+          <Link className="discovery-link" to="/">回到首页</Link>
+        </section> : <div className="discovery-layout">
+          <DiscoveryFeed key={JSON.stringify([topic, query, sort])} initial={initial} query={query} topic={topic} sort={sort} />
+        </div>}
       </main>
     </AppShell>
   );

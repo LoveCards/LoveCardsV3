@@ -81,6 +81,17 @@ describe('login SDK integration', () => {
     expect(client.clearToken).toHaveBeenCalledOnce();
   });
 
+  it('does not clear a newly acquired token after a late session check fails', async () => {
+    const pending = Promise.withResolvers();
+    const client = { getToken: vi.fn().mockReturnValue('old'), clearToken: vi.fn(), session: { check: () => pending.promise } };
+    sdk.getSdkClient.mockReturnValue(client);
+    const result = checkSession();
+    client.getToken.mockReturnValue('new');
+    pending.reject({ status: 401 });
+    await expect(result).resolves.toBeNull();
+    expect(client.clearToken).not.toHaveBeenCalled();
+  });
+
   it('treats scoped grants as satisfying their base capability', () => {
     const session = { capabilities: ['users.read.all', 'cards.update.own', 'theme.activate'] };
     expect(hasSessionCapability(session, 'users.read')).toBe(true);

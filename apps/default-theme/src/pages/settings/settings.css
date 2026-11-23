@@ -55,8 +55,6 @@
   .settings-session-toolbar { min-height: 68px; padding-top: 16px; display: flex; align-items: center; justify-content: space-between; gap: 18px; }
   .settings-session-toolbar span { color: var(--lc-muted); font-size: .68rem; line-height: 1.5; }
   .settings-session-toolbar .astryx-button { flex: 0 0 auto; }
-  :root:has(.settings-page) { scrollbar-gutter: stable; }
-
   .settings-page {
     width: min(1024px, calc(100% - 48px));
     margin: 0 auto;
@@ -64,7 +62,6 @@
   }
 
   .settings-page > .detail-back { min-height: 38px; }
-  .settings-task-header { display: none; }
 
   .settings-page-header {
     min-height: 72px;
@@ -264,24 +261,7 @@
     .profile-settings-save-row .astryx-button { width: 100%; }
     .settings-page { width: 100%; padding: 0 16px calc(32px + env(safe-area-inset-bottom)); }
     .settings-page > .detail-back { display: none; }
-    .settings-task-header {
-      position: sticky;
-      top: 0;
-      z-index: var(--lc-z-sticky);
-      min-height: 52px;
-      margin: 0 -16px;
-      padding: 0 8px;
-      display: grid;
-      grid-template-columns: 44px minmax(0, 1fr) 44px;
-      align-items: center;
-      border-bottom: 1px solid var(--lc-separator);
-      background: color-mix(in srgb, var(--lc-surface) 96%, transparent);
-      backdrop-filter: blur(10px);
-    }
-    .settings-task-header > a { min-width: 44px; min-height: 44px; display: inline-grid; place-items: center; color: var(--lc-ink); }
-    .settings-task-header > a .icon { transform: rotate(180deg); }
-    .settings-task-header > a:focus-visible { outline: 2px solid var(--lc-rose-deep); outline-offset: -2px; border-radius: var(--lc-radius-control); }
-    .settings-task-header > strong { overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; font-size: 0.92rem; letter-spacing: -0.015em; }
+    .settings-page > .route-task-heading { margin-inline: -16px; }
     .settings-page-header {
       position: absolute;
       width: 1px;
@@ -305,7 +285,7 @@
 
   @media (max-width: 560px) {
     .settings-page { padding-inline: 12px; }
-    .settings-task-header { margin-inline: -12px; }
+    .settings-page > .route-task-heading { margin-inline: -12px; }
     .settings-page-action .astryx-button { min-width: 92px; }
     .settings-panel { display: grid; }
     .settings-section { padding: 20px 0; scroll-margin-top: 68px; }
