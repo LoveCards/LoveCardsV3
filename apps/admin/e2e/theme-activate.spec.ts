@@ -76,8 +76,12 @@ test('activating a theme posts its release and refreshes the current-theme marke
   })
 
   await page.goto('./apps/settings/appearance', { waitUntil: 'domcontentloaded' })
-  const defaultCard = page.locator('.v-card').filter({ hasText: '默认主题' }).first()
-  const auroraCard = page.locator('.v-card').filter({ hasText: 'Aurora 主题' }).first()
+  const defaultCard = page.locator('.v-card').filter({
+    has: page.locator('.v-card-title').filter({ hasText: /^默认主题$/ }),
+  })
+  const auroraCard = page.locator('.v-card').filter({
+    has: page.locator('.v-card-title').filter({ hasText: /^Aurora 主题$/ }),
+  })
   await expect(defaultCard.getByText('当前主题')).toBeVisible()
   await expect(auroraCard.getByRole('button', { name: '设为当前主题', exact: true })).toBeVisible()
 
@@ -88,6 +92,8 @@ test('activating a theme posts its release and refreshes the current-theme marke
   await expect(auroraCard.getByText('当前主题')).toBeVisible()
   await expect(auroraCard.getByRole('button', { name: '配置主题', exact: true })).toBeVisible()
   await expect(defaultCard.getByRole('button', { name: '设为当前主题', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '配置当前主题', exact: true }).click()
+  await expect(page).toHaveURL(/\/appearance\/themes\/aurora\?release=aurora-1\.2\.0$/)
 })
 
 test('failed activation surfaces a page-level error without switching themes', async ({ page }) => {

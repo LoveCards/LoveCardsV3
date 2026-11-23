@@ -86,22 +86,17 @@ test('report transition moves open report to reviewing and preserves the audit c
   await expect(page.getByText('待处理', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: '更新处理状态', exact: true }).click()
-  const dialog = page.getByRole('dialog').filter({ hasText: '更新举报状态' })
-  await expect(dialog.getByText('状态变化和原因将写入审计记录。')).toBeVisible()
-
-  // 确认按钮在填写“处理原因或结论”前保持禁用；open 状态默认预选第一个可用流转。
+  const dialog = page.getByRole('dialog', { name: '变更举报状态' })
   const confirm = dialog.getByRole('button', { name: '确认', exact: true })
-  await expect(confirm).toBeDisabled()
-  await dialog.getByRole('combobox').filter({ hasText: '目标状态' }).click()
-  await page.getByRole('option', { name: '处理中', exact: true }).click()
-  await dialog.getByLabel('处理原因或结论').fill('已核实上下文，转人工跟进')
   await expect(confirm).toBeEnabled()
+  await dialog.getByLabel('内部备注（选填）').fill('已核实上下文，转人工跟进')
   await confirm.click()
 
   await expect.poll(() => transitionBody).not.toBeNull()
-  expect(transitionBody).toMatchObject({ status: 'reviewing', note: '已核实上下文，转人工跟进' })
+  expect(transitionBody).toEqual({ status: 'reviewing', expected_status: 'open', note: '已核实上下文，转人工跟进' })
   await expect(page.getByRole('dialog')).toBeHidden()
   await expect(page.getByText('处理中', { exact: true })).toBeVisible()
+  await expect(page.getByText('已核实上下文，转人工跟进', { exact: true })).toBeVisible()
 })
 
 test('failed transition keeps the dialog open with the resolution text preserved', async ({ page }) => {
@@ -122,11 +117,15 @@ test('failed transition keeps the dialog open with the resolution text preserved
 
   await page.goto('./apps/community/reports/55', { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: '更新处理状态', exact: true }).click()
-  const dialog = page.getByRole('dialog').filter({ hasText: '更新举报状态' })
-  await dialog.getByLabel('处理原因或结论').fill('这段文字必须保留')
-  await dialog.getByRole('button', { name: '确认', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '变更举报状态' })
+  await dialog.getByRole('combobox').click()
+  await page.getByRole('option', { name: '已驳回', exact: true }).click()
+  const confirm = dialog.getByRole('button', { name: '确认', exact: true })
+  await expect(confirm).toBeDisabled()
+  await dialog.getByLabel('处理结论').fill('这段文字必须保留')
+  await confirm.click()
 
   // Vuetify 输入框 details 同样带 role="alert"，断言必须按文案收窄到错误 alert。
   await expect(dialog.getByRole('alert').filter({ hasText: '目标状态不允许从当前状态流转' })).toBeVisible()
-  await expect(dialog.getByLabel('处理原因或结论')).toHaveValue('这段文字必须保留')
+  await expect(dialog.getByLabel('处理结论')).toHaveValue('这段文字必须保留')
 })
