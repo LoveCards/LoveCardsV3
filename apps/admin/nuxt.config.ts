@@ -72,6 +72,7 @@ export default defineNuxtConfig({
         // can otherwise abort an otherwise valid admin preview.
         optimizeDeps: {
             exclude: ['@lovecards/sdk', 'axios', 'lodash', 'lodash-es'],
+            include: ['vue-draggable-plus'],
         },
         server: {
             watch: {
