@@ -1,4 +1,5 @@
 import fs from 'fs'
+import net from 'node:net'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import {
@@ -737,7 +738,17 @@ await test('GET /permissions/all → permissions.all()', async () => {
 await test('GET /dashboard → dashboard.index()', async () => {
   const r = await adminClient.dashboard.index()
   assert(r && typeof r === 'object', 'Should return object')
-  assertShape(r, ['count', 'chart', 'ver', 'notice'])
+  assertShape(r, ['count', 'chart', 'ver', 'notice', 'workbench'])
+  const failedTask = r.workbench.tasks.find(task => task.key === 'deliveries_dead')
+  assert(failedTask?.action_url === '/apps/operations/deliveries?queue=all&view=dead', 'Workbench failed task must open the all-queue dead list')
+  const failedDeliveries = await adminClient.operations.deliveries({ status: 'dead', list_rows: 1 })
+  assert(failedTask.count === failedDeliveries.pagination.totalItems, 'Workbench count must match failed deliveries across queues')
+  for (const status of ['open', 'reviewing']) {
+    const queue = r.workbench.tasks.find(task => task.key === 'reports_' + status)
+    assert(queue?.action_url === '/apps/community/reports?status=' + status, 'Report queue must open the counted state')
+    const reports = await adminClient.reports.listManaged({ status, list_rows: 1 })
+    assert(queue.count === reports.pagination.totalItems, 'Report queue count must match the filtered read model')
+  }
   assert(typeof r.ver === 'object', 'ver should be object (VersionInfo)')
   assertShape(r.ver, ['app_name', 'version', 'build'])
   return r
@@ -820,6 +831,68 @@ await test('GET /sender/types → sender.types()', async () => {
   const r = await adminClient.sender.types()
   assert(Array.isArray(r), 'Should return array')
   return r
+})
+
+await test('Mail readiness and explicit sender test share the saved SMTP channel', async () => {
+  await adminClient.sender.install()
+  const config = await adminClient.config.list()
+  let acceptedMessages = 0
+  const sockets = new Set()
+  const smtp = net.createServer(socket => {
+    sockets.add(socket)
+    socket.on('close', () => sockets.delete(socket))
+    socket.setEncoding('utf8')
+    socket.write('220 test.local ESMTP\r\n')
+    let buffer = ''
+    let readingBody = false
+    socket.on('data', chunk => {
+      buffer += chunk
+      let end
+      while ((end = buffer.indexOf('\r\n')) !== -1) {
+        const line = buffer.slice(0, end)
+        buffer = buffer.slice(end + 2)
+        if (readingBody) {
+          if (line === '.') {
+            acceptedMessages++
+            readingBody = false
+            socket.write('250 accepted\r\n')
+          }
+        } else if (line === 'DATA') {
+          readingBody = true
+          socket.write('354 end with dot\r\n')
+        } else if (line === 'QUIT') socket.end('221 bye\r\n')
+        else socket.write('250 OK\r\n')
+      }
+    })
+  })
+  await new Promise((resolve, reject) => smtp.once('error', reject).listen(0, '127.0.0.1', resolve))
+  const updateCaptcha = async patch => {
+    const current = (await adminClient.config.list()).captcha
+    await adminClient.config.update({ captcha: { ...patch, __revision: current.__revision } })
+  }
+  const originalCode = { code_enabled: config.captcha.code_enabled, code_channel: config.captcha.code_channel }
+  const keys = ['host', 'port', 'addr', 'pass', 'security']
+  const originalSmtp = Object.fromEntries(keys.filter(key => key in config.sender_smtp).map(key => [key, config.sender_smtp[key]]))
+  try {
+    await updateCaptcha({ code_enabled: false, code_channel: 'smtp' })
+    assert((await pc.session.policy()).registration.email_verification_status === 'code_disabled', 'Disabled codes must be reported consistently')
+    await updateCaptcha({ code_enabled: true, code_channel: 'sms' })
+    assert((await pc.session.policy()).registration.email_verification_status === 'mail_channel_required', 'SMS cannot send email verification')
+    await adminClient.config.update({ sender_smtp: { __revision: config.sender_smtp.__revision, host: '127.0.0.1', port: smtp.address().port, addr: 'sender@example.test', pass: { $secret: 'clear' }, security: '' } })
+    await updateCaptcha({ code_enabled: true, code_channel: 'smtp' })
+    const policy = await pc.session.policy()
+    assert(policy.registration.email_verification_available, 'Valid SMTP configuration must be visible to the auth page')
+    assert(acceptedMessages === 0, 'Reading policy must not send mail')
+    const result = await adminClient.sender.testChannel({ channel: 'smtp', to: 'recipient@example.test' })
+    assert(result.success && acceptedMessages === 1, 'Only the test request sends one message to loopback SMTP')
+  } finally {
+    for (const socket of sockets) socket.destroy()
+    await new Promise(resolve => smtp.close(resolve))
+    await updateCaptcha(originalCode)
+    const current = (await adminClient.config.list()).sender_smtp
+    // 该套件只在一次性实例运行，默认渠道凭据为空，脱敏值只用于兼容原接口。
+    await adminClient.config.update({ sender_smtp: { ...originalSmtp, __revision: current.__revision } })
+  }
 })
 
 await test('GET /sender/channels → sender.channels()', async () => {
@@ -1015,6 +1088,18 @@ await test('GET /admin/operations/runtime → operations.runtime()', async () =>
   return r
 })
 
+await test('Upload policy shares scene limits with signed-in and admin clients', async () => {
+  const [personal, managed] = await Promise.all([adminClient.files.uploadPolicy(), adminClient.files.managedUploadPolicy()])
+  assert(JSON.stringify(personal) === JSON.stringify(managed), 'Both readers must receive the same upload limits')
+  for (const name of ['avatar', 'profile_cover', 'card_image', 'card_video', 'comment', 'direct']) {
+    const scene = personal.scenes[name]
+    assert(scene.max_bytes === Math.min(scene.site_max_bytes, scene.storage_max_bytes ?? Infinity), 'Effective byte limit is the smaller bound')
+  }
+  assert(personal.scenes.card_video.extensions.includes('mp4'), 'Card video must advertise backend-supported MP4')
+  const release = await adminClient.operations.releaseStatus()
+  assert(release.version.length > 0, 'Software version must be available before an upgrade plan exists')
+})
+
 await test('GET /admin/operations/deliveries → operations.deliveries()', async () => {
   const r = await adminClient.operations.deliveries()
   assertShape(r, ['data', 'pagination'], 'Deliveries should be paginated')
@@ -1078,10 +1163,18 @@ await test('POST /admin/reports/:id/transition → reports.transition()', async 
   if (!createdReportId) throw new Error('Created report fixture is missing')
   const report = await adminClient.reports.transition(createdReportId, {
     status: 'reviewing',
-    note: 'Disposable SDK integration governance check',
   })
-  assert(report.status === 'reviewing', 'Report should enter reviewing state')
-  return report
+  assert(report.status === 'reviewing', 'Report should enter reviewing state without a conclusion')
+  await assertApiError(() => adminClient.reports.transition(createdReportId, { status: 'open', expected_status: 'open', note: '迟到的备注' }), 409)
+  assert((await adminClient.reports.getManaged(createdReportId)).status === 'reviewing', 'A stale note must not reopen an assigned case')
+  await assertApiError(() => adminClient.reports.transition(createdReportId, { status: 'resolved' }), 400)
+  await assertApiError(() => adminClient.reports.transition(createdReportId, { status: 'resolved', resolution: '审'.repeat(256) }), 400)
+  const resolution = '审'.repeat(255)
+  const resolved = await adminClient.reports.transition(createdReportId, { status: 'resolved', resolution })
+  assert(resolved.resolution === resolution, 'The persisted outcome must include all 255 characters')
+  const noted = await adminClient.reports.transition(createdReportId, { status: 'resolved', note: '内部备注' })
+  assert(noted.resolution === resolution && noted.status === 'resolved', 'An internal note preserves the outcome')
+  return noted
 })
 
 await test('GET /admin/files/:id/usage → files.usage()', async () => {

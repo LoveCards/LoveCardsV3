@@ -6,6 +6,7 @@ use app\api\middleware\PermissionCheck;
 use app\modules\Platform\Files\Transport\Api\Files as FilesValidate;
 use app\modules\Platform\Files\Transport\Api\FileResource;
 use app\modules\Platform\Files\Transport\Api\DirectUploadResource;
+use app\modules\Platform\Files\Transport\Api\UploadPolicyResource;
 use app\shared\Authorization\Scope;
 use app\shared\Transport\Http\ApiResource;
 use app\shared\Transport\Validation\PaginationInput;
@@ -28,6 +29,9 @@ Route::group('me/files', function () use ($required, $grant) {
     Route::patch(':id/confirm', 'Storage.Upload/confirm')->name('files.confirm')
         ->setOption('contract', ['request' => null, 'response' => ['resource' => null, 'shape' => 'void', 'status' => 204]])
         ->setOption('meta', ['name' => '确认直传', 'group' => '文件', 'access' => $required([$grant('files.upload', Scope::GLOBAL)])]);
+    Route::get('upload-policy', 'Storage.Upload/uploadPolicy')->name('files.uploadPolicy')
+        ->setOption('contract', ['request' => null, 'response' => ['resource' => UploadPolicyResource::class, 'shape' => 'item', 'status' => 200]])
+        ->setOption('meta', ['name' => '当前上传规则', 'group' => '文件', 'access' => $required([$grant('files.upload', Scope::GLOBAL)])]);
     Route::get(':id', 'Storage.Upload/get')->name('files.get')
         ->setOption('contract', ['request' => null, 'response' => ['resource' => FileResource::class, 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => '我的文件详情', 'group' => '文件', 'access' => $required([], [$grant('files.read', Scope::OWN), $grant('files.read', Scope::ALL)])]);
@@ -41,6 +45,9 @@ Route::group('admin/files', function () use ($required, $grant) {
     Route::get('', 'Storage.Upload/list')->name('files.listManaged')
         ->setOption('contract', ['request' => ['validate' => FilesValidate::class, 'scene' => 'list'], 'response' => ['resource' => FileResource::class, 'shape' => 'paginated', 'status' => 200]])
         ->setOption('meta', ['name' => '管理文件列表', 'group' => '文件', 'access' => $required([$admin, $grant('files.read', Scope::ALL)])]);
+    Route::get('upload-policy', 'Storage.Upload/uploadPolicy')->name('files.managedUploadPolicy')
+        ->setOption('contract', ['request' => null, 'response' => ['resource' => UploadPolicyResource::class, 'shape' => 'item', 'status' => 200]])
+        ->setOption('meta', ['name' => '管理上传规则', 'group' => '文件', 'access' => $required([$admin, $grant('config.read', Scope::GLOBAL)])]);
     Route::get(':id', 'Storage.Upload/get')->name('files.getManaged')
         ->setOption('contract', ['request' => null, 'response' => ['resource' => FileResource::class, 'shape' => 'item', 'status' => 200]])
         ->setOption('meta', ['name' => '管理文件详情', 'group' => '文件', 'access' => $required([$admin, $grant('files.read', Scope::ALL)])]);

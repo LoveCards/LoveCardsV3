@@ -28,7 +28,7 @@
           item-value="id"
           items-per-page-text="每页行数"
         >
-          <template #item.id="{ item }"><v-btn :to="`/apps/community/reports/${item.id}`" variant="text">#{{ item.id }}</v-btn></template>
+          <template #item.id="{ item }"><v-btn :to="{ path: `/apps/community/reports/${item.id}`, query: { returnTo: route.fullPath } }" variant="text">#{{ item.id }}</v-btn></template>
           <template #item.reporter_id="{ item }"><AdminResourceLink :resource-type="'user'" :resource-id="item.reporter_id" /></template>
           <template #item.target="{ item }"><AdminResourceLink :resource-type="item.target_type" :resource-id="item.target_id" /></template>
           <template #item.status="{ item }"><AdminStatusChip :status="item.status" /></template>

@@ -24,6 +24,9 @@ export class Files extends BaseResource {
   cleanup(params?: { limit?: number }): Promise<{ cleaned: number }> {
     return this._delete<{ cleaned: number }>("/admin/files/expired", params)
   }
+  managedUploadPolicy(): Promise<ApiTypes.UploadPolicy> {
+    return this._get<ApiTypes.UploadPolicy>("/admin/files/upload-policy")
+  }
   listOwn(params?: { page?: number; list_rows?: number; search_keys?: unknown[]; search_like?: number; search_value?: string; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; status?: number; upload_status?: number; scene?: string; ref_type?: string; ref_id?: number }): Promise<ApiTypes.ListResult<ApiTypes.LCFile>> {
     return this._get<ApiTypes.ListResult<ApiTypes.LCFile>>("/me/files", params)
   }
@@ -41,6 +44,9 @@ export class Files extends BaseResource {
   }
   direct(data: { filename: string; size: number; mime: string }): Promise<ApiTypes.DirectUploadResult> {
     return this._post<ApiTypes.DirectUploadResult>("/me/files/direct", data)
+  }
+  uploadPolicy(): Promise<ApiTypes.UploadPolicy> {
+    return this._get<ApiTypes.UploadPolicy>("/me/files/upload-policy")
   }
   listMe(params?: { page?: number; list_rows?: number; search_keys?: unknown[]; search_like?: number; search_value?: string; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; status?: number; upload_status?: number; scene?: string; ref_type?: string; ref_id?: number }): Promise<ApiTypes.ListResult<ApiTypes.LCFile>> {
     return this.listOwn(params)

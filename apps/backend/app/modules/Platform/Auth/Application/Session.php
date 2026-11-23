@@ -12,9 +12,9 @@ use app\modules\Platform\User\Public\UserStatus;
 
 class Session
 {
-    public function captchaEnabled(): bool
+    public function emailCodeReady(): bool
     {
-        return (bool) ConfigService::get('captcha.code_enabled', true);
+        return Captcha::emailCodeStatus() === 'ready';
     }
 
     public function registrationEmailVerificationRequired(): bool
@@ -30,7 +30,7 @@ class Session
     public function policy(): array
     {
         $emailVerification = (bool) ConfigService::get('user.captcha');
-        $codeEnabled = (bool) ConfigService::get('captcha.code_enabled', true);
+        $emailCodeStatus = Captcha::emailCodeStatus();
         $captchaEnabled = (bool) ConfigService::get('captcha.captcha_enabled', false);
         $captchaDriver = (string) ConfigService::get('captcha.default_captcha_driver', 'geetest_v4');
 
@@ -39,7 +39,8 @@ class Session
                 'enabled' => true,
                 'account_types' => $emailVerification ? ['email'] : ['email', 'phone', 'username'],
                 'email_verification_required' => $emailVerification,
-                'email_verification_available' => $codeEnabled,
+                'email_verification_available' => $emailCodeStatus === 'ready',
+                'email_verification_status' => $emailCodeStatus,
             ],
             'guest' => ['enabled' => $this->visitorModeEnabled()],
             'human_verification' => [
@@ -120,6 +121,9 @@ class Session
             throw ApiException::badRequest('目前仅支持邮箱验证', ApiException::CODE_PARAM_INVALID);
         }
 
+        if (!$this->emailCodeReady()) {
+            throw ApiException::badRequest('邮件验证码服务未就绪', ApiException::CODE_PARAM_INVALID);
+        }
         $result = Captcha::generate('code', ['to' => $email, 'scene' => 'Auth', 'ttl' => 300]);
         if (!($result['status'] ?? false)) {
             throw ApiException::badRequest((string) ($result['msg'] ?? '验证码发送失败'), ApiException::CODE_PARAM_INVALID);
@@ -130,7 +134,7 @@ class Session
 
     public function verifyCaptcha(string $email, string $code): bool
     {
-        return Captcha::verify('code', ['key' => $email, 'code' => $code, 'scene' => 'Auth']);
+        return Captcha::verifyDetailed('code', ['key' => $email, 'code' => $code, 'scene' => 'Auth']) === 'valid';
     }
 
     public function deleteCaptcha(string $email): void
@@ -161,12 +165,12 @@ class Session
 
     public function humanVerificationEnabled(): bool
     {
-        return (bool) ($this->policy()['human_verification']['enabled'] ?? false);
+        return (bool) ConfigService::get('captcha.captcha_enabled', false);
     }
 
     public function verifyHumanVerification(array $params): bool
     {
-        $driver = (string) ($this->policy()['human_verification']['driver'] ?? '');
+        $driver = (string) ConfigService::get('captcha.default_captcha_driver', 'geetest_v4');
         if ($driver === 'gd_image') {
             return Captcha::verify('captcha', [
                 'image_id' => (string) ($params['captcha_id'] ?? ''),

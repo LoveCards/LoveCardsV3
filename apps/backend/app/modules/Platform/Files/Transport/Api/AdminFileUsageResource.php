@@ -13,6 +13,9 @@ final class AdminFileUsageResource extends Resource
             'file' => ['type' => 'object', 'additionalProperties' => false, 'properties' => self::fileSchema()],
             'references' => ['type' => 'array', 'items' => ['type' => 'object', 'additionalProperties' => false, 'properties' => self::referenceSchema()]],
             'orphaned' => ['type' => 'boolean'],
+            'purge_task' => ['type' => 'object', 'nullable' => true, 'additionalProperties' => false, 'properties' => [
+                'id' => ['type' => 'integer'], 'status' => ['type' => 'string'],
+            ]],
         ]];
     }
 
@@ -25,7 +28,9 @@ final class AdminFileUsageResource extends Resource
         foreach ((array) ($data['references'] ?? []) as $reference) {
             if (is_array($reference)) $references[] = self::only($reference, array_keys(self::referenceSchema()));
         }
-        return ['file' => $file, 'references' => $references, 'orphaned' => (bool) ($data['orphaned'] ?? ($references === []))];
+        $task = $data['purge_task'] ?? null;
+        return ['file' => $file, 'references' => $references, 'orphaned' => (bool) ($data['orphaned'] ?? ($references === [])),
+            'purge_task' => is_array($task) ? ['id' => (int) $task['id'], 'status' => (string) $task['status']] : null];
     }
 
     private static function fileSchema(): array

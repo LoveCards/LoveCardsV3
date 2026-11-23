@@ -47,8 +47,8 @@ class Session extends BaseController
             throw ApiException::unauthorized('人机验证失败');
         }
         $account = $params['account'];
-        if ($this->session->registrationEmailVerificationRequired() && !$this->session->captchaEnabled()) {
-            throw ApiException::badRequest('注册验证码服务未启用', ApiException::CODE_PARAM_INVALID);
+        if ($this->session->registrationEmailVerificationRequired() && !$this->session->emailCodeReady()) {
+            throw ApiException::badRequest('注册邮件验证码服务未就绪', ApiException::CODE_PARAM_INVALID);
         }
         if ($this->session->registrationEmailVerificationRequired() && !$this->session->verifyCaptcha($account, $params['code'] ?? '')) {
             throw ApiException::unauthorized('注册失败', ['验证码错误']);

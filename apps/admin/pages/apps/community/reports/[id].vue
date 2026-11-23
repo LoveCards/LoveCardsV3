@@ -2,6 +2,7 @@
   <AdminPageContainer :max-width="1040">
     <AdminPageHeader :title="`举报 #${route.params.id}`" description="仅展示处理举报所需的上下文，不开放任意浏览私密内容。" :breadcrumbs="breadcrumbs">
       <template #actions>
+        <v-btn prepend-icon="mdi-arrow-left" :to="returnTo" variant="outlined">返回举报列表</v-btn>
         <AdminActionGuard v-if="report && canTransition" capability="reports.manage">
           <v-btn color="primary" prepend-icon="mdi-gavel" @click="openTransitionDialog">更新处理状态</v-btn>
         </AdminActionGuard>
@@ -48,6 +49,9 @@
         </AdminDetailSection>
         <AdminDetailSection title="处理记录" class="mt-5">
           <AdminAuditTrail :items="auditItems" />
+          <AdminActionGuard capability="audit.read">
+            <v-btn :to="{ path: '/apps/operations/audit', query: { resource_type: 'report', resource_id: String(report.id) } }" variant="text">查看案件审计</v-btn>
+          </AdminActionGuard>
         </AdminDetailSection>
       </template>
     </AdminAsyncState>
@@ -57,22 +61,23 @@
         <v-card-title>更新举报状态</v-card-title>
         <v-card-text>
           <v-select v-model="nextStatus" :items="availableStatusItems" label="目标状态" variant="outlined" />
-          <v-textarea v-model="resolution" class="mt-3" label="处理原因或结论" maxlength="1000" rows="4" variant="outlined" />
-          <v-alert class="mt-3" type="info" variant="tonal">状态变化和原因将写入审计记录。</v-alert>
+          <v-textarea v-if="needsResolution" v-model="resolution" label="处理结论" :counter="255" :counter-value="characterCount" :error-messages="resolutionTooLong ? ['处理结论最多 255 个字符'] : []" rows="4" variant="outlined" />
+          <v-textarea v-else v-model="transitionNote" label="内部备注（选填）" :counter="1000" :counter-value="characterCount" :error-messages="transitionNoteTooLong ? ['备注最多 1000 个字符'] : []" rows="4" variant="outlined" />
+          <v-alert v-if="needsResolution" class="mt-3" type="info" variant="tonal">结案时系统会向举报人发送结果通知。结论会记录在案件和审计中。</v-alert>
           <v-alert v-if="actionError" class="mt-3" type="error" variant="tonal">{{ actionError }}</v-alert>
         </v-card-text>
-        <v-card-actions><v-spacer /><v-btn variant="text" @click="transitionDialog = false">取消</v-btn><v-btn color="primary" :disabled="!nextStatus || !resolution.trim()" :loading="saving" @click="transition">确认</v-btn></v-card-actions>
+        <v-card-actions><v-spacer /><v-btn variant="text" @click="transitionDialog = false">取消</v-btn><v-btn color="primary" :disabled="!canSubmitTransition" :loading="saving" @click="transition">确认</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
     <v-dialog v-model="noteDialog" aria-label="追加备注" max-width="560">
       <v-card>
         <v-card-title>追加备注</v-card-title>
         <v-card-text>
-          <v-textarea v-model="note" label="备注内容" maxlength="1000" rows="4" variant="outlined" />
+          <v-textarea v-model="note" label="备注内容"  :counter="1000" :counter-value="characterCount" :error-messages="noteTooLong ? ['备注最多 1000 个字符'] : []" rows="4" variant="outlined" />
           <v-alert class="mt-3" type="info" variant="tonal">备注不改变处理状态，将写入审计记录。</v-alert>
           <v-alert v-if="actionError" class="mt-3" type="error" variant="tonal">{{ actionError }}</v-alert>
         </v-card-text>
-        <v-card-actions><v-spacer /><v-btn variant="text" @click="noteDialog = false">取消</v-btn><v-btn color="primary" :disabled="!note.trim()" :loading="saving" @click="addNote">确认</v-btn></v-card-actions>
+        <v-card-actions><v-spacer /><v-btn variant="text" @click="noteDialog = false">取消</v-btn><v-btn color="primary" :disabled="!note.trim() || noteTooLong" :loading="saving" @click="addNote">确认</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
   </AdminPageContainer>
@@ -102,9 +107,22 @@ const actionError = ref('')
 const transitionDialog = ref(false)
 const nextStatus = ref('')
 const resolution = ref('')
+const transitionNote = ref('')
 const noteDialog = ref(false)
 const note = ref('')
-const breadcrumbs = [{ title: '举报处理', to: '/apps/community/reports' }, { title: `#${route.params.id}`, disabled: true }]
+function characterCount(value: string) { return Array.from(value.trim()).length }
+const needsResolution = computed(() => ['resolved', 'rejected'].includes(nextStatus.value))
+const resolutionTooLong = computed(() => characterCount(resolution.value) > 255)
+const transitionNoteTooLong = computed(() => characterCount(transitionNote.value) > 1000)
+const noteTooLong = computed(() => characterCount(note.value) > 1000)
+const canSubmitTransition = computed(() => availableStatusItems.value.some(item => item.value === nextStatus.value)
+  && (needsResolution.value ? Boolean(resolution.value.trim()) && !resolutionTooLong.value : !transitionNoteTooLong.value))
+const listPath = '/apps/community/reports'
+const returnTo = computed(() => {
+  const source = route.query.returnTo
+  return typeof source === 'string' && source.startsWith(listPath + '?') ? source : listPath
+})
+const breadcrumbs = computed(() => [{ title: '举报处理', to: returnTo.value }, { title: '#' + route.params.id, disabled: true }])
 const statusItems = [
   { title: '待处理', value: 'open' }, { title: '处理中', value: 'reviewing' }, { title: '已解决', value: 'resolved' },
   { title: '已驳回', value: 'rejected' }, { title: '已关闭', value: 'closed' },
@@ -175,10 +193,11 @@ const evidenceSha = computed(() => evidence.value?.captured.content_sha256 ?? ev
 const evidenceTruncated = computed(() => evidenceContent.value.length >= 2000)
 
 function openTransitionDialog() {
-  nextStatus.value = availableStatusItems.value[0]?.value ?? ''
+  nextStatus.value = report.value?.status === 'open' ? 'reviewing' : availableStatusItems.value.length === 1 ? availableStatusItems.value[0]!.value : ''
   resolution.value = ''
+  transitionNote.value = ''
   actionError.value = ''
-  transitionDialog.value = Boolean(nextStatus.value)
+  transitionDialog.value = canTransition.value
 }
 
 async function load() {
@@ -188,12 +207,14 @@ async function load() {
   finally { loading.value = false }
 }
 async function transition() {
+  if (!report.value || !canSubmitTransition.value || saving.value) return
   saving.value = true; actionError.value = ''
   try {
-    const terminal = ['resolved', 'rejected', 'closed'].includes(nextStatus.value)
+    const internalNote = transitionNote.value.trim()
     report.value = await client.reports.transition(Number(route.params.id), {
       status: nextStatus.value,
-      ...(terminal ? { resolution: resolution.value } : { note: resolution.value }),
+      expected_status: report.value.status,
+      ...(needsResolution.value ? { resolution: resolution.value.trim() } : internalNote ? { note: internalNote } : {}),
     })
     transitionDialog.value = false; nextStatus.value = ''; resolution.value = ''; notifier.success('举报状态已更新')
   } catch (cause) { actionError.value = isApiError(cause) ? cause.message : '处理举报失败' }
@@ -205,11 +226,11 @@ function openNoteDialog() {
   noteDialog.value = true
 }
 async function addNote() {
-  if (!report.value) return
+  if (!report.value || !note.value.trim() || noteTooLong.value || saving.value) return
   saving.value = true; actionError.value = ''
   try {
     // 同状态迁移 = 备注事件（服务端支持 from === status 的 note 路径）。
-    report.value = await client.reports.transition(Number(route.params.id), { status: report.value.status, note: note.value })
+    report.value = await client.reports.transition(Number(route.params.id), { status: report.value.status, expected_status: report.value.status, note: note.value.trim() })
     noteDialog.value = false; note.value = ''; notifier.success('备注已记录')
   } catch (cause) { actionError.value = isApiError(cause) ? cause.message : '追加备注失败' }
   finally { saving.value = false }

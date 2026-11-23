@@ -39,6 +39,7 @@ export interface AdminNavigationItem {
   grantSets?: readonly (readonly AdminGrantRequirement[])[]
   /** 页面搜索使用的旧名称或同义词，不作为菜单标签显示。 */
   searchAliases?: readonly string[]
+  searchTargets?: readonly { title: string; query: Readonly<Record<string, string>> }[]
 
   /** 任务域及页面上下文元数据，供 shell、面包屑和工作台使用。 */
   domain?: AdminNavigationDomain
@@ -209,7 +210,7 @@ const systemConfigItems = [
     canonicalPath: '/apps/settings/site/policies',
     legacyAliases: ['/apps/settings/access', '/apps/settings/community-rules', '/apps/operations/notification-policies'],
     title: '站点策略',
-    searchAliases: ['访问与验证', '注册邮件验证', '人机验证', '内容规则', '社区规则', '通知策略', '发布与审核', '上传限制', '内容审核'],
+    searchAliases: ['访问与验证', '人机验证', '内容规则', '社区规则', '通知策略', '发布与审核', '上传限制', '内容审核'],
     icon: 'mdi-tune-vertical-variant',
     domain: 'site',
     section: '站点策略',
@@ -291,6 +292,7 @@ const systemConfigItems = [
     legacyAliases: ['/apps/captcha/config'],
     title: '验证中心',
     searchAliases: ['验证配置', '验证码服务', '验证服务'],
+    searchTargets: [{ title: '注册邮件验证', query: { tab: 'requirements' } }],
     icon: 'mdi-shield-check-outline',
     domain: 'system',
     section: '验证中心',
@@ -444,6 +446,13 @@ export const adminNavigationItems: readonly AdminNavigationItem[] = [
 
 const routeGrantOverrides: readonly AdminNavigationItem[] = [
   item({
+    path: '/apps/operations/deliveries',
+    title: '处理任务',
+    domain: 'system',
+    parentRoute: eventProcessing.path,
+    grants: [{ capability: 'communications.read', scope: 'global' }],
+  }),
+  item({
     path: '/apps/users/:id/security',
     canonicalPath: '/apps/users/:id/security',
     title: '用户安全',
@@ -580,6 +589,13 @@ export function activeNavigationItemForPath(
   path: string,
   items: readonly AdminNavigationItem[] = adminNavigationItems,
 ): AdminNavigationItem | undefined {
+  const direct = bestPathMatch(path, items)
+  if (direct) return direct
+  const parent = bestPathMatch(path, routeGrantOverrides)?.parentRoute
+  return items.find(item => item.path === parent)
+}
+
+function bestPathMatch(path: string, items: readonly AdminNavigationItem[]): AdminNavigationItem | undefined {
   return items.reduce<{
     item?: AdminNavigationItem
     specificity: number
@@ -600,10 +616,7 @@ export function requiredGrants(path: string): readonly AdminGrantRequirement[] {
     return [operationsGrant]
   }
 
-  const entry = [...routeGrantOverrides, ...adminNavigationItems]
-    .map(candidate => ({ candidate, specificity: matchingPathSpecificity(candidate, path) }))
-    .filter(match => match.specificity >= 0)
-    .sort((a, b) => b.specificity - a.specificity)[0]?.candidate
+  const entry = bestPathMatch(path, [...routeGrantOverrides, ...adminNavigationItems])
 
   return entry?.grants ?? []
 }
@@ -611,10 +624,7 @@ export function requiredGrants(path: string): readonly AdminGrantRequirement[] {
 export function requiredGrantSets(path: string): readonly (readonly AdminGrantRequirement[])[] {
   if (path === '/apps/updata' || path.startsWith('/apps/updata/')) return [[operationsGrant]]
 
-  const entry = [...routeGrantOverrides, ...adminNavigationItems]
-    .map(candidate => ({ candidate, specificity: matchingPathSpecificity(candidate, path) }))
-    .filter(match => match.specificity >= 0)
-    .sort((a, b) => b.specificity - a.specificity)[0]?.candidate
+  const entry = bestPathMatch(path, [...routeGrantOverrides, ...adminNavigationItems])
 
   if (!entry) return []
   if (entry.grantSets && entry.grantSets.length > 0) return entry.grantSets

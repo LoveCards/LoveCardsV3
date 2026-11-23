@@ -93,16 +93,13 @@
               <h2 id="runtime-title" class="text-subtitle-1 font-weight-bold">运行状态</h2>
               <p class="text-body-2 text-medium-emphasis mt-1">当前通信方式和事件队列状态。</p>
             </div>
-            <v-chip v-if="runtimeStatus" size="small" variant="tonal" :color="runtimeHealthy ? 'success' : 'warning'">
-              {{ runtimeHealthy ? '运行正常' : '需要关注' }}
-            </v-chip>
           </div>
           <v-alert v-if="runtimeError" type="error" variant="tonal">{{ runtimeError }}</v-alert>
           <v-card v-else-if="runtimeStatus">
             <v-list lines="two">
               <v-list-item
                 :prepend-icon="runtimeStatus.communication.status === 'ready' ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'"
-                title="主动更新"
+                title="浏览器更新"
                 :subtitle="communicationSummary"
                 :base-color="runtimeStatus.communication.status === 'ready' ? 'success' : 'warning'"
                 to="/apps/operations/communication?source=dashboard"
@@ -110,12 +107,23 @@
               />
               <v-divider />
               <v-list-item
-                prepend-icon="mdi-inbox-arrow-down-outline"
-                title="事件队列"
-                :subtitle="`${runtimeStatus.eventing.pending} 待处理 · ${runtimeStatus.eventing.dead} 死信`"
+                :prepend-icon="eventReady ? 'mdi-check-circle-outline' : 'mdi-alert-circle-outline'"
+                :base-color="eventReady ? 'success' : 'warning'"
+                title="事件处理"
+                :subtitle="eventProcessingSummary"
                 to="/apps/operations/eventing?source=dashboard"
                 value="runtime-eventing"
               />
+              <v-divider />
+              <v-list-item
+                prepend-icon="mdi-inbox-arrow-down-outline"
+                title="事件队列"
+                :subtitle="`${runtimeStatus.eventing.pending} 待处理 · ${runtimeStatus.eventing.dead} 失败 · ${runtimeStatus.eventing.expired_processing ?? 0} 过期租约`"
+              >
+                <template v-if="canReadCommunications && runtimeStatus.eventing.dead > 0" #append>
+                  <v-btn to="/apps/operations/deliveries?queue=all&view=dead" variant="text" color="primary">查看失败任务</v-btn>
+                </template>
+              </v-list-item>
             </v-list>
           </v-card>
           <v-card v-else class="pa-5 text-body-2 text-medium-emphasis">正在读取运行状态…</v-card>
@@ -230,6 +238,7 @@
 </template>
 
 <script setup lang="ts">
+import { eventModeLabel, eventProcessingReasonLabel } from '~/lib/event-processing-labels'
 import type { DashboardData, DashboardTask, OperationsAuditLog, OperationsNotificationStats, OperationsRuntimeStatus, RoleInfo } from '@lovecards/sdk'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
@@ -258,15 +267,20 @@ const responsibilityPreviewLimit = 3
 const canReadOperations = computed(() => userStore.hasGrant('operations.read', 'global'))
 const canReadCommunications = computed(() => userStore.hasGrant('communications.read', 'global'))
 const canReadAudit = computed(() => userStore.hasGrant('audit.read', 'global'))
-const runtimeHealthy = computed(() => Boolean(
-  runtimeStatus.value?.communication.status === 'ready'
-  && runtimeStatus.value.eventing.dead === 0
-  && (runtimeStatus.value.eventing.expired_processing ?? 0) === 0,
-))
+const eventReady = computed(() => runtimeStatus.value?.event_processing?.status === 'ready'
+  && runtimeStatus.value.event_processing.state !== 'draining')
+const eventProcessingSummary = computed(() => {
+  const current = runtimeStatus.value?.event_processing
+  if (!current) return '状态不可用'
+  const mode = eventModeLabel(current.mode)
+  if (current.state === 'draining') return `${mode} · 切换中`
+  if (eventReady.value) return `${mode} · 正常`
+  return `${mode} · ${current.reason_code ? eventProcessingReasonLabel(current.reason_code) : '需维护'}`
+})
 const communicationSummary = computed(() => {
   const communication = runtimeStatus.value?.communication
   if (!communication) return '状态不可用'
-  const mode = communication.desired_mode === 'realtime' ? '实时' : '轮询'
+  const mode = communication.desired_mode === 'realtime' ? '实时' : communication.desired_mode === 'polling' ? '轮询' : '未知'
   return communication.status === 'ready' ? `当前为${mode}模式，运行正常` : `当前为${mode}模式，主动提示暂停，请检查依赖`
 })
 
@@ -322,6 +336,7 @@ function taskIcon(key: string) {
     cards_pending: 'mdi-card-search-outline',
     comments_pending: 'mdi-comment-alert-outline',
     reports_open: 'mdi-flag-outline',
+    reports_reviewing: 'mdi-flag-outline',
     deliveries_dead: 'mdi-alert-circle-outline',
     files_pending: 'mdi-file-clock-outline',
   } as Record<string, string>)[key] ?? 'mdi-clipboard-check-outline'

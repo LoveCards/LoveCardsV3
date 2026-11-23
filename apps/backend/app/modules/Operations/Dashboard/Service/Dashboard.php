@@ -85,23 +85,25 @@ class Dashboard
                 'warning'
             );
         }
-        if (in_array('reports_open', $allowed, true)) {
+        foreach (['open' => ['待领取举报', '检查新提交的举报。'], 'reviewing' => ['处理中举报', '继续审核已领取的举报。']] as $status => [$label, $description]) {
+            $key = 'reports_' . $status;
+            if (!in_array($key, $allowed, true)) continue;
             $tasks[] = self::task(
-                'reports_open',
-                '待处理举报',
-                '跟进尚未关闭的社区举报。',
-                self::countWhere('reports', static fn ($query) => $query->whereIn('status', ['open', 'reviewing'])),
-                '/apps/community/reports',
+                $key,
+                $label,
+                $description,
+                self::countWhere('reports', static fn ($query) => $query->where('status', $status)),
+                '/apps/community/reports?status=' . $status,
                 'warning'
             );
         }
         if (in_array('deliveries_dead', $allowed, true)) {
             $tasks[] = self::task(
                 'deliveries_dead',
-                '失败投递',
+                '失败处理任务',
                 '检查死信并在确认原因后重试。',
                 self::countWhere('event_deliveries', static fn ($query) => $query->where('status', 'dead')),
-                '/apps/operations/deliveries',
+                '/apps/operations/deliveries?queue=all&view=dead',
                 'error'
             );
         }

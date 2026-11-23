@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
+import { useMediaUploadPolicy } from '../../app/use-media-upload-policy.js';
+import { uploadAccept, uploadRuleDescription } from '../../services/upload-policy.js';
 import { useAuth } from '../../app/providers.jsx';
 import { getUserFacingError } from '../../app/user-facing-error.js';
 import { ResourceErrorBanner } from '../../components/ResourceState.jsx';
@@ -18,6 +20,7 @@ function normalizeForm(user) {
 export function ProfileSettingsPage() {
   const { isAuthenticated, status: authStatus, error: authError, refresh: refreshAuth } = useAuth();
   const toast = useToast();
+  const coverRule = useMediaUploadPolicy(isAuthenticated)?.scenes.profile_cover;
   const [status, setStatus] = useState('loading');
   const [user, setUser] = useState(null);
   const [form, setForm] = useState({ username: '', bio: '', location: '', gender: '', birth_date: '' });
@@ -89,7 +92,7 @@ export function ProfileSettingsPage() {
           <SettingsGroup title="公开身份" description="这些信息会出现在你的用户主页和作者信息中。">
             <div className="profile-settings-account"><div><span>账号</span><strong>@{user?.username || '—'}</strong></div><div><span>UID</span><strong>{user?.uid || '—'}</strong></div><small>UID 是账号的稳定标识，用于系统内部关联和安全核验。</small></div>
             <div className="profile-settings-form">
-            <label><span>主页背景图</span><FileInput label="选择背景图" description="JPG、PNG 或 WebP，最大 10 MiB" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" maxSize={10 * 1024 * 1024} value={coverFile} onChange={(file) => { setCoverFile(file); setClearCover(false); }} placeholder={user?.cover_url ? '更换背景图' : '选择背景图'} mode="input" width="100%" />{user?.cover_url && <button className="profile-cover-clear" type="button" onClick={() => { setCoverFile(null); setClearCover(true); }}>移除当前背景图</button>}<small>保存资料时一起更新；未选择时继续使用默认渐变。</small></label>
+            <label><span>主页背景图</span><FileInput label="选择背景图" description={uploadRuleDescription(coverRule, 'JPG、PNG 或 WebP，最大 10 MiB')} accept={uploadAccept(coverRule, 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp')} maxSize={coverRule?.max_bytes ?? 10 * 1024 * 1024} value={coverFile} onChange={(file) => { setCoverFile(file); setClearCover(false); }} placeholder={user?.cover_url ? '更换背景图' : '选择背景图'} mode="input" width="100%" />{user?.cover_url && <button className="profile-cover-clear" type="button" onClick={() => { setCoverFile(null); setClearCover(true); }}>移除当前背景图</button>}<small>保存资料时一起更新；未选择时继续使用默认渐变。</small></label>
             <label><span>用户名</span><input value={form.username} maxLength={12} onChange={(event) => setForm((value) => ({ ...value, username: event.target.value }))} autoComplete="nickname" aria-describedby="profile-username-help" /><small id="profile-username-help">3–12 个字符；主页链接使用用户名，修改后旧链接可能失效。</small></label>
             <label><span>个人简介</span><textarea value={form.bio} maxLength={160} rows={4} onChange={(event) => setForm((value) => ({ ...value, bio: event.target.value }))} aria-describedby="profile-bio-help" /><small id="profile-bio-help">{countCodePoints(form.bio)}/160 个字。</small></label>
             <label><span>所在地</span><input value={form.location} maxLength={64} onChange={(event) => setForm((value) => ({ ...value, location: event.target.value.replace(/[\r\n]/g, '') }))} aria-describedby="profile-location-help" /><small id="profile-location-help">单行填写，最多 64 个字。</small></label>

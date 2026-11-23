@@ -59,7 +59,7 @@ function resourceType(route) {
   if (route.response?.shape === 'raw') return route.response?.type || 'string'
   const operation = route.name || ''
   const operationTypes = {
-    'files.upload': 'UploadResult', 'files.cleanup': '{ cleaned: number }',
+    'files.upload': 'UploadResult', 'files.uploadPolicy': 'UploadPolicy', 'files.managedUploadPolicy': 'UploadPolicy', 'operations.releaseStatus': 'OperationsReleaseStatus', 'files.cleanup': '{ cleaned: number }',
     'captcha.types': 'CaptchaDriver[]', 'captcha.drivers': 'CaptchaDriver[]', 'captcha.meta': 'CaptchaDriver', 'captcha.config': 'CaptchaConfig', 'captcha.challenge': 'CaptchaChallenge',
     'sender.types': 'SenderType[]', 'sender.meta': 'SenderMeta', 'sender.channels': 'SenderChannel[]', 'sender.templates': 'SenderTemplate[]', 'sender.testChannel': '{ success: boolean; message?: string }',
     'storage.types': 'StorageDriver[]', 'storage.meta': 'StorageMeta', 'storage.channels': 'StorageChannel[]', 'storage.channelStats': 'ChannelStats', 'storage.testChannel': '{ success: boolean; message?: string }',

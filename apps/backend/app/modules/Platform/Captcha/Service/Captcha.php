@@ -47,6 +47,14 @@ class Captcha
         return ChannelManager::isEnabled($type);
     }
 
+    public static function emailCodeStatus(): string
+    {
+        if (!self::isEnabled('code')) return 'code_disabled';
+        if (ChannelManager::getCodeChannel() !== 'smtp') return 'mail_channel_required';
+        if (ChannelManager::defaultDriver('code') !== 'smtp_code') return 'code_driver_unavailable';
+        return \app\modules\Platform\Sender\Public\Sender::mailCodeConfigurationStatus();
+    }
+
     public static function isReady(string $type, ?string $driverSlug = null): bool
     {
         if ($type !== 'captcha') return false;

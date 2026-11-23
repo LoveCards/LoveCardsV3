@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
+import { useMediaUploadPolicy } from '../../app/use-media-upload-policy.js';
+import { uploadAccept, uploadRuleDescription } from '../../services/upload-policy.js';
 import { deleteComposeMedia, getComposeState, loadComposeTopics, loadPublishedCardForEdit, loadTopicPolicy, normalizeCardVisibility, normalizeDraftMedia, publishCard, updatePublishedCard, uploadComposeMedia } from '../../services/compose-service.js';
 import { createDraft, deleteDraft, draftSummary, getDraft, normalizeDraftPayload, updateDraft } from '../../services/community-service.js';
 import { useAuth } from '../../app/providers.jsx';
@@ -189,6 +191,7 @@ export function ComposePage() {
     normalizeMentionCaret(composeInputRoot.current);
   }, []);
 
+  const uploadPolicy = useMediaUploadPolicy(!designPreview && isAuthenticated);
   useEffect(() => {
     if (designPreview || !isAuthenticated) return undefined;
     let active = true;
@@ -333,6 +336,8 @@ export function ComposePage() {
     ...mediaPreviews.map((item) => ({ ...item, name: item.file.name, type: item.file.type, source: 'local' })),
   ], [mediaPreviews, persistedMedia]);
   const mediaCount = persistedMedia.length + files.length;
+  const mediaRule = uploadPolicy?.scenes[publishType === 'video' ? 'card_video' : 'card_image'];
+  const mediaLimit = publishType === 'video' ? Math.min(1, uploadPolicy?.card_media_limit ?? 1) : (uploadPolicy?.card_media_limit ?? 9);
   const currentSignature = composeSignature({ content, tags, publishType, galleryLayout, media: persistedMedia, files, visibility });
   const dirty = currentSignature !== savedSignature;
   const topicList = topicsFrom(tags);
@@ -605,22 +610,22 @@ export function ComposePage() {
               </section>
 
               {publishType !== 'text' && <section className="compose-media-workspace" id="compose-media" aria-labelledby="compose-media-title">
-                <header><div><h3 id="compose-media-title">{publishType === 'video' ? '视频' : '图片'}<span aria-hidden="true"> *</span></h3><p>{publishType === 'video' ? '必选：选择一个视频，发布后使用原生播放控制。' : '必选：按选择顺序发布，最多添加 9 张。'}</p></div><span>{mediaCount}/{publishType === 'video' ? 1 : 9}</span></header>
+                <header><div><h3 id="compose-media-title">{publishType === 'video' ? '视频' : '图片'}<span aria-hidden="true"> *</span></h3><p>{publishType === 'video' ? '必选：选择一个视频，发布后使用原生播放控制。' : `必选：按选择顺序发布，最多添加 ${mediaLimit} 张。`}</p></div><span>{mediaCount}/{mediaLimit}</span></header>
                 <MediaDropzone
                   label={publishType === 'video' ? mediaCount ? '更换视频' : '添加视频' : mediaCount ? '继续添加图片或 GIF' : '添加图片或 GIF'}
-                  description={publishType === 'video' ? '支持 MP4、WebM、MOV 与 M4V；文件大小以服务端策略为准。' : '支持 JPEG、PNG、WebP 与 GIF；文件大小以服务端策略为准。'}
+                  description={uploadRuleDescription(mediaRule, '上传格式和大小以站点当前规则为准。')}
                   value={publishType === 'video' ? files[0] || null : files}
                   onChange={(value) => {
-                    const available = Math.max(0, (publishType === 'video' ? 1 : 9) - persistedMedia.length);
+                    const available = Math.max(0, mediaLimit - persistedMedia.length);
                     setFiles((current) => selectComposeFiles(current, value, { multiple: publishType === 'image', limit: available }));
                   }}
-                  accept={publishType === 'video' ? 'video/mp4,video/webm,video/quicktime,video/x-m4v,.mov,.m4v' : 'image/jpeg,image/png,image/webp,image/gif'}
-                  maxSize={publishType === 'image' ? 10 * 1024 * 1024 : undefined}
+                  accept={uploadAccept(mediaRule, publishType === 'video' ? 'video/mp4,video/webm,video/quicktime,video/x-m4v,.mov,.m4v' : 'image/jpeg,image/png,image/webp,image/gif')}
+                  maxSize={mediaRule?.max_bytes ?? (publishType === 'image' ? 10 * 1024 * 1024 : undefined)}
                   isMultiple={publishType === 'image'}
-                  maxFiles={Math.max(1, (publishType === 'image' ? 9 : 1) - mediaCount)}
+                  maxFiles={Math.max(1, mediaLimit - mediaCount)}
                   placeholder={publishType === 'video' ? '拖入视频，或点击选择' : '拖入图片，或点击选择'}
-                  isDisabled={busy || !canUploadMedia || mediaCount >= (publishType === 'video' ? 1 : 9)}
-                  disabledMessage={!canUploadMedia ? '当前账号没有上传媒体的权限。' : mediaCount >= (publishType === 'video' ? 1 : 9) ? '已达到当前类型的媒体数量上限。' : undefined}
+                  isDisabled={busy || !canUploadMedia || mediaCount >= mediaLimit}
+                  disabledMessage={!canUploadMedia ? '当前账号没有上传媒体的权限。' : mediaCount >= mediaLimit ? '已达到当前类型的媒体数量上限。' : undefined}
                   isLoading={busy}
                   status={mediaError ? { type: 'error', message: publishType === 'video' ? '请添加一个视频后再发布。' : '请至少添加一张图片后再发布。' } : undefined}
                 />

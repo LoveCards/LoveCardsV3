@@ -4,6 +4,7 @@ namespace app\modules\Platform\Storage\Infrastructure\Driver;
 
 use think\file\UploadedFile;
 use app\api\ApiException;
+use app\modules\Platform\Storage\Contract\DirectUploadCredential;
 use app\modules\Platform\Storage\Contract\StorageResult;
 
 abstract class AbstractDriver implements DriverInterface
@@ -37,6 +38,9 @@ abstract class AbstractDriver implements DriverInterface
     {
         $this->checkMime($mime);
         $this->checkSize($size);
+        if ((int) ($this->config['max_file_size'] ?? 0) <= 0 && $size > DirectUploadCredential::DEFAULT_MAX_BYTES) {
+            throw ApiException::badRequest('文件大小超出直传渠道默认限制');
+        }
     }
 
     protected function checkMime(string $mime): void
@@ -51,7 +55,7 @@ abstract class AbstractDriver implements DriverInterface
                 return;
             }
             if (str_ends_with($pattern, '/*')) {
-                $prefix = rtrim($pattern, '/*');
+                $prefix = substr($pattern, 0, -1);
                 if (str_starts_with($mime, $prefix)) {
                     return;
                 }

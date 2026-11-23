@@ -13,6 +13,7 @@ use app\api\controller\BaseController;
 use app\shared\Transport\Http\ApiResource;
 use app\modules\Platform\Files\Transport\Api\DirectUploadResource;
 use app\modules\Platform\Files\Transport\Api\FileResource;
+use app\modules\Platform\Files\Transport\Api\UploadPolicyResource;
 
 class Upload extends BaseController
 {
@@ -35,6 +36,11 @@ class Upload extends BaseController
         $this->getFile = $getFile;
         $this->batchOperate = $batchOperate;
         $this->directUpload = $directUpload;
+    }
+
+    public function uploadPolicy()
+    {
+        return ApiResponse::createOk(UploadPolicyResource::make($this->uploadFile->policy()));
     }
 
     public function upload()

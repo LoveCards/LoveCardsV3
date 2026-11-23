@@ -2,7 +2,7 @@
 
 namespace app\modules\Platform\Sender\Infrastructure\Driver;
 
-use mailer\tp6\Mailer;
+use PHPMailer\PHPMailer\PHPMailer;
 use app\modules\Platform\Sender\Infrastructure\Driver\AbstractDriver;
 use app\modules\Platform\Sender\Contract\Message;
 use app\modules\Platform\Sender\Contract\SendResult;
@@ -41,10 +41,9 @@ class SmtpDriver extends AbstractDriver
     private function sendCode(Message $message): SendResult
     {
         $subject = '验证码';
-        $body = $this->renderTemplate('code', [
-            'code'   => $message->code,
-            'expire' => $message->expire,
-        ]);
+        $code = htmlspecialchars((string) $message->code, ENT_QUOTES, 'UTF-8');
+        $expire = (int) $message->expire;
+        $body = "<p>你的验证码为 <strong>{$code}</strong>，{$expire} 分钟内有效。</p>";
         return $this->doSend($message->to, $subject, $body);
     }
 
@@ -59,56 +58,43 @@ class SmtpDriver extends AbstractDriver
         return $this->doSend($message->to, $subject, $body);
     }
 
-    private function doSend(string|array $to, string $subject, string $body): SendResult
+    public function configurationStatus(): string
     {
-        try {
-            $this->resetMailerConfig();
-
-            $mailer = new Mailer();
-            $result = $mailer->to($to)
-                ->subject($subject)
-                ->html($body)
-                ->send();
-
-            if ($result === false) {
-                return SendResult::fail('smtp', 'SMTP 发送失败');
-            }
-
-            return SendResult::ok('smtp');
-        } catch (\Throwable $e) {
-            return SendResult::fail('smtp', $e->getMessage());
+        if (!class_exists(PHPMailer::class)) return 'sender_runtime_unavailable';
+        $port = (int) ($this->config['port'] ?? 465);
+        $security = (string) ($this->config['security'] ?? PHPMailer::ENCRYPTION_SMTPS);
+        if (trim((string) ($this->config['host'] ?? '')) === '' || $port < 1 || $port > 65535
+            || !in_array($security, ['', PHPMailer::ENCRYPTION_SMTPS, PHPMailer::ENCRYPTION_STARTTLS], true)
+            || !filter_var($this->config['addr'] ?? '', FILTER_VALIDATE_EMAIL)) {
+            return 'sender_configuration_incomplete';
         }
+        return 'ready';
     }
 
-    private function resetMailerConfig(): void
+    private function doSend(string|array $to, string $subject, string $body): SendResult
     {
-        if (!class_exists('\mailer\lib\Config')) {
-            return;
+        if ($this->configurationStatus() !== 'ready') return SendResult::fail('smtp', 'SMTP 渠道配置尚未就绪');
+        try {
+            $mailer = new PHPMailer(true);
+            $mailer->isSMTP();
+            $mailer->CharSet = PHPMailer::CHARSET_UTF8;
+            $mailer->Host = (string) $this->config['host'];
+            $mailer->Port = (int) ($this->config['port'] ?? 465);
+            $mailer->Timeout = 10;
+            $mailer->Username = (string) $this->config['addr'];
+            $mailer->Password = (string) ($this->config['pass'] ?? '');
+            $mailer->SMTPAuth = $mailer->Password !== '';
+            $mailer->SMTPSecure = (string) ($this->config['security'] ?? PHPMailer::ENCRYPTION_SMTPS);
+            $mailer->setFrom($mailer->Username, (string) ($this->config['name'] ?? ''));
+            foreach ((array) $to as $recipient) $mailer->addAddress($recipient);
+            $mailer->Subject = $subject;
+            $mailer->isHTML(true);
+            $mailer->Body = $body;
+            $mailer->AltBody = strip_tags($body);
+            $mailer->send();
+            return SendResult::ok('smtp');
+        } catch (\Throwable) {
+            return SendResult::fail('smtp', 'SMTP 发送失败，请检查服务器、端口、加密设置和登录凭据');
         }
-
-        $reflClass = new \ReflectionClass('\mailer\lib\Config');
-        $configProp = $reflClass->getProperty('config');
-        $configProp->setAccessible(true);
-        $isInitProp = $reflClass->getProperty('isInit');
-        $isInitProp->setAccessible(true);
-
-        $security = $this->config['security'] ?? '';
-        if ($security === '') {
-            $security = 'ssl';
-        }
-
-        $configProp->setValue(null, [
-            'driver'       => 'smtp',
-            'host'         => $this->config['host'] ?? '',
-            'port'         => $this->config['port'] ?? 465,
-            'addr'         => $this->config['addr'] ?? '',
-            'pass'         => $this->config['pass'] ?? '',
-            'name'         => $this->config['name'] ?? '',
-            'content_type' => 'text/html',
-            'charset'      => 'utf-8',
-            'security'     => $security,
-            'debug'        => true,
-        ]);
-        $isInitProp->setValue(null, true);
     }
 }

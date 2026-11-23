@@ -80,7 +80,7 @@
               :prepend-icon="result.icon || 'mdi-chevron-right'"
               :subtitle="result.groupTitle"
               :title="result.title"
-              :to="result.path"
+              :to="result.to"
               @click="searchOpen = false"
             />
           </v-list>
@@ -227,7 +227,10 @@
             </v-tooltip>
           </template>
 
-          <template v-for="item in group.items" :key="item.path">
+          <template v-for="(item, index) in group.items" :key="item.path">
+            <v-list-subheader v-if="group.key === 'system' && (!rail || mdAndDown) && systemSection(item.path) !== systemSection(group.items[index - 1]?.path)">
+              {{ systemSection(item.path) }}
+            </v-list-subheader>
             <v-list-item
               :active="activeNavigationItem?.path === item.path"
               :prepend-icon="item.icon || 'mdi-chevron-right'"
@@ -296,7 +299,6 @@ import {
   adminNavigation,
   canAccessNavigationItem,
 } from '~/config/navigation'
-import type { AdminNavigationItem } from '~/config/navigation'
 import { firstAccessibleAdminPath } from '~/utils/access'
 import type { User } from '@lovecards/sdk'
 
@@ -363,11 +365,14 @@ const allVisibleItems = computed(() => [
 const activeNavigationItem = computed(() => activeNavigationItemForPath(route.path, allVisibleItems.value))
 const searchResults = computed(() => {
   const query = searchQuery.value.trim().toLocaleLowerCase()
-  if (!query) return [] as Array<AdminNavigationItem & { groupTitle: string }>
+  if (!query) return []
 
   return allVisibleItems.value
-    .filter((item) => [item.title, ...(item.searchAliases ?? []), item.path]
-      .some((value) => value.toLocaleLowerCase().includes(query)))
+    .flatMap((item) => {
+      const target = item.searchTargets?.find(entry => entry.title.toLocaleLowerCase().includes(query))
+      const matches = [item.title, ...(item.searchAliases ?? []), item.path].some(value => value.toLocaleLowerCase().includes(query))
+      return target || matches ? [{ ...item, title: target?.title ?? item.title, to: { path: item.path, query: target?.query } }] : []
+    })
     .slice(0, 8)
     .map((item) => ({
       ...item,
@@ -376,6 +381,12 @@ const searchResults = computed(() => {
         : visibleNavigationGroups.value.find((group) => group.items.some((candidate) => candidate.path === item.path))?.title ?? '',
     }))
 })
+
+function systemSection(path?: string): string {
+  if (!path) return ''
+  if (path === '/apps/operations/upgrade') return '发行与维护'
+  return path.startsWith('/apps/operations/') ? '运行与排查' : '基础服务'
+}
 
 function expandActiveGroup(): void {
   const active = visibleNavigationGroups.value.find((group) => group.items.some((item) => (

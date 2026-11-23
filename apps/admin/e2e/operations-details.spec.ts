@@ -30,6 +30,8 @@ test.beforeEach(async ({ page }) => {
           capabilities: [],
           grants: [
             { capability: 'admin.access', scope: 'global' },
+            { capability: 'dashboard.read', scope: 'global' },
+            { capability: 'operations.read', scope: 'global' },
             { capability: 'communications.read', scope: 'global' },
             { capability: 'operations.retry', scope: 'global' },
             { capability: 'audit.read', scope: 'global' },
@@ -211,7 +213,7 @@ test('operations lists link each record to its canonical detail page', async ({ 
   await page.goto('./apps/operations/deliveries', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('link', { name: 'content.card_liked' })).toHaveAttribute(
     'href',
-    '/admin/apps/operations/deliveries/77',
+    '/admin/apps/operations/deliveries/77?returnTo=/apps/operations/deliveries',
     { timeout: 20_000 },
   )
 
@@ -221,4 +223,90 @@ test('operations lists link each record to its canonical detail page', async ({ 
     '/admin/apps/operations/audit/88',
     { timeout: 20_000 },
   )
+})
+
+test('workbench distinguishes event degradation and opens matching tasks and audit', async ({ page }) => {
+  test.setTimeout(60_000)
+  let deadCount = 0
+  let totalFailed = 1
+  const failedTask = { ...deliveryFixture(), queue_name: 'storage', event_type: 'file.cleanup_requested', display_name: '文件清理' }
+  const deliveryRequests: URLSearchParams[] = []
+  const auditRequests: URLSearchParams[] = []
+  await page.route('**/api/admin/dashboard', route => route.fulfill({ json: {
+    success: true, data: {
+      count: {}, chart: [], notice: [], ver: { app_name: 'LoveCards', version: '3.0.0', build: 'test' },
+      workbench: { tasks: [{
+        key: 'deliveries_dead', label: '失败处理任务', description: '检查后重试', count: deadCount,
+        action_url: '/apps/operations/deliveries?queue=all&view=dead', severity: 'error',
+      }] },
+    },
+  } }))
+  await page.route('**/api/admin/operations/runtime', route => route.fulfill({ json: {
+    success: true, data: {
+      facilities: [], workers: [], eventing: { pending: 0, processing: 0, dead: deadCount, expired_processing: 0, queues: [] },
+      event_processing: { mode: 'scheduled', state: 'active', status: 'degraded', reason_code: 'scheduler-trigger-unconfigured' },
+      communication: { desired_mode: 'polling', effective_mode: 'polling', status: 'ready' },
+    },
+  } }))
+  await page.route('**/api/admin/operations/notifications', route => route.fulfill({ json: {
+    success: true, data: { total: 0, unread: 0, recipients: 0 },
+  } }))
+  await page.route('**/api/admin/operations/deliveries/77', route => route.fulfill({ json: { success: true, data: failedTask } }))
+  await page.route('**/api/admin/operations/deliveries/summary', route => route.fulfill({ json: {
+    success: true, data: { dead: 0, pending: 0, processing: 0, skipped: 0, checked_at: '2026-11-17 10:00:00' },
+  } }))
+  await page.route('**/api/admin/operations/deliveries?**', route => {
+    const url = new URL(route.request().url())
+    deliveryRequests.push(url.searchParams)
+    const allQueues = !url.searchParams.has('queue_name')
+    return route.fulfill({ json: {
+      success: true, data: allQueues ? [failedTask] : [],
+      pagination: { currentPage: Number(url.searchParams.get('page')), totalPages: allQueues ? Math.ceil(totalFailed / 20) : 0, totalItems: allQueues ? totalFailed : 0, itemsPerPage: 20 },
+    } })
+  })
+  await page.route('**/api/admin/audit-logs?**', route => {
+    auditRequests.push(new URL(route.request().url()).searchParams)
+    return route.fulfill({ json: {
+      success: true, data: [],
+      pagination: { currentPage: 1, totalPages: 0, totalItems: 0, itemsPerPage: 30 },
+    } })
+  })
+
+  await page.goto('./apps/dashboard', { waitUntil: 'domcontentloaded' })
+  const runtime = page.getByRole('region', { name: '运行状态' })
+  await expect(runtime.getByText('当前为轮询模式，运行正常')).toBeVisible()
+  await expect(runtime.getByText('定时消费 · 尚未声明定时触发源')).toBeVisible()
+  await expect(runtime.getByRole('link', { name: '查看失败任务' })).toHaveCount(0)
+
+  deadCount = 1
+  await page.getByRole('button', { name: '刷新', exact: true }).click()
+  const task = page.getByRole('link', { name: /失败处理任务/ })
+  await expect(task).toContainText('1')
+  await expect(runtime.getByRole('link', { name: '查看失败任务' })).toHaveAttribute('href', '/admin/apps/operations/deliveries?queue=all&view=dead')
+  await task.click()
+  await expect(page.getByRole('heading', { name: '处理任务', exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: '文件清理', exact: true })).toBeVisible()
+  expect(deliveryRequests.at(-1)?.get('status')).toBe('dead')
+  expect(deliveryRequests.at(-1)?.has('queue_name')).toBe(false)
+
+  totalFailed = 21
+  await page.goto('./apps/operations/deliveries?queue=all&view=dead&page=2&list_rows=20', { waitUntil: 'domcontentloaded' })
+  await page.getByRole('link', { name: '文件清理', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '处理任务 #77' })).toBeVisible()
+  await expect(page.locator('.admin-navigation-list').getByRole('link', { name: '事件管理' })).toHaveClass(/v-list-item--active/)
+  await page.getByRole('link', { name: '返回处理任务' }).click()
+  await expect(page).toHaveURL(/queue=all&view=dead&page=2&list_rows=20$/)
+  await expect.poll(() => deliveryRequests.at(-1)?.get('page')).toBe('2')
+
+  await page.getByRole('link', { name: '查看详情' }).click()
+  await page.getByRole('link', { name: '查看任务审计' }).click()
+  await expect.poll(() => auditRequests.at(-1)?.get('resource_id')).toBe('77')
+  expect(auditRequests.at(-1)?.get('resource_type')).toBe('event_delivery')
+  await page.goBack()
+  await page.getByRole('button', { name: '技术信息' }).click()
+  await page.getByRole('link', { name: '查看链路审计' }).click()
+  await expect.poll(() => auditRequests.at(-1)?.get('correlation_id')).toBe('correlation-delivery-77')
+
+  await page.goto('./apps/operations/deliveries', { waitUntil: 'domcontentloaded' })
+  await expect.poll(() => deliveryRequests.at(-1)?.get('queue_name')).toBe('notifications')
 })

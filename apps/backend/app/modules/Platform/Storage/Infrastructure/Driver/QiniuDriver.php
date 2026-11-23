@@ -106,7 +106,6 @@ class QiniuDriver extends AbstractDriver implements HasDirectUpload
     ): DirectUploadCredential {
         $this->validateDirectUpload($mime, $size);
 
-        $maxSize = (int) ($this->config['max_file_size'] ?? 0);
         $accessKey = $this->config['access_key'];
         $secretKey = $this->config['secret_key'];
         $bucket = $this->config['bucket'];
@@ -118,7 +117,7 @@ class QiniuDriver extends AbstractDriver implements HasDirectUpload
             'scope' => $bucket . ':' . $key,
             'deadline' => $deadline,
             'mimeLimit' => $mime,
-            'fsizeLimit' => $maxSize > 0 ? $maxSize : 52428800,
+            'fsizeLimit' => $size,
         ]);
 
         $policyEncoded = $this->base64UrlEncode($policy);

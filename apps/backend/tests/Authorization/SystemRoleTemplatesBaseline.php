@@ -169,12 +169,23 @@ foreach ($expected as $slug => $wanted) {
 
 $expectedTasks = [
     'content_operator' => [],
-    'community_operator' => ['reports_open'],
-    'moderator' => ['cards_pending', 'comments_pending', 'reports_open'],
+    'community_operator' => ['reports_open', 'reports_reviewing'],
+    'moderator' => ['cards_pending', 'comments_pending', 'reports_open', 'reports_reviewing'],
     'security_admin' => [],
     'operations_admin' => ['deliveries_dead', 'files_pending'],
     'auditor' => [],
 ];
+foreach ([
+    ['cards.approve', 'all'],
+    ['comments.moderate', 'all'],
+    ['reports.manage', 'global'],
+    ['operations.retry', 'global'],
+    ['files.update', 'all'],
+] as [$capability, $scope]) {
+    $writeOnly = GrantSet::fromRows([['capability' => $capability, 'scope' => $scope]]);
+    $assert(WorkbenchPolicy::taskKeys($writeOnly) === [], "{$capability} alone must not expose a task without list access");
+}
+
 $expectedSummaries = [
     'content_operator' => ['cards', 'good'],
     'community_operator' => ['comments'],

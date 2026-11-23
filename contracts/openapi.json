@@ -2823,6 +2823,7 @@
             "search_keys": "max:255",
             "note": "max:2000",
             "resolution": "max:255",
+            "expected_status": "in:open,reviewing,resolved,rejected,closed",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
@@ -3200,6 +3201,7 @@
             "search_keys": "max:255",
             "note": "max:2000",
             "resolution": "max:255",
+            "expected_status": "in:open,reviewing,resolved,rejected,closed",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
@@ -5380,6 +5382,19 @@
                         },
                         "orphaned": {
                           "type": "boolean"
+                        },
+                        "purge_task": {
+                          "type": "object",
+                          "nullable": true,
+                          "additionalProperties": false,
+                          "properties": {
+                            "id": {
+                              "type": "integer"
+                            },
+                            "status": {
+                              "type": "string"
+                            }
+                          }
                         }
                       },
                       "x-typescript-type": "FileUsage"
@@ -5680,6 +5695,138 @@
         ]
       }
     },
+    "/admin/files/upload-policy": {
+      "get": {
+        "operationId": "files.managedUploadPolicy",
+        "tags": [
+          "文件"
+        ],
+        "summary": "管理上传规则",
+        "description": "管理上传规则",
+        "x-controller": "Storage.Upload/uploadPolicy",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "config.read",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        },
+        "x-capabilities": [
+          "admin.access",
+          "config.read"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "UploadPolicyResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "scenes",
+                        "card_media_limit"
+                      ],
+                      "properties": {
+                        "scenes": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                              "available": {
+                                "type": "boolean"
+                              },
+                              "extensions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "mime_patterns": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "site_max_bytes": {
+                                "type": "integer"
+                              },
+                              "storage_max_bytes": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "max_bytes": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "card_media_limit": {
+                          "type": "integer"
+                        }
+                      },
+                      "x-typescript-type": "UploadPolicy"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      }
+    },
     "/admin/operations/deliveries": {
       "get": {
         "operationId": "operations.deliveries",
@@ -5736,6 +5883,7 @@
             "search_keys": "max:255",
             "note": "max:2000",
             "resolution": "max:255",
+            "expected_status": "in:open,reviewing,resolved,rejected,closed",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
@@ -6428,6 +6576,7 @@
             "search_keys": "max:255",
             "note": "max:2000",
             "resolution": "max:255",
+            "expected_status": "in:open,reviewing,resolved,rejected,closed",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
@@ -6750,6 +6899,7 @@
             "search_keys": "max:255",
             "note": "max:2000",
             "resolution": "max:255",
+            "expected_status": "in:open,reviewing,resolved,rejected,closed",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
@@ -7086,6 +7236,7 @@
             "search_keys": "max:255",
             "note": "max:2000",
             "resolution": "max:255",
+            "expected_status": "in:open,reviewing,resolved,rejected,closed",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
@@ -7412,6 +7563,107 @@
         "parameters": []
       }
     },
+    "/admin/operations/release-status": {
+      "get": {
+        "operationId": "operations.releaseStatus",
+        "tags": [
+          "运维"
+        ],
+        "summary": "当前软件版本",
+        "description": "当前软件版本",
+        "x-controller": "Platform.Administration/releaseStatus",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "operations.read"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "AdminReleaseStatusResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "version": {
+                          "type": "string"
+                        },
+                        "build": {
+                          "type": "integer"
+                        },
+                        "release_id": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      },
+                      "x-typescript-type": "OperationsReleaseStatus"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
+      }
+    },
     "/admin/operations/runtime": {
       "get": {
         "operationId": "operations.runtime",
@@ -7702,6 +7954,7 @@
             "search_keys": "max:255",
             "note": "max:2000",
             "resolution": "max:255",
+            "expected_status": "in:open,reviewing,resolved,rejected,closed",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
@@ -8048,6 +8301,7 @@
             "search_keys": "max:255",
             "note": "max:2000",
             "resolution": "max:255",
+            "expected_status": "in:open,reviewing,resolved,rejected,closed",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
@@ -8231,6 +8485,7 @@
             "search_keys": "max:255",
             "note": "max:2000",
             "resolution": "max:255",
+            "expected_status": "in:open,reviewing,resolved,rejected,closed",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
@@ -8504,6 +8759,7 @@
             "search_keys": "max:255",
             "note": "max:2000",
             "resolution": "max:255",
+            "expected_status": "in:open,reviewing,resolved,rejected,closed",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
@@ -9957,6 +10213,7 @@
             "search_keys": "max:255",
             "note": "max:2000",
             "resolution": "max:255",
+            "expected_status": "in:open,reviewing,resolved,rejected,closed",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
@@ -10164,6 +10421,7 @@
             "search_keys": "max:255",
             "note": "max:2000",
             "resolution": "max:255",
+            "expected_status": "in:open,reviewing,resolved,rejected,closed",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
@@ -10679,6 +10937,7 @@
             "search_keys": "max:255",
             "note": "max:2000",
             "resolution": "max:255",
+            "expected_status": "in:open,reviewing,resolved,rejected,closed",
             "limit": "number|between:1,200",
             "file": "require|fileExt:zip",
             "unread_only": "boolean",
@@ -10888,6 +11147,16 @@
                     "type": "string",
                     "maxLength": 255
                   },
+                  "expected_status": {
+                    "type": "string",
+                    "enum": [
+                      "open",
+                      "reviewing",
+                      "resolved",
+                      "rejected",
+                      "closed"
+                    ]
+                  },
                   "status": {
                     "type": "string",
                     "maxLength": 32
@@ -10897,7 +11166,7 @@
                   "status"
                 ],
                 "additionalProperties": true,
-                "x-typescript-params": "data: { note?: string; resolution?: string; status: string }",
+                "x-typescript-params": "data: { note?: string; resolution?: string; expected_status?: string; status: string }",
                 "x-path-params": [
                   "id"
                 ],
@@ -22144,6 +22413,133 @@
             }
           }
         }
+      }
+    },
+    "/me/files/upload-policy": {
+      "get": {
+        "operationId": "files.uploadPolicy",
+        "tags": [
+          "文件"
+        ],
+        "summary": "当前上传规则",
+        "description": "当前上传规则",
+        "x-controller": "Storage.Upload/uploadPolicy",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "files.upload",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        },
+        "x-capabilities": [
+          "files.upload"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "UploadPolicyResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "scenes",
+                        "card_media_limit"
+                      ],
+                      "properties": {
+                        "scenes": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "object",
+                            "properties": {
+                              "available": {
+                                "type": "boolean"
+                              },
+                              "extensions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "mime_patterns": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "site_max_bytes": {
+                                "type": "integer"
+                              },
+                              "storage_max_bytes": {
+                                "type": "integer",
+                                "nullable": true
+                              },
+                              "max_bytes": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        },
+                        "card_media_limit": {
+                          "type": "integer"
+                        }
+                      },
+                      "x-typescript-type": "UploadPolicy"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": []
       }
     },
     "/me/history": {

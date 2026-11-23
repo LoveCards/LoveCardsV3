@@ -32,6 +32,20 @@
           variant="outlined"
         />
       </AdminConfigSection>
+      <AdminConfigSaveBar v-if="canUpdateConfig" class="mb-5" :dirty="changed" label="访问设置">
+        <AdminActionGuard capability="config.update" scope="global">
+          <v-btn
+            color="primary"
+            :disabled="!changed"
+            :loading="saving"
+            prepend-icon="mdi-content-save-outline"
+            variant="flat"
+            @click="saveSettings"
+          >
+            保存访问设置
+          </v-btn>
+        </AdminActionGuard>
+      </AdminConfigSaveBar>
 
       <AdminConfigSection
         description="验证要求在验证中心统一修改；这里仅显示当前要求及依赖。"
@@ -48,11 +62,11 @@
           <v-list v-if="summary" bg-color="transparent" density="compact">
             <v-list-item
               title="注册邮件验证"
-              :subtitle="summary.emailVerify ? '已要求；新用户注册仅接受邮箱账号' : '未要求'"
+              :subtitle="summary.registration.email_verification_required ? '已要求；新用户注册仅接受邮箱账号' : '未要求'"
             />
             <v-list-item
               title="注册与卡片写入的人机验证"
-              :subtitle="summary.humanVerify ? '已要求' : '未要求；登录尚未接入人机验证'"
+              :subtitle="summary.human_verification.enabled ? '已要求' : '未要求；登录尚未接入人机验证'"
             />
             <v-list-item
               title="修改邮箱"
@@ -60,32 +74,18 @@
             />
             <v-list-item
               title="验证码服务与邮件渠道"
-              :subtitle="summary.codeEnabled && summary.codeChannel === 'smtp' ? '已开启邮件渠道；外部投递未验证' : '邮件验证依赖未就绪，注册或修改邮箱可能无法完成'"
+              :subtitle="emailVerificationStatus(summary)"
             />
             <v-list-item
               title="人机验证驱动"
-              :subtitle="summary.humanReady === null ? '就绪状态未知' : summary.humanReady ? '本地配置已就绪；未检测第三方连通' : '本地配置未就绪'"
+              :subtitle="summary.human_verification.available ? '本地配置已就绪；未检测第三方连通' : '本地配置未就绪'"
             />
           </v-list>
           <p v-if="!summary" class="text-body-2 text-medium-emphasis">验证设置尚未加载，不能推断当前要求。</p>
-          <NuxtLink to="/apps/settings/verification">前往验证中心</NuxtLink>
+          <NuxtLink to="/apps/settings/verification?tab=requirements">查看验证要求</NuxtLink>
         </template>
       </AdminConfigSection>
 
-      <AdminConfigSaveBar v-if="canUpdateConfig" class="mt-4" :dirty="changed" label="访问设置">
-        <AdminActionGuard capability="config.update" scope="global">
-          <v-btn
-            color="primary"
-            :disabled="!changed"
-            :loading="saving"
-            prepend-icon="mdi-content-save-outline"
-            variant="flat"
-            @click="saveSettings"
-          >
-            保存访问设置
-          </v-btn>
-        </AdminActionGuard>
-      </AdminConfigSaveBar>
     </AdminAsyncState>
 
     <AdminUnsavedChangesDialog
@@ -104,15 +104,9 @@ import AdminConfigSection from '~/components/shared/admin/AdminConfigSection.vue
 import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
 import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
-import { readBoolean, readObject, readString } from '~/utils/json'
-
-interface VerificationSummary {
-  emailVerify: boolean
-  humanVerify: boolean
-  codeEnabled: boolean
-  codeChannel: string
-  humanReady: boolean | null
-}
+import type { AuthPolicy } from '@lovecards/sdk'
+import { emailVerificationStatus } from '~/lib/verification-status'
+import { readBoolean, readObject } from '~/utils/json'
 type Feedback = { type: 'success' | 'error'; text: string }
 
 const client = useApi()
@@ -130,7 +124,7 @@ const message = ref<Feedback | null>(null)
 const switchItems = [{ title: '开启', value: true }, { title: '关闭', value: false }]
 const visitorMode = ref(false)
 const originalVisitorMode = ref(false)
-const summary = ref<VerificationSummary | null>(null)
+const summary = ref<AuthPolicy | null>(null)
 const changed = computed(() => visitorMode.value !== originalVisitorMode.value)
 watch(changed, value => emit('dirty-change', value), { immediate: true })
 const { unsavedChangesDialog, continueEditing, discardChanges } = useAdminUnsavedChanges(changed)
@@ -148,23 +142,12 @@ async function loadConfig() {
     originalVisitorMode.value = visitorMode.value
 
     if (canReadCaptcha.value) {
-      if (!raw.user || !raw.captcha) {
-        summaryError.value = '验证配置未返回，请重新加载后核对。'
-      } else {
-        const captcha = readObject(raw.captcha)
-        summary.value = {
-          emailVerify: readBoolean(readObject(raw.user).captcha),
-          humanVerify: readBoolean(captcha.captcha_enabled),
-          codeEnabled: readBoolean(captcha.code_enabled, true),
-          codeChannel: readString(captcha.code_channel, 'smtp'),
-          humanReady: null,
-        }
-        try {
-          const status = await client.captcha.config()
-          summary.value.humanReady = readBoolean(status.human_ready)
-        } catch (cause) {
-          summaryError.value = errorMessage(cause, '无法核对人机验证驱动状态。')
-        }
+      try {
+        const policy = await client.session.policy()
+        if (!policy?.registration || !policy.human_verification) throw new Error('验证状态缺失')
+        summary.value = policy
+      } catch (cause) {
+        summaryError.value = errorMessage(cause, '无法读取当前验证要求。')
       }
     }
   } catch (cause) {

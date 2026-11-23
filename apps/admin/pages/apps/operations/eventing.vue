@@ -2,6 +2,7 @@
   <AdminPageContainer :max-width="1040">
     <AdminPageHeader title="事件管理" description="查看事件事实、处理结果和当前版本的处理能力。" :breadcrumbs="[{ title: '系统' }]">
       <template #actions>
+        <v-btn v-if="canReadEvents" to="/apps/operations/deliveries?queue=all&view=all" variant="outlined" prepend-icon="mdi-format-list-bulleted">查看处理任务</v-btn>
         <v-btn v-if="activeTab === 'status'" prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="hasUnsavedChanges" @click="load">刷新</v-btn>
       </template>
     </AdminPageHeader>
@@ -27,7 +28,7 @@
                 <AdminStatusChip :status="eventProcessing?.status === 'ready' ? 'available' : 'degraded'" :label="eventProcessing?.state === 'draining' ? '切换中' : eventProcessing?.status === 'ready' ? '正常' : '需维护'" />
                 <span class="text-body-1">{{ eventModeLabel(eventProcessing?.mode) }}</span>
               </div>
-              <div class="text-body-2 text-medium-emphasis mt-2">{{ eventProcessing?.state === 'draining' ? `正在切换到${eventModeLabel(eventProcessing.target_mode)}，等待在途任务或租约结算后继续推进。` : `状态：${reasonLabel(eventProcessing?.reason_code)}` }}</div>
+              <div class="text-body-2 text-medium-emphasis mt-2">{{ eventProcessing?.state === 'draining' ? `正在切换到${eventModeLabel(eventProcessing.target_mode)}，等待在途任务或租约结算后继续推进。` : `状态：${eventProcessingReasonLabel(eventProcessing?.reason_code)}` }}</div>
               <div v-if="eventProcessing?.mode === 'scheduled'" class="text-body-2 text-medium-emphasis mt-1">触发方式：{{ triggerLabel(eventProcessing.scheduled_trigger) }} · 最近执行：{{ eventProcessing.note?.finished_at ?? '尚无记录' }}</div>
             </div>
             <AdminActionGuard capability="operations.runtime.configure">
@@ -35,7 +36,7 @@
             </AdminActionGuard>
           </div>
           <v-alert v-if="eventProcessing?.status === 'degraded'" class="mt-4" type="warning" variant="tonal">
-            事件处理当前不可用：{{ reasonLabel(eventProcessing.reason_code) }}。待处理任务会保存在 MySQL，服务恢复或人工切换后继续消费。
+            事件处理当前不可用：{{ eventProcessingReasonLabel(eventProcessing.reason_code) }}。待处理任务会保存在 MySQL，服务恢复或人工切换后继续消费。
           </v-alert>
           <AdminActionGuard capability="operations.runtime.configure">
             <v-expand-transition>
@@ -68,7 +69,7 @@
           <div class="d-flex flex-wrap align-center justify-space-between ga-3">
             <h2 class="text-h6">事件队列</h2>
             <v-btn v-if="canReadEvents" variant="text" append-icon="mdi-arrow-right" @click="selectTab('events')">查看事件明细</v-btn>
-            <v-btn v-if="canReadEvents" variant="text" append-icon="mdi-arrow-right" to="/apps/operations/deliveries?queue=all&view=dead">查看处理任务</v-btn>
+            <v-btn v-if="canReadEvents" variant="text" append-icon="mdi-arrow-right" to="/apps/operations/deliveries?queue=all&view=dead">查看失败任务</v-btn>
           </div>
           <div class="d-flex flex-wrap ga-6 mt-3 text-body-2">
             <span>待处理 <strong>{{ runtime.eventing.pending }}</strong></span>
@@ -104,6 +105,7 @@
 </template>
 
 <script setup lang="ts">
+import { eventModeLabel, eventProcessingReasonLabel } from '~/lib/event-processing-labels'
 import type { EventConsumptionUpdate, OperationsRuntimeStatus } from '@lovecards/sdk'
 import EventRecords from '~/components/operations/EventRecords.vue'
 import EventHandlerCatalog from '~/components/operations/EventHandlerCatalog.vue'
@@ -170,22 +172,6 @@ const queueHeaders = [
   { title: '队列', key: 'queue_name' }, { title: '执行模式', key: 'execution_mode' },
   { title: '待处理', key: 'pending' }, { title: '处理中', key: 'processing' }, { title: '死信', key: 'dead' },
 ]
-const reasonLabels: Record<string, string> = {
-  'config-locked': '环境变量已锁定运行模式',
-  'schema-not-ready': '运行时配置表未就绪（请先执行迁移）',
-  'worker-heartbeat-stale': 'Event Worker 心跳超时或未运行',
-  'worker-required-queue-missing': 'Event Worker 未覆盖全部业务任务队列',
-  'worker-release-mismatch': 'Event Worker 与当前 Release 不一致',
-  'event-consumer-unavailable': '事件消费状态表未就绪',
-  'event-consumer-draining': '事件策略切换中，等待在途任务结算',
-  'scheduler-trigger-unconfigured': '尚未声明定时触发源',
-  'scheduler-run-failed': '最近一次定时执行失败',
-  'scheduler-trigger-mismatch': '最近一次执行与声明的触发方式不一致',
-  'probe-stale': '探测结果过期或从未运行',
-  'probe-unavailable': '探测暂不可用',
-}
-function reasonLabel(code: string | null | undefined) { return code ? reasonLabels[code] ?? '需要关注' : '运行正常' }
-function eventModeLabel(mode: string | null | undefined) { return mode === 'resident' ? '常驻消费' : mode === 'scheduled' ? '定时消费' : '不可用' }
 function triggerLabel(value: string | null | undefined) { return triggerOptions.find(item => item.value === value)?.title ?? '未知' }
 function executionModeLabel(mode: string) { return mode === 'request_safe' ? '短任务（Handler 声明）' : mode === 'daemon_required' ? '后台任务（Handler 声明）' : mode }
 function formatAge(seconds: number) {

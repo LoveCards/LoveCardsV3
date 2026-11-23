@@ -42,3 +42,17 @@ export interface DirectUploadResult {
   form_data: Record<string, string>
   expire: number
 }
+
+export interface UploadScenePolicy {
+  available: boolean
+  extensions: string[]
+  mime_patterns: string[]
+  site_max_bytes: number
+  storage_max_bytes: number | null
+  max_bytes: number
+}
+
+export interface UploadPolicy {
+  scenes: Record<'avatar' | 'profile_cover' | 'card_image' | 'card_video' | 'comment' | 'direct', UploadScenePolicy>
+  card_media_limit: number
+}

@@ -82,7 +82,11 @@
               >
                 <v-alert v-if="siteMessage" class="mb-4" :type="siteMessage.type" variant="tonal">
                   {{ siteMessage.text }}
+                  <template v-if="siteConflict" #append>
+                    <v-btn :loading="siteSaving" variant="outlined" @click="reloadRequirements">读取最新配置</v-btn>
+                  </template>
                 </v-alert>
+                <p v-if="siteRebased" class="mb-4 text-body-2">当前已保存：注册邮件验证{{ originSiteSettings.emailVerify ? '开启' : '关闭' }}，人机验证{{ originSiteSettings.humanVerify ? '开启' : '关闭' }}。请核对下方保留的编辑。</p>
                 <v-alert v-if="siteDependencyWarning" class="mb-4" type="warning" variant="tonal">
                   {{ siteDependencyWarning }}
                 </v-alert>
@@ -120,7 +124,7 @@
                 <AdminActionGuard capability="config.update" scope="global">
                   <v-btn
                     color="primary"
-                    :disabled="!siteSettingsChanged || siteEnableBlocked || settingsChanged"
+                    :disabled="!siteSettingsChanged || siteEnableBlocked || settingsChanged || siteConflict"
                     :loading="siteSaving"
                     prepend-icon="mdi-content-save-outline"
                     variant="flat"
@@ -261,14 +265,15 @@
 </template>
 
 <script setup lang="ts">
-import type { CaptchaDriver, JsonObject } from '@lovecards/sdk'
+import { emailVerificationStatus } from '~/lib/verification-status'
+import type { AuthPolicy, CaptchaDriver, JsonObject } from '@lovecards/sdk'
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminConfigSaveBar from '~/components/shared/admin/AdminConfigSaveBar.vue'
 import AdminConfigSection from '~/components/shared/admin/AdminConfigSection.vue'
-import { useApi } from '~/lib/api'
+import { isApiError, useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import CommonUtils from '~/utils/common'
 import { readBoolean, readObject, readString } from '~/utils/json'
@@ -283,8 +288,15 @@ type Feedback = { type: 'success' | 'error'; text: string }
 const client = useApi()
 const configSnapshot = useConfigSnapshot(client)
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
-const tab = ref('usages')
+const tabs = ['usages', 'requirements', 'drivers', 'settings']
+const tab = computed({
+  get: () => typeof route.query.tab === 'string' && tabs.includes(route.query.tab) ? route.query.tab : 'usages',
+  set: value => {
+    if (value !== tab.value && tabs.includes(value)) void router.push({ query: { ...route.query, tab: value } })
+  },
+})
 const loading = ref(false)
 const loadError = ref('')
 const scanning = ref(false)
@@ -295,32 +307,33 @@ const settingsSaving = ref(false)
 const settingsMessage = ref<Feedback | null>(null)
 const siteSaving = ref(false)
 const siteMessage = ref<Feedback | null>(null)
+const siteConflict = ref(false)
+const siteRebased = ref(false)
 const driverGroups = shallowRef<DriverGroup[]>([])
 const settings = ref({ code_enabled: true, code_channel: 'smtp' })
 const originSettings = ref(CommonUtils.deepClone(settings.value))
 const siteSettings = ref({ emailVerify: false, humanVerify: false })
 const originSiteSettings = ref(CommonUtils.deepClone(siteSettings.value))
 const humanReady = ref<boolean | null>(null)
+const accessPolicy = ref<AuthPolicy | null>(null)
 const canUpdateConfig = computed(() => userStore.hasGrant('config.update', 'global'))
 const canInstallCaptcha = computed(() => userStore.hasGrant('captcha.install', 'global'))
-const canReadSender = computed(() => userStore.hasGrant('sender.read', 'global'))
+const canReadSender = computed(() => userStore.canAccessPath('/apps/settings/messaging'))
 const settingsChanged = computed(() => JSON.stringify(settings.value) !== JSON.stringify(originSettings.value))
 const siteSettingsChanged = computed(() => JSON.stringify(siteSettings.value) !== JSON.stringify(originSiteSettings.value))
 const mailReady = computed(() => settings.value.code_enabled && settings.value.code_channel === 'smtp')
-const savedMailReady = computed(() => originSettings.value.code_enabled && originSettings.value.code_channel === 'smtp')
-const mailStatus = computed(() => savedMailReady.value
-  ? '验证码服务已开启并选择邮件渠道；发送渠道配置和外部投递未验证'
-  : '邮件验证码条件不满足，可能无法完成')
+const mailStatus = computed(() => emailVerificationStatus(accessPolicy.value))
 const humanStatus = computed(() => humanReady.value === null
   ? '驱动状态未知，不能确认是否可用'
   : humanReady.value ? '本地驱动已就绪；第三方连通未验证' : '驱动未就绪，当前无法完成验证')
 const siteEnableBlocked = computed(() => (
-  (siteSettings.value.emailVerify && !originSiteSettings.value.emailVerify && !mailReady.value)
+  (siteSettings.value.emailVerify && !originSiteSettings.value.emailVerify && (!mailReady.value || accessPolicy.value?.registration.email_verification_available === false))
   || (siteSettings.value.humanVerify && !originSiteSettings.value.humanVerify && humanReady.value !== true)
 ))
 const siteDependencyWarning = computed(() => {
   if (settingsChanged.value && siteSettingsChanged.value) return '请先保存服务设置，再保存站点验证要求。'
   if (siteSettings.value.emailVerify && !mailReady.value) return '注册邮件验证需要启用验证码服务并选择邮件渠道。'
+  if (siteSettings.value.emailVerify && accessPolicy.value?.registration.email_verification_available === false) return mailStatus.value
   if (siteSettings.value.humanVerify && humanReady.value !== true) return '人机验证驱动尚未确认就绪。'
   return ''
 })
@@ -329,9 +342,30 @@ const channelItems = [{ title: '邮箱（SMTP）', value: 'smtp' }, { title: '�
 const groupTitle = (type: string) => type === 'code' ? '验证码' : type === 'captcha' ? '人机验证' : type
 const errorMessage = configSnapshot.errorMessage
 
+async function refreshVerificationStatus() {
+  accessPolicy.value = null
+  humanReady.value = null
+  try {
+    const policy = await client.session.policy()
+    if (!policy?.registration || typeof policy.human_verification?.available !== 'boolean') throw new Error('验证状态缺失')
+    accessPolicy.value = policy
+    humanReady.value = policy.human_verification.available
+  } catch {
+    // 兼容旧版本的验证码配置读面。
+    try {
+      const status = await client.captcha.config()
+      if (typeof status.human_ready === 'boolean') humanReady.value = status.human_ready
+    } catch {
+      // 读取失败时保留未知状态。
+    }
+  }
+}
+
 const loadPage = async () => {
   loading.value = true
   loadError.value = ''
+  siteConflict.value = false
+  siteRebased.value = false
   try {
     const [drivers, rawConfig] = await Promise.all([client.captcha.drivers(), configSnapshot.list()])
     if (!rawConfig.captcha || !rawConfig.user) throw new Error('验证配置缺失')
@@ -357,13 +391,7 @@ const loadPage = async () => {
       humanVerify: readBoolean(captchaConfig.captcha_enabled),
     }
     originSiteSettings.value = CommonUtils.deepClone(siteSettings.value)
-    humanReady.value = null
-    try {
-      const status = await client.captcha.config()
-      humanReady.value = readBoolean(status.human_ready)
-    } catch {
-      // 状态未知时不根据配置推断驱动健康。
-    }
+    await refreshVerificationStatus()
   } catch (cause) {
     loadError.value = errorMessage(cause, '无法加载验证驱动和配置，请稍后重试。')
   } finally {
@@ -380,6 +408,7 @@ const setDefault = async (type: string, slug: string) => {
     const saved = readObject(committed.captcha)
     if (readString(saved[`default_${type}_driver`]) !== slug) throw new Error('默认驱动未保存')
     driverGroups.value = driverGroups.value.map(group => group.type === type ? { ...group, defaultSlug: slug } : group)
+    await refreshVerificationStatus()
     actionMessage.value = { type: 'success', text: `已将 ${slug} 设为${groupTitle(type)}默认驱动。` }
   } catch (cause) {
     actionMessage.value = { type: 'error', text: errorMessage(cause, '默认驱动切换失败，请稍后重试。') }
@@ -404,6 +433,7 @@ const saveSettings = async () => {
     const saved = readObject(committed.captcha)
     settings.value = { code_enabled: readBoolean(saved.code_enabled, true), code_channel: readString(saved.code_channel, 'smtp') }
     originSettings.value = CommonUtils.deepClone(settings.value)
+    await refreshVerificationStatus()
     settingsMessage.value = { type: 'success', text: '验证设置已保存。' }
   } catch (cause) {
     settingsMessage.value = { type: 'error', text: errorMessage(cause, '验证设置保存失败，请稍后重试。') }
@@ -411,8 +441,43 @@ const saveSettings = async () => {
     settingsSaving.value = false
   }
 }
+async function reloadRequirements() {
+  if (!siteConflict.value || siteSaving.value) return
+  const currentDraft = { ...siteSettings.value }
+  const oldRequirements = { ...originSiteSettings.value }
+  const savedDraft = { ...settings.value }
+  const oldSettings = { ...originSettings.value }
+  siteSaving.value = true
+  try {
+    const raw = await configSnapshot.list()
+    if (!raw.user || !raw.captcha) throw new Error('验证配置缺失')
+    const captcha = readObject(raw.captcha)
+    const latest = { emailVerify: readBoolean(readObject(raw.user).captcha), humanVerify: readBoolean(captcha.captcha_enabled) }
+    const latestSettings = { code_enabled: readBoolean(captcha.code_enabled, true), code_channel: readString(captcha.code_channel, 'smtp') }
+    originSiteSettings.value = latest
+    siteSettings.value = {
+      emailVerify: currentDraft.emailVerify !== oldRequirements.emailVerify ? currentDraft.emailVerify : latest.emailVerify,
+      humanVerify: currentDraft.humanVerify !== oldRequirements.humanVerify ? currentDraft.humanVerify : latest.humanVerify,
+    }
+    originSettings.value = latestSettings
+    settings.value = {
+      code_enabled: savedDraft.code_enabled !== oldSettings.code_enabled ? savedDraft.code_enabled : latestSettings.code_enabled,
+      code_channel: savedDraft.code_channel !== oldSettings.code_channel ? savedDraft.code_channel : latestSettings.code_channel,
+    }
+    driverGroups.value = driverGroups.value.map(group => ({ ...group, defaultSlug: readString(captcha['default_' + group.type + '_driver'], group.defaultSlug) }))
+    await refreshVerificationStatus()
+    siteConflict.value = false
+    siteRebased.value = true
+    siteMessage.value = null
+  } catch (cause) {
+    siteMessage.value = { type: 'error', text: errorMessage(cause, '无法读取最新验证配置。') }
+  } finally {
+    siteSaving.value = false
+  }
+}
+
 const saveSiteSettings = async () => {
-  if (!canUpdateConfig.value || !siteSettingsChanged.value || siteEnableBlocked.value || settingsChanged.value || siteSaving.value) return
+  if (!canUpdateConfig.value || !siteSettingsChanged.value || siteEnableBlocked.value || settingsChanged.value || siteSaving.value || siteConflict.value) return
   siteSaving.value = true
   siteMessage.value = null
   const update: JsonObject = {}
@@ -423,8 +488,11 @@ const saveSiteSettings = async () => {
     if (committed.user) siteSettings.value.emailVerify = readBoolean(readObject(committed.user).captcha)
     if (committed.captcha) siteSettings.value.humanVerify = readBoolean(readObject(committed.captcha).captcha_enabled)
     originSiteSettings.value = CommonUtils.deepClone(siteSettings.value)
+    await refreshVerificationStatus()
+    siteRebased.value = false
     siteMessage.value = { type: 'success', text: '站点验证要求已保存。' }
   } catch (cause) {
+    siteConflict.value = isApiError(cause) && cause.status === 409
     siteMessage.value = { type: 'error', text: errorMessage(cause, '保存站点验证要求失败，请稍后重试。') }
   } finally {
     siteSaving.value = false

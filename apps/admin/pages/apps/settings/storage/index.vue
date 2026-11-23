@@ -48,6 +48,13 @@
         >
           <v-window v-model="tab">
             <v-window-item value="channels">
+              <AdminConfigSection v-if="defaultChannel" class="mb-5" title="新上传使用的渠道" description="已有文件仍由原渠道保存。">
+                <div class="d-flex flex-wrap align-center ga-3">
+                  <strong>{{ defaultChannel.name }}</strong>
+                  <span>单文件渠道上限 {{ channelLimit(defaultChannel.slug) ? formatSize(channelLimit(defaultChannel.slug)) : '未设置' }}</span>
+                  <v-btn v-if="defaultChannel.configured !== false" variant="outlined" @click="openConfig(defaultChannel.slug)">配置当前渠道</v-btn>
+                </div>
+              </AdminConfigSection>
               <AdminAsyncState
                 :empty="channelList.length === 0"
                 empty-description="扫描存储渠道后，可在这里查看状态并进入详细配置。"
@@ -259,6 +266,7 @@ const settingsMessage = ref<Feedback | null>(null)
 const canUpdateConfig = computed(() => userStore.hasGrant('config.update', 'global'))
 const canInstallStorage = computed(() => userStore.hasGrant('storage.install', 'global'))
 const settingsChanged = computed(() => JSON.stringify(settings.value) !== JSON.stringify(originSettings.value))
+const defaultChannel = computed(() => channelList.value.find(channel => channel.slug === settings.value.default))
 const channelOptions = computed(() => channelList.value.map(channel => ({ title: channel.name, value: channel.slug })))
 const channelLimit = (slug: string) => readNumber(channels.value[slug]?.max_file_size)
 const errorMessage = configSnapshot.errorMessage

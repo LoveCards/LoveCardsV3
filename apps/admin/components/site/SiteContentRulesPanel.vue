@@ -55,7 +55,7 @@
               :disabled="!canUpdateConfig || rulesSaving"
               density="comfortable"
               hint="适用于卡片图片、评论图片与直传"
-              label="内容图片大小上限（MB）"
+              label="内容文件大小上限（MB）"
               :min="1"
               persistent-hint
               variant="outlined"
@@ -67,7 +67,7 @@
               :disabled="!canUpdateConfig || rulesSaving"
               density="comfortable"
               hint="多个扩展名使用逗号分隔"
-              label="内容允许的图片格式"
+              label="内容允许的扩展名"
               persistent-hint
               placeholder="jpg,png,gif,webp"
               variant="outlined"
@@ -183,6 +183,17 @@
         </v-row>
       </AdminConfigSection>
 
+      <AdminConfigSection class="mb-5" title="当前生效的上传规则" description="以下为已保存的站点限制与当前存储渠道共同求得的上限。">
+        <v-list v-if="uploadPolicy" density="compact">
+          <v-list-item v-for="(label, scene) in uploadScenes" :key="scene" :title="label">
+            <p class="text-body-2 text-medium-emphasis text-break">{{ uploadSummary(scene) }}</p>
+          </v-list-item>
+        </v-list>
+        <p v-else class="text-body-2">暂时无法读取当前上传规则。</p>
+        <p v-if="uploadPolicy" class="text-body-2 mb-2">每张卡片最多 {{ uploadPolicy.card_media_limit }} 个媒体文件</p>
+        <NuxtLink v-if="userStore.canAccessPath('/apps/settings/storage')" to="/apps/settings/storage">查看存储渠道限制</NuxtLink>
+      </AdminConfigSection>
+
       <AdminConfigSaveBar class="mt-4" :dirty="rulesChanged" label="内容规则">
         <AdminActionGuard capability="config.update" scope="global">
           <v-btn
@@ -208,6 +219,7 @@
 </template>
 
 <script setup lang="ts">
+import type { UploadPolicy } from '@lovecards/sdk'
 import type { JsonObject } from '@lovecards/sdk'
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
@@ -246,6 +258,23 @@ interface RulesConfig {
 type ActionMessage = { type: 'success' | 'error'; text: string }
 
 const client = useApi()
+const uploadPolicy = ref<UploadPolicy | null>(null)
+const uploadScenes = { avatar: '头像', profile_cover: '主页背景', card_image: '卡片图片', card_video: '卡片视频', comment: '评论附件', direct: '直传' } as const
+function uploadSummary(scene: keyof typeof uploadScenes) {
+  const rule = uploadPolicy.value?.scenes[scene]
+  if (!rule?.available) return '当前渠道不支持该方式'
+  const source = rule.storage_max_bytes !== null && rule.storage_max_bytes < rule.site_max_bytes ? '存储渠道' : '站点规则'
+  const size = (rule.max_bytes / 1048576).toLocaleString('zh-CN', { maximumFractionDigits: 2 })
+  return [`最多 ${size} MiB（${source}）`, rule.extensions.join('、'), rule.mime_patterns.join('、')].filter(Boolean).join(' · ')
+}
+async function loadUploadPolicy() {
+  try {
+    const policy = await client.files.managedUploadPolicy()
+    uploadPolicy.value = policy?.scenes ? policy : null
+  } catch {
+    uploadPolicy.value = null
+  }
+}
 const configSnapshot = useConfigSnapshot(client)
 const userStore = useUserStore()
 const props = withDefaults(defineProps<{ active?: boolean }>(), { active: true })
@@ -351,6 +380,7 @@ const loadConfig = async () => {
     rulesConfig.value = CommonUtils.deepClone(converted)
     originConfig.value = CommonUtils.deepClone(converted)
     loaded.value = true
+    void loadUploadPolicy()
   } catch (cause) {
     loadError.value = errorMessage(cause, '无法加载内容规则配置，请稍后重试。')
   } finally {
@@ -366,6 +396,7 @@ const saveRules = async () => {
     rulesConfig.value = toFrontendFormat(committed)
     originConfig.value = CommonUtils.deepClone(rulesConfig.value)
     rulesMessage.value = { type: 'success', text: '内容规则已保存。' }
+    void loadUploadPolicy()
   } catch (cause) {
     rulesMessage.value = { type: 'error', text: errorMessage(cause, '内容规则保存失败，请稍后重试。') }
   } finally {

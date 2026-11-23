@@ -1,3 +1,4 @@
+import { loadUploadPolicy, validateSceneFile } from './upload-policy.js';
 import { getSdkClient, sdkConfigured } from '../app/sdk-client.js';
 import { getRuntimeDataMode } from '../app/runtime-context.js';
 import { previewFeed } from '../fixtures/feed-preview.js';
@@ -164,6 +165,7 @@ export async function updateProfile({ username, avatar, bio, location, file }) {
   let avatarUrl = avatar === undefined ? undefined : String(avatar).trim();
   let uploaded;
   if (file) {
+    validateSceneFile(file, (await loadUploadPolicy(client))?.scenes.avatar);
     const formData = new FormData();
     formData.append('file', file);
     formData.append('scene', 'avatar');

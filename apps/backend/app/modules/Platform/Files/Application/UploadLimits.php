@@ -5,6 +5,7 @@ namespace app\modules\Platform\Files\Application;
 use app\api\ApiException;
 // Application 层不得触碰其它模块的 Infrastructure，统一走 Config 模块 Public 门面。
 use app\modules\Platform\Config\Public\Config as ConfigService;
+use app\modules\Platform\Storage\Contract\DirectUploadCredential;
 
 /**
  * 场景化上传限额
@@ -62,13 +63,42 @@ final class UploadLimits
         if ($size > $limitMb * 1024 * 1000) {
             throw ApiException::badRequest('文件超出上传限制（单文件不超过 ' . $limitMb . 'MB）');
         }
-        $allowed = self::extensions($bucket);
-        if ($scene === 'card') {
-            $allowed = array_merge($allowed, self::CARD_VIDEO_EXTENSIONS);
-        }
-        if (!in_array($extension, $allowed, true)) {
+        if (!in_array($extension, self::sceneExtensions($bucket, $scene), true)) {
             throw ApiException::badRequest('文件格式错误');
         }
+    }
+
+    public static function policy(array $channel, bool $directSupported): array
+    {
+        $channelBytes = max(0, (int) ($channel['max_file_size'] ?? 0));
+        $channelMimes = array_values(array_filter(array_map('trim', explode(',', (string) ($channel['allow_mime_types'] ?? '')))));
+        $scenes = [];
+        foreach (['avatar', 'profile_cover', 'card_image', 'card_video', 'comment', 'direct'] as $scene) {
+            $bucket = self::bucket($scene);
+            $siteBytes = self::sizeMb($bucket) * 1024 * 1000;
+            $available = $scene !== 'direct' || $directSupported;
+            $storageBytes = $channelBytes ?: ($scene === 'direct' && $available ? DirectUploadCredential::DEFAULT_MAX_BYTES : null);
+            $extensions = match ($scene) {
+                'card_video' => self::CARD_VIDEO_EXTENSIONS,
+                'card_image' => array_values(array_diff(self::sceneExtensions($bucket, 'card'), self::CARD_VIDEO_EXTENSIONS)),
+                default => self::extensions($bucket),
+            };
+            $scenes[$scene] = [
+                'available' => $available,
+                'extensions' => $extensions,
+                'mime_patterns' => $channelMimes,
+                'site_max_bytes' => $siteBytes,
+                'storage_max_bytes' => $storageBytes,
+                'max_bytes' => $storageBytes === null ? $siteBytes : min($siteBytes, $storageBytes),
+            ];
+        }
+        return ['scenes' => $scenes, 'card_media_limit' => (int) ConfigService::get('cards.picture_limit', 15)];
+    }
+
+    private static function sceneExtensions(string $bucket, string $scene): array
+    {
+        $extensions = self::extensions($bucket);
+        return $scene === 'card' ? array_values(array_unique(array_merge($extensions, self::CARD_VIDEO_EXTENSIONS))) : $extensions;
     }
 
     private static function sizeMb(string $bucket): int

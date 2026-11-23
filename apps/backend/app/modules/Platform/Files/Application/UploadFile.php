@@ -34,6 +34,12 @@ final class UploadFile
         $this->limiter = $limiter;
     }
 
+    public function policy(): array
+    {
+        $channel = $this->channels->getDefaultChannel();
+        return UploadLimits::policy($channel, $this->driver->supportsDirectUpload((string) $channel['slug']));
+    }
+
     /**
      * @return array 上传结果（兼容 StorageResult::toArray 格式）
      */

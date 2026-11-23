@@ -227,7 +227,18 @@ final class AdminReadModel
             'expire_at', 'purge_status', 'purge_attempts', 'purge_requested_at',
             'purge_storage_deleted_at', 'purge_error', 'created_at', 'updated_at', 'deleted_at',
         ]))->find();
-        if (!$file) throw \app\api\ApiException::notFound('文件不存在');
+        $purgeTask = null;
+        if (!$file || !in_array($file['purge_status'] ?? null, [null, 'none'], true)) {
+            $purgeTask = Db::table('event_deliveries')->alias('d')
+                ->join('outbox_events e', 'e.id = d.event_id')
+                ->where('e.event_type', 'file.purge.requested')->where('e.aggregate_type', 'file')
+                ->where('d.queue_name', 'storage')->where('e.aggregate_key', (string) $fileId)->where('d.handler_key', 'files.purge')
+                ->field('d.id,d.status')->order('d.id', 'desc')->find();
+        }
+        if (!$file) {
+            if (($purgeTask['status'] ?? null) !== 'completed') throw \app\api\ApiException::notFound('文件不存在');
+            return ['file' => ['id' => $fileId, 'purge_status' => 'purged'], 'references' => [], 'orphaned' => true, 'purge_task' => $purgeTask];
+        }
         $references = Db::table('file_references')
             ->where('file_id', $fileId)
             ->field('resource_type,resource_id,purpose,is_public,created_at')
@@ -239,7 +250,7 @@ final class AdminReadModel
             $reference['is_public'] = (bool) $reference['is_public'];
         }
         unset($reference);
-        return ['file' => $file, 'references' => $references, 'orphaned' => $references === []];
+        return ['file' => $file, 'references' => $references, 'orphaned' => $references === [], 'purge_task' => $purgeTask ?: null];
     }
 
     private function count(string $table, callable $callback): int

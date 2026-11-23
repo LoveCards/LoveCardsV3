@@ -45,6 +45,9 @@ export class Operations extends BaseResource {
   overview(): Promise<ApiTypes.OperationsOverview> {
     return this._get<ApiTypes.OperationsOverview>("/admin/operations/overview")
   }
+  releaseStatus(): Promise<ApiTypes.OperationsReleaseStatus> {
+    return this._get<ApiTypes.OperationsReleaseStatus>("/admin/operations/release-status")
+  }
   runtime(): Promise<ApiTypes.OperationsRuntimeStatus> {
     return this._get<ApiTypes.OperationsRuntimeStatus>("/admin/operations/runtime")
   }

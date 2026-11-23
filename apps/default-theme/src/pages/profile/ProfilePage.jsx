@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
 import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
 import { useResource } from '../../app/use-resource.js';
+import { useMediaUploadPolicy } from '../../app/use-media-upload-policy.js';
+import { uploadAccept, uploadRuleDescription, validateSceneFile } from '../../services/upload-policy.js';
 import { useAuth } from '../../app/providers.jsx';
 import { getProfileSnapshot, getProfileTabSnapshot, loadProfile, loadProfileTab, updateProfile } from '../../services/profile-service.js';
 import { updateProfileCover } from '../../services/settings-service.js';
@@ -28,20 +30,25 @@ function InlineProfileCover({ onSaved }) {
   const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
+  const coverRule = useMediaUploadPolicy(isOpen)?.scenes.profile_cover;
   const save = async () => {
     if (!file || busy) return;
     const valid = ['image/jpeg', 'image/png', 'image/webp'].includes(String(file.type).toLowerCase()) && file.size <= 10 * 1024 * 1024;
-    if (!valid) { toast({ body: '背景图需为 JPG、PNG 或 WebP，且不超过 10 MiB。', type: 'error', uniqueID: 'profile-cover-invalid' }); return; }
+    if (!coverRule && !valid) { toast({ body: '背景图需为 JPG、PNG 或 WebP，且不超过 10 MiB。', type: 'error', uniqueID: 'profile-cover-invalid' }); return; }
     setBusy(true);
     try { const next = await updateProfileCover(file); onSaved(next); setFile(null); setIsOpen(false); toast({ body: '主页背景已更新。', uniqueID: 'profile-cover-updated' }); }
     catch (error) { toast({ body: getUserFacingError(error, { fallback: '背景图暂时无法更新，请稍后重试。' }), type: 'error', uniqueID: 'profile-cover-error' }); }
     finally { setBusy(false); }
   };
-  return <><button className="profile-cover-edit" type="button" disabled={busy} onClick={() => setIsOpen(true)}><Icon name="upload" size={16} />更换背景</button><FormDialog className="profile-cover-dialog" isOpen={isOpen} onOpenChange={(open) => { if (!busy) { setIsOpen(open); if (!open) setFile(null); } }} title="编辑主页背景" subtitle="选择一张图片作为资料卡顶部背景。" isBusy={busy} footer={<><Button type="button" label="取消" variant="secondary" size="lg" isDisabled={busy} onClick={() => setIsOpen(false)} /><Button type="button" label="保存背景" variant="primary" size="lg" isDisabled={!file || busy} isLoading={busy} onClick={() => void save()} /></>}><FileInput label="选择背景图" description="JPG、PNG 或 WebP，最大 10 MiB" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" maxSize={10 * 1024 * 1024} value={file} onChange={setFile} placeholder="选择一张图片" mode="input" width="100%" /></FormDialog></>;
+  return <><button className="profile-cover-edit" type="button" disabled={busy} onClick={() => setIsOpen(true)}><Icon name="upload" size={16} />更换背景</button><FormDialog className="profile-cover-dialog" isOpen={isOpen} onOpenChange={(open) => { if (!busy) { setIsOpen(open); if (!open) setFile(null); } }} title="编辑主页背景" subtitle="选择一张图片作为资料卡顶部背景。" isBusy={busy} footer={<><Button type="button" label="取消" variant="secondary" size="lg" isDisabled={busy} onClick={() => setIsOpen(false)} /><Button type="button" label="保存背景" variant="primary" size="lg" isDisabled={!file || busy} isLoading={busy} onClick={() => void save()} /></>}><FileInput label="选择背景图" description={uploadRuleDescription(coverRule, 'JPG、PNG 或 WebP，最大 10 MiB')} accept={uploadAccept(coverRule, 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp')} maxSize={coverRule?.max_bytes ?? avatarMaxBytes} value={file} onChange={setFile} placeholder="选择一张图片" mode="input" width="100%" /></FormDialog></>;
 }
 
-function getAvatarFileStatus(file) {
+function getAvatarFileStatus(file, rule) {
   if (!file) return null;
+  if (rule) {
+    try { validateSceneFile(file, rule); return null; }
+    catch (error) { return { type: 'error', message: error.message }; }
+  }
   const mime = String(file.type || '').toLowerCase();
   const name = String(file.name || '').toLowerCase();
   const extension = name.includes('.') ? name.slice(name.lastIndexOf('.')) : '';
@@ -58,6 +65,7 @@ function getAvatarFileStatus(file) {
 }
 
 function InlineProfileAvatar({ user, canEdit, onSaved }) {
+  const avatarRule = useMediaUploadPolicy(canEdit)?.scenes.avatar;
   const navigate = useNavigate();
   const toast = useToast();
   const previewUrlRef = useRef('');
@@ -94,7 +102,7 @@ function InlineProfileAvatar({ user, canEdit, onSaved }) {
   };
 
   const inspectNativeFile = (event) => {
-    inspectedStatusRef.current = getAvatarFileStatus(event.currentTarget.files?.[0]);
+    inspectedStatusRef.current = getAvatarFileStatus(event.currentTarget.files?.[0], avatarRule);
   };
 
   const chooseAvatar = (nextFile) => {
@@ -107,7 +115,7 @@ function InlineProfileAvatar({ user, canEdit, onSaved }) {
       setFieldStatus(inspectedStatus);
       return;
     }
-    const nextStatus = inspectedStatus || getAvatarFileStatus(nextFile);
+    const nextStatus = inspectedStatus || getAvatarFileStatus(nextFile, avatarRule);
     if (nextStatus) {
       releasePreview();
       setFile(null);
@@ -196,8 +204,8 @@ function InlineProfileAvatar({ user, canEdit, onSaved }) {
         value={file}
         onChange={chooseAvatar}
         onInputCapture={inspectNativeFile}
-          accept="image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp"
-        maxSize={avatarMaxBytes}
+          accept={uploadAccept(avatarRule, 'image/jpeg,image/png,image/gif,image/webp,.jpg,.jpeg,.png,.gif,.webp')}
+        maxSize={avatarRule?.max_bytes ?? avatarMaxBytes}
         isLoading={busy}
         isDisabled={busy}
         disabledMessage="头像正在上传，请等待完成。"

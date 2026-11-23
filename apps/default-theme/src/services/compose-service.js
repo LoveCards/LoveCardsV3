@@ -1,6 +1,7 @@
 import { getSdkClient, sdkConfigured } from '../app/sdk-client.js';
 import { getRuntimeDataMode } from '../app/runtime-context.js';
 import { CARD_CONTENT_MAX_LENGTH } from '../features/feed/card-constraints.js';
+import { loadUploadPolicy, validateSceneFile } from './upload-policy.js';
 import { normalizeGalleryLayout } from '../features/media/gallery-layout.js';
 
 export const COMPOSE_IMAGE_MIME_TYPES = Object.freeze(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
@@ -34,20 +35,23 @@ function resolvePublishKind(kind, files) {
   return 'text';
 }
 
-function validatePublishMedia(kind, files) {
+function validatePublishMedia(kind, files, policy, selectedFiles) {
   if (!['text', 'image', 'gallery', 'video'].includes(kind)) throw new Error('请选择有效的发布类型。');
   if (kind === 'text') {
     if (files.length) throw new Error('随笔不能包含媒体，请先移除已选文件。');
     return;
   }
+  const rule = policy?.scenes[kind === 'video' ? 'card_video' : 'card_image'];
+  for (const file of selectedFiles) validateSceneFile(file, rule);
+  const limit = policy?.card_media_limit ?? 9;
   if (kind === 'video') {
-    if (files.length !== 1) throw new Error('视频发布需要选择一个视频文件。');
+    if (files.length !== 1 || limit < 1) throw new Error('视频发布需要选择一个视频文件。');
     if (!isVideoMedia(files[0])) throw new Error('视频仅支持 MP4、WebM、MOV 或 M4V。');
     return;
   }
-  if (files.length < 1 || files.length > 9) throw new Error('图文发布需要选择 1–9 张图片或 GIF。');
+  if (files.length < 1 || files.length > limit) throw new Error(`图文发布需要选择 1–${limit} 张图片或 GIF。`);
   if (files.some((file) => !isImageMedia(file))) throw new Error('图文仅支持 JPEG、PNG、WebP 或 GIF。');
-  if (files.some((file) => Number(file?.size) > COMPOSE_IMAGE_MAX_BYTES)) throw new Error('每张图片不能超过 10MB，请选择更小的图片。');
+  if (!rule && files.some((file) => Number(file?.size) > COMPOSE_IMAGE_MAX_BYTES)) throw new Error('每张图片不能超过 10MB，请选择更小的图片。');
 }
 
 function emptyContentMessage(kind) {
@@ -82,6 +86,8 @@ export function normalizeDraftMedia(value) {
 export async function uploadComposeMedia(files = []) {
   const client = getSdkClient();
   if (!client?.getToken()) throw new Error('请先登录后再保存媒体。');
+  const policy = await loadUploadPolicy(client);
+  for (const file of files) validateSceneFile(file, policy?.scenes[isVideoMedia(file) ? 'card_video' : 'card_image']);
   const uploads = [];
   try {
     for (const selectedFile of files) {
@@ -212,7 +218,8 @@ export async function updatePublishedCard({ id, content, tags = [], kind, files 
   const normalizedTags = [...new Set(tags.map((tag) => String(tag || '').trim().replace(/^#/, '')).filter(Boolean))];
   if (normalizedTags.length > 3) throw new Error('最多添加 3 个话题，请移除多余话题。');
   const cardVisibilityPayload = visibilityPayload(visibility);
-  validatePublishMedia(publishKind, [...existingMedia, ...files]);
+  const policy = mediaChanged ? await loadUploadPolicy(client) : null;
+  if (mediaChanged) validatePublishMedia(publishKind, [...existingMedia, ...files], policy, files);
   let uploads = [];
   try {
     uploads = await uploadComposeMedia(files);
@@ -252,7 +259,8 @@ export async function publishCard({ content, tags = [], kind, files = [], file =
   if (!normalizedContent) throw new Error(emptyContentMessage(publishKind));
   if (normalizedContent.length > CARD_CONTENT_MAX_LENGTH) throw new Error(`正文最多 ${CARD_CONTENT_MAX_LENGTH} 字，请精简后再发布。`);
   const cardVisibilityPayload = visibilityPayload(visibility);
-  validatePublishMedia(publishKind, [...existingMedia.map((item) => ({ type: item.type })), ...selectedFiles]);
+  const policy = publishKind === 'text' ? null : await loadUploadPolicy(client);
+  validatePublishMedia(publishKind, [...existingMedia.map((item) => ({ type: item.type })), ...selectedFiles], policy, selectedFiles);
   const uploads = [];
   try {
     for (const selectedFile of selectedFiles) {

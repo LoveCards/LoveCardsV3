@@ -257,6 +257,12 @@ export interface OperationsCommunityInsights {
   privacy: { mode: 'aggregate_only'; private_content_exposed: false }
 }
 
+export interface OperationsReleaseStatus {
+  version: string
+  build: number
+  release_id: string | null
+}
+
 export interface OperationsUpgradeStep {
   name: string
   state: string
@@ -276,6 +282,9 @@ export interface OperationsUpgradePlan {
   status: string
   current_step: string | null
   contract_approved: boolean
+  legacy_plan?: boolean
+  execution_uncertain?: boolean
+  service_recovered?: boolean
   created_by: number | null
   package: {
     checksum: string | null
@@ -381,6 +390,7 @@ export interface RecoveryChallenge {
 
 export interface FileUsage {
   file: JsonObject
-  references: Array<{ resource_type?: string | null; resource_id?: string | null }>
+  references: Array<{ resource_type?: string | null; resource_id?: string | null; purpose?: string; is_public?: boolean }>
   orphaned: boolean
+  purge_task?: { id: number; status: string } | null
 }

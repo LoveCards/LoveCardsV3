@@ -295,7 +295,7 @@ const legacyPolicyTabs: Record<string, string> = {
 test('upgrade page exposes only the release summary and upload entry', async ({ page }) => {
   await page.goto('./apps/operations/upgrade', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '系统升级', exact: true })).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByText('当前版本', { exact: true })).toBeVisible()
+  await expect(page.getByText('当前软件版本', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: '上传升级包' })).toBeVisible()
   await expect(page.getByRole('tab', { name: '数据库迁移' })).toHaveCount(0)
   await page.getByRole('button', { name: '上传升级包' }).click()

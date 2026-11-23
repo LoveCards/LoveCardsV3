@@ -22,7 +22,7 @@ final class AdminValidate extends Validate
             'require' => false, 'nonNull' => false, 'toNull' => [],
         ],
         'transition' => [
-            'normal' => ['note', 'resolution'],
+            'normal' => ['note', 'resolution', 'expected_status'],
             'require' => ['status'], 'nonNull' => false, 'toNull' => [],
         ],
         'migrationRun' => [
@@ -72,6 +72,7 @@ final class AdminValidate extends Validate
         'search_keys' => 'max:255',
         'note' => 'max:2000',
         'resolution' => 'max:255',
+        'expected_status' => 'in:open,reviewing,resolved,rejected,closed',
         'limit' => 'number|between:1,200',
         'file' => 'require|fileExt:zip',
         'unread_only' => 'boolean',

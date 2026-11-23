@@ -1,6 +1,6 @@
 # API Contract Audit
 
-- Routes inspected: 209
+- Routes inspected: 212
 - P0: 0
 - P1: 0
 - P2: 0
@@ -49,6 +49,7 @@
 | GET | `/admin/files/:id/usage` | `files.usage` | grants:admin.access:global,files.usage.read:global | no | AdminFileUsageResource::make | — |
 | POST | `/admin/files/batch` | `files.batchManaged` | grants:admin.access:global | yes | createNoContent | — |
 | DELETE | `/admin/files/expired` | `files.cleanup` | grants:admin.access:global,files.cleanup:global | yes | ApiResource::make | — |
+| GET | `/admin/files/upload-policy` | `files.managedUploadPolicy` | grants:admin.access:global,config.read:global | no | UploadPolicyResource::make | — |
 | GET | `/admin/operations/deliveries` | `operations.deliveries` | grants:admin.access:global,communications.read:global | yes | AdminDeliveryResource::paginate | — |
 | GET | `/admin/operations/deliveries/:id` | `operations.delivery` | grants:admin.access:global,communications.read:global | no | AdminDeliveryResource::make | — |
 | POST | `/admin/operations/deliveries/:id/retry` | `operations.retryDelivery` | grants:admin.access:global,operations.retry:global | no | createNoContent | — |
@@ -61,6 +62,7 @@
 | POST | `/admin/operations/migrations/run` | `operations.runMigrations` | grants:admin.access:global,operations.migrate:global | yes | AdminMigrationResource::collection | — |
 | GET | `/admin/operations/notifications` | `operations.notificationStats` | grants:admin.access:global,communications.read:global | no | AdminNotificationStatsResource::make | — |
 | GET | `/admin/operations/overview` | `operations.overview` | grants:admin.access:global,operations.read:global | no | AdminOverviewResource::make | — |
+| GET | `/admin/operations/release-status` | `operations.releaseStatus` | grants:admin.access:global,operations.read:global | no | AdminReleaseStatusResource::make | — |
 | GET | `/admin/operations/runtime` | `operations.runtime` | grants:admin.access:global,operations.read:global | no | AdminRuntimeResource::make | — |
 | GET | `/admin/operations/runtime/config` | `operations.runtimeConfig` | grants:admin.access:global,operations.read:global | no | AdminRuntimeConfigResource::make | — |
 | PUT | `/admin/operations/runtime/config` | `operations.applyRuntimeConfig` | grants:admin.access:global,operations.runtime.configure:global | yes | AdminRuntimeConfigResource::make | — |
@@ -166,6 +168,7 @@
 | GET | `/me/files/:id` | `files.get` | grants:files.read:own,files.read:all | no | FileResource::make | — |
 | PATCH | `/me/files/:id/confirm` | `files.confirm` | grants:files.upload:global | no | createNoContent | — |
 | POST | `/me/files/direct` | `files.direct` | grants:files.upload:global | yes | DirectUploadResource::make | — |
+| GET | `/me/files/upload-policy` | `files.uploadPolicy` | grants:files.upload:global | no | UploadPolicyResource::make | — |
 | DELETE | `/me/history` | `library.history.clear` | grants:authenticated | no | createNoContent | — |
 | GET | `/me/history` | `library.history` | grants:authenticated | yes | CursorPageResource::make | — |
 | POST | `/me/history` | `library.history.record` | grants:authenticated | yes | createNoContent | — |

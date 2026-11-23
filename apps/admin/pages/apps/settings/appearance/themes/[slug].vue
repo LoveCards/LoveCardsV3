@@ -6,7 +6,11 @@
       :breadcrumbs="[{ title: '站点' }, { title: '主题外观', to: '/apps/settings/appearance' }, { title: requestedSlug }]"
     />
 
-    <AdminConfigSection title="主题参数" description="保存后对当前主题生效；校验失败时保留本次输入。" icon="mdi-palette-outline">
+    <v-alert v-if="bindingChanged" class="mb-4" type="warning" variant="tonal">
+      这个链接指向较早的主题版本。当前域名使用 {{ bindingChanged.id }} · {{ bindingChanged.release }}。
+      <template #append><v-btn :to="{ path: '/apps/settings/appearance/themes/' + encodeURIComponent(bindingChanged.id), query: { release: bindingChanged.release } }" variant="outlined">打开当前版本</v-btn></template>
+    </v-alert>
+    <AdminConfigSection v-else title="主题参数" description="保存后对当前主题生效；校验失败时保留本次输入。" icon="mdi-palette-outline">
       <template v-if="configTheme.id" #actions>
         <v-chip size="small" variant="outlined">{{ configTheme.id }}</v-chip>
         <v-chip size="small" variant="outlined">发布 {{ configTheme.release }}</v-chip>
@@ -135,6 +139,8 @@ const configValues = ref<JsonObject>({})
 const originValues = ref<JsonObject>({})
 const configTheme = ref({ id: '', release: '' })
 const requestedSlug = computed(() => String(route.params.slug || 'current'))
+const requestedRelease = computed(() => typeof route.query.release === 'string' ? route.query.release : '')
+const bindingChanged = ref<{ id: string; release: string } | null>(null)
 const canUpdateTheme = computed(() => userStore.hasGrant('theme.update', 'global'))
 const fieldEntries = computed(() => Object.entries(configSchema.value))
 const configChanged = computed(() => JSON.stringify(configValues.value) !== JSON.stringify(originValues.value))
@@ -161,19 +167,23 @@ const setConfigValue = (key: string, value: unknown) => {
 }
 const errorMessage = (cause: unknown, fallback: string) => isApiError(cause) ? cause.message : fallback
 
+let latestRead = 0
 const loadConfig = async () => {
+  const readId = ++latestRead
   loading.value = true
   loadError.value = ''
   saveMessage.value = null
   noActiveTheme.value = false
+  bindingChanged.value = null
   try {
     const result = await client.theme.config()
-    if (requestedSlug.value !== 'current' && requestedSlug.value !== result.id) {
+    if (readId !== latestRead) return
+    if ((requestedSlug.value !== 'current' && requestedSlug.value !== result.id) || (requestedRelease.value && requestedRelease.value !== result.release)) {
       configSchema.value = {}
       configValues.value = {}
       originValues.value = {}
       configTheme.value = { id: '', release: '' }
-      loadError.value = `主题 ${requestedSlug.value} 当前未启用，无法读取其配置。`
+      bindingChanged.value = { id: result.id, release: result.release }
       return
     }
     configSchema.value = result.config_schema || {}
@@ -185,6 +195,7 @@ const loadConfig = async () => {
     originValues.value = CommonUtils.deepClone(values)
     configTheme.value = { id: result.id, release: result.release }
   } catch (cause) {
+    if (readId !== latestRead) return
     if (isApiError(cause) && cause.status === 404) {
       noActiveTheme.value = true
       configSchema.value = {}
@@ -195,11 +206,11 @@ const loadConfig = async () => {
       loadError.value = errorMessage(cause, '无法加载主题配置，请稍后重试。')
     }
   } finally {
-    loading.value = false
+    if (readId === latestRead) loading.value = false
   }
 }
 const saveConfig = async () => {
-  if (!canUpdateTheme.value || !configChanged.value || saveLoading.value) return
+  if (!canUpdateTheme.value || !configChanged.value || saveLoading.value || loading.value || bindingChanged.value) return
   saveLoading.value = true
   saveMessage.value = null
   try {
@@ -221,7 +232,5 @@ onMounted(() => {
   void loadConfig()
 })
 
-watch(() => route.params.slug, (slug, previousSlug) => {
-  if (previousSlug !== undefined && slug !== previousSlug) void loadConfig()
-})
+watch([requestedSlug, requestedRelease], () => { void loadConfig() })
 </script>

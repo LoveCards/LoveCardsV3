@@ -1,3 +1,4 @@
+import { loadUploadPolicy, validateSceneFile } from './upload-policy.js';
 import { getSdkClient } from '../app/sdk-client.js';
 
 function sdk() {
@@ -11,6 +12,7 @@ export const updateCurrentUser = (payload) => sdk().users.updateMe(payload);
 export async function updateProfileCover(file) {
   const value = sdk();
   if (!file) return value.users.updateMe({ cover_file_id: null });
+  validateSceneFile(file, (await loadUploadPolicy(value))?.scenes.profile_cover);
   const formData = new FormData();
   formData.append('file', file);
   formData.append('scene', 'profile_cover');

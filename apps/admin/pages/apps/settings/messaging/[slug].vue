@@ -128,6 +128,7 @@
           <v-alert class="mb-4" type="info" variant="tonal">
             测试使用服务端已保存的渠道配置，不会使用尚未保存的表单内容。
           </v-alert>
+          <p class="mb-3 text-body-2">{{ lastTestAt ? '最近测试 ' + lastTestAt : '本次打开页面后尚无测试记录' }}</p>
           <v-alert v-if="testMessage" class="mb-4" :type="testMessage.type" variant="tonal">
             {{ testMessage.text }}
           </v-alert>
@@ -196,6 +197,7 @@ const testDialog = ref(false)
 const testTo = ref('')
 const testLoading = ref(false)
 const testMessage = ref<Feedback | null>(null)
+const lastTestAt = ref('')
 const canUpdateConfig = computed(() => {
   return userStore.hasGrant('config.update', 'global') && userStore.hasGrant('sender.read', 'global')
 })
@@ -293,13 +295,11 @@ const sendTest = async () => {
   } catch (cause) {
     testMessage.value = { type: 'error', text: errorMessage(cause, '测试发信失败，请检查渠道配置。') }
   } finally {
+    lastTestAt.value = new Date().toLocaleString('zh-CN')
     testLoading.value = false
   }
 }
 
-watch(testDialog, (open) => {
-  if (open) testMessage.value = null
-})
 onMounted(() => {
   void loadPage()
 })

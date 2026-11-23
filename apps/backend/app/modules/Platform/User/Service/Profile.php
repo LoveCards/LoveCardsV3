@@ -185,6 +185,9 @@ class Profile
             throw ApiException::validation(['email' => ['邮箱格式不正确。']], '字段校验失败', 'email_invalid');
         }
 
+        if (Captcha::emailCodeStatus() !== 'ready') {
+            throw ApiException::validation(['email' => ['邮件验证码服务未就绪。']], '字段校验失败', 'captcha_delivery_failed');
+        }
         $result = Captcha::generate('code', ['to' => $email, 'scene' => 'Info_BindEmailCaptcha', 'ttl' => 300]);
         if (!($result['status'] ?? false)) {
             $message = (string) ($result['msg'] ?? '验证码发送失败');
