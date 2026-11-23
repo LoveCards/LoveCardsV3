@@ -99,7 +99,7 @@ for (const width of [1440, 960, 600, 390]) {
     await expect(dialog).toContainText('member_1')
     await expect(page).toHaveURL(listUrl)
     await expect(dialog.getByRole('textbox', { name: '用户名' })).toHaveValue('林晓')
-    await dialog.getByRole('button', { name: '取消', exact: true }).click()
+    await dialog.getByRole('button', { name: '取消编辑', exact: true }).click()
     await expect(dialog.getByRole('textbox', { name: '用户名' })).toHaveCount(0)
     await page.keyboard.press('Escape')
     await expect(dialog).toBeHidden()

@@ -200,10 +200,13 @@ function resetTableView() {
   clearFilters()
 }
 function syncRouteQuery() {
-  const query: Record<string, string> = { page: String(page.value), list_rows: String(itemsPerPage.value) }
+  const query: typeof route.query = { ...route.query, page: String(page.value), list_rows: String(itemsPerPage.value) }
   if (status.value) query.status = status.value
+  else delete query.status
   if (resourceType.value) query.resource_type = resourceType.value
+  else delete query.resource_type
   if (appliedSearch.value) query.search_value = appliedSearch.value
+  else delete query.search_value
   void router.replace({ query, hash: route.hash })
 }
 watch([page, itemsPerPage], () => {

@@ -73,7 +73,7 @@
             />
           </v-card-text>
           <v-divider />
-          <v-list v-if="searchResults.length" density="compact" nav>
+          <v-list v-if="searchResults.length" aria-label="管理页面搜索结果" density="compact" nav>
             <v-list-item
               v-for="result in searchResults"
               :key="result.path"

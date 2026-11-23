@@ -130,12 +130,12 @@ for (const roleCase of roleCases) {
 
     for (const title of roleCase.visible) {
       await navigationSearch.fill(title)
-      const results = page.getByRole('listbox').last()
+      const results = page.getByLabel('管理页面搜索结果', { exact: true })
       await expect(results.getByRole('link', { name: new RegExp(`^${title}(?:\\s|$)`) })).toHaveCount(1, { timeout: 15_000 })
     }
     for (const title of roleCase.hidden) {
       await navigationSearch.fill(title)
-      const results = page.getByRole('listbox').last()
+      const results = page.getByLabel('管理页面搜索结果', { exact: true })
       await expect(results.getByRole('link', { name: new RegExp(`^${title}(?:\\s|$)`) })).toHaveCount(0)
     }
   })

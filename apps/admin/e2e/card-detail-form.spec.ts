@@ -122,7 +122,15 @@ test('dragging card media changes order and derives cover from first image', asy
   const dialog = page.getByRole('dialog', { name: '卡片详情' })
   const media = dialog.locator('.card-record__media')
   await expect(media.first()).toHaveAttribute('data-file-id', '501')
-  await media.nth(1).locator('.card-record__drag-handle').dragTo(media.first(), { targetPosition: { x: 20, y: 20 } })
+  const handle = media.nth(1).locator('.card-record__drag-handle')
+  await handle.scrollIntoViewIfNeeded()
+  const from = (await handle.boundingBox())!
+  const to = (await media.first().boundingBox())!
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(to.x + to.width / 4, to.y + to.height / 4, { steps: 12 })
+  await page.mouse.move(to.x + to.width / 4, to.y + to.height / 4)
+  await page.mouse.up()
   await expect(media.first()).toHaveAttribute('data-file-id', '502')
   await expect(media.first()).toContainText('封面')
   await dialog.getByRole('button', { name: '保存修改' }).click()

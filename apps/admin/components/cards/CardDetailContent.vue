@@ -11,7 +11,7 @@
         <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">{{ formError }}</v-alert>
         <div v-if="loaded" class="card-record">
           <div class="card-record__field">
-            <div class="card-record__label">正文</div>
+            <h2 class="card-record__label">正文</h2>
             <v-textarea
               v-if="mode === 'edit'"
               v-model="CardData.edit.content"

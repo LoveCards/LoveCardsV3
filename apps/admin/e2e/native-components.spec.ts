@@ -15,7 +15,10 @@ for (const width of [1440, 390]) {
       if (route === 'settings/storage/files') {
         await expect(page.getByRole('button', { name: '处理过期上传', exact: true })).toBeVisible()
       }
-      const surfaces = page.locator('main .v-card:not(.v-overlay .v-card)')
+      if (route === 'settings/site/policies') {
+        await expect(page.locator('main .v-window-item--active .v-sheet--border').first()).toBeVisible()
+      }
+      const surfaces = page.locator('main .v-card:not(.v-overlay .v-card, .v-sheet--border .v-card)')
       for (const surface of await surfaces.all()) {
         await expect(surface).toHaveClass(/v-card--variant-flat/)
         await expect(surface).toHaveClass(/v-card--border/)

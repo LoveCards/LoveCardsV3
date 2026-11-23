@@ -136,8 +136,12 @@ test('reduced-motion preference disables non-essential admin transitions', async
     const style = window.getComputedStyle(probe)
     return { animation: style.animationDuration, transition: style.transitionDuration }
   })
-  expect(['0s', '0.01ms', '0.00001s']).toContain(durations.animation)
-  expect(['0s', '0.01ms', '0.00001s']).toContain(durations.transition)
+  for (const duration of [durations.animation, durations.transition]) {
+    const millisecondDurations = duration.split(',').map((value) =>
+      Number.parseFloat(value) * (value.trim().endsWith('ms') ? 1 : 1000),
+    )
+    expect(Math.max(...millisecondDurations)).toBeLessThanOrEqual(0.01)
+  }
 })
 
 test('table column preferences and named views survive reload for the same administrator', async ({ page }) => {
@@ -152,6 +156,7 @@ test('table column preferences and named views survive reload for the same admin
 
   const search = page.getByRole('textbox', { name: '搜索用户名', exact: true })
   await search.fill('e2e-no-user-view')
+  await search.press('Enter')
   await expect(page).toHaveURL(/search_value=e2e-no-user-view/)
 
   await page.getByRole('button', { name: /视图设置/ }).click()

@@ -76,7 +76,7 @@ export default defineNuxtConfig({
         },
         server: {
             watch: {
-                ignored: ['**/SDK/dist/**'],
+                ignored: ['**/SDK/dist/**', '**/test-results/**', '**/playwright-report/**'],
             },
         },
     },

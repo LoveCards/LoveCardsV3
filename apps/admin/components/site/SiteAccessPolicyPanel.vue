@@ -91,11 +91,6 @@
       </v-sheet>
     </AdminAsyncState>
 
-    <AdminUnsavedChangesDialog
-      :model-value="unsavedChangesDialog"
-      @stay="continueEditing"
-      @discard="discardChanges"
-    />
   </div>
 </template>
 
@@ -104,7 +99,6 @@ import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminConfigSaveBar from '~/components/shared/admin/AdminConfigSaveBar.vue'
 import AdminConfigSection from '~/components/shared/admin/AdminConfigSection.vue'
-import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
 import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import { readBoolean, readObject, readString } from '~/utils/json'
@@ -136,7 +130,6 @@ const originalVisitorMode = ref(false)
 const summary = ref<VerificationSummary | null>(null)
 const changed = computed(() => visitorMode.value !== originalVisitorMode.value)
 watch(changed, value => emit('dirty-change', value), { immediate: true })
-const { unsavedChangesDialog, continueEditing, discardChanges } = useAdminUnsavedChanges(changed)
 const errorMessage = configSnapshot.errorMessage
 
 async function loadConfig() {

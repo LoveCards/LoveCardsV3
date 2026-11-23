@@ -201,11 +201,6 @@
       </v-sheet>
     </AdminAsyncState>
 
-    <AdminUnsavedChangesDialog
-      :model-value="unsavedChangesDialog"
-      @stay="continueEditing"
-      @discard="discardChanges"
-    />
   </div>
 </template>
 
@@ -215,7 +210,6 @@ import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminConfigSaveBar from '~/components/shared/admin/AdminConfigSaveBar.vue'
 import AdminConfigSection from '~/components/shared/admin/AdminConfigSection.vue'
-import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
 import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
 import CommonUtils from '~/utils/common'
@@ -291,7 +285,6 @@ const commentsChanged = computed(() => JSON.stringify(rulesConfig.value.comments
 const tagsChanged = computed(() => JSON.stringify(rulesConfig.value.tags) !== JSON.stringify(originConfig.value.tags))
 const rulesChanged = computed(() => uploadChanged.value || cardsChanged.value || commentsChanged.value || tagsChanged.value)
 watch(rulesChanged, value => emit('dirty-change', value), { immediate: true })
-const { unsavedChangesDialog, continueEditing, discardChanges } = useAdminUnsavedChanges(rulesChanged)
 
 // 场景新键未配置时回落到旧全局键，与后端 UploadLimits 的读时回落链保持一致。
 const toFrontendFormat = (raw: JsonObject): RulesConfig => {

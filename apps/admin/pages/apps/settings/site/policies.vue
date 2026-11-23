@@ -52,15 +52,10 @@ const signalDirty = ref(false)
 watch([notificationDirty, signalDirty], () => { dirtyTabs.notifications = notificationDirty.value || signalDirty.value })
 const ready = ref(false)
 const anyDirty = computed(() => Object.values(dirtyTabs).some(Boolean))
-const { unsavedChangesDialog, continueEditing, discardChanges, confirmUnsavedChanges } = useAdminUnsavedChanges(anyDirty, { guardQuery: true })
-async function selectTab(value: unknown) {
+const { unsavedChangesDialog, continueEditing, discardChanges } = useAdminUnsavedChanges(anyDirty, { guardQuery: true })
+function selectTab(value: unknown) {
   if (typeof value !== 'string' || !availableTabs.value.includes(value as SitePolicyTab) || value === tab.value) return
-  if (!(await confirmUnsavedChanges())) return
-  for (const key of ['access', 'content', 'notifications'] as const) dirtyTabs[key] = false
-  notificationDirty.value = false
-  signalDirty.value = false
-  mountedTabs.value = new Set([value as SitePolicyTab])
-  tab.value = value as SitePolicyTab
+  void router.replace({ query: { ...route.query, tab: value }, hash: route.hash })
 }
 
 const canAccessTab = (candidate: SitePolicyTab): boolean => {
@@ -92,21 +87,15 @@ watch(availableTabs, () => {
   }
 }, { immediate: true })
 
-watch(tab, async (value) => {
-  if (!userStore.userInfo || !availableTabs.value.includes(value)) return
-  mountedTabs.value = new Set([...mountedTabs.value, value])
-  if (route.query.tab === value) return
-  await router.replace({ query: { ...route.query, tab: value } })
-})
-
-watch(() => route.query.tab, (value) => {
-  if (typeof value !== 'string' || !availableTabs.value.includes(value as SitePolicyTab)) return
+watch(() => route.query.tab, () => {
+  if (!availableTabs.value.length) return
+  const value = requestedTab()
   if (tab.value !== value) {
     for (const key of ['access', 'content', 'notifications'] as const) dirtyTabs[key] = false
     notificationDirty.value = false
     signalDirty.value = false
-    mountedTabs.value = new Set([value as SitePolicyTab])
-    tab.value = value as SitePolicyTab
+    mountedTabs.value = new Set([value])
+    tab.value = value
   }
 })
 
@@ -114,5 +103,8 @@ onMounted(() => {
   tab.value = requestedTab()
   mountedTabs.value = new Set([tab.value])
   ready.value = true
+  if (availableTabs.value.length && route.query.tab !== tab.value) {
+    void router.replace({ query: { ...route.query, tab: tab.value }, hash: route.hash })
+  }
 })
 </script>

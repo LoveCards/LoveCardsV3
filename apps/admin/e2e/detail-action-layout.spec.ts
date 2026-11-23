@@ -28,6 +28,12 @@ async function fixture(page: Page, readonly = false, failRecord = false) {
     if (route.request().method() !== 'GET') throw new Error(`Unexpected write: ${path}`)
     if (path === '/api/me') return route.fulfill({ json: { success: true, data: { id: 9001, username: '布局验收员', status: 0, roles: [], grants: capabilities.map(([capability, scope]) => ({ capability, scope })) } } })
     if (path === '/api/admin/permissions') return route.fulfill({ json: { success: true, data: [{ capability: 'cards.read', scope: 'all', description: '读取卡片' }] } })
+    if (path === '/api/admin/users/101/security') {
+      const user = resources.find(item => item.key === 'users')!.record
+      return route.fulfill({ json: { success: true, data: {
+        user: { ...user, security_version: 1 }, recovery_challenges: 0, session_mutation_allowed: false,
+      } } })
+    }
     if (path.endsWith('/101/grants')) return route.fulfill({ json: { success: true, data: [] } })
     const resource = resources.find(item => path === `/api/admin/${item.key}/101` || path === `/api/admin/${item.key}`)
     if (resource) {

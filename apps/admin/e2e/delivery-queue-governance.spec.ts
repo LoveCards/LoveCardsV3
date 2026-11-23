@@ -62,7 +62,7 @@ test('realtime task detail does not show notification policy fields', async ({ p
 
   await page.goto('./apps/operations/deliveries/7')
   await expect(page.getByRole('heading', { name: '处理任务 #7' })).toBeVisible()
-  await page.getByRole('button', { name: '技术信息' }).click()
+  await page.getByRole('region', { name: '技术信息' }).getByRole('button', { name: '展开执行元数据' }).click()
   await expect(page.locator('dd').filter({ hasText: '实时提示' })).toBeVisible()
   await expect(page.getByText('已跳过实时提示')).toBeVisible()
   await expect(page.getByText('已按策略跳过通知')).toHaveCount(0)
