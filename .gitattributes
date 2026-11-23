@@ -1,4 +1,5 @@
 apps/backend/public/theme/default-ssr/assets/lovecards.umd.js text eol=lf
+apps/backend/public/_lc/sdk-v2-lovecards.js text eol=lf
 apps/backend/database/migrations/*.sql text eol=lf
 
 # 保持这些已有 CRLF blob 的历史字节，避免跨平台修订产生整文件改写。
