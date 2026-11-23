@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import net from 'node:net'
 import os from 'node:os'
 import path from 'node:path'
@@ -164,10 +165,12 @@ if (await listening(backendPort) || await listening(adminPort)) {
 }
 
 const { binary: php } = resolveSupportedPhp()
+const adminRoot = path.join(root, 'apps/admin')
+const requireAdmin = createRequire(path.join(adminRoot, 'package.json'))
+const nuxtPackage = requireAdmin.resolve('nuxt/package.json')
+const nuxtCli = path.resolve(path.dirname(nuxtPackage), requireAdmin(nuxtPackage).bin.nuxt)
 const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'lovecards-admin-e2e-'))
 const instanceRoot = path.join(temporaryRoot, 'instance')
-const adminRoot = path.join(root, 'apps/admin')
-const nuxtCli = path.join(adminRoot, 'node_modules/nuxt/bin/nuxt.mjs')
 const bundledOpenSsl = path.join(path.dirname(php), 'extras', 'ssl', 'openssl.cnf')
 const openSslConfig = process.env.OPENSSL_CONF || (existsSync(bundledOpenSsl) ? bundledOpenSsl : '')
 const databaseEnv = {
