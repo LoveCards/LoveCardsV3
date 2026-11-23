@@ -1,7 +1,11 @@
 import { chromium } from 'playwright'
 import assert from 'node:assert/strict'
 import { readdir } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import path from 'node:path'
+
+const requireAdmin = createRequire(new URL('../apps/admin/package.json', import.meta.url))
+const { expect } = requireAdmin('@playwright/test')
 
 const originUrl = new URL(process.env.LOVECARDS_THEME_ORIGIN || 'http://127.0.0.1:6001')
 if (!['127.0.0.1', 'localhost', '::1'].includes(originUrl.hostname)) {
@@ -84,7 +88,7 @@ async function checkCompactFeedLayout() {
   await page.route(topicsPath, answer([{ id: 1, name: longTopic }]))
   await page.route(profilePath, route => route.fulfill({ json: { success: true, data: author } }))
   await page.route(profileCardsPath, answer(cards))
-  const assertColumns = (selector, columns) => page.waitForFunction(({ selector, columns }) => {
+  const assertColumns = (selector, columns) => expect.poll(() => page.evaluate(({ selector, columns }) => {
     const feed = document.querySelector(selector)
     const story = feed?.querySelector('.feed-story')
     if (!story) return false
@@ -93,7 +97,7 @@ async function checkCompactFeedLayout() {
     const contentWidth = feed.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
     return contentWidth > 0 && Math.abs(story.getBoundingClientRect().width * columns + gap * (columns - 1) - contentWidth) < 1
       && document.documentElement.scrollWidth <= document.documentElement.clientWidth
-  }, { selector, columns })
+  }, { selector, columns }), { message: `${selector} should display ${columns} columns` }).toBe(true)
   try {
     const layout = page.getByRole('combobox', { name: '信息流布局' })
     await page.setViewportSize({ width: 390, height: 844 })
@@ -132,12 +136,13 @@ async function checkCompactFeedLayout() {
     await assertColumns('.home-feed', 2)
     await layout.selectOption('single')
     await assertColumns('.home-feed', 1)
-    await page.waitForFunction(() => {
+    await expect.poll(() => page.evaluate(() => {
       const [first, second] = document.querySelectorAll('.home-feed .feed-story')
+      if (!first || !second) return false
       const top = first.getBoundingClientRect()
       const next = second.getBoundingClientRect()
       return Math.abs(top.left - next.left) < 1 && next.top > top.bottom
-    })
+    }), { message: 'Single-column stories should stack vertically' }).toBe(true)
     await layout.selectOption('multi')
 
     for (const [path, selector] of [['/search/posts?q=布局', '.search-feed'], [`/user/${author.uid}`, '.public-profile-post-list']]) {
