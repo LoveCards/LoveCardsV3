@@ -18,15 +18,34 @@ describe('route smoke', () => {
   it('renders Blueprint 01 as the product entry without engineering copy', () => {
     const html = renderRoute('/');
     expect(html).toContain('推荐');
+    expect(html).toContain('<h1 id="home-title" class="sr-only">推荐</h1>');
+    expect(html).toContain('aria-label="信息流布局"');
+    expect(html).not.toContain('发现值得停留的内容，也遇见值得关注的人。');
     expect(html).toContain('搜索内容、作者或话题');
+    const desktop = html.match(/<nav class="desktop-nav"[\s\S]*?<\/nav>/)?.[0] || '';
+    expect([...desktop.matchAll(/<span>(推荐|发现|动态|消息|发布|我的)<\/span>/g)].map((match) => match[1])).toEqual(['推荐', '发现', '动态', '消息', '发布', '我的']);
+    expect(desktop).not.toContain('首页');
+    const sidebar = html.match(/<aside class="product-sidebar"[\s\S]*?<\/aside>/)?.[0] || '';
+    const footer = sidebar.match(/<footer class="product-sidebar-footer"[\s\S]*?<\/footer>/)?.[0] || '';
+    expect([...sidebar.matchAll(/href="\/me"/g)]).toHaveLength(1);
+    expect([...footer.matchAll(/href="([^"]+)"/g)].map((match) => match[1])).toEqual(['/settings/appearance']);
+    expect(footer).toContain('主题设置');
+    expect(footer).toContain('©');
+    expect(footer).not.toContain('<button');
     expect(html).not.toContain('Home feed · Blueprint 01');
     expect(html).not.toContain('UI Engineering Baseline');
   });
 
   it('renders the discovery surface without fake write actions', () => {
     const html = renderRoute('/explore');
-    expect(html).toContain('去发现');
-    expect(html).toContain('从正在发生的城市、兴趣和创作者开始。');
+    expect(html).toMatch(/<nav class="home-channels" aria-label="内容频道"[\s\S]*?<\/nav>/);
+    expect(html).toMatch(/<header class="feed-toolbar"><div[^>]*><select[^>]*aria-label="发现内容排序"/);
+    expect(html).toContain('aria-label="信息流布局"');
+    expect(html).toContain('>发现</h1>');
+    expect(html).not.toContain('aria-label="浏览话题"');
+    expect(html).not.toContain('探索内容');
+    expect(html).not.toContain('编辑精选');
+    expect(html).not.toContain('实时');
     expect(html).not.toContain('趋势与个性推荐暂未开放');
     expect(html).not.toContain('12.4 万条讨论');
   });
@@ -34,6 +53,17 @@ describe('route smoke', () => {
   it('renders the not-found route for unknown paths', () => {
     const html = renderRoute('/not-a-real-route');
     expect(html).toContain('这里还没有页面');
+  });
+
+  it('omits global search from the message center and keeps it on other pages', () => {
+    for (const path of ['/messages', '/messages/1', '/messages/search?q=Alice', '/inbox', '/inbox/system']) {
+      const html = renderRoute(path);
+      expect(html).toContain('class="product-sidebar"');
+      expect(html).not.toContain('class="product-header"');
+    }
+    for (const path of ['/', '/explore', '/activity', '/me', '/settings/appearance', '/search?q=journey']) {
+      expect(renderRoute(path), path).toContain('class="desktop-search"');
+    }
   });
 
   it('renders a real login form instead of the pending blueprint state', () => {

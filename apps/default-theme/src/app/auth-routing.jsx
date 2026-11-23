@@ -1,7 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { getRuntimeDataMode } from './runtime-context.js';
 import { useAuth } from './providers.jsx';
-import { ResourceState } from '../components/ResourceState.jsx';
+import { RouteBoundary } from './RouteBoundary.jsx';
 
 export function safeReturnPath(value) {
   if (typeof value !== 'string') return null;
@@ -27,8 +27,8 @@ export function ProtectedRoute({ children, allowVisitor = false }) {
   // The Vite app is client-rendered; static markup is only used by the
   // route/a11y smoke tests and must keep rendering the actual page shell.
   if (designPreview || typeof window === 'undefined') return children;
-  if (auth.status === 'checking') return <main className="auth-route-state" aria-label="正在检查登录状态"><ResourceState status="loading" loadingLabel="正在检查登录状态" /></main>;
-  if (auth.status === 'error') return <main className="auth-route-state" aria-label="登录状态检查失败"><ResourceState status="error" error={auth.error} onRetry={auth.refresh} /></main>;
+  if (auth.status === 'checking') return <RouteBoundary checkingAuth />;
+  if (auth.status === 'error') return <RouteBoundary checkingAuth error={auth.error} onRetry={auth.refresh} />;
   if (!canAccessProtectedRoute(auth, allowVisitor)) {
     const from = currentLocationPath(location);
     return <Navigate to="/auth/login" replace state={{ from }} />;
@@ -36,10 +36,33 @@ export function ProtectedRoute({ children, allowVisitor = false }) {
   return children;
 }
 
+export function canonicalHomeFeedPath(location) {
+  const params = new URLSearchParams(location.search);
+  if (!params.has('feed') && !params.has('channel')) return null;
+  const following = params.get('feed') === 'following' || params.get('channel') === 'following';
+  const latest = params.get('channel') === 'latest';
+  params.delete('feed');
+  params.delete('channel');
+  const path = following ? '/activity' : latest ? '/explore' : '/';
+  const query = params.toString();
+  return `${path}${query ? `?${query}` : ''}${location.hash || ''}`;
+}
+
+export function canonicalLegacyFeedPath(location, to) {
+  const params = new URLSearchParams(location.search);
+  params.delete('feed');
+  params.delete('channel');
+  const query = params.toString();
+  return `${to}${query ? `?${query}` : ''}${location.hash || ''}`;
+}
+
+export function LegacyFeedRoute({ to }) {
+  const location = useLocation();
+  return <Navigate to={canonicalLegacyFeedPath(location, to)} replace state={location.state} />;
+}
+
 export function HomeFeedRoute({ children }) {
   const location = useLocation();
-  const params = new URLSearchParams(location.search);
-  return params.get('feed') === 'following' || params.get('channel') === 'following'
-    ? <ProtectedRoute>{children}</ProtectedRoute>
-    : children;
+  const canonicalPath = canonicalHomeFeedPath(location);
+  return canonicalPath ? <Navigate to={canonicalPath} replace state={location.state} /> : children;
 }

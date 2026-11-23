@@ -1,7 +1,7 @@
 # Blueprint 03 完整响应式方向
 
 日期：2026-08-12
-状态：已确认方向；作为内容详情页面家族的后续设计基准。
+状态：历史设计记录。当前桌面和手机样例以[现行蓝图](../../blueprints/blueprint-03-content-detail.html)为准。
 
 ## Current composition
 

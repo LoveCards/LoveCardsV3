@@ -53,6 +53,8 @@ try {
   })
 
   const { createClient } = await import(pathToFileURL(bundlePath).href)
+  const previousCheck = Promise.withResolvers()
+  const finishPreviousCheck = Promise.withResolvers()
   server = http.createServer(async (request, response) => {
     const chunks = []
     for await (const chunk of request) chunks.push(chunk)
@@ -63,6 +65,16 @@ try {
       body: Buffer.concat(chunks).toString('utf8'),
     })
 
+    if (url.pathname === '/api/session/check') {
+      const token = request.headers['x-token']
+      if (token === 'previous') {
+        previousCheck.resolve()
+        await finishPreviousCheck.promise
+      }
+      response.writeHead(token === 'current' ? 200 : 401, { 'Content-Type': 'application/json' })
+      response.end(JSON.stringify({ data: token === 'current' ? { visitor: false } : null }))
+      return
+    }
     if (url.pathname === '/api/me/notifications/stream-ticket') {
       response.writeHead(200, { 'Content-Type': 'application/json' })
       response.end(JSON.stringify({ success: true, data: { ticket: '0123456789abcdef0123456789ab', expires_in: 60 } }))
@@ -217,7 +229,28 @@ try {
   assert.equal(requests[26].url.pathname, '/api/users/123456789012/cards')
   assert.deepEqual(query(requests[26]), { page: '2', list_rows: '30' })
 
-  console.log('SDK localhost transport tests passed (27 requests).')
+  let storedToken = 'previous'
+  let authErrors = 0
+  const sessionClient = createClient({
+    apiUrl: `http://127.0.0.1:${address.port}/api`,
+    tokenStore: { get: () => storedToken, set: value => { storedToken = value }, clear: () => { storedToken = null } },
+    onAuthError: () => { authErrors++ },
+  })
+  const oldResponse = assert.rejects(sessionClient.session.check(), { status: 401 })
+  await previousCheck.promise
+  sessionClient.setToken('current')
+  const newResponse = sessionClient.session.check()
+  finishPreviousCheck.resolve()
+  await oldResponse
+  assert.deepEqual(await newResponse, { visitor: false })
+  assert.equal(authErrors, 0)
+  sessionClient.setToken('expired')
+  await assert.rejects(sessionClient.session.check(), { status: 401 })
+  assert.equal(authErrors, 1)
+  sessionClient.clearToken()
+  await assert.rejects(sessionClient.session.check(), { status: 401 })
+  assert.equal(authErrors, 1)
+  console.log('SDK localhost transport tests passed (31 requests).')
 } finally {
   if (server?.listening) {
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()))

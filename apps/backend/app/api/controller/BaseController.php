@@ -61,7 +61,7 @@ class BaseController
         // An empty list search is the absence of a filter, not a search for
         // an empty value. Keep this invariant at the API boundary so clients
         // do not need to coordinate the same special case independently.
-        if ($validator === PaginationInput::class && array_key_exists('search_value', $params)) {
+        if (is_a($validator, PaginationInput::class, true) && array_key_exists('search_value', $params)) {
             $searchValue = $params['search_value'];
             if ($searchValue === null || trim((string) $searchValue) === '') {
                 unset($params['search_value'], $params['search_like']);

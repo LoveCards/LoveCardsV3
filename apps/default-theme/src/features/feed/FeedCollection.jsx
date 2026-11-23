@@ -62,7 +62,7 @@ export function FeedCollection({ items, source, className, ariaLabel }) {
           key={card.id}
         />
       ))}
-      <AuthPromptDialog isOpen={Boolean(authPromptAction)} action={authPromptAction} onOpenChange={(open) => { if (!open) setAuthPromptAction(''); }} onLogin={() => { setAuthPromptAction(''); navigate('/auth/login', { state: { from: `${location.pathname}${location.search}` } }); }} />
+      <AuthPromptDialog isOpen={Boolean(authPromptAction)} action={authPromptAction} onOpenChange={(open) => { if (!open) setAuthPromptAction(''); }} onLogin={() => { setAuthPromptAction(''); navigate('/auth/login', { state: { from: `${location.pathname}${location.search}${location.hash}` } }); }} />
     </section>
   );
 }

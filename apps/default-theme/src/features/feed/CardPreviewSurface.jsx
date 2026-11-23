@@ -1,7 +1,10 @@
 import { lazy, Suspense, useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Dialog } from '@astryxdesign/core/Dialog';
+import { ToastViewport } from '@astryxdesign/core/Toast';
 import { preloadCardPreviewDetail } from '../../app/card-preview-routing.js';
+import { Icon } from '../../ui/icons.jsx';
+import { toastConfig } from '../../app/toast-config.js';
 
 const DetailPage = lazy(() => preloadCardPreviewDetail().then((module) => ({ default: module.DetailPage })));
 
@@ -101,15 +104,17 @@ export function CardPreviewSurface() {
   }, [location.state]);
 
   return <Dialog ref={dialogRef} className={`lc-card-preview lc-card-preview-${presentation} lc-card-preview-${kind}`} data-lc-preview-phase={closing ? 'closing' : 'open'} aria-label="内容预览" isOpen onOpenChange={(open) => { if (!open) close(); }} width={presentation === 'media' ? 'min(1080px, calc(100vw - 48px))' : 'min(760px, calc(100vw - 48px))'} maxHeight="min(92dvh, 940px)" padding={0}>
-    <div className="lc-card-preview-shell">
-      <header className="lc-card-preview-header">
-        <h2 ref={titleRef} tabIndex={-1}>{presentation === 'media' ? kind === 'video' ? '视频' : '图文' : kind === 'discussion' ? '讨论' : '随笔'}</h2>
-        <div className="lc-card-preview-header-actions">
-          <button type="button" onClick={openFull}>查看完整详情</button>
-          <button type="button" onClick={close} aria-label="关闭内容预览" disabled={closing}>×</button>
-        </div>
-      </header>
-      <Suspense fallback={<PreviewLoading presentation={presentation} />}><DetailPage preview loadingFallback={<PreviewLoading presentation={presentation} />} /></Suspense>
-    </div>
+    <ToastViewport {...toastConfig} isTopLayer={false}>
+      <div className="lc-card-preview-shell">
+        <header className="lc-card-preview-header">
+          <h2 ref={titleRef} tabIndex={-1}>{presentation === 'media' ? kind === 'video' ? '视频' : '图文' : kind === 'discussion' ? '讨论' : '随笔'}</h2>
+          <div className="lc-card-preview-header-actions">
+            <button type="button" onClick={openFull}>查看完整详情</button>
+            <button type="button" onClick={close} aria-label="关闭内容预览" disabled={closing}><Icon name="close" size={19} /></button>
+          </div>
+        </header>
+        <Suspense fallback={<PreviewLoading presentation={presentation} />}><DetailPage preview loadingFallback={<PreviewLoading presentation={presentation} />} /></Suspense>
+      </div>
+    </ToastViewport>
   </Dialog>;
 }

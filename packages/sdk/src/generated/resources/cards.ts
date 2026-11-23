@@ -18,7 +18,7 @@ export class Cards extends BaseResource {
   batchManaged(data: { ids: unknown[]; method: string }): Promise<void> {
     return this._post<void>("/admin/cards/batch", data)
   }
-  list(params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }): Promise<ApiTypes.ListResult<ApiTypes.Card>> {
+  list(params?: { page?: number; list_rows?: number; search_keys?: string[]; search_like?: number; search_value?: string; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number }): Promise<ApiTypes.ListResult<ApiTypes.Card>> {
     return this._get<ApiTypes.ListResult<ApiTypes.Card>>("/cards", params)
   }
   get(id: number): Promise<ApiTypes.Card> {
@@ -36,7 +36,10 @@ export class Cards extends BaseResource {
   hot(): Promise<ApiTypes.Card[]> {
     return this._get<ApiTypes.Card[]>("/cards/hot")
   }
-  search(params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }): Promise<ApiTypes.ListResult<ApiTypes.Card>> {
+  searchPublic(params: { search_value: string; sort?: string; page?: number; list_rows?: number }): Promise<ApiTypes.ListResult<ApiTypes.Card>> {
+    return this._get<ApiTypes.ListResult<ApiTypes.Card>>("/cards/search-public", params)
+  }
+  search(params?: { page?: number; list_rows?: number; search_keys?: string[]; search_like?: number; search_value?: string; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number }): Promise<ApiTypes.ListResult<ApiTypes.Card>> {
     return this._get<ApiTypes.ListResult<ApiTypes.Card>>("/cards/search", params)
   }
   listOwn(params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }): Promise<ApiTypes.ListResult<ApiTypes.Card>> {

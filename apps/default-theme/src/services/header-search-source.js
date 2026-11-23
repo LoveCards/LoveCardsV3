@@ -1,79 +1,42 @@
-import { loadDiscovery } from './discovery-service.js';
+import { topicHref } from './discovery-service.js';
+import { searchScope } from './search-service.js';
+import { searchHref } from '../pages/search/search-route.js';
 
-function topicSlug(label) {
-  return String(label || '').replace(/^#\s*/, '').trim();
-}
-
-function topicHref(topic) {
-  const id = Number(topic?.id);
-  const name = String(topic?.name || '').trim();
-  return Number.isInteger(id) && id > 0 ? `/topic/${id}-${encodeURIComponent(name)}` : `/topic/${encodeURIComponent(name)}`;
-}
-
-function toSearchItems(data, query) {
-  if (data.source === 'configuration-error') {
-    return [{ id: 'search-unavailable', label: data.message || '搜索暂不可用', auxiliaryData: { kind: 'status', description: data.detail || '请检查 API 配置。', href: '/search' } }];
-  }
-
-  const needle = query.trim().toLowerCase();
-  const topics = (data.trends || [])
-    .filter((trend) => !needle || String(trend.label || '').toLowerCase().includes(needle))
-    .slice(0, 4)
-    .map((trend) => ({
-      id: `topic:${topicSlug(trend.label)}`,
-      label: trend.label,
-      auxiliaryData: {
-        kind: 'topic',
-        description: trend.count || '查看话题内容',
-        href: topicHref({ id: trend.tagId, name: trend.name || topicSlug(trend.label) }),
-      },
-    }));
-
-  const posts = (data.items || []).slice(0, 7).map((card) => ({
-    id: `post:${card.id}`,
-    label: card.title,
-    auxiliaryData: {
-      kind: 'post',
-      author: card.author,
-      description: `${card.author}${card.topic ? ` · ${card.topic}` : ''}`,
-      href: `/post/${card.id}`,
-    },
+function toItems(scope, data) {
+  if (scope === 'users') return data.items.slice(0, 2).map((user) => ({
+    id: `user:${user.uid}`,
+    label: user.username,
+    auxiliaryData: { kind: 'user', avatar: user.avatar, description: `UID · ${user.uid}`, href: `/user/${user.uid}` },
   }));
-
-  return query.trim() ? [...posts, ...topics] : [...topics, ...posts];
+  return data.items.slice(0, 2).map((topic) => ({
+    id: `topic:${topic.id || topic.name}`,
+    label: topic.label,
+    auxiliaryData: { kind: 'topic', description: '查看话题内容', href: topicHref(topic) },
+  }));
 }
 
 export function createHeaderSearchSource({ isComposing } = {}) {
   let controller = null;
-  let bootstrapItems = [];
   let lastItems = [];
 
-  const run = async (query) => {
+  const run = async (raw) => {
+    const query = String(raw || '').trim();
     if (isComposing?.()) return lastItems;
     controller?.abort();
     controller = new AbortController();
-    try {
-      const data = await loadDiscovery({ query, signal: controller.signal });
-      const remoteItems = toSearchItems(data, query);
-      if (!query) {
-        bootstrapItems = remoteItems;
-        lastItems = remoteItems;
-        return lastItems;
-      }
-      const needle = query.toLowerCase();
-      const localMatches = bootstrapItems.filter((item) => `${item.label} ${item.auxiliaryData?.description || ''}`.toLowerCase().includes(needle));
-      const merged = [...remoteItems, ...localMatches].filter((item, index, items) => items.findIndex((candidate) => candidate.id === item.id) === index);
-      lastItems = merged;
-      return lastItems;
-    } catch (error) {
-      if (error?.name === 'AbortError') throw error;
-      lastItems = [{ id: 'search-error', label: '暂时无法搜索', auxiliaryData: { kind: 'status', description: '进入完整搜索页后可重试。', href: `/search?q=${encodeURIComponent(query)}` } }];
-      return lastItems;
-    }
+    if (!query) { lastItems = []; return lastItems; }
+    const signal = controller.signal;
+    const scopes = ['users', 'topics'];
+    const results = await Promise.allSettled(scopes.map((scope) => searchScope(scope, { query, limit: 2, signal })));
+    if (signal.aborted) throw new DOMException('Request aborted', 'AbortError');
+    const items = results.flatMap((result, index) => result.status === 'fulfilled' ? toItems(scopes[index], result.value) : []);
+    const allLink = { id: `search-all:${query}`, label: `搜索“${query}”的全部结果`, auxiliaryData: { kind: 'search', description: '查看综合结果', href: searchHref('all', query) } };
+    lastItems = [allLink, ...items];
+    return lastItems;
   };
 
   return {
-    search: (query) => run(query.trim()),
+    search: run,
     bootstrap: () => run(''),
     cancel: () => controller?.abort(),
   };

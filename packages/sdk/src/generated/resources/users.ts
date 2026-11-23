@@ -54,4 +54,7 @@ export class Users extends BaseResource {
   searchMentionCandidates(params: { query: string; limit?: number }): Promise<ApiTypes.ListResult<ApiTypes.MentionCandidate>> {
     return this._get<ApiTypes.ListResult<ApiTypes.MentionCandidate>>("/users/mention-candidates", params)
   }
+  searchPublic(params: { search_value: string; page?: number; list_rows?: number }): Promise<ApiTypes.ListResult<Record<string, unknown>>> {
+    return this._get<ApiTypes.ListResult<Record<string, unknown>>>("/users/search", params)
+  }
 }

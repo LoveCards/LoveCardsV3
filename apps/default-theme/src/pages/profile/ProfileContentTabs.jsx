@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { FeedLayoutControl } from '../../features/feed/FeedLayout.jsx';
 
 export const profileContentTabs = [
   { label: '内容', tab: 'content' },
@@ -78,7 +79,7 @@ export function ProfileContentTabs({ label = '个人内容分类', mode = 'libra
     else if (itemEnd > nav.scrollLeft + nav.clientWidth) nav.scrollTo({ left: itemEnd - nav.clientWidth, behavior: 'auto' });
   }, [pathname, search]);
 
-  return <nav className="profile-tabs" aria-label={label} role={isPublic ? undefined : 'tablist'} ref={navRef}>
+  return <div className="profile-feed-toolbar"><nav className="profile-tabs" aria-label={label} role={isPublic ? undefined : 'tablist'} ref={navRef}>
     {tabs.map((tab) => {
       const active = isPublic ? pathname === tab.to : activeTab === tab.tab;
       const to = isPublic ? tab.to : tab.tab === 'content' ? '/me' : `/me?tab=${tab.tab}`;
@@ -88,5 +89,5 @@ export function ProfileContentTabs({ label = '个人内容分类', mode = 'libra
       return to === '#' ? <span className="is-active" key={tab.label} ref={active ? activeRef : undefined} aria-label={accessibleLabel}>{tabLabel}</span> : <Link className={active ? 'is-active' : ''} role={isPublic ? undefined : 'tab'} id={isPublic ? undefined : `profile-tab-${tab.tab}`} aria-selected={isPublic ? undefined : active} aria-controls={isPublic ? undefined : 'profile-content-panel'} aria-current={isPublic && active ? 'page' : undefined} aria-label={accessibleLabel} tabIndex={isPublic ? undefined : focusedTab === tab.tab ? 0 : -1} onFocus={isPublic ? undefined : () => setFocusedTab(tab.tab)} onKeyDown={isPublic ? undefined : (event) => handleTabKeyDown(event, tab.tab)} key={tab.label} ref={(node) => { if (!isPublic) tabRefs.current[tab.tab] = node; if (active) activeRef.current = node; }} to={to}>{tabLabel}</Link>;
     })}
     {!isPublic && <span className="profile-tab-indicator" aria-hidden="true" ref={indicatorRef} />}
-  </nav>;
+  </nav><FeedLayoutControl /></div>;
 }

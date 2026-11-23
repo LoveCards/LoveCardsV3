@@ -19,6 +19,7 @@
 ## 交互规范
 
 - [`specifications/INTERACTIONS.md`](./specifications/INTERACTIONS.md)：搜索、评论与移动壳层交互。
+- [`specifications/SEARCH.md`](./specifications/SEARCH.md)：聚合搜索的地址、查询、结果与状态基线。
 - [`specifications/DIALOGS.md`](./specifications/DIALOGS.md)：Dialog、Modal、Alert、移动 Sheet、焦点与滚动边界。
 - [`specifications/MOTION.md`](./specifications/MOTION.md)：弹窗进出场、页面与 Tab 转场、减少动态效果及验收。
 - [`specifications/COMPOSE.md`](./specifications/COMPOSE.md)：发布形态与媒体工作区。
@@ -29,6 +30,7 @@
 - [`specifications/FORMS-AND-UPLOADS.md`](./specifications/FORMS-AND-UPLOADS.md)：字段、校验、异步提交、文件上传和头像编辑任务。
 - [`specifications/LAYOUT-RESPONSIVE.md`](./specifications/LAYOUT-RESPONSIVE.md)：页面容器、Feed gutter、响应式重排和 Skeleton 几何。
 - [`specifications/NAVIGATION.md`](./specifications/NAVIGATION.md)：路由、Tab、选择、筛选、返回和焦点规则。
+- [`specifications/DISCOVERY.md`](./specifications/DISCOVERY.md)：发现频道的任务定位、数据真实性、响应式结构与验收。
 - [`specifications/SETTINGS.md`](./specifications/SETTINGS.md)：设置分类、SettingsGroup、扩展门槛和响应式布局。
 
 ## 落地资料

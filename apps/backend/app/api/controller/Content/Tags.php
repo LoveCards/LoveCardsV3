@@ -39,6 +39,11 @@ class Tags extends BaseController
         return $this->respond($result);
     }
 
+    public function search()
+    {
+        return $this->respond(TagsService::searchPublic($this->validated()));
+    }
+
     public function get($id)
     {
         // 公开详情：仅已发布标签可见，待审核/封禁/隐藏标签对外等同不存在。

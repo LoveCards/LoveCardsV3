@@ -46,14 +46,23 @@ function MessageWorkspaceSkeleton({ count = 5 }) {
 export function MessagesPage() {
   const auth = useAuth();
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, search, hash } = useLocation();
   const designPreview = getRuntimeDataMode() === 'design-preview';
   const searchMode = pathname === '/messages/search';
   const canSearchMessages = designPreview || (auth.status === 'ready' && auth.isAuthenticated);
   const compactViewport = isCompactViewport();
   const [state, setState] = useState({ status: 'loading', items: [], error: null });
   const [selectedId, setSelectedId] = useState(null);
-  const [query, setQuery] = useState('');
+  const [desktopQuery, setDesktopQuery] = useState('');
+  const query = searchMode ? new URLSearchParams(search).get('q') || '' : desktopQuery;
+  const setQuery = (value) => {
+    if (!searchMode) { setDesktopQuery(value); return; }
+    const next = new URLSearchParams(search);
+    if (value) next.set('q', value);
+    else next.delete('q');
+    const nextSearch = next.toString();
+    navigate({ pathname, search: nextSearch ? `?${nextSearch}` : '', hash }, { replace: true });
+  };
   const loadRequestRef = useRef(0);
   const load = useCallback(async ({ background = false } = {}) => {
     if (!auth.isAuthenticated) return;
@@ -140,9 +149,9 @@ export function MessagesPage() {
             </div>
             : <ResourceState status="empty" emptyTitle={query ? '没有找到匹配会话' : '还没有私信'} emptyDescription={query ? '换个关键词试试。' : '当你与其他用户开始对话后，会话会显示在这里。'} />;
 
-  return <AppShell mobileMode={searchMode ? 'task' : 'standard'}><main className={`community-page message-center-page messages-page${searchMode ? ' is-search-page' : ''}`} aria-labelledby="message-center-title">
+  return <AppShell mobileMode={searchMode ? 'task' : 'standard'}><main className={`community-page message-center-page messages-page${searchMode ? ' is-search-page' : ''}`} aria-labelledby={searchMode ? 'message-search-title' : 'message-center-title'}>
     {searchMode
-      ? <header className="message-search-page-header"><Link to="/messages" aria-label="返回私信列表">←</Link>{canSearchMessages ? <div className="message-search-page-field"><label htmlFor="message-search-page">搜索会话</label><input id="message-search-page" type="search" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索用户名或消息" /></div> : <strong className="message-search-page-title">搜索会话</strong>}</header>
+      ? <header className="message-search-page-header"><Link to="/messages" aria-label="返回私信列表"><Icon name="arrowLeft" size={19} /></Link><h1 id="message-search-title" className={canSearchMessages ? 'sr-only' : 'message-search-page-title'}>搜索会话</h1>{canSearchMessages && <div className="message-search-page-field"><label htmlFor="message-search-page">搜索会话</label><input id="message-search-page" type="search" autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索用户名或消息" /></div>}</header>
       : <div className="message-center-chrome"><MessageCenterHeader description="私信按最近活动排列。" actions={canSearchMessages ? <Link className="message-search-trigger" to="/messages/search" aria-label="搜索会话"><Icon name="search" size={20} /></Link> : null} /><MessageCenterTabs messageUnread={messageUnread} /></div>}
     {state.status === 'success' && state.error && <ResourceErrorBanner error={state.error} onRetry={() => void load({ background: true })} />}
     {content}

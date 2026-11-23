@@ -1,31 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHeaderSearchSource } from '../services/header-search-source.js';
-import { loadDiscovery } from '../services/discovery-service.js';
+import { searchScope } from '../services/search-service.js';
 
-vi.mock('../services/discovery-service.js', () => ({ loadDiscovery: vi.fn() }));
+vi.mock('../services/search-service.js', () => ({ searchScope: vi.fn() }));
 
-const cachedCard = {
-  id: '4',
-  title: '第二张：用于验证搜索接口',
-  author: '用户 1',
-  topic: '# 搜索',
+const matchingUser = {
+  uid: '123456789012',
+  username: '第二张用户',
+  avatar: '',
 };
 
 describe('header search source', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    loadDiscovery.mockImplementation(async ({ query }) => ({
-      source: 'live',
-      items: query ? [] : [cachedCard],
-      trends: query ? [] : [{ label: '# 热门话题', count: '查看话题内容' }],
-    }));
+    searchScope.mockImplementation(async (scope, { query }) => ({ items: scope === 'users' && query === '第二张' ? [matchingUser] : [] }));
   });
 
-  it('keeps bootstrap items as a local fallback for live incremental search', async () => {
+  it('uses only matching results returned for the active search query', async () => {
     const source = createHeaderSearchSource();
     await source.bootstrap();
     const results = await source.search('第二张');
-    expect(results.map((item) => item.label)).toContain(cachedCard.title);
+    expect(results.map((item) => item.label)).toContain(matchingUser.username);
+    expect(searchScope.mock.calls.map(([scope]) => scope)).toEqual(['users', 'topics']);
+    expect(results[0].auxiliaryData.href).toBe('/search?q=%E7%AC%AC%E4%BA%8C%E5%BC%A0');
   });
 
   it('does not issue a new request during IME composition', async () => {
@@ -35,6 +32,13 @@ describe('header search source', () => {
     composing = true;
     const results = await source.search('di');
     expect(results).toEqual(initial);
-    expect(loadDiscovery).toHaveBeenCalledTimes(1);
+    expect(searchScope).not.toHaveBeenCalled();
+  });
+
+  it('keeps only the real full-search route when suggestions fail', async () => {
+    searchScope.mockRejectedValue(new Error('network failure'));
+    const results = await createHeaderSearchSource().search('城市');
+    expect(results.map((item) => item.id)).toEqual(['search-all:城市']);
+    expect(results[0].auxiliaryData.href).toBe('/search?q=%E5%9F%8E%E5%B8%82');
   });
 });

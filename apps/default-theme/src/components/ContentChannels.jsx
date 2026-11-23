@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 const channels = [
   { to: '/', label: '推荐', id: 'recommended' },
   { to: '/explore', label: '发现', id: 'explore' },
-  { to: '/?channel=latest', label: '最新', id: 'latest' },
 ];
 
 export function ContentChannels({ active }) {

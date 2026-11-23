@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { readThemeBootstrap } from '../app/runtime-context.js';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { applyThemeRuntimeConfig, readThemeBootstrap } from '../app/runtime-context.js';
 
 function rootWith(value) {
   return { getElementById: () => ({ textContent: value }) };
@@ -38,5 +38,30 @@ describe('theme runtime bootstrap', () => {
       assetsBase: '/_lc/theme-assets/default/release/',
       config: {},
     })))).toThrow('主题启动配置缺少 release。');
+  });
+});
+
+
+describe('runtime accent foreground', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each([
+    ['#c92c60', undefined, undefined],
+    ['#fff', '#000', '#000'],
+    ['#000f', '#fff', '#fff'],
+    ['#0000', '#000', '#fff'],
+  ])('selects the foreground by mode for %s', (primaryColor, light, dark) => {
+    const properties = new Map();
+    vi.stubGlobal('document', {
+      documentElement: {
+        dataset: {},
+        style: { setProperty: (name, value) => properties.set(name, value) },
+      },
+    });
+
+    applyThemeRuntimeConfig({ config: { primaryColor } });
+
+    expect(properties.get('--lc-custom-on-accent-light')).toBe(light);
+    expect(properties.get('--lc-custom-on-accent-dark')).toBe(dark);
   });
 });

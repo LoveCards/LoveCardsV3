@@ -20,10 +20,13 @@ export function useFeedMasonry(ref, items) {
         transitionDuration: 0,
       });
       frame = schedule(() => masonry.layout());
-      observer = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
+      const columnSizer = element.querySelector('.masonry-column-sizer');
+      observer = typeof ResizeObserver === 'function' ? new ResizeObserver((entries) => {
         cancel(frame);
-        frame = schedule(() => masonry.layout());
+        if (entries.some(({ target }) => target === columnSizer)) masonry.layout();
+        else frame = schedule(() => masonry.layout());
       }) : null;
+      if (columnSizer) observer?.observe(columnSizer);
       element.querySelectorAll('.feed-story').forEach((item) => observer?.observe(item));
     });
     return () => {

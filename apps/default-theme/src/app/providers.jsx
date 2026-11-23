@@ -1,21 +1,15 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Theme } from '@astryxdesign/core/theme';
 import { LayerProvider } from '@astryxdesign/core/Layer';
 import { InternationalizationProvider } from '@astryxdesign/core/i18n';
 import { neutralTheme } from '@astryxdesign/theme-neutral/built';
 import { checkSession, loadCurrentUser, logout } from '../services/auth-service.js';
 import { getSdkClient } from './sdk-client.js';
+import { toastConfig } from './toast-config.js';
+import { FeedLayoutProvider } from '../features/feed/FeedLayout.jsx';
 
 const ThemeModeContext = createContext(null);
 const AuthContext = createContext(null);
-const toastConfig = {
-  position: 'topEnd',
-  maxVisible: 3,
-  inset: {
-    top: 'var(--lc-toast-top-inset)',
-    end: 'var(--lc-toast-inline-end)',
-  },
-};
 const astryxChinese = {
   'zh-CN': {
     '@astryx.moreMenu.label': '更多选项',
@@ -84,14 +78,22 @@ export function AppProviders({ children, initialMode }) {
     [mode, preference, reduceMotion],
   );
 
-  const [auth, setAuth] = useState({ status: 'checking', session: null, user: null, userStatus: 'idle' });
-  useEffect(() => {
-    let active = true;
-    const refresh = async () => {
+  const [auth, setAuth] = useState({ revision: 0, status: 'checking', session: null, user: null, userStatus: 'idle' });
+  const sequence = useRef(0);
+  const pendingCheck = useRef(null);
+  const refresh = useCallback(() => {
+    const client = getSdkClient();
+    const token = client?.getToken() || null;
+    if (pendingCheck.current?.token === token) return pendingCheck.current.revision;
+    const revision = ++sequence.current;
+    pendingCheck.current = { revision, token };
+    const current = () => sequence.current === revision;
+    const run = async () => {
       try {
         const session = await checkSession();
+        if (!current()) return;
         if (!session || session.visitor) {
-          if (active) setAuth({ status: 'ready', session, user: null, userStatus: 'idle', error: null });
+          setAuth({ revision, status: 'ready', session, user: null, userStatus: 'idle', error: null });
           return;
         }
         let user = null;
@@ -100,42 +102,49 @@ export function AppProviders({ children, initialMode }) {
           user = await loadCurrentUser();
           userStatus = user ? 'ready' : 'error';
         } catch (error) {
-          // A rejected current-user request with 401 means the cached session
-          // is no longer authenticated. Clear it so private pages render their
-          // login boundary instead of a misleading network-error state.
-          if (error?.status === 401) getSdkClient()?.clearToken();
+          if (!current()) return;
           if (error?.status === 401) {
-            if (active) setAuth({ status: 'ready', session: null, user: null, userStatus: 'idle', error: null });
+            if (client?.getToken() === token) client?.clearToken();
+            setAuth({ revision, status: 'ready', session: null, user: null, userStatus: 'idle', error: null });
             return;
           }
-          // Session state remains usable when the profile request is temporarily unavailable.
+          // 资料暂不可用时，已验证的会话仍可用于账号动作。
         }
-        if (active) setAuth({ status: 'ready', session, user, userStatus, error: null });
+        if (current()) setAuth({ revision, status: 'ready', session, user, userStatus, error: null });
       } catch (error) {
-        if (active) setAuth((current) => ({ ...current, status: 'error', error, user: null, userStatus: 'error' }));
+        if (current()) setAuth((previous) => ({ ...previous, revision, status: 'error', error, user: null, userStatus: 'error' }));
+      } finally {
+        if (current()) pendingCheck.current = null;
       }
     };
-    refresh();
-    const onChange = () => refresh();
-    window.addEventListener('lc-auth-changed', onChange);
-    return () => { active = false; window.removeEventListener('lc-auth-changed', onChange); };
+    void run();
+    return revision;
   }, []);
+  useEffect(() => {
+    refresh();
+    window.addEventListener('lc-auth-changed', refresh);
+    return () => {
+      sequence.current++;
+      pendingCheck.current = null;
+      window.removeEventListener('lc-auth-changed', refresh);
+    };
+  }, [refresh]);
   const authValue = useMemo(() => ({
     ...auth,
     hasSession: Boolean(auth.session),
     isVisitor: Boolean(auth.session?.visitor),
     isAuthenticated: Boolean(auth.session && !auth.session.visitor),
     can: (capability) => hasSessionCapability(auth.session, capability),
-    refresh: () => window.dispatchEvent(new CustomEvent('lc-auth-changed')),
-    logout: async () => { try { await logout(); } finally { setAuth({ status: 'ready', session: null, user: null, userStatus: 'idle' }); } },
-  }), [auth]);
+    refresh,
+    logout,
+  }), [auth, refresh]);
 
   return (
     <ThemeModeContext value={value}>
       <AuthContext value={authValue}>
         <InternationalizationProvider locale="zh-CN" overrides={astryxChinese} dir="ltr">
           <Theme theme={neutralTheme} mode={mode}>
-            <LayerProvider toast={toastConfig}>{children}</LayerProvider>
+            <LayerProvider toast={toastConfig}><FeedLayoutProvider>{children}</FeedLayoutProvider></LayerProvider>
           </Theme>
         </InternationalizationProvider>
       </AuthContext>

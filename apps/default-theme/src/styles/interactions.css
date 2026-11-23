@@ -103,7 +103,7 @@
   .feed-skeleton-media-block,
   .feed-skeleton-line,
   .feed-skeleton-avatar,
-  .lc-card-preview-loading-copy i { animation: lc-loading-pulse 1.3s ease-in-out infinite; }
+  .lc-card-preview-loading-copy i { animation: var(--lc-loading-pulse); }
   .resource-skeleton i:nth-child(2),
   .detail-loading-copy i:nth-child(2),
   .feed-skeleton-line:nth-child(2) { animation-delay: -0.22s; }
@@ -165,7 +165,6 @@
 
   .lc-motion-dialog[data-lc-motion-phase='closing']::backdrop { background-color: transparent; }
 
-  .mobile-search-dialog,
   .lc-media-viewer { animation-name: none; }
 
   .lc-alert-dialog,

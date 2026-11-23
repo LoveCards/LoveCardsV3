@@ -1,6 +1,6 @@
 # LoveCards 页面设计矩阵
 
-版本：2026-08-22
+版本：2026-11-21
 状态：设计系统规范已冻结；单个 Blueprint 是否可施工以 [`BLUEPRINTS.md`](./BLUEPRINTS.md) 的 `canonical/needs-sync/review-required` 状态为准。SDK 已支持的能力真实接入，未支持能力诚实显示边界。
 
 ## Status legend
@@ -30,8 +30,8 @@
 | ID | 页面 | Route | 桌面结构 | 移动结构 | 必备状态 | 交付 |
 |---|---|---|---|---|---|---|
 | L1-01 | 推荐首页 | `/` | 顶栏 + 频道 + 多列流 + 右栏 | 顶栏 + 双列流 + 底栏 | loading/empty/error/guest | Foundation → Blueprint 01 |
-| L1-02 | 动态 | `/?feed=following` | 关注流 | 标题 + 双列流 + 底栏 | login/loading/no-following/new-post/error | Blueprint 01 |
-| L1-03 | 发布 / 编辑 | `/compose`、`/compose?draft=<id>`、`/compose?edit=<cardId>`；信息流“写随笔”指向同一页面 | 单一编辑轴覆盖随笔/图文/视频/草稿/已发布编辑 | `immersive` 完整页无 BottomNav；新建默认随笔 | loading/404/403/uploading/field-error/task-error/dirty | Blueprint 04 |
+| L1-02 | 动态 | `/activity` | 独立一级关注更新页，沿用关注流 API | 标题 + 双列流 + 底栏 | login/loading/no-following/new-post/error | Blueprint 01 |
+| L1-03 | 发布 / 编辑 | `/compose`、`/compose?draft=<id>`、`/compose?edit=<cardId>`；信息流不设置重复发布入口 | 单一编辑轴覆盖随笔/图文/视频/草稿/已发布编辑 | `immersive` 完整页无 BottomNav；新建默认随笔 | loading/404/403/uploading/field-error/task-error/dirty | Blueprint 04 |
 | L1-04 | 消息 | `/messages` | 统一消息中心标题 + 私信双栏工作区 | 统一标题/一级 Tab + 私信列表 | loading/empty/error/permission | Blueprint 07 |
 | L1-05 | 我的 | `/me` | 已登录：个人封面 + 同页内容标签 + 统一卡片流；游客：账号与会话入口 | 已登录：全宽身份头 + 双列卡片流；游客：身份说明 + 登录/设置/退出，保留底栏 | loading/empty/error/private/editing/visitor | Blueprint 05 |
 | L1-06 | 交互表面 | shared | 移动壳层 + Typeahead + 线程 + Dialog/Modal + 模式注册 | 顶部搜索 + 底部我的 + 内联回复 / Sheet | focus/loading/empty/error | Blueprint 10 |
@@ -40,13 +40,13 @@
 
 | ID | 页面 | Route | 页面家族 | 必备状态 | 交付 |
 |---|---|---|---|---|---|
-| L2-01 | 发现频道 | `/explore` | Explore；首页频道第二项 | recent/no-history/no-result | Blueprint 02 |
-| L2-02 | 最新频道 | `/?channel=latest` | Feed | channel-empty/filter | Blueprint 01 states |
+| L2-01 | 发现频道 | `/explore`、`/explore?sort=liked|discussed` | Explore；公开卡片流默认最新发布，使用单值服务端排序，见 [`DISCOVERY.md`](../specifications/DISCOVERY.md) | cards-loading/empty/error/load-more/guest | Blueprint 02；`needs-sync` |
+| L2-02 | 旧 Feed 地址 | `/feed/latest`、`/feed/following` | 仅作 replace 重定向到 `/explore`、`/activity` | redirect-only | 兼容状态 |
 | L2-03 | 帖子详情 / 列表来源阅读预览 | `/post/:id` | 直接深链为 Content detail；列表来源为 CardPreviewSurface | loading/deleted/reviewing/restricted/preview/full-detail | Blueprint 03；阅读预览状态板待补 |
 | L2-04 | 评论线程 | `/post/:id/thread/:commentId` | Thread | collapsed/deleted/error | Blueprint 03 |
 | L2-05 | 媒体查看器 | `/media/:id` | Focus | image/gallery/video/GIF | Blueprint 03 variant |
-| L2-06 | 搜索首页 | `/search` | Explore | recent/trending/no-history | Blueprint 02 |
-| L2-07 | 搜索结果 | `/search/:scope?q=` | Results | all/posts/users/topics/media/no-result | Blueprint 02 |
+| L2-06 | 搜索入口 | `/search`（空查询） | Search | query-entry | Blueprint 02 |
+| L2-07 | 聚合搜索结果 | `/search?q=`、`/search/{posts|users|topics}?q=` | Search | comprehensive/posts/users/topics/no-result/loading/error | Blueprint 02 |
 | L2-08 | 话题详情 | `/topic/:slug` | Topic | following/rules/empty | Blueprint 02 variant |
 | L2-09 | 草稿箱 | `/drafts` | Compose secondary · Editor 单轴连续恢复列表 | loading/error/delete-error/empty/restoring；手机无 BottomNav | Blueprint 04B |
 | L2-10 | 他人主页 | `/user/:uid` | Profile | followed/private/blocked/not-found | Blueprint 05 |
@@ -62,6 +62,7 @@
 | L2-14b | 旧通知分类（重定向） | `/inbox/message`、`/inbox/social`、`/inbox/interaction` | Redirect | redirect-only | Blueprint 07 |
 | L2-15 | 私信列表 | `/messages` | Messaging workspace | loading/empty/error/permission | Blueprint 07 |
 | L2-16 | 聊天会话 | `/messages/:conversationId` | Messaging secondary task | loading/empty/error/sending/failed/permission；手机隐藏 BottomNav | Blueprint 07 |
+| L2-17 | 搜索会话 | `/messages/search?q=`；空词为 `/messages/search` | 已加载会话的本地筛选；手机 `task` | query/empty/error；不宣称消息全文搜索 | Blueprint 07 |
 | L2-18 | 个人内容标签（兼容入口） | `/me?tab=likes|saved|history`、`/me/library/{likes|saved|history}` | Profile in-page tab | loading/empty/removed/clear | Blueprint 05 |
 | L2-19 | 设置总览与设置壳 | `/settings`、`/settings/*` | Settings stack · mobile `task` | overview/category/loading/error/permission/changed；整个设置栈无 BottomNav | Blueprint 08 |
 | L2-20 | 登录/注册 | `/auth/:mode`；公开资源动作可用 Contextual Login | 独立认证页始终可达；情境弹窗可完成登录，注册/恢复仍为页面 | validation/loading/error/contextual/standalone | Blueprint 09；情境登录状态板待补 |
@@ -79,7 +80,7 @@
 | L3-07 | 账号安全 | `/settings/security` | mobile `task`；返回 `/settings`；password/email/loading/error/permission | Blueprint 08 variant |
 | L3-07a | 登录与会话 | `/settings/session` | mobile `task`；返回 `/settings`；authenticated/visitor/current-session/logout/error；多设备待契约 | Blueprint 08 variant |
 | L3-08 | 隐私 | `/settings/privacy` | mobile `task`；返回 `/settings`；audience/loading/error/changed/blocked-capability | Blueprint 08 variant |
-| L3-09 | 通知偏好（契约待补） | 无正式路由 | capability-pending；不进入当前导航 | Blueprint 08 boundary |
+| L3-09 | 通知偏好 | `/settings/notifications` | mobile `task`；返回 `/settings`；loading/error/changed/permission | Blueprint 08 variant |
 | L3-10 | 外观与无障碍 | `/settings/appearance` | mobile `task`；返回 `/settings`；theme/motion | Blueprint 08 variant |
 | L3-11 | 消息请求与权限（暂未开放） | `/messages/requests` | capability-pending/不可交互 | Blueprint 07C 仅作后续设计参考 |
 | L3-12 | 账号恢复 | `/auth/recovery` | identify/code/reset/done | Blueprint 09 state |

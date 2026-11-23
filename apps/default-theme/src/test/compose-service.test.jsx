@@ -7,8 +7,9 @@ const sdk = vi.hoisted(() => ({
 
 vi.mock('../app/sdk-client.js', () => sdk);
 
-import { deleteComposeMedia, loadPublishedCardForEdit, normalizeCardVisibility, publishCard, updatePublishedCard } from '../services/compose-service.js';
+import { composeMediaKey, deleteComposeMedia, loadPublishedCardForEdit, normalizeCardVisibility, orderComposeMedia, publishCard, updatePublishedCard } from '../services/compose-service.js';
 import { selectComposeFiles } from '../pages/compose/ComposePage.jsx';
+import { restoreComposeGalleryLayout } from '../features/media/gallery-layout.js';
 
 beforeEach(() => {
   vi.stubEnv('VITE_DATA_MODE', 'api');
@@ -22,6 +23,40 @@ afterEach(() => {
 });
 
 describe('compose media selection', () => {
+  it('defaults new and legacy single image compositions to pager while preserving legacy galleries', () => {
+    expect(restoreComposeGalleryLayout(undefined, 0, 'text')).toBe('pager');
+    expect(restoreComposeGalleryLayout(undefined, 1, 'image')).toBe('pager');
+    expect(restoreComposeGalleryLayout(undefined, 2, 'image')).toBe('grid');
+    expect(restoreComposeGalleryLayout('unknown', 1, 'image')).toBe('pager');
+    expect(restoreComposeGalleryLayout('grid', 1, 'image')).toBe('grid');
+    expect(restoreComposeGalleryLayout('pager', 2, 'image')).toBe('pager');
+  });
+
+  it('orders restored and local images together without changing their identities', () => {
+    const media = [{ id: 5 }, { id: 6 }];
+    const file = new File(['new'], 'new.webp', { type: 'image/webp', lastModified: 3 });
+    const order = [composeMediaKey(file, 'local'), composeMediaKey(media[1], 'persisted'), composeMediaKey(media[0], 'persisted')];
+    expect(orderComposeMedia(media, [file], order).map((entry) => entry.key)).toEqual(order);
+  });
+
+  it('publishes a reordered mix with the first image as cover', async () => {
+    const file = new File(['new'], 'new.webp', { type: 'image/webp', lastModified: 3 });
+    const media = [{ id: 41, url: '/old.webp', type: 'image/webp' }];
+    const upload = vi.fn().mockResolvedValue({ id: 42, url: '/new.webp' });
+    const create = vi.fn().mockResolvedValue({ id: 99 });
+    sdk.getSdkClient.mockReturnValue({ getToken: vi.fn().mockReturnValue('token'), files: { upload, delete: vi.fn() }, cards: { create } });
+    await publishCard({ content: '重新排序', kind: 'gallery', media, files: [file], mediaOrder: [composeMediaKey(file, 'local'), composeMediaKey(media[0], 'persisted')] });
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ media_file_ids: [42, 41], cover_file_id: 42 }));
+  });
+
+  it('updates an existing card when only its image order changes', async () => {
+    const media = [{ id: 41, url: '/one.webp', type: 'image/webp' }, { id: 42, url: '/two.webp', type: 'image/webp' }];
+    const update = vi.fn().mockResolvedValue(undefined);
+    sdk.getSdkClient.mockReturnValue({ getToken: vi.fn().mockReturnValue('token'), files: { upload: vi.fn(), delete: vi.fn() }, cards: { update } });
+    await updatePublishedCard({ id: 99, content: '顺序改变', kind: 'gallery', media, mediaChanged: true, mediaOrder: [composeMediaKey(media[1], 'persisted'), composeMediaKey(media[0], 'persisted')] });
+    expect(update).toHaveBeenCalledWith(99, expect.objectContaining({ media_file_ids: [42, 41], cover_file_id: 42 }));
+  });
+
   it('keeps sequential image selections and publishes both media ids in order', async () => {
     const first = new File(['first'], 'first.webp', { type: 'image/webp', lastModified: 1 });
     const second = new File(['second'], 'second.webp', { type: 'image/webp', lastModified: 2 });
@@ -122,6 +157,17 @@ describe('compose media publishing', () => {
     expect(create).toHaveBeenCalledWith({
       content: '单图正文', tags: [], visibility: 'public', data: { kind: 'image' }, media_file_ids: [10], cover_file_id: 10,
     });
+  });
+
+  it('preserves the selected layout on a single image for later editing', async () => {
+    const create = vi.fn().mockResolvedValue({ id: 81 });
+    const update = vi.fn().mockResolvedValue(undefined);
+    sdk.getSdkClient.mockReturnValue({ getToken: vi.fn().mockReturnValue('token'), files: { upload: vi.fn(), delete: vi.fn() }, cards: { create, update } });
+    const media = [{ id: 10, url: '/one.webp', type: 'image/webp' }];
+    await publishCard({ content: '单图', kind: 'image', media, galleryLayout: 'grid' });
+    await updatePublishedCard({ id: 81, content: '单图更新', kind: 'image', media, galleryLayout: 'pager' });
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ data: { kind: 'image', galleryLayout: 'grid' } }));
+    expect(update).toHaveBeenCalledWith(81, expect.objectContaining({ data: { kind: 'image', galleryLayout: 'pager' } }));
   });
 
   it('uploads ordered card media and creates a gallery with owned file ids', async () => {
