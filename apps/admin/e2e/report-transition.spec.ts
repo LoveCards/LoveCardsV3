@@ -61,8 +61,10 @@ const reportFixture = (status: string, events: unknown[] = []) => ({
 
 test('report transition moves open report to reviewing and preserves the audit copy', async ({ page }) => {
   let transitionBody: Record<string, unknown> | null = null
+  let currentStatus = 'open'
   await page.route('**/api/admin/reports/55/transition', async (route) => {
     transitionBody = JSON.parse(String(route.request().postData() ?? '{}'))
+    currentStatus = 'reviewing'
     await route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify({
@@ -77,30 +79,30 @@ test('report transition moves open report to reviewing and preserves the audit c
   await page.route('**/api/admin/reports/55', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify({ success: true, data: reportFixture('open') }),
+      body: JSON.stringify({ success: true, data: reportFixture(currentStatus) }),
     })
   })
 
   await page.goto('./apps/community/reports/55', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('heading', { name: '举报 #55', exact: true, level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '举报 #55', exact: true, level: 1 })).toBeVisible({ timeout: 20_000 })
   await expect(page.getByText('待处理', { exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: '更新处理状态', exact: true }).click()
-  const dialog = page.getByRole('dialog').filter({ hasText: '更新举报状态' })
-  await expect(dialog.getByText('状态变化和原因将写入审计记录。')).toBeVisible()
+  const processing = page.getByRole('region', { name: '处理操作' })
+  await expect(processing.getByText('状态变化和原因将写入审计记录', { exact: false })).toBeVisible()
 
   // 确认按钮在填写“处理原因或结论”前保持禁用；open 状态默认预选第一个可用流转。
-  const confirm = dialog.getByRole('button', { name: '确认', exact: true })
+  const confirm = processing.getByRole('button', { name: '确认处理', exact: true })
   await expect(confirm).toBeDisabled()
-  await dialog.getByRole('combobox').filter({ hasText: '目标状态' }).click()
+  await processing.getByRole('combobox').filter({ hasText: '目标状态' }).click()
   await page.getByRole('option', { name: '处理中', exact: true }).click()
-  await dialog.getByLabel('处理原因或结论').fill('已核实上下文，转人工跟进')
+  await processing.getByLabel('处理原因或结论').fill('已核实上下文，转人工跟进')
   await expect(confirm).toBeEnabled()
   await confirm.click()
 
   await expect.poll(() => transitionBody).not.toBeNull()
   expect(transitionBody).toMatchObject({ status: 'reviewing', note: '已核实上下文，转人工跟进' })
-  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(processing.getByRole('button', { name: '确认处理', exact: true })).toHaveCount(0)
   await expect(page.getByText('处理中', { exact: true })).toBeVisible()
 })
 
@@ -122,11 +124,94 @@ test('failed transition keeps the dialog open with the resolution text preserved
 
   await page.goto('./apps/community/reports/55', { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: '更新处理状态', exact: true }).click()
-  const dialog = page.getByRole('dialog').filter({ hasText: '更新举报状态' })
-  await dialog.getByLabel('处理原因或结论').fill('这段文字必须保留')
-  await dialog.getByRole('button', { name: '确认', exact: true }).click()
+  const processing = page.getByRole('region', { name: '处理操作' })
+  await processing.getByLabel('处理原因或结论').fill('这段文字必须保留')
+  await processing.getByRole('button', { name: '确认处理', exact: true }).click()
 
   // Vuetify 输入框 details 同样带 role="alert"，断言必须按文案收窄到错误 alert。
-  await expect(dialog.getByRole('alert').filter({ hasText: '目标状态不允许从当前状态流转' })).toBeVisible()
-  await expect(dialog.getByLabel('处理原因或结论')).toHaveValue('这段文字必须保留')
+  await expect(processing.getByRole('alert').filter({ hasText: '目标状态不允许从当前状态流转' })).toBeVisible()
+  await expect(processing.getByLabel('处理原因或结论')).toHaveValue('这段文字必须保留')
+})
+
+test('report list opens the current report in a dialog and preserves its filters', async ({ page }) => {
+  test.setTimeout(90_000)
+  await page.route('**/api/admin/reports/55', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: reportFixture('open') }),
+    })
+  })
+  await page.route('**/api/admin/reports?**', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: [reportFixture('open')],
+        pagination: { currentPage: 1, totalItems: 1 },
+      }),
+    })
+  })
+  await page.goto('./apps/community/reports?status=open&page=1&list_rows=20', { waitUntil: 'domcontentloaded' })
+  const row = page.getByRole('row').filter({ hasText: '包含骚扰内容' })
+  await expect(row).toContainText('包含骚扰内容', { timeout: 20_000 })
+  await expect(page.locator('thead').getByText('ID', { exact: true })).toHaveCount(0)
+  await expect(row.getByText('用户 #91', { exact: true })).toBeVisible()
+  await expect(row.getByText('卡片 #482', { exact: true })).toBeVisible()
+  const listUrl = page.url()
+  const detailRequest = page.waitForRequest(request => request.url().endsWith('/api/admin/reports/55') && request.method() === 'GET')
+  await row.getByRole('button', { name: '处理', exact: true }).click()
+  await detailRequest
+  const dialog = page.getByRole('dialog', { name: '举报详情' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText('包含骚扰内容')
+  await expect(dialog).toContainText('连续多条评论引用了同一段私人信息')
+  await expect(page).toHaveURL(listUrl)
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(page).toHaveURL(listUrl)
+})
+
+test('report processing and note scopes guard draft switches', async ({ page }) => {
+  await page.route('**/api/admin/reports/55', async (route) => {
+    await route.fulfill({ json: { success: true, data: reportFixture('open') } })
+  })
+  await page.goto('./apps/community/reports/55', { waitUntil: 'domcontentloaded' })
+  await page.getByRole('button', { name: '更新处理状态', exact: true }).click()
+  const processing = page.getByRole('region', { name: '处理操作' })
+  await processing.getByLabel('处理原因或结论').fill('尚未提交的处理结论')
+  await processing.getByRole('button', { name: '改为追加备注' }).click()
+  const guard = page.getByRole('dialog', { name: '有未保存的修改' })
+  await expect(guard).toBeVisible()
+  await guard.getByRole('button', { name: '继续编辑' }).click()
+  await expect(processing.getByLabel('处理原因或结论')).toHaveValue('尚未提交的处理结论')
+  await processing.getByRole('button', { name: '改为追加备注' }).click()
+  await guard.getByRole('button', { name: '放弃修改' }).click()
+  await expect(processing.getByLabel('备注内容')).toBeVisible()
+  await expect(processing.getByLabel('处理原因或结论')).toHaveCount(0)
+})
+
+test('report submission locks its inputs and task switching', async ({ page }) => {
+  let release: (() => void) | undefined
+  let submitted = false
+  await page.route('**/api/admin/reports/55', route => route.fulfill({ json: { success: true, data: reportFixture('open') } }))
+  await page.route('**/api/admin/reports/55/transition', async route => {
+    submitted = true
+    await new Promise<void>(resolve => { release = resolve })
+    await route.fulfill({ status: 422, json: { code: 1, message: '模拟处理失败' } })
+  })
+  await page.goto('./apps/community/reports/55')
+  await page.getByRole('button', { name: '更新处理状态', exact: true }).click()
+  const input = page.getByRole('textbox', { name: '处理原因或结论' })
+  await input.fill('处理中保持这段草稿')
+  await page.getByRole('button', { name: '确认处理', exact: true }).click()
+  try {
+    await expect.poll(() => submitted).toBe(true)
+    await expect(input).toBeDisabled()
+    await expect(page.getByRole('combobox', { name: '目标状态' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: '改为追加备注' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: '取消', exact: true })).toBeDisabled()
+  } finally { release?.() }
+  await expect(input).toBeEnabled()
+  await expect(input).toHaveValue('处理中保持这段草稿')
+  await expect(page.getByText('模拟处理失败', { exact: true })).toBeVisible()
 })

@@ -1,7 +1,10 @@
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import type { MaybeRefOrGetter } from 'vue'
 
-export function useAdminUnsavedChanges(dirty: MaybeRefOrGetter<boolean>) {
+export function useAdminUnsavedChanges(
+  dirty: MaybeRefOrGetter<boolean>,
+  options: { guardQuery?: boolean } = {},
+) {
   const dialogOpen = ref(false)
   let resolveNavigation: ((allow: boolean) => void) | null = null
 
@@ -25,7 +28,7 @@ export function useAdminUnsavedChanges(dirty: MaybeRefOrGetter<boolean>) {
   }
   onBeforeRouteLeave(confirmNavigation)
   onBeforeRouteUpdate((to, from) => {
-    if (JSON.stringify(to.params) !== JSON.stringify(from.params)) return confirmNavigation()
+    if (options.guardQuery || JSON.stringify(to.params) !== JSON.stringify(from.params)) return confirmNavigation()
     return true
   })
 
@@ -50,5 +53,6 @@ export function useAdminUnsavedChanges(dirty: MaybeRefOrGetter<boolean>) {
     unsavedChangesDialog: readonly(dialogOpen),
     continueEditing: () => settleNavigation(false),
     discardChanges: () => settleNavigation(true),
+    confirmUnsavedChanges: confirmNavigation,
   }
 }

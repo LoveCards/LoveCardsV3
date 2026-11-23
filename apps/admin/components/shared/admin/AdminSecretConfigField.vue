@@ -61,7 +61,7 @@
       </v-btn>
     </div>
 
-    <v-dialog v-model="clearDialog" aria-label="清除敏感配置" max-width="480">
+    <v-dialog @after-leave="restoreDialogFocus" v-model="clearDialog" aria-label="清除敏感配置" max-width="480">
       <v-card prepend-icon="mdi-key-remove" :title="`清除${label}`">
         <v-card-text class="pt-4">
           <v-alert type="warning" variant="tonal">
@@ -82,6 +82,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
 import type { SecretConfigEnvelope } from '~/utils/configSecrets'
 
 const props = withDefaults(defineProps<{
@@ -140,4 +141,5 @@ const confirmClear = () => {
 watch(() => props.modelValue.$secret, (operation) => {
   if (operation !== 'replace') showReplacement.value = false
 })
+const restoreDialogFocus = useAdminDialogFocusReturn(clearDialog)
 </script>

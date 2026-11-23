@@ -1,6 +1,7 @@
 <template>
   <div class="site-policy-panel">
-    <div class="d-flex justify-end mb-4">
+    <div class="d-flex flex-wrap align-center justify-end ga-2 mb-4">
+      <span v-if="dirty" class="text-caption text-medium-emphasis">请先保存或放弃修改，再刷新。</span>
       <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="dirty" @click="load">刷新</v-btn>
     </div>
     <AdminAsyncState :loading="loading && !catalog" :error="error && !catalog ? error : null" :empty="!catalog" @retry="load">
@@ -13,24 +14,12 @@
         </v-alert>
         <v-alert v-if="conflictMessage" class="mb-4" type="warning" variant="tonal">{{ conflictMessage }}</v-alert>
         <p class="mb-4 text-body-2">这里控制是否生成站内提醒；用户自己的提醒偏好仍会单独生效。<NuxtLink to="/apps/operations/deliveries">查看通知投递记录</NuxtLink></p>
-        <v-sheet class="d-sm-none">
-            <div v-for="row in rows" :key="row.event_type" class="pa-4 border-b">
-              <strong>{{ policyLabel(row) }}</strong>
-              <p class="my-1 text-body-2 text-medium-emphasis">{{ policyImpact(row) }}</p>
-              <span v-if="isMissingDescription(row)">待核对（当前{{ row.enabled ? '已开启' : '已关闭' }}）</span>
-              <span v-else-if="row.locked">{{ row.enabled ? '始终开启' : '已锁定（当前关闭）' }}</span>
-              <AdminActionGuard v-else capability="communications.configure">
-                <v-switch :model-value="row.enabled" :aria-label="`${policyLabel(row)}：${row.enabled ? '已开启' : '已关闭'}`" :label="row.enabled ? '已开启' : '已关闭'" density="compact" hide-details color="primary" inset @update:model-value="setEnabled(row.event_type, Boolean($event))" />
-                <template #fallback><span>{{ row.enabled ? '已开启' : '已关闭' }}</span></template>
-              </AdminActionGuard>
-            </div>
-        </v-sheet>
-        <AdminResourceTableShell class="d-none d-sm-block">
+        <AdminResourceTableShell>
             <v-data-table :headers="headers" :items="rows" item-value="event_type" :items-per-page="-1" hide-default-footer>
               <template #item.event_type="{ item }">
                 <strong>{{ policyLabel(item) }}</strong>
-                <div class="text-body-2 text-medium-emphasis">{{ policyImpact(item) }}</div>
               </template>
+              <template #item.impact="{ item }">{{ policyImpact(item) }}</template>
               <template #item.enabled="{ item }">
                 <span v-if="isMissingDescription(item)">待核对（当前{{ item.enabled ? '已开启' : '已关闭' }}）</span>
                 <span v-else-if="item.locked">{{ item.enabled ? '始终开启' : '已锁定（当前关闭）' }}</span>
@@ -100,8 +89,9 @@ const saveError = ref<string | undefined>(undefined)
 const conflictMessage = ref('')
 
 const headers = [
-  { title: '提醒与影响', key: 'event_type' },
-  { title: '当前设置', key: 'enabled', sortable: false },
+  { title: '提醒', key: 'event_type', minWidth: 200, sortRaw: (a: NotificationPolicyRule, b: NotificationPolicyRule) => policyLabel(a).localeCompare(policyLabel(b), 'zh-CN') },
+  { title: '影响', key: 'impact', sortable: false, minWidth: 320 },
+  { title: '当前设置', key: 'enabled', sortable: false, minWidth: 160 },
 ]
 
 function isMissingDescription(row: NotificationPolicyRule) { return !row.display_name || !row.impact_text }
@@ -205,12 +195,5 @@ onMounted(() => {
 watch(() => props.active, (active) => {
   if (active && !catalog.value && !loading.value) void load()
 })
-onBeforeRouteLeave(() => !dirty.value || window.confirm('有未保存的提醒规则修改，确定离开吗？'))
-function warnBeforeUnload(event: BeforeUnloadEvent) {
-  if (!dirty.value) return
-  event.preventDefault()
-  event.returnValue = ''
-}
-onMounted(() => window.addEventListener('beforeunload', warnBeforeUnload))
-onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnload))
+
 </script>

@@ -7,10 +7,11 @@
     <v-alert v-if="queryWarning" class="mb-4" type="warning" variant="tonal">URL 中有无效筛选条件，已忽略。</v-alert>
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
-      :columns="columnOptions"
-      :result-count="totalItems"
-      preference-key="operations-audit"
-      @reset-view="resetTableView"
+      :columns="columnOptions" :default-columns="defaultColumns"
+      :result-count="lastSuccessfulKey ? totalItems : null"
+      :result-state="loading && lastSuccessfulKey ? 'loading' : resultState"
+      :view-query-keys="['action', 'actor', 'resource_type', 'resource_id', 'request_id', 'correlation_id', 'from', 'to', 'list_rows']" preference-key="operations-audit"
+      @reset-view="resetTableView" @apply-view="applySavedView"
     >
       <template #toolbar>
         <v-alert v-if="filterError" class="mb-3" type="error" variant="tonal">{{ filterError }}</v-alert>
@@ -45,6 +46,7 @@
         <template #append><v-btn variant="outlined" @click="load">重试</v-btn></template>
       </v-alert>
       <v-data-table-server
+        class="admin-table-no-sort"
         :items-per-page="itemsPerPage"
         :page="page"
         :headers="headers"
@@ -58,16 +60,15 @@
         @update:page="changePage"
         @update:items-per-page="changePageSize"
       >
-        <template #item.action="{ item }"><strong class="audit-action" :title="item.action">{{ item.action }}</strong><div class="text-caption text-medium-emphasis">操作者 {{ item.actor_id ? `#${item.actor_id}` : '系统或匿名' }}</div></template>
-        <template #item.resource="{ item }"><AdminResourceLink v-if="item.resource_type" :resource-type="item.resource_type" :resource-id="item.resource_id" /><span v-else>—</span></template>
-        <template #item.trace="{ item }"><code class="audit-code">{{ item.request_id || '—' }}</code><div class="audit-code text-caption text-medium-emphasis">{{ item.correlation_id || '—' }}</div></template>
-        <template #item.created_at="{ item }"><time :datetime="item.created_at" :title="item.created_at">{{ item.created_at.slice(0, 19) }}</time></template>
+        <template #item.id="{ item }"><span class="text-medium-emphasis">#{{ item.id }}</span></template>
+        <template #item.action="{ item }"><strong class="audit-action" :title="item.action">{{ item.action }}</strong></template>
+        <template #item.actor="{ item }">{{ item.actor_id ? `#${item.actor_id}` : '系统或匿名' }}</template>
+        <template #item.resource="{ item }"><span v-if="item.resource_type">{{ item.resource_type }} #{{ item.resource_id }}</span><span v-else>—</span></template>
+        <template #item.request_id="{ item }"><code class="audit-code">{{ item.request_id || '—' }}</code></template>
+        <template #item.correlation_id="{ item }"><code class="audit-code">{{ item.correlation_id || '—' }}</code></template>
+        <template #item.created_at="{ item }"><AdminTableTime :value="item.created_at" seconds /></template>
         <template #item.detail="{ item }">
-          <v-tooltip text="查看审计详情" location="top">
-            <template #activator="{ props }">
-              <v-btn v-bind="props" :aria-label="`查看审计记录 #${item.id}`" :to="`/apps/operations/audit/${item.id}`" icon="mdi-open-in-new" variant="text" />
-            </template>
-          </v-tooltip>
+          <v-btn class="audit-row-action" min-height="32" size="small" variant="text" @click="openAudit(item.id, $event)">查看</v-btn>
         </template>
         <template #no-data>
           <v-empty-state :icon="error ? 'mdi-cloud-alert-outline' : 'mdi-clipboard-text-clock-outline'" :title="error ? '无法加载审计日志' : '没有匹配的审计记录'" :text="error || '调整查询条件后重试。'">
@@ -76,6 +77,8 @@
         </template>
       </v-data-table-server>
     </AdminResourceTableShell>
+
+    <AuditInspectDialog v-model="auditOpen" :audit-id="selectedAuditId" :source-path="route.fullPath" />
 
     <v-dialog v-model="advancedOpen" aria-label="更多审计筛选" max-width="600">
       <v-card prepend-icon="mdi-filter-outline" title="更多筛选">
@@ -101,8 +104,9 @@
 import type { OperationsAuditLog } from '@lovecards/sdk'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
-import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue'
+import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue'
+import AuditInspectDialog from '~/components/operations/AuditInspectDialog.vue'
 import { useApi, isApiError } from '~/lib/api'
 
 type AuditFilters = { action: string; actor: string; resource_type: string; resource_id: string; request_id: string; correlation_id: string; from: string; to: string }
@@ -116,7 +120,13 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const filterError = ref('')
 const advancedOpen = ref(false)
+const auditOpen = ref(false)
+const selectedAuditId = ref<number | null>(null)
+let auditTrigger: HTMLElement | null = null
+let auditSourcePath = ''
 const totalItems = ref(0)
+const lastSuccessfulKey = ref<string | null>(null)
+const resultState = ref<'ready' | 'stale'>('ready')
 const allowedPageSizes = [10, 20, 30, 50]
 const filterKeys = ['action', 'actor', 'resource_type', 'resource_id', 'request_id', 'correlation_id', 'from', 'to'] as const
 const actionSuggestions = ['auth.recovery.request', 'auth.recovery.failed', 'auth.recovery.reset', 'auth.session.revoke', 'communications.policies.update']
@@ -130,11 +140,36 @@ const emptyDraft = (): AuditDraft => ({ action: '', actorMode: 'all', actorId: '
 const draft = reactive<AuditDraft>(emptyDraft())
 const advancedCount = computed(() => [draft.resourceId, draft.requestId, draft.correlationId].filter(Boolean).length)
 
+function openAudit(id: number, event: MouseEvent) {
+  auditTrigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
+  auditSourcePath = route.fullPath
+  selectedAuditId.value = id
+  auditOpen.value = true
+}
+
+watch(auditOpen, async (open) => {
+  if (open) return
+  await nextTick()
+  if (route.fullPath !== auditSourcePath) return
+  if (auditTrigger?.isConnected) auditTrigger.focus()
+  else {
+    const heading = document.querySelector<HTMLElement>('h1')
+    if (heading) {
+      heading.tabIndex = -1
+      heading.focus()
+    }
+  }
+  auditTrigger = null
+})
+
 const allHeaders = [
-  { title: '动作', key: 'action', minWidth: 270 }, { title: '资源', key: 'resource' }, { title: 'Request / Correlation ID', key: 'trace', minWidth: 270 },
-  { title: '时间', key: 'created_at' }, { title: '详情', key: 'detail' },
+  { title: 'ID', key: 'id', minWidth: 88 }, { title: '动作', key: 'action', minWidth: 220 },
+  { title: '操作者', key: 'actor', minWidth: 120 }, { title: '资源', key: 'resource', minWidth: 160 },
+  { title: 'Request ID', key: 'request_id', minWidth: 220 }, { title: 'Correlation ID', key: 'correlation_id', minWidth: 220 },
+  { title: '时间', key: 'created_at', minWidth: 176 }, { title: '操作', key: 'detail', minWidth: 112 },
 ].map((header) => ({ ...header, sortable: false }))
-const visibleColumns = ref(allHeaders.map((header) => header.key))
+const defaultColumns = allHeaders.filter((header) => header.key !== 'id').map((header) => header.key)
+const visibleColumns = ref([...defaultColumns])
 const headers = computed(() => allHeaders.filter((header) => visibleColumns.value.includes(header.key)))
 const columnOptions = allHeaders.map((header) => ({ title: header.title, key: header.key, required: header.key === 'action' || header.key === 'detail' }))
 
@@ -208,8 +243,8 @@ function navigationQuery(pageNumber: number, size: number, filters = routeState.
   query.list_rows = String(size)
   return query
 }
-function changePage(next: number) { if (next !== page.value) void router.push({ query: navigationQuery(next, itemsPerPage.value), hash: route.hash }) }
-function changePageSize(next: number) { if (next !== itemsPerPage.value) void router.push({ query: navigationQuery(1, next), hash: route.hash }) }
+function changePage(next: number) { if (next !== page.value) void router.replace({ query: navigationQuery(next, itemsPerPage.value), hash: route.hash }) }
+function changePageSize(next: number) { if (next !== itemsPerPage.value) void router.replace({ query: navigationQuery(1, next), hash: route.hash }) }
 function applyFilters() {
   filterError.value = ''
   const filters: Partial<AuditFilters> = {}
@@ -250,21 +285,49 @@ function clearFilters() {
   advancedOpen.value = false
   void router.push({ query: navigationQuery(1, itemsPerPage.value, {}), hash: route.hash })
 }
-function resetTableView() { void router.push({ query: navigationQuery(1, 30), hash: route.hash }) }
+function applySavedView(saved: Record<string, string | null | (string | null)[]>) {
+  const query = { ...route.query }
+  for (const key of filterKeys) delete query[key]
+  for (const key of filterKeys) {
+    const value = saved[key]
+    if (typeof value === 'string') query[key] = value
+  }
+  const size = queryInt(saved.list_rows, 30, 100)
+  query.list_rows = String(allowedPageSizes.includes(size) ? size : 30)
+  query.page = '1'
+  void router.replace({ query, hash: route.hash })
+}
+function resetTableView() {
+  Object.assign(draft, emptyDraft())
+  filterError.value = ''
+  advancedOpen.value = false
+  void router.replace({ query: navigationQuery(1, 30, {}), hash: route.hash })
+}
 
 let latestRequest = 0
 async function load() {
   const requestId = ++latestRequest
+  const { filters, page: currentPage, size } = routeState.value
+  const queryKey = JSON.stringify({ filters, page: currentPage, size })
+  if (queryKey !== lastSuccessfulKey.value) {
+    logs.value = []
+    totalItems.value = 0
+    lastSuccessfulKey.value = null
+  }
   loading.value = true
   error.value = null
-  const { filters, page: currentPage, size } = routeState.value
   try {
     const result = await client.operations.auditLogs({ page: currentPage, list_rows: size, ...filters })
     if (requestId !== latestRequest) return
     logs.value = result.data
     totalItems.value = result.pagination?.totalItems ?? result.data.length
+    lastSuccessfulKey.value = queryKey
+    resultState.value = 'ready'
   } catch (cause) {
-    if (requestId === latestRequest) error.value = isApiError(cause) ? cause.message : '无法加载审计日志'
+    if (requestId === latestRequest) {
+      error.value = isApiError(cause) ? cause.message : '无法加载审计日志'
+      resultState.value = 'stale'
+    }
   } finally {
     if (requestId === latestRequest) loading.value = false
   }
@@ -275,4 +338,8 @@ watch(() => route.fullPath, () => { syncDraft(); void load() }, { immediate: tru
 <style scoped>
 .audit-action { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .audit-code { overflow-wrap: anywhere; }
+.audit-row-action { min-width: 0; white-space: nowrap; }
+@media (max-width: 599.98px) {
+  .audit-row-action { min-height: 44px; }
+}
 </style>

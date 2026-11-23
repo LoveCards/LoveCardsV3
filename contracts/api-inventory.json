@@ -7828,7 +7828,8 @@
         "directInputKeys": [],
         "fileKeys": [],
         "accessedFields": [
-          "id"
+          "id",
+          "roles_id"
         ],
         "usesContractResponse": false,
         "usesRawResponse": false

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 // 角色创建与授权真实写路径（审计 §5：写动作浏览器测试此前只有投递重试）。
 // 依赖 root 夹具：与 CI 相同设置 LOVECARDS_E2E_RUN_SDK_INTEGRATION=1 运行本套件时，
@@ -9,6 +9,13 @@ const suffix = Date.now().toString(36)
 const roleName = `E2E角色生命周期_${suffix}`
 const roleSlug = `e2e_role_${suffix}`
 
+async function openRoleAction(page: Page, row: Locator, name: string) {
+  const direct = row.getByRole('button', { name, exact: true })
+  if (await direct.isVisible()) { await direct.click(); return }
+  await row.getByRole('button', { name: '更多角色操作' }).click()
+  await page.locator('.v-overlay--active').getByText(name, { exact: true }).click()
+}
+
 test('created custom role persists grants across reload', async ({ page }) => {
   test.setTimeout(90_000)
   await page.goto('./apps/access/roles')
@@ -16,7 +23,7 @@ test('created custom role persists grants across reload', async ({ page }) => {
 
   // 1. 创建：对话框填写名称/slug/描述并提交
   await page.getByRole('button', { name: '创建角色' }).first().click()
-  const createDialog = page.locator('.v-dialog:visible').filter({ hasText: '创建角色后还需要分配权限' })
+  const createDialog = page.getByRole('dialog', { name: '创建角色' })
   await createDialog.getByLabel('角色名称').fill(roleName)
   await createDialog.getByLabel('角色标识（Slug）').fill(roleSlug)
   await createDialog.getByLabel('角色描述').fill('E2E 浏览器写路径验收角色')
@@ -29,9 +36,10 @@ test('created custom role persists grants across reload', async ({ page }) => {
   await expect(roleRow).toBeVisible({ timeout: 15_000 })
 
   // 3. 授权：勾选目录中真实存在的三个 grant（GET /api/admin/permissions/all 事实：跨 users/permissions 两域含 global scope）
-  await roleRow.getByRole('button', { name: '分配权限' }).click()
-  const assignDialog = page.locator('.v-dialog:visible').filter({ hasText: '权限调整会影响该角色可见的页面' })
+  await openRoleAction(page, roleRow, '分配权限')
+  const assignDialog = page.locator('.v-dialog:visible')
   await expect(assignDialog).toBeVisible({ timeout: 15_000 })
+  await expect(assignDialog).toContainText('权限调整会影响该角色可见的页面')
   for (const grantKey of ['users.read:all', 'users.read:own', 'permissions.read:global']) {
     const checkbox = assignDialog.locator(`input[type="checkbox"][value="${grantKey}"]`)
     await expect(checkbox).toBeVisible({ timeout: 15_000 })
@@ -41,13 +49,15 @@ test('created custom role persists grants across reload', async ({ page }) => {
   await expect(assignDialog).toBeHidden({ timeout: 15_000 })
 
   // 4. 重开授权对话框：勾选状态来自服务端回读，证明持久化
-  await roleRow.getByRole('button', { name: '分配权限' }).click()
-  const reopenDialog = page.locator('.v-dialog:visible').filter({ hasText: '权限调整会影响该角色可见的页面' })
+  await openRoleAction(page, roleRow, '分配权限')
+  const reopenDialog = page.locator('.v-dialog:visible')
   await expect(reopenDialog).toBeVisible({ timeout: 15_000 })
+  await expect(reopenDialog).toContainText('权限调整会影响该角色可见的页面')
   for (const grantKey of ['users.read:all', 'users.read:own', 'permissions.read:global']) {
     await expect(reopenDialog.locator(`input[type="checkbox"][value="${grantKey}"]`)).toBeChecked({ timeout: 15_000 })
   }
-  await reopenDialog.getByRole('button', { name: '取消' }).click()
+  await reopenDialog.getByRole('button', { name: '取消分配' }).click()
+  await reopenDialog.getByRole('button', { name: '关闭', exact: true }).click()
   await expect(reopenDialog).toBeHidden()
 })
 
@@ -59,9 +69,10 @@ test('role list exposes the new role through the detail page', async ({ page }) 
   await expect(roleRow).toBeVisible({ timeout: 15_000 })
 
   // 编辑入口：修改名称后列表回读（第二个写动作，防止写链路只测一半）
-  await roleRow.getByRole('button', { name: '编辑角色' }).click()
-  const editDialog = page.locator('.v-dialog:visible').filter({ has: page.getByLabel('角色名称') })
+  await openRoleAction(page, roleRow, '编辑')
+  const editDialog = page.locator('.v-dialog:visible')
   await expect(editDialog).toBeVisible({ timeout: 15_000 })
+  await expect(editDialog.getByLabel('角色名称')).toBeVisible()
   const renamed = `${roleName}_已改名`
   await editDialog.getByLabel('角色名称').fill(renamed)
   await editDialog.getByRole('button', { name: '保存修改' }).click()

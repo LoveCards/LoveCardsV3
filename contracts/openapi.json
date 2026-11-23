@@ -836,6 +836,10 @@
                             "type": "string",
                             "nullable": true
                           },
+                          "cover_file_id": {
+                            "type": "integer",
+                            "nullable": true
+                          },
                           "pictures": {
                             "type": "array",
                             "items": {
@@ -1220,6 +1224,10 @@
                         },
                         "cover": {
                           "type": "string",
+                          "nullable": true
+                        },
+                        "cover_file_id": {
+                          "type": "integer",
                           "nullable": true
                         },
                         "pictures": {
@@ -4797,6 +4805,9 @@
                           "upload_status": {
                             "type": "integer"
                           },
+                          "is_deleted": {
+                            "type": "boolean"
+                          },
                           "created_at": {
                             "type": "string"
                           },
@@ -5091,6 +5102,9 @@
                         },
                         "upload_status": {
                           "type": "integer"
+                        },
+                        "is_deleted": {
+                          "type": "boolean"
                         },
                         "created_at": {
                           "type": "string"
@@ -14864,6 +14878,16 @@
                     "format": "uri",
                     "maxLength": 255
                   },
+                  "number": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 20
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 36
+                  },
                   "email": {
                     "type": "string",
                     "format": "email",
@@ -14874,7 +14898,9 @@
                     "maxLength": 20
                   },
                   "username": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 12
                   },
                   "status": {
                     "type": "number",
@@ -14884,10 +14910,16 @@
                       2,
                       3
                     ]
+                  },
+                  "roles_id": {
+                    "type": "array",
+                    "items": {
+                      "type": "integer"
+                    }
                   }
                 },
-                "additionalProperties": true,
-                "x-typescript-params": "data?: { avatar?: string; email?: string; phone?: string; username?: string; status?: number }",
+                "additionalProperties": false,
+                "x-typescript-params": "data?: { avatar?: string; number?: string; password?: string; email?: string; phone?: string; username?: string; status?: number; roles_id?: number[] }",
                 "x-path-params": [
                   "id"
                 ],
@@ -15769,6 +15801,10 @@
                             "type": "string",
                             "nullable": true
                           },
+                          "cover_file_id": {
+                            "type": "integer",
+                            "nullable": true
+                          },
                           "pictures": {
                             "type": "array",
                             "items": {
@@ -16081,6 +16117,10 @@
                         },
                         "cover": {
                           "type": "string",
+                          "nullable": true
+                        },
+                        "cover_file_id": {
+                          "type": "integer",
                           "nullable": true
                         },
                         "pictures": {
@@ -17022,6 +17062,10 @@
                             "type": "string",
                             "nullable": true
                           },
+                          "cover_file_id": {
+                            "type": "integer",
+                            "nullable": true
+                          },
                           "pictures": {
                             "type": "array",
                             "items": {
@@ -17282,6 +17326,10 @@
                           },
                           "cover": {
                             "type": "string",
+                            "nullable": true
+                          },
+                          "cover_file_id": {
+                            "type": "integer",
                             "nullable": true
                           },
                           "pictures": {
@@ -17593,6 +17641,10 @@
                           },
                           "cover": {
                             "type": "string",
+                            "nullable": true
+                          },
+                          "cover_file_id": {
+                            "type": "integer",
                             "nullable": true
                           },
                           "pictures": {
@@ -18705,6 +18757,10 @@
                             "type": "string",
                             "nullable": true
                           },
+                          "cover_file_id": {
+                            "type": "integer",
+                            "nullable": true
+                          },
                           "pictures": {
                             "type": "array",
                             "items": {
@@ -19300,6 +19356,10 @@
                         },
                         "cover": {
                           "type": "string",
+                          "nullable": true
+                        },
+                        "cover_file_id": {
+                          "type": "integer",
                           "nullable": true
                         },
                         "pictures": {
@@ -21393,6 +21453,10 @@
                             "type": "string",
                             "nullable": true
                           },
+                          "cover_file_id": {
+                            "type": "integer",
+                            "nullable": true
+                          },
                           "pictures": {
                             "type": "array",
                             "items": {
@@ -21739,6 +21803,9 @@
                           },
                           "upload_status": {
                             "type": "integer"
+                          },
+                          "is_deleted": {
+                            "type": "boolean"
                           },
                           "created_at": {
                             "type": "string"
@@ -22195,6 +22262,9 @@
                         },
                         "upload_status": {
                           "type": "integer"
+                        },
+                        "is_deleted": {
+                          "type": "boolean"
                         },
                         "created_at": {
                           "type": "string"
@@ -27410,6 +27480,10 @@
                             "type": "string",
                             "nullable": true
                           },
+                          "cover_file_id": {
+                            "type": "integer",
+                            "nullable": true
+                          },
                           "pictures": {
                             "type": "array",
                             "items": {
@@ -28594,6 +28668,10 @@
                           },
                           "cover": {
                             "type": "string",
+                            "nullable": true
+                          },
+                          "cover_file_id": {
+                            "type": "integer",
                             "nullable": true
                           },
                           "pictures": {

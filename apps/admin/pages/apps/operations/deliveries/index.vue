@@ -12,7 +12,7 @@
       <p class="mt-2 mb-0 text-caption text-medium-emphasis">通知队列当前累计状态 · 检查于 {{ summary.checked_at }}</p>
     </v-sheet>
     <v-alert v-if="queue === 'notifications' && summaryError" class="mb-4" type="warning" variant="tonal">处理汇总暂不可用：{{ summaryError }}<template #append><v-btn variant="outlined" @click="loadSummary">重试</v-btn></template></v-alert>
-    <AdminResourceTableShell v-model:visible-columns="visibleColumns" :columns="columnOptions" :result-count="totalItems" preference-key="operations-deliveries" @reset-view="resetTableView">
+    <AdminResourceTableShell v-model:visible-columns="visibleColumns" :columns="columnOptions" :default-columns="defaultColumns" :result-count="resultCount" :result-state="resultState" :view-query-keys="['queue', 'view', 'list_rows']" preference-key="operations-deliveries" @reset-view="resetTableView" @apply-view="applySavedView">
       <template #toolbar>
         <v-select :model-value="queue" :items="queueOptions" item-title="title" item-value="value" label="处理队列" variant="outlined" density="compact" hide-details class="mb-3" @update:model-value="setQueue" />
         <v-select :model-value="view" class="d-sm-none w-100" :items="viewOptions" label="处理状态" variant="outlined" density="compact" hide-details @update:model-value="setView" />
@@ -25,15 +25,20 @@
       </template>
       <AdminAsyncState :loading="loading && !deliveries.length" :error="error && !deliveries.length ? error : null" :empty="!loading && !deliveries.length" :empty-title="view === 'dead' ? '没有失败记录' : '没有匹配的处理记录'" empty-description="试试其他处理状态。" @retry="loadDeliveries">
         <v-alert v-if="error" class="ma-3" type="error" variant="tonal">{{ error }}<template #append><v-btn variant="outlined" @click="loadDeliveries">重试</v-btn></template></v-alert>
-        <v-data-table-server v-model:items-per-page="itemsPerPage" v-model:page="page" :headers="headers" :items="deliveries" :items-length="totalItems" :items-per-page-options="[10, 20, 50]" :loading="loading" item-value="id" items-per-page-text="每页行数">
-          <template #item.event="{ item }"><AdminResourceLink :label="item.display_name || item.event_type" resource-type="event_delivery" :resource-id="item.id" /><div class="text-caption text-medium-emphasis">{{ item.event_type }} · #{{ item.id }} · {{ queueLabel(item.queue_name) }}</div></template>
+        <v-data-table-server class="admin-table-no-sort" v-model:items-per-page="itemsPerPage" v-model:page="page" :headers="headers" :items="deliveries" :items-length="totalItems" :items-per-page-options="[10, 20, 50]" :loading="loading" item-value="id" items-per-page-text="每页行数">
+          <template #item.id="{ item }"><span class="text-medium-emphasis">#{{ item.id }}</span></template>
+          <template #item.event="{ item }">{{ item.display_name || item.event_type }}</template>
+          <template #item.event_type="{ item }">{{ item.event_type }}</template>
+          <template #item.queue="{ item }">{{ queueLabel(item.queue_name) }}</template>
           <template #item.status="{ item }"><span v-if="item.policy_decision === 'skipped'">{{ skipLabel(item.queue_name) }}</span><AdminStatusChip v-else :status="item.status" /></template>
-          <template #item.error="{ item }"><span class="delivery-error">{{ item.last_error || '-' }}</span></template>
-          <template #item.action="{ item }"><NuxtLink :to="`/apps/operations/deliveries/${item.id}`">查看详情</NuxtLink></template>
+          <template #item.error="{ item }"><span class="delivery-error">{{ item.last_error || '—' }}</span></template>
+          <template #item.updated_at="{ item }"><AdminTableTime :value="item.updated_at" /></template>
+          <template #item.action="{ item }"><AdminTableRowAction @click="openDelivery(item.id)">查看</AdminTableRowAction></template>
         </v-data-table-server>
       </AdminAsyncState>
     </AdminResourceTableShell>
   </AdminPageContainer>
+  <DeliveryDetailDialog v-model="inspectOpen" :delivery-id="inspectId" :source-path="route.fullPath" @updated="loadDeliveries" />
 </template>
 
 <script setup lang="ts">
@@ -41,9 +46,10 @@ import type { OperationsDelivery, OperationsDeliverySummary } from '@lovecards/s
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
-import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue'
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
+import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue'
+import DeliveryDetailDialog from '~/components/operations/DeliveryDetailDialog.vue'
 import { useApi, isApiError } from '~/lib/api'
 
 type View = 'dead' | 'all' | 'pending' | 'processing' | 'skipped'
@@ -51,6 +57,9 @@ type Queue = 'notifications' | 'realtime' | 'storage' | 'all'
 const client = useApi()
 const route = useRoute()
 const router = useRouter()
+const inspectOpen = ref(false)
+const inspectId = ref<number | null>(null)
+const openDelivery = (id: number) => { inspectId.value = id; inspectOpen.value = true }
 const deliveries = ref<OperationsDelivery[]>([])
 const summary = ref<OperationsDeliverySummary | null>(null)
 const loading = ref(false)
@@ -80,29 +89,50 @@ const page = ref(queryInt(route.query.page, 1))
 const requestedPageSize = queryInt(route.query.list_rows, 20)
 const itemsPerPage = ref(allowedPageSizes.includes(requestedPageSize) ? requestedPageSize : 20)
 const totalItems = ref(0)
+const resultCount = ref<number | null>(null)
+const resultState = ref<'ready' | 'loading' | 'stale'>('ready')
+let lastSuccessfulKey: string | null = null
 const allHeaders = [
-  { title: '业务事件', key: 'event' }, { title: '处理结果', key: 'status' }, { title: '尝试', key: 'attempt_count' },
-  { title: '最后错误', key: 'error' }, { title: '更新时间', key: 'updated_at' }, { title: '操作', key: 'action' },
+  { title: 'ID', key: 'id', minWidth: 88 }, { title: '业务事件', key: 'event', minWidth: 240 },
+  { title: '事件类型', key: 'event_type', minWidth: 200 }, { title: '队列', key: 'queue', minWidth: 120 },
+  { title: '处理结果', key: 'status', minWidth: 128 }, { title: '尝试', key: 'attempt_count', minWidth: 88 },
+  { title: '最后错误', key: 'error', minWidth: 240 }, { title: '更新时间', key: 'updated_at', minWidth: 176 },
+  { title: '操作', key: 'action', minWidth: 112 },
 ].map((header) => ({ ...header, sortable: false }))
-const visibleColumns = ref(allHeaders.map((header) => header.key))
+const defaultColumns = allHeaders.filter((header) => header.key !== 'id').map((header) => header.key)
+const visibleColumns = ref([...defaultColumns])
 const headers = computed(() => allHeaders.filter((header) => visibleColumns.value.includes(header.key)))
 const columnOptions = allHeaders.map((header) => ({ title: header.title, key: header.key, required: header.key === 'event' || header.key === 'action' }))
 let latestDeliveryRequest = 0
 let latestSummaryRequest = 0
 async function loadDeliveries() {
   const requestId = ++latestDeliveryRequest
+  const filters = view.value === 'skipped' ? { status: 'completed', policy_decision: 'skipped' } : view.value === 'all' ? {} : { status: view.value }
+  const params = { page: page.value, list_rows: itemsPerPage.value, ...(queue.value === 'all' ? {} : { queue_name: queue.value }), ...filters }
+  const queryKey = JSON.stringify(params)
+  if (queryKey !== lastSuccessfulKey) {
+    deliveries.value = []
+    totalItems.value = 0
+    resultCount.value = null
+    lastSuccessfulKey = null
+  } else {
+    resultState.value = 'loading'
+  }
   loading.value = true
   error.value = null
-  deliveries.value = []
-  totalItems.value = 0
   try {
-    const filters = view.value === 'skipped' ? { status: 'completed', policy_decision: 'skipped' } : view.value === 'all' ? {} : { status: view.value }
-    const result = await client.operations.deliveries({ page: page.value, list_rows: itemsPerPage.value, ...(queue.value === 'all' ? {} : { queue_name: queue.value }), ...filters })
+    const result = await client.operations.deliveries(params)
     if (requestId !== latestDeliveryRequest) return
     deliveries.value = result.data
     totalItems.value = result.pagination?.totalItems ?? result.data.length
+    resultCount.value = totalItems.value
+    resultState.value = 'ready'
+    lastSuccessfulKey = queryKey
   } catch (cause) {
-    if (requestId === latestDeliveryRequest) error.value = isApiError(cause) ? cause.message : '无法加载处理任务'
+    if (requestId === latestDeliveryRequest) {
+      error.value = isApiError(cause) ? cause.message : '无法加载处理任务'
+      if (lastSuccessfulKey === queryKey) resultState.value = 'stale'
+    }
   } finally { if (requestId === latestDeliveryRequest) loading.value = false }
 }
 async function loadSummary() {
@@ -117,7 +147,24 @@ function syncRouteQuery() {
   if (route.query.queue === next.queue && route.query.view === next.view && route.query.page === next.page && route.query.list_rows === next.list_rows) return
   void router.replace({ query: next })
 }
-function resetTableView() { page.value = 1; itemsPerPage.value = 20 }
+function applySavedView(saved: Record<string, string | null | (string | null)[]>) {
+  const nextQueue = parseQueue(saved.queue)
+  const nextView = parseView(saved.view)
+  const size = queryInt(saved.list_rows, 20)
+  queue.value = nextQueue
+  view.value = nextView
+  itemsPerPage.value = allowedPageSizes.includes(size) ? size : 20
+  page.value = 1
+  syncRouteQuery()
+  if (nextQueue === 'notifications' && !summary.value) void loadSummary()
+}
+function resetTableView() {
+  queue.value = 'notifications'
+  view.value = 'dead'
+  page.value = 1
+  itemsPerPage.value = 20
+  if (!summary.value) void loadSummary()
+}
 function setQueue(next: unknown) {
   const selected = parseQueue(next)
   if (selected === queue.value) return

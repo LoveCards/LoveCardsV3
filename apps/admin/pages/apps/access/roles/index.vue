@@ -5,6 +5,7 @@
     :breadcrumbs="[{ title: '用户' }]"
   >
     <template #actions>
+      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="tableLoading" @click="getTableData">刷新</v-btn>
       <AdminActionGuard capability="roles.create" scope="global">
         <v-btn color="primary" prepend-icon="mdi-shield-plus-outline" variant="flat" @click="CreateDialog_state = true">
           创建角色
@@ -16,14 +17,22 @@
   <AdminPageContainer fluid>
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
+      v-model:action-capacity="actionCapacity"
+      :action-headers="TableHeaders"
+      :action-labels="roleActionLabels"
+      :selection-width="48"
       :columns="columnOptions"
       :default-columns="defaultColumns"
-      :result-count="tableTotalItems"
-      preference-key="access-roles"
-      @reset-view="resetTableView"
+      :result-count="tableHasResult ? tableTotalItems : null"
+      :result-state="tableResultState"
+      :view-query-keys="['search_value', 'order_key', 'order_desc', 'filters', 'list_rows']" preference-key="access-roles"
+      @reset-view="resetTableView" @apply-view="applySavedView"
     >
       <template #search>
-        <v-text-field v-model="tableSearchValue" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+        <div class="d-flex flex-wrap align-center ga-2">
+          <v-text-field v-model="tableSearchValue" class="flex-grow-1" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @keyup.enter="submitSearch" @update:model-value="onSearchDraftChange" />
+          <v-btn variant="outlined" @click="submitSearch">查询</v-btn>
+        </div>
       </template>
       <template #actions>
         <AdminActionGuard v-if="isRootActor" capability="roles.assign" scope="global">
@@ -49,11 +58,11 @@
         <v-row dense align="center" aria-live="polite">
           <v-col cols="12" sm="auto"><span class="text-body-2">已选择 {{ tableSelected.length }} 项</span></v-col>
           <v-col cols="12" sm="4" md="3">
-            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="tableLoading" item-title="title" item-value="value" label="批量操作" />
+            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="!allowRowMutation" item-title="title" item-value="value" label="批量操作" />
           </v-col>
           <v-col cols="auto">
             <AdminActionGuard capability="roles.delete" scope="global">
-              <v-btn variant="outlined" :disabled="BatchOperate === ''" @click="openBatchDialog">应用操作</v-btn>
+              <v-btn variant="outlined" :disabled="!allowRowMutation || BatchOperate === ''" @click="openBatchDialog">应用操作</v-btn>
             </AdminActionGuard>
           </v-col>
           <v-col cols="auto"><v-btn variant="text" @click="tableSelected = []">取消选择</v-btn></v-col>
@@ -96,15 +105,10 @@
         </template>
 
         <template #[`item.name`]="{ item }">
-          <v-btn
-            class="text-none px-2"
-            min-height="44"
-            prepend-icon="mdi-account-key-outline"
-            :to="`/apps/access/roles/${item.id}`"
-            variant="text"
-          >
+          <div class="d-flex align-center ga-2">
+            <v-icon icon="mdi-account-key-outline" size="small" />
             <AdminTableSearchHighlight :text="item.name" :query="highlightQuery('name')" />
-          </v-btn>
+          </div>
         </template>
 
         <template #[`item.slug`]="{ item }">
@@ -133,58 +137,10 @@
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <div class="d-flex ga-1">
-            <AdminActionGuard v-if="canEditRole(item)" capability="roles.update" scope="global">
-              <v-tooltip text="编辑角色" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    aria-label="编辑角色"
-                    icon="mdi-pencil"
-                    size="small"
-                    variant="text"
-                    @click="openEditDialog(item)"
-                  />
-                </template>
-              </v-tooltip>
-            </AdminActionGuard>
-            <AdminActionGuard
-              v-if="canAssignRole(item)"
-              :all-of="[
-                { capability: 'roles.assign', scope: 'global' },
-                { capability: 'permissions.read', scope: 'global' },
-              ]"
-            >
-              <v-tooltip text="分配权限" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    aria-label="分配权限"
-                    icon="mdi-shield-key-outline"
-                    size="small"
-                    variant="text"
-                    @click="openAssignDialog(item)"
-                  />
-                </template>
-              </v-tooltip>
-            </AdminActionGuard>
-            <AdminActionGuard v-if="canDeleteRole(item)" capability="roles.delete" scope="global">
-              <v-tooltip text="删除角色" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    aria-label="删除角色"
-                    color="error"
-                    icon="mdi-delete"
-                    size="small"
-                    variant="text"
-                    @click="openDeleteDialog(item)"
-                  />
-                </template>
-              </v-tooltip>
-            </AdminActionGuard>
-          </div>
+          <AdminTableRowActions :actions="roleRowActions(item)" :capacity="actionCapacity" more-label="更多角色操作" />
         </template>
+
+        <template #[`item.created_at`]="{ item }"><AdminTableTime :value="item.created_at" /></template>
 
         <template #no-data>
           <v-empty-state
@@ -205,16 +161,7 @@
   </AdminPageContainer>
 
   <CreateRoleDialog v-model:thisDialogState="CreateDialog_state" :getTableData="getTableData" />
-  <EditRoleDialog
-    v-model:thisDialogState="EditDialog_state"
-    v-model:RoleData="EditDialog_data"
-    :getTableData="getTableData"
-  />
-  <AssignPermissionsDialog
-    v-model:thisDialogState="AssignDialog_state"
-    v-model:RoleData="AssignDialog_role"
-    :getTableData="getTableData"
-  />
+  <RoleDetailDialog v-model="RoleDetailDialog_state" :role-id="RoleDetailDialog_id" :initial-mode="RoleDetailDialog_mode" :source-path="route.fullPath" @saved="getTableData" />
   <PublicDeleteDialog
     v-model:thisDialogState="DeleteDialog_state"
     v-model:deleteData="DeleteDialog_data"
@@ -253,9 +200,10 @@ import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerAction
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue';
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
-import AssignPermissionsDialog from '@/components/roles/AssignPermissionsDialog.vue';
+import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue';
 import CreateRoleDialog from '@/components/roles/CreateRoleDialog.vue';
-import EditRoleDialog from '@/components/roles/EditRoleDialog.vue';
+import RoleDetailDialog from '~/components/roles/RoleDetailDialog.vue';
+import AdminTableRowActions from '~/components/shared/admin/AdminTableRowActions.vue';
 import PublicBatchDialog from '@/components/shared/Table/BatchDialog.vue';
 import PublicDeleteDialog from '@/components/shared/Table/DeleteDialog.vue';
 import PublicSearchDialog from '@/components/shared/Table/SearchDialog.vue';
@@ -275,26 +223,44 @@ const positiveQueryInt = (value: unknown, fallback: number) => {
   const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : Number.NaN;
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
-const queryFilters = (value: unknown): Record<string, unknown> => {
-  if (typeof value !== 'string' || !value) return {};
-  try {
-    const parsed = JSON.parse(value);
-    return typeof parsed === 'object' && parsed && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
+const normalizeFilters = (value: unknown): Record<string, unknown> => {
+  let source: Record<string, unknown>;
+  if (typeof value === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      source = typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown> : {};
+    } catch {
+      source = {};
+    }
+  } else {
+    source = typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? value as Record<string, unknown> : {};
   }
+  const result: Record<string, unknown> = {};
+  if (Array.isArray(source.search_keys)) {
+    const keys = [...new Set(source.search_keys.filter((key): key is string =>
+      typeof key === 'string' && SearchKeys.some((option) => option.value === key)))];
+    if (keys.length) result.search_keys = keys;
+  }
+  const orderKey = source.order_key;
+  if (typeof orderKey === 'string' && AllTableHeaders.some((header) => header.value === orderKey && header.sortable)) {
+    result.order_key = orderKey;
+    if (typeof source.order_desc === 'boolean') result.order_desc = source.order_desc;
+  }
+  return result;
 };
 
 const AllTableHeaders = [
-  { title: 'ID', value: 'id', sortable: true },
-  { title: '名称', value: 'name', sortable: true },
-  { title: 'Slug', value: 'slug', sortable: true },
-  { title: '类型', value: 'is_system', sortable: true },
-  { title: '描述', value: 'description', sortable: true },
-  { title: '创建时间', value: 'created_at', sortable: true },
-  { title: '操作', value: 'operate', sortable: false },
+  { title: 'ID', value: 'id', sortable: true, minWidth: 88 },
+  { title: '名称', value: 'name', sortable: true, minWidth: 200 },
+  { title: 'Slug', value: 'slug', sortable: true, minWidth: 160 },
+  { title: '类型', value: 'is_system', sortable: true, minWidth: 104 },
+  { title: '描述', value: 'description', sortable: true, minWidth: 240 },
+  { title: '创建时间', value: 'created_at', sortable: true, minWidth: 176 },
+  { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
-const defaultColumns = ['id', 'name', 'slug', 'is_system', 'description', 'operate'];
+const defaultColumns = ['name', 'slug', 'is_system', 'description', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: ['name', 'operate'].includes(header.value) }));
@@ -328,7 +294,7 @@ const canAssignRole = (role: Role) => {
 const canDeleteRole = (role: Role) => {
   return userStore.hasGrant('roles.delete', 'global') && roleClassification(role) === 'custom';
 };
-const isRoleSelectable = (role: Role) => canDeleteRole(role);
+const isRoleSelectable = (role: Role) => allowRowMutation.value && canDeleteRole(role);
 const TableBatchOptions = computed(() => userStore.hasGrant('roles.delete', 'global')
   ? [{ title: '删除', value: 'delete' as const }]
   : []);
@@ -345,11 +311,16 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
   ? [{ key: route.query.order_key, order: ['1', 'true', 'desc'].includes(String(route.query.order_desc)) ? 'desc' : 'asc' }]
   : []);
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
-const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
+const appliedSearchValue = ref(tableSearchValue.value);
+const tableSearchFilter = ref<Record<string, unknown>>(normalizeFilters(route.query.filters));
 const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
-const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } = useAdminTableSearchFeedback(tableSearchValue, tableSearchFilter, SearchKeys, 'name', '搜索角色名称');
+const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } = useAdminTableSearchFeedback(appliedSearchValue, tableSearchFilter, SearchKeys, 'name', '搜索角色名称');
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
+const tableHasResult = ref(false);
+const tableResultState = ref<'ready' | 'loading' | 'stale'>('ready');
+const allowRowMutation = computed(() => tableHasResult.value && !tableLoading.value && tableResultState.value === 'ready');
+let lastSuccessfulQuery: string | null = null;
 let latestRequest = 0;
 
 const errorMessage = (error: unknown) => {
@@ -362,18 +333,28 @@ const getTableData = async () => {
   const requestId = ++latestRequest;
   tableLoading.value = true;
   tableError.value = null;
-  const searchValue = tableSearchValue.value?.trim();
+  const searchValue = appliedSearchValue.value?.trim();
   const searchHighlight = searchSnapshot();
   const sort = tableSortBy.value[0];
   const params: Record<string, unknown> = {
+    ...normalizeFilters(tableSearchFilter.value),
     page: tableCurrentPage.value,
     list_rows: tableListRows.value,
-    ...tableSearchFilter.value,
   };
   if (searchValue) params.search_value = searchValue;
   if (sort) {
     params.order_key = sort.key;
     params.order_desc = sort.order === 'desc';
+  }
+
+  const queryKey = JSON.stringify(params);
+  const refreshing = tableHasResult.value && lastSuccessfulQuery === queryKey;
+  tableResultState.value = refreshing ? 'loading' : 'ready';
+  if (!refreshing) {
+    tableItems.value = [];
+    tableTotalItems.value = 0;
+    tableHasResult.value = false;
+    tableSelected.value = [];
   }
 
   try {
@@ -385,8 +366,14 @@ const getTableData = async () => {
     tableSelected.value = tableSelected.value.filter((id) => visibleIds.has(id));
     tableCurrentPage.value = result.pagination?.currentPage ?? tableCurrentPage.value;
     tableTotalItems.value = result.pagination?.totalItems ?? result.data.length;
+    lastSuccessfulQuery = queryKey;
+    tableHasResult.value = true;
+    tableResultState.value = 'ready';
   } catch (error) {
-    if (requestId === latestRequest) tableError.value = errorMessage(error);
+    if (requestId === latestRequest) {
+      tableError.value = errorMessage(error);
+      if (refreshing) tableResultState.value = 'stale';
+    }
   } finally {
     if (requestId === latestRequest) tableLoading.value = false;
   }
@@ -400,7 +387,7 @@ const syncRouteQuery = () => {
   const orderDesc = sort ? sort.order === 'desc' || sort.order === true : tableSearchFilter.value.order_desc !== false;
   next.page = String(tableCurrentPage.value);
   next.list_rows = String(tableListRows.value);
-  if (tableSearchValue.value?.trim()) next.search_value = tableSearchValue.value.trim();
+  if (appliedSearchValue.value?.trim()) next.search_value = appliedSearchValue.value.trim();
   else delete next.search_value;
   if (orderKey) {
     next.order_key = orderKey;
@@ -415,13 +402,45 @@ const syncRouteQuery = () => {
 };
 
 const refreshFromFirstPage = () => {
-  syncRouteQuery();
-  if (tableCurrentPage.value === 1) void getTableData();
-  else tableCurrentPage.value = 1;
+  if (tableCurrentPage.value === 1) {
+    syncRouteQuery();
+    void getTableData();
+  } else {
+    tableCurrentPage.value = 1;
+  }
 };
-const searchTableData = CommonUtils.lodash.debounce(refreshFromFirstPage, 500);
+const submitSearch = () => {
+  appliedSearchValue.value = tableSearchValue.value?.trim() || undefined;
+  refreshFromFirstPage();
+};
+const onSearchDraftChange = (value: string | null) => {
+  if (!value?.trim() && appliedSearchValue.value) {
+    appliedSearchValue.value = undefined;
+    refreshFromFirstPage();
+  }
+};
+const applySavedView = (query: Record<string, string | null | (string | null)[]>) => {
+  const search = query.search_value;
+  tableSearchValue.value = typeof search === 'string' && search.trim() ? search.trim() : undefined;
+  appliedSearchValue.value = tableSearchValue.value;
+  const filters = normalizeFilters(query.filters);
+  applySearchDialog(filters);
+  const orderKey = query.order_key ?? filters.order_key;
+  const orderDesc = query.order_key ? query.order_desc : filters.order_desc;
+  tableSortBy.value = typeof orderKey === 'string' && AllTableHeaders.some((header) => header.value === orderKey && header.sortable)
+    ? [{ key: orderKey, order: ['1', 'true', 'desc'].includes(String(orderDesc)) ? 'desc' : 'asc' }]
+    : [];
+  const size = positiveQueryInt(query.list_rows, defaultListRows);
+  tableListRows.value = TableListRowsOptions.some((option) => option.value === size) ? size : defaultListRows;
+  tableSelected.value = [];
+  tableCurrentPage.value = 1;
+  syncRouteQuery();
+  void getTableData();
+};
+
 const resetTableView = () => {
   tableSearchValue.value = undefined;
+  appliedSearchValue.value = undefined;
   tableSearchFilter.value = {};
   tableSortBy.value = [];
   tableListRows.value = Number(TableListRowsOptions[0]?.value ?? 10);
@@ -451,31 +470,24 @@ const confirmReseed = async () => {
     reseedLoading.value = false;
   }
 };
-const EditDialog_state = ref(false);
-const EditDialog_data = ref<Role | null>(null);
-const openEditDialog = (item: Role) => {
-  if (!canEditRole(item)) {
-    notifier.warning(roleClassification(item) === 'unknown'
-      ? '无法确认目标角色类型，请刷新列表后重试。'
-      : isSystemRole(item) ? '只有超级管理员可以编辑系统角色。' : '当前账号无权编辑角色。');
-    return;
-  }
-  EditDialog_data.value = item;
-  EditDialog_state.value = true;
+const actionCapacity = ref(1);
+const roleActionLabels = computed(() => [...new Set(tableItems.value.flatMap((item) => roleRowActions(item).map((action) => action.label)))]);
+const RoleDetailDialog_state = ref(false);
+const RoleDetailDialog_id = ref<number | null>(null);
+const RoleDetailDialog_mode = ref<'view' | 'edit' | 'assign'>('view');
+const openRoleDetail = (item: Role, mode: 'view' | 'edit' | 'assign' = 'view') => {
+  if (mode === 'edit' && !canEditRole(item)) return;
+  if (mode === 'assign' && !canAssignRole(item)) return;
+  RoleDetailDialog_id.value = item.id;
+  RoleDetailDialog_mode.value = mode;
+  RoleDetailDialog_state.value = true;
 };
-
-const AssignDialog_state = ref(false);
-const AssignDialog_role = ref<Role | null>(null);
-const openAssignDialog = (item: Role) => {
-  if (!canAssignRole(item)) {
-    notifier.warning(roleClassification(item) === 'unknown'
-      ? '无法确认目标角色类型，请刷新列表后重试。'
-      : isSystemRole(item) ? '只有超级管理员可以调整系统角色权限。' : '当前账号无权分配角色权限。');
-    return;
-  }
-  AssignDialog_role.value = item;
-  AssignDialog_state.value = true;
-};
+const roleRowActions = (item: Role) => [
+  ...(!canEditRole(item) && !canAssignRole(item) ? [{ key: 'view', label: '查看', onClick: () => openRoleDetail(item) }] : []),
+  ...(canEditRole(item) ? [{ key: 'edit', label: '编辑', disabled: !allowRowMutation.value, onClick: () => openRoleDetail(item, 'edit') }] : []),
+  ...(canAssignRole(item) ? [{ key: 'assign', label: '分配权限', disabled: !allowRowMutation.value, onClick: () => openRoleDetail(item, 'assign') }] : []),
+  ...(canDeleteRole(item) ? [{ key: 'delete', label: '删除', disabled: !allowRowMutation.value, onClick: () => openDeleteDialog(item) }] : []),
+];
 
 const DeleteDialog_state = ref(false);
 const DeleteDialog_data = ref<{ id: number; display?: string }>({ id: 0 });
@@ -535,6 +547,7 @@ const BatchFun = () => {
 const SearchDialog_state = ref(false);
 const setTableSearchFilter = (data: Record<string, unknown>) => {
   applySearchDialog(data);
+  tableSearchFilter.value = normalizeFilters(tableSearchFilter.value);
   tableCurrentPage.value = 1;
   syncRouteQuery();
 };

@@ -15,7 +15,7 @@ final class CardResource extends Resource
                 'id' => ['type' => 'integer'], 'is_top' => ['type' => 'integer'], 'status' => ['type' => 'integer'], 'visibility' => ['type' => 'string', 'enum' => ['public', 'followers', 'private']],
                 'user_id' => ['type' => 'integer'], 'uid' => ['type' => 'string', 'nullable' => true], 'username' => ['type' => 'string'],
                 'data' => ['type' => 'object', 'additionalProperties' => true],
-                'cover' => ['type' => 'string', 'nullable' => true], 'pictures' => ['type' => 'array', 'items' => ['type' => 'string']],
+                'cover' => ['type' => 'string', 'nullable' => true], 'cover_file_id' => ['type' => 'integer', 'nullable' => true], 'pictures' => ['type' => 'array', 'items' => ['type' => 'string']],
                 'media' => ['type' => 'array', 'items' => [
                     'type' => 'object', 'additionalProperties' => false,
                     'properties' => [
@@ -63,7 +63,7 @@ final class CardResource extends Resource
         $card['topics'] = is_array($card['topics'] ?? null) ? array_values($card['topics']) : [];
         $card['mentions'] = is_array($card['mentions'] ?? null) ? array_values($card['mentions']) : [];
         $fields = [
-            'id', 'is_top', 'status', 'visibility', 'user_id', 'uid', 'username', 'data', 'cover', 'pictures', 'media',
+            'id', 'is_top', 'status', 'visibility', 'user_id', 'uid', 'username', 'data', 'cover', 'cover_file_id', 'pictures', 'media',
             'content', 'tags', 'topics', 'mentions', 'goods', 'views', 'comments', 'created_at', 'updated_at',
         ];
         $result = [];

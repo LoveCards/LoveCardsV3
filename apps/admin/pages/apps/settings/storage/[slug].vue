@@ -90,7 +90,6 @@
                     />
                   </v-col>
                 </v-row>
-                <v-divider class="mb-4" />
                 <AdminConfigSaveBar v-if="canUpdateConfig || canTestStorage" :dirty="configChanged" label="渠道配置">
                   <AdminActionGuard capability="storage.test" scope="global">
                     <v-btn

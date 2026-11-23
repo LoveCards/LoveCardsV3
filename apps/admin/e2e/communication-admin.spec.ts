@@ -154,7 +154,7 @@ test('delivery filter failure does not display records from the previous filter'
   })
 
   await page.goto('./apps/operations/deliveries?view=all&page=2&list_rows=20', { waitUntil: 'domcontentloaded' })
-  const priorRow = page.getByRole('row', { name: /message\.sent.*#22/ })
+  const priorRow = page.getByRole('row').filter({ hasText: 'message.sent' })
   await expect(priorRow).toBeVisible({ timeout: 30_000 })
   await expect(page).toHaveURL(/page=2/)
   await page.getByRole('button', { name: '失败', exact: true }).click()

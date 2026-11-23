@@ -354,35 +354,23 @@ test('legacy theme config query resolves to its canonical theme slug', async ({ 
   expect(url.hash).toBe('#theme')
 })
 
-test('content resource routes resolve to unified list handling panels while complex resources keep detail pages', async ({ page }) => {
+test('content resource routes open read-only detail pages while other resources keep their routes', async ({ page }) => {
   test.setTimeout(90_000)
   const ids = await resolveDetailFixtures(page)
 
-  await page.goto(`./apps/content/cards/${ids.card}`, { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
-  let url = new URL(page.url())
-  expect(url.pathname).toBe('/admin/apps/content/cards')
-  expect(url.searchParams.get('inspect')).toBe(String(ids.card))
-  await expect(page.getByRole('dialog')).toContainText(/(?:查看|审核|编辑)卡片/)
-  await expect(page.getByRole('heading', { name: '卡片', exact: true, level: 1 })).toBeVisible()
+  await expectDetailHeading(page, `/apps/content/cards/${ids.card}`, `卡片 #${ids.card}`)
+  await expect(page.getByRole('heading', { name: '正文', exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.locator('body')).not.toContainText('卡片不存在')
 
-  await page.goto(`./apps/content/comments/${ids.comment}`, { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
-  url = new URL(page.url())
-  expect(url.pathname).toBe('/admin/apps/content/comments')
-  expect(url.searchParams.get('inspect')).toBe(String(ids.comment))
-  await expect(page.getByRole('dialog')).toContainText(/(?:查看|审核|编辑)评论/)
-  await expect(page.getByRole('heading', { name: '评论', exact: true, level: 1 })).toBeVisible()
+  await expectDetailHeading(page, `/apps/content/comments/${ids.comment}`, `评论 #${ids.comment}`)
+  await expect(page.getByRole('region', { name: '评论内容', exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.locator('body')).not.toContainText('评论不存在')
 
-  await page.goto(`./apps/content/tags/${ids.tag}`, { waitUntil: 'domcontentloaded' })
-  await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
-  url = new URL(page.url())
-  expect(url.pathname).toBe('/admin/apps/content/tags')
-  expect(url.searchParams.get('inspect')).toBe(String(ids.tag))
-  await expect(page.getByRole('dialog')).toContainText(/(?:查看|编辑)标签/)
-  await expect(page.getByRole('heading', { name: '标签', exact: true, level: 1 })).toBeVisible()
+  await expectDetailHeading(page, `/apps/content/tags/${ids.tag}`, `标签 #${ids.tag}`)
+  await expect(page.getByRole('heading', { name: '标签信息', exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
 
   await expectDetailHeading(page, `/apps/users/${ids.user}/security`, /^账号安全 · .+$/)
   await expect(page.getByRole('heading', { name: 'Session', exact: true })).toBeVisible()
@@ -401,7 +389,7 @@ test('content resource routes resolve to unified list handling panels while comp
   )
   await expect(page.getByRole('heading', { name: '权限管理', exact: true, level: 1 })).toHaveCount(0)
 
-  await expectDetailHeading(page, `/apps/settings/storage/files/${ids.file}/usage`, `文件 #${ids.file}`)
+  await expectDetailHeading(page, `/apps/settings/storage/files/${ids.file}`, `文件 #${ids.file}`)
   await expect(page.getByRole('heading', { name: '文件信息', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: '资源引用', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: '文件管理', exact: true, level: 1 })).toHaveCount(0)
@@ -414,43 +402,141 @@ test('legacy detail aliases redirect to canonical resource routes', async ({ pag
   await page.goto(`./apps/cards/${card}?source=legacy#card`, { waitUntil: 'domcontentloaded' })
   await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
   let url = new URL(page.url())
-  expect(url.pathname).toBe('/admin/apps/content/cards')
-  expect(url.searchParams.get('inspect')).toBe(String(card))
-  expect(url.searchParams.get('source')).toBe('legacy')
-  expect(url.hash).toBe('#card')
-  await expect(page.getByRole('dialog')).toContainText(/(?:查看|审核|编辑)卡片/)
+  expect(url.pathname).toBe(`/admin/apps/content/cards/${card}`)
+  expect(url.searchParams.has('inspect')).toBe(false)
+  await expect(page.getByRole('heading', { name: `卡片 #${card}`, exact: true, level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '正文', exact: true })).toBeVisible()
 
   await page.goto(`./apps/comments/${comment}?source=legacy#comment`, { waitUntil: 'domcontentloaded' })
   await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
   url = new URL(page.url())
-  expect(url.pathname).toBe('/admin/apps/content/comments')
-  expect(url.searchParams.get('inspect')).toBe(String(comment))
-  expect(url.searchParams.get('source')).toBe('legacy')
-  expect(url.hash).toBe('#comment')
-  await expect(page.getByRole('dialog')).toContainText(/(?:查看|审核|编辑)评论/)
+  expect(url.pathname).toBe(`/admin/apps/content/comments/${comment}`)
+  expect(url.searchParams.has('inspect')).toBe(false)
+  await expect(page.getByRole('heading', { name: `评论 #${comment}`, exact: true, level: 1 })).toBeVisible()
+  await expect(page.getByRole('region', { name: '评论内容', exact: true })).toBeVisible()
 
   await page.goto(`./apps/storage/files/${file}/usage?source=legacy#usage`, { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: `文件 #${file}`, exact: true, level: 1 })).toBeVisible()
   await expect(page.getByRole('heading', { name: '文件信息', exact: true })).toBeVisible()
 
   url = new URL(page.url())
-  expect(url.pathname).toBe(`/admin/apps/settings/storage/files/${file}/usage`)
+  expect(url.pathname).toBe(`/admin/apps/settings/storage/files/${file}`)
   expect(url.searchParams.get('source')).toBe('legacy')
   expect(url.hash).toBe('#usage')
 })
 
-test('card handling panel keeps document overflow contained on a narrow viewport', async ({ page }) => {
+
+test('legacy inspect links open details and return to the original list query', async ({ page }) => {
+  test.setTimeout(60_000)
+  const { card, comment } = await resolveDetailFixtures(page)
+
+  for (const [resource, id, title] of [
+    ['cards', card, '卡片'],
+    ['comments', comment, '评论'],
+  ] as const) {
+    await page.goto(`./apps/content/${resource}?inspect=${id}&page=2&list_rows=20`, { waitUntil: 'domcontentloaded' })
+    await expect(page.getByRole('heading', { name: `${title} #${id}`, exact: true, level: 1 })).toBeVisible()
+    const url = new URL(page.url())
+    expect(url.pathname).toBe(`/admin/apps/content/${resource}/${id}`)
+    expect(url.searchParams.has('inspect')).toBe(false)
+    await page.getByRole('button', { name: '返回列表' }).click()
+    await page.waitForURL((target) => target.pathname === `/admin/apps/content/${resource}`)
+    const returned = new URL(page.url())
+    expect(returned.searchParams.get('page')).toBe('2')
+    expect(returned.searchParams.get('list_rows')).toBe('20')
+    expect(returned.searchParams.has('inspect')).toBe(false)
+  }
+})
+
+test('content list filters cannot override pagination or pass unknown fields to the API', async ({ browser }) => {
+  test.setTimeout(90_000)
+  const adminOrigin = process.env.LOVECARDS_DEV_ADMIN_ORIGIN || 'http://127.0.0.1:3000'
+  const context = await browser.newContext({
+    baseURL: `${adminOrigin}/admin/`,
+    storageState: {
+      cookies: [],
+      origins: [{ origin: adminOrigin, localStorage: [{ name: 'token', value: 'content-filter-mock-token' }] }],
+    },
+  })
+  const page = await context.newPage()
+  const requests: Array<{ resource: string; url: URL }> = []
+  const unexpected: string[] = []
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    const resource = url.pathname.match(/\/api\/admin\/(cards|comments)$/)?.[1]
+    if (resource) requests.push({ resource, url })
+  })
+  await page.route('**/api/**', async (route) => {
+    const request = route.request()
+    const url = new URL(request.url())
+    if (!url.pathname.startsWith('/api/')) return route.continue()
+    if (request.method() !== 'GET') {
+      unexpected.push(`${request.method()} ${url.pathname}`)
+      return route.abort()
+    }
+    if (url.pathname === '/api/me') return route.fulfill({ json: {
+      success: true,
+      data: {
+        id: 9001, username: '筛选测试管理员', roles: [], status: 0,
+        grants: [
+          { capability: 'admin.access', scope: 'global' },
+          { capability: 'cards.read', scope: 'all' },
+          { capability: 'comments.read', scope: 'all' },
+        ],
+      },
+    } })
+    if (url.pathname === '/api/admin/cards' || url.pathname === '/api/admin/comments') {
+      return route.fulfill({ json: {
+        success: true, data: [],
+        pagination: { totalItems: 0, currentPage: 1, totalPages: 0, itemsPerPage: 20 },
+      } })
+    }
+    return route.fulfill({ json: { success: true, data: [] } })
+  })
+  try {
+    const poisoned = encodeURIComponent(JSON.stringify({
+      page: 99,
+      list_rows: 1,
+      search_keys: ['content', 'unknown_field'],
+      show_deleted: 0,
+      unexpected: 'should-not-reach-api',
+    }))
+    for (const [resource, title] of [['cards', '卡片'], ['comments', '评论']] as const) {
+      await page.goto(`./apps/content/${resource}?page=1&list_rows=20&filters=${poisoned}`, { waitUntil: 'domcontentloaded' })
+      await expect(page.getByRole('heading', { name: title, exact: true, level: 1 })).toBeVisible({ timeout: 30_000 })
+      await expect.poll(() => requests.filter((request) => request.resource === resource).length).toBeGreaterThan(0)
+      for (const { url } of requests.filter((request) => request.resource === resource)) {
+        expect(url.searchParams.get('page')).toBe('1')
+        expect(url.searchParams.get('list_rows')).toBe('20')
+        expect(url.searchParams.has('unexpected')).toBe(false)
+        expect(url.searchParams.get('search_keys')).not.toContain('unknown_field')
+      }
+    }
+    expect(unexpected).toEqual([])
+  } finally {
+    await context.close()
+  }
+})
+
+test('card detail and edit dialog keep document overflow contained on a narrow viewport', async ({ page }) => {
   test.setTimeout(60_000)
   await page.setViewportSize({ width: 390, height: 844 })
   const { card } = await resolveDetailFixtures(page)
   await page.goto(`./apps/content/cards/${card}`, { waitUntil: 'domcontentloaded' })
   await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
-  await expect(page.getByRole('dialog')).toContainText(/(?:查看|审核|编辑)卡片/)
-  await page.waitForTimeout(250)
+  await expect(page.getByRole('heading', { name: `卡片 #${card}`, exact: true, level: 1 })).toBeVisible()
+  await page.getByRole('button', { name: '编辑', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: '正文', exact: true })).toBeVisible()
 
-  const overflow = await page.evaluate(() => Math.max(
+  const documentOverflow = () => page.evaluate(() => Math.max(
     document.documentElement.scrollWidth,
     document.body.scrollWidth,
   ) - document.documentElement.clientWidth)
-  expect(overflow).toBeLessThanOrEqual(1)
+  await expect.poll(documentOverflow).toBeLessThanOrEqual(1)
+
+  await page.goto('./apps/content/cards', { waitUntil: 'domcontentloaded' })
+  await page.locator('tbody tr').first().getByRole('button', { name: '编辑', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '卡片详情' })
+  await expect(dialog.getByRole('textbox', { name: '正文', exact: true })).toBeVisible()
+  await expect.poll(documentOverflow).toBeLessThanOrEqual(1)
 })

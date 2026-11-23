@@ -73,7 +73,7 @@
             />
           </v-card-text>
           <v-divider />
-          <v-list v-if="searchResults.length" density="compact" nav>
+          <v-list v-if="searchResults.length" aria-label="管理页面搜索结果" density="compact" nav>
             <v-list-item
               v-for="result in searchResults"
               :key="result.path"
@@ -286,6 +286,7 @@
 </template>
 
 <script setup lang="ts">
+import { useDisplay, useTheme } from 'vuetify'
 import { mergeProps } from 'vue'
 import { adminThemeOptions } from '~/composables/useAdminTheme'
 import NotificationNotifier from '~/components/shared/NotificationNotifier.vue'

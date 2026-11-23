@@ -1,8 +1,8 @@
 <script setup lang="ts">
 definePageMeta({
   redirect: route => ({
-    path: '/apps/content/cards',
-    query: { ...route.query, inspect: String(route.params.id) },
+    path: '/apps/content/cards/' + String(route.params.id),
+    query: Object.fromEntries(Object.entries(route.query).filter(([key]) => key !== 'inspect')),
     hash: route.hash,
     replace: true,
   }),

@@ -75,10 +75,10 @@ test('verification requirements save user and captcha groups together', async ({
   await expect(page.getByText('登录：人机验证')).toBeVisible({ timeout: 120_000 })
   await page.getByRole('tab', { name: '验证要求' }).click()
   const requirements = page.getByRole('region', { name: '站点验证要求' })
-  await requirements.getByRole('combobox').nth(0).click()
-  await page.getByLabel('注册邮件验证-list').getByRole('option', { name: '开启' }).click()
-  await requirements.getByRole('combobox').nth(1).click()
-  await page.getByLabel('注册与卡片写入的人机验证-list').getByRole('option', { name: '开启' }).click()
+  await requirements.getByRole('combobox', { name: '注册邮件验证', exact: true }).press('ArrowDown')
+  await page.getByRole('option', { name: '开启', exact: true }).click()
+  await requirements.getByRole('combobox', { name: '注册与卡片写入的人机验证', exact: true }).press('ArrowDown')
+  await page.getByRole('option', { name: '开启', exact: true }).click()
   await page.getByRole('button', { name: '保存站点验证要求' }).click()
   await expect(page.getByText('站点验证要求已保存。')).toBeVisible()
   expect(committed).toEqual({ user: { captcha: true, __revision: 3 }, captcha: { captcha_enabled: true, __revision: 7 } })
@@ -108,7 +108,7 @@ test('site access remains editable without captcha read permission', async ({ pa
   await expect(page.getByRole('tab', { name: '访问设置' })).toBeVisible({ timeout: 120_000 })
   await expect(page.getByText('当前账号无权查看验证设置。')).toBeVisible()
   await expect(page.getByRole('link', { name: '前往验证中心' })).toHaveCount(0)
-  await page.getByRole('region', { name: '访问设置' }).getByRole('combobox').click()
+  await page.getByRole('region', { name: '访问设置' }).getByRole('combobox', { name: '访客浏览', exact: true }).press('ArrowDown')
   await page.getByRole('option', { name: '开启' }).click()
   await page.getByRole('button', { name: '保存访问设置' }).click()
   await expect(page.getByText('访问设置已保存。')).toBeVisible()
@@ -138,15 +138,52 @@ test('verification conflict preserves unsaved requirements', async ({ page }) =>
 
   await page.goto('./apps/settings/verification')
   await page.getByRole('tab', { name: '验证要求' }).click()
-  const select = page.getByRole('region', { name: '站点验证要求' }).getByRole('combobox').nth(0)
-  await select.click()
+  const select = page.getByRole('region', { name: '站点验证要求' }).getByRole('combobox', { name: '注册邮件验证', exact: true })
+  await select.press('ArrowDown')
   await page.getByRole('option', { name: '开启' }).click()
   await page.getByRole('button', { name: '保存站点验证要求' }).click()
   await expect(page.getByText('配置已被其他管理员修改。当前编辑已保留，请重新加载并核对后再保存。')).toBeVisible()
-  await expect(select).toContainText('开启')
+  await expect(select).toHaveValue('开启')
   await expect(page.getByRole('button', { name: '保存站点验证要求' })).toBeEnabled()
   await page.getByRole('tab', { name: '使用场景' }).click()
-  await expect(page.getByText('以下状态以最近一次读取或保存的配置为准；未保存的修改尚未生效。')).toBeVisible()
+  const dialog = page.getByRole('dialog', { name: '有未保存的修改' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: '放弃修改' }).click()
+  await expect(page.getByRole('tab', { name: '使用场景' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByText('以下状态以最近一次读取或保存的配置为准；未保存的修改尚未生效。')).toHaveCount(0)
   await expect(page.locator('.v-list-item').filter({ hasText: '新用户注册：邮件验证码' })).toContainText('未要求')
   expect(writes).toBe(1)
+})
+
+test('verification draft is protected when switching tabs', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('token', 'verification-draft-fixture'))
+  const grants = ['admin.access', 'config.read', 'config.update', 'captcha.read']
+    .map(capability => ({ capability, scope: 'global' }))
+  await page.route('**/api/**', async route => {
+    const path = new URL(route.request().url()).pathname
+    const data: Record<string, unknown> = {
+      '/api/me': { id: 9001, username: '配置管理员', roles: [], grants, status: 0 },
+      '/api/admin/config': {
+        user: { __revision: 1, captcha: false },
+        captcha: { __revision: 1, captcha_enabled: false, code_enabled: true, code_channel: 'smtp' },
+      },
+      '/api/captcha/config': { human_ready: true },
+      '/api/admin/captcha/drivers': [],
+    }
+    await route.fulfill({ json: { success: true, data: data[path] ?? [] } })
+  })
+  await page.goto('./apps/settings/verification')
+  await page.getByRole('tab', { name: '服务设置' }).click()
+  const service = page.locator('.v-select').filter({ hasText: '验证码服务' }).first()
+  await service.click()
+  await page.getByRole('option', { name: '关闭' }).click()
+  await page.getByRole('tab', { name: '使用场景' }).click()
+  await expect(page.getByRole('dialog', { name: '有未保存的修改' })).toBeVisible()
+  await page.getByRole('button', { name: '继续编辑' }).click()
+  await expect(page.getByRole('tab', { name: '服务设置' })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('tab', { name: '使用场景' }).click()
+  await page.getByRole('button', { name: '放弃修改' }).click()
+  await expect(page.getByRole('tab', { name: '使用场景' })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('tab', { name: '服务设置' }).click()
+  await expect(page.getByRole('combobox', { name: '验证码服务' })).toHaveValue('开启')
 })

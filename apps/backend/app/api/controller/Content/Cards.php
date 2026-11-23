@@ -91,7 +91,7 @@ class Cards extends BaseController
 
     public function getManaged($id)
     {
-        $result = CardsService::get((int) $id, request()->auth->capabilities());
+        $result = CardsService::getManaged((int) $id, request()->auth->capabilities());
         return $this->respond($result);
     }
 

@@ -65,6 +65,11 @@ final class Users extends BaseController
         $id = (int) $id;
         $params = $this->validated(null, ['id' => $id]);
         unset($params['id']);
+        if (array_key_exists('roles_id', $params)) {
+            $roles = is_string($params['roles_id']) ? json_decode($params['roles_id'], true) : $params['roles_id'];
+            if (!is_array($roles)) throw ApiException::badRequest('角色列表格式错误');
+            $params['roles_id'] = $roles;
+        }
         $auth = request()->auth;
         UsersService::updateAny($id, $params, $auth->uid(), $auth->roleIds(), $auth->grants(), (string) request()->ip());
         return ApiResponse::createNoContent();

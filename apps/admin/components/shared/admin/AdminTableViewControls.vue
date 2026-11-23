@@ -1,11 +1,8 @@
 <template>
   <div class="admin-table-view-controls">
-    <span v-if="resultCount !== null" class="text-body-2 text-medium-emphasis" aria-live="polite">
-      共 {{ resultCount }} 条结果
-    </span>
     <v-menu v-model="viewsMenuOpen" :close-on-content-click="false" location="bottom end">
       <template #activator="{ props: activatorProps }">
-        <v-btn v-bind="activatorProps" prepend-icon="mdi-tune-variant" variant="text">
+        <v-btn v-bind="activatorProps" aria-label="视图设置" prepend-icon="mdi-tune-variant" variant="text">
           视图设置
           <v-chip v-if="savedViews.length" class="ml-2" size="x-small" variant="tonal">{{ savedViews.length }}</v-chip>
         </v-btn>
@@ -13,7 +10,7 @@
       <v-card min-width="320" max-width="400">
         <v-card-title class="text-subtitle-1">视图设置</v-card-title>
         <v-divider />
-        <v-list density="compact">
+        <v-list v-if="showSavedViews" density="compact">
           <v-list-subheader>已保存视图</v-list-subheader>
           <v-list-item
             v-for="view in savedViews"
@@ -38,9 +35,9 @@
             subtitle="保存当前筛选、排序和列设置后可快速恢复"
             title="还没有保存视图"
           />
-          <v-list-item prepend-icon="mdi-content-save-outline" title="保存当前视图" @click="openSaveDialog" />
+          <v-list-item prepend-icon="mdi-content-save-outline" title="保存当前视图" @click="openSaveDialog($event)" />
         </v-list>
-        <v-divider />
+        <v-divider v-if="showSavedViews" />
         <v-list density="compact">
           <v-list-subheader>显示列</v-list-subheader>
           <v-list-item v-for="column in columns" :key="column.key" @click="toggleColumn(column)">
@@ -60,6 +57,9 @@
           </v-list-item>
         </v-list>
         <v-divider />
+        <v-card-text class="py-2 text-caption text-medium-emphasis">
+          恢复默认视图会重置筛选、排序、每页行数和显示列；已保存视图仍保留。
+        </v-card-text>
         <v-card-actions>
           <v-btn prepend-icon="mdi-restore" variant="text" @click="resetView">恢复默认视图</v-btn>
         </v-card-actions>
@@ -67,7 +67,7 @@
     </v-menu>
   </div>
 
-  <v-dialog v-model="saveDialogOpen" aria-label="保存当前视图" max-width="480">
+  <v-dialog @after-leave="restoreSaveDialogFocus" v-model="saveDialogOpen" aria-label="保存当前视图" max-width="480">
     <v-card>
       <v-card-title>保存当前视图</v-card-title>
       <v-divider />
@@ -99,7 +99,7 @@
 </template>
 
 <script setup lang="ts">
-import type { LocationQueryRaw } from 'vue-router'
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
 import { useUserStore } from '~/stores/userStore'
 
 export interface AdminTableColumnOption {
@@ -120,24 +120,25 @@ const props = withDefaults(defineProps<{
   storageKey: string
   columns?: AdminTableColumnOption[]
   defaultColumns?: string[]
-  resultCount?: number | null
+  showSavedViews?: boolean
+  viewQueryKeys?: string[]
 }>(), {
   columns: () => [],
   defaultColumns: () => [],
-  resultCount: null,
+  showSavedViews: true,
+  viewQueryKeys: () => [],
 })
 
-const emit = defineEmits<{ reset: [] }>()
+const emit = defineEmits<{ reset: []; apply: [query: Record<string, StoredQueryValue>] }>()
 const visibleColumnKeys = defineModel<string[]>('visibleColumns', { default: () => [] })
 const route = useRoute()
-const router = useRouter()
 const userStore = useUserStore()
 const viewsMenuOpen = ref(false)
 const saveDialogOpen = ref(false)
 const viewName = ref('')
 const viewNameError = ref('')
 const savedViews = ref<SavedAdminView[]>([])
-const localStorageKey = computed(() => `lovecards.admin.table-view.${userStore.userInfo?.id ?? 'anonymous'}.${props.storageKey}`)
+const localStorageKey = computed(() => userStore.userInfo?.id ? `lovecards.admin.table-view.${userStore.userInfo.id}.${props.storageKey}` : null)
 const availableColumnKeys = computed(() => props.columns.map((column) => column.key))
 const defaultColumns = computed(() => {
   const allowed = new Set(availableColumnKeys.value)
@@ -159,7 +160,7 @@ function normalizedVisibleColumns(keys: readonly string[]): string[] {
 }
 
 function persist() {
-  if (!import.meta.client) return
+  if (!import.meta.client || !localStorageKey.value) return
   try {
     window.localStorage.setItem(localStorageKey.value, JSON.stringify({
       columns: normalizedVisibleColumns(visibleColumnKeys.value),
@@ -171,8 +172,9 @@ function persist() {
 }
 
 function hydrate() {
-  visibleColumnKeys.value = normalizedVisibleColumns(visibleColumnKeys.value)
-  if (!import.meta.client) return
+  visibleColumnKeys.value = [...defaultColumns.value]
+  savedViews.value = []
+  if (!import.meta.client || !localStorageKey.value) return
   try {
     const raw = window.localStorage.getItem(localStorageKey.value)
     if (!raw) return
@@ -194,16 +196,28 @@ function hydrate() {
   }
 }
 
-function currentQuery(): Record<string, StoredQueryValue> {
+function normalizeQuery(source: Record<string, unknown>): Record<string, StoredQueryValue> {
   const query: Record<string, StoredQueryValue> = {}
-  for (const [key, value] of Object.entries(route.query)) {
-    if (value === undefined || key === 'page') continue
-    query[key] = Array.isArray(value) ? [...value] : value
+  const allowed = new Set(props.viewQueryKeys)
+  for (const [key, value] of Object.entries(source)) {
+    if (!allowed.has(key) || key === 'page' || key === 'inspect') continue
+    if (typeof value === 'string' || value === null) query[key] = value
+    else if (Array.isArray(value) && value.every((item) => typeof item === 'string' || item === null)) {
+      query[key] = [...value]
+    }
   }
   return query
 }
+function currentQuery(): Record<string, StoredQueryValue> {
+  return normalizeQuery(route.query as Record<string, unknown>)
+}
 
-function openSaveDialog() {
+function openSaveDialog(event: Event) {
+  const menuId = (event.currentTarget as HTMLElement).closest<HTMLElement>('.v-menu')?.id
+  saveDialogTrigger = menuId
+    ? [...document.querySelectorAll<HTMLElement>('[aria-controls]')]
+      .find(element => element.getAttribute('aria-controls') === menuId) ?? null
+    : null
   viewsMenuOpen.value = false
   viewName.value = ''
   viewNameError.value = ''
@@ -232,8 +246,7 @@ function applyView(view: SavedAdminView) {
   visibleColumnKeys.value = normalizedVisibleColumns(view.columns)
   viewsMenuOpen.value = false
   persist()
-  const query: LocationQueryRaw = { ...view.query, page: '1' }
-  window.location.replace(router.resolve({ path: route.path, query, hash: route.hash }).href)
+  emit('apply', normalizeQuery(view.query))
 }
 
 function removeView(id: string) {
@@ -263,13 +276,20 @@ async function resetView() {
   viewsMenuOpen.value = false
   emit('reset')
   persist()
-  await router.replace({ query: {}, hash: route.hash })
 }
 
 onMounted(hydrate)
+watch(localStorageKey, hydrate)
 watch(() => props.columns, () => {
   visibleColumnKeys.value = normalizedVisibleColumns(visibleColumnKeys.value)
 }, { deep: true })
+const restoreDialogFocus = useAdminDialogFocusReturn(saveDialogOpen)
+let saveDialogTrigger: HTMLElement | null = null
+function restoreSaveDialogFocus() {
+  restoreDialogFocus()
+  if (saveDialogTrigger?.isConnected) saveDialogTrigger.focus()
+  saveDialogTrigger = null
+}
 </script>
 
 <style scoped>

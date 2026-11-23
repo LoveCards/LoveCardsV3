@@ -489,6 +489,7 @@ CREATE TABLE `file_references` (
   `resource_type` varchar(32) NOT NULL,
   `resource_id` varchar(128) NOT NULL,
   `purpose` varchar(32) NOT NULL DEFAULT 'attachment',
+  `position` int(10) unsigned NOT NULL DEFAULT 0,
   `is_public` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` datetime NOT NULL,
   PRIMARY KEY (`id`),

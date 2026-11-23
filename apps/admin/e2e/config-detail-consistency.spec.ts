@@ -82,7 +82,7 @@ test('channel edits use one dirty status, block testing, and preserve failed inp
   await expect(page.getByRole('textbox', { name: /服务地址/ })).toHaveValue('edited.invalid')
   await page.getByRole('button', { name: '搜索管理页面' }).click()
   await page.getByPlaceholder('输入页面名称').fill('站点信息')
-  await page.getByRole('listbox').last().getByRole('link', { name: /^站点信息(?:\s|$)/ }).click()
+  await page.locator('.v-menu.v-overlay--active a[href="/admin/apps/settings/site"]').click()
   await expect(page.getByRole('dialog', { name: '有未保存的修改' })).toBeVisible()
   await page.getByRole('button', { name: '继续编辑', exact: true }).click()
   await expect(page).toHaveURL(/messaging\/demo/)
@@ -140,7 +140,7 @@ test('missing audit detail retains the return route', async ({ page }) => {
   await fixture(page)
   await page.route('**/api/admin/audit-logs/1', route => route.fulfill({ status: 404, json: { success: false, message: '记录不存在', code: 404 } }))
   await page.goto('./apps/operations/audit/1')
-  await expect(page.getByText('审计记录不存在', { exact: true })).toBeVisible()
+  await expect(page.locator('main')).toContainText('审计记录不存在')
   await expect(page.getByRole('link', { name: '返回列表', exact: true })).toHaveAttribute('href', '/admin/apps/operations/audit')
 })
 

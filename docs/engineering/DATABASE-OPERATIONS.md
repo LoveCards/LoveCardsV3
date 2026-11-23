@@ -38,6 +38,7 @@ LoveCards 以 MySQL/InnoDB 为唯一事务基线。数据库变更既服务首�
 - 账号恢复、Session 撤销、举报状态变化和永久文件清理等高风险写入与审计同事务。
 - 文件 purge 先锁定文件与引用关系，再改变 purge 状态，避免“检查无引用”后的并发新增引用。
 - 卡片列表的媒体装配按整页批量读取 `file_references` 和 `files`，固定为两次查询并保持引用顺序；禁止在逐卡循环中恢复 N+1 查询。
+- 文件引用的 `position` 明确保存同一 resource/purpose 内的媒体顺序；旧记录为 0 时按引用 `id` 保持原顺序。重绑写入从 1 开始的位置，封面仍由独立的 `cover` purpose 表达。
 - 消息发送以 `client_message_id` 做幂等；direct conversation 以 `direct_key` 防重复会话。
 - 资源所有权是查询条件的一部分，不能读出记录后仅在 Controller 判断。
 

@@ -84,7 +84,7 @@ test('channel test dialog validates input locally then reports the server outcom
   await page.goto('./apps/settings/messaging/smtp', { waitUntil: 'domcontentloaded' })
   await page.getByRole('button', { name: '测试发信', exact: true }).click()
   const dialog = page.getByRole('dialog').filter({ hasText: '测试发信' })
-  await expect(dialog.getByText('测试使用服务端已保存的渠道配置，不会使用尚未保存的表单内容。')).toBeVisible()
+  await expect(dialog.getByText('使用已保存的渠道配置发送测试消息。')).toBeVisible()
 
   // 空收件人本地拦截：不发请求，直接给出错误提示。
   await dialog.getByRole('button', { name: '发送测试', exact: true }).click()

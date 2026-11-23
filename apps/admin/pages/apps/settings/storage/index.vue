@@ -32,7 +32,7 @@
     </v-alert>
 
     <div>
-      <v-tabs v-model="tab" color="primary">
+      <v-tabs :model-value="tab" color="primary" @update:model-value="selectTab">
         <v-tab prepend-icon="mdi-cloud-outline" value="channels">渠道管理</v-tab>
         <v-tab prepend-icon="mdi-tune-variant" value="settings">基础设置</v-tab>
       </v-tabs>
@@ -46,7 +46,7 @@
           skeleton-type="heading, article@3"
           @retry="loadPage"
         >
-          <v-window v-model="tab">
+          <v-window :model-value="tab" @update:model-value="selectTab">
             <v-window-item value="channels">
               <AdminAsyncState
                 :empty="channelList.length === 0"
@@ -192,8 +192,7 @@
                         </section>
                       </v-col>
                     </v-row>
-                    <v-divider class="mb-4" />
-                    <div class="d-flex justify-end">
+                    <AdminConfigSaveBar :dirty="settingsChanged" label="存储设置">
                       <AdminActionGuard capability="config.update" scope="global">
                         <v-btn
                           color="primary"
@@ -206,7 +205,7 @@
                           保存存储设置
                         </v-btn>
                       </AdminActionGuard>
-                    </div>
+                    </AdminConfigSaveBar>
                   </v-form>
                 </v-card-text>
               </v-card>
@@ -216,12 +215,16 @@
       </div>
     </div>
   </AdminPageContainer>
+  <AdminUnsavedChangesDialog :model-value="unsavedChangesDialog" subject="存储设置" @stay="continueEditing" @discard="discardChanges" />
 </template>
 
 <script setup lang="ts">
 import type { JsonObject, StorageChannel } from '@lovecards/sdk'
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
+import AdminConfigSaveBar from '~/components/shared/admin/AdminConfigSaveBar.vue'
+import AdminUnsavedChangesDialog from '~/components/shared/admin/AdminUnsavedChangesDialog.vue'
+import { useAdminUnsavedChanges } from '~/composables/useAdminUnsavedChanges'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import { useApi } from '~/lib/api'
@@ -259,6 +262,13 @@ const settingsMessage = ref<Feedback | null>(null)
 const canUpdateConfig = computed(() => userStore.hasGrant('config.update', 'global'))
 const canInstallStorage = computed(() => userStore.hasGrant('storage.install', 'global'))
 const settingsChanged = computed(() => JSON.stringify(settings.value) !== JSON.stringify(originSettings.value))
+const { unsavedChangesDialog, continueEditing, discardChanges, confirmUnsavedChanges } = useAdminUnsavedChanges(settingsChanged)
+async function selectTab(value: unknown) {
+  if (typeof value !== 'string' || value === tab.value) return
+  if (!(await confirmUnsavedChanges())) return
+  if (settingsChanged.value) settings.value = CommonUtils.deepClone(originSettings.value)
+  tab.value = value
+}
 const channelOptions = computed(() => channelList.value.map(channel => ({ title: channel.name, value: channel.slug })))
 const channelLimit = (slug: string) => readNumber(channels.value[slug]?.max_file_size)
 const errorMessage = configSnapshot.errorMessage
@@ -292,7 +302,8 @@ const loadPage = async () => {
   }
 }
 const setDefault = async (slug: string) => {
-  if (!canUpdateConfig.value || changingDefault.value) return
+  if (!canUpdateConfig.value || changingDefault.value || !(await confirmUnsavedChanges())) return
+  if (settingsChanged.value) settings.value = CommonUtils.deepClone(originSettings.value)
   changingDefault.value = slug
   actionMessage.value = null
   try {
@@ -331,7 +342,8 @@ const saveSettings = async () => {
   }
 }
 const scanChannels = async () => {
-  if (!canInstallStorage.value || scanning.value) return
+  if (!canInstallStorage.value || scanning.value || !(await confirmUnsavedChanges())) return
+  if (settingsChanged.value) settings.value = CommonUtils.deepClone(originSettings.value)
   scanning.value = true
   scanMessage.value = null
   try {

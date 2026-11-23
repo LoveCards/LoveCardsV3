@@ -98,17 +98,17 @@ test('delivery detail keeps payload private and retries without a manual reason'
 
   await page.goto('./apps/operations/deliveries/77', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '处理任务 #77', exact: true, level: 1 })).toBeVisible()
-  await expect(page.getByRole('listbox', { name: '任务摘要' }).getByText('死信', { exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: '处理概况' }).getByText('死信', { exact: true })).toBeVisible()
   await expect(page.getByText('recipient projection unavailable')).toBeVisible()
   await expect(page.locator('body')).not.toContainText('this value must never be rendered')
 
   await page.getByRole('button', { name: '重试任务', exact: true }).click()
-  const confirm = page.getByTestId('danger-confirm')
+  const confirm = page.getByRole('button', { name: '加入待处理队列', exact: true })
   await expect(confirm).toBeEnabled()
   await confirm.click()
 
   await expect.poll(() => retried).toBe(true)
-  await expect(page.getByRole('listbox', { name: '任务摘要' }).getByText('待处理', { exact: true })).toBeVisible()
+  await expect(page.getByRole('region', { name: '处理概况' }).getByText('待处理', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: '重试任务', exact: true })).toHaveCount(0)
 })
 
@@ -145,7 +145,7 @@ test('audit query keeps filters in the URL and sends only supported API fields',
   })
   await page.goto('./apps/operations/audit', { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: '审计日志', exact: true })).toBeVisible({ timeout: 20_000 })
-  await page.getByRole('textbox', { name: /动作代码（前缀）/ }).fill('auth.recovery')
+  await page.getByRole('combobox', { name: /动作代码（前缀）/ }).fill('auth.recovery')
   await page.getByRole('combobox').filter({ hasText: '全部操作者' }).click()
   await page.getByRole('option', { name: '系统或匿名' }).click()
   await page.getByRole('textbox', { name: /开始时间（站点时间）/ }).fill('2026-11-08T09:00')
@@ -162,7 +162,7 @@ test('audit query keeps filters in the URL and sends only supported API fields',
   expect(params.has('search_value')).toBe(false)
   await expect(page).toHaveURL(/request_id=request-audit-88/)
   await page.reload()
-  await expect(page.getByRole('textbox', { name: /动作代码（前缀）/ })).toHaveValue('auth.recovery')
+  await expect(page.getByRole('combobox', { name: /动作代码（前缀）/ })).toHaveValue('auth.recovery')
   await page.getByRole('button', { name: '清除筛选' }).click()
   await expect.poll(() => requests.at(-1)?.searchParams.has('action')).toBe(false)
   await expect(page).not.toHaveURL(/request_id=/)
@@ -179,7 +179,7 @@ test('audit query keeps filters in the URL and sends only supported API fields',
   expect(requests.at(-1)?.searchParams.has('action')).toBe(false)
 })
 
-test('operations lists link each record to its canonical detail page', async ({ page }) => {
+test('delivery and audit lists open shared detail dialogs without navigation', async ({ page }) => {
   test.setTimeout(60_000)
   await page.route('**/api/admin/operations/deliveries/summary', async (route) => {
     await route.fulfill({
@@ -197,6 +197,15 @@ test('operations lists link each record to its canonical detail page', async ({ 
       }),
     })
   })
+  await page.route('**/api/admin/operations/deliveries/77', async route => {
+    await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ success: true, data: deliveryFixture() }) })
+  })
+  await page.route('**/api/admin/audit-logs/88', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: auditFixture }),
+    })
+  })
   await page.route('**/api/admin/audit-logs?**', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
@@ -209,16 +218,28 @@ test('operations lists link each record to its canonical detail page', async ({ 
   })
 
   await page.goto('./apps/operations/deliveries', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('link', { name: 'content.card_liked' })).toHaveAttribute(
-    'href',
-    '/admin/apps/operations/deliveries/77',
-    { timeout: 20_000 },
-  )
+  const deliveryUrl = page.url()
+  const deliveryRequest = page.waitForRequest(request => request.url().endsWith('/api/admin/operations/deliveries/77') && request.method() === 'GET')
+  await page.getByRole('button', { name: '查看', exact: true }).click()
+  await deliveryRequest
+  await expect(page.getByRole('dialog', { name: '查看处理任务' })).toContainText('任务 #77')
+  await expect(page).toHaveURL(deliveryUrl)
+  await page.getByRole('dialog', { name: '查看处理任务' }).getByRole('button', { name: '关闭' }).click()
 
   await page.goto('./apps/operations/audit', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('link', { name: '查看审计记录 #88' })).toHaveAttribute(
-    'href',
-    '/admin/apps/operations/audit/88',
-    { timeout: 20_000 },
-  )
+  const row = page.getByRole('row').filter({ hasText: 'cards.update' })
+  await expect(row).toBeVisible({ timeout: 20_000 })
+  const listUrl = page.url()
+  const detailRequest = page.waitForRequest(request => request.url().endsWith('/api/admin/audit-logs/88') && request.method() === 'GET')
+  await row.getByRole('button', { name: '查看', exact: true }).click()
+  await detailRequest
+  const dialog = page.getByRole('dialog', { name: '查看审计' })
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText('cards.update')
+  await expect(dialog).toContainText('request-audit-88')
+  await expect(dialog).not.toContainText('must-not-render')
+  await expect(page).toHaveURL(listUrl)
+  await page.keyboard.press('Escape')
+  await expect(dialog).toBeHidden()
+  await expect(page).toHaveURL(listUrl)
 })
