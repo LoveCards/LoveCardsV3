@@ -92,14 +92,16 @@ export function useHumanVerification() {
   };
 
   const refresh = async () => {
+    const challenge = pending.current;
     try {
       const next = await getSdkClient().captcha.challenge();
+      if (!challenge || pending.current !== challenge) return;
       if (next.driver !== 'gd_image' || !next.image_id || !next.image_base64) throw new Error();
       setImage(next);
       setCode('');
       setImageError('');
     } catch {
-      setImageError('图片加载失败，请重试。');
+      if (pending.current === challenge) setImageError('图片加载失败，请重试。');
     }
   };
 
@@ -117,23 +119,24 @@ export function useHumanVerification() {
     return new Promise((resolve, reject) => { pending.current = { resolve, reject }; });
   };
 
-  const dialog = <FormDialog
-    isOpen={Boolean(image)}
-    onOpenChange={(open) => { if (!open) close(); }}
-    title="完成人机验证"
-    subtitle="请输入图片中的字符，继续刚才的操作。"
-    footer={<><Button type="button" label="取消" variant="ghost" size="lg" onClick={close} /><Button type="button" label="继续" variant="primary" size="lg" isDisabled={!code.trim()} onClick={() => {
+  const step = image && {
+    title: '完成人机验证',
+    description: '请输入图片中的字符，继续刚才的操作。',
+    onCancel: close,
+    footer: <><Button type="button" label="取消" variant="ghost" size="lg" onClick={close} /><Button type="button" label="继续" variant="primary" size="lg" isDisabled={!code.trim()} onClick={() => {
       pending.current?.resolve({ captcha_id: image?.image_id, captcha_code: code.trim() });
       pending.current = null;
       setImage(null);
       setCode('');
-    }} /></>}
-  >
-    {image && <img src={image.image_base64} alt="验证码图片" width="120" height="40" />}
-    <Button type="button" label="换一张" variant="ghost" size="sm" clickAction={refresh} />
-    <TextInput label="图片中的字符" value={code} onChange={setCode} width="100%" autoComplete="off" />
-    {imageError && <p role="alert">{imageError}</p>}
-  </FormDialog>;
+    }} /></>,
+    body: <>
+      <img src={image.image_base64} alt="验证码图片" width="120" height="40" />
+      <Button type="button" label="换一张" variant="ghost" size="sm" clickAction={refresh} />
+      <TextInput label="图片中的字符" value={code} onChange={setCode} width="100%" autoComplete="off" />
+      {imageError && <p role="alert">{imageError}</p>}
+    </>,
+  };
+  const dialog = <FormDialog isOpen={Boolean(step)} onOpenChange={(open) => { if (!open) close(); }} title={step?.title} subtitle={step?.description} footer={step?.footer}>{step?.body}</FormDialog>;
 
-  return { verify, dialog };
+  return { verify, dialog, step };
 }

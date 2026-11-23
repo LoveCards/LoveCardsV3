@@ -1,5 +1,5 @@
 {
-  "routeCount": 209,
+  "routeCount": 212,
   "summary": {},
   "routes": [
     {
@@ -8415,8 +8415,8 @@
       ],
       "contract": {
         "request": {
-          "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
-          "scene": "Defult"
+          "validate": "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardsQuery",
+          "scene": "list"
         },
         "response": {
           "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardResource",
@@ -8438,9 +8438,9 @@
         "CardResource::paginate"
       ],
       "validators": [
-        "app\\shared\\Transport\\Validation\\PaginationInput"
+        "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardsQuery"
       ],
-      "validatorScene": "Defult",
+      "validatorScene": "list",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
@@ -8923,13 +8923,13 @@
       }
     },
     {
-      "path": "/cards/search",
+      "path": "/cards/search-public",
       "method": "GET",
-      "name": "cards.search",
+      "name": "cards.searchPublic",
       "controller": "Content.Cards",
-      "action": "search",
+      "action": "searchPublic",
       "meta": {
-        "name": "搜索卡片",
+        "name": "搜索公开内容",
         "group": "卡片",
         "access": {
           "auth": "public"
@@ -8940,8 +8940,8 @@
       ],
       "contract": {
         "request": {
-          "validate": "app\\shared\\Transport\\Validation\\PaginationInput",
-          "scene": "Defult"
+          "validate": "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardSearchQuery",
+          "scene": "search"
         },
         "response": {
           "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardResource",
@@ -8963,9 +8963,75 @@
         "CardResource::paginate"
       ],
       "validators": [
-        "app\\shared\\Transport\\Validation\\PaginationInput"
+        "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardSearchQuery"
       ],
-      "validatorScene": "Defult",
+      "validatorScene": "search",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "CardResource",
+        "operation": "paginate"
+      }
+    },
+    {
+      "path": "/cards/search",
+      "method": "GET",
+      "name": "cards.search",
+      "controller": "Content.Cards",
+      "action": "search",
+      "meta": {
+        "name": "搜索卡片",
+        "group": "卡片",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [
+        "OptionalJwtAuth"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardsQuery",
+          "scene": "list"
+        },
+        "response": {
+          "resource": "app\\modules\\Content\\Cards\\Transport\\Api\\CardResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Content/Cards.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CardResource::paginate"
+      ],
+      "validators": [
+        "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardsQuery"
+      ],
+      "validatorScene": "list",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
@@ -14000,6 +14066,70 @@
       }
     },
     {
+      "path": "/tags/search",
+      "method": "GET",
+      "name": "tags.search",
+      "controller": "Content.Tags",
+      "action": "search",
+      "meta": {
+        "name": "搜索公开话题",
+        "group": "标签",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Content\\Tags\\Transport\\Api\\PublicTagSearchQuery",
+          "scene": "search"
+        },
+        "response": {
+          "resource": "app\\modules\\Content\\Tags\\Transport\\Api\\PublicTagSearchResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Content/Tags.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "PublicTagSearchResource::paginate"
+      ],
+      "validators": [
+        "app\\modules\\Content\\Tags\\Transport\\Api\\PublicTagSearchQuery"
+      ],
+      "validatorScene": "search",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "PublicTagSearchResource",
+        "operation": "paginate"
+      }
+    },
+    {
       "path": "/theme/config",
       "method": "GET",
       "name": "theme.publicConfig",
@@ -14812,6 +14942,72 @@
         "status": 200,
         "shape": "paginated",
         "resource": "MentionCandidateResource",
+        "operation": "paginate"
+      }
+    },
+    {
+      "path": "/users/search",
+      "method": "GET",
+      "name": "users.searchPublic",
+      "controller": "User.Users",
+      "action": "searchPublic",
+      "meta": {
+        "name": "搜索用户",
+        "group": "用户",
+        "access": {
+          "auth": "public"
+        }
+      },
+      "middleware": [
+        "OptionalJwtAuth"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\User\\Transport\\Api\\PublicUsersSearch",
+          "scene": "search"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\User\\Transport\\Api\\PublicUserSearchResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/User/Users.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "PublicUserSearchResource::paginate"
+      ],
+      "validators": [
+        "app\\modules\\Platform\\User\\Transport\\Api\\PublicUsersSearch"
+      ],
+      "validatorScene": "search",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "paginated",
+        "resource": "PublicUserSearchResource",
         "operation": "paginate"
       }
     }

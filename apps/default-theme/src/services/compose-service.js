@@ -79,6 +79,21 @@ export function normalizeDraftMedia(value) {
   return Array.isArray(value) ? value.map(normalizeMediaReference).filter(Boolean) : [];
 }
 
+export function composeMediaKey(item, source) {
+  return source === 'persisted'
+    ? `media:${item.id}`
+    : `file:${[item.name, item.size, item.lastModified, item.type].join('::')}`;
+}
+
+export function orderComposeMedia(media = [], files = [], order = []) {
+  const entries = [
+    ...media.map((item, index) => ({ item, index, source: 'persisted', key: composeMediaKey(item, 'persisted') })),
+    ...files.map((item, index) => ({ item, index, source: 'local', key: composeMediaKey(item, 'local') })),
+  ];
+  const positions = new Map(order.map((key, index) => [key, index]));
+  return entries.sort((a, b) => (positions.get(a.key) ?? Infinity) - (positions.get(b.key) ?? Infinity));
+}
+
 export async function uploadComposeMedia(files = []) {
   const client = getSdkClient();
   if (!client?.getToken()) throw new Error('请先登录后再保存媒体。');
@@ -197,7 +212,7 @@ export async function loadPublishedCardForEdit(id) {
   };
 }
 
-export async function updatePublishedCard({ id, content, tags = [], kind, files = [], media = [], data = {}, galleryLayout, mediaChanged = false, visibility, verification = {} }) {
+export async function updatePublishedCard({ id, content, tags = [], kind, files = [], media = [], mediaOrder = [], data = {}, galleryLayout, mediaChanged = false, visibility, verification = {} }) {
   const state = getComposeState();
   if (!state.canPublish) throw new Error(state.message);
   const client = getSdkClient();
@@ -216,9 +231,9 @@ export async function updatePublishedCard({ id, content, tags = [], kind, files 
   let uploads = [];
   try {
     uploads = await uploadComposeMedia(files);
-    const allMedia = [...existingMedia, ...uploads];
+    const allMedia = orderComposeMedia(existingMedia, files, mediaOrder).map((entry) => entry.source === 'persisted' ? entry.item : uploads[entry.index]);
     const nextData = { ...readCardData(data), kind: publishKind };
-    if (publishKind !== 'gallery') delete nextData.galleryLayout;
+    if (publishKind !== 'gallery' && publishKind !== 'image') delete nextData.galleryLayout;
     else if (galleryLayout !== undefined) nextData.galleryLayout = normalizeGalleryLayout(galleryLayout);
     else if (nextData.galleryLayout !== undefined) nextData.galleryLayout = normalizeGalleryLayout(nextData.galleryLayout);
     const mediaPayload = mediaChanged ? {
@@ -240,7 +255,7 @@ export async function updatePublishedCard({ id, content, tags = [], kind, files 
   }
 }
 
-export async function publishCard({ content, tags = [], kind, files = [], file = null, media = [], galleryLayout, visibility = 'public', verification = {} }) {
+export async function publishCard({ content, tags = [], kind, files = [], file = null, media = [], mediaOrder = [], galleryLayout, visibility = 'public', verification = {} }) {
   const state = getComposeState();
   if (!state.canPublish) throw new Error(state.message);
   const client = getSdkClient();
@@ -261,7 +276,7 @@ export async function publishCard({ content, tags = [], kind, files = [], file =
       formData.append('scene', 'card');
       uploads.push(await client.files.upload(formData));
     }
-    const allMedia = [...existingMedia, ...uploads];
+    const allMedia = orderComposeMedia(existingMedia, selectedFiles, mediaOrder).map((entry) => entry.source === 'persisted' ? entry.item : uploads[entry.index]);
     const mediaPayload = allMedia.length ? {
       media_file_ids: allMedia.map((upload) => upload.id),
       ...(publishKind !== 'video' ? { cover_file_id: allMedia[0].id } : {}),
@@ -270,7 +285,7 @@ export async function publishCard({ content, tags = [], kind, files = [], file =
       content: normalizedContent,
       tags,
       ...cardVisibilityPayload,
-      data: { kind: publishKind, ...(publishKind === 'gallery' && galleryLayout !== undefined ? { galleryLayout: normalizeGalleryLayout(galleryLayout) } : {}) },
+      data: { kind: publishKind, ...(['image', 'gallery'].includes(publishKind) && galleryLayout !== undefined ? { galleryLayout: normalizeGalleryLayout(galleryLayout) } : {}) },
       ...mediaPayload,
       ...verification,
     });

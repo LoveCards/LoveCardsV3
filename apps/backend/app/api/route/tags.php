@@ -4,6 +4,8 @@ use think\facade\Route;
 use app\api\middleware\JwtAuthCheck;
 use app\api\middleware\PermissionCheck;
 use app\modules\Content\Tags\Transport\Api\Tags as TagsValidate;
+use app\modules\Content\Tags\Transport\Api\PublicTagSearchQuery;
+use app\modules\Content\Tags\Transport\Api\PublicTagSearchResource;
 use app\modules\Content\Tags\Transport\Api\TagResource;
 use app\modules\Content\Tags\Transport\Api\TagsPolicyResource;
 use app\shared\Authorization\Scope;
@@ -18,6 +20,9 @@ $grant = static fn (string $capability, string $scope): array => compact('capabi
 Route::get('tags/policy', 'Content.Tags/policy')->name('tags.policy')
     ->setOption('contract', ['request' => null, 'response' => ['resource' => TagsPolicyResource::class, 'shape' => 'item', 'status' => 200]])
     ->setOption('meta', ['name' => '标签创建规则', 'group' => '标签', 'access' => ['auth' => 'public']]);
+Route::get('tags/search', 'Content.Tags/search')->name('tags.search')
+    ->setOption('contract', ['request' => ['validate' => PublicTagSearchQuery::class, 'scene' => 'search'], 'response' => ['resource' => PublicTagSearchResource::class, 'shape' => 'paginated', 'status' => 200]])
+    ->setOption('meta', ['name' => '搜索公开话题', 'group' => '标签', 'access' => ['auth' => 'public']]);
 Route::get('tags/:id', 'Content.Tags/get')->name('tags.get')
     ->setOption('contract', ['request' => null, 'response' => ['resource' => TagResource::class, 'shape' => 'item', 'status' => 200]])
     ->setOption('meta', ['name' => '标签详情', 'group' => '标签', 'access' => ['auth' => 'public']]);

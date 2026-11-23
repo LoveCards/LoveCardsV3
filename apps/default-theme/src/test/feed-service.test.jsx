@@ -231,6 +231,7 @@ describe('home feed data boundary', () => {
     const base = { id: 121, user_id: 4, content: '两张图', pictures: ['one.jpg', 'two.jpg'], goods: 0, comments: 0 };
     expect(normalizeSdkCard({ ...base, data: { kind: 'gallery', galleryLayout: 'pager' } }).galleryLayout).toBe('pager');
     expect(normalizeSdkCard({ ...base, data: { kind: 'gallery', galleryLayout: 'unknown' } }).galleryLayout).toBe('grid');
+    expect(normalizeSdkCard({ ...base, data: { kind: 'image', galleryLayout: 'unknown' }, pictures: ['one.jpg'] }).galleryLayout).toBe('pager');
   });
 
   it('prefers the typed card media contract when the backend provides it', () => {

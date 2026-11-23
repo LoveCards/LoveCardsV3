@@ -69,6 +69,7 @@ class ModelQuery
      * @param int $params['search_like'] 搜索模式 0前缀匹配|1后缀匹配|2模糊匹配
      * @param string $params['order_key'] 排序字段
      * @param bool $params['order_desc'] 排序方式，true为降序，false为升序
+     * @param bool $params['stable_order'] 同分时追加 id 降序，供分页流显式启用
      * @param int $params['page'] 页码
      * @param int $params['list_rows'] 每页记录数
      * @return object 返回当前对象，支持链式调用
@@ -86,6 +87,7 @@ class ModelQuery
 
         $order_key = isset($params['order_key']) ? $params['order_key'] : '';
         $order_desc = isset($params['order_desc']) ? $params['order_desc'] : true;
+        $stable_order = (bool) ($params['stable_order'] ?? false);
 
         $page = isset($params['page']) ? $params['page'] : 1;
         $list_rows = isset($params['list_rows']) ? $params['list_rows'] : 15;
@@ -93,7 +95,7 @@ class ModelQuery
         return $this->where($where)
             ->search($search_default_key, $search_keys, $search_value, $search_like)
             ->withoutField($without_field)
-            ->order($order_key, $order_desc)
+            ->order($order_key, $order_desc, $stable_order)
             ->paginate($page, $list_rows);
     }
 
@@ -281,7 +283,7 @@ class ModelQuery
      * @param bool $order_desc 排序方式，true为降序，false为升序
      * @return $this 返回当前对象，支持链式调用
      */
-    private function order(string $order_key = '', $order_desc = true): self
+    private function order(string $order_key = '', $order_desc = true, bool $stable_order = false): self
     {
         // 默认排序规则
         $rule = filter_var($order_desc, FILTER_VALIDATE_BOOLEAN) ? 'desc' : 'asc';
@@ -290,6 +292,9 @@ class ModelQuery
         if ($order_key !== '') {
             // 如果提供了 order_desc，则根据 order_desc 确定排序规则
             $this->query = $this->query->order($order_key, $rule);
+            if ($stable_order && $order_key !== 'id') {
+                $this->query = $this->query->order('id', 'desc');
+            }
         } else {
             // 如果没有提供 order_key，但提供了 order_desc，则使用默认字段 'id' 进行排序
             $this->query = $this->query->order('id', $rule);

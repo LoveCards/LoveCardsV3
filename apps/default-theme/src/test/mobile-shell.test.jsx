@@ -19,6 +19,12 @@ describe('mobile shell contract', () => {
   it.each([
     ['/settings', 'task'],
     ['/settings/privacy', 'task'],
+    ['/search', 'task'],
+    ['/search?q=journey', 'task'],
+    ['/search/topics?q=journey', 'task'],
+    ['/topic/旅途', 'task'],
+    ['/post/1', 'task'],
+    ['/post/1/thread/2', 'task'],
     ['/drafts', 'task'],
     ['/me/following', 'task'],
     ['/user/demo/followers', 'task'],
@@ -39,8 +45,15 @@ describe('mobile shell contract', () => {
 
     expect(shell).toContain("mobileMode = 'standard'");
     expect(shell).not.toContain('showMobileBottomNav');
-    expect(css).toContain('.app-shell.is-mobile-task > .product-header');
-    expect(css).toContain('.app-shell.is-mobile-immersive > .product-header');
-    expect(css).toContain('.app-shell.is-mobile-gateway > .product-header');
+    expect(css).toContain('.app-shell.is-mobile-task .app-workspace > .product-header');
+    expect(css).toContain('.app-shell.is-mobile-immersive .app-workspace > .product-header');
+    expect(css).toContain('.app-shell.is-mobile-gateway .app-workspace > .product-header');
+  });
+
+  it('places the mobile account entry in the bottom navigation', () => {
+    vi.stubEnv('VITE_DATA_MODE', 'api');
+    const html = renderRoute('/explore');
+    expect(html).not.toContain('mobile-login-trigger');
+    expect(html).toMatch(/class="mobile-bottom-nav"[^>]*>[\s\S]*href="\/me"[^>]*>[\s\S]*我的/);
   });
 });

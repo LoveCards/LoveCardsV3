@@ -1,20 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
-import { ContentChannels } from '../../components/ContentChannels.jsx';
 import { ResourceState } from '../../components/ResourceState.jsx';
 import { FeedCollection } from '../../features/feed/FeedCollection.jsx';
+import { FeedLayoutControl } from '../../features/feed/FeedLayout.jsx';
 import { useResource } from '../../app/use-resource.js';
 import { previewCreators, previewTrends } from '../../fixtures/feed-preview.js';
 import { getHomeFeedSnapshot, HOME_CHANNELS, loadHomeFeed } from '../../services/feed-service.js';
 import { ScopedBanner } from '../../ui/index.js';
 import { getCommunicationRuntime, SIGNAL_FEED } from '../../services/communication-runtime.js';
-
-function selectedChannel(params) {
-  if (params.get('feed') === 'following') return 'following';
-  const value = params.get('channel');
-  return HOME_CHANNELS.some((channel) => channel.id === value) ? value : 'recommended';
-}
 
 function UnavailableFeed({ data }) {
   return (
@@ -61,9 +55,7 @@ function CommunityRail() {
   );
 }
 
-export function HomePage() {
-  const [params] = useSearchParams();
-  const channel = selectedChannel(params);
+export function HomePage({ channel = 'recommended' }) {
   const channelLabel = HOME_CHANNELS.find((item) => item.id === channel)?.label || '推荐';
   const loader = useCallback((signal) => loadHomeFeed({ channel, signal }), [channel]);
   const initialData = useMemo(() => getHomeFeedSnapshot(channel), [channel]);
@@ -92,16 +84,12 @@ export function HomePage() {
 
   return (
     <AppShell>
-      <main className="home-page" aria-labelledby="home-title">
-        {channel !== 'following' && <ContentChannels active={channel} />}
+      <main className={channel === 'following' ? 'home-page activity-page' : 'home-page'} aria-labelledby="home-title">
+        <h1 id="home-title" className="sr-only">{channelLabel}</h1>
+        {channel !== 'following' && <header className="feed-toolbar">
+          <FeedLayoutControl />
+        </header>}
         {isPreview && <p className="home-preview-disclosure" role="status">设计预览 · 演示数据 · 操作不会保存</p>}
-        <header className={`home-heading${channel === 'following' ? ' is-following' : ''}`}>
-          <div>
-            <h1 id="home-title">{channelLabel}</h1>
-            <p>{channel === 'following' ? '只显示你关注的人公开发布的内容。' : data.strategy === 'hot' ? '当前按社区热度展示内容。' : data.strategy === 'latest-fallback' ? '推荐暂时不可用，当前显示最新发布的内容。' : '发现值得停留的内容，也遇见值得关注的人。'}</p>
-          </div>
-          {channel !== 'following' && isPreview && <span className="preview-label">设计预览 · 演示数据 · 操作不会保存</span>}
-        </header>
         {data.strategy === 'latest-fallback' && <ScopedBanner
           className="home-feed-degraded"
           status="warning"

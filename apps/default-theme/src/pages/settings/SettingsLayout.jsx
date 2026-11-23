@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Icon } from '../../ui/index.js';
+import { TaskPageHeader } from '../../components/TaskPageHeader.jsx';
 
 // Only real destinations belong here. New settings categories should be added
 // to this registry after their route and data contract are available.
@@ -41,11 +41,7 @@ export function SettingsLayout({
   const mobileTitle = overview ? '设置' : currentItem?.label || title;
   return <main className={`settings-page${overview ? ' is-overview' : ''}`} aria-labelledby="settings-title">
     <Link className="detail-back" to={backTo}>← {backLabel}</Link>
-    <header className="settings-task-header">
-      <Link to={backTo} aria-label={backLabel}><Icon name="arrow" size={19} /></Link>
-      <strong>{mobileTitle}</strong>
-      <span aria-hidden="true" />
-    </header>
+    <TaskPageHeader title={mobileTitle} back={{ to: backTo, label: backLabel }} />
     <header className="settings-page-header">
       <div><h1 id="settings-title">{title}</h1>{description && <p>{description}</p>}</div>
     </header>

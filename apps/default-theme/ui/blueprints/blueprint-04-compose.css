@@ -211,12 +211,9 @@
 @media (max-width:980px){
   body{padding:18px}
   .blueprint-page{width:100%}
-  #blueprint-compose .frames,
-  #blueprint-drafts .frames{min-width:0;grid-template-columns:minmax(0,1fr)}
-  #blueprint-compose .desktop,
-  #blueprint-drafts .desktop{max-width:100%;overflow-x:auto}
-  #blueprint-compose .phone,
-  #blueprint-drafts .phone{width:min(380px,100%);justify-self:center}
+  #blueprint-compose .frames{min-width:0;grid-template-columns:minmax(0,1fr)}
+  #blueprint-compose .desktop{max-width:100%;overflow-x:auto}
+  #blueprint-compose .phone{width:min(380px,100%);justify-self:center}
 }
 
 @media (max-width:620px){
@@ -257,7 +254,24 @@
   font-weight:680;
 }
 #blueprint-compose .compose-page-head .compose-back{justify-self:start}
-#blueprint-compose .compose-page-head .compose-drafts{justify-self:end;color:var(--compose-rose-deep)}
+#blueprint-compose .compose-drafts-nav{
+  min-height:44px;
+  padding:0 8px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  justify-self:end;
+  gap:6px;
+  border-radius:var(--lc-radius-control);
+  color:var(--compose-rose-deep);
+  font-size:9px;
+  font-weight:680;
+  text-decoration:none;
+  white-space:nowrap;
+}
+#blueprint-compose .compose-drafts-nav:hover{background:var(--compose-rose-soft)}
+#blueprint-compose .compose-drafts-nav:focus-visible{outline:2px solid var(--compose-rose-deep);outline-offset:2px}
+#blueprint-compose .mobile-compose-head .compose-drafts-nav{width:60px}
 
 #blueprint-compose .composer{
   width:min(760px,100%);
@@ -428,7 +442,7 @@
 #blueprint-compose .composer-actions{
   min-height:68px;
   display:grid;
-  grid-template-columns:auto 1fr auto auto;
+  grid-template-columns:minmax(0,1fr) auto auto;
   align-items:center;
   gap:7px;
   border-top:1px solid var(--compose-line);
@@ -465,7 +479,7 @@
 #blueprint-compose .compose-save-status.is-dirty i{background:var(--compose-rose)}
 
 #blueprint-compose .compose-phone-shell{min-height:780px;background:var(--compose-canvas)}
-#blueprint-compose .mobile-compose{min-height:780px;padding:0 0 78px;background:var(--compose-canvas)}
+#blueprint-compose .mobile-compose{min-height:780px;padding:0 0 100px;background:var(--compose-canvas)}
 #blueprint-compose .mobile-compose-head{
   height:54px;
   margin:0;
@@ -478,7 +492,6 @@
 }
 #blueprint-compose .mobile-compose-head strong{text-align:center;font-size:11px}
 #blueprint-compose .mobile-compose-head button{min-height:44px;padding:0;border:0;color:var(--compose-muted);background:transparent;font-size:9px}
-#blueprint-compose .mobile-compose-head button:last-child{color:var(--compose-rose-deep);text-align:right;font-weight:680}
 #blueprint-compose .mobile-composer{padding:0 14px;background:var(--compose-surface)}
 #blueprint-compose .mobile-composer .compose-section{padding:15px 0}
 #blueprint-compose .mobile-composer>.compose-section:first-of-type{border-top:0}
@@ -490,15 +503,16 @@
   right:0;
   bottom:0;
   left:0;
-  min-height:78px;
+  min-height:88px;
   padding:7px 12px;
   display:grid;
   grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);
+  grid-template-rows:18px 48px;
   gap:8px;
   border-top:1px solid var(--compose-line);
   background:var(--compose-surface);
 }
-#blueprint-compose .mobile-compose-actions .compose-save-status{grid-column:1/-1;min-height:14px}
+#blueprint-compose .mobile-compose-actions .compose-save-status{grid-column:1 / -1;min-height:18px}
 #blueprint-compose .mobile-compose-actions button{min-height:44px}
 #blueprint-compose .compose-state-contract{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}
 #blueprint-compose .compose-state-contract>article{min-width:0;padding:14px;border:1px solid var(--compose-line);border-radius:var(--lc-radius-panel);background:var(--compose-surface)}
@@ -524,182 +538,7 @@
   #blueprint-compose .compose-details-field{grid-template-columns:1fr}
 }
 
-/* Blueprint 04B: focused unpublished-content recovery flow. */
-#blueprint-drafts .frames{
-  grid-template-columns:minmax(0,1fr) 380px;
-  gap:18px;
-}
-
-#blueprint-drafts .frame{
-  width:auto;
-  border:1px solid var(--compose-line);
-  border-radius:14px;
-  background:var(--compose-canvas);
-  box-shadow:none;
-}
-
-#blueprint-drafts .shell{
-  --canvas:var(--compose-canvas);
-  --surface:var(--compose-surface);
-  --subtle:var(--compose-subtle);
-  --ink:var(--compose-ink);
-  --body:var(--compose-body);
-  --muted:var(--compose-muted);
-  --line:var(--compose-line);
-  --rose:var(--compose-rose);
-  color:var(--compose-ink);
-  background:var(--compose-canvas);
-}
-
-#blueprint-drafts .topbar{height:58px;padding:0 24px}
-#blueprint-drafts .search{width:min(360px,42%);background:#eef0f4}
-#blueprint-drafts .drafts-main{width:min(760px,calc(100% - 56px));margin:0 auto;padding:24px 0 34px}
-#blueprint-drafts .drafts-page-head{
-  min-height:70px;
-  display:grid;
-  grid-template-columns:108px minmax(0,1fr) 108px;
-  align-items:center;
-  gap:12px;
-}
-#blueprint-drafts .drafts-page-head>div{text-align:center}
-#blueprint-drafts .drafts-page-head h2{margin:0;font-size:18px;letter-spacing:-.02em}
-#blueprint-drafts .drafts-page-head p{margin:4px 0 0;color:var(--compose-muted);font-size:9px}
-#blueprint-drafts .drafts-page-head button{
-  min-height:40px;
-  padding:0 10px;
-  border:0;
-  border-radius:var(--lc-radius-control);
-  color:var(--compose-muted);
-  background:transparent;
-  font-size:9px;
-  font-weight:680;
-}
-#blueprint-drafts .drafts-page-head button:first-child{justify-self:start;text-align:left}
-#blueprint-drafts .drafts-page-head button:last-child{justify-self:end;color:var(--compose-rose-deep);text-align:right}
-
-#blueprint-drafts .drafts-list{
-  overflow:hidden;
-  border:1px solid var(--compose-line);
-  border-radius:var(--lc-radius-panel);
-  background:var(--compose-surface);
-}
-
-#blueprint-drafts .drafts-list>header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  min-height:48px;
-  padding:0 16px;
-}
-
-#blueprint-drafts .drafts-list h3{margin:0;font-size:12px}
-#blueprint-drafts .drafts-list>header small{color:var(--compose-muted);font-size:8px}
-
-#blueprint-drafts .draft-item{
-  display:grid;
-  grid-template-columns:minmax(0,1fr) 48px;
-  align-items:center;
-  min-height:116px;
-  border-top:1px solid var(--compose-line);
-}
-#blueprint-drafts .draft-item>a{
-  min-width:0;
-  min-height:115px;
-  padding:14px 4px 14px 16px;
-  display:grid;
-  grid-template-columns:76px minmax(0,1fr) auto;
-  align-items:center;
-  gap:14px;
-  color:var(--compose-ink);
-  text-decoration:none;
-}
-#blueprint-drafts .draft-item>a>div:nth-child(2){min-width:0}
-#blueprint-drafts .draft-item>a>span{min-height:40px;padding:0 8px;display:inline-flex;align-items:center;color:var(--compose-rose-deep);font-size:8px;font-weight:680;white-space:nowrap}
-
-#blueprint-drafts .draft-thumb{
-  display:grid;
-  place-items:center;
-  width:76px;
-  height:70px;
-  overflow:hidden;
-  border-radius:10px;
-  color:var(--compose-rose);
-  background:var(--compose-subtle);
-  font-size:18px;
-  font-weight:750;
-}
-
-#blueprint-drafts .draft-thumb.coast{
-  background:#dbeaf0 url("../assets/feed/seaside-morning-v1.webp") center 64%/cover no-repeat;
-}
-
-#blueprint-drafts .draft-item h4{margin:0 0 6px;font-size:11px}
-#blueprint-drafts .draft-item p{overflow:hidden;margin:0 0 8px;color:var(--compose-body);font-size:9px;text-overflow:ellipsis;white-space:nowrap}
-#blueprint-drafts .draft-item small{color:var(--compose-muted);font-size:8px}
-#blueprint-drafts .draft-item .draft-error{color:var(--lc-danger)}
-#blueprint-drafts .draft-item>button{
-  width:44px;
-  height:44px;
-  padding:0;
-  border:0;
-  border-radius:var(--lc-radius-control);
-  color:var(--compose-muted);
-  background:transparent;
-  font-size:13px;
-}
-
-#blueprint-drafts .phone{width:auto}
-#blueprint-drafts .mobile-drafts-list{min-height:758px;background:var(--compose-canvas)}
-#blueprint-drafts .mobile-drafts-head{
-  display:grid;
-  grid-template-columns:76px 1fr 76px;
-  align-items:center;
-  height:54px;
-  padding:0 12px;
-  border-bottom:1px solid var(--compose-line);
-  background:var(--compose-surface);
-  text-align:center;
-}
-
-#blueprint-drafts .mobile-drafts-head button{
-  min-height:44px;
-  padding:0;
-  border:0;
-  color:var(--compose-ink);
-  background:transparent;
-  font-size:10px;
-  text-align:left;
-}
-#blueprint-drafts .mobile-drafts-head button:last-child{color:var(--compose-rose-deep);text-align:right;font-weight:680}
-#blueprint-drafts .mobile-drafts-note{margin:0;padding:14px 16px;color:var(--compose-muted);font-size:9px;line-height:1.55;border-bottom:1px solid var(--compose-line)}
-#blueprint-drafts .mobile-drafts-surface{background:var(--compose-surface)}
-#blueprint-drafts .mobile-draft-row{display:grid;grid-template-columns:minmax(0,1fr) 44px;align-items:center;min-height:92px;border-bottom:1px solid var(--compose-line);background:var(--compose-surface)}
-#blueprint-drafts .mobile-draft-row>a{min-width:0;min-height:91px;padding:10px 2px 10px 14px;display:grid;grid-template-columns:52px minmax(0,1fr);align-items:center;gap:10px;color:var(--compose-ink);text-decoration:none}
-#blueprint-drafts .mobile-draft-row .draft-thumb{width:52px;height:48px}
-#blueprint-drafts .mobile-draft-row>a>div:nth-child(2){min-width:0;display:grid;gap:4px}
-#blueprint-drafts .mobile-draft-row strong{overflow:hidden;font-size:10px;text-overflow:ellipsis;white-space:nowrap}
-#blueprint-drafts .mobile-draft-row span{overflow:hidden;color:var(--compose-body);font-size:8px;text-overflow:ellipsis;white-space:nowrap}
-#blueprint-drafts .mobile-draft-row small{color:var(--compose-muted);font-size:8px}
-#blueprint-drafts .mobile-draft-row>button{width:44px;height:44px;padding:0;border:0;border-radius:var(--lc-radius-control);color:var(--compose-muted);background:transparent;font-size:13px}
-
-#blueprint-drafts .drafts-state-contract{
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:12px;
-  margin-top:18px;
-}
-#blueprint-drafts .drafts-state-contract>article{
-  min-width:0;
-  padding:14px;
-  border:1px solid var(--compose-line);
-  border-radius:var(--lc-radius-panel);
-  background:var(--compose-surface);
-}
-#blueprint-drafts .drafts-state-contract b{font-size:11px}
-#blueprint-drafts .drafts-state-contract p{margin:5px 0 0;color:var(--compose-muted);font-size:8px;line-height:1.55}
-
-@media (max-width:980px){
-  #blueprint-compose .phone,
-  #blueprint-drafts .phone{width:min(380px,calc(100vw - 84px));max-width:calc(100vw - 84px);justify-self:center}
-  #blueprint-drafts .drafts-state-contract{grid-template-columns:1fr}
-}
+/* Blueprint 04B 直接嵌入交互原型，避免维护两份草稿箱画面。 */
+#blueprint-drafts .drafts-prototype-frame { width: 100%; height: 1080px; display: block; border: 0; border-radius: 12px; background: #20232a; }
+#blueprint-drafts .board-tag { text-decoration: none; }
+@media (max-width: 680px) { #blueprint-drafts .drafts-prototype-frame { height: 940px; } }

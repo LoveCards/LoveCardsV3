@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { reportResource } from '../../services/community-service.js';
 import { getUserFacingError } from '../../app/user-facing-error.js';
-import { Button, FormDialog, Selector, TextArea } from '../../ui/index.js';
+import { Button, FormDialog, ScopedBanner, Selector, TextArea } from '../../ui/index.js';
 
 const REPORT_OPTIONS = [
   { value: 'spam', label: '垃圾信息' },
@@ -15,17 +15,20 @@ export function ReportResourceDialog({ isOpen, onOpenChange, resourceType, resou
   const [reason, setReason] = useState('spam');
   const [details, setDetails] = useState('');
   const [busy, setBusy] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const close = () => {
     if (busy) return;
     setReason('spam');
     setDetails('');
+    setErrorMessage('');
     onOpenChange(false);
   };
 
   const submit = async () => {
     if (busy || !resourceId) return;
     setBusy(true);
+    setErrorMessage('');
     try {
       await reportResource({
         resource_type: resourceType,
@@ -38,7 +41,7 @@ export function ReportResourceDialog({ isOpen, onOpenChange, resourceType, resou
       onOpenChange(false);
       onFeedback?.('举报已提交，我们会按流程处理', 'info');
     } catch (error) {
-      onFeedback?.(getUserFacingError(error, { fallback: '举报暂时没有提交，请稍后重试。', validationFallback: '举报内容不符合要求，请检查原因和补充说明。' }), 'error');
+      setErrorMessage(getUserFacingError(error, { fallback: '举报暂时没有提交，请稍后重试。', validationFallback: '请检查举报原因和补充说明，再次提交。' }));
     } finally {
       setBusy(false);
     }
@@ -53,6 +56,7 @@ export function ReportResourceDialog({ isOpen, onOpenChange, resourceType, resou
       isBusy={busy}
       footer={<><Button type="button" label="取消" variant="ghost" size="lg" isDisabled={busy} onClick={close} /><Button type="button" label="提交举报" variant="primary" size="lg" isLoading={busy} isDisabled={busy} clickAction={submit} /></>}
     >
+      {errorMessage && <ScopedBanner title="举报未提交" description={errorMessage} />}
       <Selector label="举报原因" options={REPORT_OPTIONS} value={reason} onChange={setReason} width="100%" />
       <TextArea label="补充说明" value={details} onChange={setDetails} maxLength={2000} rows={5} placeholder="可选，说明具体情况" width="100%" />
     </FormDialog>

@@ -54,6 +54,13 @@ class Cards extends BaseController
         return $this->respond($result);
     }
 
+    public function searchPublic()
+    {
+        $auth = request()->auth ?? null;
+        return $this->respond(CardsService::searchPublic($this->validated(), $auth ? (int) $auth->uid() : 0))
+            ->header(['Cache-Control' => 'private, no-store']);
+    }
+
     public function listPublicByUser(string $handle)
     {
         $params = $this->validated();

@@ -1,11 +1,29 @@
 import { getSdkClient, sdkConfigured } from '../app/sdk-client.js';
 import { getRuntimeDataMode } from '../app/runtime-context.js';
-import { previewCreators, previewFeed, previewTrends } from '../fixtures/feed-preview.js';
+import { previewFeed } from '../fixtures/feed-preview.js';
 import { normalizeSdkCard } from './feed-service.js';
 
-let discoveryBootstrapCache = [];
+const PAGE_SIZE = 30;
+const SORT_KEYS = Object.freeze({ latest: 'created_at', liked: 'goods', discussed: 'comments' });
+
+export function normalizeDiscoverySort(value) {
+  return Object.hasOwn(SORT_KEYS, value) ? value : 'latest';
+}
+
+function paginationOf(result, page) {
+  const pagination = result?.pagination;
+  const currentPage = Number(pagination?.currentPage ?? page);
+  const totalPages = Number(pagination?.totalPages);
+  const totalItems = Number(pagination?.totalItems);
+  return {
+    currentPage,
+    totalPages: Number.isFinite(totalPages) ? totalPages : currentPage,
+    totalItems: Number.isFinite(totalItems) ? totalItems : null,
+  };
+}
 
 export function getDiscoveryMode() { return getRuntimeDataMode(); }
+
 export function topicHref(topic) {
   const id = Number(topic?.id ?? topic?.tagId);
   const name = String(topic?.name || topic?.label || '').replace(/^#\s*/, '').trim();
@@ -22,55 +40,65 @@ function topicRouteParts(value) {
 function findTopic(tags, routeValue) {
   const parts = topicRouteParts(routeValue);
   const normalized = parts.name.replace(/^#\s*/, '').trim().toLowerCase();
-  return (Array.isArray(tags) ? tags : []).find((tag) => (
+  return tags.find((tag) => (
     (parts.id && Number(tag.id) === parts.id) || String(tag.name || '').trim().toLowerCase() === normalized
   )) || null;
 }
 
-function previewSearch(query) {
+function normalizeTopics(tags) {
+  if (!Array.isArray(tags)) throw new Error('SDK 契约错误：tags.list() 应返回公开话题数组。');
+  return tags.filter((tag) => String(tag?.name || '').trim()).map((tag) => ({
+    id: Number(tag.id) || null,
+    name: String(tag.name).trim(),
+    label: `# ${String(tag.name).trim()}`,
+  }));
+}
+
+function normalizeCards(result, page) {
+  if (!result || !Array.isArray(result.data)) throw new Error('SDK 契约错误：cards.search() 应返回 ListResult。');
+  return { items: result.data.map(normalizeSdkCard), pagination: paginationOf(result, page) };
+}
+
+function previewSearch(query, sort = 'latest') {
   const needle = query.trim().toLowerCase();
   const items = needle ? previewFeed.filter((item) => [item.title, item.body, item.author, item.topic].some((value) => String(value || '').toLowerCase().includes(needle))) : previewFeed;
-  return { source: 'preview', items, trends: previewTrends, creators: previewCreators };
+  const ordered = sort === 'latest' ? items : [...items].sort((left, right) => Number(right[sort === 'liked' ? 'likes' : 'replies'] || 0) - Number(left[sort === 'liked' ? 'likes' : 'replies'] || 0));
+  return { source: 'preview', items: ordered, pagination: { currentPage: 1, totalPages: 1, totalItems: ordered.length } };
 }
-export function getDiscoverySnapshot(query = '') {
+
+export function getDiscoverySnapshot(query = '', sort = 'latest') {
   const mode = getDiscoveryMode();
-  if (mode === 'design-preview') return previewSearch(query);
-  if (mode !== 'api') return { source: 'configuration-error', items: [], trends: [], creators: [], message: '数据模式配置无效', detail: 'VITE_DATA_MODE 只能是 api 或 design-preview。' };
-  if (!sdkConfigured()) return { source: 'configuration-error', items: [], trends: [], creators: [], message: '尚未配置 API', detail: '请配置 VITE_API_URL，或显式启用 design-preview。' };
-  return { source: 'loading', items: [], trends: [], creators: [] };
+  if (mode === 'design-preview') return previewSearch(query, normalizeDiscoverySort(sort));
+  if (mode !== 'api') return { source: 'configuration-error', items: [], message: '数据模式配置无效', detail: 'VITE_DATA_MODE 只能是 api 或 design-preview。' };
+  if (!sdkConfigured()) return { source: 'configuration-error', items: [], message: '尚未配置 API', detail: '请配置 VITE_API_URL，或显式启用 design-preview。' };
+  return { source: 'loading', items: [], pagination: null };
 }
-export async function loadDiscovery({ query = '', signal, topic = false } = {}) {
-  if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
-  const snapshot = getDiscoverySnapshot(query);
+
+async function readWhileActive(request, signal) {
+  // SDK 请求结束时同时检查成功与失败，避免旧排序的结果覆盖当前页面。
+  try {
+    return await request;
+  } finally {
+    signal?.throwIfAborted();
+  }
+}
+
+export async function loadDiscovery({ query = '', signal, topic = false, sort = 'latest', page = 1 } = {}) {
+  signal?.throwIfAborted();
+  const normalizedSort = normalizeDiscoverySort(sort);
+  const snapshot = getDiscoverySnapshot(query, normalizedSort);
   if (snapshot.source !== 'loading') return snapshot;
   const client = getSdkClient();
-  const tags = await client.tags.list();
-  const selectedTopic = topic ? findTopic(tags, query) : null;
-  if (topic && !selectedTopic) {
-    return { source: 'live', items: [], trends: [], creators: [], topic: null, topicMissing: true };
+  const cardParams = { page, list_rows: PAGE_SIZE, order_key: SORT_KEYS[normalizedSort], order_desc: true };
+  let selectedTopic = null;
+  if (topic) {
+    const tags = await readWhileActive(client.tags.list(), signal);
+    selectedTopic = findTopic(normalizeTopics(tags), query);
+    if (!selectedTopic) return { source: 'live', items: [], topic: null, topicMissing: true };
+    cardParams.tag_id = selectedTopic.id;
+  } else if (query.trim()) {
+    cardParams.search_value = query.trim();
   }
-  const searchResult = await client.cards.search(topic
-    ? { page: 1, list_rows: 30, tag_id: Number(selectedTopic.id) }
-    : { page: 1, list_rows: 30, search_value: query.trim() || undefined });
-  if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
-  if (!searchResult || !Array.isArray(searchResult.data)) throw new Error('SDK 契约错误：cards.search() 应返回 ListResult。');
-  let items = searchResult.data.map(normalizeSdkCard);
-  const needle = query.trim().toLowerCase();
-  if (!needle) {
-    discoveryBootstrapCache = items;
-  } else {
-    if (!discoveryBootstrapCache.length && !items.length) {
-      const fallback = await client.cards.search({ page: 1, list_rows: 30 });
-      if (fallback && Array.isArray(fallback.data)) discoveryBootstrapCache = fallback.data.map(normalizeSdkCard);
-    }
-    const localMatches = discoveryBootstrapCache.filter((item) => [item.title, item.body, item.author, item.topic].some((value) => String(value || '').toLowerCase().includes(needle)));
-    items = [...items, ...localMatches].filter((item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index);
-  }
-  return {
-    source: 'live',
-    items,
-    topic: selectedTopic ? { id: Number(selectedTopic.id), name: String(selectedTopic.name || '') } : null,
-    trends: Array.isArray(tags) ? tags.slice(0, 6).map((tag, index) => ({ rank: index + 1, tagId: Number(tag.id), name: String(tag.name || `话题 ${tag.id}`), label: `# ${tag.name || `话题 ${tag.id}`}`, count: '', signal: '' })) : [],
-    creators: [],
-  };
+  const result = await readWhileActive(client.cards.search(cardParams), signal);
+  return { source: 'live', ...normalizeCards(result, page), topic: selectedTopic };
 }

@@ -1,6 +1,6 @@
 @layer lovecards-pages {
   .detail-page { width: min(760px, calc(100% - 40px)); margin: 0 auto; padding: 18px 0 88px; }
-  .detail-back { min-height: 44px; display: inline-flex; align-items: center; color: var(--lc-muted); font-size: 0.78rem; text-decoration: none; }
+  .detail-back { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; color: var(--lc-muted); font-size: 0.78rem; text-decoration: none; }
   .detail-back:hover { color: var(--lc-ink); }
   dialog.lc-card-preview {
     --lc-preview-origin-x: 0px;
@@ -24,7 +24,7 @@
   .lc-card-preview-header-actions { display: flex; align-items: center; gap: 8px; }
   .lc-card-preview-header-actions button { min-height: 44px; padding: 0 12px; border: 0; border-radius: 8px; color: var(--lc-rose-deep); background: transparent; font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
   .lc-card-preview-header-actions button:hover { background: var(--lc-surface-subtle); }
-  .lc-card-preview-header-actions button:last-child { min-width: 44px; padding: 0; color: var(--lc-ink); font-size: 1.5rem; }
+  .lc-card-preview-header-actions button:last-child { display: inline-grid; place-items: center; min-width: 44px; padding: 0; color: var(--lc-ink); font-size: 1.5rem; }
   .lc-card-preview-header-actions button:focus-visible { outline: 2px solid var(--lc-rose); outline-offset: 2px; }
   .lc-card-preview .detail-page { width: 100%; min-height: 0; max-height: calc(min(92dvh, 940px) - 60px); padding: 0 20px 24px; overflow-y: auto; overscroll-behavior: contain; background: var(--lc-surface); }
   .lc-card-preview-loading { position: relative; min-height: 320px; display: grid; overflow: hidden; background: var(--lc-surface); }
@@ -107,7 +107,7 @@
   .detail-media-grid.is-pager .detail-media-frame { animation: lc-gallery-page-enter var(--lc-motion-state) var(--lc-ease) both; }
   .detail-media-grid.is-pager .media-fit-asset { object-fit: contain; }
   .detail-media-page-count { position: absolute; z-index: 1; top: 12px; right: 12px; padding: 5px 9px; border-radius: 999px; color: #fff; background: rgba(20, 22, 27, .72); font-size: .72rem; font-variant-numeric: tabular-nums; }
-  .detail-media-page-nav { position: absolute; z-index: 1; top: 50%; width: 44px; height: 44px; transform: translateY(-50%); border: 0; border-radius: 50%; color: #fff; background: rgba(20, 22, 27, .72); font: inherit; font-size: 1.7rem; cursor: pointer; }
+  .detail-media-page-nav { display: grid; place-items: center; padding: 0; position: absolute; z-index: 1; top: 50%; width: 44px; height: 44px; transform: translateY(-50%); border: 0; border-radius: 50%; color: #fff; background: rgba(20, 22, 27, .72); font: inherit; font-size: 1.7rem; cursor: pointer; }
   .detail-media-page-nav.is-previous { left: 12px; }
   .detail-media-page-nav.is-next { right: 12px; }
   .detail-media-page-nav:disabled { opacity: .35; cursor: default; }
@@ -211,8 +211,8 @@
   .comment-chat-composer > div[role='alert'] .icon { flex: 0 0 auto; }
   .comment-chat-composer .astryx-chat-send-button,
   .comment-chat-composer .astryx-button { min-height: 36px; }
-  .comment-chat-composer .astryx-chat-send-button { min-width: 54px; padding-inline: 14px; border-radius: 8px; color: #fff; background: var(--lc-rose); font-size: 0.72rem; font-weight: 700; }
-  .comment-chat-composer .astryx-chat-send-button:hover:not(:disabled) { background: var(--lc-rose-deep); }
+  .comment-chat-composer .astryx-chat-send-button { min-width: 54px; padding-inline: 14px; border-radius: 8px; color: var(--lc-on-rose); background: var(--lc-rose); font-size: 0.72rem; font-weight: 700; }
+  .comment-chat-composer .astryx-chat-send-button:hover:not(:disabled) { color: var(--lc-on-rose-deep); background: var(--lc-rose-deep); }
   .comment-thread-success { display: block; margin-top: 6px; color: var(--lc-success); font-size: 0.7rem; }
   .detail-boundary { text-align: center; }
   .detail-boundary h1 { margin: 0; font-size: 1.25rem; }
@@ -270,8 +270,8 @@
     .lc-card-preview-header { padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 8px max(12px, env(safe-area-inset-left)); }
     .lc-card-preview .detail-page { max-height: none; padding: 0 0 calc(24px + env(safe-area-inset-bottom)); }
     .lc-card-preview .detail-article { padding-inline: 16px; }
-    .detail-page { width: 100%; padding: 8px 0 calc(88px + env(safe-area-inset-bottom)); background: var(--lc-canvas); }
-    .detail-back { margin-left: 12px; }
+    .detail-page { width: 100%; padding: 0 0 calc(32px + env(safe-area-inset-bottom)); background: var(--lc-canvas); }
+    .detail-page > .detail-back { display: none; }
     .detail-article,
     .detail-page > .resource-state { margin-top: 0; border-radius: 0; }
     .detail-article { padding: 14px 16px 24px; }
@@ -289,7 +289,15 @@
     .comment-composer-hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .comment-chat-composer .astryx-chat-send-button,
     .comment-chat-composer .astryx-button { min-height: 44px; }
-    .comment-like-button { min-height: 44px; }
+    .comment-thread-content > footer button,
+    .comment-thread-more,
+    .comment-thread-context .astryx-button,
+    .comment-thread-boundary a,
+    .detail-author-identity,
+    .comment-author-identity,
+    a.detail-topic { min-width: 44px; min-height: 44px; }
+    .comment-thread-boundary a, a.detail-topic { display: inline-flex; align-items: center; }
+    a.detail-topic { max-width: 100%; overflow-wrap: anywhere; }
     .comment-chat-composer .astryx-chat-send-button { min-width: 62px; }
     .detail-media-grid.is-count-1 .detail-media-tile { aspect-ratio: 4 / 3; }
     .detail-media-grid.is-video { aspect-ratio: 4 / 3; }

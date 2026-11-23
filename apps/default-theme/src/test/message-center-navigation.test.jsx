@@ -18,7 +18,8 @@ describe('message center navigation', () => {
       const desktop = globalNavigationOf(html, 'desktop-nav');
       const mobile = globalNavigationOf(html, 'mobile-bottom-nav');
 
-      expect(desktop).toMatch(/<a(?=[^>]*aria-current="page")(?=[^>]*href="\/messages")[^>]*>消息/);
+      expect(desktop).toMatch(/<a(?=[^>]*aria-current="page")(?=[^>]*href="\/messages")[^>]*>/);
+      expect(desktop).toContain('<span>消息</span>');
       expect(mobile).toMatch(/<a(?=[^>]*aria-current="page")(?=[^>]*href="\/messages")[^>]*>/);
       expect(desktop).not.toContain('href="/inbox"');
       expect(mobile).not.toContain('href="/inbox"');
@@ -31,6 +32,12 @@ describe('message center navigation', () => {
     expect(html).not.toContain('class="mobile-bottom-nav"');
     expect(source).toContain("mobileMode={searchMode ? 'task' : 'standard'}");
     expect(html).toContain('aria-label="返回私信列表"');
+  });
+
+  it('restores a conversation search query from its URL', () => {
+    const html = renderRoute('/messages/search?q=Alice');
+    expect(html).toContain('value="Alice"');
+    expect(html).toContain('搜索会话');
   });
 
   it('uses a secondary task shell for an individual conversation on mobile', () => {

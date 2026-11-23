@@ -42,6 +42,14 @@ describe('detail media gallery', () => {
     expect(html).toContain('aria-label="下一张图片"');
   });
 
+  it('renders a single paged image without page controls', () => {
+    const html = renderToStaticMarkup(<MediaGallery items={imageItems(1)} title="单张照片" galleryLayout="pager" />);
+    expect(html).toContain('detail-media-grid is-pager');
+    expect(html).toContain('data-media-fit="contain"');
+    expect(html).not.toContain('detail-media-page-count');
+    expect(html).not.toContain('detail-media-page-nav');
+  });
+
   it('plays a video card in place on preview and detail without opening a second viewer', () => {
     const html = renderToStaticMarkup(<MediaGallery items={[{ type: 'video', url: '/media/run.mp4', posterUrl: '/media/run.webp' }]} title="晨跑记录" />);
     expect(html).toContain('class="detail-media-grid is-count-1 is-video"');

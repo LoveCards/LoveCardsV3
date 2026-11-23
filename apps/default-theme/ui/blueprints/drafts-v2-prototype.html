@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LoveCards · 草稿箱新方案原型</title>
+  <style>
+    :root {
+      font-family: "SF Pro Text", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      color: #1d1d1f;
+      background: #20232a;
+      font-synthesis: none;
+      --canvas: #f5f5f7;
+      --surface: #fff;
+      --subtle: #f0f1f4;
+      --ink: #1d1d1f;
+      --body: #3a3a3c;
+      --muted: #6e6e73;
+      --line: rgba(60, 60, 67, .14);
+      --rose: #c92c60;
+      --rose-deep: #a9234f;
+      --rose-soft: #fff0f4;
+      --ease: cubic-bezier(.22, 1, .36, 1);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    button, a { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; text-decoration: none; }
+    .board { max-width: 1660px; margin: auto; padding: 26px; }
+    .board-head { display: flex; align-items: end; justify-content: space-between; gap: 22px; margin-bottom: 18px; color: #fff; }
+    .board-head p { margin: 0 0 5px; color: #f0a9c0; font-size: 12px; font-weight: 750; letter-spacing: .09em; text-transform: uppercase; }
+    .board-head h1 { margin: 0; font-size: clamp(21px, 3vw, 30px); line-height: 1.3; letter-spacing: -.03em; }
+    .board-head span { color: #bcc1ca; font-size: 13px; line-height: 1.6; }
+    .controls { display: flex; flex-wrap: wrap; gap: 5px; padding: 4px; border: 1px solid #4a4d54; border-radius: 11px; background: #30343c; }
+    .controls button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 8px; color: #d9dce2; background: transparent; font-size: 12px; font-weight: 650; }
+    .controls button[aria-pressed="true"] { color: var(--ink); background: #fff; }
+    .frames { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 18px; align-items: start; }
+    .frame { overflow: hidden; border: 1px solid #565b64; border-radius: 15px; background: var(--canvas); box-shadow: 0 12px 32px rgba(0, 0, 0, .18); }
+    .desktop { min-height: 800px; }
+    .frame-label { display: flex; justify-content: space-between; padding: 10px 15px; color: #cbd0d9; background: #30343c; font-size: 11px; font-weight: 720; letter-spacing: .05em; }
+    .frame-label span:last-child { color: #9ca3af; font-weight: 500; }
+    .product-topbar { display: flex; align-items: center; gap: 38px; height: 60px; padding: 0 28px; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .brand { display: inline-flex; align-items: center; gap: 7px; flex: none; font-size: 16px; font-weight: 830; letter-spacing: -.04em; }
+    .brand-mark { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px; color: #fff; background: var(--rose); font-size: 14px; }
+    .brand em { color: var(--rose); font-style: normal; }
+    .product-search { display: flex; align-items: center; width: min(400px, 42vw); height: 36px; padding: 0 14px; border-radius: 10px; color: var(--muted); background: var(--subtle); font-size: 12px; }
+    .product-actions { display: flex; align-items: center; gap: 17px; margin-left: auto; color: var(--muted); font-size: 12px; }
+    .avatar { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: #80523c; background: #e8d6c8; font-size: 12px; font-weight: 800; }
+    .desktop-content { max-width: 860px; margin: 0 auto; padding: 37px 0 72px; }
+    .back { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0 6px; color: var(--muted); font-size: 12px; font-weight: 650; }
+    .back:hover { color: var(--ink); }
+    .page-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin: 12px 0 34px; }
+    .page-head h2 { margin: 0; font-size: 28px; line-height: 1.3; letter-spacing: -.035em; }
+    .page-head p { margin: 7px 0 0; color: var(--muted); font-size: 13px; }
+    .draft-list { display: grid; gap: 12px; }
+    .draft-row { display: grid; grid-template-columns: minmax(0, 1fr) 58px; min-height: 105px; overflow: hidden; border-radius: 12px; background: var(--surface); }
+    .draft-link { display: grid; grid-template-columns: 76px minmax(0, 1fr) 93px; align-items: center; gap: 17px; min-width: 0; padding: 14px 0 14px 15px; }
+    .draft-link:hover { background: #faf8f9; }
+    .draft-link:active { background: var(--rose-soft); }
+    .draft-link:focus-visible, .delete:focus-visible, .back:focus-visible, .controls button:focus-visible { outline: 2px solid var(--rose-deep); outline-offset: -3px; }
+    .thumb { position: relative; display: grid; place-items: center; width: 76px; height: 76px; overflow: hidden; border-radius: 11px; background: var(--subtle); }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .thumb-count { position: absolute; right: 5px; bottom: 5px; padding: 2px 5px; border-radius: 5px; color: #fff; background: rgba(29, 29, 31, .76); font-size: 10px; font-weight: 750; }
+    .thumb.text { padding: 12px; place-items: start; background: #f7f0ee; }
+    .thumb.text > span { width: 100%; }
+    .thumb.text i { display: block; width: 100%; height: 4px; margin-bottom: 5px; border-radius: 4px; background: #c8a9a5; }
+    .thumb.text i:nth-child(2) { width: 86%; }
+    .thumb.text i:nth-child(3) { width: 59%; }
+    .thumb.video { color: #fff; background: linear-gradient(145deg, #536576, #283641 72%); }
+    .thumb.video svg { width: 29px; height: 29px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
+    .draft-copy { display: grid; gap: 6px; min-width: 0; }
+    .draft-copy h3 { overflow: hidden; margin: 0; font-size: 15px; font-weight: 730; letter-spacing: -.01em; text-overflow: ellipsis; white-space: nowrap; }
+    .draft-copy p { overflow: hidden; margin: 0; color: var(--body); font-size: 12px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+    .meta { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .meta .type { color: var(--rose-deep); font-weight: 720; }
+    .meta .dot { color: #b4b4b7; }
+    .resume { display: flex; justify-content: end; align-items: center; gap: 6px; padding-right: 9px; color: var(--rose-deep); font-size: 11px; font-weight: 720; white-space: nowrap; }
+    .resume svg { width: 14px; height: 14px; }
+    .delete { display: grid; place-items: center; align-self: center; justify-self: center; width: 44px; height: 44px; border: 0; border-radius: 9px; color: #85858b; background: transparent; }
+    .delete:hover { color: #c93642; background: #fff2f2; }
+    .delete svg { width: 17px; height: 17px; }
+    .phone { width: 390px; min-height: 800px; }
+    .phone-screen { min-height: 760px; background: var(--canvas); }
+    .mobile-head { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; min-height: 56px; padding: 0 9px; border-bottom: 1px solid var(--line); background: var(--surface); }
+    .mobile-head button { height: 44px; border: 0; background: transparent; }
+    .mobile-head .back-mobile { color: var(--ink); text-align: left; font-size: 22px; }
+    .mobile-head strong { text-align: center; font-size: 16px; letter-spacing: -.02em; }
+    .phone .draft-list { margin: 16px 16px 0; }
+    .phone .draft-row { grid-template-columns: minmax(0, 1fr) 44px; min-height: 96px; }
+    .phone .draft-link { grid-template-columns: 64px minmax(0, 1fr); gap: 11px; padding: 11px 0 11px 10px; }
+    .phone .thumb { width: 64px; height: 64px; }
+    .phone .thumb.text { padding: 10px; }
+    .phone .draft-copy { gap: 5px; }
+    .phone .draft-copy h3 { font-size: 13px; }
+    .phone .draft-copy p { font-size: 11px; }
+    .phone .meta { gap: 5px; font-size: 10px; }
+    .phone .resume { display: none; }
+    .phone .delete { width: 44px; height: 44px; }
+    .phone .delete svg { width: 16px; height: 16px; }
+    .state { display: none; }
+    body[data-mode="list"] .state-list, body[data-mode="empty"] .state-empty, body[data-mode="loading"] .state-loading { display: block; }
+    .empty-panel { display: grid; justify-items: center; align-content: center; min-height: 320px; padding: 28px 20px; text-align: center; }
+    .empty-panel h3 { margin: 0 0 7px; font-size: 16px; }
+    .empty-panel p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+    .phone .empty-panel { min-height: 420px; margin: 0 16px; }
+    .skeleton-row { display: grid; grid-template-columns: 76px 1fr 92px; align-items: center; gap: 17px; height: 105px; padding: 14px 73px 14px 15px; border-radius: 12px; background: var(--surface); }
+    .skeleton-thumb, .skeleton-copy i, .skeleton-action { display: block; border-radius: 8px; background: var(--subtle); }
+    .skeleton-thumb { width: 76px; height: 76px; }
+    .skeleton-copy { display: grid; gap: 8px; }
+    .skeleton-copy i { width: 78%; height: 11px; }
+    .skeleton-copy i:nth-child(2) { width: 94%; height: 9px; }
+    .skeleton-copy i:nth-child(3) { width: 48%; height: 8px; }
+    .skeleton-action { width: 68px; height: 9px; }
+    .phone .skeleton-row { grid-template-columns: 64px minmax(0, 1fr); height: 96px; gap: 11px; padding: 11px 54px 11px 10px; }
+    .phone .skeleton-thumb { width: 64px; height: 64px; }
+    .phone .skeleton-action { display: none; }
+    .dialog-backdrop { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 20px; background: rgba(20, 22, 28, .4); }
+    .dialog-backdrop[hidden] { display: none; }
+    .dialog { width: min(100%, 380px); padding: 23px; border-radius: 15px; background: #fff; box-shadow: 0 22px 60px rgba(0,0,0,.19); }
+    .dialog h2 { margin: 0 0 8px; font-size: 18px; }
+    .dialog p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .dialog-actions { display: flex; justify-content: end; gap: 8px; margin-top: 25px; }
+    .dialog-actions button { min-height: 38px; padding: 0 13px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font-size: 12px; font-weight: 700; }
+    .dialog-actions .danger { color: #fff; border-color: #c93642; background: #c93642; }
+    .toast { position: fixed; z-index: 6; right: 25px; bottom: 24px; padding: 11px 15px; border-radius: 9px; color: #fff; background: #30343c; box-shadow: 0 8px 22px rgba(0,0,0,.17); font-size: 12px; }
+    .toast[hidden] { display: none; }
+    .notes { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 17px; }
+    .notes span { padding: 8px 11px; border: 1px solid #454952; border-radius: 7px; color: #d1d5dc; background: #292d35; font-size: 11px; }
+    @media (max-width: 1320px) { .frames { grid-template-columns: minmax(0, 1fr); } .phone { justify-self: center; } .desktop-content { width: min(860px, calc(100% - 48px)); } }
+    @media (max-width: 680px) { .board { padding: 14px; } .board-head { align-items: start; flex-direction: column; } .phone { width: min(390px, 100%); } .desktop { display: none; } .notes { display: none; } }
+    @media (prefers-reduced-motion: no-preference) { .draft-link, .delete { transition: background-color .16s var(--ease), color .16s var(--ease), border-color .16s var(--ease); } }
+  </style>
+</head>
+<body data-mode="list">
+  <svg aria-hidden="true" width="0" height="0" style="position:absolute;overflow:hidden"><defs>
+    <symbol id="trash" viewBox="0 0 24 24"><path d="M4.5 7h15M9 7V4.5h6V7m3 0-.8 12a1.5 1.5 0 0 1-1.5 1.4H8.3A1.5 1.5 0 0 1 6.8 19L6 7m4 4v5m4-5v5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+    <symbol id="arrow" viewBox="0 0 24 24"><path d="M4 12h15m-6-6 6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></symbol>
+    <symbol id="play" viewBox="0 0 24 24"><path d="m9 6 9 6-9 6V6Z" fill="currentColor" /></symbol>
+  </defs></svg>
+  <main class="board">
+    <header class="board-head">
+      <div><p>LoveCards / Blueprint 04B / 提案</p><h1>草稿箱 · 创作清单</h1><span>用真实内容预览帮助辨认草稿，点整行继续编辑；删除保持独立且需要确认。</span></div>
+      <div class="controls" aria-label="原型状态">
+        <button type="button" data-mode="list" aria-pressed="true">有草稿</button>
+        <button type="button" data-mode="empty" aria-pressed="false">空态</button>
+        <button type="button" data-mode="loading" aria-pressed="false">加载中</button>
+      </div>
+    </header>
+    <div class="frames">
+      <section class="frame desktop" aria-label="桌面草稿箱原型">
+        <div class="frame-label"><span>桌面 · 1160px 场景</span><span>内容轴 860px</span></div>
+        <header class="product-topbar"><div class="brand"><span class="brand-mark">L</span><span>Love<em>Cards</em></span></div><div class="product-search">⌕ &nbsp; 搜索内容、作者或话题</div><div class="product-actions"><span>发现</span><span>动态</span><span>消息</span><span class="avatar">A</span></div></header>
+        <main class="desktop-content">
+          <a class="back" href="#" data-demo="返回发布">← &nbsp;返回发布</a>
+          <header class="page-head"><div><h2>草稿箱</h2><p>继续完成未发布的内容。</p></div></header>
+          <div class="state state-list"><div class="draft-list">
+            <article class="draft-row"><a class="draft-link" href="#" data-demo="继续编辑图文草稿"><span class="thumb"><img src="../assets/feed/city-walk-grid-v1.webp" alt="" /><span class="thumb-count">3 张</span></span><span class="draft-copy"><h3>傍晚沿着海边走了一段路</h3><p>风有点凉，海面被落日照得很亮，想把这段路线记下来。</p><span class="meta"><span class="type">图文</span><span class="dot">·</span><span>3 张图片</span><span class="dot">·</span><span>8 分钟前</span></span></span><span class="resume">继续编辑 <svg><use href="#arrow" /></svg></span></a><button class="delete" type="button" aria-label="删除草稿：傍晚沿着海边走了一段路" data-delete="傍晚沿着海边走了一段路"><svg><use href="#trash" /></svg></button></article>
+            <article class="draft-row"><a class="draft-link" href="#" data-demo="继续编辑随笔草稿"><span class="thumb text" aria-hidden="true"><span><i></i><i></i><i></i></span></span><span class="draft-copy"><h3>周末读完了那本旧书</h3><p>有几句话一直记在心里，准备整理成一篇短随笔。</p><span class="meta"><span class="type">随笔</span><span class="dot">·</span><span>昨天 22:16</span></span></span><span class="resume">继续编辑 <svg><use href="#arrow" /></svg></span></a><button class="delete" type="button" aria-label="删除草稿：周末读完了那本旧书" data-delete="周末读完了那本旧书"><svg><use href="#trash" /></svg></button></article>
+            <article class="draft-row"><a class="draft-link" href="#" data-demo="继续编辑视频草稿"><span class="thumb video" aria-hidden="true"><svg><use href="#play" /></svg></span><span class="draft-copy"><h3>视频草稿</h3><span class="meta"><span class="type">视频</span><span class="dot">·</span><span>周一 10:58</span></span></span><span class="resume">继续编辑 <svg><use href="#arrow" /></svg></span></a><button class="delete" type="button" aria-label="删除草稿：视频草稿" data-delete="视频草稿"><svg><use href="#trash" /></svg></button></article>
+          </div></div>
+          <div class="state state-empty"><div class="empty-panel"><h3>还没有草稿</h3><p>在发布页保存的内容会出现在这里。</p></div></div>
+          <div class="state state-loading"><div class="draft-list" aria-label="草稿加载中"><div class="skeleton-row"><span class="skeleton-thumb"></span><span class="skeleton-copy"><i></i><i></i><i></i></span><span class="skeleton-action"></span></div><div class="skeleton-row"><span class="skeleton-thumb"></span><span class="skeleton-copy"><i></i><i></i><i></i></span><span class="skeleton-action"></span></div><div class="skeleton-row"><span class="skeleton-thumb"></span><span class="skeleton-copy"><i></i><i></i><i></i></span><span class="skeleton-action"></span></div></div></div>
+        </main>
+      </section>
+      <section class="frame phone" aria-label="手机草稿箱原型">
+        <div class="frame-label"><span>手机 · 390px 场景</span><span>Task Shell</span></div>
+        <div class="phone-screen">
+          <header class="mobile-head"><button class="back-mobile" type="button" aria-label="返回发布" data-demo="返回发布">‹</button><strong>草稿箱</strong></header>
+          <div class="state state-list"><div class="draft-list">
+            <article class="draft-row"><a class="draft-link" href="#" data-demo="继续编辑图文草稿"><span class="thumb"><img src="../assets/feed/city-walk-grid-v1.webp" alt="" /><span class="thumb-count">3 张</span></span><span class="draft-copy"><h3>傍晚沿着海边走了一段路</h3><p>风有点凉，海面被落日照得很亮…</p><span class="meta"><span class="type">图文</span><span class="dot">·</span><span>3 张图片</span><span class="dot">·</span><span>8 分钟前</span></span></span></a><button class="delete" type="button" aria-label="删除草稿：傍晚沿着海边走了一段路" data-delete="傍晚沿着海边走了一段路"><svg><use href="#trash" /></svg></button></article>
+            <article class="draft-row"><a class="draft-link" href="#" data-demo="继续编辑随笔草稿"><span class="thumb text" aria-hidden="true"><span><i></i><i></i><i></i></span></span><span class="draft-copy"><h3>周末读完了那本旧书</h3><p>有几句话一直记在心里…</p><span class="meta"><span class="type">随笔</span><span class="dot">·</span><span>昨天 22:16</span></span></span></a><button class="delete" type="button" aria-label="删除草稿：周末读完了那本旧书" data-delete="周末读完了那本旧书"><svg><use href="#trash" /></svg></button></article>
+            <article class="draft-row"><a class="draft-link" href="#" data-demo="继续编辑视频草稿"><span class="thumb video" aria-hidden="true"><svg><use href="#play" /></svg></span><span class="draft-copy"><h3>视频草稿</h3><span class="meta"><span class="type">视频</span><span class="dot">·</span><span>周一 10:58</span></span></span></a><button class="delete" type="button" aria-label="删除草稿：视频草稿" data-delete="视频草稿"><svg><use href="#trash" /></svg></button></article>
+          </div></div>
+          <div class="state state-empty"><div class="empty-panel"><h3>还没有草稿</h3><p>在发布页保存的内容会出现在这里。</p></div></div>
+          <div class="state state-loading"><div class="draft-list" aria-label="草稿加载中"><div class="skeleton-row"><span class="skeleton-thumb"></span><span class="skeleton-copy"><i></i><i></i><i></i></span></div><div class="skeleton-row"><span class="skeleton-thumb"></span><span class="skeleton-copy"><i></i><i></i><i></i></span></div><div class="skeleton-row"><span class="skeleton-thumb"></span><span class="skeleton-copy"><i></i><i></i><i></i></span></div></div></div>
+        </div>
+      </section>
+    </div>
+    <div class="notes"><span>封面：首张真实图片</span><span>短草稿：不填充重复套话</span><span>恢复：整行链接</span><span>删除：独立 44px 热区 + 二次确认</span><span>原型数据仅供展示</span></div>
+  </main>
+  <div class="dialog-backdrop" hidden><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="delete-title" aria-describedby="delete-description"><h2 id="delete-title">删除这份草稿？</h2><p id="delete-description">删除后无法恢复。已发布的内容不会受影响。</p><div class="dialog-actions"><button type="button" data-cancel>保留草稿</button><button class="danger" type="button" data-confirm>删除草稿</button></div></div></div>
+  <div class="toast" role="status" hidden></div>
+  <script>
+    const controls = document.querySelectorAll('.controls button');
+    const dialog = document.querySelector('.dialog-backdrop');
+    const toast = document.querySelector('.toast');
+    let selectedRow = null;
+    let toastTimer;
+    const announce = (message) => { clearTimeout(toastTimer); toast.textContent = message; toast.hidden = false; toastTimer = setTimeout(() => { toast.hidden = true; }, 2600); };
+    controls.forEach((button) => button.addEventListener('click', () => { document.body.dataset.mode = button.dataset.mode; controls.forEach((item) => item.setAttribute('aria-pressed', String(item === button))); }));
+    document.querySelectorAll('[data-demo]').forEach((item) => item.addEventListener('click', (event) => { event.preventDefault(); announce(`${item.dataset.demo}：正式页面沿用现有发布流程`); }));
+    document.querySelectorAll('[data-delete]').forEach((button) => button.addEventListener('click', () => { selectedRow = button.closest('.draft-row'); dialog.hidden = false; dialog.querySelector('h2').textContent = `删除“${button.dataset.delete}”？`; dialog.querySelector('[data-cancel]').focus(); }));
+    const closeDialog = () => { dialog.hidden = true; selectedRow = null; };
+    dialog.querySelector('[data-cancel]').addEventListener('click', closeDialog);
+    dialog.querySelector('[data-confirm]').addEventListener('click', () => { selectedRow?.remove(); closeDialog(); announce('草稿已删除（仅原型演示）'); });
+    dialog.addEventListener('click', (event) => { if (event.target === dialog) closeDialog(); });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && !dialog.hidden) closeDialog(); });
+  </script>
+</body>
+</html>

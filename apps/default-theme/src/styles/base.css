@@ -5,6 +5,7 @@
     font-family: var(--font-family-body);
     font-synthesis: none;
     text-rendering: optimizeLegibility;
+    scrollbar-gutter: stable;
   }
 
   body {
@@ -16,6 +17,27 @@
   #root,
   [data-astryx-theme='neutral'] {
     min-height: 100vh;
+  }
+
+  .route-task-heading { display: none; }
+  .route-boundary-error { max-width: 520px; margin-inline: auto; }
+  @media (max-width: 760px) {
+    .route-task-heading {
+      position: sticky;
+      top: 0;
+      z-index: var(--lc-z-sticky);
+      min-height: 52px;
+      padding-inline: 8px;
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) 44px;
+      align-items: center;
+      border-bottom: 1px solid var(--lc-separator);
+      background: color-mix(in srgb, var(--lc-surface) 96%, transparent);
+      backdrop-filter: blur(10px);
+    }
+    .route-task-heading > strong { overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; font-size: .92rem; }
+    .route-task-heading > a { min-width: 44px; min-height: 44px; display: grid; place-items: center; color: var(--lc-ink); }
+    .route-task-heading > a:focus-visible, .mobile-search-trigger:focus-visible { outline: 2px solid var(--lc-rose-deep); outline-offset: -2px; border-radius: var(--lc-radius-control); }
   }
 
   .route-loading-state {

@@ -15694,23 +15694,21 @@
         "x-resource": "CardResource",
         "x-response-shape": "paginated",
         "x-validators": [
-          "app\\shared\\Transport\\Validation\\PaginationInput"
+          "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardsQuery"
         ],
-        "x-validator-scene": "Defult",
+        "x-validator-scene": "list",
         "x-contract-source": "backend",
         "x-validation-rules": {
-          "app\\shared\\Transport\\Validation\\PaginationInput": {
-            "page": "number",
-            "list_rows": "number|between:1,1000",
+          "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardsQuery": {
+            "page": "number|between:1,2147483647",
+            "list_rows": "number|between:1,100",
             "search_value": "max:255",
             "search_keys": "searchKey",
             "search_like": "number|between:0,2",
             "order_desc": "stringBool",
-            "order_key": "alphaDash",
+            "order_key": "in:created_at,goods,comments",
             "show_deleted": "number|between:0,2",
-            "tag_id": "number",
-            "status": "integer|in:0,1,2,3",
-            "role_id": "integer|gt:0"
+            "tag_id": "number"
           }
         },
         "responses": {
@@ -15952,40 +15950,55 @@
               "type": "object",
               "properties": {
                 "page": {
-                  "type": "number"
+                  "type": "integer",
+                  "minimum": 1
                 },
                 "list_rows": {
-                  "type": "number"
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
                 },
                 "search_keys": {
-                  "type": "string"
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "search_like": {
-                  "type": "number"
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 2
+                },
+                "search_value": {
+                  "type": "string",
+                  "maxLength": 255
                 },
                 "order_desc": {
                   "type": "boolean"
                 },
                 "order_key": {
-                  "type": "string"
+                  "type": "string",
+                  "enum": [
+                    "created_at",
+                    "goods",
+                    "comments"
+                  ]
                 },
                 "show_deleted": {
-                  "type": "number"
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 2
                 },
                 "tag_id": {
-                  "type": "number"
-                },
-                "search_value": {
-                  "type": "string",
-                  "maxLength": 255
+                  "type": "integer"
                 }
               },
-              "additionalProperties": true,
-              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }",
+              "additionalProperties": false,
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string[]; search_like?: number; search_value?: string; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number }",
               "x-validators": [
-                "app\\shared\\Transport\\Validation\\PaginationInput"
+                "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardsQuery"
               ],
-              "x-validator-scene": "Defult"
+              "x-validator-scene": "list"
             }
           }
         ]
@@ -17181,6 +17194,312 @@
         "parameters": []
       }
     },
+    "/cards/search-public": {
+      "get": {
+        "operationId": "cards.searchPublic",
+        "tags": [
+          "卡片"
+        ],
+        "summary": "搜索公开内容",
+        "description": "搜索公开内容",
+        "x-controller": "Content.Cards/searchPublic",
+        "x-access": {
+          "auth": "public"
+        },
+        "x-capabilities": [],
+        "x-public": true,
+        "x-middleware": [
+          "OptionalJwtAuth"
+        ],
+        "x-resource": "CardResource",
+        "x-response-shape": "paginated",
+        "x-validators": [
+          "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardSearchQuery"
+        ],
+        "x-validator-scene": "search",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardSearchQuery": {
+            "search_value": "require|validTerm|max:100",
+            "page": "positiveInteger|between:1,2147483647",
+            "list_rows": "positiveInteger|between:1,30",
+            "sort": "in:match,latest"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "is_top": {
+                            "type": "integer"
+                          },
+                          "status": {
+                            "type": "integer"
+                          },
+                          "visibility": {
+                            "type": "string",
+                            "enum": [
+                              "public",
+                              "followers",
+                              "private"
+                            ]
+                          },
+                          "user_id": {
+                            "type": "integer"
+                          },
+                          "uid": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "username": {
+                            "type": "string"
+                          },
+                          "data": {
+                            "type": "object",
+                            "additionalProperties": true
+                          },
+                          "cover": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "pictures": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "media": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "properties": {
+                                "file_id": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "enum": [
+                                    "image",
+                                    "video"
+                                  ]
+                                },
+                                "url": {
+                                  "type": "string"
+                                },
+                                "mime_type": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "size": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "width": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "height": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "duration_ms": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "poster_url": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "is_animated": {
+                                  "type": "boolean"
+                                },
+                                "position": {
+                                  "type": "integer"
+                                }
+                              }
+                            }
+                          },
+                          "content": {
+                            "type": "string"
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer"
+                            }
+                          },
+                          "topics": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "id",
+                                "name"
+                              ],
+                              "properties": {
+                                "id": {
+                                  "type": "integer"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              }
+                            }
+                          },
+                          "mentions": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "start",
+                                "end",
+                                "username",
+                                "uid",
+                                "state",
+                                "action_url"
+                              ],
+                              "properties": {
+                                "start": {
+                                  "type": "integer"
+                                },
+                                "end": {
+                                  "type": "integer"
+                                },
+                                "username": {
+                                  "type": "string"
+                                },
+                                "uid": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "state": {
+                                  "type": "string",
+                                  "enum": [
+                                    "active",
+                                    "unavailable"
+                                  ]
+                                },
+                                "action_url": {
+                                  "type": "string",
+                                  "nullable": true
+                                }
+                              }
+                            }
+                          },
+                          "goods": {
+                            "type": "integer"
+                          },
+                          "views": {
+                            "type": "integer"
+                          },
+                          "comments": {
+                            "type": "integer"
+                          },
+                          "created_at": {
+                            "type": "string"
+                          },
+                          "updated_at": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "x-typescript-type": "ListResult<Card>"
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/PaginationInfo"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "search_value": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 100
+                },
+                "sort": {
+                  "type": "string",
+                  "enum": [
+                    "match",
+                    "latest"
+                  ]
+                },
+                "page": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "list_rows": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 30
+                }
+              },
+              "required": [
+                "search_value"
+              ],
+              "additionalProperties": false,
+              "x-typescript-params": "params: { search_value: string; sort?: string; page?: number; list_rows?: number }",
+              "x-validators": [
+                "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardSearchQuery"
+              ],
+              "x-validator-scene": "search"
+            }
+          }
+        ]
+      }
+    },
     "/cards/search": {
       "get": {
         "operationId": "cards.search",
@@ -17201,23 +17520,21 @@
         "x-resource": "CardResource",
         "x-response-shape": "paginated",
         "x-validators": [
-          "app\\shared\\Transport\\Validation\\PaginationInput"
+          "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardsQuery"
         ],
-        "x-validator-scene": "Defult",
+        "x-validator-scene": "list",
         "x-contract-source": "backend",
         "x-validation-rules": {
-          "app\\shared\\Transport\\Validation\\PaginationInput": {
-            "page": "number",
-            "list_rows": "number|between:1,1000",
+          "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardsQuery": {
+            "page": "number|between:1,2147483647",
+            "list_rows": "number|between:1,100",
             "search_value": "max:255",
             "search_keys": "searchKey",
             "search_like": "number|between:0,2",
             "order_desc": "stringBool",
-            "order_key": "alphaDash",
+            "order_key": "in:created_at,goods,comments",
             "show_deleted": "number|between:0,2",
-            "tag_id": "number",
-            "status": "integer|in:0,1,2,3",
-            "role_id": "integer|gt:0"
+            "tag_id": "number"
           }
         },
         "responses": {
@@ -17459,40 +17776,55 @@
               "type": "object",
               "properties": {
                 "page": {
-                  "type": "number"
+                  "type": "integer",
+                  "minimum": 1
                 },
                 "list_rows": {
-                  "type": "number"
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
                 },
                 "search_keys": {
-                  "type": "string"
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
                 },
                 "search_like": {
-                  "type": "number"
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 2
+                },
+                "search_value": {
+                  "type": "string",
+                  "maxLength": 255
                 },
                 "order_desc": {
                   "type": "boolean"
                 },
                 "order_key": {
-                  "type": "string"
+                  "type": "string",
+                  "enum": [
+                    "created_at",
+                    "goods",
+                    "comments"
+                  ]
                 },
                 "show_deleted": {
-                  "type": "number"
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 2
                 },
                 "tag_id": {
-                  "type": "number"
-                },
-                "search_value": {
-                  "type": "string",
-                  "maxLength": 255
+                  "type": "integer"
                 }
               },
-              "additionalProperties": true,
-              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }",
+              "additionalProperties": false,
+              "x-typescript-params": "params?: { page?: number; list_rows?: number; search_keys?: string[]; search_like?: number; search_value?: string; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number }",
               "x-validators": [
-                "app\\shared\\Transport\\Validation\\PaginationInput"
+                "app\\modules\\Content\\Cards\\Transport\\Api\\PublicCardsQuery"
               ],
-              "x-validator-scene": "Defult"
+              "x-validator-scene": "list"
             }
           }
         ]
@@ -26647,6 +26979,135 @@
         "parameters": []
       }
     },
+    "/tags/search": {
+      "get": {
+        "operationId": "tags.search",
+        "tags": [
+          "标签"
+        ],
+        "summary": "搜索公开话题",
+        "description": "搜索公开话题",
+        "x-controller": "Content.Tags/search",
+        "x-access": {
+          "auth": "public"
+        },
+        "x-capabilities": [],
+        "x-public": true,
+        "x-middleware": [],
+        "x-resource": "PublicTagSearchResource",
+        "x-response-shape": "paginated",
+        "x-validators": [
+          "app\\modules\\Content\\Tags\\Transport\\Api\\PublicTagSearchQuery"
+        ],
+        "x-validator-scene": "search",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Content\\Tags\\Transport\\Api\\PublicTagSearchQuery": {
+            "search_value": "nonBlank|max:255",
+            "page": "number|between:1,2147483647",
+            "list_rows": "number|between:1,50"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "name"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "x-typescript-type": "ListResult<Record<string, unknown>>"
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/PaginationInfo"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "search_value": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                "page": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "list_rows": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 50
+                }
+              },
+              "required": [
+                "search_value"
+              ],
+              "additionalProperties": false,
+              "x-typescript-params": "params: { search_value: string; page?: number; list_rows?: number }",
+              "x-validators": [
+                "app\\modules\\Content\\Tags\\Transport\\Api\\PublicTagSearchQuery"
+              ],
+              "x-validator-scene": "search"
+            }
+          }
+        ]
+      }
+    },
     "/theme/config": {
       "get": {
         "operationId": "theme.publicConfig",
@@ -28476,6 +28937,148 @@
               "x-typescript-params": "params: { query: string; limit?: number }",
               "x-validators": [
                 "app\\modules\\Platform\\User\\Transport\\Api\\MentionCandidates"
+              ],
+              "x-validator-scene": "search"
+            }
+          }
+        ]
+      }
+    },
+    "/users/search": {
+      "get": {
+        "operationId": "users.searchPublic",
+        "tags": [
+          "用户"
+        ],
+        "summary": "搜索用户",
+        "description": "搜索用户",
+        "x-controller": "User.Users/searchPublic",
+        "x-access": {
+          "auth": "public"
+        },
+        "x-capabilities": [],
+        "x-public": true,
+        "x-middleware": [
+          "OptionalJwtAuth"
+        ],
+        "x-resource": "PublicUserSearchResource",
+        "x-response-shape": "paginated",
+        "x-validators": [
+          "app\\modules\\Platform\\User\\Transport\\Api\\PublicUsersSearch"
+        ],
+        "x-validator-scene": "search",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Platform\\User\\Transport\\Api\\PublicUsersSearch": {
+            "search_value": "length:1,100",
+            "page": "integer|between:1,2147483647",
+            "list_rows": "integer|between:1,30"
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "uid",
+                          "username",
+                          "avatar",
+                          "bio"
+                        ],
+                        "properties": {
+                          "uid": {
+                            "type": "string",
+                            "pattern": "^[0-9]{12}$"
+                          },
+                          "username": {
+                            "type": "string"
+                          },
+                          "avatar": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "bio": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      },
+                      "x-typescript-type": "ListResult<Record<string, unknown>>"
+                    },
+                    "pagination": {
+                      "$ref": "#/components/schemas/PaginationInfo"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "search_value": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "page": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "list_rows": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 30
+                }
+              },
+              "required": [
+                "search_value"
+              ],
+              "additionalProperties": false,
+              "x-typescript-params": "params: { search_value: string; page?: number; list_rows?: number }",
+              "x-validators": [
+                "app\\modules\\Platform\\User\\Transport\\Api\\PublicUsersSearch"
               ],
               "x-validator-scene": "search"
             }
