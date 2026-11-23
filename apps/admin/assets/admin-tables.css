@@ -1,0 +1,18 @@
+/* 所有数据表保持横向列式阅读；窄屏只滚动表格容器。 */
+.v-data-table {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.v-data-table .v-table__wrapper {
+  overflow-x: auto;
+}
+
+.v-data-table .v-table__wrapper > table {
+  min-width: 100%;
+}
+
+.v-data-table .v-data-table__th,
+.v-data-table .v-data-table-header__content {
+  white-space: nowrap;
+}

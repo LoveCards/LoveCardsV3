@@ -41,6 +41,8 @@ export interface Card {
   /** 原始卡片扩展数据；新写入不使用 title/summary 作为正文层级。 */
   data: JsonObject
   cover: string | null
+  /** 管理端单条详情返回的可写封面文件 ID。 */
+  cover_file_id?: number | null
   pictures: string[]
   media: CardMedia[]
   tags: number[]

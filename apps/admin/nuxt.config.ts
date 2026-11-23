@@ -26,6 +26,7 @@ export default defineNuxtConfig({
     css: [
         '@mdi/font/css/materialdesignicons.css',
         '~/assets/admin-accessibility.css',
+        '~/assets/admin-tables.css',
     ],
     // Shared admin primitives are intentionally addressable by their
     // capability-oriented names (AdminPageHeader, AdminAsyncState, ...).
@@ -101,9 +102,12 @@ export default defineNuxtConfig({
     },
     vuetify: { // 模块的专属配置项
         moduleOptions: {
-            /* 模块选项 */
+            // 避免 Vuetify useLayout 与 Nuxt 4.6 内置 composable 同名。
+            importComposables: false,
         },
         vuetifyOptions: { // Vuetify 初始化配置
+            locale: { locale: 'zhHans', fallback: 'en' },
+            localeMessages: ['zhHans'],
             // 同类组件只在这里选择原生外观；页面仅覆盖业务上确有区别的状态。
             defaults: {
                 VCard: { variant: 'flat', border: true },
@@ -116,8 +120,8 @@ export default defineNuxtConfig({
                 VCombobox: { variant: 'outlined', density: 'comfortable' },
                 VFileInput: { variant: 'outlined', density: 'comfortable' },
                 VNumberInput: { variant: 'outlined', density: 'comfortable' },
-                VDataTable: { density: 'comfortable', itemsPerPageText: '每页行数' },
-                VDataTableServer: { density: 'comfortable', itemsPerPageText: '每页行数' },
+                VDataTable: { density: 'comfortable', itemsPerPageText: '每页行数', mobileBreakpoint: 0 },
+                VDataTableServer: { density: 'comfortable', itemsPerPageText: '每页行数', mobileBreakpoint: 0 },
                 VChip: { size: 'small', variant: 'tonal' },
                 VAlert: { variant: 'tonal' },
             },

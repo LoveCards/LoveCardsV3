@@ -5,6 +5,7 @@
     :breadcrumbs="[{ title: '内容' }]"
   >
     <template #actions>
+      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="tableLoading" @click="getTableData">刷新</v-btn>
       <AdminActionGuard capability="tags.create" scope="global">
         <v-btn color="primary" prepend-icon="mdi-tag-plus-outline" variant="flat" @click="openCreateTagDialog">
           创建标签
@@ -16,14 +17,22 @@
   <AdminPageContainer fluid>
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
+      v-model:action-capacity="actionCapacity"
       :columns="columnOptions"
       :default-columns="defaultColumns"
-      :result-count="tableTotalItems"
-      preference-key="content-tags"
-      @reset-view="resetTableView"
+      :action-headers="TableHeaders"
+      :action-labels="tagActionLabels"
+      :selection-width="48"
+      :result-count="tableHasResult ? tableTotalItems : null"
+      :result-state="tableResultState"
+      :view-query-keys="['search_value', 'order_key', 'order_desc', 'filters', 'list_rows']" preference-key="content-tags"
+      @reset-view="resetTableView" @apply-view="applySavedView"
     >
       <template #search>
-        <v-text-field v-model="tableSearchValue" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+        <div class="d-flex flex-wrap align-center ga-2">
+          <v-text-field v-model="tableSearchValue" class="flex-grow-1" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @keyup.enter="submitSearch" @update:model-value="onSearchDraftChange" />
+          <v-btn variant="outlined" @click="submitSearch">查询</v-btn>
+        </div>
       </template>
       <template #actions>
 
@@ -33,11 +42,11 @@
         <v-row dense align="center" aria-live="polite">
           <v-col cols="12" sm="auto"><span class="text-body-2">已选择 {{ tableSelected.length }} 项</span></v-col>
           <v-col cols="12" sm="4" md="3">
-            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="tableLoading" item-title="title" item-value="value" label="批量操作" />
+            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="!allowRowMutation" item-title="title" item-value="value" label="批量操作" />
           </v-col>
           <v-col cols="auto">
             <AdminActionGuard :capability="batchCapability" scope="all">
-              <v-btn variant="outlined" :disabled="BatchOperate === ''" @click="openBatchTagDialog">应用操作</v-btn>
+              <v-btn variant="outlined" :disabled="!allowRowMutation || BatchOperate === ''" @click="openBatchTagDialog">应用操作</v-btn>
             </AdminActionGuard>
           </v-col>
           <v-col cols="auto"><v-btn variant="text" @click="clearSelection">取消选择</v-btn></v-col>
@@ -68,6 +77,7 @@
         item-value="id"
         items-per-page-text="每页行数"
         :headers="TableHeaders"
+        :item-selectable="isRowSelectable"
         :items="tableItems"
         :items-length="tableTotalItems"
         :items-per-page-options="TableListRowsOptions"
@@ -83,32 +93,14 @@
         </template>
 
         <template #[`item.name`]="{ item }">
-          <v-btn
-            class="admin-tag-name text-none"
-            prepend-icon="mdi-tag-outline"
-            variant="text"
-            @click="openTagPanel(item.id)"
-          >
+          <div class="d-flex align-center ga-2 admin-tag-name">
+            <v-icon icon="mdi-tag-outline" size="small" />
             <AdminTableSearchHighlight :text="item.name" :query="highlightQuery('name')" />
-          </v-btn>
+          </div>
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <div class="d-flex align-center ga-1">
-            <AdminActionGuard capability="tags.read" scope="all">
-              <v-btn size="small" variant="text" @click="openTagPanel(item.id)">
-                {{ tagPanelActionLabel }}
-              </v-btn>
-            </AdminActionGuard>
-            <v-menu v-if="canDeleteTag" location="bottom end">
-              <template #activator="{ props }">
-                <v-btn v-bind="props" aria-label="更多标签操作" icon="mdi-dots-horizontal" size="small" variant="text" />
-              </template>
-              <v-list density="compact">
-                <v-list-item prepend-icon="mdi-delete-outline" title="删除标签" @click="openDeleteTagDialog(item)" />
-              </v-list>
-            </v-menu>
-          </div>
+          <AdminTableRowActions :actions="tagRowActions(item)" :capacity="actionCapacity" more-label="更多标签操作" />
         </template>
 
         <template #[`item.status`]="{ item }">
@@ -117,7 +109,8 @@
           </v-chip>
         </template>
 
-        <template v-for="field in ['created_at', 'aid', 'user_id']" :key="field" #[`item.${field}`]="{ item }">
+        <template #[`item.created_at`]="{ item }"><AdminTableTime :value="item.created_at" :query="highlightQuery('created_at')" /></template>
+        <template v-for="field in ['aid', 'user_id']" :key="field" #[`item.${field}`]="{ item }">
           <AdminTableSearchHighlight :text="tableSearchCell(item, field)" :query="highlightQuery(field)" />
         </template>
 
@@ -141,11 +134,7 @@
   </AdminPageContainer>
 
   <CreateTagDialog v-model:thisDialogState="CreateTagDialog_state" :getTableData="getTableData" />
-  <EditTagDialog
-    v-model:thisDialogState="EditTagDialog_state"
-    v-model:TagData="EditTagDialog_data"
-    :getTableData="getTableData"
-  />
+  <TagDetailDialog v-model="TagDetailDialog_state" :tag-id="TagDetailDialog_id" :initial-mode="TagDetailDialog_mode" :source-path="route.fullPath" @saved="getTableData" />
   <PublicDeleteDialog
     v-model:thisDialogState="DeleteTagDialog_state"
     v-model:deleteData="DeleteTagDialog_data"
@@ -173,8 +162,10 @@ import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue';
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue';
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
+import AdminTableRowActions from '~/components/shared/admin/AdminTableRowActions.vue';
+import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue';
 import CreateTagDialog from '@/components/tags/CreateTagDialog.vue';
-import EditTagDialog from '@/components/tags/EditTagDialog.vue';
+import TagDetailDialog from '~/components/tags/TagDetailDialog.vue';
 import PublicBatchDialog from '@/components/shared/Table/BatchDialog.vue';
 import PublicDeleteDialog from '@/components/shared/Table/DeleteDialog.vue';
 import PublicSearchDialog from '@/components/shared/Table/SearchDialog.vue';
@@ -195,24 +186,42 @@ const positiveQueryInt = (value: unknown, fallback: number) => {
   const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : Number.NaN;
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
-const queryFilters = (value: unknown): Record<string, unknown> => {
-  if (typeof value !== 'string' || !value) return {};
-  try {
-    const parsed = JSON.parse(value);
-    return typeof parsed === 'object' && parsed && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
+const normalizeFilters = (value: unknown): Record<string, unknown> => {
+  let source: Record<string, unknown>;
+  if (typeof value === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      source = typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown> : {};
+    } catch {
+      source = {};
+    }
+  } else {
+    source = typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? value as Record<string, unknown> : {};
   }
+  const result: Record<string, unknown> = {};
+  if (Array.isArray(source.search_keys)) {
+    const keys = [...new Set(source.search_keys.filter((key): key is string =>
+      typeof key === 'string' && SearchKeys.some((option) => option.value === key)))];
+    if (keys.length) result.search_keys = keys;
+  }
+  const orderKey = source.order_key;
+  if (typeof orderKey === 'string' && AllTableHeaders.some((header) => header.value === orderKey && header.sortable)) {
+    result.order_key = orderKey;
+    if (typeof source.order_desc === 'boolean') result.order_desc = source.order_desc;
+  }
+  return result;
 };
 
 const AllTableHeaders = [
-  { title: '标签名', value: 'name', sortable: true },
-  { title: '状态', value: 'status', sortable: true },
-  { title: '创建时间', value: 'created_at', sortable: true },
   { title: 'ID', value: 'id', sortable: true },
+  { title: '标签名', value: 'name', sortable: true, minWidth: 240 },
+  { title: '状态', value: 'status', sortable: true, minWidth: 112 },
+  { title: '创建时间', value: 'created_at', sortable: true, minWidth: 176 },
   { title: '应用 ID', value: 'aid', sortable: true },
   { title: '创建用户 ID', value: 'user_id', sortable: true },
-  { title: '操作', value: 'operate', sortable: false },
+  { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
 const defaultColumns = ['name', 'status', 'created_at', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
@@ -233,7 +242,13 @@ const tagStatus = (status: number) => {
 };
 const canUpdateTag = computed(() => userStore.hasGrant('tags.update', 'all'));
 const canDeleteTag = computed(() => userStore.hasGrant('tags.delete', 'all'));
-const tagPanelActionLabel = computed(() => canUpdateTag.value ? '编辑' : '查看');
+const canViewTag = computed(() => userStore.hasGrant('tags.read', 'all'));
+const actionCapacity = ref(1);
+const tagActionLabels = computed(() => [
+  ...(!canUpdateTag.value && canViewTag.value ? ['查看'] : []),
+  ...(canUpdateTag.value ? ['编辑'] : []),
+  ...(canDeleteTag.value ? ['删除'] : []),
+]);
 const batchCapabilityFor = (method: TagsBatchMethod | '') => method === 'delete' ? 'tags.delete' : 'tags.update';
 const TableBatchOptions = computed(() => BaseTableBatchOptions.filter((option) => userStore.hasGrant(batchCapabilityFor(option.value), 'all')));
 const batchCapability = computed(() => batchCapabilityFor(BatchOperate.value));
@@ -249,13 +264,19 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
   ? [{ key: route.query.order_key, order: ['1', 'true', 'desc'].includes(String(route.query.order_desc)) ? 'desc' : 'asc' }]
   : []);
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
-const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
+const appliedSearchValue = ref(tableSearchValue.value);
+const tableSearchFilter = ref<Record<string, unknown>>(normalizeFilters(route.query.filters));
 const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
-const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } = useAdminTableSearchFeedback(tableSearchValue, tableSearchFilter, SearchKeys, 'name', '搜索标签名称');
+const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } = useAdminTableSearchFeedback(appliedSearchValue, tableSearchFilter, SearchKeys, 'name', '搜索标签名称');
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
+const tableHasResult = ref(false);
+const tableResultState = ref<'ready' | 'loading' | 'stale'>('ready');
+const allowRowMutation = computed(() => tableHasResult.value && !tableLoading.value && tableResultState.value === 'ready');
+const isRowSelectable = () => allowRowMutation.value;
+let lastSuccessfulQuery: string | null = null;
 const hasActiveFilters = computed(() => Boolean(
-  tableSearchValue.value?.trim()
+  appliedSearchValue.value?.trim()
   || Object.keys(tableSearchFilter.value).length
   || tableSortBy.value.length,
 ));
@@ -271,18 +292,28 @@ const getTableData = async () => {
   const requestId = ++latestRequest;
   tableLoading.value = true;
   tableError.value = null;
-  const searchValue = tableSearchValue.value?.trim();
+  const searchValue = appliedSearchValue.value?.trim();
   const searchHighlight = searchSnapshot();
   const sort = tableSortBy.value[0];
   const params: Record<string, unknown> = {
+    ...normalizeFilters(tableSearchFilter.value),
     page: tableCurrentPage.value,
     list_rows: tableListRows.value,
-    ...tableSearchFilter.value,
   };
   if (searchValue) params.search_value = mapTableSearchValue(searchValue, tableSearchFilter.value.search_keys, { status: SelectUtils.Common.Status });
   if (sort) {
     params.order_key = sort.key;
     params.order_desc = sort.order === 'desc';
+  }
+
+  const queryKey = JSON.stringify(params);
+  const refreshing = tableHasResult.value && lastSuccessfulQuery === queryKey;
+  tableResultState.value = refreshing ? 'loading' : 'ready';
+  if (!refreshing) {
+    tableItems.value = [];
+    tableTotalItems.value = 0;
+    tableHasResult.value = false;
+    tableSelected.value = [];
   }
 
   try {
@@ -292,8 +323,14 @@ const getTableData = async () => {
     applySearchSnapshot(searchHighlight);
     tableCurrentPage.value = result.pagination?.currentPage ?? tableCurrentPage.value;
     tableTotalItems.value = result.pagination?.totalItems ?? result.data.length;
+    lastSuccessfulQuery = queryKey;
+    tableHasResult.value = true;
+    tableResultState.value = 'ready';
   } catch (error) {
-    if (requestId === latestRequest) tableError.value = errorMessage(error);
+    if (requestId === latestRequest) {
+      tableError.value = errorMessage(error);
+      if (refreshing) tableResultState.value = 'stale';
+    }
   } finally {
     if (requestId === latestRequest) tableLoading.value = false;
   }
@@ -307,7 +344,7 @@ const syncRouteQuery = () => {
   const orderDesc = sort ? sort.order === 'desc' || sort.order === true : tableSearchFilter.value.order_desc !== false;
   next.page = String(tableCurrentPage.value);
   next.list_rows = String(tableListRows.value);
-  if (tableSearchValue.value?.trim()) next.search_value = tableSearchValue.value.trim();
+  if (appliedSearchValue.value?.trim()) next.search_value = appliedSearchValue.value.trim();
   else delete next.search_value;
   if (orderKey) {
     next.order_key = orderKey;
@@ -322,34 +359,49 @@ const syncRouteQuery = () => {
 };
 
 const refreshFromFirstPage = () => {
-  syncRouteQuery();
-  if (tableCurrentPage.value === 1) void getTableData();
-  else tableCurrentPage.value = 1;
+  if (tableCurrentPage.value === 1) {
+    syncRouteQuery();
+    void getTableData();
+  } else {
+    tableCurrentPage.value = 1;
+  }
 };
-const searchTableData = CommonUtils.lodash.debounce(refreshFromFirstPage, 500);
+const submitSearch = () => {
+  appliedSearchValue.value = tableSearchValue.value?.trim() || undefined;
+  refreshFromFirstPage();
+};
+const onSearchDraftChange = (value: string | null) => {
+  if (!value?.trim() && appliedSearchValue.value) {
+    appliedSearchValue.value = undefined;
+    refreshFromFirstPage();
+  }
+};
 
 const CreateTagDialog_state = ref(false);
 const openCreateTagDialog = () => {
   CreateTagDialog_state.value = true;
 };
 
-const EditTagDialog_state = ref(false);
-const EditTagDialog_data = ref<Tag | null>(null);
-const openTagPanel = (id: number) => {
-  EditTagDialog_data.value = { id } as Tag;
-  EditTagDialog_state.value = true;
-  void router.replace({ query: { ...route.query, inspect: String(id) }, hash: route.hash });
+const TagDetailDialog_state = ref(false);
+const TagDetailDialog_id = ref<number | null>(null);
+const TagDetailDialog_mode = ref<'view' | 'edit'>('view');
+const openTagPanel = (id: number, mode: 'view' | 'edit' = 'view') => {
+  TagDetailDialog_id.value = id;
+  TagDetailDialog_mode.value = mode;
+  TagDetailDialog_state.value = true;
 };
+const tagRowActions = (item: Tag) => [
+  ...(!canUpdateTag.value && canViewTag.value ? [{ key: 'view', label: '查看', onClick: () => openTagPanel(item.id) }] : []),
+  ...(canUpdateTag.value ? [{ key: 'edit', label: '编辑', disabled: !allowRowMutation.value, onClick: () => openTagPanel(item.id, 'edit') }] : []),
+  ...(canDeleteTag.value ? [{ key: 'delete', label: '删除', disabled: !allowRowMutation.value, onClick: () => openDeleteTagDialog(item) }] : []),
+];
 watch(() => route.query.inspect, (value) => {
   const id = typeof value === 'string' ? Number.parseInt(value, 10) : 0;
   if (id > 0) {
-    EditTagDialog_data.value = { id } as Tag;
-    EditTagDialog_state.value = true;
-  } else if (EditTagDialog_state.value) {
-    EditTagDialog_state.value = false;
+    openTagPanel(id);
   }
 }, { immediate: true });
-watch(EditTagDialog_state, (open) => {
+watch(TagDetailDialog_state, (open) => {
   if (open || !route.query.inspect) return;
   const next = { ...route.query };
   delete next.inspect;
@@ -398,14 +450,35 @@ const clearSelection = () => {
 const SearchTagsDialog_state = ref(false);
 const setTableSearchFilter = (data: Record<string, unknown>) => {
   applySearchDialog(data);
+  tableSearchFilter.value = normalizeFilters(tableSearchFilter.value);
   tableCurrentPage.value = 1;
   syncRouteQuery();
 };
 const openSearchDialog = () => {
   SearchTagsDialog_state.value = true;
 };
+const applySavedView = (query: Record<string, string | null | (string | null)[]>) => {
+  const search = query.search_value;
+  tableSearchValue.value = typeof search === 'string' && search.trim() ? search.trim() : undefined;
+  appliedSearchValue.value = tableSearchValue.value;
+  const filters = normalizeFilters(query.filters);
+  applySearchDialog(filters);
+  const orderKey = query.order_key ?? filters.order_key;
+  const orderDesc = query.order_key ? query.order_desc : filters.order_desc;
+  tableSortBy.value = typeof orderKey === 'string' && AllTableHeaders.some((header) => header.value === orderKey && header.sortable)
+    ? [{ key: orderKey, order: ['1', 'true', 'desc'].includes(String(orderDesc)) ? 'desc' : 'asc' }]
+    : [];
+  const size = positiveQueryInt(query.list_rows, defaultListRows);
+  tableListRows.value = TableListRowsOptions.some((option) => option.value === size) ? size : defaultListRows;
+  tableSelected.value = [];
+  tableCurrentPage.value = 1;
+  syncRouteQuery();
+  void getTableData();
+};
+
 const resetTableView = () => {
   tableSearchValue.value = undefined;
+  appliedSearchValue.value = undefined;
   tableSearchFilter.value = {};
   tableSortBy.value = [];
   tableListRows.value = defaultListRows;
@@ -421,7 +494,7 @@ watch([tableCurrentPage, tableListRows, tableSortBy], () => {
 
 <style scoped>
 .admin-tag-name { max-width: 360px; justify-content: flex-start; }
-.admin-tag-name :deep(.v-btn__content) { overflow: hidden; text-overflow: ellipsis; }
+.admin-tag-name { overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 700px) {
   .admin-tag-name { max-width: 220px; }
 }

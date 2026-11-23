@@ -20,7 +20,7 @@ const props = defineProps<{
 }>()
 
 const thisDialogState = defineModel<boolean>('thisDialogState', { default: false })
-const batchData = defineModel<unknown[]>('batchData', { default: [] })
+const batchData = defineModel<unknown[]>('batchData', { default: () => [] })
 const batchOptions = defineModel<string>('batchOptions', { default: '' })
 
 const processing = ref(false)

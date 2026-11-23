@@ -16,6 +16,7 @@ final class FileResource extends Resource
             'file_url' => ['type' => 'string'], 'url' => ['type' => 'string'], 'file_size' => ['type' => 'integer'],
             'size' => ['type' => 'integer'], 'file_ext' => ['type' => 'string'], 'mime_type' => ['type' => 'string'],
             'status' => ['type' => 'integer'], 'upload_status' => ['type' => 'integer'],
+            'is_deleted' => ['type' => 'boolean'],
             'created_at' => ['type' => 'string'], 'updated_at' => ['type' => 'string'], 'expire_at' => ['type' => 'string', 'nullable' => true],
         ]];
     }
@@ -25,6 +26,8 @@ final class FileResource extends Resource
         $data = self::normalize($value);
         $file = is_array($data) ? $data : (array) $data;
 
+        $file['is_deleted'] = (bool) ($file['is_deleted'] ?? !empty($file['deleted_at'] ?? null));
+
         foreach (['driver_path', 'deleted_at'] as $field) {
             unset($file[$field]);
         }
@@ -33,7 +36,7 @@ final class FileResource extends Resource
             'id', 'hash', 'channel_slug', 'user_id', 'is_public', 'scene',
             'ref_type', 'ref_id', 'original_name', 'file_path', 'path',
             'file_url', 'url', 'file_size', 'size', 'file_ext', 'mime_type',
-            'status', 'upload_status', 'created_at', 'updated_at', 'expire_at',
+            'status', 'upload_status', 'is_deleted', 'created_at', 'updated_at', 'expire_at',
         ];
 
         $result = [];

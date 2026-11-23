@@ -1,13 +1,13 @@
 <template>
-  <v-dialog v-model="thisDialogState" aria-label="创建角色" max-width="720" :persistent="saving">
-    <v-card prepend-icon="mdi-shield-plus-outline" title="创建角色">
+  <v-dialog @after-leave="restoreDialogFocus" v-model="thisDialogState" aria-label="创建角色" max-width="640" :persistent="saving">
+    <v-card>
+      <v-card-title class="text-h6">创建角色</v-card-title>
+      <v-divider />
       <v-card-text class="pt-4">
         <v-alert v-if="formError" class="mb-4" role="alert" type="error" variant="tonal">
           {{ formError }}
         </v-alert>
-        <v-alert class="mb-4" type="info" variant="tonal">
-          创建角色后还需要分配权限；新角色在获得明确权限前不应承担管理职责。
-        </v-alert>
+        <p class="mb-4 text-body-2 text-medium-emphasis">创建后在角色详情中分配权限。</p>
         <v-row dense>
           <v-col cols="12" sm="6">
             <v-text-field
@@ -64,6 +64,7 @@
 </template>
 
 <script setup lang="ts">
+import { useAdminDialogFocusReturn } from '~/composables/useAdminDialogFocusReturn'
 import { isApiError, useApi } from '~/lib/api'
 
 const client = useApi()
@@ -97,8 +98,11 @@ const submit = async () => {
 }
 
 watch(thisDialogState, (open) => {
-  if (open) {
+  if (open) formError.value = ''
+  else if (!saving.value) {
+    createData.value = { name: '', slug: '', description: '' }
     formError.value = ''
   }
 })
+const restoreDialogFocus = useAdminDialogFocusReturn(thisDialogState)
 </script>

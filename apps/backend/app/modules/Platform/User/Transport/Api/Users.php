@@ -8,7 +8,20 @@ class Users extends Validate
 {
     public static function requestSchemas(): array
     {
-        return ['assignRoles' => [
+        return ['adminUpdate' => [
+            'type' => 'object',
+            'properties' => [
+                'avatar' => ['type' => 'string', 'format' => 'uri', 'maxLength' => 255],
+                'number' => ['type' => 'string', 'minLength' => 3, 'maxLength' => 20],
+                'password' => ['type' => 'string', 'minLength' => 5, 'maxLength' => 36],
+                'email' => ['type' => 'string', 'format' => 'email', 'maxLength' => 320],
+                'phone' => ['type' => 'string', 'maxLength' => 20],
+                'username' => ['type' => 'string', 'minLength' => 3, 'maxLength' => 12],
+                'status' => ['type' => 'number', 'enum' => [0, 1, 2, 3]],
+                'roles_id' => ['type' => 'array', 'items' => ['type' => 'integer']],
+            ],
+            'additionalProperties' => false,
+        ], 'assignRoles' => [
             'type' => 'object',
             'properties' => [
                 'roles_id' => ['type' => 'array', 'items' => ['type' => 'integer']],
@@ -51,7 +64,7 @@ class Users extends Validate
             'toNull' => false,
         ],
         'adminUpdate' => [
-            'normal' => ['avatar', 'email', 'phone', 'username', 'status'],
+            'normal' => ['avatar', 'email', 'phone', 'username', 'status', 'roles_id'],
             'require' => false,
             'nonNull' => ['id', 'password', 'number'],
             'toNull' => false,

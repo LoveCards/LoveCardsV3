@@ -3,19 +3,31 @@
     title="文件管理"
     description="管理上传文件与回收站。过期上传处理只标记失败；永久删除属于高风险操作。"
     :breadcrumbs="[{ title: '内容' }]"
-  />
+  >
+    <template #actions>
+      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="tableLoading" @click="getTableData">刷新</v-btn>
+    </template>
+  </AdminPageHeader>
 
   <AdminPageContainer fluid>
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
+      v-model:action-capacity="actionCapacity"
       :columns="columnOptions"
       :default-columns="defaultColumns"
-      :result-count="tableTotalItems"
-      preference-key="settings-storage-files"
-      @reset-view="resetTableView"
+      :action-headers="TableHeaders"
+      :action-labels="fileActionLabels"
+      :selection-width="48"
+      :result-count="tableHasResult ? tableTotalItems : null"
+      :result-state="tableResultState"
+      :view-query-keys="['search_value', 'order_key', 'order_desc', 'filters', 'view', 'list_rows']" preference-key="settings-storage-files"
+      @reset-view="resetTableView" @apply-view="applySavedView"
     >
       <template #search>
-        <v-text-field v-model="tableSearchValue" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+        <div class="d-flex flex-wrap align-center ga-2">
+          <v-text-field v-model="tableSearchValue" class="flex-grow-1" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @keyup.enter="submitSearch" @update:model-value="onSearchDraftChange" />
+          <v-btn variant="outlined" @click="submitSearch">查询</v-btn>
+        </div>
       </template>
       <template #actions>
         <AdminActionGuard capability="files.cleanup" scope="global">
@@ -29,11 +41,11 @@
         <v-row dense align="center" aria-live="polite">
           <v-col cols="12" sm="auto"><span class="text-body-2">已选择 {{ tableSelected.length }} 项</span></v-col>
           <v-col cols="12" sm="4" md="3">
-            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="tableLoading" item-title="title" item-value="value" label="批量操作" />
+            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="!allowRowMutation" item-title="title" item-value="value" label="批量操作" />
           </v-col>
           <v-col cols="auto">
             <AdminActionGuard :capability="batchCapability" scope="all">
-              <v-btn variant="outlined" :disabled="BatchOperate === ''" @click="openBatchDialog">应用操作</v-btn>
+              <v-btn variant="outlined" :disabled="!allowRowMutation || BatchOperate === ''" @click="openBatchDialog">应用操作</v-btn>
             </AdminActionGuard>
           </v-col>
           <v-col cols="auto"><v-btn variant="text" @click="tableSelected = []">取消选择</v-btn></v-col>
@@ -70,6 +82,7 @@
         item-value="id"
         items-per-page-text="每页行数"
         :headers="TableHeaders"
+        :item-selectable="isRowSelectable"
         :items="tableItems"
         :items-length="tableTotalItems"
         :items-per-page-options="TableListRowsOptions"
@@ -81,18 +94,10 @@
         </template>
 
         <template #[`item.original_name`]="{ item }">
-          <v-list-item class="px-0 py-1" width="280">
-            <v-list-item-title>
-              <AdminResourceLink
-                resource-type="file"
-                :resource-id="item.id"
-                :label="item.original_name || `文件 #${item.id}`"
-                :highlight-query="highlightQuery('original_name')"
-              />
-            </v-list-item-title>
-            <v-list-item-subtitle>{{ item.mime_type || '未知类型' }}</v-list-item-subtitle>
-          </v-list-item>
+          <span class="admin-file-name"><AdminTableSearchHighlight :text="item.original_name || `文件 #${item.id}`" :query="highlightQuery('original_name')" /></span>
         </template>
+
+        <template #[`item.mime_type`]="{ item }">{{ item.mime_type || '未知类型' }}</template>
 
         <template #[`item.preview`]="{ item }">
           <v-img
@@ -103,7 +108,9 @@
             cover
             :src="item.file_url"
             :alt="item.original_name || '文件预览'"
-          />
+          >
+            <template #error><v-avatar color="surface-variant" rounded="sm" size="40"><v-icon icon="mdi-image-off-outline" aria-label="预览不可用" /></v-avatar></template>
+          </v-img>
           <v-avatar v-else color="surface-variant" rounded="sm" size="40">
             <v-icon icon="mdi-file-outline" aria-label="普通文件" />
           </v-avatar>
@@ -142,87 +149,10 @@
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <div class="d-flex ga-1">
-            <AdminActionGuard capability="files.usage.read">
-              <v-tooltip text="查看文件引用" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    :to="`/apps/settings/storage/files/${item.id}/usage`"
-                    aria-label="查看文件引用"
-                    icon="mdi-link-variant"
-                    size="small"
-                    variant="text"
-                  />
-                </template>
-              </v-tooltip>
-            </AdminActionGuard>
-
-            <template v-if="viewMode === 'normal'">
-              <AdminActionGuard capability="files.update" scope="all">
-                <v-tooltip text="编辑文件" location="top">
-                  <template #activator="{ props }">
-                    <v-btn
-                      v-bind="props"
-                      aria-label="编辑文件"
-                      icon="mdi-pencil"
-                      size="small"
-                      variant="text"
-                      @click="openEditDialog(item)"
-                    />
-                  </template>
-                </v-tooltip>
-              </AdminActionGuard>
-              <AdminActionGuard capability="files.delete" scope="all">
-                <v-tooltip text="移入回收站" location="top">
-                  <template #activator="{ props }">
-                    <v-btn
-                      v-bind="props"
-                      aria-label="移入回收站"
-                      color="error"
-                      icon="mdi-delete-outline"
-                      size="small"
-                      variant="text"
-                      @click="openSingleBatchOp(item, 'trash')"
-                    />
-                  </template>
-                </v-tooltip>
-              </AdminActionGuard>
-            </template>
-
-            <template v-else>
-              <AdminActionGuard capability="files.restore" scope="all">
-                <v-tooltip text="恢复文件" location="top">
-                  <template #activator="{ props }">
-                    <v-btn
-                      v-bind="props"
-                      aria-label="恢复文件"
-                      icon="mdi-restore"
-                      size="small"
-                      variant="text"
-                      @click="openSingleBatchOp(item, 'restore')"
-                    />
-                  </template>
-                </v-tooltip>
-              </AdminActionGuard>
-              <AdminActionGuard capability="files.purge" scope="all">
-                <v-tooltip text="永久删除文件" location="top">
-                  <template #activator="{ props }">
-                    <v-btn
-                      v-bind="props"
-                      aria-label="永久删除文件"
-                      color="error"
-                      icon="mdi-delete-forever"
-                      size="small"
-                      variant="text"
-                      @click="openHardDeleteDialog(item)"
-                    />
-                  </template>
-                </v-tooltip>
-              </AdminActionGuard>
-            </template>
-          </div>
+          <AdminTableRowActions :actions="fileRowActions(item)" :capacity="actionCapacity" more-label="更多文件操作" />
         </template>
+
+        <template #[`item.created_at`]="{ item }"><AdminTableTime :value="item.created_at" /></template>
 
         <template #no-data>
           <v-empty-state
@@ -240,11 +170,7 @@
     </AdminResourceTableShell>
   </AdminPageContainer>
 
-  <EditFileDialog
-    v-model:thisDialogState="EditDialog_state"
-    v-model:FileData="EditDialog_data"
-    :getTableData="getTableData"
-  />
+  <FileDetailDialog v-model="DetailDialog_state" :file-id="DetailDialog_id" @changed="getTableData" />
   <PublicDeleteDialog
     v-model:thisDialogState="DeleteDialog_state"
     v-model:deleteData="DeleteDialog_data"
@@ -274,7 +200,7 @@
     :action-label="singleActionDialogAction"
     :resource-label="singleActionResourceLabel"
     :impact="singleActionImpact"
-    :color="singleAction.method === 'restore' ? 'primary' : 'error'"
+    :color="singleAction.method === 'trash' || singleAction.method === 'ban' ? 'error' : 'primary'"
     :loading="singleActionLoading"
     :error="singleActionError"
     @confirm="confirmSingleBatchOp"
@@ -298,14 +224,15 @@ import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerAction
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue';
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
-import EditFileDialog from '@/components/storage/EditFileDialog.vue';
+import AdminTableRowActions from '~/components/shared/admin/AdminTableRowActions.vue';
+import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue';
+import FileDetailDialog from '@/components/storage/FileDetailDialog.vue';
 import PublicBatchDialog from '@/components/shared/Table/BatchDialog.vue';
 import PublicDeleteDialog from '@/components/shared/Table/DeleteDialog.vue';
 import PublicSearchDialog from '@/components/shared/Table/SearchDialog.vue';
 import { tableSearchCell } from '~/composables/useAdminTableSearch';
 import { useApi } from '~/lib/api';
 import { useUserStore } from '~/stores/userStore';
-import CommonUtils from '~/utils/common';
 import SelectUtils from '~/utils/select';
 
 type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
@@ -314,36 +241,62 @@ const client = useApi();
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
+const canUpdateFile = computed(() => userStore.hasGrant('files.update', 'all'));
+const canTrashFile = computed(() => userStore.hasGrant('files.delete', 'all'));
+const canRestoreFile = computed(() => userStore.hasGrant('files.restore', 'all'));
+const canPurgeFile = computed(() => userStore.hasGrant('files.purge', 'all'));
+const actionCapacity = ref(1);
+const fileActionLabels = computed(() => [...new Set(tableItems.value.flatMap((item) => fileRowActions(item).map((action) => action.label)))]);
+
 
 const positiveQueryInt = (value: unknown, fallback: number) => {
   const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : Number.NaN;
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
-const queryFilters = (value: unknown): Record<string, unknown> => {
-  if (typeof value !== 'string' || !value) return {};
-  try {
-    const parsed = JSON.parse(value);
-    return typeof parsed === 'object' && parsed && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
+const normalizeFilters = (value: unknown): Record<string, unknown> => {
+  let source: Record<string, unknown>;
+  if (typeof value === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      source = typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown> : {};
+    } catch {
+      source = {};
+    }
+  } else {
+    source = typeof value === 'object' && value !== null && !Array.isArray(value)
+      ? value as Record<string, unknown> : {};
   }
+  const result: Record<string, unknown> = {};
+  if (Array.isArray(source.search_keys)) {
+    const keys = [...new Set(source.search_keys.filter((key): key is string =>
+      typeof key === 'string' && SearchKeys.some((option) => option.value === key)))];
+    if (keys.length) result.search_keys = keys;
+  }
+  const orderKey = source.order_key;
+  if (typeof orderKey === 'string' && AllTableHeaders.some((header) => header.value === orderKey && header.sortable)) {
+    result.order_key = orderKey;
+    if (typeof source.order_desc === 'boolean') result.order_desc = source.order_desc;
+  }
+  return result;
 };
 
 const AllTableHeaders = [
   { title: 'ID', value: 'id', sortable: true },
-  { title: '预览', value: 'preview', sortable: false },
-  { title: '文件名', value: 'original_name', sortable: true },
+  { title: '文件名', value: 'original_name', sortable: true, minWidth: 240 },
+  { title: 'MIME 类型', value: 'mime_type', sortable: false, minWidth: 160 },
+  { title: '预览', value: 'preview', sortable: false, minWidth: 88 },
   { title: '大小', value: 'file_size', sortable: true },
-  { title: '场景', value: 'scene', sortable: true },
+  { title: '场景', value: 'scene', sortable: true, minWidth: 120 },
   { title: '渠道', value: 'channel_slug', sortable: true },
   { title: '上传者', value: 'user_id', sortable: true },
-  { title: '状态', value: 'status', sortable: true },
-  { title: '上传状态', value: 'upload_status', sortable: true },
+  { title: '状态', value: 'status', sortable: true, minWidth: 112 },
+  { title: '上传状态', value: 'upload_status', sortable: true, minWidth: 128 },
   { title: '公开范围', value: 'is_public', sortable: true },
-  { title: '创建时间', value: 'created_at', sortable: true },
-  { title: '操作', value: 'operate', sortable: false },
+  { title: '创建时间', value: 'created_at', sortable: true, minWidth: 176 },
+  { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
-const defaultColumns = ['id', 'preview', 'original_name', 'file_size', 'scene', 'status', 'upload_status', 'operate'];
+const defaultColumns = ['original_name', 'mime_type', 'preview', 'file_size', 'scene', 'status', 'created_at', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: ['original_name', 'operate'].includes(header.value) }));
@@ -369,7 +322,6 @@ const BaseTableBatchOptions = computed<Array<{ title: string; value: FilesBatchM
       { title: '封禁', value: 'ban' },
       { title: '切换公开', value: 'toggle_public' },
       { title: '移入回收站', value: 'trash' },
-      { title: '永久删除', value: 'hard_delete' },
     ]);
 const BatchOperate = ref<FilesBatchMethod | ''>('');
 const batchCapabilityFor = (method: FilesBatchMethod | '') => {
@@ -401,11 +353,17 @@ const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'strin
   ? [{ key: route.query.order_key, order: ['1', 'true', 'desc'].includes(String(route.query.order_desc)) ? 'desc' : 'asc' }]
   : []);
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
-const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
+const appliedSearchValue = ref(tableSearchValue.value);
+const tableSearchFilter = ref<Record<string, unknown>>(normalizeFilters(route.query.filters));
 const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
-const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } = useAdminTableSearchFeedback(tableSearchValue, tableSearchFilter, SearchKeys, 'original_name', '搜索文件名称');
+const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } = useAdminTableSearchFeedback(appliedSearchValue, tableSearchFilter, SearchKeys, 'original_name', '搜索文件名称');
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
+const tableHasResult = ref(false);
+const tableResultState = ref<'ready' | 'loading' | 'stale'>('ready');
+const allowRowMutation = computed(() => tableHasResult.value && !tableLoading.value && tableResultState.value === 'ready');
+const isRowSelectable = () => allowRowMutation.value;
+let lastSuccessfulQuery: string | null = null;
 let latestRequest = 0;
 
 const errorMessage = (error: unknown) => {
@@ -418,19 +376,29 @@ const getTableData = async () => {
   const requestId = ++latestRequest;
   tableLoading.value = true;
   tableError.value = null;
-  const searchValue = tableSearchValue.value?.trim();
+  const searchValue = appliedSearchValue.value?.trim();
   const searchHighlight = searchSnapshot();
   const sort = tableSortBy.value[0];
   const params: Record<string, unknown> = {
+    ...normalizeFilters(tableSearchFilter.value),
     page: tableCurrentPage.value,
     list_rows: tableListRows.value,
     show_deleted: viewMode.value === 'deleted' ? 2 : 0,
-    ...tableSearchFilter.value,
   };
   if (searchValue) params.search_value = searchValue;
   if (sort) {
     params.order_key = sort.key;
     params.order_desc = sort.order === 'desc';
+  }
+
+  const queryKey = JSON.stringify(params);
+  const refreshing = tableHasResult.value && lastSuccessfulQuery === queryKey;
+  tableResultState.value = refreshing ? 'loading' : 'ready';
+  if (!refreshing) {
+    tableItems.value = [];
+    tableTotalItems.value = 0;
+    tableHasResult.value = false;
+    tableSelected.value = [];
   }
 
   try {
@@ -440,8 +408,14 @@ const getTableData = async () => {
     applySearchSnapshot(searchHighlight);
     tableCurrentPage.value = result.pagination?.currentPage ?? tableCurrentPage.value;
     tableTotalItems.value = result.pagination?.totalItems ?? result.data.length;
+    lastSuccessfulQuery = queryKey;
+    tableHasResult.value = true;
+    tableResultState.value = 'ready';
   } catch (error) {
-    if (requestId === latestRequest) tableError.value = errorMessage(error);
+    if (requestId === latestRequest) {
+      tableError.value = errorMessage(error);
+      if (refreshing) tableResultState.value = 'stale';
+    }
   } finally {
     if (requestId === latestRequest) tableLoading.value = false;
   }
@@ -456,7 +430,7 @@ const syncRouteQuery = () => {
   next.page = String(tableCurrentPage.value);
   next.list_rows = String(tableListRows.value);
   next.view = viewMode.value;
-  if (tableSearchValue.value?.trim()) next.search_value = tableSearchValue.value.trim();
+  if (appliedSearchValue.value?.trim()) next.search_value = appliedSearchValue.value.trim();
   else delete next.search_value;
   if (orderKey) {
     next.order_key = orderKey;
@@ -471,18 +445,52 @@ const syncRouteQuery = () => {
 };
 
 const refreshFromFirstPage = () => {
-  syncRouteQuery();
-  if (tableCurrentPage.value === 1) void getTableData();
-  else tableCurrentPage.value = 1;
+  if (tableCurrentPage.value === 1) {
+    syncRouteQuery();
+    void getTableData();
+  } else {
+    tableCurrentPage.value = 1;
+  }
 };
-const searchTableData = CommonUtils.lodash.debounce(refreshFromFirstPage, 500);
+const submitSearch = () => {
+  appliedSearchValue.value = tableSearchValue.value?.trim() || undefined;
+  refreshFromFirstPage();
+};
+const onSearchDraftChange = (value: string | null) => {
+  if (!value?.trim() && appliedSearchValue.value) {
+    appliedSearchValue.value = undefined;
+    refreshFromFirstPage();
+  }
+};
 const clearFilters = () => {
   tableSearchValue.value = undefined;
+  appliedSearchValue.value = undefined;
   tableSearchFilter.value = {};
   refreshFromFirstPage();
 };
+const applySavedView = (query: Record<string, string | null | (string | null)[]>) => {
+  const search = query.search_value;
+  tableSearchValue.value = typeof search === 'string' && search.trim() ? search.trim() : undefined;
+  appliedSearchValue.value = tableSearchValue.value;
+  const filters = normalizeFilters(query.filters);
+  applySearchDialog(filters);
+  const orderKey = query.order_key ?? filters.order_key;
+  const orderDesc = query.order_key ? query.order_desc : filters.order_desc;
+  tableSortBy.value = typeof orderKey === 'string' && AllTableHeaders.some((header) => header.value === orderKey && header.sortable)
+    ? [{ key: orderKey, order: ['1', 'true', 'desc'].includes(String(orderDesc)) ? 'desc' : 'asc' }]
+    : [];
+  const size = positiveQueryInt(query.list_rows, defaultListRows);
+  tableListRows.value = TableListRowsOptions.some((option) => option.value === size) ? size : defaultListRows;
+  viewMode.value = query.view === 'deleted' ? 'deleted' : 'normal';
+  tableSelected.value = [];
+  tableCurrentPage.value = 1;
+  syncRouteQuery();
+  void getTableData();
+};
+
 const resetTableView = () => {
   tableSearchValue.value = undefined;
+  appliedSearchValue.value = undefined;
   tableSearchFilter.value = {};
   tableSortBy.value = [];
   viewMode.value = 'normal';
@@ -501,15 +509,21 @@ const handleBatchOp = (ids: number[], method: FilesBatchMethod) => {
 const SingleActionDialog_state = ref(false);
 const singleActionLoading = ref(false);
 const singleActionError = ref('');
-const singleAction = ref<{ id: number; display: string; method: FilesBatchMethod }>({ id: 0, display: '', method: 'trash' });
-const singleActionDialogTitle = computed(() => singleAction.value.method === 'restore' ? '确认恢复文件' : '确认移入回收站');
-const singleActionDialogAction = computed(() => singleAction.value.method === 'restore' ? '恢复文件' : '移入回收站');
+const singleAction = ref<{ id: number; display: string; method: FilesBatchMethod; status: number; isPublic: number }>({ id: 0, display: '', method: 'trash', status: 0, isPublic: 0 });
+const singleActionLabels: Record<FilesBatchMethod, string> = { approve: '审核通过', ban: '封禁文件', toggle_public: '切换公开状态', trash: '移入回收站', restore: '恢复文件', hard_delete: '永久删除文件' };
+const singleActionDialogTitle = computed(() => `确认${singleActionLabels[singleAction.value.method]}`);
+const singleActionDialogAction = computed(() => singleActionLabels[singleAction.value.method]);
 const singleActionResourceLabel = computed(() => `${singleAction.value.display || '文件'}（#${singleAction.value.id}）`);
-const singleActionImpact = computed(() => singleAction.value.method === 'restore'
-  ? '文件将重新回到正常列表；能否在前台访问仍取决于审核状态、公开状态和实际存储对象。'
-  : '文件将进入回收站并停止正常使用；永久删除前仍可恢复。');
-const openSingleBatchOp = (item: LCFile, method: Extract<FilesBatchMethod, 'trash' | 'restore'>) => {
-  singleAction.value = { id: item.id, display: item.original_name || item.file_url || '文件', method };
+const singleActionImpact = computed(() => ({
+  approve: '审核状态将设为通过；实际访问仍取决于公开和上传状态。',
+  ban: '文件将被封禁，并停止正常公开访问。',
+  toggle_public: '文件公开状态将立即翻转。请核对当前状态后再确认。',
+  trash: '文件将进入回收站并停止正常使用；永久删除前仍可恢复。',
+  restore: '文件将重新回到正常列表；能否在前台访问仍取决于审核状态、公开状态和实际存储对象。',
+  hard_delete: '文件将永久删除，此操作不可撤销。',
+})[singleAction.value.method]);
+const openSingleBatchOp = (item: LCFile, method: Exclude<FilesBatchMethod, 'hard_delete'>) => {
+  singleAction.value = { id: item.id, display: item.original_name || item.file_url || '文件', method, status: item.status, isPublic: item.is_public };
   singleActionError.value = '';
   SingleActionDialog_state.value = true;
 };
@@ -518,6 +532,13 @@ const confirmSingleBatchOp = async () => {
   singleActionLoading.value = true;
   singleActionError.value = '';
   try {
+    const current = await client.files.getManaged(singleAction.value.id);
+    if (singleAction.value.method === 'toggle_public' && current.is_public !== singleAction.value.isPublic) {
+      throw new Error('公开状态已变化，请刷新后重新选择操作。');
+    }
+    if (['approve', 'ban'].includes(singleAction.value.method) && current.status !== singleAction.value.status) {
+      throw new Error('审核状态已变化，请刷新后重新选择操作。');
+    }
     await handleBatchOp([singleAction.value.id], singleAction.value.method);
     SingleActionDialog_state.value = false;
   } catch (error) {
@@ -527,15 +548,26 @@ const confirmSingleBatchOp = async () => {
   }
 };
 
-const EditDialog_state = ref(false);
-const EditDialog_data = ref<{ edit: LCFile; origin: LCFile }>({ edit: {} as LCFile, origin: {} as LCFile });
-const openEditDialog = (item: LCFile) => {
-  EditDialog_data.value = {
-    origin: CommonUtils.deepClone(item),
-    edit: CommonUtils.deepClone(item),
-  };
-  EditDialog_state.value = true;
+const DetailDialog_state = ref(false);
+const DetailDialog_id = ref<number | null>(null);
+const openDetailDialog = (item: LCFile) => {
+  DetailDialog_id.value = item.id;
+  DetailDialog_state.value = true;
 };
+const fileRowActions = (item: LCFile) => [
+  ...(viewMode.value === 'normal' && canUpdateFile.value ? [{ key: 'edit', label: '编辑', disabled: !allowRowMutation.value, onClick: () => openDetailDialog(item) }] : []),
+  ...(viewMode.value !== 'normal' || !canUpdateFile.value ? [{ key: 'view', label: '查看', onClick: () => openDetailDialog(item) }] : []),
+  ...(viewMode.value === 'normal' ? [
+    ...(canUpdateFile.value ? [
+      { key: 'review', label: item.status === 0 ? '封禁' : '审核通过', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, item.status === 0 ? 'ban' : 'approve') },
+      { key: 'public', label: item.is_public ? '设为非公开' : '设为公开', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, 'toggle_public') },
+    ] : []),
+    ...(canTrashFile.value ? [{ key: 'trash', label: '移入回收站', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, 'trash') }] : []),
+  ] : [
+    ...(canRestoreFile.value ? [{ key: 'restore', label: '恢复', disabled: !allowRowMutation.value, onClick: () => openSingleBatchOp(item, 'restore') }] : []),
+    ...(canPurgeFile.value ? [{ key: 'purge', label: '永久删除', disabled: !allowRowMutation.value, onClick: () => openHardDeleteDialog(item) }] : []),
+  ]),
+];
 
 const DeleteDialog_state = ref(false);
 const DeleteDialog_data = ref<{ id: number; display?: string }>({ id: 0 });
@@ -592,6 +624,7 @@ const BatchFun = () => {
 const SearchDialog_state = ref(false);
 const setTableSearchFilter = (data: Record<string, unknown>) => {
   applySearchDialog(data);
+  tableSearchFilter.value = normalizeFilters(tableSearchFilter.value);
   tableCurrentPage.value = 1;
   syncRouteQuery();
 };
@@ -609,3 +642,8 @@ watch(viewMode, () => {
   if (alreadyOnFirstPage) void getTableData();
 });
 </script>
+
+<style scoped>
+.admin-file-cell { max-width: 100%; }
+.admin-file-name { white-space: normal; overflow-wrap: anywhere; }
+</style>

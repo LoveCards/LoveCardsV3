@@ -207,7 +207,7 @@ export interface GeneratedApiContract {
   "users.searchMentionCandidates": { method: "GET"; path: "/users/mention-candidates"; request: { query: string; limit?: number }; response: ApiTypes.ListResult<ApiTypes.MentionCandidate>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "users.security": { method: "GET"; path: "/admin/users/:id/security"; request: void; response: ApiTypes.UserSecurityOverview; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "users.sessions": { method: "GET"; path: "/admin/users/:id/sessions"; request: void; response: ApiTypes.UserSession[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
-  "users.updateManaged": { method: "PATCH"; path: "/admin/users/:id"; request: { avatar?: string; email?: string; phone?: string; username?: string; status?: number }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "users.updateManaged": { method: "PATCH"; path: "/admin/users/:id"; request: { avatar?: string; number?: string; password?: string; email?: string; phone?: string; username?: string; status?: number; roles_id?: number[] }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
 }
 
 export type GeneratedOperationId = keyof GeneratedApiContract

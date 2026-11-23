@@ -76,6 +76,7 @@ $test('card resource decodes json fields and exposes the public card contract', 
         'tags' => '[13,14]',
         'pictures' => '["/a.jpg"]',
         'media' => '[]',
+        'cover_file_id' => 42,
         'password' => 'secret',
         'deleted_at' => '2026-01-01',
     ]);
@@ -84,6 +85,7 @@ $test('card resource decodes json fields and exposes the public card contract', 
     $assertSame([13, 14], $result['tags']);
     $assertSame(['/a.jpg'], $result['pictures']);
     $assertSame([], $result['media']);
+    $assertSame(42, $result['cover_file_id']);
     $assertSame('卡卡旅行记', $result['username']);
     $assertFalse(array_key_exists('password', $result));
     $assertFalse(array_key_exists('deleted_at', $result));
@@ -132,7 +134,7 @@ $test('permission resource keeps the capability tuple stable', static function (
     $assertSame(['capability' => 'cards.read', 'scope' => 'own', 'description' => 'Read cards'], $result);
 });
 
-$test('file resource removes storage internals but keeps public upload fields', static function () use ($assertSame, $assertFalse): void {
+$test('file resource removes storage internals and exposes deletion state', static function () use ($assertSame, $assertFalse): void {
     $result = FileResource::make([
         'id' => 8,
         'url' => '/upload/a.png',
@@ -142,8 +144,12 @@ $test('file resource removes storage internals but keeps public upload fields', 
 
     $assertSame(8, $result['id']);
     $assertSame('/upload/a.png', $result['url']);
+    $assertSame(true, $result['is_deleted']);
     $assertFalse(array_key_exists('driver_path', $result));
     $assertFalse(array_key_exists('deleted_at', $result));
+
+    $active = FileResource::make(['id' => 9, 'deleted_at' => null]);
+    $assertSame(false, $active['is_deleted']);
 });
 
 $test('direct upload resource exposes credential fields only', static function () use ($assertSame, $assertFalse): void {

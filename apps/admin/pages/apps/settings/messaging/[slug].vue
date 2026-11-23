@@ -87,7 +87,6 @@
                     />
                   </v-col>
                 </v-row>
-                <v-divider class="mb-4" />
                 <AdminConfigSaveBar v-if="canUpdateConfig || canTestChannel" :dirty="configChanged" label="渠道配置">
                   <AdminActionGuard capability="sender.test" scope="global">
                     <v-btn
@@ -123,11 +122,11 @@
         </AdminConfigSection>
 
     <v-dialog v-model="testDialog" aria-label="测试消息通道" max-width="480" :persistent="testLoading">
-      <v-card prepend-icon="mdi-email-fast-outline" title="测试发信">
+      <v-card>
+        <v-card-title class="text-h6">测试发信</v-card-title>
+        <v-divider />
         <v-card-text class="pt-4">
-          <v-alert class="mb-4" type="info" variant="tonal">
-            测试使用服务端已保存的渠道配置，不会使用尚未保存的表单内容。
-          </v-alert>
+          <p class="mb-4 text-body-2 text-medium-emphasis">使用已保存的渠道配置发送测试消息。</p>
           <v-alert v-if="testMessage" class="mb-4" :type="testMessage.type" variant="tonal">
             {{ testMessage.text }}
           </v-alert>

@@ -1,15 +1,11 @@
 <template>
-  <div class="admin-content-summary py-4">
-    <p class="admin-content-summary__body mb-2"><AdminTableSearchHighlight :text="excerpt" :query="highlightQuery" /></p>
-    <div class="text-caption text-medium-emphasis d-flex flex-wrap align-center ga-2">
-      <span>{{ author || `用户 #${userId}` }}</span>
-      <slot />
-    </div>
+  <div class="admin-content-summary py-2">
+    <p class="admin-content-summary__body mb-0"><AdminTableSearchHighlight :text="excerpt" :query="highlightQuery" /></p>
   </div>
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{ content: string; author?: string; userId: number; highlightQuery?: string }>()
+const props = defineProps<{ content: string; highlightQuery?: string }>()
 const excerpt = computed(() => props.content?.replace(/\s+/gu, ' ').trim() || '无文字内容')
 </script>
 

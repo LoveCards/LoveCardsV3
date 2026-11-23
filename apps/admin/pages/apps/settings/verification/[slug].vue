@@ -86,7 +86,6 @@
                     />
                   </v-col>
                 </v-row>
-                <v-divider class="mb-4" />
                 <AdminConfigSaveBar v-if="canUpdateConfig" :dirty="configChanged" label="驱动配置">
                   <AdminActionGuard
                     :all-of="[

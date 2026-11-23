@@ -15,188 +15,190 @@
         审核开关和上传限制会直接影响新内容发布，请在低峰期调整并观察审核队列。
       </v-alert>
 
-      <AdminConfigSection
-        class="mb-4"
-        :dirty="uploadChanged"
-        description="头像与资料封面、卡片与评论图片分开设限；任一文件还要通过所用存储渠道自身的大小与格式限制。"
-        icon="mdi-upload"
-        title="上传限制"
-      >
-        <v-row dense>
-          <v-col cols="12" sm="6">
-            <v-number-input
-              v-model="rulesConfig.upload.avatarSize"
-              control-variant="split"
-              :disabled="!canUpdateConfig || rulesSaving"
-              density="comfortable"
-              hint="适用于头像与资料封面"
-              label="头像图片大小上限（MB）"
-              :min="1"
-              persistent-hint
-              variant="outlined"
-            />
-          </v-col>
-          <v-col cols="12" sm="6">
-            <v-text-field
-              v-model="rulesConfig.upload.avatarExt"
-              :disabled="!canUpdateConfig || rulesSaving"
-              density="comfortable"
-              hint="多个扩展名使用逗号分隔"
-              label="头像允许的图片格式"
-              persistent-hint
-              placeholder="jpg,png,gif,webp"
-              variant="outlined"
-            />
-          </v-col>
-          <v-col cols="12" sm="6">
-            <v-number-input
-              v-model="rulesConfig.upload.contentSize"
-              control-variant="split"
-              :disabled="!canUpdateConfig || rulesSaving"
-              density="comfortable"
-              hint="适用于卡片图片、评论图片与直传"
-              label="内容图片大小上限（MB）"
-              :min="1"
-              persistent-hint
-              variant="outlined"
-            />
-          </v-col>
-          <v-col cols="12" sm="6">
-            <v-text-field
-              v-model="rulesConfig.upload.contentExt"
-              :disabled="!canUpdateConfig || rulesSaving"
-              density="comfortable"
-              hint="多个扩展名使用逗号分隔"
-              label="内容允许的图片格式"
-              persistent-hint
-              placeholder="jpg,png,gif,webp"
-              variant="outlined"
-            />
-          </v-col>
-        </v-row>
-      </AdminConfigSection>
+      <v-sheet border rounded="lg">
+        <AdminConfigSection
+          joined
+          :dirty="uploadChanged"
+          description="头像与资料封面、卡片与评论图片分开设限；任一文件还要通过所用存储渠道自身的大小与格式限制。"
+          icon="mdi-upload"
+          title="上传限制"
+        >
+          <v-row dense>
+            <v-col cols="12" sm="6">
+              <v-number-input
+                v-model="rulesConfig.upload.avatarSize"
+                control-variant="split"
+                :disabled="!canUpdateConfig || rulesSaving"
+                density="comfortable"
+                hint="适用于头像与资料封面"
+                label="头像图片大小上限（MB）"
+                :min="1"
+                persistent-hint
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="rulesConfig.upload.avatarExt"
+                :disabled="!canUpdateConfig || rulesSaving"
+                density="comfortable"
+                hint="多个扩展名使用逗号分隔"
+                label="头像允许的图片格式"
+                persistent-hint
+                placeholder="jpg,png,gif,webp"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-number-input
+                v-model="rulesConfig.upload.contentSize"
+                control-variant="split"
+                :disabled="!canUpdateConfig || rulesSaving"
+                density="comfortable"
+                hint="适用于卡片图片、评论图片与直传"
+                label="内容图片大小上限（MB）"
+                :min="1"
+                persistent-hint
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="rulesConfig.upload.contentExt"
+                :disabled="!canUpdateConfig || rulesSaving"
+                density="comfortable"
+                hint="多个扩展名使用逗号分隔"
+                label="内容允许的图片格式"
+                persistent-hint
+                placeholder="jpg,png,gif,webp"
+                variant="outlined"
+              />
+            </v-col>
+          </v-row>
+        </AdminConfigSection>
 
-      <AdminConfigSection
-        class="mb-4"
-        :dirty="cardsChanged"
-        description="卡片图集与标签数量上限，以及新卡片是否需要人工审核。"
-        icon="mdi-card-text-outline"
-        title="卡片"
-      >
-        <v-row dense>
-          <v-col cols="12" sm="6">
-            <v-number-input
-              v-model="rulesConfig.cards.pictureLimit"
-              control-variant="split"
-              :disabled="!canUpdateConfig || rulesSaving"
-              density="comfortable"
-              label="卡片图集上限"
-              :min="0"
-              variant="outlined"
-            />
-          </v-col>
-          <v-col cols="12" sm="6">
-            <v-number-input
-              v-model="rulesConfig.cards.tagLimit"
-              control-variant="split"
-              :disabled="!canUpdateConfig || rulesSaving"
-              density="comfortable"
-              label="卡片标签上限"
-              :min="0"
-              variant="outlined"
-            />
-          </v-col>
-          <v-col cols="12" sm="6">
-            <v-select
-              v-model="rulesConfig.cards.approve"
-              :disabled="!canUpdateConfig || rulesSaving"
-              density="comfortable"
-              item-title="title"
-              item-value="value"
-              :items="switchItems"
-              label="卡片发布审核"
-              variant="outlined"
-            />
-          </v-col>
-        </v-row>
-      </AdminConfigSection>
+        <AdminConfigSection
+          joined
+          :dirty="cardsChanged"
+          description="卡片图集与标签数量上限，以及新卡片是否需要人工审核。"
+          icon="mdi-card-text-outline"
+          title="卡片"
+        >
+          <v-row dense>
+            <v-col cols="12" sm="6">
+              <v-number-input
+                v-model="rulesConfig.cards.pictureLimit"
+                control-variant="split"
+                :disabled="!canUpdateConfig || rulesSaving"
+                density="comfortable"
+                label="卡片图集上限"
+                :min="0"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-number-input
+                v-model="rulesConfig.cards.tagLimit"
+                control-variant="split"
+                :disabled="!canUpdateConfig || rulesSaving"
+                density="comfortable"
+                label="卡片标签上限"
+                :min="0"
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="rulesConfig.cards.approve"
+                :disabled="!canUpdateConfig || rulesSaving"
+                density="comfortable"
+                item-title="title"
+                item-value="value"
+                :items="switchItems"
+                label="卡片发布审核"
+                variant="outlined"
+              />
+            </v-col>
+          </v-row>
+        </AdminConfigSection>
 
-      <AdminConfigSection
-        class="mb-4"
-        :dirty="commentsChanged"
-        description="新评论是否需要人工审核后才对外可见。"
-        icon="mdi-comment-outline"
-        title="评论"
-      >
-        <v-row dense>
-          <v-col cols="12" sm="6">
-            <v-select
-              v-model="rulesConfig.comments.approve"
-              :disabled="!canUpdateConfig || rulesSaving"
-              density="comfortable"
-              item-title="title"
-              item-value="value"
-              :items="switchItems"
-              label="评论发布审核"
-              variant="outlined"
-            />
-          </v-col>
-        </v-row>
-      </AdminConfigSection>
+        <AdminConfigSection
+          joined
+          :dirty="commentsChanged"
+          description="新评论是否需要人工审核后才对外可见。"
+          icon="mdi-comment-outline"
+          title="评论"
+        >
+          <v-row dense>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="rulesConfig.comments.approve"
+                :disabled="!canUpdateConfig || rulesSaving"
+                density="comfortable"
+                item-title="title"
+                item-value="value"
+                :items="switchItems"
+                label="评论发布审核"
+                variant="outlined"
+              />
+            </v-col>
+          </v-row>
+        </AdminConfigSection>
 
-      <AdminConfigSection
-        class="mb-4"
-        :dirty="tagsChanged"
-        description="控制普通用户在发布卡片时能否创建新标签，以及新标签是否需要先审核；持有后台访问能力的管理员不受这两个开关限制。"
-        icon="mdi-tag-outline"
-        title="标签"
-      >
-        <v-row dense>
-          <v-col cols="12" sm="6">
-            <v-select
-              v-model="rulesConfig.tags.allowUserCreate"
-              :disabled="!canUpdateConfig || rulesSaving"
-              density="comfortable"
-              hint="关闭后，用户发布卡片时只能使用已有标签"
-              item-title="title"
-              item-value="value"
-              :items="switchItems"
-              label="允许用户创建新标签"
-              persistent-hint
-              variant="outlined"
-            />
-          </v-col>
-          <v-col cols="12" sm="6">
-            <v-select
-              v-model="rulesConfig.tags.reviewNew"
-              :disabled="!canUpdateConfig || rulesSaving"
-              density="comfortable"
-              hint="开启后，用户新标签进入待审核状态，在标签管理中放行后才公开"
-              item-title="title"
-              item-value="value"
-              :items="switchItems"
-              label="新用户标签需先审核"
-              persistent-hint
-              variant="outlined"
-            />
-          </v-col>
-        </v-row>
-      </AdminConfigSection>
+        <AdminConfigSection
+          joined
+          :dirty="tagsChanged"
+          description="控制普通用户在发布卡片时能否创建新标签，以及新标签是否需要先审核；持有后台访问能力的管理员不受这两个开关限制。"
+          icon="mdi-tag-outline"
+          title="标签"
+        >
+          <v-row dense>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="rulesConfig.tags.allowUserCreate"
+                :disabled="!canUpdateConfig || rulesSaving"
+                density="comfortable"
+                hint="关闭后，用户发布卡片时只能使用已有标签"
+                item-title="title"
+                item-value="value"
+                :items="switchItems"
+                label="允许用户创建新标签"
+                persistent-hint
+                variant="outlined"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-select
+                v-model="rulesConfig.tags.reviewNew"
+                :disabled="!canUpdateConfig || rulesSaving"
+                density="comfortable"
+                hint="开启后，用户新标签进入待审核状态，在标签管理中放行后才公开"
+                item-title="title"
+                item-value="value"
+                :items="switchItems"
+                label="新用户标签需先审核"
+                persistent-hint
+                variant="outlined"
+              />
+            </v-col>
+          </v-row>
+        </AdminConfigSection>
 
-      <AdminConfigSaveBar class="mt-4" :dirty="rulesChanged" label="内容规则">
-        <AdminActionGuard capability="config.update" scope="global">
-          <v-btn
-            color="primary"
-            :disabled="!rulesChanged"
-            :loading="rulesSaving"
-            prepend-icon="mdi-content-save-outline"
-            variant="flat"
-            @click="saveRules"
-          >
-            保存内容规则
-          </v-btn>
-        </AdminActionGuard>
-      </AdminConfigSaveBar>
+        <AdminConfigSaveBar :dirty="rulesChanged" label="内容规则">
+          <AdminActionGuard capability="config.update" scope="global">
+            <v-btn
+              color="primary"
+              :disabled="!rulesChanged"
+              :loading="rulesSaving"
+              prepend-icon="mdi-content-save-outline"
+              variant="flat"
+              @click="saveRules"
+            >
+              保存内容规则
+            </v-btn>
+          </AdminActionGuard>
+        </AdminConfigSaveBar>
+      </v-sheet>
     </AdminAsyncState>
 
     <AdminUnsavedChangesDialog

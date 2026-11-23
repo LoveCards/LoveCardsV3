@@ -5,6 +5,7 @@
 </template>
 
 <script setup lang="ts">
+import { useTheme } from 'vuetify'
 import { Line } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, LineElement, CategoryScale, LinearScale, PointElement, Filler } from 'chart.js'
 import { useDashboardStore } from '~/stores/dashboardStore';

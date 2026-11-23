@@ -59,5 +59,8 @@
     "test:upgrade:e2e": "node scripts/run-upgrade-e2e.mjs",
     "test:schema:e2e": "node scripts/run-schema-consistency-e2e.mjs",
     "test:schema:diff": "node scripts/test-schema-diff-candidate.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.54.2"
   }
 }

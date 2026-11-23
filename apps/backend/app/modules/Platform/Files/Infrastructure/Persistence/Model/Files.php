@@ -19,6 +19,13 @@ class Files extends Model
     protected $deleteTime = 'deleted_at';
 
     protected $hidden = ['deleted_at', 'driver_path'];
+    protected $append = ['is_deleted'];
+
+    /** 对外仅提供删除状态，不暴露软删除时间和存储内部路径。 */
+    public function getIsDeletedAttr($value, array $data): bool
+    {
+        return !empty($data['deleted_at']);
+    }
 
     // 兼容别名：指向 Application 层规范化常量
     const SCENE_CARD = FileConstants::SCENE_CARD;

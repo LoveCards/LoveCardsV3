@@ -21,18 +21,25 @@
           <template #item.update_notes="{ item }"><span class="release-notes">{{ item.update_notes || '此升级包未提供更新说明' }}</span></template>
           <template #item.status="{ item }">
             <AdminStatusChip :status="item.status" :label="statusLabel(item)" />
-            <div v-if="failedStep(item)?.failure_code" class="text-caption text-error mt-1">{{ failedStep(item)?.failure_code }}</div>
           </template>
+          <template #item.failure_code="{ item }"><code v-if="failedStep(item)?.failure_code" class="text-error">{{ failedStep(item)?.failure_code }}</code><span v-else>—</span></template>
           <template #item.actions="{ item }">
-            <div class="d-flex flex-wrap ga-1">
+            <div class="d-flex align-center ga-1">
               <AdminActionGuard capability="system.update">
-                <v-btn v-if="canAdvance(item)" size="small" color="primary" variant="text" :loading="actionPlanId === item.plan_id" @click="openAction(item, 'advance')">继续升级</v-btn>
+                <AdminTableRowAction v-if="canAdvance(item)" :loading="actionPlanId === item.plan_id" @click="openAction(item, 'advance')">继续升级</AdminTableRowAction>
               </AdminActionGuard>
               <AdminActionGuard capability="system.update.contract">
-                <v-btn v-if="canApprove(item)" size="small" color="warning" variant="text" @click="openAction(item, 'contract')">批准数据库收缩</v-btn>
+                <AdminTableRowAction v-if="canApprove(item)" @click="openAction(item, 'contract')">批准数据库收缩</AdminTableRowAction>
               </AdminActionGuard>
               <AdminActionGuard capability="system.recover">
-                <v-btn v-if="canRecover(item)" size="small" color="error" variant="text" @click="openAction(item, 'recover')">恢复旧版本</v-btn>
+                <v-menu v-if="canRecover(item)" location="bottom end">
+                  <template #activator="{ props }">
+                    <v-btn v-bind="props" class="admin-table-row-more" aria-label="更多升级操作" title="更多升级操作" icon="mdi-dots-horizontal" size="small" variant="text" />
+                  </template>
+                  <v-list density="compact">
+                    <v-list-item title="恢复旧版本" prepend-icon="mdi-restore" @click="openAction(item, 'recover')" />
+                  </v-list>
+                </v-menu>
               </AdminActionGuard>
             </div>
           </template>
@@ -45,15 +52,16 @@
         <v-card-title class="text-h6">上传升级包</v-card-title>
         <v-divider />
         <v-card-text class="pt-5">
+          <p class="mb-4 text-body-2 text-medium-emphasis">选择已签名的 Release ZIP；上传后会立即创建升级计划。</p>
           <v-file-input v-model="releaseFile" accept=".zip,application/zip" label="签名 Release ZIP" prepend-icon="mdi-file-upload-outline" variant="outlined" :disabled="creating" />
           <v-alert v-if="uploadError" class="mt-3" :text="uploadError" type="error" variant="tonal" />
         </v-card-text>
         <v-divider />
-        <v-card-actions class="pa-4"><v-spacer /><v-btn :disabled="creating" variant="text" @click="uploadDialog = false">取消</v-btn><v-btn color="primary" :loading="creating" :disabled="!releaseFile" @click="createPlan">上传</v-btn></v-card-actions>
+        <v-card-actions class="pa-4"><v-spacer /><v-btn :disabled="creating" variant="text" @click="uploadDialog = false">取消</v-btn><v-btn color="primary" :loading="creating" :disabled="!releaseFile" variant="flat" @click="createPlan">上传</v-btn></v-card-actions>
       </v-card>
     </v-dialog>
 
-    <AdminDangerActionDialog v-model="actionDialog" :title="actionTitle" :action-label="actionTitle" :resource-label="selectedPlan?.target_version || selectedPlan?.release_id || ''" :impact="actionImpact" :confirm-text="actionType === 'contract' ? '批准 CONTRACT' : undefined" :color="actionType === 'advance' ? 'primary' : 'error'" :loading="actionPlanId !== null" :error="actionError" @confirm="confirmAction" />
+    <AdminDangerActionDialog v-model="actionDialog" :title="actionTitle" :action-label="actionTitle" :resource-label="selectedPlan?.target_version || selectedPlan?.release_id || ''" :impact="actionImpact" :color="actionType === 'advance' ? 'primary' : 'error'" :loading="actionPlanId !== null" :error="actionError" @confirm="confirmAction" />
   </AdminPageContainer>
 </template>
 
@@ -85,10 +93,11 @@ const actionPlanId = ref<string | null>(null)
 const actionType = ref<'advance' | 'contract' | 'recover'>('advance')
 
 const headers = [
-  { title: '目标版本', key: 'target_version' },
-  { title: '更新说明', key: 'update_notes' },
-  { title: '升级状态', key: 'status' },
-  { title: '操作', key: 'actions', sortable: false },
+  { title: '目标版本', key: 'target_version', minWidth: 160 },
+  { title: '更新说明', key: 'update_notes', minWidth: 320 },
+  { title: '升级状态', key: 'status', minWidth: 144 },
+  { title: '失败代码', key: 'failure_code', sortable: false, minWidth: 160 },
+  { title: '操作', key: 'actions', sortable: false, minWidth: 200 },
 ]
 const actionTitle = computed(() => actionType.value === 'contract' ? '批准数据库收缩' : actionType.value === 'recover' ? '恢复旧版本' : '继续升级')
 const actionImpact = computed(() => actionType.value === 'contract'

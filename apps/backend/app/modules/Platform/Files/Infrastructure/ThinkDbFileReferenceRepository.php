@@ -19,7 +19,8 @@ final class ThinkDbFileReferenceRepository implements FileReferenceRepository
             ->where('resource_type', $resourceType)
             ->where('resource_id', $resourceId);
         if ($purpose !== null) $query->where('purpose', $purpose);
-        return array_map('intval', $query->order('id', 'asc')->column('file_id'));
+        // 旧引用 position=0 时继续按 id 保序，新引用按显式位置排序。
+        return array_map('intval', $query->order('position', 'asc')->order('id', 'asc')->column('file_id'));
     }
 
     public function fileIdsForResources(string $resourceType, array $resourceIds, ?string $purpose = null): array
@@ -36,7 +37,7 @@ final class ThinkDbFileReferenceRepository implements FileReferenceRepository
             ->whereIn('resource_id', $resourceIds)
             ->field('resource_id,file_id');
         if ($purpose !== null) $query->where('purpose', $purpose);
-        $rows = $query->order('id', 'asc')->select()->toArray();
+        $rows = $query->order('position', 'asc')->order('id', 'asc')->select()->toArray();
         foreach ($rows as $row) {
             $resourceId = (string) $row['resource_id'];
             if (isset($result[$resourceId])) $result[$resourceId][] = (int) $row['file_id'];
@@ -81,14 +82,15 @@ final class ThinkDbFileReferenceRepository implements FileReferenceRepository
         Db::table('file_references')->where('resource_type', $resourceType)->where('resource_id', $resourceId)->where('purpose', $purpose)->delete();
         if ($rows !== []) {
             $now = date('Y-m-d H:i:s');
-            Db::table('file_references')->insertAll(array_map(static fn(array $row): array => [
+            Db::table('file_references')->insertAll(array_map(static fn(array $row, int $position): array => [
                 'file_id' => (int) $row['id'],
                 'resource_type' => $resourceType,
                 'resource_id' => $resourceId,
                 'purpose' => $purpose,
+                'position' => $position + 1,
                 'is_public' => $isPublic ? 1 : 0,
                 'created_at' => $now,
-            ], $rows));
+            ], $rows, array_keys($rows)));
         }
 
         $affected = array_values(array_unique(array_merge($existingIds, $fileIds)));

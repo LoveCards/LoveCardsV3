@@ -5,7 +5,10 @@
         <h2 id="site-signals-title" class="text-h6">主动更新</h2>
         <p class="text-body-2 text-medium-emphasis mt-1">这些开关只控制实时提示。关闭后，私信和站内通知仍会保存，用户手动刷新仍可查看。</p>
       </div>
-      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="dirty" @click="load">刷新</v-btn>
+      <div class="d-flex flex-wrap align-center ga-2">
+        <span v-if="dirty" class="text-caption text-medium-emphasis">请先保存或放弃修改，再刷新。</span>
+        <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" :disabled="dirty" @click="load">刷新</v-btn>
+      </div>
     </div>
     <AdminAsyncState :loading="loading && !catalog" :error="error && !catalog ? error : null" :empty="!catalog" @retry="load">
       <template v-if="catalog">
@@ -15,9 +18,10 @@
           <v-data-table :headers="headers" :items="rows" item-value="key" :items-per-page="-1" hide-default-footer>
             <template #item.key="{ item }">
               <strong>{{ item.display_name }}</strong>
-              <div class="text-body-2 text-medium-emphasis">{{ item.impact_text }}</div>
-              <div class="text-caption text-medium-emphasis">{{ item.owner }} · {{ item.topic }}</div>
             </template>
+            <template #item.impact="{ item }">{{ item.impact_text }}</template>
+            <template #item.owner="{ item }">{{ item.owner || '—' }}</template>
+            <template #item.topic="{ item }">{{ item.topic || '—' }}</template>
             <template #item.enabled="{ item }">
               <AdminActionGuard capability="communications.configure">
                 <v-switch :model-value="item.enabled" :aria-label="`${item.display_name}：${item.enabled ? '已开启' : '已关闭'}`" :label="item.enabled ? '已开启' : '已关闭'" density="compact" hide-details color="primary" inset @update:model-value="item.enabled = Boolean($event)" />
@@ -61,7 +65,13 @@ const error = ref<string | null>(null)
 const conflict = ref('')
 const dialogOpen = ref(false)
 const saveError = ref('')
-const headers = [{ title: '主动提示与影响', key: 'key' }, { title: '当前设置', key: 'enabled', sortable: false }]
+const headers = [
+  { title: '主动提示', key: 'key', minWidth: 200, sortRaw: (a: SignalPolicyItem, b: SignalPolicyItem) => a.display_name.localeCompare(b.display_name, 'zh-CN') },
+  { title: '影响', key: 'impact', sortable: false, minWidth: 320 },
+  { title: '负责模块', key: 'owner', sortable: false, minWidth: 144 },
+  { title: '主题', key: 'topic', sortable: false, minWidth: 144 },
+  { title: '当前设置', key: 'enabled', sortable: false, minWidth: 160 },
+]
 const dirty = computed(() => rows.value.some(row => row.enabled !== row.original))
 const impact = computed(() => rows.value.filter(row => row.enabled !== row.original)
   .map(row => `${row.display_name}：${row.original ? '开启 → 关闭' : '关闭 → 开启'}`)
@@ -109,12 +119,5 @@ async function save() {
 
 onMounted(() => { if (props.active) void load() })
 watch(() => props.active, active => { if (active && !catalog.value && !loading.value) void load() })
-onBeforeRouteLeave(() => !dirty.value || window.confirm('有未保存的主动更新设置，确定离开吗？'))
-function warnBeforeUnload(event: BeforeUnloadEvent) {
-  if (!dirty.value) return
-  event.preventDefault()
-  event.returnValue = ''
-}
-onMounted(() => window.addEventListener('beforeunload', warnBeforeUnload))
-onBeforeUnmount(() => window.removeEventListener('beforeunload', warnBeforeUnload))
+
 </script>

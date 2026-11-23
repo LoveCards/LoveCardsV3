@@ -1,3 +1,4 @@
+import { useTheme } from 'vuetify'
 import { computed, onBeforeUnmount, watch } from 'vue'
 
 export type AdminThemePreference = 'light' | 'dark' | 'system'

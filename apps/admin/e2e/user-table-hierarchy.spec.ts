@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 test.use({ storageState: { cookies: [], origins: [] } })
 
@@ -25,7 +25,8 @@ async function fixtures(page: Page, limited = false) {
     ]
     const users = [0, 1, 3].map((status, index) => ({
       id: 101 + index, username: ['林晓', '陈言', '周宁'][index], number: `member_${index + 1}`,
-      avatar: null, status, roles_id: [2], roles: [{ id: 2, name: '普通用户', slug: 'user' }],
+      avatar: null, email: `member_${index + 1}@example.test`, phone: '', status,
+      roles_id: [2], roles: [{ id: 2, name: '普通用户', slug: 'user' }],
       created_at: '2026-09-18 09:20:00',
     }))
     let data: unknown = []
@@ -39,33 +40,144 @@ async function fixtures(page: Page, limited = false) {
       data = currentPage > 1 ? [] : users
       return route.fulfill({ json: { success: true, data, pagination: { totalItems: 3, currentPage, totalPages: 1, itemsPerPage: 20 } } })
     }
+    if (/^\/api\/admin\/users\/\d+$/.test(url.pathname)) {
+      data = users.find(user => String(user.id) === url.pathname.split('/').at(-1)) ?? null
+    }
     await route.fulfill({ json: { success: true, data } })
   })
   return unexpected
 }
 
-for (const width of [1440, 390]) {
+async function expectUserActionAvailable(page: Page, row: Locator, name: string) {
+  const direct = row.getByRole('button', { name, exact: true })
+  if (await direct.isVisible()) return
+  const more = row.getByRole('button', { name: '更多用户操作' })
+  await expect(more).toBeVisible()
+  await more.click()
+  await expect(page.locator('.v-overlay--active').getByText(name, { exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+}
+
+async function openUserAction(page: Page, row: Locator, name: string) {
+  const direct = row.getByRole('button', { name, exact: true })
+  if (await direct.isVisible()) {
+    await direct.click()
+    return
+  }
+  await row.getByRole('button', { name: '更多用户操作' }).click()
+  await page.locator('.v-overlay--active').getByText(name, { exact: true }).click()
+}
+
+for (const width of [1440, 960, 600, 390]) {
   test(`user identity and secondary actions at ${width}px`, async ({ page }, testInfo) => {
     const unexpected = await fixtures(page)
     await page.setViewportSize({ width, height: 900 })
     await page.goto('./apps/users')
     const row = page.locator('tbody tr').first()
     await expect(row).toContainText('member_1', { timeout: 20_000 })
+    await expect(page.getByRole('button', { name: '刷新', exact: true })).toBeVisible()
+    const detail = row.getByRole('button', { name: '编辑', exact: true })
+    await expect(detail).toBeVisible()
+    await expect(detail).toHaveClass(/v-btn--variant-text/)
+    await expect(row.getByRole('button', { name: '查看', exact: true })).toHaveCount(0)
+    await expect(row.getByRole('link', { name: '查看详情' })).toHaveCount(0)
+    const headers = page.locator('thead .v-data-table__th')
+    await expect(headers.first()).toBeVisible()
+    expect(await headers.evaluateAll(items => items.every(item => getComputedStyle(item).whiteSpace === 'nowrap'))).toBe(true)
+    await expect(page.locator('.v-data-table__td-title')).toHaveCount(0)
+    if (width <= 600) {
+      const wrapper = page.locator('.v-data-table .v-table__wrapper')
+      expect(await wrapper.evaluate(item => item.scrollWidth > item.clientWidth)).toBe(true)
+    }
     await page.screenshot({ path: testInfo.outputPath('users.png'), fullPage: true })
-    await row.getByRole('button', { name: '更多用户操作' }).click()
-    await expect(page.getByText('删除用户', { exact: true })).toBeVisible()
-    await expect(page.getByText('查看账号安全', { exact: true })).toBeVisible()
+    const listUrl = page.url()
+    const detailRequest = page.waitForRequest(request => request.url().endsWith('/api/admin/users/101') && request.method() === 'GET')
+    await detail.click()
+    await detailRequest
+    const dialog = page.getByRole('dialog').filter({ hasText: '林晓' })
+    await expect(dialog).toBeVisible()
+    await expect(dialog).toContainText('member_1')
+    await expect(page).toHaveURL(listUrl)
+    await expect(dialog.getByRole('textbox', { name: '用户名' })).toHaveValue('林晓')
+    await dialog.getByRole('button', { name: '取消', exact: true }).click()
+    await expect(dialog.getByRole('textbox', { name: '用户名' })).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+
+    await expectUserActionAvailable(page, row, '编辑')
+    await expectUserActionAvailable(page, row, '封禁')
+    await expectUserActionAvailable(page, row, '冻结')
+    await expectUserActionAvailable(page, row, '删除')
+    if (width === 1440) await expect(row.getByRole('button', { name: '编辑', exact: true })).toBeVisible()
+    if (width === 390) await expect(row.getByRole('button', { name: '更多用户操作' })).toBeVisible()
     expect(unexpected).toEqual([])
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1)
   })
 
 }
 
+test('user status commands follow row state and confirm without mutation', async ({ page }) => {
+  const unexpected = await fixtures(page)
+  await page.goto('./apps/users')
+  const rows = page.locator('tbody tr')
+  await expect(rows.first()).toContainText('member_1', { timeout: 20_000 })
+  await expectUserActionAvailable(page, rows.first(), '封禁')
+  await expectUserActionAvailable(page, rows.first(), '冻结')
+  await expectUserActionAvailable(page, rows.nth(1), '解除封禁')
+  await expectUserActionAvailable(page, rows.nth(2), '审核通过')
+  await openUserAction(page, rows.first(), '封禁')
+  const confirm = page.getByRole('dialog', { name: '封禁' })
+  await expect(confirm).toContainText('林晓（用户 #101）')
+  await expect(confirm).toContainText('账号状态将从“正常”变为“已封禁”')
+  await confirm.getByRole('button', { name: '取消', exact: true }).click()
+  expect(unexpected).toEqual([])
+})
+
+test('single user ban uses the managed status contract', async ({ page }) => {
+  const unexpected = await fixtures(page)
+  const payloads: unknown[] = []
+  await page.route('**/api/admin/users/101', async route => {
+    if (route.request().method() !== 'PATCH') return route.fallback()
+    payloads.push(route.request().postDataJSON())
+    await route.fulfill({ status: 204, body: '' })
+  })
+  await page.goto('./apps/users')
+  const row = page.locator('tbody tr').first()
+  await expect(row).toContainText('member_1', { timeout: 20_000 })
+  await openUserAction(page, row, '封禁')
+  const confirm = page.getByRole('dialog', { name: '封禁' })
+  await expect(confirm).toContainText('账号状态将从“正常”变为“已封禁”')
+  await confirm.getByRole('button', { name: '封禁', exact: true }).click()
+  await expect(confirm).toBeHidden()
+  expect(payloads).toEqual([{ status: 1 }])
+  expect(unexpected).toEqual([])
+})
+
 test('limited roles do not see security or mutation actions', async ({ page }) => {
   await fixtures(page, true)
   await page.goto('./apps/users')
-  await expect(page.locator('tbody tr').first().getByRole('link', { name: '查看用户' })).toBeVisible({ timeout: 20_000 })
+  const row = page.locator('tbody tr').first()
+  await expect(row.getByRole('button', { name: '查看', exact: true })).toBeVisible({ timeout: 20_000 })
+  await expect(row.getByRole('button', { name: '查看', exact: true })).toHaveClass(/v-btn--variant-text/)
+  await expect(row.getByRole('button')).toHaveCount(1)
+  await expect(row.getByRole('link')).toHaveCount(0)
+  await expect(row.getByRole('button', { name: '编辑', exact: true })).toHaveCount(0)
+  await expect(row.getByRole('button', { name: '删除', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: '更多用户操作' })).toHaveCount(0)
+})
+
+test('user refresh keeps the active query and remains outside the table toolbar', async ({ page }) => {
+  await fixtures(page)
+  await page.goto('./apps/users?page=1&list_rows=20')
+  await expect(page.locator('tbody tr').first()).toContainText('member_1', { timeout: 20_000 })
+  const refresh = page.getByRole('button', { name: '刷新', exact: true })
+  await expect(refresh).toHaveCount(1)
+  await expect(page.locator('.admin-resource-table-shell').getByRole('button', { name: '刷新', exact: true })).toHaveCount(0)
+  const request = page.waitForRequest(value => value.url().includes('/api/admin/users?') && value.method() === 'GET')
+  await refresh.click()
+  const params = new URL((await request).url()).searchParams
+  expect(params.get('page')).toBe('1')
+  expect(params.get('list_rows')).toBe('20')
 })
 
 test('user filters survive sorting changes and clear without losing normal status zero', async ({ page }) => {
@@ -117,6 +229,7 @@ test('status search sends the stored value for a Chinese label', async ({ page }
   await expect(page.locator('tbody tr').first()).toContainText('member_1', { timeout: 20_000 })
   const request = page.waitForRequest(request => request.url().includes('/api/admin/users?') && new URL(request.url()).searchParams.get('search_value') === '0')
   await page.getByRole('textbox', { name: '搜索状态' }).fill('正常')
+  await page.getByRole('textbox', { name: '搜索状态' }).press('Enter')
   await request
   await expect(page).toHaveURL(/search_value=%E6%AD%A3%E5%B8%B8/)
   await expect(page.locator('tbody tr').first().locator('mark')).toHaveText('正常')
@@ -137,11 +250,50 @@ test('search hint and highlight follow the selected user field', async ({ page }
 test('user deletion confirmation identifies the account and session impact without mutating', async ({ page }) => {
   const unexpected = await fixtures(page)
   await page.goto('./apps/users')
-  await page.locator('tbody tr').first().getByRole('button', { name: '更多用户操作' }).click()
-  await page.getByText('删除用户', { exact: true }).click()
+  const row = page.locator('tbody tr').first()
+  await expect(row).toContainText('member_1', { timeout: 20_000 })
+  await openUserAction(page, row, '删除')
   const dialog = page.getByRole('dialog')
   await expect(dialog).toContainText('林晓 · 账号 member_1')
   await expect(dialog).toContainText('所有设备的登录会话会被撤销')
   await dialog.getByRole('button', { name: '取消', exact: true }).click()
   expect(unexpected).toEqual([])
+})
+
+test('overflow user command restores focus to its row menu after confirmation closes', async ({ page }) => {
+  await fixtures(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('./apps/users')
+  const row = page.locator('tbody tr').first()
+  await expect(row).toContainText('member_1', { timeout: 20_000 })
+  const more = row.getByRole('button', { name: '更多用户操作' })
+  await more.click()
+  await page.locator('.v-overlay--active').getByText('封禁', { exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: '封禁' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: '取消', exact: true }).click()
+  await expect(dialog).toBeHidden()
+  await expect(more).toBeFocused()
+})
+
+test('table dialogs return focus to their toolbar entries', async ({ page }) => {
+  await fixtures(page)
+  await page.goto('./apps/users')
+  await expect(page.locator('tbody tr').first()).toContainText('member_1', { timeout: 20_000 })
+  const search = page.getByRole('button', { name: '搜索与排序', exact: true })
+  await search.click()
+  const searchDialog = page.getByRole('dialog', { name: '搜索与排序' })
+  await expect(searchDialog).toBeVisible()
+  await searchDialog.getByRole('button', { name: '取消', exact: true }).click()
+  await expect(searchDialog).toBeHidden()
+  await expect(search).toBeFocused()
+
+  const views = page.getByRole('button', { name: /视图设置/ })
+  await views.click()
+  await page.getByText('保存当前视图', { exact: true }).click()
+  const saveDialog = page.getByRole('dialog', { name: '保存当前视图' })
+  await expect(saveDialog).toBeVisible()
+  await saveDialog.getByRole('button', { name: '取消', exact: true }).click()
+  await expect(saveDialog).toBeHidden()
+  await expect(views).toBeFocused()
 })

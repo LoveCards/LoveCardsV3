@@ -3,18 +3,30 @@
     title="评论"
     description="查看评论内容与状态，按需审核和管理。"
     :breadcrumbs="[{ title: '内容' }]"
-  />
+  >
+    <template #actions>
+      <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="tableLoading" @click="getTableData">刷新</v-btn>
+    </template>
+  </AdminPageHeader>
 
   <AdminPageContainer fluid>
     <AdminResourceTableShell
       v-model:visible-columns="visibleColumns"
+      v-model:action-capacity="actionCapacity"
       :columns="columnOptions"
       :default-columns="defaultColumns"
+      :action-headers="TableHeaders"
+      :action-labels="commentActionLabels"
+      :selection-width="48"
       preference-key="content-comments"
+      :result-count="resultCount"
+      :result-state="tableLoading ? 'loading' : tableError ? 'stale' : 'ready'"
+      :view-query-keys="['list_rows', 'search_value', 'order_key', 'order_desc', 'filters']"
+      @apply-view="applySavedView"
       @reset-view="resetTableView"
     >
       <template #search>
-        <v-text-field v-model="tableSearchValue" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @update:model-value="searchTableData" />
+        <div class="d-flex align-center ga-2"><v-text-field v-model="searchDraft" clearable :label="searchInputLabel" prepend-inner-icon="mdi-magnify" single-line @keydown.enter.prevent="submitSearch" @click:clear="clearSearch" /><v-btn variant="outlined" @click="submitSearch">查询</v-btn></div>
       </template>
       <template #actions>
         <v-btn prepend-icon="mdi-filter-variant" variant="text" @click="openSearchDialog">搜索与排序</v-btn>
@@ -23,11 +35,11 @@
         <v-row dense align="center" aria-live="polite">
           <v-col cols="12" sm="auto"><span class="text-body-2">已选择 {{ tableSelected.length }} 项</span></v-col>
           <v-col cols="12" sm="4" md="3">
-            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="tableLoading" item-title="title" item-value="value" label="批量操作" />
+            <v-select v-model="BatchOperate" :items="TableBatchOptions" :disabled="!canMutateRows" item-title="title" item-value="value" label="批量操作" />
           </v-col>
           <v-col cols="auto">
             <AdminActionGuard :capability="batchCapability" scope="all">
-              <v-btn variant="outlined" :disabled="BatchOperate === ''" @click="openBatchCommentDialog">应用操作</v-btn>
+              <v-btn variant="outlined" :disabled="!canMutateRows || BatchOperate === ''" @click="openBatchCommentDialog">应用操作</v-btn>
             </AdminActionGuard>
           </v-col>
           <v-col cols="auto"><v-btn variant="text" @click="tableSelected = []">取消选择</v-btn></v-col>
@@ -62,6 +74,7 @@
         :items-length="tableTotalItems"
         :items-per-page-options="TableListRowsOptions"
         :loading="tableLoading"
+
         show-select
       >
         <template #loading>
@@ -69,30 +82,19 @@
         </template>
 
         <template #[`item.id`]="{ item }">
-          <v-btn class="text-none px-2" min-height="40" variant="text" @click="openCommentPanel(item.id)">
-            #<AdminTableSearchHighlight :text="item.id" :query="highlightQuery('id')" />
-          </v-btn>
+          <span class="text-body-2 text-medium-emphasis">#<AdminTableSearchHighlight :text="item.id" :query="highlightQuery('id')" /></span>
+        </template>
+
+        <template #[`item.user_id`]="{ item }">
+          <AdminTableSearchHighlight :text="`${item.username?.trim() || '用户'} #${item.user_id}`" :query="highlightQuery('user_id')" />
         </template>
 
         <template #[`item.content`]="{ item }">
-          <AdminContentSummary :content="item.content" :author="item.username" :user-id="item.user_id" :highlight-query="highlightQuery('content')" />
+          <AdminContentSummary :content="item.content" :highlight-query="highlightQuery('content')" />
         </template>
 
         <template #[`item.operate`]="{ item }">
-          <div class="d-flex align-center ga-1">
-            <AdminActionGuard capability="comments.read" scope="all">
-              <v-btn variant="text" @click="openCommentPanel(item.id)">{{ commentPanelActionLabel }}</v-btn>
-            </AdminActionGuard>
-            <v-menu v-if="canDeleteComment || (canPin && Number(item.status) === 0 && !item.parent_id)" location="bottom end">
-              <template #activator="{ props }">
-                <v-btn v-bind="props" aria-label="更多评论操作" icon="mdi-dots-horizontal" variant="text" />
-              </template>
-              <v-list density="compact">
-                <v-list-item v-if="canPin && Number(item.status) === 0 && !item.parent_id" :prepend-icon="item.is_pinned ? 'mdi-pin-off-outline' : 'mdi-pin-outline'" :title="item.is_pinned ? '取消置顶评论' : '置顶评论'" @click="openPinCommentDialog(item)" />
-                <v-list-item v-if="canDeleteComment" prepend-icon="mdi-delete-outline" title="删除评论" @click="openDeleteCommentDialog(item)" />
-              </v-list>
-            </v-menu>
-          </div>
+          <AdminTableRowActions :actions="commentRowActions(item)" :capacity="actionCapacity" more-label="更多评论操作" />
         </template>
 
         <template #[`item.is_pinned`]="{ item }">
@@ -100,14 +102,14 @@
         </template>
 
         <template #[`item.created_at`]="{ item }">
-          <span class="text-body-2 text-medium-emphasis"><AdminTableSearchHighlight :text="item.created_at" :query="highlightQuery('created_at')" /></span>
+          <span class="text-body-2 text-medium-emphasis"><AdminTableTime :value="item.created_at" :query="highlightQuery('created_at')" /></span>
         </template>
 
         <template #[`item.status`]="{ item }">
           <AdminContentStatus :status="item.status" :pinned="item.is_pinned && !visibleColumns.includes('is_pinned')" :highlight-query="highlightQuery('status')" />
         </template>
 
-        <template v-for="field in ['user_id', 'aid', 'goods', 'post_ip']" :key="field" #[`item.${field}`]="{ item }">
+        <template v-for="field in ['aid', 'goods', 'post_ip']" :key="field" #[`item.${field}`]="{ item }">
           <AdminTableSearchHighlight :text="tableSearchCell(item, field)" :query="highlightQuery(field)" />
         </template>
 
@@ -127,10 +129,17 @@
     </AdminResourceTableShell>
   </AdminPageContainer>
 
-  <EditCommentDialog
-    v-model:thisDialogState="EditCommentDialog_state"
-    v-model:CommentData="EditCommentDialog_data"
-    :getTableData="getTableData"
+  <CommentInspectDialog v-model="CommentInspectDialog_state" :comment-id="CommentInspectDialog_id" :initial-mode="CommentInspectDialog_mode" :source-path="route.fullPath" @saved="getTableData" />
+  <AdminDangerActionDialog
+    :model-value="Boolean(pendingCommentCommand)"
+    :title="pendingCommentCommand?.action.label ?? '确认评论操作'"
+    :action-label="pendingCommentCommand?.action.label ?? '确认执行'"
+    :impact="pendingCommentCommand?.action.impact ?? ''"
+    :resource-label="pendingCommentCommand ? `评论 #${pendingCommentCommand.id}` : ''"
+    :loading="commentCommandBusy"
+    :error="commentCommandError"
+    @update:model-value="closeCommentCommand"
+    @confirm="runCommentCommand"
   />
   <AdminDangerActionDialog
     v-model="PinCommentDialog_state"
@@ -169,18 +178,21 @@
 import AdminContentSummary from '~/components/content/AdminContentSummary.vue';
 import AdminContentStatus from '~/components/content/AdminContentStatus.vue';
 import type { Comment, CommentsBatchMethod } from '@lovecards/sdk';
+import { commentGovernanceActions, type CommentGovernanceAction } from '~/components/comments/commentGovernanceActions';
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue';
 import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue';
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue';
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue';
-import EditCommentDialog from '@/components/comments/EditCommentDialog.vue';
+import AdminTableRowActions from '~/components/shared/admin/AdminTableRowActions.vue';
+import AdminTableTime from '~/components/shared/admin/AdminTableTime.vue';
+import CommentInspectDialog from '~/components/comments/CommentInspectDialog.vue';
 import PublicBatchDialog from '@/components/shared/Table/BatchDialog.vue';
 import PublicDeleteDialog from '@/components/shared/Table/DeleteDialog.vue';
 import PublicSearchDialog from '@/components/shared/Table/SearchDialog.vue';
+import { useAdminNotifier } from '~/composables/useAdminNotifier';
 import { useApi } from '~/lib/api';
 import { useUserStore } from '~/stores/userStore';
-import CommonUtils from '@/utils/common';
 import SelectUtils from '~/utils/select';
 import { tableSearchValue as mapTableSearchValue } from '~/utils/tableSearchValue';
 import { tableSearchCell } from '~/composables/useAdminTableSearch';
@@ -188,6 +200,7 @@ import { tableSearchCell } from '~/composables/useAdminTableSearch';
 type TableSortItem = { key: string; order?: boolean | 'asc' | 'desc' };
 
 const client = useApi();
+const notifier = useAdminNotifier();
 const route = useRoute();
 const router = useRouter();
 
@@ -195,34 +208,54 @@ const positiveQueryInt = (value: unknown, fallback: number) => {
   const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : Number.NaN;
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
+const filterInteger = (value: unknown): number | null => {
+  if (typeof value !== 'number' && (typeof value !== 'string' || !/^\d+$/.test(value))) return null;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+};
+const normalizeFilters = (value: unknown): Record<string, unknown> => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  const raw = value as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+  if (Array.isArray(raw.search_keys)) {
+    const keys = [...new Set(raw.search_keys.filter((key): key is string =>
+      typeof key === 'string' && SearchKeys.some((option) => option.value === key)))];
+    if (keys.length) result.search_keys = keys;
+  }
+  const showDeleted = filterInteger(raw.show_deleted);
+  if (showDeleted !== null && showDeleted >= 0 && showDeleted <= 2) result.show_deleted = showDeleted;
+  if (typeof raw.order_key === 'string' && AllTableHeaders.some((header) =>
+    header.value === raw.order_key && header.sortable)) {
+    result.order_key = raw.order_key;
+    if (typeof raw.order_desc === 'boolean') result.order_desc = raw.order_desc;
+  }
+  return result;
+};
 const queryFilters = (value: unknown): Record<string, unknown> => {
   if (typeof value !== 'string' || !value) return {};
-  try {
-    const parsed = JSON.parse(value);
-    return typeof parsed === 'object' && parsed && !Array.isArray(parsed) ? parsed : {};
-  } catch {
-    return {};
-  }
+  try { return normalizeFilters(JSON.parse(value)); }
+  catch { return {}; }
 };
 
 const AllTableHeaders = [
-  { title: '内容', value: 'content', sortable: false, minWidth: 320, width: '55%' },
   { title: 'ID', value: 'id', sortable: true },
-  { title: '用户ID', value: 'user_id', sortable: true },
+  { title: '内容', value: 'content', sortable: false, minWidth: 320 },
+  { title: '用户', value: 'user_id', sortable: true },
   { title: '应用ID', value: 'aid', sortable: true },
   { title: '自定义字段', value: 'data', sortable: false },
   { title: '点赞数', value: 'goods', sortable: true },
-  { title: '发布时间', value: 'created_at', sortable: true, width: 180 },
+  { title: '发布时间', value: 'created_at', sortable: true, minWidth: 176 },
   { title: 'IP', value: 'post_ip', sortable: true },
   { title: '卡片置顶', value: 'is_pinned', sortable: false },
-  { title: '状态', value: 'status', sortable: true, width: 120 },
-  { title: '操作', value: 'operate', sortable: false, width: 160 },
+  { title: '状态', value: 'status', sortable: true, minWidth: 112 },
+  { title: '操作', value: 'operate', sortable: false, minWidth: 144 },
 ];
-const defaultColumns = ['content', 'created_at', 'status', 'operate'];
+const defaultColumns = ['content', 'user_id', 'created_at', 'status', 'operate'];
 const visibleColumns = ref([...defaultColumns]);
 const TableHeaders = computed(() => AllTableHeaders.filter((header) => visibleColumns.value.includes(header.value)));
 const columnOptions = AllTableHeaders.map((header) => ({ title: header.title, key: header.value, required: ['content', 'operate'].includes(header.value) }));
-const SearchKeys = AllTableHeaders.filter((header) => !['is_pinned', 'operate'].includes(header.value));
+const SearchKeys = AllTableHeaders.filter((header) => !['is_pinned', 'operate'].includes(header.value))
+  .map((header) => header.value === 'user_id' ? { ...header, title: '用户 ID' } : header);
 const BaseTableBatchOptions = [
   { title: '切换封禁状态', value: 'ban' },
   { title: '切换隐藏状态', value: 'hide' },
@@ -232,10 +265,69 @@ const BaseTableBatchOptions = [
 const TableListRowsOptions = SelectUtils.Common.Table.ListRowsOptions;
 const userStore = useUserStore();
 const canDeleteComment = computed(() => userStore.hasGrant('comments.delete', 'all'));
+const canViewComment = computed(() => userStore.hasGrant('comments.read', 'all'));
 const canPin = computed(() => userStore.hasGrant('comments.pin', 'all'));
-const commentPanelActionLabel = computed(() => userStore.hasGrant('comments.update', 'all')
-  ? '编辑评论'
-  : userStore.hasGrant('comments.moderate', 'all') ? '审核评论' : '查看评论');
+const canEditComment = computed(() => userStore.hasGrant('comments.update', 'all'));
+const canModerateComment = computed(() => userStore.hasGrant('comments.moderate', 'all'));
+const conciseGovernanceLabel = (label: string) => label.endsWith('评论') ? label.slice(0, -2) : label;
+const commentActionLabels = computed(() => [...(canEditComment.value ? ['编辑'] : canViewComment.value ? ['查看'] : []), ...(canModerateComment.value ? ['通过审核', '封禁', '解除封禁', '隐藏', '取消隐藏'] : []), ...(canPin.value ? ['置顶', '取消置顶'] : []), ...(canDeleteComment.value ? ['删除'] : [])]);
+const actionCapacity = ref(1);
+const CommentInspectDialog_state = ref(false);
+const CommentInspectDialog_id = ref<number | null>(null);
+const CommentInspectDialog_mode = ref<'view' | 'edit'>('view');
+const openCommentInspect = (id: number, mode: 'view' | 'edit' = 'view') => {
+  CommentInspectDialog_id.value = id;
+  CommentInspectDialog_mode.value = mode;
+  CommentInspectDialog_state.value = true;
+};
+const commentRowActions = (item: Comment) => [
+  ...(!canEditComment.value && canViewComment.value ? [{ key: 'view', label: '查看', onClick: () => openCommentInspect(item.id) }] : []),
+  ...(canEditComment.value
+    ? [{ key: 'edit', label: '编辑', disabled: !canMutateRows.value, onClick: () => openCommentInspect(item.id, 'edit') }]
+    : []),
+  ...commentGovernanceActions(item, { moderate: canModerateComment.value, pin: false })
+    .map(action => ({ key: action.method, label: conciseGovernanceLabel(action.label), disabled: !canMutateRows.value, onClick: () => void openCommentCommand(item.id, action) })),
+  ...(canPin.value && Number(item.status) === 0 && !item.parent_id
+    ? [{ key: 'pin', label: item.is_pinned ? '取消置顶' : '置顶', disabled: !canMutateRows.value, onClick: () => openPinCommentDialog(item) }]
+    : []),
+  ...(canDeleteComment.value ? [{ key: 'delete', label: '删除', disabled: !canMutateRows.value, onClick: () => openDeleteCommentDialog(item) }] : []),
+];
+const pendingCommentCommand = ref<{ id: number; action: CommentGovernanceAction } | null>(null);
+const commentCommandBusy = ref(false);
+const commentCommandError = ref('');
+const matchingCommentCommand = async (id: number, expected: CommentGovernanceAction) => {
+  const current = await client.comments.getManaged(id);
+  return commentGovernanceActions(current, { moderate: canModerateComment.value, pin: false }).find(action => action.method === expected.method && action.label === expected.label);
+};
+const openCommentCommand = async (id: number, action: CommentGovernanceAction) => {
+  if (!canMutateRows.value) return;
+  commentCommandBusy.value = true;
+  commentCommandError.value = '';
+  try {
+    const current = await matchingCommentCommand(id, action);
+    if (!canMutateRows.value) return;
+    if (!current) throw new Error('评论状态已变化，请刷新后重新选择操作。');
+    pendingCommentCommand.value = { id, action: current };
+  } catch (cause) {
+    commentCommandError.value = cause instanceof Error ? cause.message : '无法核对评论当前状态。';
+    notifier.error(commentCommandError.value);
+    void getTableData();
+  } finally { commentCommandBusy.value = false; }
+};
+const closeCommentCommand = (open: boolean) => { if (!open && !commentCommandBusy.value) pendingCommentCommand.value = null; };
+const runCommentCommand = async () => {
+  const current = pendingCommentCommand.value;
+  if (!current || commentCommandBusy.value || !canMutateRows.value) return;
+  commentCommandBusy.value = true;
+  commentCommandError.value = '';
+  try {
+    if (!await matchingCommentCommand(current.id, current.action)) throw new Error('评论状态已变化，请刷新后重新选择操作。');
+    await client.comments.batchManaged({ method: current.action.method, ids: [current.id] });
+    pendingCommentCommand.value = null;
+    await getTableData();
+  } catch (cause) { commentCommandError.value = cause instanceof Error ? cause.message : '评论操作失败，请稍后重试。'; }
+  finally { commentCommandBusy.value = false; }
+};
 const batchCapabilityFor = (method: CommentsBatchMethod | '') => method === 'delete' ? 'comments.delete' : 'comments.moderate';
 const TableBatchOptions = computed(() => BaseTableBatchOptions.filter((option) => userStore.hasGrant(batchCapabilityFor(option.value), 'all')));
 const batchCapability = computed(() => batchCapabilityFor(BatchOperate.value));
@@ -243,19 +335,23 @@ const batchCapability = computed(() => batchCapabilityFor(BatchOperate.value));
 const tableItems = ref<Comment[]>([]);
 const tableSelected = ref<number[]>([]);
 const tableTotalItems = ref(0);
+const resultCount = ref<number | null>(null);
+let lastQueryKey = '';
 const defaultListRows = Number(TableListRowsOptions[0]?.value ?? 10);
 const requestedListRows = positiveQueryInt(route.query.list_rows, defaultListRows);
 const tableCurrentPage = ref(positiveQueryInt(route.query.page, 1));
 const tableListRows = ref(TableListRowsOptions.some((option) => option.value === requestedListRows) ? requestedListRows : defaultListRows);
-const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'string'
+const tableSortBy = ref<TableSortItem[]>(typeof route.query.order_key === 'string' && AllTableHeaders.some((header) => header.value === route.query.order_key && header.sortable)
   ? [{ key: route.query.order_key, order: ['1', 'true', 'desc'].includes(String(route.query.order_desc)) ? 'desc' : 'asc' }]
   : []);
 const tableSearchValue = ref<string | undefined>(typeof route.query.search_value === 'string' ? route.query.search_value : undefined);
+const searchDraft = ref<string | undefined>(tableSearchValue.value);
 const tableSearchFilter = ref<Record<string, unknown>>(queryFilters(route.query.filters));
 const { searchDialogFilter, applySearchDialog } = useAdminTableSearch(tableSortBy, tableSearchFilter);
 const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } = useAdminTableSearchFeedback(tableSearchValue, tableSearchFilter, SearchKeys, 'content', '搜索评论正文');
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
+const canMutateRows = computed(() => !tableLoading.value && !tableError.value);
 let latestRequest = 0;
 
 const errorMessage = (error: unknown) => {
@@ -282,6 +378,15 @@ const getTableData = async () => {
     params.order_desc = sort.order === 'desc';
   }
 
+  const queryKey = JSON.stringify(params);
+  if (queryKey !== lastQueryKey) {
+    tableItems.value = [];
+    tableSelected.value = [];
+    tableTotalItems.value = 0;
+    resultCount.value = null;
+    lastQueryKey = queryKey;
+  }
+
   try {
     const result = await client.comments.listManaged(params as Parameters<typeof client.comments.listManaged>[0]);
     if (requestId !== latestRequest) return;
@@ -289,6 +394,7 @@ const getTableData = async () => {
     applySearchSnapshot(searchHighlight);
     tableCurrentPage.value = result.pagination?.currentPage ?? tableCurrentPage.value;
     tableTotalItems.value = result.pagination?.totalItems ?? result.data.length;
+    resultCount.value = tableTotalItems.value;
   } catch (error) {
     if (requestId === latestRequest) tableError.value = errorMessage(error);
   } finally {
@@ -323,14 +429,27 @@ const refreshFromFirstPage = () => {
   if (tableCurrentPage.value === 1) void getTableData();
   else tableCurrentPage.value = 1;
 };
-const searchTableData = CommonUtils.lodash.debounce(refreshFromFirstPage, 500);
+const submitSearch = () => {
+  const value = searchDraft.value?.trim() || undefined;
+  if (value === tableSearchValue.value) return;
+  tableSearchValue.value = value;
+  refreshFromFirstPage();
+};
+const clearSearch = () => {
+  searchDraft.value = undefined;
+  if (!tableSearchValue.value) return;
+  tableSearchValue.value = undefined;
+  refreshFromFirstPage();
+};
 const clearFilters = () => {
   tableSearchValue.value = undefined;
+  searchDraft.value = undefined;
   tableSearchFilter.value = {};
   refreshFromFirstPage();
 };
 const resetTableView = () => {
   tableSearchValue.value = undefined;
+  searchDraft.value = undefined;
   tableSearchFilter.value = {};
   tableSortBy.value = [];
   tableListRows.value = defaultListRows;
@@ -348,31 +467,21 @@ const DeleteCommentFun = (id: number) => {
   });
 };
 const openDeleteCommentDialog = (data: { id: number }) => {
+  if (!canMutateRows.value) return;
   DeleteCommentDialog_data.value = data;
   DeleteCommentDialog_state.value = true;
 };
 
-const EditCommentDialog_state = ref(false);
-const EditCommentDialog_data = ref<Comment | null>(null);
-const openCommentPanel = (id: number) => {
-  EditCommentDialog_data.value = { id } as Comment;
-  EditCommentDialog_state.value = true;
-  void router.replace({ query: { ...route.query, inspect: String(id) }, hash: route.hash });
-};
+
+// 旧 inspect 深链只单向迁移到只读详情；列表条件留在 history state 中。
 watch(() => route.query.inspect, (value) => {
   const id = positiveQueryInt(value, 0);
-  if (id > 0 && (!EditCommentDialog_state.value || EditCommentDialog_data.value?.id !== id)) {
-    EditCommentDialog_data.value = { id } as Comment;
-    EditCommentDialog_state.value = true;
-  }
-  if (id === 0 && EditCommentDialog_state.value) EditCommentDialog_state.value = false;
-}, { immediate: true });
-watch(EditCommentDialog_state, (open) => {
-  if (open || !route.query.inspect) return;
+  if (!id) return;
   const next = { ...route.query };
   delete next.inspect;
-  void router.replace({ query: next, hash: route.hash });
-});
+  const source = router.resolve({ path: route.path, query: next, hash: route.hash }).fullPath;
+  void router.replace({ path: `/apps/content/comments/${id}`, state: { listSource: source } });
+}, { immediate: true });
 
 const PinCommentDialog_state = ref(false);
 const PinCommentDialog_data = ref<Comment | null>(null);
@@ -386,6 +495,7 @@ const pinDialogImpact = computed(() => PinCommentDialog_data.value?.is_pinned
   ? '该评论将回到所属卡片的普通评论顺序，恢复后不会自动重新置顶。'
   : '该评论会成为所属卡片唯一的置顶评论；如果已有置顶评论，将被原子替换。');
 const openPinCommentDialog = (data: Comment) => {
+  if (!canMutateRows.value) return;
   PinCommentDialog_data.value = data;
   PinCommentDialog_error.value = '';
   PinCommentDialog_state.value = true;
@@ -432,6 +542,7 @@ const BatchCommentFun = () => {
   });
 };
 const openBatchCommentDialog = () => {
+  if (!canMutateRows.value) return;
   const method = BatchOperate.value;
   BatchCommentDialog_operate.value = TableBatchOptions.value.find((option) => option.value === method)?.title || '';
   if (tableSelected.value.length) BatchCommentDialog_state.value = true;
@@ -439,7 +550,7 @@ const openBatchCommentDialog = () => {
 
 const SearchCommentsDialog_state = ref(false);
 const setTableSearchFilter = (data: Record<string, unknown>) => {
-  applySearchDialog(data);
+  applySearchDialog(normalizeFilters(data));
   tableCurrentPage.value = 1;
   syncRouteQuery();
 };
@@ -447,7 +558,22 @@ const openSearchDialog = () => {
   SearchCommentsDialog_state.value = true;
 };
 
+const applySavedView = (query: Record<string, string | null | (string | null)[]>) => {
+  const value = (key: string) => typeof query[key] === 'string' ? query[key] as string : undefined;
+  const rows = positiveQueryInt(value('list_rows'), defaultListRows);
+  tableListRows.value = TableListRowsOptions.some((option) => option.value === rows) ? rows : defaultListRows;
+  tableSearchValue.value = value('search_value')?.trim() || undefined;
+  searchDraft.value = tableSearchValue.value;
+  tableSearchFilter.value = queryFilters(value('filters'));
+  const orderKey = value('order_key');
+  tableSortBy.value = orderKey && AllTableHeaders.some((header) => header.value === orderKey && header.sortable)
+    ? [{ key: orderKey, order: ['1', 'true', 'desc'].includes(value('order_desc') || '') ? 'desc' : 'asc' }]
+    : [];
+  refreshFromFirstPage();
+};
+
 watch([tableCurrentPage, tableListRows, tableSortBy], () => {
+  if (route.query.inspect) return;
   syncRouteQuery();
   void getTableData();
 }, { deep: true, immediate: true });
