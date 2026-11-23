@@ -77,7 +77,7 @@
 | GET | `/admin/recovery` | `users.recovery` | grants:admin.access:global,users.recovery.read:global | yes | AdminRecoveryChallengeResource::paginate | — |
 | GET | `/admin/reports` | `reports.listManaged` | grants:admin.access:global,reports.read:global | yes | AdminReportResource::paginate | — |
 | GET | `/admin/reports/:id` | `reports.getManaged` | grants:admin.access:global,reports.read:global | no | AdminReportResource::make | — |
-| POST | `/admin/reports/:id/transition` | `reports.transition` | grants:admin.access:global,reports.manage:global | yes | AdminReportResource::make | — |
+| POST | `/admin/reports/:id/transition` | `reports.transition` | grants:admin.access:global,reports.read:global,reports.manage:global | yes | AdminReportResource::make | — |
 | GET | `/admin/roles` | `roles.list` | grants:admin.access:global,roles.read:global | yes | RoleResource::paginate | — |
 | POST | `/admin/roles` | `roles.create` | grants:admin.access:global,roles.create:global | yes | ApiResource::make | — |
 | DELETE | `/admin/roles/:id` | `roles.delete` | grants:admin.access:global,roles.delete:global | no | createNoContent | — |

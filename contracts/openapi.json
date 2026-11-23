@@ -10654,6 +10654,10 @@
               "scope": "global"
             },
             {
+              "capability": "reports.read",
+              "scope": "global"
+            },
+            {
               "capability": "reports.manage",
               "scope": "global"
             }
@@ -10661,6 +10665,7 @@
         },
         "x-capabilities": [
           "admin.access",
+          "reports.read",
           "reports.manage"
         ],
         "x-public": false,

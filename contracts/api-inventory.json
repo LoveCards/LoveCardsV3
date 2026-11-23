@@ -5093,6 +5093,10 @@
               "scope": "global"
             },
             {
+              "capability": "reports.read",
+              "scope": "global"
+            },
+            {
               "capability": "reports.manage",
               "scope": "global"
             }
