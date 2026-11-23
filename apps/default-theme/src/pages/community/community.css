@@ -113,6 +113,7 @@
   .message-bubble.is-failed { outline: 1px solid color-mix(in srgb, var(--lc-danger) 45%, transparent); }
   .message-bubble p { margin: 0; font-size: 0.82rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
   .message-bubble footer { min-height: 22px; margin-top: 5px; display: flex; align-items: center; justify-content: flex-end; gap: 6px; color: var(--lc-muted); font-size: 0.62rem; }
+  .message-report-button { flex: 0 0 44px; width: 44px; height: 44px; color: var(--lc-muted); }
   .message-empty { margin: auto; display: grid; justify-items: center; gap: 7px; color: var(--lc-muted); text-align: center; }
   .message-empty strong { color: var(--lc-ink); font-size: 0.9rem; }
   .message-empty span { max-width: 44ch; font-size: 0.74rem; line-height: 1.5; }

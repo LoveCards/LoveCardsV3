@@ -9,6 +9,17 @@ export function conversationRecipientOf(item, currentUserId) {
   return value || null;
 }
 
+export function reportableMessageId(item, currentUserId) {
+  const sender = String(item.sender_uid ?? '');
+  const recipient = String(currentUserId ?? '');
+  if (!/^\d{12}$/.test(sender) || !/^\d{12}$/.test(recipient) || sender === recipient) return null;
+  if (item.status === 'sending' || item.status === 'failed') return null;
+
+  const { id } = item;
+  if (typeof id === 'number') return Number.isSafeInteger(id) && id > 0 ? String(id) : null;
+  return typeof id === 'string' && /^[1-9]\d*$/.test(id) ? id : null;
+}
+
 /**
  * The messaging endpoints currently return database timestamps without an
  * offset. The repository writes those values in UTC, so treat that narrow SQL
