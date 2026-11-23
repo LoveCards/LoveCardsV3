@@ -10,6 +10,13 @@
       {{ activationError }}
     </v-alert>
 
+    <AdminConfigSection v-if="activeTheme" class="mb-5" title="当前域名使用的主题">
+      <div class="d-flex flex-wrap align-center ga-3">
+        <strong>{{ activeTheme.name }}</strong><span>{{ activeTheme.version }} · {{ activeTheme.release }}</span>
+        <v-btn color="primary" variant="outlined" @click="openThemeConfig(activeTheme.id, activeTheme.release)">配置当前主题</v-btn>
+      </div>
+    </AdminConfigSection>
+
     <AdminAsyncState
       :empty="themes.length === 0"
       empty-description="服务器当前没有发现可用的主题包。安装主题后可在这里启用。"
@@ -94,6 +101,7 @@ const loading = ref(false)
 const loadError = ref('')
 const activationError = ref('')
 const activatingTheme = ref('')
+const activeTheme = computed(() => themes.value.find(theme => theme.active))
 const themeKey = (theme: Pick<ThemeItem, 'id' | 'release'>) => `${theme.id}:${theme.release}`
 const errorMessage = (cause: unknown, fallback: string) => isApiError(cause) ? cause.message : fallback
 

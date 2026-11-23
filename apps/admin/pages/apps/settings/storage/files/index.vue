@@ -251,7 +251,7 @@
     :deleteFun="HardDeleteFun"
     title="确认永久删除文件"
     action-label="永久删除"
-    impact="存储对象将被彻底删除，此操作不可撤销，无法再恢复该文件；只有回收站中的文件才能被永久删除。"
+    impact="申请受理后，存储队列将永久删除文件对象。可在文件详情查看进度。仅受理回收站中没有业务引用的文件。"
   />
   <PublicBatchDialog
     v-model:thisDialogState="BatchDialog_state"
@@ -541,9 +541,13 @@ const DeleteDialog_state = ref(false);
 const DeleteDialog_data = ref<{ id: number; display?: string }>({ id: 0 });
 const HardDeleteFun = (id: number) => {
   if (!userStore.hasGrant('files.purge', 'all')) return Promise.reject(new Error('当前账号无权永久删除文件。'));
-  return client.files.batchManaged({ ids: [id], method: 'hard_delete' }).then(() => {
+  return client.files.batchManaged({ ids: [id], method: 'hard_delete' }).then(async () => {
     DeleteDialog_state.value = false;
-    return getTableData();
+    if (userStore.hasGrant('files.usage.read', 'global')) {
+      await router.push('/apps/settings/storage/files/' + id + '/usage');
+    } else {
+      await getTableData();
+    }
   });
 };
 const openHardDeleteDialog = (item: LCFile) => {

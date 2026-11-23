@@ -154,7 +154,6 @@ class CosDriver extends AbstractDriver implements HasDirectUpload
     ): DirectUploadCredential {
         $this->validateDirectUpload($mime, $size);
 
-        $maxSize = (int) ($this->config['max_file_size'] ?? 0);
         $secretId = $this->config['secret_id'];
         $secretKey = $this->config['secret_key'];
 
@@ -164,7 +163,7 @@ class CosDriver extends AbstractDriver implements HasDirectUpload
         $policy = base64_encode(json_encode([
             'expiration' => ['expired' => $expireTime],
             'conditions' => [
-                ['content-length-range', 0, $maxSize > 0 ? $maxSize : 52428800],
+                ['content-length-range', 0, $size],
                 ['eq', '$Content-Type', $mime],
                 ['eq', '$key', $key],
             ],

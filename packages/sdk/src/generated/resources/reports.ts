@@ -9,7 +9,7 @@ export class Reports extends BaseResource {
   getManaged(id: number): Promise<ApiTypes.AdminReport> {
     return this._get<ApiTypes.AdminReport>(`/admin/reports/${id}`)
   }
-  transition(id: number, data: { note?: string; resolution?: string; status: string }): Promise<ApiTypes.AdminReport> {
+  transition(id: number, data: { note?: string; resolution?: string; expected_status?: string; status: string }): Promise<ApiTypes.AdminReport> {
     return this._post<ApiTypes.AdminReport>(`/admin/reports/${id}/transition`, data)
   }
 }

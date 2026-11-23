@@ -5,13 +5,14 @@
       description="查看这条事件处理任务的结果、失败原因与重试条件。"
       :breadcrumbs="[
         { title: '系统' },
-        { title: '处理任务', to: '/apps/operations/deliveries' },
+        { title: '事件管理', to: '/apps/operations/eventing' },
+        { title: returnLabel, to: returnTo },
         { title: `#${route.params.id}` },
       ]"
     >
       <template #actions>
-        <v-btn prepend-icon="mdi-arrow-left" to="/apps/operations/deliveries" variant="outlined">
-          返回列表
+        <v-btn prepend-icon="mdi-arrow-left" :to="returnTo" variant="outlined">
+          返回{{ returnLabel }}
         </v-btn>
         <AdminActionGuard capability="operations.retry">
           <v-btn
@@ -77,6 +78,15 @@
           </v-list>
         </v-sheet>
 
+        <AdminActionGuard capability="audit.read">
+          <v-btn
+            class="mt-4"
+            prepend-icon="mdi-clipboard-text-clock-outline"
+            :to="{ path: '/apps/operations/audit', query: { resource_type: 'event_delivery', resource_id: String(delivery.id) } }"
+            variant="outlined"
+          >查看任务审计</v-btn>
+        </AdminActionGuard>
+
         <section class="mt-7" aria-labelledby="delivery-error-title">
           <h2 id="delivery-error-title" class="mb-3 text-h6">最后失败信息</h2>
           <v-alert
@@ -103,7 +113,13 @@
                   <dt>通知策略版本</dt><dd>{{ delivery.policy_revision ?? '旧记录未配置' }}</dd>
                   <dt>通知策略判断</dt><dd>{{ policyDecisionLabel(delivery.policy_decision) }}</dd>
                 </template>
-                <dt>关联 ID</dt><dd>{{ delivery.correlation_id || '未提供' }}</dd>
+                <dt>关联 ID</dt>
+                <dd>
+                  {{ delivery.correlation_id || '未提供' }}
+                  <AdminActionGuard v-if="delivery.correlation_id" capability="audit.read">
+                    <NuxtLink class="ml-2" :to="{ path: '/apps/operations/audit', query: { correlation_id: delivery.correlation_id } }">查看链路审计</NuxtLink>
+                  </AdminActionGuard>
+                </dd>
               </dl>
             </v-expansion-panel-text>
           </v-expansion-panel>
@@ -146,6 +162,31 @@ import { useAdminNotifier } from '~/composables/useAdminNotifier'
 import { isApiError, useApi } from '~/lib/api'
 
 const route = useRoute()
+const router = useRouter()
+const userStore = useUserStore()
+const fileSource = computed(() => {
+  const id = route.query.file
+  return typeof id === 'string' && /^[1-9][0-9]*$/.test(id) && userStore.hasGrant('files.usage.read', 'global')
+    ? '/apps/settings/storage/files/' + id + '/usage'
+    : null
+})
+const deliveriesPath = '/apps/operations/deliveries'
+const eventsPath = '/apps/operations/eventing'
+const returnTo = computed(() => {
+  if (fileSource.value) return fileSource.value
+  const source = route.query.returnTo
+  if (typeof source !== 'string') return deliveriesPath
+  if (source === deliveriesPath || source.startsWith(`${deliveriesPath}?`)) return source
+  if (source.startsWith(`${eventsPath}?`)) {
+    const { query } = router.resolve(source)
+    return router.resolve({ path: eventsPath, query: { ...query, tab: 'events' } }).fullPath
+  }
+  return deliveriesPath
+})
+const returnLabel = computed(() => {
+  if (fileSource.value) return '文件详情'
+  return returnTo.value.startsWith(`${eventsPath}?`) ? '事件明细' : '处理任务'
+})
 const queueLabels: Record<string, string> = { notifications: '通知', realtime: '实时提示', storage: '文件处理' }
 const queueLabel = (name: string) => queueLabels[name] ?? name
 const skipLabel = (name: string) => name === 'notifications' ? '已按策略跳过通知' : name === 'realtime' ? '已跳过实时提示' : '已跳过'

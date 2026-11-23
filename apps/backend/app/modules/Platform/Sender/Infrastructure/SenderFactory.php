@@ -3,6 +3,7 @@
 namespace app\modules\Platform\Sender\Infrastructure;
 
 use app\modules\Platform\Sender\Contract\SenderInterface;
+use app\modules\Platform\Sender\Service\ChannelManager;
 
 class SenderFactory
 {

@@ -94,6 +94,9 @@ Route::group('admin/operations', function () use ($access, $response, $request) 
     Route::get('notifications', 'Platform.Administration/notificationStats')->name('operations.notificationStats')
         ->setOption('contract', ['request' => null, 'response' => $response(AdminNotificationStatsResource::class)])
         ->setOption('meta', ['name' => '通知统计', 'group' => '运维', 'access' => $access('communications.read')]);
+    Route::get('release-status', 'Platform.Administration/releaseStatus')->name('operations.releaseStatus')
+        ->setOption('contract', ['request' => null, 'response' => $response(\app\modules\Operations\Administration\Transport\Api\AdminReleaseStatusResource::class)])
+        ->setOption('meta', ['name' => '当前软件版本', 'group' => '运维', 'access' => $access('operations.read')]);
     Route::get('upgrades', 'Platform.Administration/upgrades')->name('operations.upgrades')
         ->setOption('contract', ['request' => $request('upgradeList'), 'response' => $response(AdminUpgradePlanResource::class, 'collection')])
         ->setOption('meta', ['name' => '系统升级计划', 'group' => '运维', 'access' => $access('operations.read')]);

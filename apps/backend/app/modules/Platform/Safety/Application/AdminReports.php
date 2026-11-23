@@ -43,15 +43,22 @@ final class AdminReports
         return $report;
     }
 
-    public function transition(int $id, int $actorId, string $status, ?string $resolution, ?string $note, string $ipAddress): array
+    public function transition(int $id, int $actorId, string $status, ?string $resolution, ?string $note, string $ipAddress, ?string $expectedStatus = null): array
     {
         $status = strtolower(trim($status));
+        $resolution = $resolution === null ? null : trim($resolution);
+        if ($resolution !== null && mb_strlen($resolution, 'UTF-8') > 255) {
+            throw ApiException::badRequest('处理结论最多 255 个字符');
+        }
         $allowed = ['open', 'reviewing', 'resolved', 'rejected', 'closed'];
         if (!in_array($status, $allowed, true)) throw ApiException::badRequest('举报状态不合法');
-        return $this->transactions->run(function () use ($id, $actorId, $status, $resolution, $note, $ipAddress): array {
+        return $this->transactions->run(function () use ($id, $actorId, $status, $resolution, $note, $ipAddress, $expectedStatus): array {
             $report = $this->repository->lockForUpdate($id);
             if (!$report) throw ApiException::notFound('举报不存在');
             $from = (string) $report['status'];
+            if ($expectedStatus !== null && $from !== $expectedStatus) {
+                throw new ApiException('举报状态已变化，请刷新案件并重新核对。', ApiException::CODE_REPORT_STATUS_CONFLICT);
+            }
             if ($from !== $status && !$this->canTransition($from, $status)) {
                 throw ApiException::badRequest("不允许从 {$from} 转换为 {$status}");
             }
@@ -68,8 +75,10 @@ final class AdminReports
                 $values['assignee_id'] = $actorId;
                 $assigned = true;
             }
-            if (in_array($status, ['resolved', 'rejected', 'closed'], true)) $values['resolved_at'] = $timestamp;
-            if ($resolution !== null) $values['resolution'] = substr(trim($resolution), 0, 255);
+            if ($from !== $status) {
+                $values['resolved_at'] = in_array($status, ['resolved', 'rejected', 'closed'], true) ? $timestamp : null;
+            }
+            if ($resolution !== null) $values['resolution'] = $resolution;
             $this->repository->update($id, $values);
             $this->repository->appendEvent($id, $actorId, $from === $status ? 'note' : 'status_changed', [
                 'from_status' => $from, 'to_status' => $status, 'resolution' => $resolution, 'note' => $note,

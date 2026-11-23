@@ -1,6 +1,6 @@
 {
   "source": "thinkphp-runtime-route-registry",
-  "routeCount": 209,
+  "routeCount": 212,
   "routes": [
     {
       "path": "/admin/cards/:id",
@@ -1608,6 +1608,44 @@
       "source": "apps/backend/app/api/route"
     },
     {
+      "path": "/admin/files/upload-policy",
+      "method": "GET",
+      "name": "files.managedUploadPolicy",
+      "controller": "Storage.Upload",
+      "action": "uploadPolicy",
+      "meta": {
+        "name": "管理上传规则",
+        "group": "文件",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "config.read",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Files\\Transport\\Api\\UploadPolicyResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
       "path": "/admin/operations/deliveries",
       "method": "GET",
       "name": "operations.deliveries",
@@ -1940,6 +1978,43 @@
         "request": null,
         "response": {
           "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminOverviewResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/operations/release-status",
+      "method": "GET",
+      "name": "operations.releaseStatus",
+      "controller": "Platform.Administration",
+      "action": "releaseStatus",
+      "meta": {
+        "name": "当前软件版本",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminReleaseStatusResource",
           "shape": "item",
           "status": 200
         }
@@ -3653,6 +3728,40 @@
         "request": null,
         "response": {
           "resource": "app\\modules\\Platform\\Files\\Transport\\Api\\FileResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/files/upload-policy",
+      "method": "GET",
+      "name": "files.uploadPolicy",
+      "controller": "Storage.Upload",
+      "action": "uploadPolicy",
+      "meta": {
+        "name": "当前上传规则",
+        "group": "文件",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "files.upload",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Files\\Transport\\Api\\UploadPolicyResource",
           "shape": "item",
           "status": 200
         }

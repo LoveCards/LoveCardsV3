@@ -75,8 +75,10 @@ export interface GeneratedApiContract {
   "files.getManaged": { method: "GET"; path: "/admin/files/:id"; request: void; response: ApiTypes.LCFile; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "files.listManaged": { method: "GET"; path: "/admin/files"; request: { page?: number; list_rows?: number; search_keys?: unknown[]; search_like?: number; search_value?: string; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; status?: number; upload_status?: number; scene?: string; ref_type?: string; ref_id?: number }; response: ApiTypes.ListResult<ApiTypes.LCFile>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "files.listOwn": { method: "GET"; path: "/me/files"; request: { page?: number; list_rows?: number; search_keys?: unknown[]; search_like?: number; search_value?: string; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; status?: number; upload_status?: number; scene?: string; ref_type?: string; ref_id?: number }; response: ApiTypes.ListResult<ApiTypes.LCFile>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
+  "files.managedUploadPolicy": { method: "GET"; path: "/admin/files/upload-policy"; request: void; response: ApiTypes.UploadPolicy; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "files.purge": { method: "DELETE"; path: "/admin/files/:id/purge"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "files.upload": { method: "POST"; path: "/me/files"; request: FormData; response: ApiTypes.UploadResult; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "files.uploadPolicy": { method: "GET"; path: "/me/files/upload-policy"; request: void; response: ApiTypes.UploadPolicy; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "files.usage": { method: "GET"; path: "/admin/files/:id/usage"; request: void; response: ApiTypes.FileUsage; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "library.history": { method: "GET"; path: "/me/history"; request: { cursor?: string; limit?: number }; response: ApiTypes.CursorPage; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "library.history.clear": { method: "DELETE"; path: "/me/history"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
@@ -114,6 +116,7 @@ export interface GeneratedApiContract {
   "operations.overview": { method: "GET"; path: "/admin/operations/overview"; request: void; response: ApiTypes.OperationsOverview; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.reconcileRuntime": { method: "POST"; path: "/admin/operations/runtime/reconcile"; request: void; response: ApiTypes.RuntimeCommunicationSnapshot; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.recoverUpgrade": { method: "POST"; path: "/admin/operations/upgrades/:planId/recover"; request: void; response: ApiTypes.OperationsUpgradePlan; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "operations.releaseStatus": { method: "GET"; path: "/admin/operations/release-status"; request: void; response: ApiTypes.OperationsReleaseStatus; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "operations.retryDelivery": { method: "POST"; path: "/admin/operations/deliveries/:id/retry"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "operations.runMigrations": { method: "POST"; path: "/admin/operations/migrations/run"; request: Record<string, unknown>; response: ApiTypes.OperationsMigration[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "operations.runtime": { method: "GET"; path: "/admin/operations/runtime"; request: void; response: ApiTypes.OperationsRuntimeStatus; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
@@ -125,7 +128,7 @@ export interface GeneratedApiContract {
   "permissions.list": { method: "GET"; path: "/admin/permissions"; request: { page?: number; list_rows?: number; search_keys?: string; search_like?: number; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; search_value?: string }; response: ApiTypes.ListResult<ApiTypes.CapabilityItem>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
   "reports.getManaged": { method: "GET"; path: "/admin/reports/:id"; request: void; response: ApiTypes.AdminReport; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "reports.listManaged": { method: "GET"; path: "/admin/reports"; request: { page?: number; list_rows?: number; search_value?: string; search_keys?: string; status?: string; resource_type?: string; actor_id?: number; unread_only?: boolean; worker_type?: string }; response: ApiTypes.ListResult<ApiTypes.AdminReport>; status: 200; shape: "paginated"; public: false; capabilities: readonly string[] }
-  "reports.transition": { method: "POST"; path: "/admin/reports/:id/transition"; request: { note?: string; resolution?: string; status: string }; response: ApiTypes.AdminReport; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
+  "reports.transition": { method: "POST"; path: "/admin/reports/:id/transition"; request: { note?: string; resolution?: string; expected_status?: string; status: string }; response: ApiTypes.AdminReport; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "roles.assignGrants": { method: "POST"; path: "/admin/roles/:id/grants"; request: { grants: { capability: string; scope: string }[] }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "roles.batch": { method: "POST"; path: "/admin/roles/batch"; request: { ids: unknown[]; method: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "roles.create": { method: "POST"; path: "/admin/roles"; request: { description?: string; name: string; slug: string }; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
@@ -288,8 +291,10 @@ export const generatedApiContract = {
   "files.getManaged": { method: "GET", path: "/admin/files/:id", status: 200, shape: "item", public: false, capabilities: ["admin.access","files.read"] },
   "files.listManaged": { method: "GET", path: "/admin/files", status: 200, shape: "paginated", public: false, capabilities: ["admin.access","files.read"] },
   "files.listOwn": { method: "GET", path: "/me/files", status: 200, shape: "paginated", public: false, capabilities: ["files.read"] },
+  "files.managedUploadPolicy": { method: "GET", path: "/admin/files/upload-policy", status: 200, shape: "item", public: false, capabilities: ["admin.access","config.read"] },
   "files.purge": { method: "DELETE", path: "/admin/files/:id/purge", status: 204, shape: "void", public: false, capabilities: ["admin.access","files.purge"] },
   "files.upload": { method: "POST", path: "/me/files", status: 200, shape: "item", public: false, capabilities: ["files.upload"] },
+  "files.uploadPolicy": { method: "GET", path: "/me/files/upload-policy", status: 200, shape: "item", public: false, capabilities: ["files.upload"] },
   "files.usage": { method: "GET", path: "/admin/files/:id/usage", status: 200, shape: "item", public: false, capabilities: ["admin.access","files.usage.read"] },
   "library.history": { method: "GET", path: "/me/history", status: 200, shape: "item", public: false, capabilities: [] },
   "library.history.clear": { method: "DELETE", path: "/me/history", status: 204, shape: "void", public: false, capabilities: [] },
@@ -327,6 +332,7 @@ export const generatedApiContract = {
   "operations.overview": { method: "GET", path: "/admin/operations/overview", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.read"] },
   "operations.reconcileRuntime": { method: "POST", path: "/admin/operations/runtime/reconcile", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.runtime.configure"] },
   "operations.recoverUpgrade": { method: "POST", path: "/admin/operations/upgrades/:planId/recover", status: 200, shape: "item", public: false, capabilities: ["admin.access","system.recover"] },
+  "operations.releaseStatus": { method: "GET", path: "/admin/operations/release-status", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.read"] },
   "operations.retryDelivery": { method: "POST", path: "/admin/operations/deliveries/:id/retry", status: 204, shape: "void", public: false, capabilities: ["admin.access","operations.retry"] },
   "operations.runMigrations": { method: "POST", path: "/admin/operations/migrations/run", status: 200, shape: "collection", public: false, capabilities: ["admin.access","operations.migrate"] },
   "operations.runtime": { method: "GET", path: "/admin/operations/runtime", status: 200, shape: "item", public: false, capabilities: ["admin.access","operations.read"] },

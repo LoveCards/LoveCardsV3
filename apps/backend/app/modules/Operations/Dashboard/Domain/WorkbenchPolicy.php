@@ -25,11 +25,22 @@ final class WorkbenchPolicy
     public static function taskKeys(GrantSet $grants): array
     {
         $keys = [];
-        if ($grants->allows('cards.approve', Scope::ALL)) $keys[] = 'cards_pending';
-        if ($grants->allows('comments.moderate', Scope::ALL)) $keys[] = 'comments_pending';
-        if ($grants->allows('reports.manage', Scope::GLOBAL)) $keys[] = 'reports_open';
-        if ($grants->allows('operations.retry', Scope::GLOBAL)) $keys[] = 'deliveries_dead';
-        if ($grants->allows('files.update', Scope::ALL)) $keys[] = 'files_pending';
+        if ($grants->allows('cards.read', Scope::ALL) && $grants->allows('cards.approve', Scope::ALL)) {
+            $keys[] = 'cards_pending';
+        }
+        if ($grants->allows('comments.read', Scope::ALL) && $grants->allows('comments.moderate', Scope::ALL)) {
+            $keys[] = 'comments_pending';
+        }
+        if ($grants->allows('reports.read', Scope::GLOBAL) && $grants->allows('reports.manage', Scope::GLOBAL)) {
+            $keys[] = 'reports_open';
+            $keys[] = 'reports_reviewing';
+        }
+        if ($grants->allows('communications.read', Scope::GLOBAL) && $grants->allows('operations.retry', Scope::GLOBAL)) {
+            $keys[] = 'deliveries_dead';
+        }
+        if ($grants->allows('files.read', Scope::ALL) && $grants->allows('files.update', Scope::ALL)) {
+            $keys[] = 'files_pending';
+        }
         return $keys;
     }
 }

@@ -4,6 +4,7 @@ export interface AuthPolicy {
     account_types: Array<'email' | 'phone' | 'username'>
     email_verification_required: boolean
     email_verification_available: boolean
+    email_verification_status?: string
   }
   guest: { enabled: boolean }
   human_verification: { enabled: boolean; driver: string; available: boolean }

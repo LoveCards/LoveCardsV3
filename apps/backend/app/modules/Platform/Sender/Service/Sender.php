@@ -2,6 +2,8 @@
 
 namespace app\modules\Platform\Sender\Service;
 
+use app\api\ApiException;
+use app\modules\Platform\Sender\Infrastructure\Driver\SmtpDriver;
 use app\modules\Platform\Sender\Infrastructure\SenderFactory;
 use app\modules\Platform\Sender\Contract\Message;
 use app\modules\Platform\Sender\Contract\SendResult;
@@ -28,6 +30,19 @@ class Sender
     ): SendResult {
         $message = Message::notify($channelType, $to, $template, $vars);
         return self::dispatch($message, $driver);
+    }
+
+    public static function mailCodeConfigurationStatus(): string
+    {
+        try {
+            $driver = SenderFactory::make(ChannelManager::getDefault('smtp'));
+        } catch (ApiException) {
+            return 'sender_missing';
+        }
+        if (!$driver instanceof SmtpDriver) {
+            return 'sender_incompatible';
+        }
+        return $driver->configurationStatus();
     }
 
     private static function dispatch(Message $message, ?string $driverSlug): SendResult

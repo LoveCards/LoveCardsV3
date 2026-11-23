@@ -9,7 +9,7 @@
     </div>
     <AdminAsyncState :loading="loading && !events.length" :error="error && !events.length ? error : null" :empty="!loading && !events.length" empty-title="没有匹配的事件" @retry="load">
       <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
-      <v-expansion-panels variant="accordion">
+      <v-expansion-panels v-model="expandedEvent" variant="accordion">
         <v-expansion-panel v-for="event in events" :key="event.id" :value="event.id" elevation="0" border>
           <v-expansion-panel-title>
             <div class="d-flex flex-wrap align-center ga-3">
@@ -22,7 +22,7 @@
             <p class="text-body-2 mb-3">关联对象：{{ event.aggregate_key }}</p>
             <v-alert v-if="!event.deliveries.length" type="info" variant="tonal">这条事实没有注册处理器，因此没有投递任务。</v-alert>
             <v-list v-else lines="two" border rounded>
-              <v-list-item v-for="delivery in event.deliveries" :key="delivery.id" :title="delivery.handler_key" :subtitle="`${delivery.queue_name} · 已尝试 ${delivery.attempt_count} 次`" :to="`/apps/operations/deliveries/${delivery.id}`">
+              <v-list-item v-for="delivery in event.deliveries" :key="delivery.id" :title="delivery.handler_key" :subtitle="`${delivery.queue_name} · 已尝试 ${delivery.attempt_count} 次`" :to="detailLocation(delivery.id, event.id)">
                 <template #append><AdminStatusChip :status="delivery.status" :label="delivery.policy_decision === 'skipped' ? '按策略跳过' : undefined" /></template>
               </v-list-item>
             </v-list>
@@ -62,6 +62,17 @@ const page = computed<number>({
   get: () => typeof route.query.event_page === 'string' ? Math.max(1, Number.parseInt(route.query.event_page, 10) || 1) : 1,
   set: value => { if (value !== page.value) updateQuery({ event_page: value === 1 ? undefined : String(value) }) },
 })
+const expandedEvent = computed<number | undefined>({
+  get: () => {
+    const value = route.query.event_id
+    const id = typeof value === 'string' ? Number(value) : 0
+    return Number.isSafeInteger(id) && id > 0 ? id : undefined
+  },
+  set: value => {
+    if (value === expandedEvent.value) return
+    void router.replace({ query: { ...route.query, tab: 'events', event_id: value ? String(value) : undefined } })
+  },
+})
 const events = ref<OperationsEvent[]>([])
 const total = ref(0)
 const pageCount = computed(() => Math.ceil(total.value / 20))
@@ -70,7 +81,11 @@ const error = ref<string | null>(null)
 let requestId = 0
 
 function updateQuery(patch: Record<string, string | undefined>) {
-  void router.push({ query: { ...route.query, tab: 'events', ...patch } })
+  void router.push({ query: { ...route.query, tab: 'events', event_id: undefined, ...patch } })
+}
+function detailLocation(deliveryId: number, eventId: number) {
+  const source = router.resolve({ path: route.path, query: { ...route.query, tab: 'events', event_id: String(eventId) } })
+  return { path: `/apps/operations/deliveries/${deliveryId}`, query: { returnTo: source.fullPath } }
 }
 function applyType() {
   const next = draftType.value.trim()

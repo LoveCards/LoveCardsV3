@@ -1,5 +1,5 @@
 {
-  "routeCount": 209,
+  "routeCount": 212,
   "summary": {},
   "routes": [
     {
@@ -2994,6 +2994,79 @@
       }
     },
     {
+      "path": "/admin/files/upload-policy",
+      "method": "GET",
+      "name": "files.managedUploadPolicy",
+      "controller": "Storage.Upload",
+      "action": "uploadPolicy",
+      "meta": {
+        "name": "管理上传规则",
+        "group": "文件",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "config.read",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Files\\Transport\\Api\\UploadPolicyResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Storage/Upload.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "UploadPolicyResource::make"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": false,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "UploadPolicyResource",
+        "operation": "make"
+      }
+    },
+    {
       "path": "/admin/operations/deliveries",
       "method": "GET",
       "name": "operations.deliveries",
@@ -3875,6 +3948,78 @@
         "status": 200,
         "shape": "item",
         "resource": "AdminOverviewResource",
+        "operation": "make"
+      }
+    },
+    {
+      "path": "/admin/operations/release-status",
+      "method": "GET",
+      "name": "operations.releaseStatus",
+      "controller": "Platform.Administration",
+      "action": "releaseStatus",
+      "meta": {
+        "name": "当前软件版本",
+        "group": "运维",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "operations.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminReleaseStatusResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Administration.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "AdminReleaseStatusResource::make"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "AdminReleaseStatusResource",
         "operation": "make"
       }
     },
@@ -5143,7 +5288,8 @@
         "accessedFields": [
           "status",
           "resolution",
-          "note"
+          "note",
+          "expected_status"
         ],
         "usesContractResponse": true,
         "usesRawResponse": false
@@ -11426,6 +11572,75 @@
         "status": 200,
         "shape": "item",
         "resource": "DirectUploadResource",
+        "operation": "make"
+      }
+    },
+    {
+      "path": "/me/files/upload-policy",
+      "method": "GET",
+      "name": "files.uploadPolicy",
+      "controller": "Storage.Upload",
+      "action": "uploadPolicy",
+      "meta": {
+        "name": "当前上传规则",
+        "group": "文件",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "files.upload",
+              "scope": "global"
+            }
+          ],
+          "anyOf": []
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Files\\Transport\\Api\\UploadPolicyResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Storage/Upload.php",
+      "missingController": false,
+      "validates": false,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "UploadPolicyResource::make"
+      ],
+      "validators": [],
+      "validatorScene": null,
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": false,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": false,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "UploadPolicyResource",
         "operation": "make"
       }
     },

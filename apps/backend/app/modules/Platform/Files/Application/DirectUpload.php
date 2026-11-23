@@ -59,6 +59,15 @@ final class DirectUpload
         $expire = $this->channels->getDirectUploadExpire();
         $expireAt = date('Y-m-d H:i:s', time() + $expire);
 
+        $credential = $this->driver->getDirectUploadCredential(
+            $channelSlug,
+            $filename,
+            $mime,
+            $size,
+            $path,
+            $expire
+        );
+
         $hash = bin2hex(random_bytes(8));
         $id = $this->files->createPendingRecord(
             $hash,
@@ -69,15 +78,6 @@ final class DirectUpload
             $size,
             $mime,
             $expireAt
-        );
-
-        $credential = $this->driver->getDirectUploadCredential(
-            $channelSlug,
-            $filename,
-            $mime,
-            $size,
-            $path,
-            $expire
         );
 
         return [

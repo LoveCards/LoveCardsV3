@@ -57,6 +57,12 @@ final class Administration extends BaseController
     public function auditLogs() { return $this->respond(Admin::auditLogs($this->validated())); }
     public function auditLog(int $id) { return $this->respond(Admin::auditLog($id)); }
     public function notificationStats() { return $this->respond(Admin::notificationsStats()); }
+    public function releaseStatus()
+    {
+        $version = \app\modules\Operations\Version\Public\Version::current();
+        $version['release_id'] = \LoveCards\Bootstrap\ReleaseBootstrap::activeReleaseId();
+        return $this->respond($version);
+    }
     public function upgrades() { $params=$this->validated(); return $this->respond(array_map(static fn($plan) => $plan->toArray(), app(UpgradeCoordinator::class)->recent((int)($params['limit'] ?? 50)))); }
     public function upgrade(string $planId) { $plan=app(UpgradeCoordinator::class)->find($planId); if($plan===null) throw ApiException::notFound('升级计划不存在'); return $this->respond($plan->toArray()); }
     public function createUpgrade()
@@ -129,7 +135,8 @@ final class Administration extends BaseController
             $id, $this->uid(), (string) $params['status'],
             isset($params['resolution']) ? (string) $params['resolution'] : null,
             isset($params['note']) ? (string) $params['note'] : null,
-            $this->ip()
+            $this->ip(),
+            isset($params['expected_status']) ? (string) $params['expected_status'] : null
         ));
     }
 

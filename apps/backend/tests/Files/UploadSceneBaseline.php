@@ -77,6 +77,7 @@ namespace app\modules\Platform\Config\Public
 // ════════════════════════════════════════════════════════════
 namespace
 {
+    require __DIR__ . '/../../vendor/autoload.php';
     require __DIR__ . '/../../app/modules/Platform/Files/Application/UploadLimits.php';
 
     use app\api\ApiException;
@@ -241,6 +242,36 @@ namespace
     // ------------------------------------------------------------
     // 直传闸：按声明的文件名/大小，归内容桶，凭证签发前生效
     // ------------------------------------------------------------
+    $tests['E0: upload projection reports smaller channel limits and correct scene types'] = static function (): void {
+        ConfigService::reset();
+        ConfigService::$rows = ['upload.avatar_size' => 1, 'upload.content_size' => 4, 'cards.picture_limit' => 3];
+        $policy = UploadLimits::policy(['max_file_size' => 1536000, 'allow_mime_types' => 'image/*,video/mp4'], false);
+        $scenes = $policy['scenes'];
+        if ($scenes['avatar']['max_bytes'] !== 1024000 || $scenes['profile_cover']['max_bytes'] !== 1024000
+            || $scenes['comment']['max_bytes'] !== 1536000 || $scenes['card_video']['max_bytes'] !== 1536000
+            || !in_array('mp4', $scenes['card_video']['extensions'], true) || in_array('mp4', $scenes['card_image']['extensions'], true)
+            || $scenes['direct']['available'] || $policy['card_media_limit'] !== 3) {
+            throw new RuntimeException('Upload policy differs from the site and channel gates');
+        }
+    };
+
+    $tests['E0b: signed direct upload credentials cannot exceed the checked declaration'] = static function (): void {
+        $config = ['access_key' => 'fixture', 'secret_key' => 'fixture', 'secret_id' => 'fixture',
+            'bucket' => 'fixture', 'endpoint' => 'invalid.test', 'region' => 'test', 'max_file_size' => 2048];
+        $qiniu = new \app\modules\Platform\Storage\Infrastructure\Driver\QiniuDriver('qiniu', $config);
+        $oss = new \app\modules\Platform\Storage\Infrastructure\Driver\OssDriver('oss', $config);
+        $cos = new \app\modules\Platform\Storage\Infrastructure\Driver\CosDriver('cos', $config);
+        $credential = $qiniu->getUploadCredential('fixture.png', 'image/png', 1024, 'fixture.png');
+        $encoded = explode(':', $credential->formData['token'])[1];
+        $policy = json_decode(base64_decode(strtr($encoded, '-_', '+/')), true, 512, JSON_THROW_ON_ERROR);
+        if ($policy['fsizeLimit'] !== 1024) throw new RuntimeException('Qiniu size limit drift');
+        foreach ([$oss, $cos] as $driver) {
+            $credential = $driver->getUploadCredential('fixture.png', 'image/png', 1024, 'fixture.png');
+            $policy = json_decode(base64_decode($credential->formData['policy']), true, 512, JSON_THROW_ON_ERROR);
+            if ($policy['conditions'][0] !== ['content-length-range', 0, 1024]) throw new RuntimeException('POST policy size limit drift');
+        }
+    };
+
     $tests['E1: direct upload gate uses content bucket and filename extension'] = static function (): void {
         ConfigService::reset();
         ConfigService::$rows = [

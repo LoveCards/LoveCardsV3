@@ -100,7 +100,6 @@ class OssDriver extends AbstractDriver implements HasDirectUpload
     ): DirectUploadCredential {
         $this->validateDirectUpload($mime, $size);
 
-        $maxSize = (int) ($this->config['max_file_size'] ?? 0);
         $accessKeyId = $this->config['access_key'];
         $accessKeySecret = $this->config['secret_key'];
 
@@ -109,7 +108,7 @@ class OssDriver extends AbstractDriver implements HasDirectUpload
         $policy = base64_encode(json_encode([
             'expiration' => date('Y-m-d\TH:i:s\Z', time() + $expire),
             'conditions' => [
-                ['content-length-range', 0, $maxSize > 0 ? $maxSize : 52428800],
+                ['content-length-range', 0, $size],
                 ['eq', '$Content-Type', $mime],
                 ['eq', '$key', $key],
             ],

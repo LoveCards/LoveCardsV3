@@ -75,6 +75,10 @@ $assert($result['assignee_id'] === 9, 'first non-open transition must assign the
 $assert($repository->events[0]['payload']['assignee_id'] === 9, 'assignee must be captured in report history');
 $assert($audit->records[0][1] === 'safety.report.transition', 'report transition must be audited in the transaction');
 $assert($transactions->calls === 1, 'report transition must use the transaction boundary');
+$stale = false;
+try { $reports->transition(4, 9, 'open', null, '迟到的内部备注', '', 'open'); }
+catch (\app\api\ApiException $exception) { $stale = $exception->getHttpStatus() === 409; }
+$assert($stale && $repository->report['status'] === 'reviewing' && count($repository->events) === 1, 'a stale note must not change the report state');
 
 $invalid = false;
 try { $reports->transition(4, 9, 'open', null, 'invalid reverse', ''); }
@@ -88,7 +92,14 @@ catch (\app\api\ApiException) { $missingConclusion = true; }
 $assert($missingConclusion, 'closing a report must require a written conclusion');
 $assert($repository->report['status'] === 'reviewing', 'rejected transition must not change the report state');
 $assert($notices->records === [], 'rejected report transition must not notify the reporter');
-$reports->transition(4, 9, 'resolved', 'resolved', '处理完成', '127.0.0.1');
+$tooLong = false;
+try { $reports->transition(4, 9, 'resolved', str_repeat('审', 256), null, ''); }
+catch (\app\api\ApiException $exception) { $tooLong = $exception->getHttpStatus() === 400; }
+$assert($tooLong, 'a 256-character resolution must be rejected');
+$assert($notices->records === [], 'a rejected write must not send a notice');
+$resolution = str_repeat('审', 255);
+$result = $reports->transition(4, 9, 'resolved', $resolution, '处理完成', '127.0.0.1');
+$assert($result['resolution'] === $resolution, 'all 255 characters must be stored');
 $assert(count($notices->records) === 1, 'resolved report must issue one moderation notice');
 $assert($notices->records[0]['recipientId'] === 2, 'report outcome notice must target the reporter');
 $assert($notices->records[0]['noticeKey'] === 'safety.report.outcome:4:resolved', 'report outcome notice must use the terminal state key');

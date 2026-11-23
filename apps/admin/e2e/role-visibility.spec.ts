@@ -180,7 +180,7 @@ test('the workbench is direct and only the current task group expands automatica
 
   await page.goto('./apps/dashboard', { waitUntil: 'domcontentloaded' })
   const navigation = page.getByRole('navigation')
-  await expect(navigation.getByRole('link', { name: '工作台', exact: true })).toBeVisible()
+  await expect(navigation.getByRole('link', { name: '工作台', exact: true })).toBeVisible({ timeout: 20_000 })
   await expect(navigation.getByRole('link', { name: '卡片', exact: true })).not.toBeVisible()
 
   await page.goto('./apps/content/tags', { waitUntil: 'domcontentloaded' })

@@ -61,3 +61,37 @@ test('event records include facts without deliveries and follow browser history'
   await expect(page.getByRole('tab', { name: '运行状态' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('button', { name: /message\.sent@1.*#7/ })).toHaveCount(0)
 })
+
+test('delivery detail returns to the selected event and restores its filters', async ({ page }) => {
+  await mockAdministrator(page, [{ capability: 'communications.read', scope: 'global' }])
+  const delivery = {
+    id: 17, event_id: 7, event_type: 'message.sent', queue_name: 'realtime', handler_key: 'message.sent.signal',
+    execution_mode: 'daemon_required', status: 'completed', attempt_count: 1, available_at: '2026-11-16 12:00:00',
+    created_at: '2026-11-16 12:00:00', updated_at: '2026-11-16 12:00:00',
+  }
+  const eventRequests: URLSearchParams[] = []
+  await page.route('**/api/admin/operations/events?**', route => {
+    eventRequests.push(new URL(route.request().url()).searchParams)
+    return route.fulfill({ json: {
+      success: true, data: [{
+        id: 7, event_type: 'message.sent', event_version: 1, aggregate_type: 'message', aggregate_key: '19',
+        occurred_at: '2026-11-16 12:00:00', created_at: '2026-11-16 12:00:00', deliveries: [delivery],
+      }],
+      pagination: { currentPage: 2, totalPages: 2, totalItems: 21, itemsPerPage: 20 },
+    } })
+  })
+  await page.route('**/api/admin/operations/deliveries/17', route => route.fulfill({ json: { success: true, data: delivery } }))
+
+  await page.goto('./apps/operations/eventing?tab=events&queue=realtime&event_type=message.sent&event_page=2', { waitUntil: 'domcontentloaded' })
+  await expect(page.getByRole('link', { name: '查看处理任务' })).toBeVisible()
+  const event = page.getByRole('button', { name: /message\.sent@1.*#7/ })
+  await event.click()
+  await page.getByRole('link', { name: /message\.sent\.signal/ }).click()
+  await expect(page.getByRole('heading', { name: '处理任务 #17' })).toBeVisible()
+  await page.getByRole('link', { name: '返回事件明细' }).click()
+  await expect(event).toHaveAttribute('aria-expanded', 'true')
+  await expect(page).toHaveURL(/queue=realtime&event_type=message.sent&event_page=2&event_id=7$/)
+  expect(eventRequests.at(-1)?.get('page')).toBe('2')
+  expect(eventRequests.at(-1)?.get('queue_name')).toBe('realtime')
+  expect(eventRequests.at(-1)?.has('event_id')).toBe(false)
+})

@@ -4,6 +4,8 @@ namespace app\modules\Platform\Storage\Contract;
 
 class DirectUploadCredential
 {
+    public const DEFAULT_MAX_BYTES = 52_428_800;
+
     public string $url;
     public string $method;
     public array $headers;

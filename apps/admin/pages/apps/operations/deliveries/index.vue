@@ -1,9 +1,9 @@
 <template>
   <AdminPageContainer fluid>
-    <AdminPageHeader title="处理任务" description="按队列与状态定位事件处理结果。处理完成不代表浏览器已收到或用户已阅读。" :breadcrumbs="[{ title: '系统' }]">
+    <AdminPageHeader title="处理任务" description="按队列与状态定位事件处理结果。处理完成不代表浏览器已收到或用户已阅读。" :breadcrumbs="[{ title: '系统' }, { title: '事件管理', to: '/apps/operations/eventing' }, { title: '处理任务' }]">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="loadAll">刷新</v-btn></template>
     </AdminPageHeader>
-    <p class="mb-4 text-body-2">每行是一项处理任务。<NuxtLink to="/apps/operations/eventing?tab=events">查看业务事件</NuxtLink> · <NuxtLink v-if="queue === 'notifications'" to="/apps/operations/notification-policies">通知策略</NuxtLink></p>
+    <p class="mb-4 text-body-2"><NuxtLink to="/apps/operations/eventing?tab=events">查看业务事件</NuxtLink><template v-if="queue === 'notifications'"> · <NuxtLink to="/apps/operations/notification-policies">通知策略</NuxtLink></template></p>
     <v-sheet v-if="queue === 'notifications' && summary" border rounded class="mb-4 pa-4">
       <div class="d-flex flex-wrap ga-5">
         <span>失败 <strong>{{ summary.dead }}</strong></span><span>待处理 <strong>{{ summary.pending }}</strong></span>
@@ -26,10 +26,10 @@
       <AdminAsyncState :loading="loading && !deliveries.length" :error="error && !deliveries.length ? error : null" :empty="!loading && !deliveries.length" :empty-title="view === 'dead' ? '没有失败记录' : '没有匹配的处理记录'" empty-description="试试其他处理状态。" @retry="loadDeliveries">
         <v-alert v-if="error" class="ma-3" type="error" variant="tonal">{{ error }}<template #append><v-btn variant="outlined" @click="loadDeliveries">重试</v-btn></template></v-alert>
         <v-data-table-server v-model:items-per-page="itemsPerPage" v-model:page="page" :headers="headers" :items="deliveries" :items-length="totalItems" :items-per-page-options="[10, 20, 50]" :loading="loading" item-value="id" items-per-page-text="每页行数">
-          <template #item.event="{ item }"><AdminResourceLink :label="item.display_name || item.event_type" resource-type="event_delivery" :resource-id="item.id" /><div class="text-caption text-medium-emphasis">{{ item.event_type }} · #{{ item.id }} · {{ queueLabel(item.queue_name) }}</div></template>
+          <template #item.event="{ item }"><v-btn :to="detailLocation(item.id)" prepend-icon="mdi-send-check-outline" class="px-2 text-none" min-height="44" variant="text">{{ item.display_name || item.event_type }}</v-btn><div class="text-caption text-medium-emphasis">{{ item.event_type }} · #{{ item.id }} · {{ queueLabel(item.queue_name) }}</div></template>
           <template #item.status="{ item }"><span v-if="item.policy_decision === 'skipped'">{{ skipLabel(item.queue_name) }}</span><AdminStatusChip v-else :status="item.status" /></template>
           <template #item.error="{ item }"><span class="delivery-error">{{ item.last_error || '-' }}</span></template>
-          <template #item.action="{ item }"><NuxtLink :to="`/apps/operations/deliveries/${item.id}`">查看详情</NuxtLink></template>
+          <template #item.action="{ item }"><NuxtLink :to="detailLocation(item.id)">查看详情</NuxtLink></template>
         </v-data-table-server>
       </AdminAsyncState>
     </AdminResourceTableShell>
@@ -41,7 +41,6 @@ import type { OperationsDelivery, OperationsDeliverySummary } from '@lovecards/s
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
-import AdminResourceLink from '~/components/shared/admin/AdminResourceLink.vue'
 import AdminResourceTableShell from '~/components/shared/admin/AdminResourceTableShell.vue'
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
 import { useApi, isApiError } from '~/lib/api'
@@ -80,6 +79,9 @@ const page = ref(queryInt(route.query.page, 1))
 const requestedPageSize = queryInt(route.query.list_rows, 20)
 const itemsPerPage = ref(allowedPageSizes.includes(requestedPageSize) ? requestedPageSize : 20)
 const totalItems = ref(0)
+function detailLocation(id: number) {
+  return { path: `/apps/operations/deliveries/${id}`, query: { returnTo: route.fullPath } }
+}
 const allHeaders = [
   { title: '业务事件', key: 'event' }, { title: '处理结果', key: 'status' }, { title: '尝试', key: 'attempt_count' },
   { title: '最后错误', key: 'error' }, { title: '更新时间', key: 'updated_at' }, { title: '操作', key: 'action' },

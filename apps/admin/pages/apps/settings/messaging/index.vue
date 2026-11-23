@@ -8,7 +8,6 @@
       <template #actions>
         <AdminActionGuard capability="sender.install" scope="global">
           <v-btn
-            color="primary"
             :loading="scanning"
             prepend-icon="mdi-refresh"
             variant="outlined"
@@ -27,10 +26,14 @@
       {{ actionMessage.text }}
     </v-alert>
 
-    <v-alert class="mb-4" type="info" variant="tonal">
-      当前接入：注册和修改邮箱的验证码经验证服务调用这里的渠道。渠道配置和默认选择不代表外部投递成功；发送测试会真实发送测试码，结果只代表本次测试。
-      <NuxtLink to="/apps/settings/verification">查看验证中心</NuxtLink>
-    </v-alert>
+    <AdminConfigSection class="mb-5" title="邮件验证码" description="注册和修改邮箱使用此处的邮件渠道。">
+      <p class="mb-2">{{ emailStatus }}</p>
+      <p class="text-body-2 text-medium-emphasis mb-3">测试使用保存后的配置并向指定收件人发送一封邮件。最近测试结果在渠道详情中查看。</p>
+      <div class="d-flex flex-wrap ga-2">
+        <v-btn v-if="defaultMail" variant="outlined" :to="`/apps/settings/messaging/${encodeURIComponent(defaultMail)}`">配置当前邮件渠道</v-btn>
+        <v-btn v-if="userStore.canAccessPath('/apps/settings/verification')" variant="text" to="/apps/settings/verification?tab=usages">查看验证场景</v-btn>
+      </div>
+    </AdminConfigSection>
 
     <AdminAsyncState
       :empty="channelGroups.length === 0"
@@ -105,6 +108,7 @@
 </template>
 
 <script setup lang="ts">
+import { emailVerificationStatus } from '~/lib/verification-status'
 import type { SenderChannel } from '@lovecards/sdk'
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
@@ -126,6 +130,15 @@ const configSnapshot = useConfigSnapshot(client)
 const router = useRouter()
 const userStore = useUserStore()
 const channelGroups = shallowRef<ChannelGroup[]>([])
+const defaultMail = computed(() => channelGroups.value.find(group => group.channelType === 'smtp')?.defaultSlug)
+const emailStatus = ref('正在读取邮件验证码状态…')
+async function loadEmailStatus() {
+  try {
+    emailStatus.value = emailVerificationStatus(await client.session.policy())
+  } catch {
+    emailStatus.value = emailVerificationStatus(null)
+  }
+}
 const loading = ref(false)
 const loadError = ref('')
 const scanning = ref(false)
@@ -137,9 +150,14 @@ const canInstallSender = computed(() => userStore.hasGrant('sender.install', 'gl
 const errorMessage = configSnapshot.errorMessage
 const groupTitle = (type: string) => {
   const normalized = type.toLowerCase()
-  if (normalized.includes('mail')) return '邮件渠道'
+  if (normalized === 'smtp' || normalized.includes('mail')) return '邮件渠道'
   if (normalized.includes('sms')) return '短信渠道'
   return type
+}
+
+function effectiveDefault(channelType: string, channels: SenderChannel[], settings: ReturnType<typeof readObject>) {
+  const configured = readString(settings['default_' + channelType])
+  return channels.some(channel => channel.slug === configured) ? configured : channels[0]?.slug ?? ''
 }
 
 const loadChannels = async () => {
@@ -157,7 +175,7 @@ const loadChannels = async () => {
     channelGroups.value = Object.entries(groups).map(([channelType, groupChannels]) => ({
       channelType,
       channels: groupChannels,
-      defaultSlug: readString(senderConfig[`default_${channelType}`], groupChannels[0]?.slug ?? ''),
+      defaultSlug: effectiveDefault(channelType, groupChannels, senderConfig),
     }))
   } catch (cause) {
     loadError.value = errorMessage(cause, '无法加载站外发送，请稍后重试。')
@@ -171,8 +189,9 @@ const setDefault = async (channelType: string, slug: string) => {
   actionMessage.value = null
   try {
     const committed = await configSnapshot.update({ sender: { [`default_${channelType}`]: slug } })
-    const group = channelGroups.value.find(item => item.channelType === channelType)
-    if (group) group.defaultSlug = readString(readObject(committed.sender)[`default_${channelType}`])
+    const defaultSlug = readString(readObject(committed.sender)['default_' + channelType])
+    channelGroups.value = channelGroups.value.map(group => group.channelType === channelType ? { ...group, defaultSlug } : group)
+    await loadEmailStatus()
     actionMessage.value = { type: 'success', text: `已将 ${slug} 设为默认${groupTitle(channelType)}。` }
   } catch (cause) {
     actionMessage.value = { type: 'error', text: errorMessage(cause, '默认发送渠道切换失败，请稍后重试。') }
@@ -200,5 +219,6 @@ const scanChannels = async () => {
 
 onMounted(() => {
   void loadChannels()
+  void loadEmailStatus()
 })
 </script>
