@@ -1,17 +1,4 @@
 export const cardPreviewSession = Math.random().toString(36).slice(2);
-let detailModulePromise;
-
-export function preloadCardPreviewDetail() {
-  detailModulePromise ||= import('../pages/detail/DetailPage.jsx').catch((error) => {
-    detailModulePromise = undefined;
-    throw error;
-  });
-  return detailModulePromise;
-}
-
-export function warmCardPreviewDetail() {
-  void preloadCardPreviewDetail().catch(() => undefined);
-}
 
 export function cardPreviewState(location, cardId, kind = 'text', trigger = null) {
   if (!location || !cardId) return undefined;

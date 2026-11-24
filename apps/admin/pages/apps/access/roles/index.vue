@@ -194,6 +194,7 @@
 </template>
 
 <script setup lang="ts">
+import { useLatestAdminRequest } from '~/composables/useLatestAdminRequest';
 import type { Role } from '@lovecards/sdk';
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue';
 import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerActionDialog.vue';
@@ -321,7 +322,7 @@ const tableHasResult = ref(false);
 const tableResultState = ref<'ready' | 'loading' | 'stale'>('ready');
 const allowRowMutation = computed(() => tableHasResult.value && !tableLoading.value && tableResultState.value === 'ready');
 let lastSuccessfulQuery: string | null = null;
-let latestRequest = 0;
+const beginRequest = useLatestAdminRequest();
 
 const errorMessage = (error: unknown) => {
   if (error instanceof Error && error.message) return error.message;
@@ -330,7 +331,7 @@ const errorMessage = (error: unknown) => {
 };
 
 const getTableData = async () => {
-  const requestId = ++latestRequest;
+  const isCurrent = beginRequest();
   tableLoading.value = true;
   tableError.value = null;
   const searchValue = appliedSearchValue.value?.trim();
@@ -359,7 +360,7 @@ const getTableData = async () => {
 
   try {
     const result = await client.roles.list(params as Parameters<typeof client.roles.list>[0]);
-    if (requestId !== latestRequest) return;
+    if (!isCurrent()) return;
     tableItems.value = result.data;
     applySearchSnapshot(searchHighlight);
     const visibleIds = new Set(result.data.map((item) => item.id));
@@ -370,12 +371,12 @@ const getTableData = async () => {
     tableHasResult.value = true;
     tableResultState.value = 'ready';
   } catch (error) {
-    if (requestId === latestRequest) {
+    if (isCurrent()) {
       tableError.value = errorMessage(error);
       if (refreshing) tableResultState.value = 'stale';
     }
   } finally {
-    if (requestId === latestRequest) tableLoading.value = false;
+    if (isCurrent()) tableLoading.value = false;
   }
 };
 

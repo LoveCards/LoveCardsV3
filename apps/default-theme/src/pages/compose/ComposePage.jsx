@@ -1,11 +1,10 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, UNSAFE_DataRouterContext, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { AppShell } from '../../layouts/AppShell.jsx';
 import { composeMediaKey, deleteComposeMedia, getComposeState, loadComposeTopics, loadPublishedCardForEdit, loadTopicPolicy, normalizeCardVisibility, normalizeDraftMedia, orderComposeMedia, publishCard, updatePublishedCard, uploadComposeMedia } from '../../services/compose-service.js';
 import { createDraft, deleteDraft, draftSummary, getDraft, normalizeDraftPayload, updateDraft } from '../../services/community-service.js';
 import { useAuth } from '../../app/providers.jsx';
 import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
-import { useUnsavedChanges } from '../../app/use-unsaved-changes.js';
 import { getUserFacingError } from '../../app/user-facing-error.js';
 import { getSdkClient } from '../../app/sdk-client.js';
 import { loadAuthPolicy } from '../../services/auth-service.js';
@@ -19,6 +18,7 @@ import { restoreComposeGalleryLayout } from '../../features/media/gallery-layout
 import { gallerySwipeDirection } from '../../features/media/useGalleryPager.js';
 import { ComposeDialogShell } from './ComposeDialogShell.jsx';
 import { ComposePageNavigationGuard } from './ComposePageNavigationGuard.jsx';
+import { useComposeNavigation } from './use-compose-navigation.js';
 
 const publishTypes = {
   text: { label: '随笔', description: '纯文字，不包含媒体。' },
@@ -110,12 +110,7 @@ function composeSignature({ content, tags, publishType, media, files, mediaOrder
 export function ComposePage({ surface = 'page' }) {
   const navigate = useNavigate();
   const location = useLocation();
-  const dataRouter = useContext(UNSAFE_DataRouterContext);
   const isDialog = surface === 'dialog';
-  const [dialogOpen, setDialogOpen] = useState(true);
-  const allowLeaveRef = useRef(false);
-  const blockedNavigationRef = useRef(null);
-  const discardActionRef = useRef('leave');
   const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const { verify, dialog: humanVerificationDialog, step: verificationStep } = useHumanVerification();
@@ -162,8 +157,6 @@ export function ComposePage({ surface = 'page' }) {
   const [topicLimitHit, setTopicLimitHit] = useState(false);
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState('');
-  const [discardOpen, setDiscardOpen] = useState(false);
-  const [discardDestination, setDiscardDestination] = useState('/');
   const composeInputHandle = useRef(null);
   const composeInputRoot = useRef(null);
   const mentionAdapter = useMemo(() => {
@@ -352,7 +345,8 @@ export function ComposePage({ surface = 'page' }) {
   const isPagerPreview = publishType === 'image' && galleryLayout === 'pager';
   const mediaCount = persistedMedia.length + files.length;
   const currentSignature = composeSignature({ content, tags, publishType, galleryLayout, media: persistedMedia, files, mediaOrder, visibility });
-  const mediaOrderChanged = JSON.stringify(orderedMedia.map((entry) => entry.key)) !== JSON.stringify(JSON.parse(savedSignature).mediaOrder);
+  const savedValues = JSON.parse(savedSignature);
+  const mediaOrderChanged = JSON.stringify(orderedMedia.map((entry) => entry.key)) !== JSON.stringify(savedValues.mediaOrder);
   const dirty = currentSignature !== savedSignature;
   const topicList = topicsFrom(tags);
   const contentError = validationAttempted && (!content.trim() || content.length > CARD_CONTENT_MAX_LENGTH);
@@ -367,7 +361,7 @@ export function ComposePage({ surface = 'page' }) {
   const topicCreationBlocked = topicPolicy !== null && topicPolicy.allowUserCreate === false;
   const knownTopicNames = new Set(topicOptions.map((topic) => String(topic.name || '').toLowerCase()));
   // 卡片上已保存的话题（编辑/草稿场景）视为已知，避免用户编辑自己的卡片时被误拦。
-  const savedTopicNames = new Set((Array.isArray(savedSignature.tags) ? savedSignature.tags : topicsFrom(String(savedSignature.tags ?? ''))).map((topic) => String(topic).toLowerCase()));
+  const savedTopicNames = new Set(topicsFrom(savedValues.tags).map((topic) => topic.toLowerCase()));
   const unknownTopics = topicCreationBlocked
     ? topicList.filter((topic) => !knownTopicNames.has(topic.toLowerCase()) && !savedTopicNames.has(topic.toLowerCase()))
     : [];
@@ -377,6 +371,12 @@ export function ComposePage({ surface = 'page' }) {
     : '最多添加 3 个话题，请移除多余话题。';
   const topicSuggestions = topicOptions.filter((topic) => !topicList.some((selected) => selected.toLowerCase() === topic.name.toLowerCase())).slice(0, 6);
   const busy = status === 'publishing' || status === 'draft-saving' || status === 'saving-edit';
+  const returnDestination = editMode && (publishedCardId || requestedEditId) ? `/post/${publishedCardId || requestedEditId}` : '/';
+  const onBlocked = useCallback(() => setPendingPublishType(null), []);
+  const {
+    dialogOpen, discardOpen, allowLeaveRef, requestDiscard, onNavigationBlocked, requestClose,
+    closeOrReturn, onDialogExited, cancelDiscard, confirmDiscard, useDataRouterGuard,
+  } = useComposeNavigation({ isDialog, dirty, busy, returnDestination, onBlocked });
   const hasDraftContent = Boolean(content.trim() || tags.trim() || mediaCount || publishType !== 'text');
   const saveState = editMode
     ? status === 'saving-edit'
@@ -599,32 +599,6 @@ export function ComposePage({ surface = 'page' }) {
     }
   };
 
-  const returnDestination = editMode && (publishedCardId || requestedEditId) ? `/post/${publishedCardId || requestedEditId}` : '/';
-  const requestDiscard = useCallback((destination = returnDestination, action = 'leave') => {
-    discardActionRef.current = action;
-    setDiscardDestination(destination);
-    setDiscardOpen(true);
-  }, [returnDestination]);
-  const onNavigationBlocked = useCallback((blocker) => {
-    setPendingPublishType(null);
-    discardActionRef.current = 'leave';
-    blockedNavigationRef.current = blocker;
-    setDiscardOpen(true);
-  }, []);
-  useEffect(() => {
-    if (dirty) allowLeaveRef.current = false;
-  }, [dirty]);
-  const requestClose = useCallback(() => {
-    if (busy) return;
-    if (dirty) requestDiscard(returnDestination, 'close');
-    else setDialogOpen(false);
-  }, [busy, dirty, requestDiscard, returnDestination]);
-  const closeOrReturn = () => {
-    if (isDialog) requestClose();
-    else if (dirty) requestDiscard(returnDestination);
-    else navigate(returnDestination);
-  };
-  const onDialogExited = useCallback(() => navigate(-1), [navigate]);
   const selectPublishType = (nextType) => {
     if (nextType === publishType) return;
     if (mediaCount) {
@@ -646,21 +620,6 @@ export function ComposePage({ surface = 'page' }) {
     setPendingPublishType(null);
     setMessage('');
   };
-  const cancelDiscard = () => {
-    setDiscardOpen(false);
-    const blocker = blockedNavigationRef.current;
-    if (blocker?.state === 'blocked') blocker.reset();
-    blockedNavigationRef.current = null;
-  };
-  const confirmDiscard = () => {
-    setDiscardOpen(false);
-    allowLeaveRef.current = true;
-    if (isDialog && discardActionRef.current === 'close') setDialogOpen(false);
-    else if (blockedNavigationRef.current?.state === 'blocked') {
-      blockedNavigationRef.current.proceed();
-      blockedNavigationRef.current = null;
-    } else navigate(discardDestination);
-  };
   const confirmation = discardOpen ? {
     title: '放弃这次编辑？',
     description: editMode ? '尚未保存的修改将不会保留。' : '尚未发布的文字、话题和媒体将不会保留。',
@@ -680,11 +639,10 @@ export function ComposePage({ surface = 'page' }) {
   });
   const canWriteCard = editMode ? can('cards.update') : can('cards.create');
   const showDraftsLink = !editMode && (designPreview || (authStatus === 'ready' && isAuthenticated && canWriteCard));
-  useUnsavedChanges(dirty, requestDiscard, { interceptLinks: !dataRouter && !isDialog });
 
   const editorContent = (
       <main className="compose-page" aria-labelledby="compose-title">
-        {!isDialog && dataRouter && <ComposePageNavigationGuard dirty={dirty} allowLeaveRef={allowLeaveRef} onBlocked={onNavigationBlocked} />}
+        {useDataRouterGuard && <ComposePageNavigationGuard dirty={dirty} allowLeaveRef={allowLeaveRef} onBlocked={onNavigationBlocked} />}
         <header className="compose-heading">
           <button className="compose-back" type="button" onClick={closeOrReturn} aria-label={isDialog ? '关闭发布窗口' : editMode ? '取消编辑并返回内容详情' : '取消发布并返回首页'}><Icon name={isDialog ? 'close' : 'arrowLeft'} size={18} /><span>{isDialog ? '关闭' : '返回'}</span></button>
           <div className="compose-heading-copy">

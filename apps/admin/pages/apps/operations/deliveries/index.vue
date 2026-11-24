@@ -42,6 +42,7 @@
 </template>
 
 <script setup lang="ts">
+import { useLatestAdminRequest } from '~/composables/useLatestAdminRequest'
 import type { OperationsDelivery, OperationsDeliverySummary } from '@lovecards/sdk'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
@@ -103,10 +104,10 @@ const defaultColumns = allHeaders.filter((header) => header.key !== 'id').map((h
 const visibleColumns = ref([...defaultColumns])
 const headers = computed(() => allHeaders.filter((header) => visibleColumns.value.includes(header.key)))
 const columnOptions = allHeaders.map((header) => ({ title: header.title, key: header.key, required: header.key === 'event' || header.key === 'action' }))
-let latestDeliveryRequest = 0
-let latestSummaryRequest = 0
+const beginDeliveryRequest = useLatestAdminRequest()
+const beginSummaryRequest = useLatestAdminRequest()
 async function loadDeliveries() {
-  const requestId = ++latestDeliveryRequest
+  const isCurrent = beginDeliveryRequest()
   const filters = view.value === 'skipped' ? { status: 'completed', policy_decision: 'skipped' } : view.value === 'all' ? {} : { status: view.value }
   const params = { page: page.value, list_rows: itemsPerPage.value, ...(queue.value === 'all' ? {} : { queue_name: queue.value }), ...filters }
   const queryKey = JSON.stringify(params)
@@ -122,24 +123,24 @@ async function loadDeliveries() {
   error.value = null
   try {
     const result = await client.operations.deliveries(params)
-    if (requestId !== latestDeliveryRequest) return
+    if (!isCurrent()) return
     deliveries.value = result.data
     totalItems.value = result.pagination?.totalItems ?? result.data.length
     resultCount.value = totalItems.value
     resultState.value = 'ready'
     lastSuccessfulKey = queryKey
   } catch (cause) {
-    if (requestId === latestDeliveryRequest) {
+    if (isCurrent()) {
       error.value = isApiError(cause) ? cause.message : '无法加载处理任务'
       if (lastSuccessfulKey === queryKey) resultState.value = 'stale'
     }
-  } finally { if (requestId === latestDeliveryRequest) loading.value = false }
+  } finally { if (isCurrent()) loading.value = false }
 }
 async function loadSummary() {
-  const requestId = ++latestSummaryRequest
+  const isCurrent = beginSummaryRequest()
   summaryError.value = null
-  try { const result = await client.operations.deliverySummary(); if (requestId === latestSummaryRequest) summary.value = result }
-  catch (cause) { if (requestId === latestSummaryRequest) summaryError.value = isApiError(cause) ? cause.message : '无法加载处理汇总' }
+  try { const result = await client.operations.deliverySummary(); if (isCurrent()) summary.value = result }
+  catch (cause) { if (isCurrent()) summaryError.value = isApiError(cause) ? cause.message : '无法加载处理汇总' }
 }
 async function loadAll() { await Promise.all([loadDeliveries(), ...(queue.value === 'notifications' ? [loadSummary()] : [])]) }
 function syncRouteQuery() {

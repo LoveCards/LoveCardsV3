@@ -5,7 +5,8 @@ import { MediaFrame } from '../media/MediaFrame.jsx';
 import { CardMoreMenu } from './CardMoreMenu.jsx';
 import { AuthorIdentity } from '../../components/AuthorIdentity.jsx';
 import { MentionText, mentionSegments } from '../../components/MentionText.jsx';
-import { cardPreviewSession, cardPreviewState, warmCardPreviewDetail } from '../../app/card-preview-routing.js';
+import { cardPreviewSession, cardPreviewState } from '../../app/card-preview-routing.js';
+import { warmCardPreviewDetail } from './card-preview-loader.js';
 
 function storyFrameRatio(gridCount) {
   if (gridCount === 1) return 4 / 5;

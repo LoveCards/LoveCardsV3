@@ -101,6 +101,7 @@
 </template>
 
 <script setup lang="ts">
+import { useLatestAdminRequest } from '~/composables/useLatestAdminRequest'
 import type { OperationsAuditLog } from '@lovecards/sdk'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
@@ -304,9 +305,9 @@ function resetTableView() {
   void router.replace({ query: navigationQuery(1, 30, {}), hash: route.hash })
 }
 
-let latestRequest = 0
+const beginRequest = useLatestAdminRequest()
 async function load() {
-  const requestId = ++latestRequest
+  const isCurrent = beginRequest()
   const { filters, page: currentPage, size } = routeState.value
   const queryKey = JSON.stringify({ filters, page: currentPage, size })
   if (queryKey !== lastSuccessfulKey.value) {
@@ -318,18 +319,18 @@ async function load() {
   error.value = null
   try {
     const result = await client.operations.auditLogs({ page: currentPage, list_rows: size, ...filters })
-    if (requestId !== latestRequest) return
+    if (!isCurrent()) return
     logs.value = result.data
     totalItems.value = result.pagination?.totalItems ?? result.data.length
     lastSuccessfulKey.value = queryKey
     resultState.value = 'ready'
   } catch (cause) {
-    if (requestId === latestRequest) {
+    if (isCurrent()) {
       error.value = isApiError(cause) ? cause.message : '无法加载审计日志'
       resultState.value = 'stale'
     }
   } finally {
-    if (requestId === latestRequest) loading.value = false
+    if (isCurrent()) loading.value = false
   }
 }
 watch(() => route.fullPath, () => { syncDraft(); void load() }, { immediate: true })

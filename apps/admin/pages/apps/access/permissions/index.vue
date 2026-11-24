@@ -105,6 +105,7 @@
 </template>
 
 <script setup lang="ts">
+import { useLatestAdminRequest } from '~/composables/useLatestAdminRequest';
 import type { CapabilityItem } from '@lovecards/sdk';
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue';
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue';
@@ -166,7 +167,7 @@ const tableError = ref<string | null>(null);
 const tableHasResult = ref(false);
 const tableResultState = ref<'ready' | 'loading' | 'stale'>('ready');
 let lastSuccessfulQuery: string | null = null;
-let latestRequest = 0;
+const beginRequest = useLatestAdminRequest();
 
 const errorMessage = (error: unknown) => {
   if (error instanceof Error && error.message) return error.message;
@@ -175,7 +176,7 @@ const errorMessage = (error: unknown) => {
 };
 
 const getTableData = async () => {
-  const requestId = ++latestRequest;
+  const isCurrent = beginRequest();
   tableLoading.value = true;
   tableError.value = null;
   const searchValue = appliedSearchValue.value?.trim();
@@ -201,7 +202,7 @@ const getTableData = async () => {
 
   try {
     const result = await client.permissions.list(params as Parameters<typeof client.permissions.list>[0]);
-    if (requestId !== latestRequest) return;
+    if (!isCurrent()) return;
     tableItems.value = result.data;
     appliedSearch.value = searchValue ?? '';
     tableCurrentPage.value = result.pagination?.currentPage ?? tableCurrentPage.value;
@@ -210,12 +211,12 @@ const getTableData = async () => {
     tableHasResult.value = true;
     tableResultState.value = 'ready';
   } catch (error) {
-    if (requestId === latestRequest) {
+    if (isCurrent()) {
       tableError.value = errorMessage(error);
       if (refreshing) tableResultState.value = 'stale';
     }
   } finally {
-    if (requestId === latestRequest) tableLoading.value = false;
+    if (isCurrent()) tableLoading.value = false;
   }
 };
 
