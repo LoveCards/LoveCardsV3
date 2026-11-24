@@ -99,13 +99,13 @@ MIME），执行的是**渠道级底线**。
 验证码不是孤立一条链，而是骑在消息域之上：
 
 ```text
-user.captcha（注册邮件验证开关，站点信息页）
+Auth 注册策略（验证中心）或 User 修改邮箱要求
 → captcha.code_enabled / default_code_driver（默认 smtp_code）
-→ CodeDriver → sender.code_channel（smtp / sms）/ default_smtp / default_sms
+→ CodeDriver → 业务决定邮件或短信 → Sender 的默认邮件或默认短信渠道
 → Sender 驱动（SmtpDriver / AliyunSmsDriver）
 ```
 
-因此：验证页只决定"用哪个 code 驱动、走哪类渠道"，发送凭据维护在消息页。
+验证中心管理业务要求和验证驱动，发送凭据与投递测试在站外发送中维护。
 人机验证（geetest_v4 / image）独立于消息域。
 
 ## 8. 分层限额语义（AND，不是覆盖）

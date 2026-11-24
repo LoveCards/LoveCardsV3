@@ -40,9 +40,4 @@ class ChannelManager
         return (bool) ($settings[$key] ?? false);
     }
 
-    public static function getCodeChannel(): string
-    {
-        $settings = self::loadSettings();
-        return $settings['code_channel'] ?? 'smtp';
-    }
 }

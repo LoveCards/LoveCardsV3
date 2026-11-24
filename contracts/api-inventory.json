@@ -14013,11 +14013,7 @@
         "usesDirectInput": false,
         "directInputKeys": [],
         "fileKeys": [],
-        "accessedFields": [
-          "account",
-          "code",
-          "password"
-        ],
+        "accessedFields": [],
         "usesContractResponse": true,
         "usesRawResponse": false
       },

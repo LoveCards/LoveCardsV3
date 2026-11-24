@@ -5,7 +5,8 @@ import { getLoginState, loadAuthPolicy, login, register, sendRegistrationCode, s
 import { useHumanVerification } from '../../features/human-verification/useHumanVerification.jsx';
 import { useAuth } from '../../app/providers.jsx';
 import { getUserFacingError } from '../../app/user-facing-error.js';
-import { Button, FormLayout, Icon, TextInput } from '../../ui/index.js';
+import { Button, FormLayout, Icon, SegmentedControl, SegmentedControlItem, TextInput } from '../../ui/index.js';
+import { registrationContactError, registrationContactLabels } from '../../features/auth/registration-contact.js';
 import { safeReturnPath } from '../../app/auth-routing.jsx';
 import { CredentialFields, validateCredentials } from '../../features/auth/CredentialFields.jsx';
 
@@ -18,7 +19,10 @@ export function AuthPage({ mode = 'login' }) {
   const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [emailCode, setEmailCode] = useState('');
+  const [selectedMethod, setSelectedMethod] = useState(null);
+  const [code, setCode] = useState('');
+  const [resendAt, setResendAt] = useState(0);
+  const [now, setNow] = useState(Date.now);
   const [status, setStatus] = useState('idle');
   const [message, setMessage] = useState(capability.message);
   const [policy, setPolicy] = useState(null);
@@ -39,23 +43,64 @@ export function AuthPage({ mode = 'login' }) {
     return () => { active = false; };
   }, [capability.canLogin, policyRetry]);
 
-  const registrationBlocked = Boolean(isRegister && (policyStatus !== 'ready' || !policy?.registration?.enabled || (policy.registration?.email_verification_required && !policy.registration?.email_verification_available) || (policy.human_verification?.enabled && !policy.human_verification?.available)));
-  const registrationMessage = !isRegister ? ''
-    : policyStatus === 'loading' ? '正在确认注册策略…'
-      : policyStatus === 'error' ? '暂时无法确认注册策略，请重试。'
-        : !policy?.registration?.enabled ? '当前暂未开放新账号注册。'
-          : policy.registration?.email_verification_required && !policy.registration?.email_verification_available ? '邮箱验证码服务尚未就绪，请稍后重试。'
-            : policy.human_verification?.enabled && !policy.human_verification?.available ? '人机验证服务尚未就绪，请稍后重试。'
-              : '';
+  const registration = policy?.registration;
+  const methods = (registration?.account_types ?? []).filter((type) => type in registrationContactLabels);
+  const canUseMethod = (type) => type === 'email'
+    ? !registration?.email_verification_required || registration.email_verification_available
+    : !registration?.sms_verification_required || registration.sms_verification_available;
+  const method = methods.includes(selectedMethod) ? selectedMethod : methods.find(canUseMethod) ?? methods[0];
+  const codeRequired = isRegister && Boolean(method === 'phone' ? registration?.sms_verification_required : registration?.email_verification_required);
+  const codeLabel = method === 'phone' ? '短信验证码' : '邮箱验证码';
+  const resendIn = Math.max(0, Math.ceil((resendAt - now) / 1000));
+  const registrationBlocked = isRegister && (policyStatus !== 'ready' || !registration?.enabled || !method || !canUseMethod(method) || Boolean(policy.human_verification?.enabled && !policy.human_verification?.available));
+  const registrationMessage = policyStatus === 'loading' ? '正在确认注册策略…'
+    : policyStatus === 'error' ? '暂时无法确认注册策略，请重试。'
+      : !registration?.enabled || !method ? '当前暂未开放新账号注册。'
+        : !canUseMethod(method) ? codeLabel + '服务尚未就绪，请稍后重试。'
+          : '人机验证服务尚未就绪，请稍后重试。';
+
+  useEffect(() => {
+    if (resendIn === 0) return undefined;
+    const timer = setTimeout(() => setNow(Date.now()), 1000);
+    return () => clearTimeout(timer);
+  }, [resendIn, now]);
+
+  const changeAccount = (value) => {
+    setAccount(value);
+    setCode('');
+    setResendAt(0);
+    setFieldErrors((current) => ({ ...current, account: '', code: '' }));
+    setMessage('');
+  };
+
+  const changeMethod = (value) => {
+    if (!methods.includes(value) || value === method) return;
+    setSelectedMethod(value);
+    changeAccount('');
+  };
+
+  const refreshChangedPolicy = (error) => {
+    const reason = error?.reason_code || error?.reason || error?.details?.reason_code;
+    if (!['registration-method-not-allowed', 'registration-code-not-required', 'registration-code-unavailable'].includes(reason)) return false;
+    setCode('');
+    setResendAt(0);
+    setPolicyRetry((value) => value + 1);
+    return true;
+  };
+
   const guestEnabled = capability.canLogin && policy?.guest?.enabled === true;
 
   const submit = async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
+    if (pendingAction || registrationBlocked) return;
     const nextErrors = validateCredentials(account, password);
-    if (isRegister && password !== passwordConfirm) nextErrors.passwordConfirm = '两次输入的密码不一致。';
-    if (isRegister && policy?.registration?.email_verification_required && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account.trim())) nextErrors.account = '请输入有效邮箱。';
-    if (isRegister && policy?.registration?.email_verification_required && !emailCode.trim()) nextErrors.emailCode = '请输入邮箱验证码。';
+    if (isRegister) {
+      const contactError = registrationContactError(account, method);
+      if (contactError) nextErrors.account = contactError;
+      if (password !== passwordConfirm) nextErrors.passwordConfirm = '两次输入的密码不一致。';
+      if (codeRequired && !code.trim()) nextErrors.code = '请输入' + codeLabel + '。';
+    }
     if (Object.keys(nextErrors).length > 0) {
       setFieldErrors(nextErrors);
       setStatus('error');
@@ -72,7 +117,7 @@ export function AuthPage({ mode = 'login' }) {
     try {
       if (isRegister) {
         const verification = await verify(policy);
-        await register({ account, password, passwordConfirm, code: emailCode, verification });
+        await register({ account, password, passwordConfirm, code: codeRequired ? code : undefined, verification });
       }
       else await login({ account, password });
       setStatus('success');
@@ -80,23 +125,33 @@ export function AuthPage({ mode = 'login' }) {
       navigate(returnTo, { replace: true });
     } catch (error) {
       setStatus('error');
-      setMessage(getUserFacingError(error, { fallback: isRegister ? '账号暂时没有创建，请稍后重试。' : '登录没有完成，请检查账号和密码后重试。', validationFallback: isRegister ? '注册信息不符合要求，请检查后重试。' : '账号或密码格式不符合要求，请检查后重试。' }));
+      setMessage(isRegister && refreshChangedPolicy(error) ? '注册策略有更新，请检查当前注册方式。' : getUserFacingError(error, { fallback: isRegister ? '账号暂时没有创建，请稍后重试。' : '登录没有完成，请检查账号和密码后重试。', validationFallback: isRegister ? '注册信息不符合要求，请检查后重试。' : '账号或密码格式不符合要求，请检查后重试。' }));
     } finally {
       setPendingAction('');
     }
   };
 
   const sendCode = async () => {
-    setPendingAction('email-code');
+    if (pendingAction || resendIn > 0 || registrationBlocked || !codeRequired) return;
+    const invalid = registrationContactError(account, method);
+    if (invalid) {
+      setFieldErrors((current) => ({ ...current, account: invalid }));
+      return;
+    }
+    setPendingAction('code');
     setStatus('loading');
     setMessage('');
     try {
-      await sendRegistrationCode(account);
+      await sendRegistrationCode(account, method);
+      const sentAt = Date.now();
+      setNow(sentAt);
+      setResendAt(sentAt + (registration.resend_after || 60) * 1000);
+      setCode('');
       setStatus('success');
-      setMessage('验证码已发送，请查收邮箱。');
+      setMessage(method === 'phone' ? '验证码已发送，请查收短信。' : '验证码已发送，请查收邮箱。');
     } catch (error) {
       setStatus('error');
-      setMessage(getUserFacingError(error, { fallback: '验证码暂时没有发送，请稍后重试。' }));
+      setMessage(refreshChangedPolicy(error) ? '注册策略有更新，请检查当前注册方式。' : getUserFacingError(error, { fallback: '验证码暂时没有发送，请稍后重试。' }));
     } finally {
       setPendingAction('');
     }
@@ -135,7 +190,10 @@ export function AuthPage({ mode = 'login' }) {
         </header>
         <form className="auth-form" onSubmit={submit}>
           <FormLayout className="auth-fields">
-            <CredentialFields account={account} password={password} onAccountChange={(value) => { setAccount(value); setFieldErrors((current) => current.account ? { ...current, account: '' } : current); }} onPasswordChange={(value) => { setPassword(value); setFieldErrors((current) => current.password ? { ...current, password: '' } : current); }} errors={fieldErrors} disabled={!capability.canLogin || registrationBlocked || Boolean(pendingAction)} register={isRegister} emailRequired={Boolean(policy?.registration?.email_verification_required)} />
+            {isRegister && methods.length > 1 && <SegmentedControl value={method} onChange={changeMethod} label="注册方式" layout="fill" size="lg" isDisabled={Boolean(pendingAction)}>
+              {methods.map((type) => <SegmentedControlItem key={type} value={type} label={registrationContactLabels[type] + '注册'} />)}
+            </SegmentedControl>}
+            <CredentialFields account={account} password={password} onAccountChange={changeAccount} onPasswordChange={(value) => { setPassword(value); setFieldErrors((current) => current.password ? { ...current, password: '' } : current); }} errors={fieldErrors} disabled={!capability.canLogin || registrationBlocked || Boolean(pendingAction)} register={isRegister} method={method} />
             {isRegister && <TextInput
               autoComplete="new-password"
               isDisabled={!capability.canLogin || registrationBlocked || Boolean(pendingAction)}
@@ -152,9 +210,9 @@ export function AuthPage({ mode = 'login' }) {
               value={passwordConfirm}
               width="100%"
             />}
-            {isRegister && policy?.registration?.email_verification_required && <div className="auth-email-code">
-              <TextInput label="邮箱验证码" htmlName="emailCode" value={emailCode} onChange={(value) => { setEmailCode(value); setFieldErrors((current) => current.emailCode ? { ...current, emailCode: '' } : current); }} isDisabled={registrationBlocked || Boolean(pendingAction)} isRequired status={fieldErrors.emailCode ? { type: 'error', message: fieldErrors.emailCode } : undefined} width="100%" />
-              <Button type="button" label="发送验证码" variant="secondary" size="lg" isDisabled={registrationBlocked || Boolean(pendingAction)} isLoading={pendingAction === 'email-code'} clickAction={sendCode} />
+            {codeRequired && <div className="auth-email-code">
+              <TextInput label={codeLabel} autoComplete="one-time-code" inputMode={method === 'phone' ? 'numeric' : 'text'} htmlName="code" value={code} onChange={(value) => { setCode(value); setFieldErrors((current) => ({ ...current, code: '' })); }} isDisabled={registrationBlocked || Boolean(pendingAction)} isRequired status={fieldErrors.code ? { type: 'error', message: fieldErrors.code } : undefined} width="100%" />
+              <Button type="button" label={resendIn > 0 ? resendIn + ' 秒后重发' : '发送验证码'} variant="secondary" size="lg" isDisabled={registrationBlocked || Boolean(pendingAction) || resendIn > 0} isLoading={pendingAction === 'code'} clickAction={sendCode} />
             </div>}
           </FormLayout>
           {message && <p className={`auth-message is-${status}`} aria-live="polite">{message}</p>}

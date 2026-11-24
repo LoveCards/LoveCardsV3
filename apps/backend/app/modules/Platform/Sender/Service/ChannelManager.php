@@ -3,6 +3,7 @@
 namespace app\modules\Platform\Sender\Service;
 
 use app\modules\Platform\Config\Public\Config;
+use app\modules\Platform\Sender\Infrastructure\SenderFactory;
 use think\facade\Db;
 
 class ChannelManager
@@ -27,6 +28,8 @@ class ChannelManager
                     ['type' => $type],
                     Config::getGroup($group)
                 );
+                $driver = SenderFactory::getDriverClass(self::$channels[$type]['driver'] ?? $type);
+                if ($driver !== null) self::$channels[$type]['channelType'] = $driver::meta()['channelType'];
             }
         }
         return self::$channels;
@@ -61,7 +64,9 @@ class ChannelManager
         if ($channelType !== '') {
             $key = 'default_' . $channelType;
             $defaultSlug = $settings[$key] ?? '';
-            if (!empty($defaultSlug) && self::exists($defaultSlug)) {
+            // 安装种子存的是配置组名，发送工厂使用渠道 slug。
+            if (str_starts_with($defaultSlug, 'sender_') && !self::exists($defaultSlug)) $defaultSlug = substr($defaultSlug, 7);
+            if ($defaultSlug !== '' && (self::loadChannels()[$defaultSlug]['channelType'] ?? null) === $channelType) {
                 return $defaultSlug;
             }
 

@@ -3,9 +3,14 @@
 namespace app\modules\Platform\Captcha\Public;
 
 use app\modules\Platform\Captcha\Service\Captcha as CaptchaService;
+use app\modules\Platform\Sender\Public\Sender;
 
 final class Captcha
 {
+    public static function codeAvailable(string $channel, bool $enabled, string $driver): bool
+    {
+        return $enabled && $driver === 'smtp_code' && Sender::codeAvailable($channel);
+    }
     public static function generate(string $type, array $params = [], ?string $driverSlug = null): array { return CaptchaService::generate($type, $params, $driverSlug); }
     public static function verify(string $type, array $params, ?string $driverSlug = null): bool { return CaptchaService::verify($type, $params, $driverSlug); }
     public static function isReady(string $type, ?string $driverSlug = null): bool { return CaptchaService::isReady($type, $driverSlug); }

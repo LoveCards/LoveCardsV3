@@ -1,5 +1,6 @@
 import { getSdkClient, sdkConfigured } from '../app/sdk-client.js';
 import { getRuntimeDataMode } from '../app/runtime-context.js';
+import { registrationContactError } from '../features/auth/registration-contact.js';
 
 export function getLoginState() {
   const mode = getRuntimeDataMode();
@@ -28,10 +29,11 @@ export async function loadAuthPolicy() {
   return client.session.policy();
 }
 
-export async function sendRegistrationCode(account) {
+export async function sendRegistrationCode(account, method = 'email') {
   const client = getSdkClient();
   if (!client) throw new Error('尚未配置 API，无法发送验证码。');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(account?.trim() || '')) throw new Error('请输入有效邮箱后再发送验证码。');
+  const invalid = registrationContactError(account, method);
+  if (invalid) throw new Error(invalid);
   return client.session.captcha({ account: account.trim() });
 }
 

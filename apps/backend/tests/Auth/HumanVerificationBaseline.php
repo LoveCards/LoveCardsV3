@@ -32,6 +32,18 @@ namespace app\shared\Infrastructure\Cache {
         {
             unset(self::$values[$key]);
         }
+
+        public static function set(string $group, string $key, mixed $value, int $ttl): void
+        {
+            self::$values[$key] = $value;
+        }
+    }
+}
+
+namespace app\shared\Infrastructure\Concurrency {
+    final class NamedLock
+    {
+        public static function run(string $key, callable $operation): mixed { return $operation(); }
     }
 }
 
@@ -39,6 +51,7 @@ namespace {
     require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
     use app\modules\Platform\Auth\Application\Session;
+    use app\modules\Platform\Auth\Public\RegistrationPolicy;
     use app\modules\Platform\Captcha\Service\Captcha;
     use app\modules\Platform\Captcha\Service\ChannelManager;
     use app\modules\Platform\Config\Public\Config;
@@ -90,10 +103,27 @@ namespace {
     $assert($session->verifyHumanVerification(['captcha_id' => 'test-image', 'captcha_code' => 'abcd']), 'image result must use its own request fields');
     $assert(!$session->verifyHumanVerification(['captcha_id' => 'test-image', 'captcha_code' => 'abcd']), 'image result must reject replay');
 
-    CacheManager::$values['Captcha_Auth_test@example.com'] = '123456';
-    $assert($session->registrationEmailVerificationRequired(), 'registration email policy must remain independent');
+    $codeKey = 'verification-code:' . hash('sha256', 'Auth:test@example.com');
+    CacheManager::$values[$codeKey] = ['hash' => password_hash('123456', PASSWORD_DEFAULT), 'expires_at' => time() + 300, 'attempts' => 0];
+    $assert($session->registrationPolicy()->requiresCode('email'), 'registration email policy must remain independent');
     $assert($session->verifyCaptcha('test@example.com', '123456'), 'registration code must use Auth scene');
     $assert(!$session->verifyCaptcha('test@example.com', '123456'), 'registration code must reject replay');
+    $state = ['hash' => password_hash('123456', PASSWORD_DEFAULT), 'expires_at' => time() + 300, 'attempts' => 0];
+    CacheManager::$values[$codeKey] = $state;
+    for ($i = 0; $i < 5; $i++) $assert(!$session->verifyCaptcha('test@example.com', '000000'), 'invalid code must fail');
+    $assert(!$session->verifyCaptcha('test@example.com', '123456'), 'exhausted code must fail even with the right secret');
+    $assert((new RegistrationPolicy(['captcha' => true]))->accountTypes() === ['email'], 'legacy email policy must stay email-only');
+    $assert((new RegistrationPolicy(['captcha' => false]))->accountTypes() === ['email', 'phone'], 'legacy open registration must drop usernames');
+    $policy = new RegistrationPolicy(['registration_mode' => 'email_or_phone', 'captcha' => true, 'registration_sms_verification' => false]);
+    $assert($policy->requiresCode('email') && !$policy->requiresCode('phone'), 'email and SMS verification switches are independent');
+    $assert($session->registrationContact(' 13800000000 ', $policy) === ['13800000000', 'phone'], 'phone input resolves to the phone method');
+    foreach (['old-username', '13800000000'] as $account) {
+        try {
+            $session->registrationContact($account, new RegistrationPolicy(['registration_mode' => 'email']));
+            throw new \RuntimeException('Only allowed contact types can register');
+        } catch (\app\api\ApiException) {
+        }
+    }
 
     fwrite(STDOUT, "PASS Human verification fail closed and captcha paths\n");
 }

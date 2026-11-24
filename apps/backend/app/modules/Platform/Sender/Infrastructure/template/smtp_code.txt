@@ -1,0 +1,2 @@
+<p>你的 LoveCards 验证码是 <strong>{code}</strong>，{expire} 分钟内有效。</p>
+<p>请勿向他人透露验证码。如果你没有发起此请求，可以忽略这封邮件。</p>

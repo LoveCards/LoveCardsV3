@@ -2,7 +2,7 @@
 
 namespace app\modules\Platform\Sender\Infrastructure\Driver;
 
-use mailer\tp6\Mailer;
+use PHPMailer\PHPMailer\PHPMailer;
 use app\modules\Platform\Sender\Infrastructure\Driver\AbstractDriver;
 use app\modules\Platform\Sender\Contract\Message;
 use app\modules\Platform\Sender\Contract\SendResult;
@@ -25,7 +25,7 @@ class SmtpDriver extends AbstractDriver
                 ['key' => 'security', 'label' => '加密方式',     'type' => 'select', 'options' => [
                     ['value' => 'ssl', 'label' => 'SSL'],
                     ['value' => 'tls', 'label' => 'TLS'],
-                    ['value' => '',    'label' => '无加密'],
+                    ['value' => '',    'label' => '默认（SSL）'],
                 ]],
             ],
         ];
@@ -36,6 +36,14 @@ class SmtpDriver extends AbstractDriver
         return $message->type === 'code'
             ? $this->sendCode($message)
             : $this->sendNotify($message);
+    }
+
+    public function isConfigured(): bool
+    {
+        return trim((string) ($this->config['host'] ?? '')) !== ''
+            && (int) ($this->config['port'] ?? 0) > 0
+            && filter_var($this->config['addr'] ?? '', FILTER_VALIDATE_EMAIL) !== false
+            && (string) ($this->config['pass'] ?? '') !== '';
     }
 
     private function sendCode(Message $message): SendResult
@@ -61,54 +69,28 @@ class SmtpDriver extends AbstractDriver
 
     private function doSend(string|array $to, string $subject, string $body): SendResult
     {
+        if (!$this->isConfigured()) return SendResult::fail('smtp', '邮件渠道配置不完整');
         try {
-            $this->resetMailerConfig();
-
-            $mailer = new Mailer();
-            $result = $mailer->to($to)
-                ->subject($subject)
-                ->html($body)
-                ->send();
-
-            if ($result === false) {
-                return SendResult::fail('smtp', 'SMTP 发送失败');
-            }
-
+            $mailer = new PHPMailer(true);
+            $mailer->isSMTP();
+            $mailer->Host = $this->config['host'];
+            $mailer->Port = (int) $this->config['port'];
+            $mailer->SMTPAuth = true;
+            $mailer->Username = $this->config['addr'];
+            $mailer->Password = $this->config['pass'];
+            $mailer->SMTPSecure = ($this->config['security'] ?? '') ?: PHPMailer::ENCRYPTION_SMTPS;
+            $mailer->Timeout = 5;
+            $mailer->getSMTPInstance()->Timelimit = 5;
+            $mailer->CharSet = PHPMailer::CHARSET_UTF8;
+            $mailer->setFrom($this->config['addr'], (string) ($this->config['name'] ?? ''));
+            foreach ((array) $to as $address) $mailer->addAddress($address);
+            $mailer->isHTML();
+            $mailer->Subject = $subject;
+            $mailer->Body = $body;
+            $mailer->send();
             return SendResult::ok('smtp');
-        } catch (\Throwable $e) {
-            return SendResult::fail('smtp', $e->getMessage());
+        } catch (\PHPMailer\PHPMailer\Exception) {
+            return SendResult::fail('smtp', '邮件发送失败，请检查配置与服务连通性');
         }
-    }
-
-    private function resetMailerConfig(): void
-    {
-        if (!class_exists('\mailer\lib\Config')) {
-            return;
-        }
-
-        $reflClass = new \ReflectionClass('\mailer\lib\Config');
-        $configProp = $reflClass->getProperty('config');
-        $configProp->setAccessible(true);
-        $isInitProp = $reflClass->getProperty('isInit');
-        $isInitProp->setAccessible(true);
-
-        $security = $this->config['security'] ?? '';
-        if ($security === '') {
-            $security = 'ssl';
-        }
-
-        $configProp->setValue(null, [
-            'driver'       => 'smtp',
-            'host'         => $this->config['host'] ?? '',
-            'port'         => $this->config['port'] ?? 465,
-            'addr'         => $this->config['addr'] ?? '',
-            'pass'         => $this->config['pass'] ?? '',
-            'name'         => $this->config['name'] ?? '',
-            'content_type' => 'text/html',
-            'charset'      => 'utf-8',
-            'security'     => $security,
-            'debug'        => true,
-        ]);
-        $isInitProp->setValue(null, true);
     }
 }

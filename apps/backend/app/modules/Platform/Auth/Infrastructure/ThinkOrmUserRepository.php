@@ -7,6 +7,8 @@ use app\modules\Platform\Auth\Contract\UserRepository;
 use app\modules\Platform\User\Infrastructure\Persistence\Model\Users as UsersModel;
 use app\modules\Platform\Rbac\Infrastructure\Persistence\Model\UserRoles;
 use app\modules\Platform\User\Public\UidGenerator;
+use app\api\ApiException;
+use app\shared\Infrastructure\Concurrency\NamedLock;
 use think\facade\Db;
 
 class ThinkOrmUserRepository implements UserRepository
@@ -52,6 +54,19 @@ class ThinkOrmUserRepository implements UserRepository
         array $roleIds,
         int $status
     ): AuthUser {
+        $contact = $email !== '' ? $email : $phone;
+        $create = function () use ($number, $username, $email, $phone, $passwordHash, $roleIds, $status, $contact): AuthUser {
+            // 登录同时匹配用户名、编号和联系方式，旧账号的可登录标识也需保留。
+            if ($contact !== '' && $this->findByAccount($contact) !== null) {
+                throw ApiException::badRequest('该注册账号已被使用', ApiException::CODE_USER_ALREADY_EXISTS);
+            }
+            return $this->persist($number, $username, $email, $phone, $passwordHash, $roleIds, $status);
+        };
+        return $contact === '' ? $create() : NamedLock::run('account:' . strtolower($contact), $create);
+    }
+
+    private function persist(string $number, string $username, string $email, string $phone, string $passwordHash, array $roleIds, int $status): AuthUser
+    {
         Db::startTrans();
         try {
             $uid = UidGenerator::reserve();

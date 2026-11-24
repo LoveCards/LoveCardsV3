@@ -8,6 +8,18 @@ use app\modules\Platform\Sender\Contract\SendResult;
 
 class Sender
 {
+    public static function codeAvailable(string $channelType): bool
+    {
+        try {
+            $driver = SenderFactory::make(ChannelManager::getDefault($channelType));
+        } catch (\app\api\ApiException) {
+            return false;
+        }
+        return $driver::meta()['channelType'] === $channelType
+            && in_array('code', $driver::supportedTypes(), true)
+            && method_exists($driver, 'isConfigured') && $driver->isConfigured();
+    }
+
     public static function code(
         string $channelType,
         string $to,
@@ -39,7 +51,7 @@ class Sender
             $driver = SenderFactory::make($defaultSlug);
         }
 
-        if (!in_array($message->type, $driver::supportedTypes())) {
+        if ($driver::meta()['channelType'] !== $message->channelType || !in_array($message->type, $driver::supportedTypes(), true)) {
             return SendResult::fail(
                 $message->channelType,
                 "驱动不支持 {$message->type} 类型消息"
