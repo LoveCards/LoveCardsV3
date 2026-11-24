@@ -23,15 +23,15 @@ Route Meta -> Controller -> Validate -> Business -> Resource -> ApiResponse
 默认保持简单业务层：
 
 ```text
-Controller -> service/<Module>/<Service>.php -> Model/Db
+Controller -> app/modules/<Area>/<Module>/Service/<Service>.php -> Model/Db
 ```
 
 当模块出现多驱动、第三方 SDK、明确状态流转、跨用例复用规则、外部副作用一致性或需要独立测试的核心规则时，再升级为复杂业务层：
 
 ```text
-Controller -> service/<Module>/Application/<UseCase>.php
-              -> service/<Module>/Domain/*
-              -> service/<Module>/Contract/* <- infrastructure/<Module>/*
+Controller -> app/modules/<Area>/<Module>/Application/<UseCase>.php
+              -> 本模块 Domain/*
+              -> 本模块 Contract/* <- 本模块 Infrastructure/*
 ```
 
 - 简单 Service 可以依赖 Model/Db，但不能读取 `request()`，不能引用 Controller/Middleware。
@@ -73,12 +73,14 @@ $capabilities = $auth ? $auth->capabilities() : [];
 
 ## Auth 用例与契约
 
-- 登录：`service/Auth/LoginUser.php`
-- 注册：`service/Auth/RegisterUser.php`
-- 请求认证：`service/Auth/AuthenticateRequest.php`
-- 当前身份：`service/Auth/AuthContext.php`
-- 用户持久化 Port：`service/Auth/UserRepository.php`
-- Token Port：`common/contract/TokenService.php`
+以下路径以 `app/modules/Platform/Auth` 为根目录。
+
+- 登录见 `Application/LoginUser.php`
+- 注册见 `Application/RegisterUser.php`
+- 请求认证见 `Application/AuthenticateRequest.php`
+- 当前身份见 `Public/AuthContext.php`
+- 用户持久化 Port 见 `Contract/UserRepository.php`
+- Token Port 见 `Contract/TokenService.php`
 
 变更上述行为前，先扩展 `tests/Auth/BehaviorBaseline.php` 或
 `tests/Auth/JwtRenewal.php` 固定预期，再修改实现。不要在结构重构中同时更改业务码、

@@ -63,7 +63,9 @@ $overview = AdminOverviewResource::make(['runtime' => ['redis' => ['name' => 're
 $assert(array_keys($overview['runtime']) === [0], 'overview runtime must be a JSON array');
 
 $adminReadModel = file_get_contents($root . '/app/modules/Operations/Administration/Service/AdminReadModel.php');
-$assert(str_contains($adminReadModel, "Db::table('file_references')"), 'file usage must use file_references as the source of truth');
-$assert(!str_contains($adminReadModel, "!empty(\$file['ref_type'])"), 'file usage must not fall back to the legacy single reference projection');
+$fileRepository = file_get_contents($root . '/app/modules/Platform/Files/Infrastructure/ThinkOrmFileRepository.php');
+$assert(!str_contains($adminReadModel, "Db::table('file_references')"), 'admin read model must delegate the file usage projection');
+$assert(str_contains($fileRepository, "Db::table('file_references')"), 'file usage must use file_references as the source of truth');
+$assert(!str_contains($fileRepository, "!empty(\$file['ref_type'])"), 'file usage must not fall back to the legacy single reference projection');
 
 fwrite(STDOUT, "PASS admin community resource baseline\n");

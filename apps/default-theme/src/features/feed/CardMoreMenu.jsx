@@ -7,7 +7,7 @@ import { ReportResourceDialog } from '../moderation/ReportResourceDialog.jsx';
 export function buildCardMoreMenuItems({ saved, busy, isReadOnly, canReport, onToggleSave, onCopyLink, onReport }) {
   const items = [
     {
-      label: busy ? (saved ? '取消收藏中' : '收藏中') : saved ? '取消收藏' : '收藏',
+      label: saved === null ? (busy ? '正在查询收藏状态' : '查询收藏状态') : busy ? (saved ? '取消收藏中' : '收藏中') : saved ? '取消收藏' : '收藏',
       icon: <Icon name="bookmark" size={17} />,
       isDisabled: isReadOnly || busy,
       onClick: onToggleSave,
@@ -39,7 +39,7 @@ export function CardMoreMenu({ cardId, source = 'live', isAuthenticated = false,
     cardId,
     source,
     isAuthenticated,
-    isSaved,
+    isSaved: isAuthenticated ? isSaved : false,
     isStatic: isStaticPreview,
     onRequireLogin,
     onSavedChange,

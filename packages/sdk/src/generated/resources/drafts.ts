@@ -18,4 +18,7 @@ export class Drafts extends BaseResource {
   update(id: number, data?: { title?: string; content?: string; payload?: Record<string, unknown> }): Promise<Record<string, unknown>> {
     return this._patch<Record<string, unknown>>(`/me/drafts/${id}`, data)
   }
+  page(params?: { cursor?: string; limit?: number }): Promise<ApiTypes.CursorPage> {
+    return this._get<ApiTypes.CursorPage>("/me/drafts/page", params)
+  }
 }

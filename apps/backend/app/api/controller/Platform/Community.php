@@ -15,7 +15,7 @@ use app\modules\Platform\Drafts\Public\Drafts;
 use app\modules\Platform\Messaging\Public\Messaging;
 use app\modules\Platform\User\Public\UidResolver;
 use app\modules\Platform\Safety\Domain\ReportSubmission;
-use app\modules\Content\Cards\Service\CardVisibilityPolicy;
+use app\modules\Content\Cards\Public\CardAccess;
 use app\shared\Transport\Http\CursorPage;
 
 final class Community extends BaseController
@@ -42,10 +42,19 @@ final class Community extends BaseController
     public function following(string $uid) { $p=$this->validated(); return $this->respond(Social::following(UidResolver::id($uid), $this->uid(), $p['cursor'] ?? null, (int)($p['limit'] ?? 20))); }
     public function relation(string $uid) { return $this->respond(Social::relation($this->uid(), UidResolver::id($uid))); }
 
-    public function save() { $p=$this->validated(); $ref=$this->ref($p); if ($ref->type() === 'card') CardVisibilityPolicy::assertReadable((int) $ref->id(), $this->uid()); Library::save($this->uid(), $ref); return $this->respond(); }
+    public function save() { $p=$this->validated(); $ref=$this->ref($p); if ($ref->type() === 'card') CardAccess::assertReadable((int) $ref->id(), $this->uid()); Library::save($this->uid(), $ref); return $this->respond(); }
     public function remove() { $p=$this->validated(); Library::remove($this->uid(), $this->ref($p)); return $this->respond(); }
     public function library() { $p=$this->validated(); return $this->respond(Library::saved($this->uid(), $p['cursor'] ?? null, (int)($p['limit'] ?? 20))); }
-    public function recordHistory() { $p=$this->validated(); $ref=$this->ref($p); if ($ref->type() === 'card') CardVisibilityPolicy::assertReadable((int) $ref->id(), $this->uid()); Library::recordView($this->uid(), $ref); return $this->respond(); }
+    public function savedCards()
+    {
+        $params = $this->validated();
+        $ids = $params['card_ids'];
+        if (is_string($ids)) {
+            $ids = json_decode($ids, true, flags: JSON_THROW_ON_ERROR);
+        }
+        return $this->respond(['saved_ids' => Library::savedCardIds($this->uid(), $ids)]);
+    }
+    public function recordHistory() { $p=$this->validated(); $ref=$this->ref($p); if ($ref->type() === 'card') CardAccess::assertReadable((int) $ref->id(), $this->uid()); Library::recordView($this->uid(), $ref); return $this->respond(); }
     public function history() { $p=$this->validated(); return $this->respond(Library::history($this->uid(), $p['cursor'] ?? null, (int)($p['limit'] ?? 20))); }
     public function clearHistory() { Library::clearHistory($this->uid()); return $this->respond(); }
 
@@ -78,7 +87,18 @@ public function streamTicket()
     public function blockedUsers() { $p=$this->validated(); return $this->respond(Safety::listBlocked($this->uid(), $p['cursor'] ?? null, (int)($p['limit'] ?? 20), $p['query'] ?? null)); }
     public function block(string $uid) { Safety::addRelation($this->uid(), UidResolver::id($uid), 'block'); return $this->respond(); }
     public function unblock(string $uid) { Safety::removeRelation($this->uid(), UidResolver::id($uid), 'block'); return $this->respond(); }
-    public function drafts() { $p=$this->validated(); return $this->respond(Drafts::list($this->uid(), $p['cursor'] ?? null, (int)($p['limit'] ?? 20))); }
+    public function drafts()
+    {
+        $params = $this->validated();
+        $page = Drafts::page($this->uid(), $params['cursor'] ?? null, (int) ($params['limit'] ?? 20));
+        return $this->respond($page['items']);
+    }
+    public function draftPage()
+    {
+        $params = $this->validated();
+        $page = Drafts::page($this->uid(), $params['cursor'] ?? null, (int) ($params['limit'] ?? 20));
+        return $this->respond(CursorPage::make($page['items'], $page['next_cursor'], $page['has_more']));
+    }
     public function draft(int $id) { return $this->respond(Drafts::find($this->uid(), $id)); }
     public function saveDraft(?int $id = null) { $p=$this->validated(); $payload = $p['payload'] ?? []; if (is_string($payload)) $payload = json_decode($payload, true) ?: []; $new=Drafts::save($this->uid(), $id, (string)($p['title'] ?? ''), (string)($p['content'] ?? ''), (array)$payload); return $this->respond(['id'=>$new]); }
     public function deleteDraft(int $id) { Drafts::delete($this->uid(), $id); return $this->respond(); }

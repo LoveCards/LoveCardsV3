@@ -18,7 +18,7 @@ import { CommentThread } from '../../features/comments/CommentThread.jsx';
 import { ReportResourceDialog } from '../../features/moderation/ReportResourceDialog.jsx';
 import { SaveCardButton } from '../../features/library/SaveCardButton.jsx';
 import { DetailFollowButton } from '../../features/social/DetailFollowButton.jsx';
-import { listSavedItems } from '../../services/community-service.js';
+import { useSavedCardStates } from '../../features/library/use-saved-card-states.js';
 import { topicHref } from '../../services/discovery-service.js';
 import { browseTaskState } from '../../app/browse-task-routing.js';
 import { cardReturnSource } from '../../app/card-preview-routing.js';
@@ -79,7 +79,6 @@ export function DetailPage({ preview = false, loadingFallback = null }) {
   const [dialogBusy, setDialogBusy] = useState(false);
   const [detailLiked, setDetailLiked] = useState(false);
   const [detailLikeCount, setDetailLikeCount] = useState(0);
-  const [detailSaved, setDetailSaved] = useState(false);
   const [likedCommentIds, setLikedCommentIds] = useState(() => new Set());
   const [commentLikeCounts, setCommentLikeCounts] = useState(() => new Map());
   const [commentLikeBusyIds, setCommentLikeBusyIds] = useState(() => new Set());
@@ -123,16 +122,7 @@ export function DetailPage({ preview = false, loadingFallback = null }) {
     }
     return () => { active = false; };
   }, [can, data.card?.id, data.card?.likes, data.source, isAuthenticated]);
-  useEffect(() => {
-    let active = true;
-    setDetailSaved(false);
-    if (data.source === 'live' && isAuthenticated && data.card?.id) {
-      listSavedItems().then((page) => {
-        if (active) setDetailSaved(page.items.some((item) => String(item.resource_type || 'card') === 'card' && Number(item.resource_id) === Number(data.card.id)));
-      }).catch(() => undefined);
-    }
-    return () => { active = false; };
-  }, [data.card?.id, data.source, isAuthenticated]);
+  const { savedState, updateSavedState } = useSavedCardStates([data.card?.id], data.source === 'live' && isAuthenticated ? session?.uid : null);
   useEffect(() => {
     let active = true;
     setLikedCommentIds(new Set());
@@ -294,7 +284,7 @@ export function DetailPage({ preview = false, loadingFallback = null }) {
         <footer className="detail-actions">
           {data.source === 'live' && isAuthenticated && can('likes.create') && can('likes.delete') ? <span className={`detail-like-control${detailLiked ? ' is-active' : ''}`}><ToggleButton label={detailLiked ? '取消喜欢' : '喜欢'} isPressed={detailLiked} icon={<Icon name="heart" size={18} />} pressedIcon={<Icon name="heart" size={18} />} size="lg" pressedChangeAction={toggleDetailLike}>{detailLikeCount}</ToggleButton></span> : data.source === 'live' && !isAuthenticated ? <span className="detail-like-control"><ToggleButton label="登录后喜欢" isPressed={false} icon={<Icon name="heart" size={18} />} size="lg" onPressedChange={(_next, event) => { event.preventDefault(); requestLogin('喜欢内容'); }}>{detailLikeCount}</ToggleButton></span> : <span className="detail-metric" aria-label={`${detailLikeCount} 个喜欢`}><Icon name="heart" size={18} /> {detailLikeCount}</span>}
           <span className="detail-metric" aria-label={`${data.card.replies} 条回复`}>回复 {data.card.replies}</span>
-          <SaveCardButton cardId={data.card.id} source={data.source} isAuthenticated={isAuthenticated} isSaved={detailSaved} onRequireLogin={() => requestLogin('收藏内容')} onFeedback={(body, type) => toast({ body, type: type === 'error' ? 'error' : undefined, uniqueID: 'detail-save', collisionBehavior: 'overwrite' })} />
+          <SaveCardButton key={data.card.id} cardId={data.card.id} source={data.source} isAuthenticated={isAuthenticated} isSaved={savedState(data.card.id)} onSavedChange={(saved) => updateSavedState(data.card.id, saved)} onRequireLogin={() => requestLogin('收藏内容')} onFeedback={(body, type) => toast({ body, type: type === 'error' ? 'error' : undefined, uniqueID: 'detail-save', collisionBehavior: 'overwrite' })} />
           <Button className="detail-share" type="button" label="分享" variant="ghost" size="lg" clickAction={share} />
         </footer>
         {preview && authPromptAction && <section ref={inlineLoginRef} className="detail-inline-login" aria-label="登录后继续"><div className="detail-inline-login-heading"><h2>登录后继续{authPromptAction}</h2></div><ContextualLoginForm description="当前内容会留在原位。" onSuccess={closeInlineLogin} onCancel={closeInlineLogin} onFullPage={() => navigate('/auth/login', { state: { from: loginFrom } })} /></section>}

@@ -16,10 +16,45 @@ use think\facade\Db;
  */
 class ThinkOrmFileRepository implements FileRepository
 {
+    public function lockCardMedia(array $ids, int $ownerId, bool $allowAll): array
+    {
+        if ($ids === []) return [];
+        $query = FilesModel::whereIn('id', $ids)
+            ->where('scene', FileConstants::SCENE_CARD)
+            ->where('status', FileConstants::STATUS_NORMAL)
+            ->where('upload_status', FileConstants::UPLOAD_COMPLETED)
+            ->whereNull('purge_status')
+            ->order('id', 'asc')
+            ->lock(true);
+        if (!$allowAll) $query->where('user_id', $ownerId);
+        return $query->select()->toArray();
+    }
+
     public function create(array $attributes): int
     {
         $record = FilesModel::create($attributes);
         return (int) $record->id;
+    }
+
+    public function adminUsage(int $fileId): ?array
+    {
+        $file = Db::table('files')->where('id', $fileId)->field(implode(',', [
+            'id', 'hash', 'channel_slug', 'user_id', 'is_public', 'scene', 'original_name',
+            'file_url', 'file_size', 'file_ext', 'mime_type', 'status', 'upload_status',
+            'expire_at', 'purge_status', 'purge_attempts', 'purge_requested_at',
+            'purge_storage_deleted_at', 'purge_error', 'created_at', 'updated_at', 'deleted_at',
+        ]))->find();
+        if (!$file) return null;
+
+        $references = Db::table('file_references')->where('file_id', $fileId)
+            ->field('resource_type,resource_id,purpose,is_public,created_at')->order('id', 'asc')
+            ->select()->toArray();
+        foreach ($references as &$reference) {
+            $reference['resource_id'] = (string) $reference['resource_id'];
+            $reference['is_public'] = (bool) $reference['is_public'];
+        }
+        unset($reference);
+        return ['file' => $file, 'references' => $references, 'orphaned' => $references === []];
     }
 
     public function findByIdWithTrashed(int $id): ?array

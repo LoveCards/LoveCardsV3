@@ -14,6 +14,7 @@ use app\modules\Platform\Social\Contract\SocialGraphRepository;
 
 final class FakeSocialGraphRepository implements SocialGraphRepository
 {
+    public function visibleFolloweeIds(int $userId, array $blockedIds): array { return []; }
     public array $relations = [];
     public function profileByHandle(string $handle): ?array { return null; }
     public function userExists(int $userId): bool { return $userId === 2; }

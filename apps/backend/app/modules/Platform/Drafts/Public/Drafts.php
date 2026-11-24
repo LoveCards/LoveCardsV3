@@ -1,6 +1,36 @@
 <?php
+
 declare(strict_types=1);
+
 namespace app\modules\Platform\Drafts\Public;
+
 use app\modules\Platform\Drafts\Application\ManageDrafts;
 use app\modules\Platform\Drafts\Contract\DraftRepository;
-final class Drafts { private static function u():ManageDrafts{return new ManageDrafts(app(DraftRepository::class));} public static function save(int $u,?int $id,string $t,string $c,array $p=[]):int{return self::u()->save($u,$id,$t,$c,$p);} public static function find(int $u,int $id):?array{return self::u()->find($u,$id);} public static function list(int $u,?string $c=null,int $l=20):array{return self::u()->list($u,$c,$l);} public static function delete(int $u,int $id):bool{return self::u()->delete($u,$id);} }
+
+final class Drafts
+{
+    public static function save(int $userId, ?int $id, string $title, string $content, array $payload = []): int
+    {
+        return app(ManageDrafts::class)->save($userId, $id, $title, $content, $payload);
+    }
+
+    public static function find(int $userId, int $id): ?array
+    {
+        return app(ManageDrafts::class)->find($userId, $id);
+    }
+
+    public static function page(int $userId, ?string $cursor, int $limit): array
+    {
+        return app(ManageDrafts::class)->page($userId, $cursor, $limit);
+    }
+
+    public static function delete(int $userId, int $id): bool
+    {
+        return app(ManageDrafts::class)->delete($userId, $id);
+    }
+
+    public static function totals(): array
+    {
+        return app(DraftRepository::class)->totals();
+    }
+}

@@ -21,4 +21,7 @@ export class Library extends BaseResource {
   save(data: { resource_type: string; resource_id: string }): Promise<void> {
     return this._post<void>("/me/library", data)
   }
+  savedCards(params: { card_ids: number[] }): Promise<{ saved_ids: number[] }> {
+    return this._get<{ saved_ids: number[] }>("/me/library/saved-cards", params)
+  }
 }

@@ -320,6 +320,11 @@ class Tags
         }
     }
 
+    public static function deleteCardRelations(array $cardIds): void
+    {
+        Db::table('tags_map')->where('aid', 1)->whereIn('pid', $cardIds)->delete();
+    }
+
     public static function deleteTagsMap(array $ids): void
     {
         // 查询级 delete() 对软删模型 TagsMap 为空操作（实测），显式写 deleted_at 才真正解除映射。

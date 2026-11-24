@@ -759,6 +759,7 @@ namespace
     require __DIR__ . '/../../app/modules/Platform/Files/Infrastructure/ConfigChannelConfig.php';
     require __DIR__ . '/../../app/modules/Platform/Files/Infrastructure/CacheRateLimiter.php';
     require __DIR__ . '/../../app/modules/Platform/Storage/Infrastructure/ChannelManager.php';
+    require __DIR__ . '/../../app/modules/Platform/Storage/Public/Gateway.php';
 }
 
 // ════════════════════════════════════════════════════════════

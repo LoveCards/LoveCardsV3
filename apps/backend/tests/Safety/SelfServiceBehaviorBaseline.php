@@ -46,6 +46,7 @@ final class SelfServiceSafetyRepo implements SafetyRepository
 final class SelfServiceTargets implements ReportTargetResolver { public function snapshotForReporter(int $reporterId, ResourceRef $resource): ?array { return null; } }
 final class SelfServiceSocial implements SocialGraphRepository
 {
+    public function visibleFolloweeIds(int $userId, array $blockedIds): array { return []; }
     public array $unfollowed = [];
     public function profileByHandle(string $handle): ?array { return null; }
     public function userExists(int $userId): bool { return true; }

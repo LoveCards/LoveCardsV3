@@ -51,6 +51,7 @@
 </template>
 
 <script setup lang="ts">
+import { useLatestAdminRequest } from '~/composables/useLatestAdminRequest'
 import type { AdminReport } from '@lovecards/sdk'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
@@ -127,10 +128,10 @@ const defaultColumns = allHeaders.filter((header) => header.key !== 'id').map((h
 const visibleColumns = ref([...defaultColumns])
 const headers = computed(() => allHeaders.filter((header) => visibleColumns.value.includes(header.key)))
 const columnOptions = allHeaders.map((header) => ({ title: header.title, key: header.key, required: header.key === 'reason' || header.key === 'action' }))
-let latestRequest = 0
+const beginRequest = useLatestAdminRequest()
 
 async function load() {
-  const requestId = ++latestRequest
+  const isCurrent = beginRequest()
   const params = {
     page: page.value,
     list_rows: itemsPerPage.value,
@@ -149,17 +150,17 @@ async function load() {
   error.value = null
   try {
     const result = await client.reports.listManaged(params)
-    if (requestId !== latestRequest) return
+    if (!isCurrent()) return
     reports.value = result.data
     totalItems.value = result.pagination?.totalItems ?? result.data.length
     lastSuccessfulKey.value = key
     resultState.value = 'ready'
   } catch (cause) {
-    if (requestId !== latestRequest) return
+    if (!isCurrent()) return
     error.value = isApiError(cause) ? cause.message : '无法加载举报列表'
     resultState.value = 'stale'
   } finally {
-    if (requestId === latestRequest) loading.value = false
+    if (isCurrent()) loading.value = false
   }
 }
 function resetAndLoad() {

@@ -19,7 +19,7 @@ Route Meta / Contract
 
 Route Meta 声明接口身份、认证、capability 和 scope；Route Contract 声明请求校验场景与响应形状。目录名、Controller 注释或手写 SDK 方法都不能替代这份可执行契约。
 
-历史快照（2026-08-20）曾导出 171 条命名路由（19 public、152 required）和 25 个 SDK Resource。当前发行审查基线为 178 条路由；生成目录共 26 个 TypeScript 文件：1 个 `api-contract.ts` 加 25 个 Resource。`contracts/route-manifest.json`、`api-inventory.json`、`openapi.json` 与 `packages/sdk/src/generated/**` 必须由同一次生成保持一致。
+以 [API 审计报告](../../contracts/API-AUDIT.md) 的路由计数和 [SDK 生成目录](../../packages/sdk/src/generated/) 为当前基线。历史快照（2026-08-20）曾导出 171 条命名路由和 25 个 SDK Resource。`contracts/route-manifest.json`、`api-inventory.json`、`openapi.json` 与 `packages/sdk/src/generated/**` 必须由同一次生成保持一致。
 
 ## 2. 请求契约
 

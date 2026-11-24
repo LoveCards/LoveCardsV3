@@ -186,6 +186,7 @@
 </template>
 
 <script setup lang="ts">
+import { useLatestAdminRequest } from '~/composables/useLatestAdminRequest';
 import AdminContentSummary from '~/components/content/AdminContentSummary.vue';
 import AdminContentStatus from '~/components/content/AdminContentStatus.vue';
 import type { Card, CardsBatchMethod } from '@lovecards/sdk';
@@ -395,7 +396,7 @@ const { searchInputLabel, searchSnapshot, applySearchSnapshot, highlightQuery } 
 const tableLoading = ref(false);
 const tableError = ref<string | null>(null);
 const canMutateRows = computed(() => !tableLoading.value && !tableError.value);
-let latestRequest = 0;
+const beginRequest = useLatestAdminRequest();
 
 const errorMessage = (error: unknown) => {
   if (error instanceof Error && error.message) return error.message;
@@ -404,7 +405,7 @@ const errorMessage = (error: unknown) => {
 };
 
 const getTableData = async () => {
-  const requestId = ++latestRequest;
+  const isCurrent = beginRequest();
   tableLoading.value = true;
   tableError.value = null;
   const searchValue = tableSearchValue.value?.trim();
@@ -435,16 +436,16 @@ const getTableData = async () => {
 
   try {
     const result = await client.cards.listManaged(params as Parameters<typeof client.cards.listManaged>[0]);
-    if (requestId !== latestRequest) return;
+    if (!isCurrent()) return;
     tableItems.value = result.data;
     applySearchSnapshot(searchHighlight);
     tableCurrentPage.value = result.pagination?.currentPage ?? tableCurrentPage.value;
     tableTotalItems.value = result.pagination?.totalItems ?? result.data.length;
     resultCount.value = tableTotalItems.value;
   } catch (error) {
-    if (requestId === latestRequest) tableError.value = errorMessage(error);
+    if (isCurrent()) tableError.value = errorMessage(error);
   } finally {
-    if (requestId === latestRequest) tableLoading.value = false;
+    if (isCurrent()) tableLoading.value = false;
   }
 };
 

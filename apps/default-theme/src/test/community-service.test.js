@@ -11,6 +11,9 @@ import {
   listNotifications,
   listPublicCardsByUser,
   listDrafts,
+  listHistory,
+  listSavedItems,
+  loadSavedCardIds,
   draftSummary,
   markNotificationRead,
   markAllNotificationsRead,
@@ -75,15 +78,30 @@ describe('community SDK adapter', () => {
     expect(ensureClientMessageId('', createId)).toBe('lc-message-generated');
   });
 
-  it('normalizes SDK collections without bypassing the generated resource', async () => {
-    const list = vi.fn().mockResolvedValue([{ id: 1 }, { id: 1 }, { id: 2 }]);
-    sdk.getSdkClient.mockReturnValue({ drafts: { list } });
-    await expect(listDrafts()).resolves.toEqual({
+  it('passes a draft cursor through the generated resource and keeps the next cursor', async () => {
+    const page = vi.fn().mockResolvedValue({ data: [{ id: 1 }, { id: 1 }, { id: 2 }], next_cursor: 'next', has_more: true });
+    sdk.getSdkClient.mockReturnValue({ drafts: { page } });
+    await expect(listDrafts({ cursor: 'previous' })).resolves.toEqual({
       items: [{ id: 1 }, { id: 2 }],
-      nextCursor: null,
-      hasMore: false,
+      nextCursor: 'next',
+      hasMore: true,
     });
-    expect(list).toHaveBeenCalledOnce();
+    expect(page).toHaveBeenCalledWith({ cursor: 'previous', limit: 20 });
+  });
+
+  it('uses library pagination and looks up requested cards independently of the first page', async () => {
+    const page = { data: [], next_cursor: 'next', has_more: true };
+    const list = vi.fn().mockResolvedValue(page);
+    const history = vi.fn().mockResolvedValue(page);
+    const savedCards = vi.fn().mockResolvedValue({ saved_ids: [62] });
+    sdk.getSdkClient.mockReturnValue({ library: { list, history, savedCards } });
+
+    await expect(listSavedItems({ cursor: 'saved-page' })).resolves.toMatchObject({ nextCursor: 'next' });
+    await expect(listHistory({ cursor: 'history-page' })).resolves.toMatchObject({ nextCursor: 'next' });
+    await expect(loadSavedCardIds([62, '62', 67])).resolves.toEqual(new Set([62]));
+    expect(list).toHaveBeenCalledWith({ cursor: 'saved-page', limit: 50 });
+    expect(history).toHaveBeenCalledWith({ cursor: 'history-page', limit: 50 });
+    expect(savedCards).toHaveBeenCalledWith({ card_ids: [62, 67] });
   });
 
   it('normalizes public card pagination and clamps page size to the backend limit', async () => {

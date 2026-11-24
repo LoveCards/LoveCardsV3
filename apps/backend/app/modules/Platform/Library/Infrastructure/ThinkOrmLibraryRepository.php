@@ -74,6 +74,16 @@ final class ThinkOrmLibraryRepository implements LibraryRepository
         }
     }
 
+    public function savedCardIds(int $userId, array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+        $rows = Db::table('library_items')->where('user_id', $userId)->where('resource_type', 'card')
+            ->whereIn('resource_id', array_map('strval', $ids))->column('resource_id');
+        return array_map('intval', $rows);
+    }
+
     public function listSaved(int $userId, ?string $cursor, int $limit): array
     {
         return $this->listByCursor('library_items', 'created_at', $userId, $cursor, $limit);
@@ -87,6 +97,16 @@ final class ThinkOrmLibraryRepository implements LibraryRepository
     public function clearHistory(int $userId): int
     {
         return Db::table('view_history')->where('user_id', $userId)->delete();
+    }
+
+    public function totals(): array
+    {
+        $totals = [];
+        foreach (['library' => 'library_items', 'history' => 'view_history'] as $resource => $table) {
+            $row = Db::table($table)->field('COUNT(*) AS total, COUNT(DISTINCT user_id) AS users')->find();
+            $totals[$resource] = ['total' => (int) ($row['total'] ?? 0), 'users' => (int) ($row['users'] ?? 0)];
+        }
+        return $totals;
     }
 
     /** @return array{items: array<int, array<string, mixed>>, next_cursor: ?string, has_more: bool} */

@@ -9,10 +9,9 @@ use think\facade\Db;
 use app\modules\Content\Infrastructure\Persistence\Model\Cards as CardsModel;
 use app\modules\Content\Infrastructure\Persistence\Model\Tags as TagsModel;
 use app\modules\Content\Infrastructure\Persistence\Model\TagsMap as TagsMapModel;
-use app\modules\Content\Infrastructure\Persistence\Model\Comments as CommentsModel;
+use app\modules\Content\Comments\Public\Comments;
 use app\modules\Content\Mentions\Service\Mentions;
 use app\modules\Content\Tags\Public\Tags as TagsFacade;
-use app\modules\Platform\Files\Infrastructure\Persistence\Model\Files as FilesModel;
 use app\modules\Platform\Files\Public\Files as PublicFiles;
 use app\modules\Platform\Safety\Public\Safety;
 use app\modules\Platform\Social\Public\Social;
@@ -158,7 +157,7 @@ class Cards
     {
         $page = max(1, (int) ($params['page'] ?? 1));
         $listRows = min(100, max(1, (int) ($params['list_rows'] ?? 30)));
-        $followeeIds = self::activeFolloweeIds($uid);
+        $followeeIds = Social::visibleFolloweeIds($uid);
 
         $query = CardsModel::whereIn('user_id', $followeeIds ?: [0])
             ->where('status', PublicationStatus::visible())
@@ -171,42 +170,6 @@ class Cards
             'list_rows' => $listRows,
             'page' => $page,
         ])->toArray(), true);
-    }
-
-    /** @return array<int,int> */
-    private static function activeFolloweeIds(int $uid): array
-    {
-        if ($uid < 1) return [];
-
-        $ids = Db::table('user_follows')
-            ->alias('f')
-            ->join('users u', 'u.id = f.followee_id')
-            ->where('f.follower_id', $uid)
-            ->where('u.status', 0)
-            ->whereNull('u.deleted_at')
-            ->field('f.followee_id')
-            ->column('f.followee_id');
-        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0)));
-        if ($ids === []) return [];
-        $blockedIds = array_merge(
-            Db::table('user_safety_relations')->where(['actor_id' => $uid, 'relation' => 'block'])->column('subject_id'),
-            Db::table('user_safety_relations')->where(['subject_id' => $uid, 'relation' => 'block'])->column('actor_id')
-        );
-        $blocked = array_fill_keys(array_map('intval', $blockedIds), true);
-        if ($blocked !== []) $ids = array_values(array_filter($ids, static fn(int $id): bool => !isset($blocked[$id])));
-        if ($ids === []) return [];
-
-        // Private profiles never enter a follower's public content stream.
-        // The followers visibility mode is allowed because the relationship
-        // was already established by the user_follows query above.
-        $privateIds = Db::table('privacy_preferences')
-            ->whereIn('user_id', $ids)
-            ->where('profile_visibility', 'private')
-            ->column('user_id');
-        if ($privateIds === []) return $ids;
-
-        $private = array_fill_keys(array_map('intval', $privateIds), true);
-        return array_values(array_filter($ids, static fn(int $id): bool => !isset($private[$id])));
     }
 
     /**
@@ -801,41 +764,6 @@ class Cards
         }
     }
 
-    public static function deleteCardsTags($pids): void
-    {
-        // 同 updateCardTags：查询级 delete() 对软删模型为空操作，显式写 deleted_at。
-        Db::table('tags_map')
-            ->where('aid', 1)
-            ->where('pid', 'in', $pids)
-            ->whereNull('deleted_at')
-            ->update(['deleted_at' => date('Y-m-d H:i:s')]);
-    }
-
-    public static function deleteCardsComments($pids): void
-    {
-        // 同 deleteCardsTags：显式软删评论，保留审计与恢复能力。
-        Db::table('comments')
-            ->where('aid', 1)
-            ->where('pid', 'in', $pids)
-            ->whereNull('deleted_at')
-            ->update(['deleted_at' => date('Y-m-d H:i:s')]);
-    }
-
-    /**
-     * 删除卡片及其关联数据
-     */
-    private static function deleteCardsWithRelated(array $ids): void
-    {
-        Db::startTrans();
-        try {
-            self::trashCards($ids);
-            Db::commit();
-        } catch (\Throwable $th) {
-            Db::rollback();
-            throw \app\api\ApiException::error('删除失败', \app\api\ApiException::CODE_SYSTEM_ERROR, null, $th);
-        }
-    }
-
     private static function trashCards(array $ids): void
     {
         CardsModel::whereIn('id', $ids)->delete();
@@ -850,8 +778,8 @@ class Cards
     private static function hardDeleteCards(array $ids): void
     {
         CardsModel::whereIn('id', $ids)->update(['pinned_comment_id' => null]);
-        Db::table('tags_map')->where('aid', 1)->whereIn('pid', $ids)->delete();
-        Db::table('comments')->where('aid', 1)->whereIn('pid', $ids)->delete();
+        TagsFacade::deleteCardRelations($ids);
+        Comments::deleteForPurgedCards($ids);
         Db::table('cards')->whereIn('id', $ids)->delete();
     }
 
@@ -1189,15 +1117,7 @@ class Cards
         }
         if ($hasMediaIds || $hasPictureIds) {
             $ids = self::mediaIds($data['media_file_ids'] ?? $data['picture_file_ids']);
-            $query = FilesModel::whereIn('id', $ids)
-                ->where('scene', FilesModel::SCENE_CARD)
-                ->where('status', FilesModel::STATUS_NORMAL)
-                ->where('upload_status', FilesModel::UPLOAD_COMPLETED)
-                ->whereNull('purge_status')
-                ->order('id', 'asc')
-                ->lock(true);
-            if (!$allowAll) $query->where('user_id', $uid);
-            $files = $ids === [] ? [] : $query->select()->toArray();
+            $files = $ids === [] ? [] : PublicFiles::lockCardMedia($ids, $uid, $allowAll);
             if (count($files) !== count($ids)) throw \app\api\ApiException::forbidden('无权使用未完成、不可用或非卡片场景的文件');
             $byId = [];
             foreach ($files as $file) {
@@ -1214,19 +1134,12 @@ class Cards
         unset($data['media_file_ids'], $data['picture_file_ids']);
         if (array_key_exists('cover_file_id', $data)) {
             $coverId = (int) $data['cover_file_id'];
-            $query = FilesModel::where('id', $coverId)
-                ->where('scene', FilesModel::SCENE_CARD)
-                ->where('status', FilesModel::STATUS_NORMAL)
-                ->where('upload_status', FilesModel::UPLOAD_COMPLETED)
-                ->whereNull('purge_status')
-                ->lock(true);
-            if (!$allowAll) $query->where('user_id', $uid);
-            $file = $coverId > 0 ? $query->find() : null;
+            $file = $coverId > 0 ? (PublicFiles::lockCardMedia([$coverId], $uid, $allowAll)[0] ?? null) : null;
             if ($coverId > 0 && !$file) throw \app\api\ApiException::forbidden('无权使用指定封面文件');
-            if ($file && !str_starts_with(strtolower((string) ($file->mime_type ?? '')), 'image/')) {
+            if ($file && !str_starts_with(strtolower((string) ($file['mime_type'] ?? '')), 'image/')) {
                 throw \app\api\ApiException::badRequest('封面文件必须是图片');
             }
-            $data['cover'] = $file ? (string) ($file->file_url ?? '') : null;
+            $data['cover'] = $file ? (string) ($file['file_url'] ?? '') : null;
             unset($data['cover_file_id']);
         }
         return $data;

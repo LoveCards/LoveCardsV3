@@ -29,10 +29,12 @@ final class Library
     }
 
     public static function remove(int $userId, ResourceRef $resource): bool { return self::useCase()->remove($userId, $resource); }
+    public static function savedCardIds(int $userId, array $ids): array { return self::useCase()->savedCardIds($userId, $ids); }
     public static function recordView(int $userId, ResourceRef $resource): void { self::useCase()->recordView($userId, $resource); }
     public static function saved(int $userId, ?string $cursor = null, int $limit = 20): array { return self::useCase()->saved($userId, $cursor, $limit); }
     public static function history(int $userId, ?string $cursor = null, int $limit = 20): array { return self::useCase()->history($userId, $cursor, $limit); }
     public static function clearHistory(int $userId): int { return self::useCase()->clearHistory($userId); }
+    public static function totals(): array { return app(LibraryRepository::class)->totals(); }
     /** @return array<string, int> */
     private static function savedPayload(int $userId, ResourceRef $resource): array
     {

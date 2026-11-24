@@ -16,7 +16,7 @@ class CacheRateLimiter implements RateLimiter
 {
     public function checkUploadRate(string $uid): bool
     {
-        $settings = class_exists(Gateway::class) ? Gateway::rateLimitSettings() : \app\modules\Platform\Storage\Infrastructure\ChannelManager::getRateLimitSettings();
+        $settings = Gateway::rateLimitSettings();
         $max = $settings['max'];
         $window = $settings['window'];
 

@@ -1,0 +1,42 @@
+{
+  "Content/Cards/Service/Cards.php": [
+    "Content\\Mentions\\Service\\Mentions",
+    "Platform\\Notifications\\Domain\\SystemNotice"
+  ],
+  "Content/Comments/Service/Comments.php": [
+    "Content\\Mentions\\Service\\Mentions",
+    "Platform\\Notifications\\Domain\\SystemNotice"
+  ],
+  "Content/Tags/Service/Tags.php": [
+    "Platform\\Notifications\\Domain\\SystemNotice"
+  ],
+  "Operations/Dashboard/Service/Dashboard.php": [
+    "Platform\\Files\\Domain\\FileConstants"
+  ],
+  "Platform/Auth/Application/AccountRecovery.php": [
+    "Platform\\Notifications\\Domain\\SystemNotice"
+  ],
+  "Platform/Auth/Application/AdminSecurity.php": [
+    "Platform\\Notifications\\Domain\\SystemNotice"
+  ],
+  "Platform/Auth/Infrastructure/ThinkOrmUserRepository.php": [
+    "Platform\\User\\Infrastructure\\Persistence\\Model\\Users",
+    "Platform\\Rbac\\Infrastructure\\Persistence\\Model\\UserRoles"
+  ],
+  "Platform/Safety/Application/AdminReports.php": [
+    "Platform\\Notifications\\Domain\\SystemNotice"
+  ],
+  "Platform/User/Public/ProfileCover.php": [
+    "Platform\\Files\\Domain\\FileConstants"
+  ],
+  "Platform/User/Service/Profile.php": [
+    "Platform\\Rbac\\Infrastructure\\Persistence\\Model\\Roles",
+    "Platform\\Rbac\\Infrastructure\\Persistence\\Model\\UserRoles",
+    "Platform\\Notifications\\Domain\\SystemNotice"
+  ],
+  "Platform/User/Service/Users.php": [
+    "Platform\\Rbac\\Infrastructure\\Persistence\\Model\\Roles",
+    "Platform\\Rbac\\Infrastructure\\Persistence\\Model\\UserRoles",
+    "Platform\\Notifications\\Domain\\SystemNotice"
+  ]
+}

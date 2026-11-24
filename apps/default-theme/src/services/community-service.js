@@ -157,13 +157,23 @@ export const listFollowing = async (uid, params = {}) => normalizeCollection(awa
 export const followUser = (uid) => client().social.follow(uid);
 export const unfollowUser = (uid) => client().social.unfollow(uid);
 
-export const listDrafts = async () => normalizeCollection(await client().drafts.list());
+export const listDrafts = async ({ cursor, limit = 20 } = {}) => normalizeCollection(await client().drafts.page({ cursor, limit }));
 export const getDraft = (draftId) => client().drafts.get(draftId);
 export const createDraft = (data) => client().drafts.create(data);
 export const updateDraft = (draftId, data) => client().drafts.update(draftId, data);
 export const deleteDraft = (draftId) => client().drafts.delete(draftId);
 
-export const listSavedItems = async () => normalizeCollection(await client().library.list({ limit: 50 }));
+export const listSavedItems = async ({ cursor, limit = 50 } = {}) => normalizeCollection(await client().library.list({ cursor, limit }));
+
+export async function loadSavedCardIds(cardIds) {
+  const ids = [...new Set(cardIds.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0))];
+  const requests = [];
+  for (let start = 0; start < ids.length; start += 100) {
+    requests.push(client().library.savedCards({ card_ids: ids.slice(start, start + 100) }));
+  }
+  const pages = await Promise.all(requests);
+  return new Set(pages.flatMap((page) => page.saved_ids));
+}
 export const saveItem = (data) => client().library.save(data);
 export function saveCard(cardId) {
   const value = Number(cardId);
@@ -184,7 +194,7 @@ export function removeSavedItem(input) {
   }
   return client().library.remove({ resource_type: resourceType, resource_id: resourceId });
 }
-export const listHistory = async () => normalizeCollection(await client().library.history({ limit: 50 }));
+export const listHistory = async ({ cursor, limit = 50 } = {}) => normalizeCollection(await client().library.history({ cursor, limit }));
 export function recordHistoryItem(resourceId) {
   const value = String(resourceId ?? '').trim();
   if (!/^[A-Za-z0-9][A-Za-z0-9._:-]*$/.test(value) || value.length > 128) {

@@ -14,19 +14,10 @@ use think\facade\Log;
  */
 class DefaultStorageDriver implements StorageDriver, LocalStorageReader
 {
-    private static function make(string $slug): object
-    {
-        return class_exists(Gateway::class)
-            ? Gateway::make($slug)
-            : \app\modules\Platform\Storage\Infrastructure\StorageFactory::make($slug);
-    }
-
     public function uploadToDefault(object $file, string $path): array
     {
-        $defaultChannel = class_exists(Gateway::class)
-            ? Gateway::defaultChannel()
-            : \app\modules\Platform\Storage\Infrastructure\ChannelManager::getDefaultChannel();
-        $driver = self::make($defaultChannel['slug']);
+        $defaultChannel = Gateway::defaultChannel();
+        $driver = Gateway::make($defaultChannel['slug']);
         $result = $driver->upload($file, $path);
         return [
             'id' => $result->id,
@@ -43,7 +34,7 @@ class DefaultStorageDriver implements StorageDriver, LocalStorageReader
     public function deleteFile(string $channelSlug, string $driverPath): bool
     {
         try {
-            return self::make($channelSlug)->delete($driverPath);
+            return Gateway::make($channelSlug)->delete($driverPath);
         } catch (\Throwable $e) {
             Log::error('Storage hardDelete driver failed: ' . $e->getMessage());
             throw $e;
@@ -52,7 +43,7 @@ class DefaultStorageDriver implements StorageDriver, LocalStorageReader
 
     public function getUrl(string $channelSlug, string $filePath): string
     {
-        $driver = self::make($channelSlug);
+        $driver = Gateway::make($channelSlug);
         return $driver->getUrl($filePath);
     }
 
@@ -64,8 +55,8 @@ class DefaultStorageDriver implements StorageDriver, LocalStorageReader
         string $path,
         int $expire
     ): array {
-        $driver = self::make($channelSlug);
-        if (class_exists(Gateway::class) ? !Gateway::supportsDirectUpload($driver) : !method_exists($driver, 'getUploadCredential')) {
+        $driver = Gateway::make($channelSlug);
+        if (!Gateway::supportsDirectUpload($driver)) {
             throw new \app\api\ApiException('该渠道不支持直传');
         }
         $credential = $driver->getUploadCredential($filename, $mime, $size, $path, $expire);
@@ -80,11 +71,11 @@ class DefaultStorageDriver implements StorageDriver, LocalStorageReader
 
     public function supportsDirectUpload(string $channelSlug): bool
     {
-        return Gateway::supportsDirectUpload(self::make($channelSlug));
+        return Gateway::supportsDirectUpload(Gateway::make($channelSlug));
     }
 
     public function resolveLocalFile(string $channelSlug, string $driverPath): array
     {
-        return Gateway::resolveLocalFile(self::make($channelSlug), $driverPath);
+        return Gateway::resolveLocalFile(Gateway::make($channelSlug), $driverPath);
     }
 }

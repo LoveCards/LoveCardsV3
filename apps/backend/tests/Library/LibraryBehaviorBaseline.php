@@ -18,9 +18,11 @@ final class FakeLibraryRepository implements LibraryRepository
     public function save(int $userId, ResourceRef $resource): bool { $key = "{$userId}:{$resource->key()}"; if (isset($this->saved[$key])) return false; return $this->saved[$key] = true; }
     public function remove(int $userId, ResourceRef $resource): bool { $key = "{$userId}:{$resource->key()}"; if (!isset($this->saved[$key])) return false; unset($this->saved[$key]); return true; }
     public function recordView(int $userId, ResourceRef $resource): void { $this->views++; }
+    public function savedCardIds(int $userId, array $ids): array { return array_values(array_filter($ids, fn (int $id): bool => isset($this->saved["{$userId}:card:{$id}"]))); }
     public function listSaved(int $userId, ?string $cursor, int $limit): array { return ['items' => [['id' => 2]], 'next_cursor' => null, 'has_more' => false]; }
     public function listHistory(int $userId, ?string $cursor, int $limit): array { return ['items' => [['id' => 3]], 'next_cursor' => '3', 'has_more' => true]; }
     public function clearHistory(int $userId): int { $count = $this->views; $this->views = 0; return $count; }
+    public function totals(): array { return []; }
 }
 
 $assert = static function (bool $condition, string $message): void { if (!$condition) throw new RuntimeException($message); };

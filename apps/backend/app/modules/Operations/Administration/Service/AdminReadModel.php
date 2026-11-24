@@ -3,6 +3,8 @@ declare(strict_types=1);
 
 namespace app\modules\Operations\Administration\Service;
 
+use app\modules\Platform\Drafts\Public\Drafts;
+use app\modules\Platform\Library\Public\Library;
 use think\facade\Db;
 
 /** 管理端只读投影。它返回聚合和运维元数据，不暴露用户私密明细。 */
@@ -23,14 +25,6 @@ final class AdminReadModel
             // 兼容旧 overview 形状；运行状态已由 /operations/runtime 的双模式快照提供。
             'runtime' => [],
         ];
-    }
-
-    /** @return array<int, array<string, mixed>> */
-    public function migrations(string $directory): array
-    {
-        $source = app(\app\modules\Operations\SystemLifecycle\Contract\MigrationSource::class);
-        $planner = app(\app\modules\Operations\SystemLifecycle\Application\MigrationPlanner::class);
-        return $planner->plan($source->discover($directory))->toArray();
     }
 
     public function runtime(): array
@@ -208,38 +202,8 @@ final class AdminReadModel
 
     public function communityInsights(): array
     {
-        $drafts = Db::table('card_drafts')->field('COUNT(*) AS total, SUM(deleted_at IS NULL) AS active')->find();
-        $library = Db::table('library_items')->field('COUNT(*) AS total, COUNT(DISTINCT user_id) AS users')->find();
-        $history = Db::table('view_history')->field('COUNT(*) AS total, COUNT(DISTINCT user_id) AS users')->find();
-        return [
-            'drafts' => ['total' => (int) ($drafts['total'] ?? 0), 'active' => (int) ($drafts['active'] ?? 0)],
-            'library' => ['total' => (int) ($library['total'] ?? 0), 'users' => (int) ($library['users'] ?? 0)],
-            'history' => ['total' => (int) ($history['total'] ?? 0), 'users' => (int) ($history['users'] ?? 0)],
-            'privacy' => ['mode' => 'aggregate_only', 'private_content_exposed' => false],
-        ];
-    }
-
-    public function fileUsage(int $fileId): array
-    {
-        $file = Db::table('files')->where('id', $fileId)->field(implode(',', [
-            'id', 'hash', 'channel_slug', 'user_id', 'is_public', 'scene', 'original_name',
-            'file_url', 'file_size', 'file_ext', 'mime_type', 'status', 'upload_status',
-            'expire_at', 'purge_status', 'purge_attempts', 'purge_requested_at',
-            'purge_storage_deleted_at', 'purge_error', 'created_at', 'updated_at', 'deleted_at',
-        ]))->find();
-        if (!$file) throw \app\api\ApiException::notFound('文件不存在');
-        $references = Db::table('file_references')
-            ->where('file_id', $fileId)
-            ->field('resource_type,resource_id,purpose,is_public,created_at')
-            ->order('id', 'asc')
-            ->select()
-            ->toArray();
-        foreach ($references as &$reference) {
-            $reference['resource_id'] = (string) $reference['resource_id'];
-            $reference['is_public'] = (bool) $reference['is_public'];
-        }
-        unset($reference);
-        return ['file' => $file, 'references' => $references, 'orphaned' => $references === []];
+        return ['drafts' => Drafts::totals()] + Library::totals()
+            + ['privacy' => ['mode' => 'aggregate_only', 'private_content_exposed' => false]];
     }
 
     private function count(string $table, callable $callback): int

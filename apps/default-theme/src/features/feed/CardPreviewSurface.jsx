@@ -2,7 +2,7 @@ import { lazy, Suspense, useCallback, useLayoutEffect, useRef, useState } from '
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Dialog } from '@astryxdesign/core/Dialog';
 import { ToastViewport } from '@astryxdesign/core/Toast';
-import { preloadCardPreviewDetail } from '../../app/card-preview-routing.js';
+import { preloadCardPreviewDetail } from './card-preview-loader.js';
 import { Icon } from '../../ui/icons.jsx';
 import { toastConfig } from '../../app/toast-config.js';
 

@@ -7,7 +7,7 @@
 倾心轻言·无限表达<br/>
 一款轻量、快速、友好于一身的微型社区系统
 
-[主页][lovecard-link] · [论坛][lovecard-forum-link] · [QQ 群组][lovecard-qqgroup-link] · [下载][github-releasedate-link] · [反馈问题](github-issues-link)
+[主页][lovecard-link] · [论坛][lovecard-forum-link] · [QQ 群组][lovecard-qqgroup-link] · [下载][github-releasedate-link] · [反馈问题][github-issues-link]
 
 <!-- SHIELD GROUP -->
 
@@ -229,7 +229,7 @@ LoveCards 是一个用爱发电的免费开源项目。您的支持是对我们�
 [github-forks-link]: https://github.com/LoveCards/LoveCardsV2/network/members
 [github-forks-shield]: https://img.shields.io/github/forks/LoveCards/LoveCardsV2?color=8ae8ff&labelColor=black&style=flat-square
 [github-stars-shield]: https://img.shields.io/github/stars/LoveCards/LoveCardsV2?color=ffcb47&labelColor=black&style=flat-square
-[github-issues-link]: https://github.com/LoveCards/LoveCardsV2/issues
+[github-issues-link]: https://github.com/LoveCards/LoveCardsV3/issues
 [github-issues-shield]: https://img.shields.io/github/issues/LoveCards/LoveCardsV2?color=ff80eb&labelColor=black&style=flat-square
 [github-license-link]: https://github.com/LoveCards/LoveCardsV2/blob/main/LICENSE
 [github-license-shield]: https://img.shields.io/badge/GPL-v3-white?labelColor=black&style=flat-square

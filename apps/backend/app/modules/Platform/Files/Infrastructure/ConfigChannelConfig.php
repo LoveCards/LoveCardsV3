@@ -14,26 +14,26 @@ class ConfigChannelConfig implements ChannelConfig
 {
     public function getDefaultChannel(): array
     {
-        return class_exists(Gateway::class) ? Gateway::defaultChannel() : \app\modules\Platform\Storage\Infrastructure\ChannelManager::getDefaultChannel();
+        return Gateway::defaultChannel();
     }
 
     public function getAllChannels(): array
     {
-        return class_exists(Gateway::class) ? Gateway::allChannels() : \app\modules\Platform\Storage\Infrastructure\ChannelManager::getAll();
+        return Gateway::allChannels();
     }
 
     public function getRateLimitSettings(): array
     {
-        return class_exists(Gateway::class) ? Gateway::rateLimitSettings() : \app\modules\Platform\Storage\Infrastructure\ChannelManager::getRateLimitSettings();
+        return Gateway::rateLimitSettings();
     }
 
     public function getDirectUploadExpire(): int
     {
-        return class_exists(Gateway::class) ? Gateway::directUploadExpire() : \app\modules\Platform\Storage\Infrastructure\ChannelManager::getDirectUploadExpire();
+        return Gateway::directUploadExpire();
     }
 
     public function generatePath(string $filename): string
     {
-        return class_exists(Gateway::class) ? Gateway::generatePath($filename) : \app\modules\Platform\Storage\Infrastructure\PathGenerator::generate($this->getDefaultChannel(), $filename);
+        return Gateway::generatePath($filename);
     }
 }

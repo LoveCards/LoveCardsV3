@@ -40,6 +40,12 @@ interface FileRepository
      */
     public function findByHashes(array $hashes, int $userId, bool $canReadAll): array;
 
+    /** 在调用方事务内锁定尚可绑定的卡片文件，按主键顺序加锁。 */
+    public function lockCardMedia(array $ids, int $ownerId, bool $allowAll): array;
+
+    /** 返回管理端文件用量投影，含回收站和清理状态。 */
+    public function adminUsage(int $fileId): ?array;
+
     /**
      * 批量读取可用媒体；legacy reference 仅用于兼容尚未迁入 file_references 的记录。
      *

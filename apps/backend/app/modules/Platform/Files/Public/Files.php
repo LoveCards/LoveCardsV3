@@ -9,6 +9,15 @@ use app\modules\Platform\Files\Application\ResolvePublicMedia;
 final class Files
 {
     public static function repository(): FileRepository { return app(FileRepository::class); }
+    public static function lockCardMedia(array $ids, int $ownerId, bool $allowAll): array
+    {
+        return self::repository()->lockCardMedia($ids, $ownerId, $allowAll);
+    }
+
+    public static function adminUsage(int $fileId): array
+    {
+        return self::repository()->adminUsage($fileId) ?? throw \app\api\ApiException::notFound('文件不存在');
+    }
     public static function replaceReferences(string $type, string $id, string $purpose, array $fileIds, int $ownerId, bool $isPublic, bool $allowAll): void
     {
         app(ManageFileReferences::class)->replace($type, $id, $purpose, $fileIds, $ownerId, $isPublic, $allowAll);
