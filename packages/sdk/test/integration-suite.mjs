@@ -1093,7 +1093,9 @@ await test('private message reporting exposes only case evidence and queues one 
     body: original,
     client_message_id: `sdk-report-${Date.now()}`,
   })
-  const input = { resource_type: 'message', resource_id: String(sent.id), reason: 'abuse' }
+  const detailsPreview = '举报说明'.repeat(250)
+  const details = `${detailsPreview}🙂`
+  const input = { resource_type: 'message', resource_id: String(sent.id), reason: 'abuse', details }
 
   const password = 'Test1234!'
   const account = `sdk_report_auditor_${Date.now()}@test.com`
@@ -1111,6 +1113,7 @@ await test('private message reporting exposes only case evidence and queues one 
   const list = await adminClient.reports.listManaged({ resource_type: 'message' })
   const row = list.data.find((item) => Number(item.id) === reportId)
   assert(row && row.target_type === 'message' && !('evidence_snapshot' in row), 'private message filter must list the case without its evidence')
+  assert(row.details === `${detailsPreview}…`, 'the list must shorten report details at the character boundary')
 
   const roles = await adminClient.roles.list({ list_rows: 100 })
   const auditor = roles.data.find((role) => role.slug === 'auditor')
@@ -1119,6 +1122,7 @@ await test('private message reporting exposes only case evidence and queues one 
   const login = await makeClient(null).session.login({ account, password })
   const reader = makeClient(login.token)
   const detail = await reader.reports.getManaged(reportId)
+  assert(detail.details === details, 'the report detail must preserve the original text')
   const evidence = detail.evidence_snapshot
   assert(evidence?.type === 'message' && Number(evidence.captured.id) === Number(sent.id), 'detail must contain the single reported message')
   assert(evidence.captured.body === original.slice(0, 2000), 'evidence must keep the first 2000 characters')
@@ -1149,8 +1153,10 @@ await test('private message reporting exposes only case evidence and queues one 
   await adminClient.reports.transition(reportId, { status: 'reviewing' })
   await adminClient.reports.transition(reportId, { status: 'reviewing', note: '隔离测试备注' })
   assert((await recipientOutcomes()).every((event) => before.has(event.id)), 'review and internal notes must not notify the reporter')
-  const resolved = await adminClient.reports.transition(reportId, { status: 'resolved', resolution: '隔离测试结论' })
+  const resolution = '处理结果'.repeat(63) + '已完成'
+  const resolved = await adminClient.reports.transition(reportId, { status: 'resolved', resolution })
   assert(resolved.status === 'resolved', 'authorized reviewer must be able to resolve the case')
+  assert(resolved.resolution === resolution, 'the transition must persist all 255 characters of the conclusion')
   const outcomes = (await recipientOutcomes()).filter((event) => !before.has(event.id))
   assert(outcomes.length === 1 && outcomes[0].deliveries.some((delivery) => delivery.handler_key === 'notifications.system-notification-issued'), 'resolution must queue exactly one notification for the reporter')
   const audit = await adminClient.operations.auditLogs({ action: 'safety.report.transition', resource_type: 'report', resource_id: String(reportId) })

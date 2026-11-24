@@ -70,6 +70,10 @@ $transactions = new FakeAdminReportsTransactions();
 $notices = new FakeAdminReportNotices();
 $reports = new AdminReports($repository, $audit, $transactions, $notices);
 
+$repository->report['details'] = str_repeat('中', 1000) . '🙂';
+$assert($reports->list([])['data'][0]['details'] === str_repeat('中', 1000) . '…', 'report list must shorten the preview by characters');
+$assert($reports->get(4)['details'] === $repository->report['details'], 'report detail must preserve the full text');
+
 $result = $reports->transition(4, 9, 'reviewing', null, 'triage', '127.0.0.1');
 $assert($result['assignee_id'] === 9, 'first non-open transition must assign the acting reviewer');
 $assert($repository->events[0]['payload']['assignee_id'] === 9, 'assignee must be captured in report history');
@@ -88,7 +92,9 @@ catch (\app\api\ApiException) { $missingConclusion = true; }
 $assert($missingConclusion, 'closing a report must require a written conclusion');
 $assert($repository->report['status'] === 'reviewing', 'rejected transition must not change the report state');
 $assert($notices->records === [], 'rejected report transition must not notify the reporter');
-$reports->transition(4, 9, 'resolved', 'resolved', '处理完成', '127.0.0.1');
+$conclusion = str_repeat('处理结果', 63) . '已完成';
+$result = $reports->transition(4, 9, 'resolved', $conclusion, '处理完成', '127.0.0.1');
+$assert($result['resolution'] === $conclusion, 'report transition must preserve a 255-character conclusion');
 $assert(count($notices->records) === 1, 'resolved report must issue one moderation notice');
 $assert($notices->records[0]['recipientId'] === 2, 'report outcome notice must target the reporter');
 $assert($notices->records[0]['noticeKey'] === 'safety.report.outcome:4:resolved', 'report outcome notice must use the terminal state key');
