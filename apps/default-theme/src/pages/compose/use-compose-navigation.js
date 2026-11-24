@@ -60,7 +60,7 @@ export function useComposeNavigation({ isDialog, dirty, busy, returnDestination,
   };
 
   return {
-    dialogOpen, discardOpen, allowLeaveRef, requestDiscard, onNavigationBlocked, requestClose,
+    dialogOpen, discardOpen, allowLeaveRef, onNavigationBlocked, requestClose,
     closeOrReturn, onDialogExited, cancelDiscard, confirmDiscard, useDataRouterGuard: !isDialog && Boolean(dataRouter),
   };
 }

@@ -374,7 +374,7 @@ export function ComposePage({ surface = 'page' }) {
   const returnDestination = editMode && (publishedCardId || requestedEditId) ? `/post/${publishedCardId || requestedEditId}` : '/';
   const onBlocked = useCallback(() => setPendingPublishType(null), []);
   const {
-    dialogOpen, discardOpen, allowLeaveRef, requestDiscard, onNavigationBlocked, requestClose,
+    dialogOpen, discardOpen, allowLeaveRef, onNavigationBlocked, requestClose,
     closeOrReturn, onDialogExited, cancelDiscard, confirmDiscard, useDataRouterGuard,
   } = useComposeNavigation({ isDialog, dirty, busy, returnDestination, onBlocked });
   const hasDraftContent = Boolean(content.trim() || tags.trim() || mediaCount || publishType !== 'text');
