@@ -264,20 +264,35 @@ async function checkProductNavigation() {
   const desktop = page.locator('.product-sidebar')
   const top = page.locator('.mobile-product-header')
   const bottom = page.getByRole('navigation', { name: '移动端产品导航' })
+  const themeButton = mode => desktop.getByRole('button', { name: `切换主题 · ${mode}` })
   try {
+    await page.emulateMedia({ colorScheme: 'light' })
     for (const width of [761, 1024, 1440]) {
       await page.setViewportSize({ width, height: 850 })
       await page.goto(`${origin}/`)
       const nav = desktop.getByRole('navigation', { name: '主要导航' })
       assert.deepEqual(await nav.getByRole('link').allTextContents(), ['推荐', '发现', '动态', '消息', '发布', '我的'])
       assert.equal(await nav.getByRole('link', { name: '推荐' }).getAttribute('aria-current'), 'page')
-      assert.equal(await desktop.getByRole('link', { name: '主题设置' }).getAttribute('href'), '/settings/appearance')
+      await expect(themeButton('自动')).toBeVisible()
       assert.equal(await top.isVisible(), false)
       assert.equal(await bottom.isVisible(), false)
       const search = page.locator('.desktop-search input')
       await search.waitFor()
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth))
     }
+    await themeButton('自动').press('Enter')
+    await expect(page.locator('[data-theme="light"]')).toBeVisible()
+    await themeButton('浅色').click()
+    await expect(page.locator('[data-theme="dark"]')).toBeVisible()
+    await page.reload()
+    await expect(themeButton('深色')).toBeVisible()
+    await expect(page.locator('[data-theme="dark"]')).toBeVisible()
+    await themeButton('深色').click()
+    await expect(themeButton('自动')).toBeVisible()
+    await expect(page.locator('[data-theme="light"]')).toBeVisible()
+    await page.emulateMedia({ colorScheme: 'dark' })
+    await expect(page.locator('[data-theme="dark"]')).toBeVisible()
+
     await desktop.getByRole('link', { name: '发现' }).click()
     await page.waitForURL('**/explore')
     await desktop.locator('a[href="/explore"][aria-current="page"]').waitFor()
@@ -295,6 +310,7 @@ async function checkProductNavigation() {
     await page.getByRole('link', { name: '返回来源页' }).click()
     await page.waitForURL('**/explore')
   } finally {
+    await page.emulateMedia({ colorScheme: null })
     await page.setViewportSize(viewport)
   }
 }
