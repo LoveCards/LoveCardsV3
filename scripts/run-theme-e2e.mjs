@@ -265,6 +265,7 @@ async function checkProductNavigation() {
   const top = page.locator('.mobile-product-header')
   const bottom = page.getByRole('navigation', { name: '移动端产品导航' })
   const themeButton = mode => desktop.getByRole('button', { name: `切换主题 · ${mode}` })
+  const themeRoot = page.locator('html')
   try {
     await page.emulateMedia({ colorScheme: 'light' })
     for (const width of [761, 1024, 1440]) {
@@ -281,17 +282,17 @@ async function checkProductNavigation() {
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth))
     }
     await themeButton('自动').press('Enter')
-    await expect(page.locator('[data-theme="light"]')).toBeVisible()
+    await expect(themeRoot).toHaveAttribute('data-theme', 'light')
     await themeButton('浅色').click()
-    await expect(page.locator('[data-theme="dark"]')).toBeVisible()
+    await expect(themeRoot).toHaveAttribute('data-theme', 'dark')
     await page.reload()
     await expect(themeButton('深色')).toBeVisible()
-    await expect(page.locator('[data-theme="dark"]')).toBeVisible()
+    await expect(themeRoot).toHaveAttribute('data-theme', 'dark')
     await themeButton('深色').click()
     await expect(themeButton('自动')).toBeVisible()
-    await expect(page.locator('[data-theme="light"]')).toBeVisible()
+    await expect(themeRoot).toHaveAttribute('data-theme', 'light')
     await page.emulateMedia({ colorScheme: 'dark' })
-    await expect(page.locator('[data-theme="dark"]')).toBeVisible()
+    await expect(themeRoot).toHaveAttribute('data-theme', 'dark')
 
     await desktop.getByRole('link', { name: '发现' }).click()
     await page.waitForURL('**/explore')
