@@ -117,7 +117,7 @@ export function getProfileTabSnapshot(section) {
   return { source: 'loading', status: 'loading', section, items: [], unavailable: [], hasMore: false };
 }
 
-export async function loadProfileTab(section, { signal } = {}) {
+export async function loadProfileTab(section, { cursor, signal } = {}) {
   const snapshot = getProfileTabSnapshot(section);
   if (snapshot.source !== 'loading') return snapshot;
   if (signal?.aborted) throw new DOMException('Request aborted', 'AbortError');
@@ -128,9 +128,9 @@ export async function loadProfileTab(section, { signal } = {}) {
     const items = Array.isArray(likes) ? likes : Array.isArray(likes?.data) ? likes.data : [];
     page = { items: items.filter(isCardReference), hasMore: false };
   } else if (section === 'saved') {
-    page = await listSavedItems();
+    page = await listSavedItems({ cursor });
   } else if (section === 'history') {
-    page = await listHistory();
+    page = await listHistory({ cursor });
   } else {
     return { source: 'live', status: 'success', items: [], unavailable: [], hasMore: false };
   }
@@ -149,6 +149,7 @@ export async function loadProfileTab(section, { signal } = {}) {
     })),
     unavailable: records.filter((item) => !item.resource),
     hasMore: Boolean(page.hasMore),
+    nextCursor: page.nextCursor ?? null,
   };
 }
 

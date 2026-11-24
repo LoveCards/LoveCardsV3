@@ -1,5 +1,5 @@
 {
-  "routeCount": 212,
+  "routeCount": 214,
   "summary": {},
   "routes": [
     {
@@ -10838,6 +10838,75 @@
       }
     },
     {
+      "path": "/me/drafts/page",
+      "method": "GET",
+      "name": "drafts.page",
+      "controller": "Platform.Community",
+      "action": "draftPage",
+      "meta": {
+        "name": "分页读取草稿",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "cursor"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\CursorPageResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Community.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "CursorPageResource::make"
+      ],
+      "validators": [
+        "app\\modules\\Platform\\Community\\Transport\\Api\\Community"
+      ],
+      "validatorScene": "cursor",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [
+          "cursor",
+          "limit"
+        ],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "CursorPageResource",
+        "operation": "make"
+      }
+    },
+    {
       "path": "/me/email-captcha",
       "method": "POST",
       "name": "users.me.emailCaptcha",
@@ -11887,6 +11956,74 @@
         "shape": "void",
         "resource": null,
         "operation": null
+      }
+    },
+    {
+      "path": "/me/library/saved-cards",
+      "method": "GET",
+      "name": "library.savedCards",
+      "controller": "Platform.Community",
+      "action": "savedCards",
+      "meta": {
+        "name": "查询卡片收藏状态",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Library\\Transport\\Api\\Library",
+          "scene": "cardIds"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Library\\Transport\\Api\\SavedCardIdsResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Community.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "SavedCardIdsResource::make"
+      ],
+      "validators": [
+        "app\\modules\\Platform\\Library\\Transport\\Api\\Library"
+      ],
+      "validatorScene": "cardIds",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [
+          "card_ids"
+        ],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "SavedCardIdsResource",
+        "operation": "make"
       }
     },
     {

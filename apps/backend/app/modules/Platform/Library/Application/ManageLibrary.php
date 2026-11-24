@@ -24,6 +24,12 @@ final class ManageLibrary
         return $this->repository->remove($userId, $resource);
     }
 
+    public function savedCardIds(int $userId, array $ids): array
+    {
+        $this->assertUser($userId);
+        return $this->repository->savedCardIds($userId, $ids);
+    }
+
     public function recordView(int $userId, ResourceRef $resource): void
     {
         $this->assertUser($userId);

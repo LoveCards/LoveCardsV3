@@ -255,7 +255,6 @@ describe('UI integrity', () => {
     const messages = readFileSync(fileURLToPath(new URL('../pages/community/MessagesPage.jsx', import.meta.url)), 'utf8');
     const inbox = readFileSync(fileURLToPath(new URL('../pages/community/InboxPage.jsx', import.meta.url)), 'utf8');
     const newMessage = readFileSync(fileURLToPath(new URL('../pages/community/NewMessagePage.jsx', import.meta.url)), 'utf8');
-    const library = readFileSync(fileURLToPath(new URL('../pages/community/LibraryAssetsPage.jsx', import.meta.url)), 'utf8');
     const conversation = readFileSync(fileURLToPath(new URL('../pages/community/ConversationPanel.jsx', import.meta.url)), 'utf8');
     const relations = readFileSync(fileURLToPath(new URL('../pages/profile/ProfileSecondaryPage.jsx', import.meta.url)), 'utf8');
     const profile = readFileSync(fileURLToPath(new URL('../pages/profile/ProfilePage.jsx', import.meta.url)), 'utf8');
@@ -280,7 +279,7 @@ describe('UI integrity', () => {
     expect(inbox).toContain("const canRead = designPreview || (auth.status === 'ready' && auth.isAuthenticated);");
     expect(inbox).toContain('{canRead && <nav className="notification-filters"');
     expect(newMessage).toContain("auth.status === 'error' ? <ResourceState status=\"error\" error={auth.error}");
-    expect(library).toContain("auth.status === 'error' ? <ResourceState status=\"error\" error={auth.error}");
+    expect(profile).toContain('loadProfileTab(section, { cursor: currentTabState.nextCursor');
     expect(conversation).toContain("if (auth.status === 'error') return <ConversationStateBoundary");
     expect(relations).toContain("!designPreview && auth.status === 'error'");
     expect(relations).toContain("(auth.isAuthenticated || designPreview) && <RelationSwitcher");

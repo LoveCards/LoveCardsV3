@@ -97,6 +97,8 @@ namespace
 
         public function remove(int $userId, ResourceRef $resource): bool { return false; }
         public function recordView(int $userId, ResourceRef $resource): void {}
+        public function savedCardIds(int $userId, array $ids): array { return []; }
+        public function totals(): array { return []; }
         public function listSaved(int $userId, ?string $cursor, int $limit): array { return ['items' => [], 'next_cursor' => null, 'has_more' => false]; }
         public function listHistory(int $userId, ?string $cursor, int $limit): array { return ['items' => [], 'next_cursor' => null, 'has_more' => false]; }
         public function clearHistory(int $userId): int { return 0; }

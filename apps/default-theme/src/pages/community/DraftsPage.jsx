@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../app/providers.jsx';
 import { getUserFacingError } from '../../app/user-facing-error.js';
-import { ResourceState } from '../../components/ResourceState.jsx';
+import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
 import { AppShell } from '../../layouts/AppShell.jsx';
 import { deleteComposeMedia, normalizeDraftMedia } from '../../services/compose-service.js';
-import { deleteDraft, draftSummary, listDrafts, normalizeDraftPayload } from '../../services/community-service.js';
-import { ConfirmActionDialog, Icon, IconButton, ScopedBanner, useToast } from '../../ui/index.js';
+import { dedupeByStableId, deleteDraft, draftSummary, listDrafts, normalizeDraftPayload } from '../../services/community-service.js';
+import { Button, ConfirmActionDialog, Icon, IconButton, ScopedBanner, useToast } from '../../ui/index.js';
 import { formatMessageTime as formatDraftTime } from './message-utils.js';
 
 function draftPresentation(item) {
@@ -77,21 +77,40 @@ export function DraftsPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteError, setDeleteError] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const requestRef = useRef(null);
+  const viewerUid = auth.session?.uid;
 
-  const load = useCallback(async () => {
-    if (!auth.isAuthenticated) return;
+  const load = useCallback(async (cursor = null) => {
+    if (!auth.isAuthenticated || requestRef.current) return;
+    const request = {};
+    requestRef.current = request;
     setDeleteError('');
-    setState((current) => ({ ...current, status: 'loading', error: null }));
+    setState((current) => cursor
+      ? { ...current, loadingMore: true, loadMoreError: null }
+      : { status: 'loading', items: [], error: null, viewerUid });
     try {
-      const result = await listDrafts();
-      setState({ status: 'success', items: result.items, error: null });
+      const result = await listDrafts({ cursor: cursor ?? undefined });
+      if (requestRef.current !== request) return;
+      setState((current) => ({
+        ...result,
+        status: 'success',
+        viewerUid,
+        items: cursor ? dedupeByStableId([...current.items, ...result.items]) : result.items,
+        error: null,
+      }));
     } catch (error) {
-      setState((current) => ({ ...current, status: 'error', error }));
+      if (requestRef.current !== request) return;
+      setState((current) => cursor
+        ? { ...current, loadingMore: false, loadMoreError: error }
+        : { ...current, status: 'error', error });
+    } finally {
+      if (requestRef.current === request) requestRef.current = null;
     }
-  }, [auth.isAuthenticated]);
+  }, [auth.isAuthenticated, viewerUid]);
 
   useEffect(() => {
     if (auth.status === 'ready' && auth.isAuthenticated) void load();
+    return () => { requestRef.current = null; };
   }, [auth.isAuthenticated, auth.status, load]);
 
   const remove = async () => {
@@ -120,14 +139,19 @@ export function DraftsPage() {
     content = <ResourceState status="error" error={auth.error} onRetry={auth.refresh} actionLabel="重新检查登录状态" className="drafts-boundary" />;
   } else if (!auth.isAuthenticated) {
     content = <ResourceState status="empty" className="drafts-boundary" emptyTitle="登录后使用草稿箱" emptyDescription="游客会话不会创建或同步私人草稿。" emptyAction={<Link className="action-link action-link-primary" to="/auth/login">去登录</Link>} />;
-  } else if (state.status === 'loading') {
+  } else if (state.status === 'loading' || state.viewerUid !== viewerUid) {
     content = <DraftsSkeleton />;
   } else if (state.status === 'error') {
-    content = <ResourceState status="error" error={state.error} onRetry={load} actionLabel="重新加载草稿" className="drafts-boundary" />;
-  } else if (!state.items.length) {
+    content = <ResourceState status="error" error={state.error} onRetry={() => void load()} actionLabel="重新加载草稿" className="drafts-boundary" />;
+  } else if (!state.items.length && !state.hasMore) {
     content = <ResourceState status="empty" className="drafts-boundary" emptyTitle="还没有草稿" emptyDescription="在发布页保存的内容会出现在这里。" />;
   } else {
-    content = <>{deleteError && <ScopedBanner className="drafts-delete-feedback" title="草稿没有删除" description={deleteError} />}<DraftList items={state.items} onDelete={setDeleteTarget} /></>;
+    content = <>
+      {deleteError && <ScopedBanner className="drafts-delete-feedback" title="草稿没有删除" description={deleteError} />}
+      {state.items.length > 0 && <DraftList items={state.items} onDelete={setDeleteTarget} />}
+      {state.loadMoreError && <ResourceErrorBanner error={state.loadMoreError} onRetry={() => void load(state.nextCursor)} />}
+      {state.hasMore && !state.loadMoreError && <div className="drafts-load-more"><Button type="button" label="加载更多草稿" variant="secondary" size="lg" isLoading={state.loadingMore} isDisabled={state.loadingMore} onClick={() => void load(state.nextCursor)} /></div>}
+    </>;
   }
 
   return <AppShell mobileMode="task">

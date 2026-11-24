@@ -6,12 +6,12 @@
 
 | 能力 | 后端模块 / 数据 | API / SDK | 当前约束 |
 | --- | --- | --- | --- |
-| 草稿箱 | `Platform/Drafts`、`card_drafts` | `client.drafts.list/create/get/update/delete` | owner 过滤、软删除、updated/id cursor、version 字段 |
+| 草稿箱 | `Platform/Drafts`、`card_drafts` | `client.drafts.page/list/create/get/update/delete` | owner 过滤、软删除、按 `updated_at, id` 逆序分页。数据库保留 `version` 字段，保存目前按最后一次写入生效。 |
 | 他人主页、关注/粉丝 | `Platform/Social`、`user_follows` | `profile/follow/unfollow/followers/following/relation` | handle 公开查找；禁止自关注和重复边；关系列表需认证 |
 | 通知 | `Platform/Notifications`、`notifications` | `list/unread/read/readAll` | `engagement` 仅为联合查询分类；服务端复合游标、recipient 归属、dedupe/read 状态；主动变化信号由独立 Gateway 发送，浏览器读数据仍走 PHP API |
 | 私信 | `Platform/Messaging`、conversation 三表 | `conversations/list/send` | 会话成员范围、block/privacy 检查、client message 幂等 |
 | 账号恢复 | `Platform/Auth`、`security_challenges`、`auth_sessions` | `session.recovery_request/recovery_reset` | 一次性挑战、过期/尝试次数；成功后 security version 增长并撤销旧 Session |
-| 收藏与浏览历史 | `Platform/Library`、`library_items`/`view_history` | `list/save/remove/history/history_record/history_clear` | 用户+资源唯一；cursor；记录浏览累计次数 |
+| 收藏与浏览历史 | `Platform/Library`、`library_items`/`view_history` | `list/savedCards/save/remove/history/history_record/history_clear` | 用户与资源唯一，按游标分页。卡片收藏状态可独立按一组卡片 ID 查询。 |
 | 举报、隐私偏好、拉黑 | `Platform/Safety`、preferences/relations/reports/events | `preferences/preferences_update/report/block/unblock` | 举报目标解析、证据快照；关系与私信策略联动；治理操作留审计 |
 | 媒体与评论深链 | Files public media + Theme SPA | `/media/:hash`、`/media/:cardId?index=n`、`/post/:cardId/thread/:commentId` | 先做可见性/权限，再返回内容；评论缺失显示明确边界并不错误定位 |
 
@@ -21,7 +21,8 @@
 
 当前输入边界：
 
-- `GET /me/library`、`/me/history`、`/me/drafts`：仅可选 `cursor, limit`；
+- `GET /me/library`、`/me/history`、`/me/drafts/page`：仅可选 `cursor, limit`，返回 `data, next_cursor, has_more`。草稿客户端直接传回服务端游标。旧 `GET /me/drafts` 保留数组响应与数字游标。
+- `GET /me/library/saved-cards`：传入 1–100 个卡片 ID，返回当前用户收藏记录中的匹配 ID。
 - `DELETE /me/library`：必填 query `resource_type, resource_id`；生成方法为 `library.remove(params)`；
 - `GET /me/notifications`：可选 `cursor, limit, unread_only`；unread/read-all 无业务参数；
 - 浏览器实时连接使用独立 Gateway 的一次性 ticket；PHP 的通知列表仍通过 `GET /me/notifications` 与未读接口读取，不恢复旧 `/me/notifications/stream` 伪端点；

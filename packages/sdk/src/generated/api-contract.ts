@@ -65,6 +65,7 @@ export interface GeneratedApiContract {
   "drafts.delete": { method: "DELETE"; path: "/me/drafts/:id"; request: void; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "drafts.get": { method: "GET"; path: "/me/drafts/:id"; request: void; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "drafts.list": { method: "GET"; path: "/me/drafts"; request: { cursor?: string; limit?: number }; response: Record<string, unknown>[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
+  "drafts.page": { method: "GET"; path: "/me/drafts/page"; request: { cursor?: string; limit?: number }; response: ApiTypes.CursorPage; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "drafts.update": { method: "PATCH"; path: "/me/drafts/:id"; request: { title?: string; content?: string; payload?: Record<string, unknown> }; response: Record<string, unknown>; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "files.batchManaged": { method: "POST"; path: "/admin/files/batch"; request: { ids: unknown[]; method: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "files.cleanup": { method: "DELETE"; path: "/admin/files/expired"; request: { limit?: number }; response: { cleaned: number }; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
@@ -85,6 +86,7 @@ export interface GeneratedApiContract {
   "library.list": { method: "GET"; path: "/me/library"; request: { cursor?: string; limit?: number }; response: ApiTypes.CursorPage; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "library.remove": { method: "DELETE"; path: "/me/library"; request: { resource_type: string; resource_id: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "library.save": { method: "POST"; path: "/me/library"; request: { resource_type: string; resource_id: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
+  "library.savedCards": { method: "GET"; path: "/me/library/saved-cards"; request: { card_ids: number[] }; response: { saved_ids: number[] }; status: 200; shape: "item"; public: false; capabilities: readonly string[] }
   "likes.list": { method: "GET"; path: "/me/likes"; request: { type?: string }; response: ApiTypes.Like[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
   "likes.unlike": { method: "DELETE"; path: "/me/likes/:id"; request: { type?: string }; response: void; status: 204; shape: "void"; public: false; capabilities: readonly string[] }
   "messages.conversations": { method: "GET"; path: "/me/conversations"; request: void; response: Record<string, unknown>[]; status: 200; shape: "collection"; public: false; capabilities: readonly string[] }
@@ -281,6 +283,7 @@ export const generatedApiContract = {
   "drafts.delete": { method: "DELETE", path: "/me/drafts/:id", status: 204, shape: "void", public: false, capabilities: [] },
   "drafts.get": { method: "GET", path: "/me/drafts/:id", status: 200, shape: "item", public: false, capabilities: [] },
   "drafts.list": { method: "GET", path: "/me/drafts", status: 200, shape: "collection", public: false, capabilities: [] },
+  "drafts.page": { method: "GET", path: "/me/drafts/page", status: 200, shape: "item", public: false, capabilities: [] },
   "drafts.update": { method: "PATCH", path: "/me/drafts/:id", status: 200, shape: "item", public: false, capabilities: [] },
   "files.batchManaged": { method: "POST", path: "/admin/files/batch", status: 204, shape: "void", public: false, capabilities: ["admin.access"] },
   "files.cleanup": { method: "DELETE", path: "/admin/files/expired", status: 200, shape: "item", public: false, capabilities: ["admin.access","files.cleanup"] },
@@ -301,6 +304,7 @@ export const generatedApiContract = {
   "library.list": { method: "GET", path: "/me/library", status: 200, shape: "item", public: false, capabilities: [] },
   "library.remove": { method: "DELETE", path: "/me/library", status: 204, shape: "void", public: false, capabilities: [] },
   "library.save": { method: "POST", path: "/me/library", status: 204, shape: "void", public: false, capabilities: [] },
+  "library.savedCards": { method: "GET", path: "/me/library/saved-cards", status: 200, shape: "item", public: false, capabilities: [] },
   "likes.list": { method: "GET", path: "/me/likes", status: 200, shape: "collection", public: false, capabilities: ["likes.read"] },
   "likes.unlike": { method: "DELETE", path: "/me/likes/:id", status: 204, shape: "void", public: false, capabilities: ["likes.delete"] },
   "messages.conversations": { method: "GET", path: "/me/conversations", status: 200, shape: "collection", public: false, capabilities: [] },

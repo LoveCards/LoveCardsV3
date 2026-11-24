@@ -6,7 +6,7 @@ import { useResource } from '../../app/use-resource.js';
 import { useAuth } from '../../app/providers.jsx';
 import { getProfileSnapshot, getProfileTabSnapshot, loadProfile, loadProfileTab, updateProfile } from '../../services/profile-service.js';
 import { updateProfileCover } from '../../services/settings-service.js';
-import { clearHistory, removeSavedItem } from '../../services/community-service.js';
+import { clearHistory, dedupeByStableId, removeSavedItem } from '../../services/community-service.js';
 import { getAvatarUploadFeedback, getUserFacingError } from '../../app/user-facing-error.js';
 import { ProfileContentTabs } from './ProfileContentTabs.jsx';
 import { Avatar, Icon } from '../../ui/icons.jsx';
@@ -412,6 +412,7 @@ export function ProfilePage({ initialSection = 'content' }) {
   const [tabRetry, setTabRetry] = useState(0);
   const [identityPatch, setIdentityPatch] = useState({});
   const [assetBusy, setAssetBusy] = useState('');
+  const assetRequest = useRef(null);
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const profileUser = data.user ? { ...data.user, ...identityPatch } : data.user;
@@ -444,21 +445,52 @@ export function ProfilePage({ initialSection = 'content' }) {
 
   useEffect(() => {
     if (activeTab === 'content' || !data.user || (!designPreview && (!isAuthenticated || !canViewProfile)) || (designPreview && tabRetry === 0)) return undefined;
-    let active = true;
+    const request = new AbortController();
+    assetRequest.current = request;
     setTabStates((current) => ({ ...current, [activeTab]: { ...getProfileTabSnapshot(activeTab), status: 'loading' } }));
-    loadProfileTab(activeTab).then((result) => {
-      if (active) setTabStates((current) => ({ ...current, [activeTab]: result }));
+    loadProfileTab(activeTab, { signal: request.signal }).then((result) => {
+      if (!request.signal.aborted) setTabStates((current) => ({ ...current, [activeTab]: result }));
     }).catch((error) => {
-      if (active) setTabStates((current) => ({ ...current, [activeTab]: { status: 'error', items: [], unavailable: [], error } }));
+      if (!request.signal.aborted) setTabStates((current) => ({ ...current, [activeTab]: { status: 'error', items: [], unavailable: [], error } }));
+    }).finally(() => {
+      if (assetRequest.current === request) assetRequest.current = null;
     });
-    return () => { active = false; };
-  }, [activeTab, canViewProfile, data.user, designPreview, isAuthenticated, tabRetry]);
+    return () => {
+      assetRequest.current?.abort();
+      assetRequest.current = null;
+    };
+  }, [activeTab, canViewProfile, data.user, designPreview, isAuthenticated, profileUser?.uid, tabRetry]);
 
   const currentTabState = activeTab === 'content'
     ? { status: resource.status, items: data.items, unavailable: [], error: resource.error, contentError: data.cardsError }
     : tabStates[activeTab];
 
   const retryTab = () => setTabRetry((value) => value + 1);
+  const loadMoreAssets = async () => {
+    if (!currentTabState?.nextCursor || assetRequest.current || clearing) return;
+    const request = new AbortController();
+    assetRequest.current = request;
+    const section = activeTab;
+    const update = (change) => {
+      if (!request.signal.aborted) {
+        setTabStates((current) => ({ ...current, [section]: change(current[section]) }));
+      }
+    };
+    update((current) => ({ ...current, loadingMore: true, loadMoreError: null }));
+    try {
+      const result = await loadProfileTab(section, { cursor: currentTabState.nextCursor, signal: request.signal });
+      update((current) => ({
+        ...result,
+        items: dedupeByStableId([...current.items, ...result.items]),
+        records: dedupeByStableId([...current.records, ...result.records]),
+        unavailable: dedupeByStableId([...current.unavailable, ...result.unavailable]),
+      }));
+    } catch (error) {
+      update((current) => ({ ...current, loadingMore: false, loadMoreError: error }));
+    } finally {
+      if (assetRequest.current === request) assetRequest.current = null;
+    }
+  };
   const removeSaved = async (card) => {
     const item = card?.libraryRecord;
     const resourceId = String(item?.resource_id || '').trim();
@@ -524,8 +556,10 @@ export function ProfilePage({ initialSection = 'content' }) {
           <div className="profile-layout"><div className="profile-content">
             <ProfileContentTabs mode="self" contentCount={contentCount} />
             <div id="profile-content-panel" role="tabpanel" aria-labelledby={`profile-tab-${activeTab}`} tabIndex={0}>
-              {activeTab === 'history' && currentTabState?.status === 'success' && currentTabState.items?.length > 0 && <div className="profile-tab-toolbar"><span>最近浏览的内容</span><button className="profile-clear-history" type="button" disabled={clearing} onClick={() => setClearOpen(true)}>清空历史</button></div>}
+              {activeTab === 'history' && currentTabState?.status === 'success' && currentTabState.items?.length > 0 && <div className="profile-tab-toolbar"><span>最近浏览的内容</span><button className="profile-clear-history" type="button" disabled={clearing || currentTabState.loadingMore} onClick={() => setClearOpen(true)}>清空历史</button></div>}
               <ProfileTabContent section={activeTab} state={currentTabState} profile={profileUser} onRetry={retryTab} onRemoveSaved={activeTab === 'saved' ? renderSavedAction : undefined} />
+              {currentTabState?.status === 'success' && currentTabState.hasMore && currentTabState.loadMoreError && <ResourceErrorBanner error={currentTabState.loadMoreError} onRetry={loadMoreAssets} />}
+              {currentTabState?.status === 'success' && currentTabState.hasMore && !currentTabState.loadMoreError && <div className="profile-tab-load-more"><Button type="button" label="加载更多" variant="secondary" size="lg" isLoading={currentTabState.loadingMore} isDisabled={currentTabState.loadingMore || clearOpen} onClick={loadMoreAssets} /></div>}
             </div>
           </div></div>
           <ConfirmActionDialog isOpen={clearOpen} onOpenChange={(open) => { if (!clearing) setClearOpen(open); }} title="清空全部浏览历史？" description="此操作只删除你的历史记录，不会影响收藏、喜欢或原内容。" actionLabel="清空历史" isLoading={clearing} onAction={clearHistoryAction} />

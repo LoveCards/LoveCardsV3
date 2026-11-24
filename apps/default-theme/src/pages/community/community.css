@@ -43,6 +43,7 @@
   .drafts-back:hover { color: var(--lc-ink); background: var(--lc-surface-subtle); }
   .drafts-back:focus-visible { outline: 2px solid var(--lc-rose-deep); outline-offset: 2px; }
   .drafts-content { min-width: 0; }
+  .drafts-load-more { display: flex; justify-content: center; padding-block: 12px; }
   .drafts-delete-feedback { margin: 0 0 12px; }
   .drafts-page .resource-state.drafts-boundary { min-height: 250px; display: grid; align-content: center; justify-items: center; text-align: center; border: 0; border-radius: 0; background: transparent; }
   .drafts-list { display: grid; gap: 12px; }

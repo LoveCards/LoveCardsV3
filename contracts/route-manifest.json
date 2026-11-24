@@ -1,6 +1,6 @@
 {
   "source": "thinkphp-runtime-route-registry",
-  "routeCount": 212,
+  "routeCount": 214,
   "routes": [
     {
       "path": "/admin/cards/:id",
@@ -3585,6 +3585,35 @@
       "source": "apps/backend/app/api/route"
     },
     {
+      "path": "/me/drafts/page",
+      "method": "GET",
+      "name": "drafts.page",
+      "controller": "Platform.Community",
+      "action": "draftPage",
+      "meta": {
+        "name": "分页读取草稿",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Community\\Transport\\Api\\Community",
+          "scene": "cursor"
+        },
+        "response": {
+          "resource": "app\\shared\\Transport\\Http\\CursorPageResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
       "path": "/me/feed/following",
       "method": "GET",
       "name": "cards.listFollowing",
@@ -3740,6 +3769,35 @@
         },
         "response": {
           "resource": "app\\shared\\Transport\\Http\\CursorPageResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/me/library/saved-cards",
+      "method": "GET",
+      "name": "library.savedCards",
+      "controller": "Platform.Community",
+      "action": "savedCards",
+      "meta": {
+        "name": "查询卡片收藏状态",
+        "group": "社区",
+        "access": {
+          "auth": "required"
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Library\\Transport\\Api\\Library",
+          "scene": "cardIds"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Library\\Transport\\Api\\SavedCardIdsResource",
           "shape": "item",
           "status": 200
         }

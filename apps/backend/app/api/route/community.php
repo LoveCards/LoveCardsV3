@@ -4,6 +4,7 @@ use app\api\middleware\JwtAuthCheck;
 use app\api\middleware\OptionalJwtAuth;
 use app\shared\Transport\Http\ApiResource;
 use app\modules\Platform\Library\Transport\Api\Library as LibraryValidate;
+use app\modules\Platform\Library\Transport\Api\SavedCardIdsResource;
 use app\modules\Platform\Community\Transport\Api\Community as CommunityValidate;
 use app\modules\Platform\Notifications\Transport\Api\NotificationCursorPageResource;
 use app\modules\Platform\Notifications\Transport\Api\NotificationUnreadResource;
@@ -48,6 +49,9 @@ $get('users/:uid/relation', 'Platform.Community/relation', 'social.relation', ['
 Route::post('me/library', 'Platform.Community/save')->name('library.save')->setOption('contract',['request'=>['validate'=>LibraryValidate::class,'scene'=>'resource'],'response'=>$void])->setOption('meta',['name'=>'library.save','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
 Route::delete('me/library', 'Platform.Community/remove')->name('library.remove')->setOption('contract',['request'=>['validate'=>LibraryValidate::class,'scene'=>'resource'],'response'=>$void])->setOption('meta',['name'=>'library.remove','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
 Route::get('me/library', 'Platform.Community/library')->name('library.list')->setOption('contract',['request'=>['validate'=>CommunityValidate::class,'scene'=>'cursor'],'response'=>$cursorPage])->setOption('meta',['name'=>'library.list','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
+Route::get('me/library/saved-cards', 'Platform.Community/savedCards')->name('library.savedCards')
+    ->setOption('contract', ['request' => ['validate' => LibraryValidate::class, 'scene' => 'cardIds'], 'response' => ['resource' => SavedCardIdsResource::class, 'shape' => 'item', 'status' => 200]])
+    ->setOption('meta', ['name' => '查询卡片收藏状态', 'group' => '社区', 'access' => $auth])->middleware(JwtAuthCheck::class);
 Route::post('me/history', 'Platform.Community/recordHistory')->name('library.history.record')->setOption('contract',['request'=>['validate'=>LibraryValidate::class,'scene'=>'resource'],'response'=>$void])->setOption('meta',['name'=>'library.history.record','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
 Route::get('me/history', 'Platform.Community/history')->name('library.history')->setOption('contract',['request'=>['validate'=>CommunityValidate::class,'scene'=>'cursor'],'response'=>$cursorPage])->setOption('meta',['name'=>'library.history','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
 Route::delete('me/history', 'Platform.Community/clearHistory')->name('library.history.clear')->setOption('contract',['request'=>null,'response'=>$void])->setOption('meta',['name'=>'library.history.clear','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
@@ -68,6 +72,9 @@ Route::post('reports', 'Platform.Community/report')->name('safety.report')->setO
 Route::delete('users/:uid/block', 'Platform.Community/unblock')->name('safety.unblock')->setOption('contract',['request'=>null,'response'=>$void])->setOption('meta',['name'=>'safety.unblock','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
 
 Route::get('me/drafts', 'Platform.Community/drafts')->name('drafts.list')->setOption('contract',['request'=>['validate'=>CommunityValidate::class,'scene'=>'cursor'],'response'=>$collection])->setOption('meta',['name'=>'drafts.list','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
+Route::get('me/drafts/page', 'Platform.Community/draftPage')->name('drafts.page')
+    ->setOption('contract', ['request' => ['validate' => CommunityValidate::class, 'scene' => 'cursor'], 'response' => $cursorPage])
+    ->setOption('meta', ['name' => '分页读取草稿', 'group' => '社区', 'access' => $auth])->middleware(JwtAuthCheck::class);
 $get('me/drafts/:id', 'Platform.Community/draft', 'drafts.get', $item);
 Route::post('me/drafts', 'Platform.Community/saveDraft')->name('drafts.create')->setOption('contract',['request'=>['validate'=>CommunityValidate::class,'scene'=>'draft'],'response'=>$item])->setOption('meta',['name'=>'drafts.create','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);
 Route::patch('me/drafts/:id', 'Platform.Community/saveDraft')->name('drafts.update')->setOption('contract',['request'=>['validate'=>CommunityValidate::class,'scene'=>'draft'],'response'=>$item])->setOption('meta',['name'=>'drafts.update','group'=>'社区','access'=>$auth])->middleware(JwtAuthCheck::class);

@@ -316,6 +316,62 @@ async function checkProductNavigation() {
   }
 }
 
+async function checkDraftPagination() {
+  const token = await page.evaluate(() => localStorage.getItem('token'))
+  const headers = { Authorization: `Bearer ${token}`, 'X-Token': token }
+  const draftIds = []
+  const marker = `draft-page-${Date.now()}`
+  try {
+    for (let index = 0; index < 21; index++) {
+      const response = await page.request.post(`${origin}/api/me/drafts`, {
+        headers,
+        data: { content: `${marker}-${index}` },
+      })
+      assert.ok(response.ok(), 'draft fixture should be created')
+      draftIds.push((await response.json()).data.id)
+    }
+    await page.goto(`${origin}/drafts`)
+    await expect(page.getByRole('link', { name: `继续编辑：${marker}-20` })).toBeVisible()
+    await expect(page.getByRole('link', { name: `继续编辑：${marker}-0` })).toHaveCount(0)
+    await page.getByRole('button', { name: '加载更多草稿' }).click()
+    await expect(page.getByRole('link', { name: `继续编辑：${marker}-0` })).toBeVisible()
+    await expect(page.getByRole('link', { name: `继续编辑：${marker}-20` })).toBeVisible()
+  } finally {
+    for (const id of draftIds) {
+      const response = await page.request.delete(`${origin}/api/me/drafts/${id}`, { headers })
+      if (response.status() !== 204) cleanupFailures.push(`draft ${id} cleanup returned ${response.status()}`)
+    }
+  }
+}
+
+async function checkLibraryPagination(firstCardId, secondCardId) {
+  for (const [tab, resource] of [['saved', 'library'], ['history', 'history']]) {
+    const pattern = `**/api/me/${resource}?*`
+    await page.route(pattern, (route) => {
+      const next = new URL(route.request().url()).searchParams.get('cursor') === 'fixture-next'
+      return route.fulfill({ json: { success: true, data: {
+        data: [{ id: next ? 1 : 2, resource_type: 'card', resource_id: String(next ? secondCardId : firstCardId) }],
+        next_cursor: next ? null : 'fixture-next',
+        has_more: !next,
+      } } })
+    })
+    try {
+      await page.goto(`${origin}/me?tab=${tab}`)
+      const panel = page.getByRole('tabpanel')
+      const first = panel.locator(`a[href="/post/${firstCardId}"]`)
+      const second = panel.locator(`a[href="/post/${secondCardId}"]`)
+      await expect(first.first()).toBeVisible()
+      await expect(second).toHaveCount(0)
+      await panel.getByRole('button', { name: '加载更多' }).click()
+      await expect(second.first()).toBeVisible()
+      await expect(first.first()).toBeVisible()
+      await expect(panel.getByRole('button', { name: '加载更多' })).toHaveCount(0)
+    } finally {
+      await page.unroute(pattern)
+    }
+  }
+}
+
 try {
   const root = await visit('/')
   const explore = await visit('/explore')
@@ -352,6 +408,7 @@ try {
       page.locator('.auth-form button[type="submit"]').click(),
     ])
     await page.locator('.profile-identity-surface-owner').waitFor()
+    await checkDraftPagination()
 
     const marker = `theme-e2e-${Date.now()}`
     await page.goto(`${origin}/compose`, { waitUntil: 'networkidle' })
@@ -367,6 +424,7 @@ try {
     await page.getByLabel('写下你的回复').fill(`${marker}-comment`)
     await page.locator('.comment-chat-composer button').click()
     await page.getByText(/评论已发布/).first().waitFor()
+    await checkLibraryPagination(cardId, createdCardId)
 
     const deleted = await page.evaluate(async (id) => {
       const token = localStorage.getItem('token')
@@ -378,7 +436,7 @@ try {
   }
 
   if (failures.length) throw new Error(failures.join('\n'))
-  console.log(`SPA theme E2E passed: entry fallback, public API, deep routes, bootstrap and release assets${account && password ? ', login, publish and comments' : ''}`)
+  console.log(`SPA theme E2E passed: entry fallback, public API, deep routes, bootstrap and release assets${account && password ? ', login, draft and library pagination, publish and comments' : ''}`)
 } finally {
   if (createdCardId) {
     try {

@@ -1,6 +1,6 @@
 # API Contract Audit
 
-- Routes inspected: 212
+- Routes inspected: 214
 - P0: 0
 - P1: 0
 - P2: 0
@@ -158,6 +158,7 @@
 | DELETE | `/me/drafts/:id` | `drafts.delete` | grants:authenticated | no | createNoContent | — |
 | GET | `/me/drafts/:id` | `drafts.get` | grants:authenticated | no | ApiResource::make | — |
 | PATCH | `/me/drafts/:id` | `drafts.update` | grants:authenticated | yes | ApiResource::make | — |
+| GET | `/me/drafts/page` | `drafts.page` | grants:authenticated | yes | CursorPageResource::make | — |
 | POST | `/me/email-captcha` | `users.me.emailCaptcha` | grants:users.update:own | yes | EmailCaptchaResource::make | — |
 | POST | `/me/email` | `users.me.email` | grants:users.update:own | yes | createNoContent | — |
 | GET | `/me/feed/following` | `cards.listFollowing` | grants:authenticated | yes | CardResource::paginate | — |
@@ -173,6 +174,7 @@
 | DELETE | `/me/library` | `library.remove` | grants:authenticated | yes | createNoContent | — |
 | GET | `/me/library` | `library.list` | grants:authenticated | yes | CursorPageResource::make | — |
 | POST | `/me/library` | `library.save` | grants:authenticated | yes | createNoContent | — |
+| GET | `/me/library/saved-cards` | `library.savedCards` | grants:authenticated | yes | SavedCardIdsResource::make | — |
 | GET | `/me/likes` | `likes.list` | grants:likes.read:global | yes | LikeResource::collection | — |
 | DELETE | `/me/likes/:id` | `likes.unlike` | grants:likes.delete:global | yes | createNoContent | — |
 | POST | `/me/messages` | `messages.send` | grants:authenticated | yes | ApiResource::make | — |

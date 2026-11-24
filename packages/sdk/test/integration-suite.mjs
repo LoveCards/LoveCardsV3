@@ -496,6 +496,28 @@ await test('draft create, list, get, update and delete use only draft fields', a
   return true
 })
 
+await test('draft page cursor preserves edit order, ownership and legacy list shape', async () => {
+  const older = Number((await userClient.drafts.create({ title: 'Older draft' })).id)
+  const newer = Number((await userClient.drafts.create({ title: 'Newer draft' })).id)
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 1100))
+    await userClient.drafts.update(older, { title: 'Edited older draft' })
+    const first = await userClient.drafts.page({ limit: 1 })
+    assert(Number(first.data[0]?.id) === older && first.has_more && first.next_cursor, 'edited older draft must lead the first page')
+    const legacy = await userClient.drafts.list({ cursor: String(older), limit: 1 })
+    assert(Array.isArray(legacy) && Number(legacy[0]?.id) === newer, 'legacy numeric cursor must follow the same ordering')
+    const otherUser = await adminClient.drafts.page({ cursor: first.next_cursor, limit: 100 })
+    assert(otherUser.data.every((item) => ![older, newer].includes(Number(item.id))), 'draft pages must remain owner scoped')
+    await userClient.drafts.delete(older)
+    const second = await userClient.drafts.page({ cursor: first.next_cursor, limit: 1 })
+    assert(Number(second.data[0]?.id) === newer && !second.has_more && second.next_cursor === null, 'deleting the anchor must not hide the next draft')
+  } finally {
+    await userClient.drafts.delete(older)
+    await userClient.drafts.delete(newer)
+  }
+  return true
+})
+
 await test('GET and POST /me/privacy use only preference fields', async () => {
   const current = await adminClient.safety.preferences()
   assert(current !== null && typeof current === 'object', 'preferences should return an object')
@@ -540,7 +562,16 @@ await test('library save/remove and history record use ResourceRef query/body co
   await adminClient.library.save(ref)
   const library = await adminClient.library.list()
   assert(library.data.some((item) => String(item.resource_id) === ref.resource_id), 'saved card should appear in library')
+  const status = await adminClient.library.savedCards({ card_ids: [createdCardId, 2147483647] })
+  assert(JSON.stringify(status.saved_ids) === JSON.stringify([createdCardId]), 'lookup must return only matching saved cards')
+  const otherOwner = await userClient.library.savedCards({ card_ids: [createdCardId] })
+  assert(otherOwner.saved_ids.length === 0, 'lookup must not show a different user’s saved records')
+  await assertApiError(() => makeClient(null).library.savedCards({ card_ids: [createdCardId] }), 401)
+  await assertApiError(() => adminClient.library.savedCards({ card_ids: [] }), 422)
+  await assertApiError(() => adminClient.library.savedCards({ card_ids: Array.from({ length: 101 }, (_, index) => index + 1) }), 422)
   await adminClient.library.remove(ref)
+  const removed = await adminClient.library.savedCards({ card_ids: [createdCardId] })
+  assert(removed.saved_ids.length === 0, 'removed card must not appear as saved')
   await adminClient.library.history_record(ref)
   const history = await adminClient.library.history()
   assert(history.data.some((item) => String(item.resource_id) === ref.resource_id), 'viewed card should appear in history')
