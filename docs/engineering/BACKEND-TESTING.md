@@ -128,7 +128,7 @@ npm.cmd run test:sdk:integration
 
 `npm run test:upgrade:e2e` 在独立的 `lovecards_e2e_*` 数据库和临时实例根中生成真实签名 Release。旧版库从 `data.sql` 和 S11 之前的受审迁移构建；Release 副本另注入 E2E-only Contract probe，再通过 JWT/multipart 创建持久升级计划。测试验证提前批准被拒、计划等待和独立批准、真实 S11 四表退役及 Contract probe、激活、active pointer、Release header、最终健康，并与干净安装终态比较。负例包含未知旧行、同名自定义过程和审批后数据变化，修复后须显式重试；测试夹具构造的旧 cron 记录不等于真实旧部署运行证据。工作树和生产 migration 不会被测试修改，临时数据库与 Release source 必须在 `finally` 清理。`npm run test:e2e:safety` 另覆盖 localhost fence、数据库命名限制、同名库碰撞及哨兵数据保留。
 
-GitHub Actions 的 `integration` 作业使用 MySQL 8 和 Playwright Chromium，按“构建 SDK/打包主题 → 碰撞安全 → 组合 SDK/Admin/Theme E2E → 签名 Upgrade E2E → 全仓 build”的顺序运行。失败时上传 Playwright 报告、trace、截图、视频和 SDK 测试报告；长驻测试进程使用可回收的进程树，并有超时强制清理。
+[Quality 工作流](../../.github/workflows/quality.yml) 的 `integration` 作业使用 MySQL 8 和 Playwright Chromium。先验证数据库执行租约、打包主题，再验证测试库碰撞保护、schema 一致性和签名升级，然后运行 SDK/Admin/Theme 组合 E2E 与全仓构建。失败时保留 Playwright 报告、trace、截图、视频和 SDK 测试报告。长驻测试进程有超时和进程树清理。
 
 ## 3. 日常质量门禁
 

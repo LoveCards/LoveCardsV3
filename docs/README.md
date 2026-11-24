@@ -17,7 +17,7 @@ dev 实际部署、测试证据和人工验收步骤见 [2026-11-12 dev 验收�
 - [管理端子页面与子任务设计规范（目标基线，覆盖清单）](engineering/ADMIN-SUBPAGE-DESIGN-STANDARD.md)
 - [管理端详情与编辑视觉规范（目标基线）](engineering/ADMIN-DETAIL-EDIT-DESIGN-STANDARD.md)
 - [管理端列表与表格交互规范（目标设计）](engineering/ADMIN-TABLE-INTERACTION-STANDARD.md)
-- [管理端表格交互更新实施方案（2026-11-19）](engineering/ADMIN-TABLE-IMPLEMENTATION-PLAN-2026-11-19.md)
+- [管理端表格交互更新实施方案（历史基线，2026-11-19）](engineering/ADMIN-TABLE-IMPLEMENTATION-PLAN-2026-11-19.md)
 - [审计日志查询筛选方案](engineering/ADMIN-AUDIT-QUERY-DESIGN-2026-11-08.md)
 - [管理端表格查询交互建议（历史记录）](engineering/ADMIN-TABLE-QUERY-GUIDE-2026-11-08.md)
 - [管理端角色与权限矩阵（设计稿）](engineering/ADMIN-ROLE-MATRIX.md)

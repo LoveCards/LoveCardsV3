@@ -8,6 +8,7 @@
 apps/backend   ThinkPHP 后端与站点主题
 apps/admin     Nuxt 管理端
 apps/default-theme  React 用户前端与默认主题源码
+apps/realtime-gateway  独立 Node.js SSE 网关
 packages/sdk   JavaScript/TypeScript SDK
 docs           架构、重构与协作规范
 scripts        跨 workspace 编排和架构检查
@@ -24,7 +25,7 @@ Route Meta -> Controller -> Validate -> Business -> Resource -> ApiResponse
 - Validate 是唯一请求字段验证层。
 - Resource 是唯一响应内部数据契约层。
 - Business 默认使用简单 Service；复杂模块才在模块内拆出 `Application`、`Domain`、`Contract`。
-- 不再使用顶层 `apps/backend/app/modules/*/Application` 目录；复杂用例放在 `apps/backend/app/modules/<Module>/Application`。
+- 复杂用例放在所属模块内，例如 `apps/backend/app/modules/Platform/Auth/Application` 或 `apps/backend/app/modules/Theme/Application`。
 
 ## 环境
 
