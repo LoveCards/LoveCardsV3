@@ -69,7 +69,7 @@ final class AdminReports
                 $assigned = true;
             }
             if (in_array($status, ['resolved', 'rejected', 'closed'], true)) $values['resolved_at'] = $timestamp;
-            if ($resolution !== null) $values['resolution'] = substr(trim($resolution), 0, 255);
+            if ($resolution !== null) $values['resolution'] = mb_substr(trim($resolution), 0, 255, 'UTF-8');
             $this->repository->update($id, $values);
             $this->repository->appendEvent($id, $actorId, $from === $status ? 'note' : 'status_changed', [
                 'from_status' => $from, 'to_status' => $status, 'resolution' => $resolution, 'note' => $note,
@@ -106,6 +106,6 @@ final class AdminReports
 
     private function truncate(string $value, int $length): string
     {
-        return strlen($value) > $length ? substr($value, 0, $length) . '…' : $value;
+        return mb_strlen($value, 'UTF-8') > $length ? mb_substr($value, 0, $length, 'UTF-8') . '…' : $value;
     }
 }
