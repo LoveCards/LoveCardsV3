@@ -75,10 +75,13 @@ test('verification requirements save user and captcha groups together', async ({
   await expect(page.getByText('登录：人机验证')).toBeVisible({ timeout: 120_000 })
   await page.getByRole('tab', { name: '验证要求' }).click()
   const requirements = page.getByRole('region', { name: '站点验证要求' })
-  await requirements.getByRole('combobox', { name: '注册邮件验证', exact: true }).press('ArrowDown')
-  await page.getByRole('option', { name: '开启', exact: true }).click()
-  await requirements.getByRole('combobox', { name: '注册与卡片写入的人机验证', exact: true }).press('ArrowDown')
-  await page.getByRole('option', { name: '开启', exact: true }).click()
+  for (const name of ['注册邮件验证', '注册与卡片写入的人机验证']) {
+    const select = requirements.getByRole('combobox', { name, exact: true })
+    await select.press('ArrowDown')
+    await expect(select).toHaveAttribute('aria-controls', /.+/)
+    const menuId = await select.getAttribute('aria-controls')
+    await page.locator(`[id="${menuId}"]`).getByRole('option', { name: '开启', exact: true }).click()
+  }
   await page.getByRole('button', { name: '保存站点验证要求' }).click()
   await expect(page.getByText('站点验证要求已保存。')).toBeVisible()
   expect(committed).toEqual({ user: { captcha: true, __revision: 3 }, captcha: { captcha_enabled: true, __revision: 7 } })
