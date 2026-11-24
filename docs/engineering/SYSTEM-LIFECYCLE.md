@@ -26,6 +26,19 @@ LoveCards 的安装、数据库迁移、Release 导入、激活和恢复属于�
 
 栅栏由当前活动的**源 Release**执行。若站点仍运行不含栅栏的 r6，须先通过 r6 原升级器部署与 r6 相同 Migration Catalog/target_schema、无新增迁移的签名 bridge Release，并在健康检查及新 Release 定时触发成功后确认它成为 active；随后才可创建包含新迁移的升级计划。签名包中已经包含新代码，或仅合并仓库分支，都不会改变旧 Release 在激活前运行的 Coordinator 与 cron。禁止直接从 r6 对包含新增迁移的目标 Release 执行升级。
 
+### MySQL 5.7 的 S11 升级
+
+MySQL 5.7.44 执行 S11 的 `INSERT ... SELECT` 过程归属检查时可能返回 1264。执行器仅针对 `20261112000001` 的预检、验证和 Contract，以及 `20261112000002` 的 Contract，在同一连接、同一次迁移执行中先读取原查询的标量，再写入原有临时表。迁移 ID、原文件 SHA-256 和预期语句形态均须匹配。重复主键仍阻断同名外部过程，审批前后仍核对历史数据。历史 SQL 文件和已登记的校验和保持原字节。
+
+对于尚未执行 S11 的站点，先让当前升级器包含本修复。已托管签名 Release 的站点从其受审活动版本源码应用执行器修复，按实际账本构建同 Catalog、同 target_schema 的签名桥接包，激活成功后再发起 S11 升级。已开始的失败计划按原版本的恢复流程核对状态、备份和租约后受控处置，不能替换已签名包、改写旧账本或自动重放未知状态。
+
+修复版 R1 使用受审标签 `review/r1-compat-source-20261115` 的完整后端源码和修复提交中的三个执行器文件。通过下列命令生成新的后端构建目录，随后从 R1 自带锁文件安装生产依赖，用本章发行命令生成独立签名包。签发时按目标站点分配 Release ID、sequence 和受信任签名。R1 健康检查及前驱迁移 `20261112000003` 完成后进入 R2。
+
+```bash
+node scripts/prepare-s11-compatibility-source.mjs /absolute/stage/r1-backend
+composer install --working-dir=/absolute/stage/r1-backend --no-dev --prefer-dist --no-interaction
+```
+
 桥接包必须按站点现有账本选择不可变源码：仍在 61 项完整迁移账本的 r5 站点，可从生命周期栅栏合入时的 `0c53ce04` 构建 61 项同 Catalog bridge；dev r6 已有第 62 项 `20261120000001.sql`，必须从包含视频迁移与栅栏的组合源码构建 62 项同 Catalog bridge。两种桥接包不能互换。发布前逐项比较活动 Release Manifest、数据库已完成账本与候选 Manifest 的 migration ID/checksum，并确认 target_schema 相同；sequence 必须高于该站点 `system_releases.sequenceFloor`，签发时间、有效期、受信任签名及备份状态须通过旧源 Release 的升级门禁。桥接包激活和新 Release cron/健康通过后，才能从该站点的新活动 Release 创建后续含新增迁移的计划。
 
 新装种子中的 root 账号仅有不可登录的密码占位值；安装向导在创建安装锁前要求管理员输入 12 至 128 字符的新密码，由 Auth 公开入口核对账号启用状态与 root 角色后写入实际哈希并增加凭据版本。缺失密码、角色或写入失败时安装锁不得创建。旧站点已安装账号不由该步骤修改。

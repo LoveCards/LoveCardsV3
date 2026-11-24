@@ -570,6 +570,22 @@ $test('SqlFileMigration rejects executable SQL before the first phase marker', s
     });
 });
 
+$test('S11 compatibility rejects different source bytes before executing SQL', static function () use ($assertThrows, $withSqlFile): void {
+    $source = "-- @lc-phase preflight\nSELECT 1;\n-- @lc-phase contract\nSELECT 2;";
+    $withSqlFile($source, static function (string $path) use ($assertThrows): void {
+        $retirement = new SqlFileMigration('20261112000001', $path, 'S11 legacy retirement');
+        $cleanup = new SqlFileMigration('20261112000002', $path, 'S11 procedure cleanup');
+        foreach ([
+            [$retirement, 'preflight'],
+            [$retirement, 'verify'],
+            [$retirement, 'contract'],
+            [$cleanup, 'contract'],
+        ] as $step) {
+            $assertThrows(LogicException::class, $step, '受审迁移校验和不一致');
+        }
+    });
+});
+
 $test('Destructive contract marker blocks manual migration before execution', static function () use ($assertSame, $assertThrows, $withSqlFile): void {
     $source = "-- @lc-requires-upgrade-contract\n-- @lc-phase preflight\nSELECT 1;\n-- @lc-phase contract\nDROP TABLE `old_table`;\n";
     $withSqlFile($source, static function (string $path) use ($assertSame, $assertThrows): void {
