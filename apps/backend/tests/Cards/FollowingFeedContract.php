@@ -13,7 +13,7 @@ namespace think\facade {
         public function field(...$args): self { return $this; }
         public function column(...$args): array
         {
-            return $this->table === 'user_follows' ? [2, 3, 3] : [3];
+            return $this->table === 'user_follows' ? [2, 3, 3, 4] : [3];
         }
     }
 
@@ -35,8 +35,8 @@ namespace {
     require $root . '/app/modules/Content/Cards/Service/Cards.php';
 
     use app\api\controller\BaseController;
-    use app\modules\Content\Cards\Service\Cards;
     use app\modules\Content\Cards\Transport\Api\FollowingFeed;
+    use app\modules\Platform\Social\Infrastructure\ThinkOrmSocialGraphRepository;
 
     final class FollowingFeedValidationController extends BaseController
     {
@@ -57,9 +57,7 @@ namespace {
     $assert(($schemas['list']['additionalProperties'] ?? true) === false, 'following feed must reject discovery-only filters');
     $assert(($schemas['list']['properties']['list_rows']['maximum'] ?? null) === 100, 'following feed page size must be capped at 100');
 
-    $activeFollowees = new ReflectionMethod(Cards::class, 'activeFolloweeIds');
-    $activeFollowees->setAccessible(true);
-    $assert($activeFollowees->invoke(null, 9) === [2], 'private followees must be excluded while active public/followers users remain eligible');
+    $assert((new ThinkOrmSocialGraphRepository())->visibleFolloweeIds(9, [4]) === [2], 'private and blocked followees must be excluded while active public/followers users remain eligible');
 
     $routeSource = file_get_contents($root . '/app/api/route/cards.php');
     $assert(str_contains($routeSource, "Route::get('me/feed/following', 'Content.Cards/listFollowing')"), 'following feed route must be declared');

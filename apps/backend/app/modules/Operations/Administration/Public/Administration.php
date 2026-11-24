@@ -4,16 +4,17 @@ declare(strict_types=1);
 namespace app\modules\Operations\Administration\Public;
 
 use app\modules\Operations\Administration\Service\AdminReadModel;
-use app\modules\Operations\SystemLifecycle\Application\SystemLifecycleCoordinator;
+use app\modules\Operations\SystemLifecycle\Public\Migrations;
 use app\modules\Platform\Eventing\Public\EventConsumption;
 use app\modules\Platform\Eventing\Public\EventConsumptionConflict;
+use app\modules\Platform\Files\Public\Files;
 use app\shared\Observability\AuditLogger;
 
 final class Administration
 {
     public static function overview(): array { return app(AdminReadModel::class)->overview(); }
-    public static function migrations(string $directory): array { return app(AdminReadModel::class)->migrations($directory); }
-    public static function runMigrations(string $directory): array { return app(SystemLifecycleCoordinator::class)->run($directory, false); }
+    public static function migrations(string $directory): array { return Migrations::inspect($directory); }
+    public static function runMigrations(string $directory): array { return Migrations::run($directory); }
     public static function runtime(): array { return app(AdminReadModel::class)->runtime(); }
     public static function runtimeConfig(): array { return app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->snapshot(); }
     public static function validateRuntimeConfig(array $input): array { return app(\app\modules\Operations\Runtime\Public\RuntimeCommunication::class)->validate($input); }
@@ -64,7 +65,7 @@ final class Administration
     public static function auditLog(int $id): array { return app(AdminReadModel::class)->auditLog($id); }
     public static function notificationsStats(): array { return app(AdminReadModel::class)->notificationsStats(); }
     public static function communityInsights(): array { return app(AdminReadModel::class)->communityInsights(); }
-    public static function fileUsage(int $fileId): array { return app(AdminReadModel::class)->fileUsage($fileId); }
+    public static function fileUsage(int $fileId): array { return Files::adminUsage($fileId); }
 
     public static function retryDelivery(int $deliveryId, int $actorId, string $ipAddress): void
     {

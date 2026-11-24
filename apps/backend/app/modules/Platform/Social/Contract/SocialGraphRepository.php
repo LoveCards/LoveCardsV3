@@ -14,6 +14,7 @@ interface SocialGraphRepository
     public function unfollow(int $actorId, int $targetId): bool;
 
     public function isFollowing(int $actorId, int $targetId): bool;
+    public function visibleFolloweeIds(int $userId, array $blockedIds): array;
 
     /**
      * @return array{items: array<int, array<string, mixed>>, next_cursor: ?string, has_more: bool}

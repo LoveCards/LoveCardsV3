@@ -62,6 +62,34 @@ final class ThinkOrmSocialGraphRepository implements SocialGraphRepository
             ->find() !== null;
     }
 
+    /** @return array<int,int> */
+    public function visibleFolloweeIds(int $userId, array $blockedIds): array
+    {
+        $ids = Db::table('user_follows')
+            ->alias('f')
+            ->join('users u', 'u.id = f.followee_id')
+            ->where('f.follower_id', $userId)
+            ->where('u.status', 0)
+            ->whereNull('u.deleted_at')
+            ->field('f.followee_id')
+            ->column('f.followee_id');
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn(int $id): bool => $id > 0)));
+        if ($ids === []) return [];
+        $blocked = array_fill_keys(array_map('intval', $blockedIds), true);
+        if ($blocked !== []) $ids = array_values(array_filter($ids, static fn(int $id): bool => !isset($blocked[$id])));
+        if ($ids === []) return [];
+
+        // 已核对关注关系，此处保留仅粉丝可见的主页，排除私密主页。
+        $privateIds = Db::table('privacy_preferences')
+            ->whereIn('user_id', $ids)
+            ->where('profile_visibility', 'private')
+            ->column('user_id');
+        if ($privateIds === []) return $ids;
+
+        $private = array_fill_keys(array_map('intval', $privateIds), true);
+        return array_values(array_filter($ids, static fn(int $id): bool => !isset($private[$id])));
+    }
+
     public function listFollowers(int $userId, ?string $cursor, int $limit, array $excludedUserIds = []): array
     {
         return $this->listRelation('followee_id', 'follower_id', $userId, $cursor, $limit, $excludedUserIds);

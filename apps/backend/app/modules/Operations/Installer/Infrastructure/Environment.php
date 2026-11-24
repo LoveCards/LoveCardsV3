@@ -2,7 +2,7 @@
 
 namespace app\modules\Operations\Installer\Infrastructure;
 
-use app\modules\Operations\Version\Service\VersionService;
+use app\modules\Operations\Version\Public\Version;
 
 class Environment
 {
@@ -18,7 +18,7 @@ class Environment
     //验证安装环境
     public static function Check()
     {
-        $requirements = VersionService::requirements();
+        $requirements = Version::requirements();
         $data = [
             'php' => self::EStruct(
                 phpversion(),

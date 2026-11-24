@@ -88,6 +88,12 @@ final class Social
         return app(SocialGraphRepository::class)->isFollowing($actorId, $targetId);
     }
 
+    public static function visibleFolloweeIds(int $userId): array
+    {
+        if ($userId < 1) return [];
+        return app(SocialGraphRepository::class)->visibleFolloweeIds($userId, app(SafetyRepository::class)->blockedUserIds($userId));
+    }
+
     public static function followers(int $userId, int $viewerId, ?string $cursor = null, int $limit = 20): array
     {
         self::assertRelationsVisible($userId, $viewerId);

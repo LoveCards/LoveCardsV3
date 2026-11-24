@@ -520,6 +520,11 @@ class Comments
      * @param int   $uid
      * @param array $caps
      */
+    public static function deleteForPurgedCards(array $cardIds): void
+    {
+        Db::table('comments')->where('aid', 1)->whereIn('pid', $cardIds)->delete();
+    }
+
     public static function deleteComments(
         array $ids,
         int $uid,

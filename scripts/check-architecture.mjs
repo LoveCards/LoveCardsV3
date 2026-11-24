@@ -285,10 +285,26 @@ await checkPhpBoundary('apps/backend/app/modules', /^app\\frontend\\/i)
 await checkPhpBoundary('apps/backend/app/modules', /^app\\system\\/i)
 
 const moduleRoot = path.join(root, 'apps/backend/app/modules')
+const moduleBoundaryExceptions = await readJson(path.join(root, 'scripts/lib/module-boundary-exceptions.json'))
+const moduleIdentity = (parts) => parts[0] === 'Theme' ? 'Theme' : parts.slice(0, 2).join('/')
 const moduleFiles = await walk(moduleRoot, (file) => file.endsWith('.php'))
 for (const file of moduleFiles) {
   const source = await readFile(file, 'utf8')
   const rel = relative(file)
+  const moduleFile = path.relative(moduleRoot, file).split(path.sep).join('/')
+  const owner = moduleIdentity(moduleFile.split('/'))
+  const code = source.replace(/\/\*[\s\S]*?\*\/|^\s*(?:namespace\s+[^;]+;|[/][/].*|#(?!\[).*)$/gm, '')
+  const references = new Set([...code.matchAll(/\bapp\\modules\\([A-Z]\w*(?:\\\w+)+)/g)].map((match) => match[1]))
+  for (const reference of references) {
+    const parts = reference.split('\\')
+    const target = moduleIdentity(parts)
+    const targetLayer = parts[parts[0] === 'Theme' ? 1 : 2]
+    const sharedContentModel = owner.startsWith('Content/') && target === 'Content/Infrastructure'
+      && targetLayer === 'Persistence'
+    if (target === owner || ['Public', 'Contract'].includes(targetLayer) || sharedContentModel) continue
+    if (moduleBoundaryExceptions[moduleFile]?.includes(reference)) continue
+    fail(`Cross-module reference must use Public or Contract: ${rel}:app\\modules\\${reference}`)
+  }
   const sourceModule = rel.split('/').slice(4, 6).join('/')
   const layer = rel.split('/').find((part) => ['Application', 'Domain', 'Contract', 'Infrastructure'].includes(part))
   const explicitModuleReferences = [...source.matchAll(/\\(app\\modules\\[A-Za-z_][A-Za-z0-9_\\]*)/g)].map((match) => match[1])
