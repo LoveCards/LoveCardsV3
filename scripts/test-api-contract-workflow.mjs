@@ -174,7 +174,7 @@ const adminOperations = [
   ['operations.auditLogs', 'audit.read', 'list', 'paginated', 200],
   ['reports.listManaged', 'reports.read', 'pagination', 'paginated', 200],
   ['reports.getManaged', 'reports.read', null, 'item', 200],
-  ['reports.transition', 'reports.manage', 'transition', 'item', 200],
+  ['reports.transition', ['reports.read', 'reports.manage'], 'transition', 'item', 200],
   ['users.security', 'users.security.read', null, 'item', 200],
   ['users.sessions', 'users.security.read', null, 'collection', 200],
   ['users.revokeSession', 'users.sessions.revoke', null, 'void', 204],
@@ -184,14 +184,14 @@ const adminOperations = [
   ['files.usage', 'files.usage.read', null, 'item', 200],
 ]
 
-for (const [operationId, capability, scene, shape, status] of adminOperations) {
+for (const [operationId, capabilities, scene, shape, status] of adminOperations) {
   const route = routeManifest.routes.find((item) => item.name === operationId)
   assert(route, `${operationId} must be exported in the route manifest`)
   assert.equal(route.meta.access.auth, 'required', `${operationId} must require authentication`)
-  assert.deepEqual(route.meta.access.allOf, [
-    { capability: 'admin.access', scope: 'global' },
-    { capability, scope: 'global' },
-  ], `${operationId} must fail closed on both admin access and its feature capability`)
+  const requiredCapabilities = ['admin.access'].concat(capabilities)
+  assert.deepEqual(route.meta.access.allOf, requiredCapabilities.map((capability) => (
+    { capability, scope: 'global' }
+  )), `${operationId} must require admin access and every feature capability`)
   assert(route.middleware.some((item) => item.endsWith('JwtAuthCheck')), `${operationId} must use JwtAuthCheck`)
   assert(route.middleware.some((item) => item.endsWith('PermissionCheck')), `${operationId} must use PermissionCheck`)
   assert.equal(route.contract.response.shape, shape, `${operationId} response shape`)

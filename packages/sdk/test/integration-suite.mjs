@@ -1,6 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { createHash } from 'node:crypto'
 import {
   setPhase, makeClient, test, assert, assertType, assertShape,
   assertApiError, sleep, summary, generateReport, BASE_URL,
@@ -1082,6 +1083,81 @@ await test('POST /admin/reports/:id/transition → reports.transition()', async 
   })
   assert(report.status === 'reviewing', 'Report should enter reviewing state')
   return report
+})
+
+await test('private message reporting exposes only case evidence and queues one outcome for the reporter', async () => {
+  const recipient = await userClient.users.me()
+  const original = '私信举报证据'.repeat(360)
+  const sent = await adminClient.messages.send({
+    recipient_uid: recipient.uid,
+    body: original,
+    client_message_id: `sdk-report-${Date.now()}`,
+  })
+  const input = { resource_type: 'message', resource_id: String(sent.id), reason: 'abuse' }
+
+  const password = 'Test1234!'
+  const account = `sdk_report_auditor_${Date.now()}@test.com`
+  const registered = await makeClient(null).session.register({ account, password, password_confirm: password })
+  const outsider = makeClient(registered.token)
+  const outsiderId = (await outsider.users.me()).id
+  await assertApiError(() => outsider.safety.report(input), 404)
+
+  const created = await userClient.safety.report(input)
+  const reportId = Number(created.id)
+  assert(reportId > 0, 'recipient must receive a report id')
+  assert(Number((await userClient.safety.report(input)).id) === reportId, 'a repeated submission must reuse the open case')
+  await assertApiError(() => outsider.reports.getManaged(reportId), 403)
+
+  const list = await adminClient.reports.listManaged({ resource_type: 'message' })
+  const row = list.data.find((item) => Number(item.id) === reportId)
+  assert(row && row.target_type === 'message' && !('evidence_snapshot' in row), 'private message filter must list the case without its evidence')
+
+  const roles = await adminClient.roles.list({ list_rows: 100 })
+  const auditor = roles.data.find((role) => role.slug === 'auditor')
+  assert(auditor, 'auditor role fixture is missing')
+  await adminClient.users.assignRoles(outsiderId, { roles_id: [Number(auditor.id)] })
+  const login = await makeClient(null).session.login({ account, password })
+  const reader = makeClient(login.token)
+  const detail = await reader.reports.getManaged(reportId)
+  const evidence = detail.evidence_snapshot
+  assert(evidence?.type === 'message' && Number(evidence.captured.id) === Number(sent.id), 'detail must contain the single reported message')
+  assert(evidence.captured.body === original.slice(0, 2000), 'evidence must keep the first 2000 characters')
+  assert(evidence.captured.body_sha256 === createHash('sha256').update(original).digest('hex'), 'evidence hash must cover the full message')
+  await assertApiError(() => reader.reports.transition(reportId, { status: 'reviewing' }), 403)
+
+  const writeOnlyRole = await adminClient.roles.create({
+    name: 'SDK举报处理测试',
+    slug: `sdk_report_write_${Date.now()}`,
+  })
+  await adminClient.roles.assignGrants(Number(writeOnlyRole.id), {
+    grants: [
+      { capability: 'admin.access', scope: 'global' },
+      { capability: 'reports.manage', scope: 'global' },
+    ],
+  })
+  await adminClient.users.assignRoles(outsiderId, { roles_id: [Number(writeOnlyRole.id)] })
+  const writeOnlyLogin = await makeClient(null).session.login({ account, password })
+  const writeOnly = makeClient(writeOnlyLogin.token)
+  await assertApiError(() => writeOnly.reports.getManaged(reportId), 403)
+  await assertApiError(() => writeOnly.reports.transition(reportId, { status: 'reviewing' }), 403)
+
+  const recipientOutcomes = async () => {
+    const events = await adminClient.operations.events({ event_type: 'system.notification.issued', list_rows: 100 })
+    return events.data.filter((event) => event.aggregate_type === 'user' && String(event.aggregate_key) === String(recipient.id))
+  }
+  const before = new Set((await recipientOutcomes()).map((event) => event.id))
+  await adminClient.reports.transition(reportId, { status: 'reviewing' })
+  await adminClient.reports.transition(reportId, { status: 'reviewing', note: '隔离测试备注' })
+  assert((await recipientOutcomes()).every((event) => before.has(event.id)), 'review and internal notes must not notify the reporter')
+  const resolved = await adminClient.reports.transition(reportId, { status: 'resolved', resolution: '隔离测试结论' })
+  assert(resolved.status === 'resolved', 'authorized reviewer must be able to resolve the case')
+  const outcomes = (await recipientOutcomes()).filter((event) => !before.has(event.id))
+  assert(outcomes.length === 1 && outcomes[0].deliveries.some((delivery) => delivery.handler_key === 'notifications.system-notification-issued'), 'resolution must queue exactly one notification for the reporter')
+  const audit = await adminClient.operations.auditLogs({ action: 'safety.report.transition', resource_type: 'report', resource_id: String(reportId) })
+  assert(audit.data.length === 3, 'review, note and resolution must each be audited')
+  const messages = await userClient.messages.list(Number(sent.conversation_id))
+  assert(messages.data.some((message) => Number(message.id) === Number(sent.id) && message.body === original), 'closing a report must leave the message readable')
+  return true
 })
 
 await test('GET /admin/files/:id/usage → files.usage()', async () => {

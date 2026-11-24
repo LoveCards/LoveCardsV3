@@ -27,10 +27,13 @@ use app\modules\Platform\Files\Transport\Api\AdminFileUsageResource;
 use app\modules\Operations\Administration\Transport\Api\AdminUpgradePlanResource;
 use app\shared\Authorization\Scope;
 
-$access = static fn (string $capability): array => ['auth' => 'required', 'allOf' => [
-    ['capability' => 'admin.access', 'scope' => Scope::GLOBAL],
-    ['capability' => $capability, 'scope' => Scope::GLOBAL],
-]];
+$access = static fn (string ...$capabilities): array => [
+    'auth' => 'required',
+    'allOf' => array_map(
+        static fn (string $capability): array => ['capability' => $capability, 'scope' => Scope::GLOBAL],
+        ['admin.access', ...$capabilities]
+    ),
+];
 $response = static fn (?string $resource, string $shape = 'item', int $status = 200): array => compact('resource', 'shape', 'status');
 $request = static fn (string $scene): array => ['validate' => AdminValidate::class, 'scene' => $scene];
 
@@ -134,7 +137,7 @@ Route::group('admin', function () use ($access, $response, $request) {
         ->setOption('meta', ['name' => '举报详情', 'group' => '治理', 'access' => $access('reports.read')]);
     Route::post('reports/:id/transition', 'Platform.Administration/transitionReport')->name('reports.transition')
         ->setOption('contract', ['request' => $request('transition'), 'response' => $response(AdminReportResource::class)])
-        ->setOption('meta', ['name' => '处理举报', 'group' => '治理', 'access' => $access('reports.manage')]);
+        ->setOption('meta', ['name' => '处理举报', 'group' => '治理', 'access' => $access('reports.read', 'reports.manage')]);
     Route::get('users/:id/security', 'Platform.Administration/userSecurity')->name('users.security')
         ->setOption('contract', ['request' => null, 'response' => $response(AdminSecurityResource::class)])
         ->setOption('meta', ['name' => '用户安全概览', 'group' => '安全', 'access' => $access('users.security.read')]);

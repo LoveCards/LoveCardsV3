@@ -342,7 +342,7 @@ export const generatedApiContract = {
   "permissions.list": { method: "GET", path: "/admin/permissions", status: 200, shape: "paginated", public: false, capabilities: ["admin.access","permissions.read"] },
   "reports.getManaged": { method: "GET", path: "/admin/reports/:id", status: 200, shape: "item", public: false, capabilities: ["admin.access","reports.read"] },
   "reports.listManaged": { method: "GET", path: "/admin/reports", status: 200, shape: "paginated", public: false, capabilities: ["admin.access","reports.read"] },
-  "reports.transition": { method: "POST", path: "/admin/reports/:id/transition", status: 200, shape: "item", public: false, capabilities: ["admin.access","reports.manage"] },
+  "reports.transition": { method: "POST", path: "/admin/reports/:id/transition", status: 200, shape: "item", public: false, capabilities: ["admin.access","reports.read","reports.manage"] },
   "roles.assignGrants": { method: "POST", path: "/admin/roles/:id/grants", status: 204, shape: "void", public: false, capabilities: ["admin.access","roles.assign"] },
   "roles.batch": { method: "POST", path: "/admin/roles/batch", status: 204, shape: "void", public: false, capabilities: ["admin.access","roles.delete"] },
   "roles.create": { method: "POST", path: "/admin/roles", status: 200, shape: "item", public: false, capabilities: ["admin.access","roles.create"] },

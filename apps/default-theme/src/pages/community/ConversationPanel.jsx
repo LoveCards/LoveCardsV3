@@ -4,10 +4,11 @@ import { useAuth } from '../../app/providers.jsx';
 import { getUserFacingError } from '../../app/user-facing-error.js';
 import { AuthorIdentity } from '../../components/AuthorIdentity.jsx';
 import { ResourceErrorBanner, ResourceState } from '../../components/ResourceState.jsx';
+import { ReportResourceDialog } from '../../features/moderation/ReportResourceDialog.jsx';
 import { ensureClientMessageId, listConversations, listMessages, sendMessage } from '../../services/community-service.js';
 import { getCommunicationRuntime, SIGNAL_MESSAGES } from '../../services/communication-runtime.js';
-import { Button, ChatComposer, ChatComposerInput, ChatSendButton } from '../../ui/index.js';
-import { conversationIdOf, conversationRecipientOf, formatMessageTime } from './message-utils.js';
+import { Button, ChatComposer, ChatComposerInput, ChatSendButton, Icon, IconButton, useToast } from '../../ui/index.js';
+import { conversationIdOf, conversationRecipientOf, formatMessageTime, reportableMessageId } from './message-utils.js';
 
 export function conversationPeerOf(item, currentUserId) {
   if (!item) return null;
@@ -49,6 +50,8 @@ export function ConversationThreadSkeleton({ standalone = false }) {
 
 export function ConversationPanel({ conversationId, initialRecipientId = null, standalone = false }) {
   const auth = useAuth();
+  const toast = useToast();
+  const currentUserId = auth.session?.uid;
   const numericId = Number(conversationId);
   const validId = Number.isInteger(numericId) && numericId > 0;
   const [state, setState] = useState({ status: 'loading', items: [], error: null });
@@ -57,6 +60,7 @@ export function ConversationPanel({ conversationId, initialRecipientId = null, s
   const [body, setBody] = useState('');
   const [pending, setPending] = useState([]);
   const [busy, setBusy] = useState(false);
+  const [reportTargetId, setReportTargetId] = useState(null);
   const threadRef = useRef(null);
   const loadRequestRef = useRef(0);
   const sendingRef = useRef(false);
@@ -115,7 +119,11 @@ export function ConversationPanel({ conversationId, initialRecipientId = null, s
     setBody('');
     await transmit(message);
   };
-  const rows = useMemo(() => [...state.items, ...pending.filter((item) => !state.items.some((row) => row.client_message_id === item.client_message_id))], [pending, state.items]);
+  const rows = useMemo(() => [
+    ...state.items.map((item) => ({ item, reportId: reportableMessageId(item, currentUserId) })),
+    ...pending.filter((item) => !state.items.some((row) => row.client_message_id === item.client_message_id))
+      .map((item) => ({ item, reportId: null })),
+  ], [currentUserId, pending, state.items]);
 
   useEffect(() => {
     const node = threadRef.current;
@@ -144,8 +152,30 @@ export function ConversationPanel({ conversationId, initialRecipientId = null, s
       </header>
       {state.error && <ResourceErrorBanner error={state.error} onRetry={() => void load({ background: true })} />}
       <section className="message-thread" ref={threadRef} tabIndex={0} aria-label="消息记录" aria-live="polite">
-        {rows.length ? rows.map((item, index) => { const own = String(item.sender_uid || '') === String(auth.session?.uid || ''); return <article className={`message-bubble${own ? ' is-own' : ''}${item.status === 'failed' ? ' is-failed' : ''}`} key={item.id || item.client_message_id || index}><p>{item.body || item.content}</p><footer><span>{item.status === 'sending' ? '发送中…' : item.status === 'failed' ? item.error : formatMessageTime(item.created_at)}</span>{item.status === 'failed' && <Button type="button" label="重试" variant="ghost" size="sm" isDisabled={busy} onClick={() => void transmit(item)} />}</footer></article>; }) : <div className="message-empty"><strong>还没有消息</strong><span>{recipientId ? '发送第一条消息开始对话。' : '服务端尚未提供该会话的对方用户标识，因此暂时不能发送。'}</span></div>}
+        {rows.length ? rows.map(({ item, reportId }, index) => {
+          const own = String(item.sender_uid || '') === String(currentUserId || '');
+          const failed = item.status === 'failed';
+          return <article className={`message-bubble${own ? ' is-own' : ''}${failed ? ' is-failed' : ''}`} key={item.id || item.client_message_id || index}>
+            <p>{item.body || item.content}</p>
+            <footer>
+              <span>{item.status === 'sending' ? '发送中…' : failed ? item.error : formatMessageTime(item.created_at)}</span>
+              {failed && <Button type="button" label="重试" variant="ghost" size="sm" isDisabled={busy} onClick={() => void transmit(item)} />}
+              {reportId && <IconButton className="message-report-button" type="button" label="举报这条私信" tooltip="举报这条私信" variant="ghost" size="lg" icon={<Icon name="flag" size={17} />} onClick={(event) => {
+                event.currentTarget.focus({ preventScroll: true });
+                setReportTargetId(reportId);
+              }} />}
+            </footer>
+          </article>;
+        }) : <div className="message-empty"><strong>还没有消息</strong><span>{recipientId ? '发送第一条消息开始对话。' : '服务端尚未提供该会话的对方用户标识，因此暂时不能发送。'}</span></div>}
       </section>
       <ChatComposer className="message-composer" value={body} onChange={setBody} onSubmit={send} placeholder="写一条私信" isDisabled={busy || !recipientId} density="comfortable" elevation="none" status={!recipientId ? { type: 'warning', message: '收件人标识不可用，发送功能已禁用。' } : undefined} footerActions={<span className="message-composer-hint">Enter 发送 · Shift+Enter 换行</span>} sendButton={<ChatSendButton isDisabled={busy || !recipientId || !body.trim()} />} input={<ChatComposerInput label="写一条私信" value={body} onChange={setBody} maxLength={2000} maxRows={6} />} />
+      <ReportResourceDialog
+        isOpen={Boolean(reportTargetId)}
+        onOpenChange={(open) => { if (!open) setReportTargetId(null); }}
+        resourceType="message"
+        resourceId={reportTargetId}
+        title="举报这条私信"
+        onFeedback={(body) => toast({ body, uniqueID: 'message-report', collisionBehavior: 'overwrite' })}
+      />
     </section>;
 }

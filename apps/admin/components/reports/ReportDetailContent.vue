@@ -4,7 +4,12 @@
         <AdminDetailSection title="举报概况">
           <v-row dense>
             <v-col cols="12" sm="6"><AdminDetailField label="当前状态"><AdminStatusChip :status="report.status" /></AdminDetailField></v-col>
-            <v-col cols="12" sm="6"><AdminDetailField label="举报目标"><AdminResourceLink :resource-type="report.target_type" :resource-id="report.target_id" /></AdminDetailField></v-col>
+            <v-col cols="12" sm="6">
+              <AdminDetailField label="举报目标">
+                <span v-if="report.target_type === 'message'">私信 #{{ report.target_id }}</span>
+                <AdminResourceLink v-else :resource-type="report.target_type" :resource-id="report.target_id" />
+              </AdminDetailField>
+            </v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="举报人"><AdminResourceLink resource-type="user" :resource-id="report.reporter_id" /></AdminDetailField></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="原因" :value="report.reason" /></v-col>
             <v-col cols="12" sm="6"><AdminDetailField label="负责人"><AdminResourceLink v-if="report.assignee_id" resource-type="user" :resource-id="report.assignee_id" /><span v-else>未指派</span></AdminDetailField></v-col>
@@ -30,14 +35,17 @@
 
       <AdminDetailSection v-if="canManage" title="处理操作">
         <div v-if="mode === 'view'" class="d-flex flex-wrap ga-2">
-          <v-btn v-if="canTransition" prepend-icon="mdi-gavel" variant="tonal" @click="startProcessing">更新处理状态</v-btn>
-          <v-btn prepend-icon="mdi-note-text-outline" variant="outlined" @click="startNote">追加备注</v-btn>
+          <v-btn v-if="canTransition" :disabled="saving" prepend-icon="mdi-gavel" variant="tonal" @click="startProcessing">更新处理状态</v-btn>
+          <v-btn :disabled="saving" prepend-icon="mdi-note-text-outline" variant="outlined" @click="startNote">追加备注</v-btn>
         </div>
         <template v-else-if="mode === 'process'">
           <v-btn :disabled="saving" variant="text" class="mb-2" @click="startNote">改为追加备注</v-btn>
           <v-select :disabled="saving" v-model="nextStatus" :items="availableStatusItems" label="目标状态" variant="outlined" />
           <v-textarea :disabled="saving" v-model="resolution" class="mt-3" label="处理原因或结论" maxlength="255" rows="4" variant="outlined" />
-          <v-alert class="mt-3" type="info" variant="tonal">状态变化和原因将写入审计记录；进入对用户有意义的终态时，由后端按通知规范处理。</v-alert>
+          <v-alert class="mt-3" type="info" variant="tonal">
+            状态变化和原因将写入审计记录；进入对用户有意义的终态时，由后端按通知规范处理。
+            <span v-if="report.target_type === 'message'">此操作仅更新举报记录，私信仍可按原规则阅读。</span>
+          </v-alert>
           <v-alert v-if="actionError" class="mt-3" type="error" variant="tonal">{{ actionError }}</v-alert>
           <div class="d-flex justify-end ga-2 mt-4"><v-btn variant="text" :disabled="saving" @click="cancelAction">取消</v-btn><v-btn color="primary" variant="flat" :disabled="saving || !nextStatus || !resolution.trim()" :loading="saving" @click="transition">确认处理</v-btn></div>
         </template>

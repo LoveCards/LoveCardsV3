@@ -42,7 +42,7 @@ GET/DELETE 的非路径参数由 SDK 作为 query 发送，POST/PATCH 作为 JSO
 - 私信读取要求当前用户是会话成员；发送前验证收件人、拉黑关系与 `messages_from` 偏好。
 - 公开主页只暴露 Public Resource 白名单；邮箱、电话、安全版本和恢复状态不进入公开响应。
 - 管理员查看社区聚合只返回计数，不返回草稿正文、个人收藏明细或浏览轨迹。
-- 举报详情只给 `reports.read`；状态转换另需 `reports.manage`，原因进入 report event 与审计。
+- 举报详情需要 `reports.read`。状态转换和追加备注返回包含证据的详情，因此同时要求 `reports.read` 与 `reports.manage`，处理记录写入 report event 和审计。
 
 ## 通知与事件一致性
 

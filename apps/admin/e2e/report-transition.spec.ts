@@ -62,6 +62,8 @@ const reportFixture = (status: string, events: unknown[] = []) => ({
 test('report transition moves open report to reviewing and preserves the audit copy', async ({ page }) => {
   let transitionBody: Record<string, unknown> | null = null
   let currentStatus = 'open'
+  let releaseRefresh: (() => void) | undefined
+  const refreshGate = new Promise<void>(resolve => { releaseRefresh = resolve })
   await page.route('**/api/admin/reports/55/transition', async (route) => {
     transitionBody = JSON.parse(String(route.request().postData() ?? '{}'))
     currentStatus = 'reviewing'
@@ -77,6 +79,7 @@ test('report transition moves open report to reviewing and preserves the audit c
     })
   })
   await page.route('**/api/admin/reports/55', async (route) => {
+    if (currentStatus === 'reviewing') await refreshGate
     await route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify({ success: true, data: reportFixture(currentStatus) }),
@@ -100,10 +103,17 @@ test('report transition moves open report to reviewing and preserves the audit c
   await expect(confirm).toBeEnabled()
   await confirm.click()
 
-  await expect.poll(() => transitionBody).not.toBeNull()
-  expect(transitionBody).toMatchObject({ status: 'reviewing', note: '已核实上下文，转人工跟进' })
-  await expect(processing.getByRole('button', { name: '确认处理', exact: true })).toHaveCount(0)
+  const updateStatus = processing.getByRole('button', { name: '更新处理状态', exact: true })
+  try {
+    await expect.poll(() => transitionBody).not.toBeNull()
+    expect(transitionBody).toMatchObject({ status: 'reviewing', note: '已核实上下文，转人工跟进' })
+    await expect(updateStatus).toBeDisabled()
+    await expect(processing.getByRole('button', { name: '追加备注', exact: true })).toBeDisabled()
+  } finally {
+    releaseRefresh?.()
+  }
   await expect(page.getByText('处理中', { exact: true })).toBeVisible()
+  await expect(updateStatus).toBeEnabled()
 })
 
 test('failed transition keeps the dialog open with the resolution text preserved', async ({ page }) => {
@@ -133,12 +143,23 @@ test('failed transition keeps the dialog open with the resolution text preserved
   await expect(processing.getByLabel('处理原因或结论')).toHaveValue('这段文字必须保留')
 })
 
-test('report list opens the current report in a dialog and preserves its filters', async ({ page }) => {
+test('private message report opens evidence only in its case dialog and preserves the list filters', async ({ page }) => {
   test.setTimeout(90_000)
+  const report = { ...reportFixture('open'), target_type: 'message', target_id: '482' }
+  const evidence = '仅在案件详情展示的私信证据'
   await page.route('**/api/admin/reports/55', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
-      body: JSON.stringify({ success: true, data: reportFixture('open') }),
+      body: JSON.stringify({
+        success: true,
+        data: {
+          ...report,
+          evidence_snapshot: {
+            type: 'message',
+            captured: { id: 482, conversation_id: 23, sender_id: 92, body: evidence },
+          },
+        },
+      }),
     })
   })
   await page.route('**/api/admin/reports?**', async (route) => {
@@ -146,23 +167,28 @@ test('report list opens the current report in a dialog and preserves its filters
       contentType: 'application/json',
       body: JSON.stringify({
         success: true,
-        data: [reportFixture('open')],
+        data: [report],
         pagination: { currentPage: 1, totalItems: 1 },
       }),
     })
   })
-  await page.goto('./apps/community/reports?status=open&page=1&list_rows=20', { waitUntil: 'domcontentloaded' })
+  await page.goto('./apps/community/reports?status=open&resource_type=message&page=1&list_rows=20', { waitUntil: 'domcontentloaded' })
   const row = page.getByRole('row').filter({ hasText: '包含骚扰内容' })
   await expect(row).toContainText('包含骚扰内容', { timeout: 20_000 })
   await expect(page.locator('thead').getByText('ID', { exact: true })).toHaveCount(0)
   await expect(row.getByText('用户 #91', { exact: true })).toBeVisible()
-  await expect(row.getByText('卡片 #482', { exact: true })).toBeVisible()
+  await expect(row.getByText('私信 #482', { exact: true })).toBeVisible()
+  await expect(page.getByText(evidence, { exact: true })).toHaveCount(0)
   const listUrl = page.url()
   const detailRequest = page.waitForRequest(request => request.url().endsWith('/api/admin/reports/55') && request.method() === 'GET')
   await row.getByRole('button', { name: '处理', exact: true }).click()
   await detailRequest
   const dialog = page.getByRole('dialog', { name: '举报详情' })
   await expect(dialog).toBeVisible()
+  await expect(dialog.getByText('私信 #482', { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('link', { name: '私信 #482', exact: true })).toHaveCount(0)
+  await expect(dialog.getByText(evidence, { exact: true })).toBeVisible()
+  await expect(dialog.getByText('此操作仅更新举报记录，私信仍可按原规则阅读。')).toBeVisible()
   await expect(dialog).toContainText('包含骚扰内容')
   await expect(dialog).toContainText('连续多条评论引用了同一段私人信息')
   await expect(page).toHaveURL(listUrl)

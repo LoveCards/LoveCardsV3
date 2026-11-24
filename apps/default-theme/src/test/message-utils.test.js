@@ -6,7 +6,30 @@ import {
   conversationUnreadTotalOf,
   formatMessageTime,
   parseMessageDate,
+  reportableMessageId,
 } from '../pages/community/message-utils.js';
+
+describe('private message report eligibility', () => {
+  const recipient = '123456789012';
+  const incoming = { id: 42, sender_uid: '210987654321' };
+
+  it('uses the incoming message server ID without rounding digit strings', () => {
+    expect(reportableMessageId(incoming, recipient)).toBe('42');
+    expect(reportableMessageId({ ...incoming, id: '9007199254740993' }, recipient)).toBe('9007199254740993');
+  });
+
+  it('excludes own, unresolved, sending, and failed messages', () => {
+    expect(reportableMessageId({ ...incoming, sender_uid: recipient }, recipient)).toBeNull();
+    expect(reportableMessageId({ ...incoming, sender_uid: null }, recipient)).toBeNull();
+    expect(reportableMessageId(incoming, null)).toBeNull();
+    for (const status of ['sending', 'failed']) {
+      expect(reportableMessageId({ ...incoming, status }, recipient)).toBeNull();
+    }
+    for (const id of [undefined, 0, -1, 1.5, 'local-id', '1e3', Number.MAX_SAFE_INTEGER + 1]) {
+      expect(reportableMessageId({ ...incoming, id }, recipient)).toBeNull();
+    }
+  });
+});
 
 describe('message time presentation', () => {
   const now = new Date('2026-08-23T12:00:00+08:00');
