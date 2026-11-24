@@ -206,8 +206,9 @@
       text-decoration: none;
     }
     .desktop-nav a:hover, .sidebar-theme:hover { color: var(--lc-ink); background: var(--lc-surface-subtle); }
-    .desktop-nav a[aria-current='page'], .sidebar-theme[aria-current='page'] { color: var(--lc-rose-deep); background: var(--lc-rose-soft); font-weight: 730; }
+    .desktop-nav a[aria-current='page'] { color: var(--lc-rose-deep); background: var(--lc-rose-soft); font-weight: 730; }
     .desktop-nav a:focus-visible, .sidebar-theme:focus-visible { outline: 2px solid var(--lc-rose-deep); outline-offset: -2px; }
+    .sidebar-theme { width: 100%; justify-content: flex-start; }
     .sidebar-nav-icon { display: grid; place-items: center; flex: 0 0 24px; height: 24px; }
     .sidebar-nav-icon .avatar { width: 24px; height: 24px; }
     .desktop-nav a.header-compose { color: var(--lc-rose-deep); background: var(--lc-rose-soft); margin-block: 4px; }

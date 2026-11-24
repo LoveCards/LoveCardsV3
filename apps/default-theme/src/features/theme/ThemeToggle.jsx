@@ -1,12 +1,23 @@
 import { useThemeMode } from '../../app/providers.jsx';
-import { Button, Icon, IconButton } from '../../ui/index.js';
+import { Button, Icon } from '../../ui/index.js';
 
-export function ThemeToggle({ showLabel = false }) {
-  const { mode, toggleMode } = useThemeMode();
-  const nextLabel = mode === 'dark' ? '切换到亮色模式' : '切换到暗色模式';
+const themeModes = {
+  light: { label: '浅色', icon: 'sun', next: 'dark' },
+  dark: { label: '深色', icon: 'moon', next: 'system' },
+  system: { label: '自动', icon: 'monitor', next: 'light' },
+};
 
-  const icon = <Icon name={mode === 'dark' ? 'sun' : 'moon'} size={18} />;
-  return showLabel
-    ? <Button className="theme-toggle" type="button" onClick={toggleMode} label={mode === 'dark' ? '亮色' : '暗色'} variant="ghost" size="lg" icon={icon} />
-    : <IconButton className="theme-toggle" type="button" onClick={toggleMode} label={nextLabel} tooltip={nextLabel} variant="ghost" size="lg" icon={icon} />;
+export function ThemeToggle() {
+  const { preference, setPreference } = useThemeMode();
+  const { label, icon } = themeModes[preference];
+
+  return <Button
+    className="sidebar-theme"
+    type="button"
+    onClick={() => setPreference((current) => themeModes[current].next)}
+    label={`切换主题 · ${label}`}
+    variant="ghost"
+    size="lg"
+    icon={<Icon name={icon} size={17} />}
+  />;
 }

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Brand } from '../components/Brand.jsx';
 import { HeaderSearch } from '../components/HeaderSearch.jsx';
 import { ContentChannels } from '../components/ContentChannels.jsx';
+import { ThemeToggle } from '../features/theme/ThemeToggle.jsx';
 import { Avatar, Icon } from '../ui/icons.jsx';
 import { IconButton } from '../ui/controls.jsx';
 import { useAuth } from '../app/providers.jsx';
@@ -134,7 +135,7 @@ export function AppShell({ children, mobileMode = 'standard', pendingIdentity = 
           ))}
         </nav>
         <footer className="product-sidebar-footer">
-          <Link className="sidebar-theme" to="/settings/appearance" aria-current={pathname === '/settings/appearance' ? 'page' : undefined}><Icon name="settings" size={17} /><span>主题设置</span></Link>
+          <ThemeToggle />
           <small>© LoveCards</small>
         </footer>
       </aside>
