@@ -349,7 +349,7 @@ try {
 
   await prepareS11CompatibilitySource(releaseSource, php)
   await cp(path.join(backendRoot, 'vendor'), path.join(releaseSource, 'vendor'), { recursive: true })
-  console.log('[upgrade-e2e] isolated compatibility Release source prepared from reviewed commit')
+  console.log('[upgrade-e2e] isolated R1 source prepared from reviewed baseline and S11 executor fix')
 
   const buildOutput = await run(php, [
     path.join('apps', 'backend', 'think'), 'lc:release:build', releaseZip,
