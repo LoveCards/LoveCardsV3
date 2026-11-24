@@ -53,6 +53,10 @@ final class SqlFileMigration implements Migration
     private function execute(string $phase): void
     {
         $sql = trim($this->phases[$phase] ?? '');
+        if (S11RoutineGuard::applies($this->descriptor->id(), $phase)) {
+            S11RoutineGuard::execute($this->descriptor, $phase, $sql);
+            return;
+        }
         if ($sql !== '') SqlStatementExecutor::execute($sql);
     }
 

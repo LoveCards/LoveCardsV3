@@ -12,10 +12,15 @@ final class SqlStatementExecutor
     {
         if (trim($sql) === '') throw new \InvalidArgumentException('SQL 文件为空');
         foreach (self::splitStatements($sql) as $statement) {
-            $pdoStatement = Db::connect()->getPdo()->prepare($statement);
-            $pdoStatement->execute();
-            $pdoStatement->closeCursor();
+            self::executeStatement(Db::connect()->getPdo(), $statement);
         }
+    }
+
+    public static function executeStatement(\PDO $connection, string $sql, array $parameters = []): void
+    {
+        $statement = $connection->prepare($sql);
+        $statement->execute($parameters);
+        $statement->closeCursor();
     }
 
     /** 普通 SQL 分句；历史迁移的 DELIMITER 指令在此处理。 */

@@ -8,6 +8,7 @@ import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { resolveSupportedPhp } from './lib/php-runtime.mjs'
 import { detectUtf8mb4Collation } from './lib/mysql-collation.mjs'
+import { prepareS11CompatibilitySource } from './prepare-s11-compatibility-source.mjs'
 
 const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
 const backendRoot = path.join(root, 'apps', 'backend')
@@ -27,10 +28,6 @@ const releaseCopyExcludedRoots = new Set([
 ])
 const contractProbeTable = 'e2e_upgrade_contract_probe'
 const contractProbeMigration = '20991231235959_e2e_contract_probe.sql'
-// R1 兼容 Release 的完整源码身份；包含最终受审 S11 与点赞前驱迁移。
-const compatibilityRef = 'review/r1-compat-source-20261115'
-const compatibilityCommit = '9632a4946808244bbae67149fae8781bfa6b015d'
-const compatibilityMigrations = ['20261112000001.sql', '20261112000002.sql', '20261112000003.sql']
 
 if (process.env.LOVECARDS_UPGRADE_E2E_ISOLATED !== '1') {
   throw new Error('Refusing upgrade E2E: set LOVECARDS_UPGRADE_E2E_ISOLATED=1')
@@ -221,24 +218,6 @@ async function prepareReleaseSource(destination) {
   })
 }
 
-async function prepareCompatibilitySource(destination, php, temporaryRoot) {
-  const archive = path.join(temporaryRoot, 'compatibility-source.zip')
-  const extractRoot = path.join(temporaryRoot, 'compatibility-source')
-  const taggedCommit = await run('git', ['rev-parse', `refs/tags/${compatibilityRef}^{commit}`])
-  if (taggedCommit !== compatibilityCommit) throw new Error('Reviewed R1 compatibility source tag differs from expected commit')
-  await run('git', ['archive', '--format=zip', `--output=${archive}`, compatibilityCommit, 'apps/backend'])
-  const extract = '$zip=new ZipArchive();if($zip->open($argv[1])!==true||!$zip->extractTo($argv[2]))exit(1);$zip->close();'
-  await run(php, ['-r', extract, archive, extractRoot])
-  await cp(path.join(extractRoot, 'apps', 'backend'), destination, { recursive: true })
-  for (const migration of compatibilityMigrations) {
-    const source = await readFile(path.join(destination, 'database', 'migrations', migration))
-    const current = await readFile(path.join(backendRoot, 'database', 'migrations', migration))
-    if (!source.equals(current)) throw new Error(`R1 migration checksum differs from current source: ${migration}`)
-  }
-  // Composer dependencies are installed by CI and intentionally absent from Git.
-  await cp(path.join(backendRoot, 'vendor'), path.join(destination, 'vendor'), { recursive: true })
-}
-
 async function addContractProbe(destination) {
   const migration = [
     '-- E2E-only migration injected into the disposable Release source.',
@@ -368,8 +347,9 @@ try {
   await run(php, ['-r', configureScheduledCron], dbEnv)
   console.log('[upgrade-e2e] previous Release cron evidence prepared')
 
-  await prepareCompatibilitySource(releaseSource, php, temporaryRoot)
-  console.log('[upgrade-e2e] isolated compatibility Release source prepared from reviewed commit')
+  await prepareS11CompatibilitySource(releaseSource, php)
+  await cp(path.join(backendRoot, 'vendor'), path.join(releaseSource, 'vendor'), { recursive: true })
+  console.log('[upgrade-e2e] isolated R1 source prepared from reviewed baseline and S11 executor fix')
 
   const buildOutput = await run(php, [
     path.join('apps', 'backend', 'think'), 'lc:release:build', releaseZip,

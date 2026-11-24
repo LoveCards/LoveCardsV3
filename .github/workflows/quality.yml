@@ -180,10 +180,54 @@ jobs:
             test-results/
             packages/sdk/test/TEST_REPORT.md
 
+  mysql57-upgrade:
+    name: MySQL 5.7 signed upgrade
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:5.7.44
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PHP_DATABASE_COLLATION: utf8mb4_general_ci
+      LOVECARDS_E2E_DB_HOST: 127.0.0.1
+      LOVECARDS_E2E_DB_PORT: '3306'
+      LOVECARDS_E2E_DB_USER: root
+      LOVECARDS_E2E_DB_PASSWORD: root
+      LOVECARDS_E2E_ADMIN_ACCOUNT: e2e-admin@example.test
+      LOVECARDS_E2E_ADMIN_PASSWORD: '123456'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql, zip, gd
+          tools: composer:v2
+      - run: composer install --no-interaction --prefer-dist --no-progress
+        working-directory: apps/backend
+      - name: Verify signed upgrade and clean-install schema on MySQL 5.7
+        run: node scripts/run-schema-consistency-e2e.mjs
+        env:
+          LOVECARDS_SCHEMA_E2E_ISOLATED: '1'
+          LOVECARDS_UPGRADE_E2E_DB_NAME: lovecards_e2e_mysql57_ci_${{ github.run_id }}_${{ github.run_attempt }}
+
   backend-gate:
     name: backend
-    needs: backend
+    needs: [backend, mysql57-upgrade]
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - run: test "${{ needs.backend.result }}" = "success"
+      - run: test "${{ needs.backend.result }}" = "success" && test "${{ needs.mysql57-upgrade.result }}" = "success"

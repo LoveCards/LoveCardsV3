@@ -130,6 +130,8 @@ npm.cmd run test:sdk:integration
 
 [Quality 工作流](../../.github/workflows/quality.yml) 的 `integration` 作业使用 MySQL 8 和 Playwright Chromium。先验证数据库执行租约、打包主题，再验证测试库碰撞保护、schema 一致性和签名升级，然后运行 SDK/Admin/Theme 组合 E2E 与全仓构建。失败时保留 Playwright 报告、trace、截图、视频和 SDK 测试报告。长驻测试进程有超时和进程树清理。
 
+`MySQL 5.7 signed upgrade` 作业用 MySQL 5.7.44 运行同一套签名 R1 → R2、S11 归属保护、显式重试和新装终态比对。R1 构建源码由受审基线与执行器修复组成，打包前核对全部历史 SQL 的原始字节。汇总 `backend` 检查同时要求 PHP 8.1/8.2 的后端测试和 MySQL 5.7 升级通过。
+
 ## 3. 日常质量门禁
 
 在仓库根目录执行：
