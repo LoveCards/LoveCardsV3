@@ -28,10 +28,10 @@ describe('route smoke', () => {
     const sidebar = html.match(/<aside class="product-sidebar"[\s\S]*?<\/aside>/)?.[0] || '';
     const footer = sidebar.match(/<footer class="product-sidebar-footer"[\s\S]*?<\/footer>/)?.[0] || '';
     expect([...sidebar.matchAll(/href="\/me"/g)]).toHaveLength(1);
-    expect([...footer.matchAll(/href="([^"]+)"/g)].map((match) => match[1])).toEqual(['/settings/appearance']);
-    expect(footer).toContain('主题设置');
+    expect(footer).not.toContain('href=');
+    expect(footer).toMatch(/<button[^>]*class="[^"]*sidebar-theme/);
+    expect(footer).toContain('切换主题 · 浅色');
     expect(footer).toContain('©');
-    expect(footer).not.toContain('<button');
     expect(html).not.toContain('Home feed · Blueprint 01');
     expect(html).not.toContain('UI Engineering Baseline');
   });

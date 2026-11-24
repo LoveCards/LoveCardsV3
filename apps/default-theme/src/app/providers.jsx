@@ -73,7 +73,6 @@ export function AppProviders({ children, initialMode }) {
       setMode: setPreference,
       reduceMotion,
       setReduceMotion,
-      toggleMode: () => setPreference(mode === 'dark' ? 'light' : 'dark'),
     }),
     [mode, preference, reduceMotion],
   );
