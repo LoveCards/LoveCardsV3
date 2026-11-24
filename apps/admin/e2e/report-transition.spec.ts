@@ -62,6 +62,8 @@ const reportFixture = (status: string, events: unknown[] = []) => ({
 test('report transition moves open report to reviewing and preserves the audit copy', async ({ page }) => {
   let transitionBody: Record<string, unknown> | null = null
   let currentStatus = 'open'
+  let releaseRefresh: (() => void) | undefined
+  const refreshGate = new Promise<void>(resolve => { releaseRefresh = resolve })
   await page.route('**/api/admin/reports/55/transition', async (route) => {
     transitionBody = JSON.parse(String(route.request().postData() ?? '{}'))
     currentStatus = 'reviewing'
@@ -77,6 +79,7 @@ test('report transition moves open report to reviewing and preserves the audit c
     })
   })
   await page.route('**/api/admin/reports/55', async (route) => {
+    if (currentStatus === 'reviewing') await refreshGate
     await route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify({ success: true, data: reportFixture(currentStatus) }),
@@ -100,10 +103,17 @@ test('report transition moves open report to reviewing and preserves the audit c
   await expect(confirm).toBeEnabled()
   await confirm.click()
 
-  await expect.poll(() => transitionBody).not.toBeNull()
-  expect(transitionBody).toMatchObject({ status: 'reviewing', note: '已核实上下文，转人工跟进' })
-  await expect(processing.getByRole('button', { name: '确认处理', exact: true })).toHaveCount(0)
+  const updateStatus = processing.getByRole('button', { name: '更新处理状态', exact: true })
+  try {
+    await expect.poll(() => transitionBody).not.toBeNull()
+    expect(transitionBody).toMatchObject({ status: 'reviewing', note: '已核实上下文，转人工跟进' })
+    await expect(updateStatus).toBeDisabled()
+    await expect(processing.getByRole('button', { name: '追加备注', exact: true })).toBeDisabled()
+  } finally {
+    releaseRefresh?.()
+  }
   await expect(page.getByText('处理中', { exact: true })).toBeVisible()
+  await expect(updateStatus).toBeEnabled()
 })
 
 test('failed transition keeps the dialog open with the resolution text preserved', async ({ page }) => {

@@ -35,8 +35,8 @@
 
       <AdminDetailSection v-if="canManage" title="处理操作">
         <div v-if="mode === 'view'" class="d-flex flex-wrap ga-2">
-          <v-btn v-if="canTransition" prepend-icon="mdi-gavel" variant="tonal" @click="startProcessing">更新处理状态</v-btn>
-          <v-btn prepend-icon="mdi-note-text-outline" variant="outlined" @click="startNote">追加备注</v-btn>
+          <v-btn v-if="canTransition" :disabled="saving" prepend-icon="mdi-gavel" variant="tonal" @click="startProcessing">更新处理状态</v-btn>
+          <v-btn :disabled="saving" prepend-icon="mdi-note-text-outline" variant="outlined" @click="startNote">追加备注</v-btn>
         </div>
         <template v-else-if="mode === 'process'">
           <v-btn :disabled="saving" variant="text" class="mb-2" @click="startNote">改为追加备注</v-btn>
