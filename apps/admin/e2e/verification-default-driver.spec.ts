@@ -55,7 +55,7 @@ test('verification requirements save user and captcha groups together', async ({
     if (route.request().method() === 'POST') {
       committed = route.request().postDataJSON() as Record<string, unknown>
       return route.fulfill({ json: { success: true, data: {
-        user: { __revision: 4, captcha: true },
+        user: { __revision: 4, registration_mode: 'email_or_phone', captcha: true, registration_sms_verification: true },
         captcha: { __revision: 8, captcha_enabled: true, code_enabled: true, code_channel: 'smtp' },
       } } })
     }
@@ -75,7 +75,7 @@ test('verification requirements save user and captcha groups together', async ({
   await expect(page.getByText('登录：人机验证')).toBeVisible({ timeout: 120_000 })
   await page.getByRole('tab', { name: '验证要求' }).click()
   const requirements = page.getByRole('region', { name: '站点验证要求' })
-  for (const name of ['注册邮件验证', '注册与卡片写入的人机验证']) {
+  for (const name of ['注册邮件验证', '注册短信验证', '注册与卡片写入的人机验证']) {
     const select = requirements.getByRole('combobox', { name, exact: true })
     await select.press('ArrowDown')
     await expect(select).toHaveAttribute('aria-controls', /.+/)
@@ -84,7 +84,7 @@ test('verification requirements save user and captcha groups together', async ({
   }
   await page.getByRole('button', { name: '保存站点验证要求' }).click()
   await expect(page.getByText('站点验证要求已保存。')).toBeVisible()
-  expect(committed).toEqual({ user: { captcha: true, __revision: 3 }, captcha: { captcha_enabled: true, __revision: 7 } })
+  expect(committed).toEqual({ user: { registration_mode: 'email_or_phone', captcha: true, registration_sms_verification: true, __revision: 3 }, captcha: { captcha_enabled: true, __revision: 7 } })
 })
 
 test('site access remains editable without captcha read permission', async ({ page }) => {
@@ -135,6 +135,7 @@ test('verification conflict preserves unsaved requirements', async ({ page }) =>
       '/api/admin/config': { user: { __revision: 3, captcha: false }, captcha: { __revision: 7, captcha_enabled: false, code_enabled: true, code_channel: 'smtp' } },
       '/api/admin/captcha/drivers': [{ slug: 'gd_image', type: 'captcha', name: '图片验证码', fields: [] }],
       '/api/captcha/config': { human_ready: true },
+      '/api/session/policy': { registration: { enabled: true, account_types: ['email', 'phone'], email_verification_required: false, sms_verification_required: false } },
     }
     return route.fulfill({ json: { success: true, data: data[path] ?? [] } })
   })
@@ -154,7 +155,7 @@ test('verification conflict preserves unsaved requirements', async ({ page }) =>
   await dialog.getByRole('button', { name: '放弃修改' }).click()
   await expect(page.getByRole('tab', { name: '使用场景' })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByText('以下状态以最近一次读取或保存的配置为准；未保存的修改尚未生效。')).toHaveCount(0)
-  await expect(page.locator('.v-list-item').filter({ hasText: '新用户注册：邮件验证码' })).toContainText('未要求')
+  await expect(page.locator('.v-list-item').filter({ hasText: '新用户注册：邮件验证码' })).toContainText('无需验证码')
   expect(writes).toBe(1)
 })
 

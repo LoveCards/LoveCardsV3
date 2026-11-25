@@ -185,12 +185,8 @@ class Profile
             throw ApiException::validation(['email' => ['邮箱格式不正确。']], '字段校验失败', 'email_invalid');
         }
 
-        $result = Captcha::generate('code', ['to' => $email, 'scene' => 'Info_BindEmailCaptcha', 'ttl' => 300]);
+        $result = Captcha::generate('code', ['to' => $email, 'channel' => 'smtp', 'scene' => 'Info_BindEmailCaptcha', 'ttl' => 300, 'resend_after' => 300]);
         if (!($result['status'] ?? false)) {
-            $message = (string) ($result['msg'] ?? '验证码发送失败');
-            if (str_contains($message, '未过期')) {
-                throw ApiException::tooManyRequests('验证码发送过于频繁', 'captcha_rate_limited', 300);
-            }
             throw ApiException::validation(['email' => ['验证码发送失败。']], '字段校验失败', 'captcha_delivery_failed');
         }
         return ['sent' => true, 'expires_in' => 300];

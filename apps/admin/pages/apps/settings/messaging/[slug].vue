@@ -134,10 +134,10 @@
             v-model="testTo"
             :disabled="testLoading"
             density="comfortable"
-            label="收件邮箱"
-            placeholder="name@example.com"
+            :label="isSms ? '收件手机号' : '收件邮箱'"
+            :placeholder="isSms ? '中国大陆 11 位手机号' : 'name@example.com'"
             required
-            type="email"
+            :type="isSms ? 'tel' : 'email'"
             variant="outlined"
           />
         </v-card-text>
@@ -187,6 +187,7 @@ const originConfig = ref<FormConfig>({})
 const fields = shallowRef<DriverField[]>([])
 const secretKeys = shallowRef(new Set<string>())
 const channelName = ref(slug)
+const isSms = ref(false)
 const loading = ref(false)
 const loadError = ref('')
 const saveLoading = ref(false)
@@ -223,6 +224,7 @@ const loadPage = async () => {
   try {
     const [channels, rawConfig] = await Promise.all([client.sender.channels(), configSnapshot.list()])
     const channel = channels.find((item: SenderChannel) => item.slug === slug)
+    isSms.value = channel?.channelType === 'sms'
     if (!channel) {
       loadError.value = '未找到该发送渠道，请返回列表重新扫描。'
       fields.value = []
@@ -278,7 +280,7 @@ const save = async () => {
 const sendTest = async () => {
   if (!canTestChannel.value || testLoading.value || configChanged.value || saveLoading.value) return
   if (!testTo.value.trim()) {
-    testMessage.value = { type: 'error', text: '请输入收件邮箱。' }
+    testMessage.value = { type: 'error', text: isSms.value ? '请输入收件手机号。' : '请输入收件邮箱。' }
     return
   }
   testLoading.value = true

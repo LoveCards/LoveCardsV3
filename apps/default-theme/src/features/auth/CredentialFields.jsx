@@ -7,19 +7,21 @@ export function validateCredentials(account, password) {
   return errors;
 }
 
-export function CredentialFields({ account, password, onAccountChange, onPasswordChange, errors = {}, disabled = false, register = false, emailRequired = false }) {
+export function CredentialFields({ account, password, onAccountChange, onPasswordChange, errors = {}, disabled = false, register = false, method }) {
+  const accountLabel = register ? method === 'phone' ? '手机号' : '邮箱' : '手机号、邮箱或用户名';
   return <>
     <TextInput
-      autoComplete={register && emailRequired ? 'email' : 'username'}
+      autoComplete={register ? method === 'phone' ? 'tel-national' : 'email' : 'username'}
       htmlName="account"
       isDisabled={disabled}
       isRequired
-      label={register && emailRequired ? '邮箱' : '手机号、邮箱或用户名'}
+      label={accountLabel}
       onChange={onAccountChange}
-      placeholder={register && emailRequired ? 'name@example.com' : '输入你的账号'}
+      placeholder={register ? method === 'phone' ? '中国大陆 11 位手机号' : 'name@example.com' : '输入你的账号'}
       size="lg"
       status={errors.account ? { type: 'error', message: errors.account } : undefined}
       statusVariant="detached"
+      type={register ? method === 'phone' ? 'tel' : 'email' : 'text'}
       value={account}
       width="100%"
     />

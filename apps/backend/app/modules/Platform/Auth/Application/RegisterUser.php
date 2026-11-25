@@ -17,6 +17,30 @@ final class RegisterUser
         $this->users = $users;
     }
 
+    public function register(array $params, Session $session): array
+    {
+        $policy = $session->registrationPolicy();
+        [$account, $type] = $session->registrationContact($params['account'], $policy);
+        if ($session->humanVerificationEnabled() && !$session->verifyHumanVerification($params)) {
+            throw ApiException::unauthorized('人机验证失败');
+        }
+        if ($policy->requiresCode($type)) {
+            $session->assertRegistrationCodeAvailable($type);
+            $code = trim((string) ($params['code'] ?? ''));
+            if ($code === '' || !$session->verifyCaptcha($account, $code)) {
+                throw ApiException::validation(['code' => '请输入有效验证码，过期后请重新发送。'], '注册验证码无效', 'registration-code-invalid');
+            }
+        }
+
+        return $this->execute(
+            $session->generateNumber(),
+            'USER' . strtoupper(bin2hex(random_bytes(8))),
+            $type === 'email' ? $account : '',
+            $type === 'phone' ? $account : '',
+            $params['password']
+        );
+    }
+
     public function execute(
         string $number,
         string $username,

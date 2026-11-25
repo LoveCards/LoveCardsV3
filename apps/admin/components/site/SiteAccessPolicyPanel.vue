@@ -49,8 +49,8 @@
             </v-alert>
             <v-list v-if="summary" bg-color="transparent" density="compact">
               <v-list-item
-                title="注册邮件验证"
-                :subtitle="summary.emailVerify ? '已要求；新用户注册仅接受邮箱账号' : '未要求'"
+                title="注册方式与验证码"
+                :subtitle="summary.registration"
               />
               <v-list-item
                 title="注册与卡片写入的人机验证"
@@ -61,8 +61,8 @@
                 subtitle="始终要求邮件验证码，不能在站点策略中关闭"
               />
               <v-list-item
-                title="验证码服务与邮件渠道"
-                :subtitle="summary.codeEnabled && summary.codeChannel === 'smtp' ? '已开启邮件渠道；外部投递未验证' : '邮件验证依赖未就绪，注册或修改邮箱可能无法完成'"
+                title="验证码服务"
+                :subtitle="summary.codeEnabled ? '已开启，邮件和短信投递状态请在站外发送中核对' : '已关闭，需要验证码的操作不可用'"
               />
               <v-list-item
                 title="人机验证驱动"
@@ -101,13 +101,12 @@ import AdminConfigSaveBar from '~/components/shared/admin/AdminConfigSaveBar.vue
 import AdminConfigSection from '~/components/shared/admin/AdminConfigSection.vue'
 import { useApi } from '~/lib/api'
 import { useUserStore } from '~/stores/userStore'
-import { readBoolean, readObject, readString } from '~/utils/json'
+import { readBoolean, readObject } from '~/utils/json'
 
 interface VerificationSummary {
-  emailVerify: boolean
+  registration: string
   humanVerify: boolean
   codeEnabled: boolean
-  codeChannel: string
   humanReady: boolean | null
 }
 type Feedback = { type: 'success' | 'error'; text: string }
@@ -149,17 +148,19 @@ async function loadConfig() {
       } else {
         const captcha = readObject(raw.captcha)
         summary.value = {
-          emailVerify: readBoolean(readObject(raw.user).captcha),
+          registration: '尚未核对',
           humanVerify: readBoolean(captcha.captcha_enabled),
           codeEnabled: readBoolean(captcha.code_enabled, true),
-          codeChannel: readString(captcha.code_channel, 'smtp'),
           humanReady: null,
         }
         try {
-          const status = await client.captcha.config()
+          const [status, policy] = await Promise.all([client.captcha.config(), client.session.policy()])
           summary.value.humanReady = readBoolean(status.human_ready)
+          summary.value.registration = policy.registration.account_types.map(type => type === 'email'
+            ? `邮箱${policy.registration.email_verification_required ? '（邮件验证）' : ''}`
+            : `手机号${policy.registration.sms_verification_required ? '（短信验证）' : ''}`).join('或') || '当前未开放'
         } catch (cause) {
-          summaryError.value = errorMessage(cause, '无法核对人机验证驱动状态。')
+          summaryError.value = errorMessage(cause, '无法核对注册策略和人机验证驱动状态。')
         }
       }
     }

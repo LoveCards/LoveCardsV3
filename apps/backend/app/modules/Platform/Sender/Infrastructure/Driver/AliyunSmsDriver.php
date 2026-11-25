@@ -2,7 +2,9 @@
 
 namespace app\modules\Platform\Sender\Infrastructure\Driver;
 
-use app\modules\Platform\Sender\Infrastructure\Driver\AbstractDriver;
+use AlibabaCloud\Client\AlibabaCloud;
+use AlibabaCloud\Client\Exception\ClientException;
+use AlibabaCloud\Client\Exception\ServerException;
 use app\modules\Platform\Sender\Contract\Message;
 use app\modules\Platform\Sender\Contract\SendResult;
 
@@ -29,21 +31,41 @@ class AliyunSmsDriver extends AbstractDriver
         ];
     }
 
+    public function isConfigured(): bool
+    {
+        foreach (['access_key', 'secret_key', 'sign_name', 'template_code'] as $key) {
+            if (trim((string) ($this->config[$key] ?? '')) === '') return false;
+        }
+        return true;
+    }
+
     public function send(Message $message): SendResult
     {
-        $templateCode = $this->config['template_code'] ?? '';
-        $signName = $this->config['sign_name'] ?? '';
-
-        if (empty($templateCode) || empty($signName)) {
-            return SendResult::fail('sms', '短信配置不完整：缺少模板编码或签名');
+        if (!$this->isConfigured()) return SendResult::fail('sms', '短信配置不完整');
+        if (!is_string($message->to) || preg_match('/^1[3-9][0-9]{9}$/D', $message->to) !== 1) {
+            return SendResult::fail('sms', '请输入有效的中国大陆手机号');
         }
 
-        $params = [
-            'code'   => $message->code,
-            'expire' => (string) $message->expire,
-        ];
+        try {
+            $client = 'lovecards-sms';
+            AlibabaCloud::accessKeyClient($this->config['access_key'], $this->config['secret_key'])
+                ->regionId('cn-hangzhou')->name($client);
+            $result = AlibabaCloud::rpcRequest()->client($client)
+                ->product('Dysmsapi')->version('2017-05-25')->action('SendSms')
+                ->host('dysmsapi.aliyuncs.com')->scheme('https')->method('POST')->connectTimeout(2)->timeout(5)
+                ->options(['query' => [
+                    'PhoneNumbers' => $message->to,
+                    'SignName' => $this->config['sign_name'],
+                    'TemplateCode' => $this->config['template_code'],
+                    'TemplateParam' => json_encode(['code' => $message->code], JSON_THROW_ON_ERROR),
+                ]])->request()->toArray();
+        } catch (ClientException | ServerException) {
+            return SendResult::fail('sms', '短信渠道请求失败，请检查配置与服务连通性');
+        }
 
-        // TODO: 接入阿里云 SMS SDK
-        return SendResult::fail('sms', '阿里云短信驱动尚未实现');
+        if (($result['Code'] ?? null) !== 'OK') {
+            return SendResult::fail('sms', '短信服务拒绝请求，请检查签名、模板或发送额度');
+        }
+        return SendResult::ok('sms', $result['BizId'] ?? null);
     }
 }

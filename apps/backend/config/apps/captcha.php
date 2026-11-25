@@ -21,9 +21,4 @@ return [
         'default'     => false,
         'description' => '人机验证功能开关',
     ],
-    'code_channel'           => [
-        'type'        => 'string',
-        'default'     => 'smtp',
-        'description' => '验证码发送渠道（smtp / sms）',
-    ],
 ];

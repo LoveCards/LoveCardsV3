@@ -43,30 +43,7 @@ class Session extends BaseController
     public function register()
     {
         $params = $this->validated();
-        if ($this->session->humanVerificationEnabled() && !$this->session->verifyHumanVerification($params)) {
-            throw ApiException::unauthorized('人机验证失败');
-        }
-        $account = $params['account'];
-        if ($this->session->registrationEmailVerificationRequired() && !$this->session->captchaEnabled()) {
-            throw ApiException::badRequest('注册验证码服务未启用', ApiException::CODE_PARAM_INVALID);
-        }
-        if ($this->session->registrationEmailVerificationRequired() && !$this->session->verifyCaptcha($account, $params['code'] ?? '')) {
-            throw ApiException::unauthorized('注册失败', ['验证码错误']);
-        }
-
-        $accountMap = $this->session->resolveAccountType($account);
-        $number = $accountMap['number'] !== '' ? $accountMap['number'] : $this->session->generateNumber();
-        $username = $accountMap['number'] !== ''
-            ? $account
-            : 'USER' . strtoupper(substr(md5($account . $params['password'] . time()), 0, 5));
-        $result = $this->registerUser->execute(
-            $number,
-            $username,
-            $accountMap['email'],
-            $accountMap['phone'],
-            $params['password']
-        );
-        $this->session->deleteCaptcha($account);
+        $result = $this->registerUser->register($params, $this->session);
         return $this->respond($result);
     }
 
@@ -81,11 +58,7 @@ class Session extends BaseController
     public function captcha()
     {
         $params = $this->validated();
-        try {
-            $this->session->sendCaptcha($params['account']);
-        } catch (\RuntimeException $e) {
-            throw ApiException::badRequest($e->getMessage());
-        }
+        $this->session->sendCaptcha($params['account'], (string) request()->ip());
         return $this->respond();
     }
 

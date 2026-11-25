@@ -3,6 +3,7 @@
 namespace app\modules\Platform\Config\Service;
 
 use app\api\ApiException;
+use app\modules\Platform\Auth\Public\RegistrationPolicy;
 use app\modules\Platform\Config\Public\Config as ConfigService;
 use app\modules\Platform\Captcha\Public\Captcha;
 use app\modules\Platform\Config\Public\RedisConnectionSettings;
@@ -44,6 +45,7 @@ final class ConfigManager
                     $snapshot['values'],
                     ConfigService::getSchema($group)
                 ) + ['__revision' => $snapshot['revision']];
+                if ($group === 'captcha') unset($result[$group]['code_channel']);
             }
         }
         return $result;
@@ -83,6 +85,8 @@ final class ConfigManager
             $schemas[$group] = $schema;
             $validated = [];
             foreach ($config as $key => $value) {
+                // 已退役的全局渠道选择只保留旧数据兼容，渠道由验证场景决定。
+                if ($group === 'captcha' && $key === 'code_channel') continue;
                 if (isset($schema[$key])) {
                     if (ConfigAccessPolicy::isSensitive($group, (string) $key, (array) $schema[$key])) {
                         $normalized = $this->normalizeSecretUpdate($group, (string) $key, $value);
@@ -117,14 +121,31 @@ final class ConfigManager
             }
         }
 
+        $registrationKeys = ['registration_mode', 'registration_sms_verification', 'captcha'];
+        $codeKeys = ['code_enabled', 'default_code_driver'];
+        if (array_intersect(array_keys($pending['user'] ?? []), $registrationKeys)
+            || array_intersect(array_keys($pending['captcha'] ?? []), $codeKeys)) {
+            // 注册策略和验证码服务在同一组锁内核验，空组只锁版本，不写入。
+            foreach (['captcha', 'user'] as $group) {
+                if (isset($pending[$group])) continue;
+                $revision = ConfigService::getSnapshot($group)['revision'];
+                if (!is_int($revision)) continue;
+                $pending[$group] = [];
+                $expected[$group] = $revision;
+            }
+        }
+
         $snapshots = ConfigService::compareAndSwapGroups($pending, $expected, function () use ($pending): void {
             // 取得所有版本锁之后复核跨字段规则，不能把锁前的组合当提交依据。
             if (isset($pending['redis'])) $this->validateRedisUpdate($pending['redis'], ConfigService::getGroup('redis'));
+            $this->validateRegistrationUpdate($pending['user'] ?? [], $pending['captcha'] ?? []);
         });
         $result = [];
         foreach ($snapshots as $group => $snapshot) {
+            if ($pending[$group] === []) continue;
             $result[$group] = $this->redactGroup($group, $snapshot['values'], $schemas[$group])
                 + ['__revision' => $snapshot['revision']];
+            if ($group === 'captcha') unset($result[$group]['code_channel']);
         }
         return $result;
     }
@@ -180,6 +201,37 @@ final class ConfigManager
             }
         }
         return $values;
+    }
+
+    private function validateRegistrationUpdate(array $user, array $captcha): void
+    {
+        $registration = array_intersect_key($user, array_flip(['registration_mode', 'registration_sms_verification', 'captcha']));
+        if ($registration === [] && !array_key_exists('code_enabled', $captcha) && !array_key_exists('default_code_driver', $captcha)) return;
+        if (array_key_exists('registration_mode', $registration) && !in_array($registration['registration_mode'], RegistrationPolicy::MODES, true)) {
+            throw ApiException::validation(['user.registration_mode' => '请选择有效的注册方式。']);
+        }
+        foreach (['captcha', 'registration_sms_verification'] as $key) {
+            if (array_key_exists($key, $registration) && !is_bool($registration[$key])) {
+                throw ApiException::validation(['user.' . $key => '必须为布尔值。']);
+            }
+        }
+        if (array_key_exists('code_enabled', $captcha) && !is_bool($captcha['code_enabled'])) {
+            throw ApiException::validation(['captcha.code_enabled' => '必须为布尔值。']);
+        }
+
+        $saved = ConfigService::getGroup('user');
+        $current = new RegistrationPolicy($saved);
+        $next = new RegistrationPolicy(array_replace($saved, $registration));
+        $services = array_replace(ConfigService::getGroup('captcha'), $captcha);
+        foreach ($next->accountTypes() as $type) {
+            if (!$next->requiresCode($type)) continue;
+            $alreadyRequired = in_array($type, $current->accountTypes(), true) && $current->requiresCode($type);
+            if ($alreadyRequired && !array_key_exists('code_enabled', $captcha) && !array_key_exists('default_code_driver', $captcha)) continue;
+            if (!Captcha::codeAvailable(RegistrationPolicy::channel($type), (bool) ($services['code_enabled'] ?? true), (string) ($services['default_code_driver'] ?? 'smtp_code'))) {
+                $channel = $type === 'email' ? '邮件' : '短信';
+                throw ApiException::validation(['user.registration_mode' => $channel . '验证码服务未就绪，请检查验证服务与站外发送配置。'], $channel . '验证码服务未就绪', 'registration-code-unavailable');
+            }
+        }
     }
 
     private function validateRedisUpdate(array $changes, array $current): void

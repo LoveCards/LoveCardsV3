@@ -75,7 +75,7 @@ await test('communications policies match registered notification events', async
 await test('configure disposable auth fixtures', async () => {
   const configSnapshot = await adminClient.config.list()
   await adminClient.config.update({
-    user: { captcha: false, __revision: configSnapshot.user.__revision },
+    user: { registration_mode: 'email_or_phone', captcha: false, registration_sms_verification: false, __revision: configSnapshot.user.__revision },
     captcha: { captcha_enabled: false, __revision: configSnapshot.captcha.__revision },
   })
   const policy = await adminClient.session.policy()
@@ -155,7 +155,8 @@ const pc = makeClient(null)
 await test('GET /session/policy → session.policy()', async () => {
   const r = await pc.session.policy()
   assert(r && r.registration && r.guest && r.human_verification, 'Should return the complete auth policy')
-  assert(Array.isArray(r.registration.account_types), 'registration.account_types should be an array')
+  assert(r.registration.account_types.join(',') === 'email,phone', 'registration policy must only allow contact methods')
+  assert(typeof r.registration.sms_verification_required === 'boolean', 'SMS verification policy must be explicit')
   return r
 })
 
@@ -261,8 +262,8 @@ await test('theme.tags() returns same shape as tags.list()', async () => {
 })
 
 await test('POST /session/captcha → session.captcha()', async () => {
-  const error = await assertApiError(() => pc.session.captcha({ account: 'not-an-email' }), 400)
-  assert(error.code === 9002, 'invalid email must be rejected before any delivery attempt')
+  const error = await assertApiError(() => pc.session.captcha({ account: 'not-a-contact' }), 422)
+  assert(error.details?.reason_code === 'registration-contact-invalid', 'invalid contact must be rejected before any delivery attempt')
   return error
 })
 

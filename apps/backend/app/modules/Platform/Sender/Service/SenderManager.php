@@ -118,7 +118,7 @@ class SenderManager
 
     public static function templates(): array
     {
-        $dir = __DIR__ . '/template/';
+        $dir = dirname(__DIR__) . '/Infrastructure/template/';
         if (!is_dir($dir)) {
             return [];
         }

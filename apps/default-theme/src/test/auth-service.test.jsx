@@ -42,8 +42,8 @@ describe('login SDK integration', () => {
       setToken: vi.fn(),
     };
     sdk.getSdkClient.mockReturnValue(client);
-    await register({ account: ' new-user ', password: 'secret1', passwordConfirm: 'secret1' });
-    expect(client.session.register).toHaveBeenCalledWith({ account: 'new-user', password: 'secret1' });
+    await register({ account: ' 13800000000 ', password: 'secret1', passwordConfirm: 'secret1' });
+    expect(client.session.register).toHaveBeenCalledWith({ account: '13800000000', password: 'secret1' });
     expect(client.setToken).toHaveBeenCalledWith('registered-token');
   });
 
@@ -56,6 +56,8 @@ describe('login SDK integration', () => {
     await sendRegistrationCode(' user@example.com ');
     await register({ account: ' user@example.com ', password: 'secret1', passwordConfirm: 'secret1', code: ' 123456 ', verification: { lot_number: 'lot', captcha_output: 'output', pass_token: 'pass', gen_time: '123' } });
     expect(client.session.captcha).toHaveBeenCalledWith({ account: 'user@example.com' });
+    await sendRegistrationCode(' 13800000000 ', 'phone');
+    expect(client.session.captcha).toHaveBeenLastCalledWith({ account: '13800000000' });
     expect(client.session.register).toHaveBeenCalledWith({ account: 'user@example.com', password: 'secret1', code: '123456', lot_number: 'lot', captcha_output: 'output', pass_token: 'pass', gen_time: '123' });
   });
 

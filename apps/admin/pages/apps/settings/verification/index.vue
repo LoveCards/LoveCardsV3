@@ -57,8 +57,9 @@
                 <v-list bg-color="transparent" density="comfortable">
                   <v-list-item
                     title="新用户注册：邮件验证码"
-                    :subtitle="originSiteSettings.emailVerify ? mailStatus : '未要求；注册可使用其他账号类型'"
+                    :subtitle="registrationStatus('email')"
                   />
+                  <v-list-item title="新用户注册：短信验证码" :subtitle="registrationStatus('phone')" />
                   <v-list-item
                     title="新用户注册：人机验证"
                     :subtitle="originSiteSettings.humanVerify ? humanStatus : '未要求'"
@@ -76,7 +77,7 @@
             <v-window-item value="requirements">
               <AdminConfigSection
                 :dirty="siteSettingsChanged"
-                description="注册要求与卡片写入的人机验证在这里统一修改；修改邮箱始终要求邮件验证码。"
+                description="选择新用户可用的注册方式，并分别设置邮箱和短信验证。"
                 icon="mdi-account-check-outline"
                 title="站点验证要求"
               >
@@ -89,8 +90,32 @@
                 <v-row dense>
                   <v-col cols="12" sm="6">
                     <v-select
-                      v-model="siteSettings.emailVerify"
+                      v-model="siteSettings.mode"
                       :disabled="!canUpdateConfig || siteSaving"
+                      :items="registrationModes"
+                      label="注册方式"
+                      variant="outlined"
+                      density="comfortable"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-select
+                      v-model="siteSettings.smsVerify"
+                      :disabled="!canUpdateConfig || siteSaving || siteSettings.mode === 'email'"
+                      :items="switchItems"
+                      :hint="siteSettings.mode === 'email' ? '当前未开放手机号注册，保留原设置。' : undefined"
+                      persistent-hint
+                      label="注册短信验证"
+                      variant="outlined"
+                      density="comfortable"
+                    />
+                  </v-col>
+                  <v-col cols="12" sm="6">
+                    <v-select
+                      v-model="siteSettings.emailVerify"
+                      :hint="siteSettings.mode === 'phone' ? '当前未开放邮箱注册，保留原设置。' : undefined"
+                      persistent-hint
+                      :disabled="!canUpdateConfig || siteSaving || siteSettings.mode === 'phone'"
                       density="comfortable"
                       item-title="title"
                       item-value="value"
@@ -113,7 +138,8 @@
                   </v-col>
                 </v-row>
                 <p class="text-body-2 text-medium-emphasis">
-                  登录尚未接入人机验证。关闭验证码服务或切换为短信渠道，会使需要邮件验证码的操作无法完成。
+                  邮件和短信使用对应的站外发送渠道。修改邮箱仍要求邮件验证码。
+                  <NuxtLink v-if="canReadSender" to="/apps/settings/messaging">查看站外发送</NuxtLink>
                 </p>
               </AdminConfigSection>
               <AdminConfigSaveBar v-if="canUpdateConfig" class="mt-4" :dirty="siteSettingsChanged" label="站点验证要求">
@@ -217,21 +243,9 @@
                           variant="outlined"
                         />
                       </v-col>
-                      <v-col cols="12" sm="6">
-                        <v-select
-                          v-model="settings.code_channel"
-                          :disabled="!canUpdateConfig || settingsSaving"
-                          density="comfortable"
-                          item-title="title"
-                          item-value="value"
-                          :items="channelItems"
-                          label="验证码发送渠道"
-                          variant="outlined"
-                        />
-                      </v-col>
                     </v-row>
                     <p class="mt-2 text-body-2 text-medium-emphasis">
-                      邮件验证码用于注册及修改邮箱。关闭服务或改为短信渠道时，这些流程可能无法完成；配置存在不代表邮件投递成功。
+                      关闭服务会使要求验证码的操作不可用。配置齐全后，可在站外发送中测试实际投递。
                       <NuxtLink v-if="canReadSender" to="/apps/settings/messaging">查看站外发送</NuxtLink>
                     </p>
                     <AdminConfigSaveBar v-if="canUpdateConfig" :dirty="settingsChanged" label="验证服务设置">
@@ -261,7 +275,7 @@
 </template>
 
 <script setup lang="ts">
-import type { CaptchaDriver, JsonObject } from '@lovecards/sdk'
+import type { AuthPolicy, CaptchaDriver, JsonObject } from '@lovecards/sdk'
 import AdminActionGuard from '~/components/shared/admin/AdminActionGuard.vue'
 import AdminAsyncState from '~/components/shared/admin/AdminAsyncState.vue'
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
@@ -298,9 +312,10 @@ const settingsMessage = ref<Feedback | null>(null)
 const siteSaving = ref(false)
 const siteMessage = ref<Feedback | null>(null)
 const driverGroups = shallowRef<DriverGroup[]>([])
-const settings = ref({ code_enabled: true, code_channel: 'smtp' })
+const settings = ref({ code_enabled: true })
 const originSettings = ref(CommonUtils.deepClone(settings.value))
-const siteSettings = ref({ emailVerify: false, humanVerify: false })
+const siteSettings = ref({ mode: 'email_or_phone', emailVerify: false, smsVerify: false, humanVerify: false })
+const registration = shallowRef<AuthPolicy['registration'] | null>(null)
 const originSiteSettings = ref(CommonUtils.deepClone(siteSettings.value))
 const humanReady = ref<boolean | null>(null)
 const canUpdateConfig = computed(() => userStore.hasGrant('config.update', 'global'))
@@ -319,26 +334,46 @@ async function selectTab(value: unknown) {
   }
   tab.value = value
 }
-const mailReady = computed(() => settings.value.code_enabled && settings.value.code_channel === 'smtp')
-const savedMailReady = computed(() => originSettings.value.code_enabled && originSettings.value.code_channel === 'smtp')
-const mailStatus = computed(() => savedMailReady.value
-  ? '验证码服务已开启并选择邮件渠道；发送渠道配置和外部投递未验证'
-  : '邮件验证码条件不满足，可能无法完成')
+const mailStatus = computed(() => originSettings.value.code_enabled
+  ? '验证码服务已开启，邮件发送状态请在站外发送中核对'
+  : '验证码服务已关闭，邮件验证不可用')
+const registrationStatus = (type: 'email' | 'phone') => {
+  const policy = registration.value
+  if (!policy) return '注册策略状态未知'
+  if (!policy.account_types.includes(type)) return '未开放此注册方式'
+  const required = type === 'email' ? policy.email_verification_required : policy.sms_verification_required
+  const ready = type === 'email' ? policy.email_verification_available : policy.sms_verification_available
+  if (!required) return '无需验证码'
+  return ready ? '要求验证码；配置已就绪，外部投递未验证' : '要求验证码；发送渠道或验证码服务未就绪'
+}
+
 const humanStatus = computed(() => humanReady.value === null
   ? '驱动状态未知，不能确认是否可用'
   : humanReady.value ? '本地驱动已就绪；第三方连通未验证' : '驱动未就绪，当前无法完成验证')
-const siteEnableBlocked = computed(() => (
-  (siteSettings.value.emailVerify && !originSiteSettings.value.emailVerify && !mailReady.value)
-  || (siteSettings.value.humanVerify && !originSiteSettings.value.humanVerify && humanReady.value !== true)
-))
+const siteEnableBlocked = computed(() => siteSettings.value.humanVerify && !originSiteSettings.value.humanVerify && humanReady.value !== true)
 const siteDependencyWarning = computed(() => {
   if (settingsChanged.value && siteSettingsChanged.value) return '请先保存服务设置，再保存站点验证要求。'
-  if (siteSettings.value.emailVerify && !mailReady.value) return '注册邮件验证需要启用验证码服务并选择邮件渠道。'
-  if (siteSettings.value.humanVerify && humanReady.value !== true) return '人机验证驱动尚未确认就绪。'
+  if (siteEnableBlocked.value) return '人机验证驱动尚未确认就绪。'
   return ''
 })
 const switchItems = [{ title: '开启', value: true }, { title: '关闭', value: false }]
-const channelItems = [{ title: '邮箱（SMTP）', value: 'smtp' }, { title: '短信（SMS）', value: 'sms' }]
+const registrationModes = [
+  { title: '邮箱或手机号', value: 'email_or_phone' },
+  { title: '仅邮箱', value: 'email' },
+  { title: '仅手机号', value: 'phone' },
+]
+const readRegistration = (user: JsonObject) => {
+  const emailVerify = readBoolean(user.captcha)
+  return {
+    mode: readString(user.registration_mode) || (emailVerify ? 'email' : 'email_or_phone'),
+    emailVerify,
+    smsVerify: readBoolean(user.registration_sms_verification),
+  }
+}
+const refreshRegistration = async () => {
+  registration.value = null
+  try { registration.value = (await client.session.policy()).registration } catch { /* 保留未知状态 */ }
+}
 const groupTitle = (type: string) => type === 'code' ? '验证码' : type === 'captcha' ? '人机验证' : type
 const errorMessage = configSnapshot.errorMessage
 
@@ -362,15 +397,15 @@ const loadPage = async () => {
     }))
     settings.value = {
       code_enabled: readBoolean(captchaConfig.code_enabled, true),
-      code_channel: readString(captchaConfig.code_channel, 'smtp'),
     }
     originSettings.value = CommonUtils.deepClone(settings.value)
     siteSettings.value = {
-      emailVerify: readBoolean(readObject(rawConfig.user).captcha),
+      ...readRegistration(readObject(rawConfig.user)),
       humanVerify: readBoolean(captchaConfig.captcha_enabled),
     }
     originSiteSettings.value = CommonUtils.deepClone(siteSettings.value)
     humanReady.value = null
+    await refreshRegistration()
     try {
       const status = await client.captcha.config()
       humanReady.value = readBoolean(status.human_ready)
@@ -415,12 +450,12 @@ const saveSettings = async () => {
     const committed = await configSnapshot.update({
       captcha: {
         code_enabled: settings.value.code_enabled,
-        code_channel: settings.value.code_channel,
       },
     })
     const saved = readObject(committed.captcha)
-    settings.value = { code_enabled: readBoolean(saved.code_enabled, true), code_channel: readString(saved.code_channel, 'smtp') }
+    settings.value = { code_enabled: readBoolean(saved.code_enabled, true) }
     originSettings.value = CommonUtils.deepClone(settings.value)
+    await refreshRegistration()
     settingsMessage.value = { type: 'success', text: '验证设置已保存。' }
   } catch (cause) {
     settingsMessage.value = { type: 'error', text: errorMessage(cause, '验证设置保存失败，请稍后重试。') }
@@ -433,13 +468,18 @@ const saveSiteSettings = async () => {
   siteSaving.value = true
   siteMessage.value = null
   const update: JsonObject = {}
-  if (siteSettings.value.emailVerify !== originSiteSettings.value.emailVerify) update.user = { captcha: siteSettings.value.emailVerify }
+  const { mode, emailVerify, smsVerify } = siteSettings.value
+  const previous = originSiteSettings.value
+  if (mode !== previous.mode || emailVerify !== previous.emailVerify || smsVerify !== previous.smsVerify) {
+    update.user = { registration_mode: mode, captcha: emailVerify, registration_sms_verification: smsVerify }
+  }
   if (siteSettings.value.humanVerify !== originSiteSettings.value.humanVerify) update.captcha = { captcha_enabled: siteSettings.value.humanVerify }
   try {
     const committed = await configSnapshot.update(update)
-    if (committed.user) siteSettings.value.emailVerify = readBoolean(readObject(committed.user).captcha)
+    if (committed.user) Object.assign(siteSettings.value, readRegistration(readObject(committed.user)))
     if (committed.captcha) siteSettings.value.humanVerify = readBoolean(readObject(committed.captcha).captcha_enabled)
     originSiteSettings.value = CommonUtils.deepClone(siteSettings.value)
+    await refreshRegistration()
     siteMessage.value = { type: 'success', text: '站点验证要求已保存。' }
   } catch (cause) {
     siteMessage.value = { type: 'error', text: errorMessage(cause, '保存站点验证要求失败，请稍后重试。') }

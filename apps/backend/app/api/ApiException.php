@@ -268,7 +268,7 @@ class ApiException extends \Exception
 
         $data = ApiResponse::error($message, $detail, $code);
         $result = \think\Response::create($data, 'json')->code($httpStatus);
-        foreach ($this->headers as $name => $value) $result->header($name, $value);
+        if ($this->headers !== []) $result->header($this->headers);
         return ApiResponse::setHeader($result);
     }
 }
