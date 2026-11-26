@@ -39,13 +39,11 @@
         <v-card v-if="section === 'overview' && overviewMetrics.length" tag="section" variant="flat" border class="pa-5 workbench-overview" aria-labelledby="overview-title" data-testid="workbench-overview">
           <h2 id="overview-title" class="text-subtitle-1 font-weight-bold">业务概览</h2>
           <p class="text-body-2 text-medium-emphasis mt-1">{{ dashboardStore.error ? '上次读取的总量 · 数据可能已变化' : '截至本次读取的总量' }}</p>
-          <div class="workbench-metrics mt-4" role="group" aria-label="选择趋势指标">
-            <v-btn v-for="metric in overviewMetrics" :key="metric.key" :aria-pressed="selectedMetric?.key === metric.key" :color="selectedMetric?.key === metric.key ? 'primary' : undefined" :class="{ 'workbench-metric--selected': selectedMetric?.key === metric.key }" variant="text" height="auto" class="workbench-metric" @click="metricKey = metric.key">
-              <span class="workbench-metric-content"><span class="text-body-2">{{ metric.label }}总量</span><strong class="workbench-metric-value">{{ formatNumber(metric.value) }}</strong><span class="text-caption text-medium-emphasis">当前总量 · {{ metric.unit }}</span></span>
-            </v-btn>
-          </div>
-          <div class="d-flex flex-wrap justify-space-between align-center ga-2 mt-5 mb-4"><h3 class="text-body-2 font-weight-medium">{{ chartTitle }}</h3><span class="text-caption text-medium-emphasis">最近六天 · 截至昨日 · 单位：{{ selectedMetric?.unit }}</span></div>
-          <TrendCharts :dataset="selectedDataset" :unit="selectedMetric?.unit ?? '条'" :title="chartTitle" range="最近六天，截至昨日" />
+          <dl class="workbench-metrics mt-3" aria-label="业务总量">
+            <div v-for="metric in overviewMetrics" :key="metric.key" class="workbench-metric"><dt class="text-caption text-medium-emphasis">{{ metric.label }}总量（{{ metric.unit }}）</dt><dd class="workbench-metric-value">{{ formatNumber(metric.value) }}</dd></div>
+          </dl>
+          <div class="d-flex flex-wrap justify-space-between align-center ga-2 mt-4 mb-2"><h3 class="text-body-2 font-weight-medium">每日新增趋势</h3><span class="text-caption text-medium-emphasis">最近六天 · 截至昨日</span></div>
+          <TrendCharts :series="chartSeries" title="每日新增趋势" range="最近六天，截至昨日" />
         </v-card>
 
         <v-card v-else-if="section === 'runtime' && canReadOperations" tag="section" variant="flat" border class="pa-5 workbench-runtime" aria-labelledby="runtime-title" data-testid="workbench-runtime">
@@ -144,7 +142,6 @@ const auxiliaryLoading = ref(false)
 const supplementary = ref<string>()
 const showAllResponsibilities = ref(false)
 const responsibilityPreviewLimit = 3
-const metricKey = ref('cards')
 const canReadOperations = computed(() => userStore.hasGrant('operations.read', 'global'))
 const canReadCommunications = computed(() => userStore.hasGrant('communications.read', 'global'))
 const canReadAudit = computed(() => userStore.hasGrant('audit.read', 'global'))
@@ -232,9 +229,12 @@ const overviewMetrics = computed(() => {
     { key: 'good', label: '获赞', chartLabel: '点赞', unit: '次', value: count.good },
   ].filter((metric): metric is typeof metric & { value: number } => typeof metric.value === 'number' && Number.isFinite(metric.value))
 })
-const selectedMetric = computed(() => overviewMetrics.value.find(metric => metric.key === metricKey.value) ?? overviewMetrics.value[0])
-const selectedDataset = computed(() => dashboard.value?.chart.find(dataset => dataset.label === selectedMetric.value?.chartLabel) ?? null)
-const chartTitle = computed(() => `每日新增${selectedMetric.value?.chartLabel ?? ''}`)
+const chartSeries = computed(() => overviewMetrics.value.map(metric => ({
+  key: metric.key,
+  unit: metric.unit,
+  label: metric.chartLabel,
+  data: dashboard.value?.chart.find(dataset => dataset.label === metric.chartLabel)?.data ?? { x: [], y: [] },
+})))
 const issues = computed(() => {
   const snapshot = runtimeStatus.value
   if (!snapshot) return []
@@ -284,12 +284,11 @@ onMounted(() => { void Promise.all([dashboardStore.init(), loadRuntime()]) })
 .workbench-task { border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
 .workbench-task:nth-child(odd) { border-right: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
 .workbench-task-count { font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.workbench-metrics { display: flex; border-block: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
-.workbench-metric { flex: 1 1 0; min-width: 0; padding: 16px 8px; border-radius: 0; text-transform: none; letter-spacing: normal; border-bottom: 2px solid transparent; }
+.workbench-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; border-block: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
+.workbench-metric { min-width: 0; padding: 10px 12px; }
+.workbench-metric:first-child { padding-left: 0; }
 .workbench-metric + .workbench-metric { border-left: 1px solid rgba(var(--v-border-color), var(--v-border-opacity)); }
-.workbench-metric--selected { border-bottom-color: rgb(var(--v-theme-primary)); }
-.workbench-metric-content { display: flex; align-items: flex-start; flex-direction: column; gap: 4px; }
-.workbench-metric-value { font-size: 1.75rem; font-weight: 600; line-height: 1.3; font-variant-numeric: tabular-nums; }
+.workbench-metric-value { margin: 2px 0 0; font-size: 1.25rem; font-weight: 600; line-height: 1.3; font-variant-numeric: tabular-nums; }
 .workbench-runtime-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; font-variant-numeric: tabular-nums; }
 .workbench-runtime-counts dt { font-size: .75rem; color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity)); }
 .workbench-runtime-counts dd { margin: 4px 0 0; font-size: 1.375rem; font-weight: 600; }
@@ -304,6 +303,6 @@ onMounted(() => { void Promise.all([dashboardStore.init(), loadRuntime()]) })
   .workbench-task:nth-child(odd) { border-right: 0; }
   .workbench-issue-summary { align-items: flex-start; flex-direction: column; gap: 4px; }
   .workbench-metric { padding-inline: 4px; }
-  .workbench-metric-value { font-size: 1.375rem; }
+  .workbench-metric-value { font-size: 1.125rem; }
 }
 </style>

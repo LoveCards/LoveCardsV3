@@ -1,4 +1,6 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect as baseExpect, test, type Page } from '@playwright/test'
+
+const expect = baseExpect.configure({ timeout: 15_000 })
 
 test.use({ storageState: { cookies: [], origins: [] } })
 test.setTimeout(60_000)
@@ -11,7 +13,7 @@ async function fixture(page: Page, options: { limited?: boolean; noDetails?: boo
   ]
   const dashboard = {
     count: options.limited ? { comments: 27 } : { cards: 12684, comments: 38920, good: 86430 },
-    chart: (options.limited ? ['评论'] : ['卡片', '评论', '点赞']).map(label => ({ label, data: { x: ['2026-11-21', '2026-11-22', '2026-11-23', '2026-11-24', '2026-11-25', '昨日'], y: [65, 88, 101, 92, 145, 130] } })),
+    chart: (options.limited ? ['评论'] : ['卡片', '评论', '点赞']).map(label => ({ label, data: { x: ['2026-11-21', '2026-11-22', '2026-11-23', '2026-11-24', '2026-11-25', '昨日'], y: label === '卡片' ? [65, 88, 101, 92, 145, 130] : label === '评论' ? [120, 160, 210, 175, 260, 240] : [280, 300, 360, 320, 440, 410] } })),
     notice: [], ver: {}, workbench: { tasks: options.limited ? [] : [{ key: 'cards_pending', label: '待审核卡片', count: 18, action_url: '/apps/content/cards?filters=%7B%22status%22%3A3%7D', severity: 'warning' }, { key: 'cards_zero', label: '零待办入口', count: 0, action_url: '/apps/content/cards', severity: 'info' }] },
   }
   const runtime = { facilities: [], workers: [], eventing: { pending: 128, processing: 4, dead: 12, expired_processing: 0, oldest_pending_age_seconds: 120 }, communication: { desired_mode: 'polling', status: 'ready', checked_at: '2026-11-27T01:00:00Z', reason_code: null }, event_processing: { mode: options.mode ?? 'scheduled', state: options.mode === 'draining' ? 'draining' : 'active', target_mode: 'resident', status: options.mode === 'unavailable' ? 'degraded' : 'ready', reason_code: options.mode === 'unavailable' ? 'scheduler-trigger-unconfigured' : null } }
@@ -31,15 +33,24 @@ async function fixture(page: Page, options: { limited?: boolean; noDetails?: boo
   return { state, writes, errors }
 }
 
-test('workbench switches real series, navigates tasks and targets all dead queues', async ({ page }) => {
+test('workbench combines series, toggles legend and targets all dead queues', async ({ page }, info) => {
   const { state, writes, errors } = await fixture(page)
   await page.setViewportSize({ width: 1440, height: 1000 })
   await page.goto('./apps/dashboard')
-  await expect(page.getByRole('heading', { name: '每日新增卡片', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: /评论总量/ }).click()
-  await expect(page.getByRole('heading', { name: '每日新增评论', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '每日新增趋势', exact: true })).toBeVisible()
+  const legend = page.getByRole('group', { name: '趋势图例' })
+  await expect(legend.getByRole('button')).toHaveCount(3)
+  const comments = legend.getByRole('button', { name: '评论（条）', exact: true })
+  await expect(comments).toHaveAttribute('aria-pressed', 'true')
+  await comments.click()
+  await expect(comments).toHaveAttribute('aria-pressed', 'false')
+  await comments.press('Enter')
+  await expect(comments).toHaveAttribute('aria-pressed', 'true')
+  await page.screenshot({ path: info.outputPath('combined-light.png'), fullPage: true, animations: 'disabled' })
   await page.getByRole('button', { name: '查看每日数据', exact: true }).click()
   await expect(page.getByRole('table')).toContainText('145')
+  await expect(page.getByRole('table')).toContainText('440')
+  await expect(page.getByRole('table').getByRole('columnheader')).toHaveCount(4)
   await expect(page.getByTestId('workbench-tasks').getByRole('link', { name: /零待办入口/ })).toContainText('查看')
   await expect(page.getByTestId('workbench-tasks').getByRole('link', { name: /待审核卡片/ })).toHaveAttribute('href', /filters=/)
   await page.getByRole('button', { name: /处理任务失败（死信）/ }).click()
@@ -75,8 +86,8 @@ test('first business failure does not hide runtime or fabricate totals', async (
 test('limited permissions hide unavailable metrics and runtime requests', async ({ page }) => {
   const { state } = await fixture(page, { limited: true })
   await page.goto('./apps/dashboard')
-  await expect(page.getByRole('button', { name: /评论总量/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: /卡片总量/ })).toHaveCount(0)
+  await expect(page.getByRole('group', { name: '趋势图例' }).getByRole('button', { name: '评论（条）', exact: true })).toBeVisible()
+  await expect(page.getByRole('group', { name: '趋势图例' }).getByRole('button', { name: '卡片（张）', exact: true })).toHaveCount(0)
   await expect(page.getByTestId('workbench-runtime')).toHaveCount(0)
   expect(state.runtimeCalls).toBe(0)
 })
