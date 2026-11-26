@@ -103,6 +103,19 @@ await test('session.register() → user token', async () => {
   return result
 })
 
+await test('password recovery routes dispatch anonymous requests', async () => {
+  const client = makeClient(null)
+  const challenge = await client.session.recovery_request({
+    account: `no-recovery-account-${Date.now()}@example.invalid`,
+  })
+  assert(Number.isInteger(challenge.expires_in) && challenge.expires_in > 0, 'Recovery request must return its expiry')
+  await assertApiError(() => client.session.recovery_reset({
+    challenge_id: 2147483647,
+    code: '000000',
+    password: 'InvalidChallengeTest1234!',
+  }), 400)
+})
+
 await test('create public card, tag and comment fixtures', async () => {
   const card = await adminClient.cards.create({ content: `SDK public fixture ${Date.now()}` })
   fixtureCardId = Number(card.id)
