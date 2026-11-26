@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace app\modules\Platform\Safety\Infrastructure;
 
 use app\modules\Platform\Safety\Contract\AdminReportRepository;
+use app\modules\Platform\Safety\Domain\ReportStatus;
 use think\facade\Db;
 
 final class ThinkDbAdminReportRepository implements AdminReportRepository
@@ -14,6 +15,7 @@ final class ThinkDbAdminReportRepository implements AdminReportRepository
             'id', 'reporter_id', 'target_type', 'target_id', 'reason', 'details', 'status',
             'assignee_id', 'resolution', 'created_at', 'updated_at', 'resolved_at',
         ]));
+        if (($filters['status_group'] ?? null) === 'pending') $query->whereIn('status', ReportStatus::PENDING);
         if (!empty($filters['status'])) $query->where('status', (string) $filters['status']);
         if (!empty($filters['resource_type'])) $query->where('target_type', (string) $filters['resource_type']);
         if (!empty($filters['search_value'])) {

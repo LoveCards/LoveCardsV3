@@ -16,7 +16,7 @@ class Files extends Validate
             'ref_type' => ['type' => 'string', 'maxLength' => 32], 'ref_id' => ['type' => 'integer'],
         ];
         return [
-            'list' => ['type' => 'object', 'properties' => $pagination, 'additionalProperties' => false],
+            'list' => ['type' => 'object', 'properties' => $pagination + ['channel_slug' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 64]], 'additionalProperties' => false],
             'listOwn' => ['type' => 'object', 'properties' => $pagination, 'additionalProperties' => false],
             'direct' => ['type' => 'object', 'properties' => ['filename' => ['type' => 'string', 'maxLength' => 255], 'size' => ['type' => 'integer', 'minimum' => 1], 'mime' => ['type' => 'string', 'maxLength' => 128]], 'required' => ['filename', 'size', 'mime'], 'additionalProperties' => false],
             'cleanup' => ['type' => 'object', 'properties' => [
@@ -45,7 +45,7 @@ class Files extends Validate
             'toNull' => false,
         ],
         'list' => [
-            'normal' => ['page', 'list_rows', 'search_keys', 'search_like', 'search_value', 'order_desc', 'order_key', 'show_deleted', 'tag_id', 'status', 'upload_status', 'scene', 'ref_type', 'ref_id'],
+            'normal' => ['page', 'list_rows', 'search_keys', 'search_like', 'search_value', 'order_desc', 'order_key', 'show_deleted', 'tag_id', 'status', 'upload_status', 'scene', 'ref_type', 'ref_id', 'channel_slug'],
             'require' => false, 'nonNull' => false, 'toNull' => false,
         ],
         'listOwn' => [
@@ -79,6 +79,7 @@ class Files extends Validate
         'tag_id' => 'number',
         'status' => 'number',
         'upload_status' => 'number',
+        'channel_slug' => 'is:string|min:1|max:64',
         'limit' => 'number|between:1,1000',
         'filename' => 'require|max:255',
         'size' => 'require|number|between:1,10737418240',

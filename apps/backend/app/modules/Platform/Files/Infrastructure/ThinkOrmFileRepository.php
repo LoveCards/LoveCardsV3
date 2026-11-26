@@ -253,6 +253,10 @@ class ThinkOrmFileRepository implements FileRepository
         }
         if (!$canReadAll) $where[] = static function ($query): void { $query->whereNull('purge_status'); };
 
+        if (isset($params['channel_slug'])) {
+            $where[] = ['channel_slug', '=', $params['channel_slug']];
+        }
+
         if (isset($params['scene'])) {
             $where[] = ['scene', '=', $params['scene']];
         }

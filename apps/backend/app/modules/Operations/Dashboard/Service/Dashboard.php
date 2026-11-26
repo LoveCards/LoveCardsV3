@@ -11,6 +11,7 @@ use app\modules\Content\Comments\Public\Comments;
 use app\modules\Content\Likes\Public\Likes;
 use app\modules\Operations\Dashboard\Domain\WorkbenchPolicy;
 use app\modules\Platform\Files\Domain\FileConstants;
+use app\modules\Platform\Safety\Public\Safety;
 use app\shared\Authorization\GrantSet;
 
 class Dashboard
@@ -89,9 +90,9 @@ class Dashboard
             $tasks[] = self::task(
                 'reports_open',
                 '待处理举报',
-                '跟进尚未关闭的社区举报。',
-                self::countWhere('reports', static fn ($query) => $query->whereIn('status', ['open', 'reviewing'])),
-                '/apps/community/reports',
+                '跟进待处理和处理中的社区举报。',
+                self::countWhere('reports', static fn ($query) => $query->whereIn('status', Safety::pendingReportStatuses())),
+                '/apps/community/reports?status_group=pending',
                 'warning'
             );
         }

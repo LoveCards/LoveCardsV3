@@ -7,7 +7,7 @@ use app\modules\Theme\Infrastructure\SecureThemeInstaller;
 use app\modules\Theme\Infrastructure\ThemeBindingRepository;
 use app\modules\Theme\Runtime\ThemeGateway;
 
-/** Theme management service for immutable SPA releases and host bindings. */
+/** 不可变主题 Release 与 Host 绑定的底层规则；管理写入统一由 ManageTheme 审计。 */
 final class ThemeManager
 {
     public static function list(): array
@@ -115,9 +115,10 @@ final class ThemeManager
         if (!is_dir($dir)) return;
         $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \RecursiveDirectoryIterator::SKIP_DOTS), \RecursiveIteratorIterator::CHILD_FIRST);
         foreach ($it as $file) {
-            if ($file->isDir() && !is_link($file->getPathname())) @rmdir($file->getPathname());
-            else @unlink($file->getPathname());
+            $removed = $file->isDir() && !is_link($file->getPathname())
+                ? @rmdir($file->getPathname()) : @unlink($file->getPathname());
+            if (!$removed) throw new \RuntimeException('主题删除未完成，部分文件可能已删除');
         }
-        @rmdir($dir);
+        if (!@rmdir($dir)) throw new \RuntimeException('主题删除未完成，Release 目录仍然存在');
     }
 }

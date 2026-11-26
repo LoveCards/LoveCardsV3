@@ -22,6 +22,10 @@ final class AdminReports
 
     public function list(array $params): array
     {
+        if (isset($params['status_group'])) {
+            if ($params['status_group'] !== 'pending') throw ApiException::validation(['status_group' => '举报状态分组无效']);
+            if (array_key_exists('status', $params)) throw ApiException::validation(['status_group' => '状态分组不能与单个状态同时使用']);
+        }
         $page = max(1, (int) ($params['page'] ?? 1));
         $limit = min(100, max(1, (int) ($params['list_rows'] ?? 20)));
         $result = $this->repository->list($params, $page, $limit);

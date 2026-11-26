@@ -5,14 +5,16 @@
       <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新事件明细</v-btn>
     </div>
     <p class="text-body-2 text-medium-emphasis mb-4">每行是一件已经发生的业务事件；展开后可查看它对应的处理任务。这里不展示事件正文或私密数据。</p>
-    <div class="d-flex flex-wrap align-center ga-3 mb-4">
-      <v-select v-model="queue" :items="queueOptions" item-title="title" item-value="value" label="处理队列" variant="outlined" density="compact" hide-details class="flex-grow-1" />
-      <v-text-field v-model="draftType" label="事件类型" placeholder="例如 message.sent" variant="outlined" density="compact" hide-details class="flex-grow-1" @keyup.enter="applyType" />
-      <v-btn variant="outlined" @click="applyType">筛选</v-btn>
+    <div class="d-flex flex-wrap align-start ga-3 mb-4">
+      <v-text-field v-model="draftEventId" label="事件 ID" inputmode="numeric" variant="outlined" density="compact" hide-details="auto" :error-messages="idValidationError" class="event-records__filter" @keyup.enter="applyFilters" />
+      <v-select v-model="queue" :items="queueOptions" item-title="title" item-value="value" label="处理队列" variant="outlined" density="compact" hide-details class="event-records__filter" />
+      <v-text-field v-model="draftType" label="事件类型" placeholder="例如 message.sent" variant="outlined" density="compact" hide-details class="event-records__filter" @keyup.enter="applyFilters" />
+      <v-btn variant="outlined" @click="applyFilters">筛选</v-btn>
+      <v-btn v-if="hasFilters" variant="text" @click="clearFilters">清除筛选</v-btn>
     </div>
     <AdminAsyncState :loading="loading && !hasCurrentResult" :error="error && !hasCurrentResult ? error : null" :empty="!loading && !error && !events.length" empty-title="没有匹配的事件" @retry="load">
       <v-alert v-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
-      <v-expansion-panels variant="accordion">
+      <v-expansion-panels v-model="expandedEvent" variant="accordion">
         <v-expansion-panel v-for="event in events" :key="event.id" :value="event.id" elevation="0" border>
           <v-expansion-panel-title>
             <div class="d-flex flex-wrap align-center ga-3">
@@ -61,6 +63,19 @@ const queue = computed<string>({
 })
 const eventType = computed(() => typeof route.query.event_type === 'string' ? route.query.event_type.trim() : '')
 const draftType = ref(eventType.value)
+const rawEventId = computed(() => route.query.event_id)
+function validEventId(value: unknown): number | null {
+  if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return null
+  const number = Number(value)
+  return Number.isSafeInteger(number) && number > 0 ? number : null
+}
+const eventId = computed(() => validEventId(rawEventId.value))
+const draftEventId = ref(typeof rawEventId.value === 'string' ? rawEventId.value : '')
+const draftIdError = ref('')
+const queryIdError = computed(() => rawEventId.value !== undefined && eventId.value === null ? '事件 ID 必须是有效的正整数；请修正或清除筛选。' : '')
+const idValidationError = computed(() => draftIdError.value || queryIdError.value)
+const hasFilters = computed(() => Boolean(queue.value || eventType.value || rawEventId.value !== undefined))
+const expandedEvent = ref<number | undefined>()
 const page = computed<number>({
   get: () => typeof route.query.event_page === 'string' ? Math.max(1, Number.parseInt(route.query.event_page, 10) || 1) : 1,
   set: value => { if (value !== page.value) updateQuery({ event_page: value === 1 ? undefined : String(value) }) },
@@ -71,20 +86,36 @@ const pageCount = computed(() => Math.ceil(total.value / 20))
 const loading = ref(false)
 const error = ref<string | null>(null)
 const lastSuccessfulKey = ref('')
-const currentQueryKey = computed(() => JSON.stringify({ page: page.value, queue: queue.value, eventType: eventType.value }))
+const currentQueryKey = computed(() => JSON.stringify({ page: page.value, queue: queue.value, eventType: eventType.value, eventId: rawEventId.value }))
 const hasCurrentResult = computed(() => lastSuccessfulKey.value === currentQueryKey.value)
 let requestId = 0
 
 function updateQuery(patch: Record<string, string | undefined>) {
-  void router.push({ query: { ...route.query, tab: 'events', ...patch } })
+  void router.replace({ query: { ...route.query, tab: 'events', ...patch } })
 }
-function applyType() {
-  const next = draftType.value.trim()
-  if (next !== eventType.value || page.value !== 1) updateQuery({ event_type: next || undefined, event_page: undefined })
+function applyFilters() {
+  const nextId = draftEventId.value.trim()
+  draftIdError.value = nextId && validEventId(nextId) === null ? '事件 ID 必须是有效的正整数' : ''
+  if (draftIdError.value) return
+  updateQuery({ event_id: nextId || undefined, event_type: draftType.value.trim() || undefined, event_page: undefined })
+}
+function clearFilters() {
+  draftEventId.value = ''
+  draftType.value = ''
+  draftIdError.value = ''
+  updateQuery({ event_id: undefined, event_type: undefined, queue: undefined, event_page: undefined })
 }
 async function load() {
   const id = ++requestId
   const queryKey = currentQueryKey.value
+  if (queryIdError.value) {
+    events.value = []
+    total.value = 0
+    lastSuccessfulKey.value = ''
+    loading.value = false
+    error.value = queryIdError.value
+    return
+  }
   loading.value = true
   error.value = null
   if (queryKey !== lastSuccessfulKey.value) {
@@ -92,15 +123,21 @@ async function load() {
     total.value = 0
   }
   try {
-    const result = await client.operations.events({ page: page.value, list_rows: 20, ...(queue.value ? { queue_name: queue.value } : {}), ...(eventType.value ? { event_type: eventType.value } : {}) })
+    const result = await client.operations.events({ page: page.value, list_rows: 20, ...(eventId.value !== null ? { event_id: eventId.value } : {}), ...(queue.value ? { queue_name: queue.value } : {}), ...(eventType.value ? { event_type: eventType.value } : {}) })
     if (id !== requestId) return
     events.value = result.data
     total.value = result.pagination?.totalItems ?? result.data.length
+    expandedEvent.value = eventId.value !== null && result.data.some(event => event.id === eventId.value) ? eventId.value : undefined
     lastSuccessfulKey.value = queryKey
   } catch (cause) {
     if (id === requestId) error.value = isApiError(cause) ? cause.message : '无法加载事件明细'
   } finally { if (id === requestId) loading.value = false }
 }
 watch(eventType, value => { draftType.value = value })
-watch([queue, eventType, page], () => { void load() }, { immediate: true })
+watch(rawEventId, value => { draftEventId.value = typeof value === 'string' ? value : ''; draftIdError.value = '' })
+watch([queue, eventType, rawEventId, page], () => { void load() }, { immediate: true })
 </script>
+
+<style scoped>
+.event-records__filter { flex: 1 1 180px; min-width: 0; }
+</style>

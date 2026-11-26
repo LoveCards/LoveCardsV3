@@ -1,4 +1,6 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect as baseExpect, type Page } from '@playwright/test'
+
+const expect = baseExpect.configure({ timeout: 15_000 })
 
 const routes = [
   '/apps/dashboard',
@@ -21,6 +23,7 @@ const routes = [
   '/apps/operations/upgrade',
   '/apps/operations/eventing',
   '/apps/operations/communication',
+  '/apps/operations/notifications',
   '/apps/community/reports',
   '/apps/operations/deliveries',
   '/apps/operations/audit',
@@ -34,6 +37,7 @@ const expectedHeadings: Record<string, string> = {
   '/apps/operations/upgrade': '系统升级',
   '/apps/operations/eventing': '事件管理',
   '/apps/operations/communication': '前端通信',
+  '/apps/operations/notifications': '站内通知',
   '/apps/settings/redis': 'Redis 连接',
   '/apps/settings/storage': '文件存储',
   '/apps/settings/messaging': '站外发送',
@@ -354,17 +358,18 @@ test('legacy theme config query resolves to its canonical theme slug', async ({ 
   expect(url.hash).toBe('#theme')
 })
 
-test('content resource routes open read-only detail pages while other resources keep their routes', async ({ page }) => {
+test('resource references open standalone record forms without a list dialog', async ({ page }) => {
   test.setTimeout(90_000)
   const ids = await resolveDetailFixtures(page)
 
   await expectDetailHeading(page, `/apps/content/cards/${ids.card}`, `卡片 #${ids.card}`)
-  await expect(page.getByRole('heading', { name: '卡片内容', exact: true })).toBeVisible()
+  await expect(page.getByText('正文', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '编辑', exact: true })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.locator('body')).not.toContainText('卡片不存在')
 
   await expectDetailHeading(page, `/apps/content/comments/${ids.comment}`, `评论 #${ids.comment}`)
-  await expect(page.getByRole('heading', { name: '评论内容', exact: true })).toBeVisible()
+  await expect(page.getByText('评论正文', { exact: true })).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await expect(page.locator('body')).not.toContainText('评论不存在')
 
@@ -373,10 +378,11 @@ test('content resource routes open read-only detail pages while other resources 
   await page.goto(`./apps/content/tags/${ids.tag}`, { waitUntil: 'domcontentloaded' })
   await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
   url = new URL(page.url())
-  expect(url.pathname).toBe('/admin/apps/content/tags')
-  expect(url.searchParams.get('inspect')).toBe(String(ids.tag))
-  await expect(page.getByRole('dialog')).toContainText(/(?:查看|编辑)标签/)
-  await expect(page.getByRole('heading', { name: '标签', exact: true, level: 1 })).toBeVisible()
+  expect(url.pathname).toBe(`/admin/apps/content/tags/${ids.tag}`)
+  expect(url.searchParams.has('inspect')).toBe(false)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.getByText('标签名称', { exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: `标签 #${ids.tag}`, exact: true, level: 1 })).toBeVisible()
 
   await expectDetailHeading(page, `/apps/users/${ids.user}/security`, /^账号安全 · .+$/)
   await expect(page.getByRole('heading', { name: 'Session', exact: true })).toBeVisible()
@@ -411,7 +417,7 @@ test('legacy detail aliases redirect to canonical resource routes', async ({ pag
   expect(url.pathname).toBe(`/admin/apps/content/cards/${card}`)
   expect(url.searchParams.has('inspect')).toBe(false)
   await expect(page.getByRole('heading', { name: `卡片 #${card}`, exact: true, level: 1 })).toBeVisible()
-  await expect(page.getByRole('heading', { name: '卡片内容', exact: true })).toBeVisible()
+  await expect(page.getByText('正文', { exact: true })).toBeVisible()
 
   await page.goto(`./apps/comments/${comment}?source=legacy#comment`, { waitUntil: 'domcontentloaded' })
   await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
@@ -419,7 +425,7 @@ test('legacy detail aliases redirect to canonical resource routes', async ({ pag
   expect(url.pathname).toBe(`/admin/apps/content/comments/${comment}`)
   expect(url.searchParams.has('inspect')).toBe(false)
   await expect(page.getByRole('heading', { name: `评论 #${comment}`, exact: true, level: 1 })).toBeVisible()
-  await expect(page.getByRole('heading', { name: '评论内容', exact: true })).toBeVisible()
+  await expect(page.getByText('评论正文', { exact: true })).toBeVisible()
 
   await page.goto(`./apps/storage/files/${file}/usage?source=legacy#usage`, { waitUntil: 'domcontentloaded' })
   await expect(page.getByRole('heading', { name: `文件 #${file}`, exact: true, level: 1 })).toBeVisible()
@@ -445,6 +451,7 @@ test('legacy inspect links open details and return to the original list query', 
     const url = new URL(page.url())
     expect(url.pathname).toBe(`/admin/apps/content/${resource}/${id}`)
     expect(url.searchParams.has('inspect')).toBe(false)
+    await expect(page.getByRole('button', { name: '编辑', exact: true })).toBeVisible()
     await page.getByRole('button', { name: '返回列表' }).click()
     await page.waitForURL((target) => target.pathname === `/admin/apps/content/${resource}`)
     const returned = new URL(page.url())
@@ -524,15 +531,16 @@ test('content list filters cannot override pagination or pass unknown fields to 
   }
 })
 
-test('card detail and edit dialog keep document overflow contained on a narrow viewport', async ({ page }) => {
+test('card standalone editor keeps document overflow contained on a narrow viewport', async ({ page }) => {
   test.setTimeout(60_000)
   await page.setViewportSize({ width: 390, height: 844 })
   const { card } = await resolveDetailFixtures(page)
   await page.goto(`./apps/content/cards/${card}`, { waitUntil: 'domcontentloaded' })
   await expect(page.locator('main')).toBeVisible({ timeout: 20_000 })
   await expect(page.getByRole('heading', { name: `卡片 #${card}`, exact: true, level: 1 })).toBeVisible()
-  await page.getByRole('button', { name: /(?:编辑|审核)卡片/ }).click()
-  await expect(page.getByRole('dialog')).toContainText(/(?:审核|编辑)卡片/)
+  await page.getByRole('button', { name: '编辑', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: '正文', exact: true })).toBeEditable()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
   await page.waitForTimeout(250)
 
   const overflow = await page.evaluate(() => Math.max(

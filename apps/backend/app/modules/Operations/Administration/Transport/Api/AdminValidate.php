@@ -8,6 +8,24 @@ use think\Validate;
 /** 管理端查询和治理动作的请求场景。 */
 final class AdminValidate extends Validate
 {
+    public static function requestSchemas(): array
+    {
+        $pagination = ['page' => ['type' => 'number'], 'list_rows' => ['type' => 'number']];
+        return [
+            'eventList' => ['type' => 'object', 'properties' => $pagination + [
+                'event_id' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 9007199254740991],
+                'event_type' => ['type' => 'string', 'maxLength' => 100],
+                'queue_name' => ['type' => 'string', 'maxLength' => 64],
+            ], 'additionalProperties' => false],
+            'reportList' => ['type' => 'object', 'properties' => $pagination + [
+                'status' => ['type' => 'string', 'maxLength' => 32],
+                'status_group' => ['type' => 'string', 'enum' => ['pending'], 'description' => '待办举报：待处理和处理中；不能与 status 同时使用。'],
+                'resource_type' => ['type' => 'string', 'maxLength' => 64],
+                'search_value' => ['type' => 'string', 'maxLength' => 255],
+            ], 'not' => ['required' => ['status', 'status_group']], 'additionalProperties' => false],
+        ];
+    }
+
     public static $all_scene = [
         'pagination' => [
             'normal' => ['page', 'list_rows', 'search_value', 'search_keys', 'status', 'resource_type', 'actor_id', 'unread_only', 'worker_type'],
@@ -18,7 +36,11 @@ final class AdminValidate extends Validate
             'require' => false, 'nonNull' => false, 'toNull' => [],
         ],
         'eventList' => [
-            'normal' => ['page', 'list_rows', 'event_type', 'queue_name'],
+            'normal' => ['page', 'list_rows', 'event_id', 'event_type', 'queue_name'],
+            'require' => false, 'nonNull' => false, 'toNull' => [],
+        ],
+        'reportList' => [
+            'normal' => ['page', 'list_rows', 'search_value', 'status', 'status_group', 'resource_type'],
             'require' => false, 'nonNull' => false, 'toNull' => [],
         ],
         'transition' => [
@@ -64,6 +86,7 @@ final class AdminValidate extends Validate
         'list_rows' => 'number',
         'actor_id' => 'number',
         'status' => 'max:32',
+        'status_group' => 'in:pending|reportStatusGroup',
         'queue_name' => 'max:64',
         'policy_decision' => 'in:applied,skipped,not-configured',
         'resource_type' => 'max:64',
@@ -76,6 +99,7 @@ final class AdminValidate extends Validate
         'file' => 'require|fileExt:zip',
         'unread_only' => 'boolean',
         'event_type' => 'max:100',
+        'event_id' => 'integer|regex:/^[1-9][0-9]*$/|between:1,9007199254740991',
         'desired_mode' => 'max:16',
         'mode' => 'in:scheduled,resident',
         'scheduled_trigger' => 'in:none,cli,http',
@@ -89,8 +113,17 @@ final class AdminValidate extends Validate
         'gateway_stale_seconds' => 'number',
     ];
 
+    /** 单一状态和待办分组是两种互斥筛选，不能悄悄取交集。 */
+    protected function reportStatusGroup($value, $rule, array $data): bool|string
+    {
+        return array_key_exists('status', $data) ? '状态分组不能与单个状态同时使用' : true;
+    }
+
     protected $message = [
         'status.require' => '状态不能为空',
+        'status_group.in' => '举报状态分组无效',
+        'event_id.integer' => '事件 ID 必须为正整数',
+        'event_id.between' => '事件 ID 超出有效范围',
         'file.require' => 'Release ZIP 不能为空',
         'file.fileExt' => 'Release 文件必须是 ZIP',
         'page.number' => '页码格式错误',

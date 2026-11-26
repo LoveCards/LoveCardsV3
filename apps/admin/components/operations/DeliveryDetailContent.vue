@@ -27,7 +27,12 @@
         <v-row dense>
           <v-col cols="12" sm="6"><AdminDetailField label="处理结果"><span v-if="delivery.policy_decision === 'skipped'">{{ skipLabel(delivery.queue_name) }}</span><AdminStatusChip v-else :status="delivery.status" /></AdminDetailField></v-col>
           <v-col cols="12" sm="6"><AdminDetailField label="尝试次数" :value="delivery.attempt_count" /></v-col>
-          <v-col cols="12" sm="6"><AdminDetailField label="事件" :value="delivery.display_name || delivery.event_type" /></v-col>
+          <v-col cols="12" sm="6">
+            <AdminDetailField label="所属事件">
+              <NuxtLink v-if="sourceEventTarget" :to="sourceEventTarget" class="delivery-detail__event-link" :aria-label="`定位所属事件 #${delivery.event_id}`">{{ delivery.display_name || delivery.event_type }} #{{ delivery.event_id }}</NuxtLink>
+              <span v-else>{{ delivery.display_name || delivery.event_type }} #{{ delivery.event_id }}</span>
+            </AdminDetailField>
+          </v-col>
           <v-col cols="12" sm="6"><AdminDetailField label="创建时间" :value="delivery.created_at" /></v-col>
           <v-col cols="12" sm="6"><AdminDetailField label="最早可执行时间" :value="delivery.available_at" /></v-col>
           <v-col cols="12" sm="6"><AdminDetailField label="最近更新时间" :value="delivery.updated_at" /></v-col>
@@ -98,6 +103,11 @@ const notifier = useAdminNotifier()
 const userStore = useUserStore()
 const canRetry = computed(() => userStore.hasGrant('operations.retry', 'global'))
 const delivery = ref<OperationsDelivery | null>(null)
+const sourceEventTarget = computed(() => {
+  const id = delivery.value?.event_id
+  if (!Number.isSafeInteger(id) || !id || id < 1 || !userStore.canAccessPath('/apps/operations/eventing')) return null
+  return { path: '/apps/operations/eventing', query: { tab: 'events', event_id: String(id) } }
+})
 const loading = ref(false)
 const missing = ref(false)
 const error = ref<string | null>(null)
@@ -180,6 +190,9 @@ watch(retrying, value => emit('busy-change', value), { immediate: true })
 </script>
 
 <style scoped>
+.delivery-detail__event-link { color: rgb(var(--v-theme-primary)); font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
+.delivery-detail__event-link:hover { text-decoration-thickness: 2px; }
+.delivery-detail__event-link:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; border-radius: 2px; }
 .delivery-detail__error { max-height: 18rem; margin: 0; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; }
 .delivery-detail__metadata { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 16px; }
 .delivery-detail__metadata dd { margin: 0; overflow-wrap: anywhere; }

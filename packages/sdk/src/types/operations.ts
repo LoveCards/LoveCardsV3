@@ -266,6 +266,10 @@ export interface OperationsUpgradeStep {
 }
 
 export interface OperationsUpgradePlan {
+  plan_version: number
+  legacy_plan: boolean
+  service_recovered: boolean
+  execution_uncertain: boolean
   plan_id: string
   release_id: string
   current_version: string

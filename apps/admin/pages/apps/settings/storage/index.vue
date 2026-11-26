@@ -102,6 +102,13 @@
                         </AdminActionGuard>
                         <v-spacer />
                         <v-btn
+                          v-if="userStore.hasGrant('files.read', 'all')"
+                          :to="{ path: '/apps/settings/storage/files', query: { channel_slug: channel.slug, view: 'normal' } }"
+                          variant="text"
+                        >
+                          查看文件
+                        </v-btn>
+                        <v-btn
                           append-icon="mdi-arrow-right"
                           color="primary"
                           :disabled="channel.configured === false"

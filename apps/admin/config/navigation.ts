@@ -364,6 +364,19 @@ const operationsItems = [
 
 const [siteInformation, sitePolicies, appearance, storageService, redisService, messagingService, verificationService] = systemConfigItems
 const [eventProcessing, frontendCommunication, upgrade, auditLog] = operationsItems
+const notificationRecords = item({
+  path: '/apps/operations/notifications',
+  canonicalPath: '/apps/operations/notifications',
+  title: '站内通知',
+  searchAliases: ['通知记录', '通知查询'],
+  icon: 'mdi-bell-outline',
+  domain: 'system',
+  section: '站内通知',
+  parentRoute: '/apps/operations/notifications',
+  grants: [{ capability: 'notifications.read', scope: 'global' }],
+  actionCapabilities: [],
+  riskLevel: 'sensitive',
+})
 
 const accessControlItems: readonly AdminNavigationItem[] = [
   item({
@@ -431,7 +444,7 @@ export const adminNavigation: {
       title: '系统',
       icon: 'mdi-console-line',
       domain: 'system',
-      items: [eventProcessing, frontendCommunication, auditLog, storageService, redisService, messagingService, verificationService, upgrade],
+      items: [eventProcessing, notificationRecords, frontendCommunication, auditLog, storageService, redisService, messagingService, verificationService, upgrade],
     },
   ],
 }

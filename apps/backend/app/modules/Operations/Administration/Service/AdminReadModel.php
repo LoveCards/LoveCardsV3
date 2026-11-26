@@ -14,7 +14,7 @@ final class AdminReadModel
             'users' => $this->count('users', static fn ($q) => $q->whereNull('deleted_at')),
             'cards' => $this->count('cards', static fn ($q) => $q->whereNull('deleted_at')),
             'comments' => $this->count('comments', static fn ($q) => $q->whereNull('deleted_at')),
-            'reports_open' => $this->count('reports', static fn ($q) => $q->whereIn('status', ['open', 'reviewing'])),
+            'reports_open' => $this->count('reports', static fn ($q) => $q->whereIn('status', \app\modules\Platform\Safety\Public\Safety::pendingReportStatuses())),
             'notifications_unread' => $this->count('notifications', static fn ($q) => $q->whereNull('read_at')),
             'outbox_pending' => $this->count('event_deliveries', static fn ($q) => $q->whereIn('status', ['pending', 'processing'])),
             'files_pending' => $this->count('files', static fn ($q) => $q->where(function ($inner): void {
@@ -103,6 +103,7 @@ final class AdminReadModel
         $limit = $this->limit($params);
         $query = Db::table('outbox_events')->alias('e')
             ->field('e.id,e.event_type,e.event_version,e.aggregate_type,e.aggregate_key,e.occurred_at,e.created_at');
+        if (isset($params['event_id'])) $query->where('e.id', (int) $params['event_id']);
         if (!empty($params['event_type'])) $query->where('e.event_type', (string) $params['event_type']);
         if (!empty($params['queue_name'])) {
             $query->whereExists(function ($subquery) use ($params): void {
@@ -201,9 +202,7 @@ final class AdminReadModel
 
     public function notificationsStats(): array
     {
-        $row = Db::table('notifications')->field("COUNT(*) AS total, SUM(read_at IS NULL) AS unread, COUNT(DISTINCT recipient_id) AS recipients")->find();
-        $types = Db::table('notifications')->field('type,COUNT(*) AS count')->group('type')->order('count', 'desc')->limit(30)->select()->toArray();
-        return ['total' => (int) ($row['total'] ?? 0), 'unread' => (int) ($row['unread'] ?? 0), 'recipients' => (int) ($row['recipients'] ?? 0), 'types' => $types];
+        return \app\modules\Platform\Notifications\Public\AdminNotifications::stats();
     }
 
     public function communityInsights(): array

@@ -120,6 +120,7 @@ final class CapabilityCatalog
             'users.security.read'   => '查看用户安全状态',
             'users.sessions.revoke' => '撤销用户 Session',
             'users.recovery.read'   => '查看账号恢复状态',
+            'notifications.read' => '查看站内通知记录元数据',
             'communications.read'   => '查看通知和投递运维元数据',
             'communications.configure' => '启停互动通知策略',
             'community.insights.read' => '查看社区隐私安全聚合',

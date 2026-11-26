@@ -8,6 +8,7 @@ use app\modules\Platform\Safety\Contract\SafetyRepository;
 use app\modules\Platform\Safety\Contract\ReportTargetResolver;
 use app\modules\Platform\Safety\Domain\PrivacyPreferences;
 use app\modules\Platform\Safety\Domain\ReportSubmission;
+use app\modules\Platform\Safety\Domain\ReportStatus;
 use app\modules\Platform\Social\Contract\SocialGraphRepository;
 use app\shared\Observability\AuditLogger;
 use app\shared\Transaction\TransactionManager;
@@ -24,5 +25,7 @@ final class Safety
     public static function blockedUserIds(int $userId): array { return self::useCase()->blockedUserIds($userId); }
     public static function listBlocked(int $userId, ?string $cursor = null, int $limit = 20, ?string $query = null): array { return self::useCase()->listBlocked($userId, $cursor, $limit, $query); }
     public static function report(ReportSubmission $submission): int { return self::useCase()->report($submission); }
+    /** @return list<string> 待处理及处理中，供跨模块只读汇总使用。 */
+    public static function pendingReportStatuses(): array { return ReportStatus::PENDING; }
     public static function adminReports(): AdminReports { return app(AdminReports::class); }
 }

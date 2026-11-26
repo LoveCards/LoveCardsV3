@@ -34,6 +34,25 @@ final class NotificationTypeCatalog
         'system.moderation' => 'system',
     ];
 
+    /** 管理界面使用的类型名称；未知历史值保留原协议值并给出明确说明。 */
+    public static function labelFor(string $type): string
+    {
+        return match ($type) {
+            'social.followed' => '关注提醒',
+            'message' => '私信提醒',
+            'content.card_liked' => '卡片获赞',
+            'content.comment_liked' => '评论获赞',
+            'library.saved' => '收藏提醒',
+            'content.commented' => '卡片评论',
+            'content.replied' => '评论回复',
+            'content.mentioned' => '提及提醒',
+            'system.notice' => '系统通知',
+            'system.security' => '安全通知',
+            'system.moderation' => '审核通知',
+            default => '未知类型',
+        };
+    }
+
     /** @return array<int, string> */
     public static function types(): array
     {

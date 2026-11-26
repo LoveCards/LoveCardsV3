@@ -129,6 +129,7 @@ use app\modules\Platform\Eventing\Public\HandlerRegistry;
 
 // 容器Provider定义文件
 return [
+    \app\modules\Theme\Contract\ThemeMutationLock::class => \app\modules\Theme\Infrastructure\ThemeMutationLock::class,
     HandlerRegistry::class => static fn(): HandlerRegistry => \app\EventHandlers::create(),
     'think\exception\Handle' => ExceptionHandle::class,
     CapabilityProvider::class => RbacCapabilityProvider::class,

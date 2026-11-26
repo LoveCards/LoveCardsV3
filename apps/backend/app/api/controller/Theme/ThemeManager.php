@@ -7,7 +7,8 @@ use app\api\ApiResponse;
 use app\api\controller\BaseController;
 use app\modules\Theme\Transport\Api\ThemeResource;
 use app\modules\Theme\Transport\Api\ThemeConfigResource;
-use app\modules\Theme\Service\ThemeManager as ThemeService;
+use app\modules\Theme\Public\Theme as ThemeService;
+use app\modules\Theme\Application\ThemeOperationException;
 
 class ThemeManager extends BaseController
 {
@@ -26,7 +27,9 @@ class ThemeManager extends BaseController
         if (!$info) throw ApiException::badRequest('Theme upload failed');
         $zipPath = $info->getRealPath();
         try {
-            return ApiResponse::createOk(ThemeResource::make(ThemeService::install($zipPath)));
+            return ApiResponse::createOk(ThemeResource::make(ThemeService::install($zipPath, (int) request()->auth->uid())));
+        } catch (ThemeOperationException $e) {
+            throw $this->operationError($e);
         } catch (\Throwable $e) {
             throw ApiException::badRequest($e->getMessage());
         } finally {
@@ -37,7 +40,9 @@ class ThemeManager extends BaseController
     public function activate()
     {
         $params = $this->validated();
-        try { ThemeService::activate((string)$params['id'], (string)$params['release']); } catch (\Throwable $e) { throw ApiException::badRequest($e->getMessage()); }
+        try { ThemeService::activate((string)$params['id'], (string)$params['release'], (int) request()->auth->uid(), (string) request()->host()); }
+        catch (ThemeOperationException $e) { throw $this->operationError($e); }
+        catch (\Throwable $e) { throw ApiException::badRequest($e->getMessage()); }
         return ApiResponse::createNoContent();
     }
 
@@ -53,14 +58,25 @@ class ThemeManager extends BaseController
         $params = $this->validated();
         $values = is_string($params['values']) ? json_decode($params['values'], true) : $params['values'];
         if (!is_array($values)) throw ApiException::badRequest('Theme values must be an object');
-        try { ThemeService::updateConfig((string)$params['id'], (string)$params['release'], $values); } catch (\Throwable $e) { throw ApiException::badRequest($e->getMessage()); }
+        try { ThemeService::updateConfig((string)$params['id'], (string)$params['release'], $values, (int) request()->auth->uid(), (string) request()->host()); }
+        catch (ThemeOperationException $e) { throw $this->operationError($e); }
+        catch (\Throwable $e) { throw ApiException::badRequest($e->getMessage()); }
         return ApiResponse::createNoContent();
     }
 
     public function delete()
     {
         $params = $this->validated();
-        try { ThemeService::delete((string)$params['id'], (string)$params['release']); } catch (\Throwable $e) { throw ApiException::badRequest($e->getMessage()); }
+        try { ThemeService::delete((string)$params['id'], (string)$params['release'], (int) request()->auth->uid()); }
+        catch (ThemeOperationException $e) { throw $this->operationError($e); }
+        catch (\Throwable $e) { throw ApiException::badRequest($e->getMessage()); }
         return ApiResponse::createNoContent();
+    }
+
+    private function operationError(ThemeOperationException $error): ApiException
+    {
+        return $error->reasonCode === 'theme_operation_incomplete'
+            ? ApiException::badRequest($error->getMessage(), ApiException::CODE_PARAM_INVALID, $error->details(), $error)
+            : ApiException::error($error->getMessage(), ApiException::CODE_SYSTEM_ERROR, $error->details(), $error);
     }
 }

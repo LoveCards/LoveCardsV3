@@ -14,6 +14,7 @@ dev 实际部署、测试证据和人工验收步骤见 [2026-11-12 dev 验收�
 - [管理端信息架构与 UX 设计基线](engineering/ADMIN-IA-DESIGN.md)
 - [管理端菜单与页面归属规范（当前）](engineering/ADMIN-NAVIGATION-CONVENTION-2026-11-07.md)
 - [管理端页面布局规范（当前）](engineering/ADMIN-LAYOUT-SYSTEM.md)
+- [管理端能力补全与验收记录（2026-11-27）](engineering/ADMIN-COMPLETION-IMPLEMENTATION-2026-11-27.md)
 - [管理端子页面与子任务设计规范（目标基线，覆盖清单）](engineering/ADMIN-SUBPAGE-DESIGN-STANDARD.md)
 - [管理端详情与编辑视觉规范（目标基线）](engineering/ADMIN-DETAIL-EDIT-DESIGN-STANDARD.md)
 - [管理端列表与表格交互规范（目标设计）](engineering/ADMIN-TABLE-INTERACTION-STANDARD.md)

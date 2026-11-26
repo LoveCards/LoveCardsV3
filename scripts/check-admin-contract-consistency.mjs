@@ -4,6 +4,8 @@ import path from 'node:path'
 const root = process.cwd()
 const failures = []
 const fail = (message) => failures.push(message)
+// 敏感查询允许显式分配，但不随菜单/API 补全扩大既有普通管理角色的默认权限。
+const explicitAdminGrants = new Set(['notifications.read:global'])
 
 async function read(file) {
   return fs.readFile(path.join(root, file), 'utf8')
@@ -83,7 +85,8 @@ async function pageExists(routePath) {
 
 const manifest = JSON.parse(await read('contracts/route-manifest.json'))
 const catalog = capabilityCatalog(await read('apps/backend/app/modules/Platform/Rbac/Domain/CapabilityCatalog.php'))
-const adminPolicy = adminPolicyCapabilities(await read('apps/backend/app/modules/Platform/Rbac/Domain/SystemRolePolicy.php'))
+const systemRolePolicy = await read('apps/backend/app/modules/Platform/Rbac/Domain/SystemRolePolicy.php')
+const adminPolicy = adminPolicyCapabilities(systemRolePolicy)
 const routeGrants = requiredGrantsFromManifest(manifest)
 const adminRouteGrants = new Set()
 const migrationDirectory = path.join(root, 'apps/backend/database/migrations')
@@ -94,6 +97,16 @@ const migrationSql = (await Promise.all((await fs.readdir(migrationDirectory))
 if (!catalog.size) fail('CapabilityCatalog::all() could not be parsed')
 if (!adminPolicy.size) fail("SystemRolePolicy admin capability matrix could not be parsed")
 const seededAdminGrants = migrationAdminGrants(migrationSql, catalog)
+const administrationTemplates = systemRolePolicy.split('public static function capabilityMatrix')[0]
+
+for (const grant of explicitAdminGrants) {
+  const [capability, scope] = grant.split(':')
+  if (!catalog.has(capability) || scope !== 'global') fail(`Invalid explicit admin grant: ${grant}`)
+  if (adminPolicy.has(capability) || adminPolicy.has(`${capability}.all`)
+    || seededAdminGrants.has(grant) || administrationTemplates.includes(`'${capability}'`)) {
+    fail(`Explicit admin grant must not be assigned by default: ${grant}`)
+  }
+}
 
 for (const capability of catalog) {
   const canonical = capability.endsWith('.all') ? capability.slice(0, -4) : capability
@@ -114,13 +127,13 @@ for (const { route, grant } of routeGrants) {
     fail(`${route.name || route.path}: capability is absent from CapabilityCatalog: ${grant.capability}`)
     continue
   }
-  // 管理路由声明的 scope 必须能由默认 admin 角色表示；普通用户路由只检查能力目录归属。
+  // 管理路由使用默认能力或受审的显式授权能力；普通用户路由只检查能力目录归属。
   if (route.path === '/admin' || route.path.startsWith('/admin/')) {
     adminRouteGrants.add(`${grant.capability}:${grant.scope}`)
     const granted = grant.scope === 'all'
       ? adminPolicy.has(`${grant.capability}.all`)
       : adminPolicy.has(grant.capability) || adminPolicy.has(`${grant.capability}.all`)
-    if (!granted) fail(`${route.name || route.path}: admin SystemRolePolicy does not grant ${grant.capability}:${grant.scope}`)
+    if (!granted && !explicitAdminGrants.has(`${grant.capability}:${grant.scope}`)) fail(`${route.name || route.path}: admin SystemRolePolicy does not grant ${grant.capability}:${grant.scope}`)
   }
 }
 
@@ -135,7 +148,7 @@ for (const entry of navigation) {
   const policyGrant = entry.scope === 'all'
     ? adminPolicy.has(`${entry.capability}.all`)
     : adminPolicy.has(entry.capability) || adminPolicy.has(`${entry.capability}.all`)
-  if (!policyGrant) fail(`navigation ${entry.path} is not granted by admin SystemRolePolicy: ${entry.capability}:${entry.scope}`)
+  if (!policyGrant && !explicitAdminGrants.has(`${entry.capability}:${entry.scope}`)) fail(`navigation ${entry.path} is not granted by admin SystemRolePolicy: ${entry.capability}:${entry.scope}`)
   if (!adminRouteGrants.has(`${entry.capability}:${entry.scope}`)) {
     fail(`navigation ${entry.path} has no matching admin route grant: ${entry.capability}:${entry.scope}`)
   }

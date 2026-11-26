@@ -160,6 +160,14 @@ SDK 负责：暴露通知列表、未读数、已读操作和稳定字段类型�
 
 请求成功 Toast 与通知中心记录是两套体验：前者反馈当前操作者，后者告知被影响的收件人。
 
+## 9.1 后台通知元数据查询
+
+管理端仅通过 `GET /admin/notifications` 与 `GET /admin/notifications/:id` 查询元数据，两个入口同时要求 `admin.access@global` 与显式的 `notifications.read@global`。新能力不自动授予既有非 root 角色；`communications.read` 的运维聚合权限不能替代逐条查询权限。
+
+列表按 `created_at DESC, id DESC` 分页，支持接收用户、存储类型、已读状态和生成时间筛选。未知历史类型保留原值；不返回 payload、dedupe key、正文或偏好。查询不标记已读，不补发通知，不从 dedupe key 推断来源事件。历史 DATETIME 按服务端保存原值筛选，开始含、结束不含，不声称其为 UTC。
+
+旧运维统计 URL 与授权保留，由 Notifications 模块的同一公开查询能力提供聚合；管理端列表弹窗和引用独立页共用详情主体。部署增量和验证证据见[管理端补全实施清单](ADMIN-COMPLETION-IMPLEMENTATION-2026-11-27.md)。
+
 ## 10. 新增通知的实现顺序
 
 1. 写清业务事实、唯一收件人规则、排除条件和何时算真实状态转换。

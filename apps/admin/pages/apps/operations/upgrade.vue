@@ -2,7 +2,7 @@
   <AdminPageContainer :max-width="1040">
     <AdminPageHeader title="系统升级" description="上传已签名的升级包，并查看升级进度。" :breadcrumbs="[{ title: '系统' }]">
       <template #actions>
-        <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn>
+        <v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading || detailLoading" @click="refresh">刷新</v-btn>
         <AdminActionGuard capability="system.update">
           <v-btn color="primary" prepend-icon="mdi-package-up" @click="uploadDialog = true">上传升级包</v-btn>
         </AdminActionGuard>
@@ -14,34 +14,23 @@
       <div class="text-h6">{{ currentVersion || (loading ? '读取中' : '未知') }}</div>
     </v-sheet>
 
+    <section v-if="selectedPlanId" class="mb-5" aria-label="升级计划诊断">
+      <AdminAsyncState :loading="detailLoading" :error="detailError" error-title="无法读取升级诊断" @retry="loadDetail">
+        <UpgradePlanDetail v-if="detailPlan" :plan="detailPlan" :busy="actionPlanId !== null" @close="selectPlan(null)" @action="openAction" />
+      </AdminAsyncState>
+    </section>
+
     <AdminAsyncState :loading="loading" :error="loadError" :empty="!plans.length" empty-title="暂无升级计划" empty-description="上传签名升级包后，升级状态会显示在这里。" @retry="load">
       <v-sheet border rounded="lg">
         <v-data-table :headers="headers" :items="plans" item-value="plan_id" :items-per-page="10" items-per-page-text="每页行数">
           <template #item.target_version="{ item }">{{ item.target_version || '未提供版本信息' }}</template>
           <template #item.update_notes="{ item }"><span class="release-notes">{{ item.update_notes || '此升级包未提供更新说明' }}</span></template>
           <template #item.status="{ item }">
-            <AdminStatusChip :status="item.status" :label="statusLabel(item)" />
+            <AdminStatusChip :status="item.status" :label="upgradeStatusLabel(item)" />
           </template>
           <template #item.failure_code="{ item }"><code v-if="failedStep(item)?.failure_code" class="text-error">{{ failedStep(item)?.failure_code }}</code><span v-else>—</span></template>
           <template #item.actions="{ item }">
-            <div class="d-flex align-center ga-1">
-              <AdminActionGuard capability="system.update">
-                <AdminTableRowAction v-if="canAdvance(item)" :loading="actionPlanId === item.plan_id" @click="openAction(item, 'advance')">继续升级</AdminTableRowAction>
-              </AdminActionGuard>
-              <AdminActionGuard capability="system.update.contract">
-                <AdminTableRowAction v-if="canApprove(item)" @click="openAction(item, 'contract')">批准数据库收缩</AdminTableRowAction>
-              </AdminActionGuard>
-              <AdminActionGuard capability="system.recover">
-                <v-menu v-if="canRecover(item)" location="bottom end">
-                  <template #activator="{ props }">
-                    <v-btn v-bind="props" class="admin-table-row-more" aria-label="更多升级操作" title="更多升级操作" icon="mdi-dots-horizontal" size="small" variant="text" />
-                  </template>
-                  <v-list density="compact">
-                    <v-list-item title="恢复旧版本" prepend-icon="mdi-restore" @click="openAction(item, 'recover')" />
-                  </v-list>
-                </v-menu>
-              </AdminActionGuard>
-            </div>
+            <AdminTableRowAction @click="selectPlan(item.plan_id)">查看</AdminTableRowAction>
           </template>
         </v-data-table>
       </v-sheet>
@@ -73,14 +62,23 @@ import AdminDangerActionDialog from '~/components/shared/admin/AdminDangerAction
 import AdminPageContainer from '~/components/shared/admin/AdminPageContainer.vue'
 import AdminPageHeader from '~/components/shared/admin/AdminPageHeader.vue'
 import AdminStatusChip from '~/components/shared/admin/AdminStatusChip.vue'
+import UpgradePlanDetail from '~/components/operations/UpgradePlanDetail.vue'
+import { canAdvanceUpgrade, canApproveUpgrade, canRecoverUpgrade, upgradeStatusLabel } from '~/components/operations/upgradeState'
 import { useApi, isApiError } from '~/lib/api'
 import { useAdminNotifier } from '~/composables/useAdminNotifier'
 
 const client = useApi()
+const route = useRoute()
+const router = useRouter()
 const notifier = useAdminNotifier()
 const plans = ref<OperationsUpgradePlan[]>([])
 const currentVersion = ref('')
 const loading = ref(false)
+const detailLoading = ref(false)
+const detailError = ref<string | null>(null)
+const detailPlan = ref<OperationsUpgradePlan | null>(null)
+const selectedPlanId = computed(() => typeof route.query.plan === 'string' ? route.query.plan.trim() : '')
+let detailRequest = 0
 const creating = ref(false)
 const loadError = ref<string | null>(null)
 const uploadError = ref('')
@@ -97,9 +95,9 @@ const headers = [
   { title: '更新说明', key: 'update_notes', minWidth: 320 },
   { title: '升级状态', key: 'status', minWidth: 144 },
   { title: '失败代码', key: 'failure_code', sortable: false, minWidth: 160 },
-  { title: '操作', key: 'actions', sortable: false, minWidth: 200 },
+  { title: '操作', key: 'actions', sortable: false, width: 100 },
 ]
-const actionTitle = computed(() => actionType.value === 'contract' ? '批准数据库收缩' : actionType.value === 'recover' ? '恢复旧版本' : '继续升级')
+const actionTitle = computed(() => actionType.value === 'contract' ? '批准数据库收缩' : actionType.value === 'recover' ? selectedPlan.value?.milestones.pointer_restored_at ? '继续恢复' : '恢复旧版本' : '继续升级')
 const actionImpact = computed(() => actionType.value === 'contract'
   ? '批准后可能删除旧数据库结构，请确认备份和新版本健康状态。'
   : actionType.value === 'recover'
@@ -119,6 +117,26 @@ async function load() {
   }
 }
 
+async function selectPlan(planId: string | null) {
+  await router.replace({ query: { ...route.query, plan: planId || undefined } })
+}
+
+async function loadDetail() {
+  const planId = selectedPlanId.value
+  const request = ++detailRequest
+  detailPlan.value = null; detailError.value = null
+  if (!planId) { detailLoading.value = false; return }
+  detailLoading.value = true
+  try {
+    const plan = await client.operations.upgrade(planId)
+    if (request === detailRequest) detailPlan.value = plan
+  } catch (cause) {
+    if (request === detailRequest) detailError.value = isApiError(cause) ? cause.message : '无法读取升级计划'
+  } finally { if (request === detailRequest) detailLoading.value = false }
+}
+
+async function refresh() { await Promise.all([load(), loadDetail()]) }
+
 async function createPlan() {
   const file = Array.isArray(releaseFile.value) ? releaseFile.value[0] : releaseFile.value
   if (!file) return
@@ -129,32 +147,16 @@ async function createPlan() {
     const plan = await client.operations.createUpgrade(formData)
     plans.value = [plan, ...plans.value.filter((item) => item.plan_id !== plan.plan_id)]
     uploadDialog.value = false; releaseFile.value = null
+    await selectPlan(plan.plan_id)
     notifier.success('升级计划已创建')
   } catch (cause) { uploadError.value = isApiError(cause) ? cause.message : '上传升级包失败' }
   finally { creating.value = false }
 }
 
-function stepState(plan: OperationsUpgradePlan, name: string | null) { return plan.steps.find((step) => step.name === name)?.state || '' }
-function canApprove(plan: OperationsUpgradePlan) { return !plan.contract_approved && plan.current_step === 'contract_migrations' && stepState(plan, plan.current_step) === 'waiting' }
-function canAdvance(plan: OperationsUpgradePlan) {
-  if (['completed', 'complete', 'recovered'].includes(plan.status) || !plan.current_step) return false
-  return !canApprove(plan)
-}
-function canRecover(plan: OperationsUpgradePlan) {
-  const contract = plan.steps.find((step) => step.name === 'contract_migrations')
-  const started = contract ? contract.attempts > 0 || ['running', 'failed', 'succeeded'].includes(contract.state) : true
-  return Boolean(plan.previous_release_id && plan.milestones.activated_at) && plan.status !== 'recovered' && !plan.milestones.recovered_at && !started
-}
 function failedStep(plan: OperationsUpgradePlan) { return plan.steps.find((step) => step.state === 'failed') }
-function statusLabel(plan: OperationsUpgradePlan) {
-  if (canApprove(plan)) return '等待数据库收缩批准'
-  if (plan.status === 'failed') return '升级失败'
-  if (plan.status === 'completed') return '升级完成'
-  if (plan.status === 'recovered') return '已恢复旧版本'
-  if (plan.status === 'pending') return '等待开始'
-  return '升级中'
-}
-function openAction(plan: OperationsUpgradePlan, type: 'advance' | 'contract' | 'recover') {
+function openAction(type: 'advance' | 'contract' | 'recover') {
+  const plan = detailPlan.value
+  if (!plan || !(type === 'advance' ? canAdvanceUpgrade(plan) : type === 'contract' ? canApproveUpgrade(plan) : canRecoverUpgrade(plan))) return
   selectedPlan.value = plan; actionType.value = type; actionError.value = ''; actionDialog.value = true
 }
 async function confirmAction() {
@@ -168,13 +170,15 @@ async function confirmAction() {
         ? await client.operations.approveUpgradeContract(planId)
         : await client.operations.recoverUpgrade(planId)
     plans.value = plans.value.map((item) => item.plan_id === plan.plan_id ? plan : item)
+    if (selectedPlanId.value === plan.plan_id) detailPlan.value = plan
     actionDialog.value = false
-    notifier.success(actionType.value === 'recover' ? '已恢复旧 Release 指针' : '升级状态已更新')
+    notifier.success(actionType.value === 'recover' ? plan.service_recovered ? '旧版本服务已恢复' : '旧 Release 指针已还原，请核对服务健康' : '升级状态已更新')
   } catch (cause) { actionError.value = isApiError(cause) ? cause.message : '升级操作失败' }
   finally { actionPlanId.value = null }
 }
 
-onMounted(load)
+watch(selectedPlanId, loadDetail)
+onMounted(refresh)
 </script>
 
 <style scoped>

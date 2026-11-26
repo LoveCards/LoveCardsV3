@@ -127,7 +127,7 @@ Route::group('admin', function () use ($access, $response, $request) {
         ->setOption('contract', ['request' => null, 'response' => $response(AdminAuditLogResource::class)])
         ->setOption('meta', ['name' => '审计日志详情', 'group' => '审计', 'access' => $access('audit.read')]);
     Route::get('reports', 'Platform.Administration/reports')->name('reports.listManaged')
-        ->setOption('contract', ['request' => $request('pagination'), 'response' => $response(AdminReportResource::class, 'paginated')])
+        ->setOption('contract', ['request' => $request('reportList'), 'response' => $response(AdminReportResource::class, 'paginated')])
         ->setOption('meta', ['name' => '举报列表', 'group' => '治理', 'access' => $access('reports.read')]);
     Route::get('reports/:id', 'Platform.Administration/report')->name('reports.getManaged')
         ->setOption('contract', ['request' => null, 'response' => $response(AdminReportResource::class)])

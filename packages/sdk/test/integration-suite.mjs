@@ -1027,6 +1027,49 @@ await test('GET /admin/operations/notifications → operations.notificationStats
   return r
 })
 
+await test('admin notification metadata is paginated and reading detail preserves read state', async () => {
+  const list = await adminClient.notifications.listManaged({ page: 1, list_rows: 20 })
+  assertShape(list, ['data', 'pagination'], 'Managed notifications must be paginated')
+  assert(Array.isArray(list.data), 'Managed notification data must be a list')
+  for (const row of list.data) {
+    assertShape(row, ['id', 'type', 'type_label', 'recipient_id', 'actor_id', 'resource_type', 'resource_id', 'created_at', 'read_at'])
+    for (const key of ['payload', 'dedupe_key', 'preferences', 'body']) assert(!(key in row), `Managed notifications must not expose ${key}`)
+  }
+  if (list.data.length) {
+    const before = list.data[0]
+    const detail = await adminClient.notifications.getManaged(before.id)
+    const after = await adminClient.notifications.getManaged(before.id)
+    assert(detail.id === before.id && after.read_at === before.read_at, 'Admin detail reads must not mark notifications read')
+  }
+  return list
+})
+
+await test('admin notification filters reject invalid values with structured 422', async () => {
+  for (const query of [{ recipient_id: 0 }, { read_state: 'other' }, { type: 'x'.repeat(65) },
+    { page: 0 }, { from: '2026-02-30 12:00:00' }, { from: '2026-11-27 12:00:00', to: '2026-11-27 12:00:00' }]) {
+    await assertApiError(() => adminClient.notifications.listManaged(query), 422)
+  }
+  await assertApiError(() => adminClient.notifications.getManaged('9'.repeat(30)), 404)
+  return assertApiError(() => adminClient.notifications.getManaged(2147483647), 404)
+})
+
+await test('admin notification metadata denies ordinary users and visitors', async () => {
+  for (const client of [userClient, guestClient]) {
+    await assertApiError(() => client.notifications.listManaged(), 403)
+    await assertApiError(() => client.notifications.getManaged(1), 403)
+  }
+})
+
+await test('admin navigation filters preserve exact channel and pending report scopes', async () => {
+  const files = await adminClient.files.listManaged({ channel_slug: 'completion-test-missing-channel' })
+  assert(files.data.length === 0, 'An unknown channel must return no files rather than dropping the filter')
+  const reports = await adminClient.reports.listManaged({ status_group: 'pending', list_rows: 100 })
+  assert(reports.data.every(row => ['open', 'reviewing'].includes(row.status)), 'Pending reports must contain only open and reviewing')
+  assert(reports.data.some(row => Number(row.id) === createdReportId), 'The open report fixture must appear in pending tasks')
+  await assertApiError(() => adminClient.reports.listManaged({ status_group: 'pending', status: 'open' }), 400)
+  return reports
+})
+
 await test('GET /admin/audit-logs → operations.auditLogs()', async () => {
   const r = await adminClient.operations.auditLogs()
   assertShape(r, ['data', 'pagination'], 'Audit logs should be paginated')

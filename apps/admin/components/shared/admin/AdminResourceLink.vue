@@ -32,6 +32,7 @@ const resourceMap: Record<string, { target: (id: string) => string; label: strin
   media: { target: (id) => `/apps/settings/storage/files/${encodeURIComponent(id)}`, label: '媒体' },
   report: { target: (id) => `/apps/community/reports/${encodeURIComponent(id)}`, label: '举报' },
   role: { target: (id) => `/apps/access/roles/${encodeURIComponent(id)}`, label: '角色' },
+  notification: { target: (id) => `/apps/operations/notifications/${encodeURIComponent(id)}`, label: '通知' },
   event_delivery: { target: (id) => `/apps/operations/deliveries/${encodeURIComponent(id)}`, label: '投递' },
 }
 

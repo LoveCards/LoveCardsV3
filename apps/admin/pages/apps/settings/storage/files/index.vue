@@ -20,7 +20,7 @@
       :selection-width="48"
       :result-count="tableHasResult ? tableTotalItems : null"
       :result-state="tableResultState"
-      :view-query-keys="['search_value', 'order_key', 'order_desc', 'filters', 'view', 'list_rows']" preference-key="settings-storage-files"
+      :view-query-keys="['search_value', 'order_key', 'order_desc', 'filters', 'channel_slug', 'view', 'list_rows']" preference-key="settings-storage-files"
       @reset-view="resetTableView" @apply-view="applySavedView"
     >
       <template #search>
@@ -57,6 +57,9 @@
         <v-tab prepend-icon="mdi-delete-clock-outline" value="deleted">回收站</v-tab>
       </v-tabs>
       <v-divider />
+      <div v-if="channelSlug" class="px-4 py-3">
+        <v-chip closable variant="tonal" :aria-label="`存储渠道：${channelSlug}，可清除筛选`" @click:close="clearChannelFilter">渠道：{{ channelSlug }}</v-chip>
+      </div>
 
       <v-alert
         v-if="tableError && tableItems.length"
@@ -311,6 +314,8 @@ const SearchKeys = [
 ];
 const TableListRowsOptions = SelectUtils.Common.Table.ListRowsOptions;
 
+const readChannelSlug = (value: unknown) => typeof value === 'string' && value.length > 0 && value.length <= 64 ? value : undefined;
+const channelSlug = ref(readChannelSlug(route.query.channel_slug));
 const viewMode = ref<'normal' | 'deleted'>(route.query.view === 'deleted' ? 'deleted' : 'normal');
 const BaseTableBatchOptions = computed<Array<{ title: string; value: FilesBatchMethod }>>(() => viewMode.value === 'deleted'
   ? [
@@ -384,6 +389,7 @@ const getTableData = async () => {
     page: tableCurrentPage.value,
     list_rows: tableListRows.value,
     show_deleted: viewMode.value === 'deleted' ? 2 : 0,
+    ...(channelSlug.value ? { channel_slug: channelSlug.value } : {}),
   };
   if (searchValue) params.search_value = searchValue;
   if (sort) {
@@ -430,6 +436,8 @@ const syncRouteQuery = () => {
   next.page = String(tableCurrentPage.value);
   next.list_rows = String(tableListRows.value);
   next.view = viewMode.value;
+  if (channelSlug.value) next.channel_slug = channelSlug.value;
+  else delete next.channel_slug;
   if (appliedSearchValue.value?.trim()) next.search_value = appliedSearchValue.value.trim();
   else delete next.search_value;
   if (orderKey) {
@@ -463,12 +471,18 @@ const onSearchDraftChange = (value: string | null) => {
   }
 };
 const clearFilters = () => {
+  channelSlug.value = undefined;
   tableSearchValue.value = undefined;
   appliedSearchValue.value = undefined;
   tableSearchFilter.value = {};
   refreshFromFirstPage();
 };
+const clearChannelFilter = () => {
+  channelSlug.value = undefined;
+  refreshFromFirstPage();
+};
 const applySavedView = (query: Record<string, string | null | (string | null)[]>) => {
+  channelSlug.value = readChannelSlug(query.channel_slug);
   const search = query.search_value;
   tableSearchValue.value = typeof search === 'string' && search.trim() ? search.trim() : undefined;
   appliedSearchValue.value = tableSearchValue.value;
@@ -489,6 +503,7 @@ const applySavedView = (query: Record<string, string | null | (string | null)[]>
 };
 
 const resetTableView = () => {
+  channelSlug.value = undefined;
   tableSearchValue.value = undefined;
   appliedSearchValue.value = undefined;
   tableSearchFilter.value = {};

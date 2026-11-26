@@ -3,7 +3,7 @@
     <AdminPageHeader title="举报处理" description="按状态审阅举报，处理动作会记录原因与操作者。" :breadcrumbs="[{ title: '内容' }]">
       <template #actions><v-btn prepend-icon="mdi-refresh" variant="outlined" :loading="loading" @click="load">刷新</v-btn></template>
     </AdminPageHeader>
-    <AdminResourceTableShell v-model:visible-columns="visibleColumns" v-model:action-capacity="actionCapacity" :action-headers="headers" :action-labels="['处理', '查看']" :columns="columnOptions" :default-columns="defaultColumns" :result-count="lastSuccessfulKey ? totalItems : null" :result-state="loading && lastSuccessfulKey ? 'loading' : resultState" :view-query-keys="['search_value', 'status', 'resource_type', 'list_rows']" preference-key="community-reports" @apply-view="applySavedView" @reset-view="resetTableView">
+    <AdminResourceTableShell v-model:visible-columns="visibleColumns" v-model:action-capacity="actionCapacity" :action-headers="headers" :action-labels="['处理', '查看']" :columns="columnOptions" :default-columns="defaultColumns" :result-count="lastSuccessfulKey ? totalItems : null" :result-state="loading && lastSuccessfulKey ? 'loading' : resultState" :view-query-keys="['search_value', 'status', 'status_group', 'resource_type', 'list_rows']" preference-key="community-reports" @apply-view="applySavedView" @reset-view="resetTableView">
       <template #search>
         <v-text-field v-model="searchValue" clearable label="搜索原因或补充说明" prepend-inner-icon="mdi-magnify" @keydown.enter="applySearch" @click:clear="clearSearch" />
       </template>
@@ -97,13 +97,15 @@ const totalItems = ref(0)
 const lastSuccessfulKey = ref<string | null>(null)
 const resultState = ref<'ready' | 'stale'>('ready')
 const statusItems = [
+  { title: '待办（待处理、处理中）', value: 'pending' },
   { title: '待处理', value: 'open' }, { title: '处理中', value: 'reviewing' },
   { title: '已解决', value: 'resolved' }, { title: '已驳回', value: 'rejected' }, { title: '已关闭', value: 'closed' },
 ]
 const status = ref<string | null>(
-  typeof route.query.status === 'string' && statusItems.some((item) => item.value === route.query.status)
-    ? route.query.status
-    : null,
+  route.query.status_group === 'pending' ? 'pending'
+    : typeof route.query.status === 'string' && statusItems.some((item) => item.value !== 'pending' && item.value === route.query.status)
+      ? route.query.status
+      : null,
 )
 const resourceTypeItems = [
   { title: '卡片', value: 'card' }, { title: '评论', value: 'comment' }, { title: '用户', value: 'user' },
@@ -134,7 +136,7 @@ async function load() {
   const params = {
     page: page.value,
     list_rows: itemsPerPage.value,
-    ...(status.value ? { status: status.value } : {}),
+    ...(status.value === 'pending' ? { status_group: 'pending' as const } : status.value ? { status: status.value } : {}),
     ...(resourceType.value ? { resource_type: resourceType.value } : {}),
     ...(appliedSearch.value ? { search_value: appliedSearch.value } : {}),
   }
@@ -187,7 +189,8 @@ function clearFilters() {
 function applySavedView(query: Record<string, string | null | (string | null)[]>) {
   const nextStatus = query.status
   const nextType = query.resource_type
-  status.value = typeof nextStatus === 'string' && statusItems.some((item) => item.value === nextStatus) ? nextStatus : null
+  status.value = query.status_group === 'pending' ? 'pending'
+    : typeof nextStatus === 'string' && statusItems.some((item) => item.value !== 'pending' && item.value === nextStatus) ? nextStatus : null
   resourceType.value = typeof nextType === 'string' && resourceTypeItems.some((item) => item.value === nextType) ? nextType : null
   searchValue.value = typeof query.search_value === 'string' ? query.search_value : ''
   appliedSearch.value = searchValue.value.trim()
@@ -200,10 +203,14 @@ function resetTableView() {
   clearFilters()
 }
 function syncRouteQuery() {
-  const query: Record<string, string> = { page: String(page.value), list_rows: String(itemsPerPage.value) }
-  if (status.value) query.status = status.value
-  if (resourceType.value) query.resource_type = resourceType.value
-  if (appliedSearch.value) query.search_value = appliedSearch.value
+  const query = {
+    ...route.query,
+    page: String(page.value), list_rows: String(itemsPerPage.value),
+    status: status.value && status.value !== 'pending' ? status.value : undefined,
+    status_group: status.value === 'pending' ? 'pending' : undefined,
+    resource_type: resourceType.value || undefined,
+    search_value: appliedSearch.value || undefined,
+  }
   void router.replace({ query, hash: route.hash })
 }
 watch([page, itemsPerPage], () => {
@@ -213,5 +220,5 @@ watch([page, itemsPerPage], () => {
 </script>
 
 <style scoped>
-.report-filter { min-width: 150px; max-width: 180px; }
+.report-filter { min-width: 180px; max-width: 260px; }
 </style>

@@ -572,6 +572,7 @@ CREATE TABLE `notifications` (
   UNIQUE KEY `uk_notification_dedupe` (`recipient_id`,`dedupe_key`),
   KEY `idx_notifications_recipient` (`recipient_id`,`created_at`,`id`),
   KEY `idx_notifications_type_created` (`type`,`created_at`,`id`),
+  KEY `idx_notifications_created` (`created_at`,`id`),
   KEY `idx_notifications_recipient_id` (`recipient_id`,`id`),
   KEY `idx_notifications_recipient_type_id` (`recipient_id`,`type`,`id`),
   KEY `idx_notifications_recipient_read_id` (`recipient_id`,`read_at`,`id`),

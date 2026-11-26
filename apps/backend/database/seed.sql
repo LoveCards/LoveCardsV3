@@ -65,3 +65,10 @@ INSERT INTO `user_roles` (`user_id`, `role_id`, `created_at`) VALUES
 (1, 1, '2025-08-01 20:50:25'),
 (1, 2, '2025-08-01 20:50:25'),
 (1, 3, '2025-08-01 20:50:25');
+
+-- 新安装登记通知元数据能力；不自动授予任何非 root 角色。
+INSERT INTO `capabilities` (`capability`, `description`, `risk_level`)
+SELECT 'notifications.read', '查看站内通知记录元数据', 2
+WHERE NOT EXISTS (
+  SELECT 1 FROM `capabilities` WHERE `capability` = 'notifications.read'
+);

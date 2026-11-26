@@ -172,7 +172,7 @@ const adminOperations = [
   ['operations.retryDelivery', 'operations.retry', null, 'void', 204],
   ['operations.notificationStats', 'communications.read', null, 'item', 200],
   ['operations.auditLogs', 'audit.read', 'list', 'paginated', 200],
-  ['reports.listManaged', 'reports.read', 'pagination', 'paginated', 200],
+  ['reports.listManaged', 'reports.read', 'reportList', 'paginated', 200],
   ['reports.getManaged', 'reports.read', null, 'item', 200],
   ['reports.transition', 'reports.manage', 'transition', 'item', 200],
   ['users.security', 'users.security.read', null, 'item', 200],
@@ -200,5 +200,15 @@ for (const [operationId, capability, scene, shape, status] of adminOperations) {
   if (scene === null) assert.equal(route.contract.request, null, `${operationId} must not accept request input`)
   else assert.equal(route.contract.request.scene, scene, `${operationId} request validation scene`)
 }
+
+// 导航到既有列表时，精确查询条件必须在正式契约内，且不能泄漏到用户侧 API。
+const managementQueries = loadBackendContractMetadata(process.cwd())
+const adminQuerySchemas = managementQueries.validators['app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate'].requestSchemas
+assert.deepEqual(adminQuerySchemas.reportList.properties.status_group.enum, ['pending'])
+assert.deepEqual(adminQuerySchemas.reportList.not, { required: ['status', 'status_group'] })
+assert.deepEqual(adminQuerySchemas.eventList.properties.event_id, { type: 'integer', minimum: 1, maximum: 9007199254740991 })
+const fileQuerySchemas = managementQueries.validators['app\\modules\\Platform\\Files\\Transport\\Api\\Files'].requestSchemas
+assert.deepEqual(fileQuerySchemas.list.properties.channel_slug, { type: 'string', minLength: 1, maxLength: 64 })
+assert.equal(fileQuerySchemas.listOwn.properties.channel_slug, undefined)
 
 console.log('API contract workflow fixture tests passed.')

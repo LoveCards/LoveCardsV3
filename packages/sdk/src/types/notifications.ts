@@ -104,3 +104,16 @@ export interface CommunicationSettingsSnapshot {
     pause_when_hidden: boolean
   }
 }
+
+/** 管理端通知记录只读元数据；未知存储类型仍会返回。 */
+export interface AdminNotification {
+  id: number
+  type: string
+  type_label: string
+  recipient_id: number
+  actor_id: number | null
+  resource_type: string | null
+  resource_id: string | null
+  read_at: string | null
+  created_at: string
+}

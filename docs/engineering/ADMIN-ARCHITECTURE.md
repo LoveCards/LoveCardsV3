@@ -106,6 +106,12 @@ SDK hook / Page -> useAdminNotifier -> notificationStore -> NotificationNotifier
 
 上述页面使用 `AdminPageHeader`、`AdminAsyncState`、`AdminStatusChip`、`AdminActionGuard`、`AdminDangerActionDialog`、`AdminAuditTrail`、`AdminResourceLink`、`AdminResourceTableShell`、`AdminFilterToolbar` 和 `AdminConfigSection` 等共享组件，保持 loading/error/empty/disabled 状态一致。页面维护与 API 对应的 URL 查询状态；共享表格控件维护列设置和命名视图，二者只使用一份排序状态，浏览器持久化键必须按当前管理员隔离。配置页面统一通过 `useAdminUnsavedChanges` 拦截站内离开和浏览器关闭。固定导航唯一来源是 `config/navigation.ts`，页面 capability 必须同时出现在后端 Route access、`CapabilityCatalog`、系统角色种子和导航契约中。
 
+## 2026-11-27 管理任务补全边界
+
+通知记录读取由 `Platform/Notifications` 拥有，Host 调用模块 Public，后台列表与单条响应仅包含通知元数据。`notifications.read@global` 与现有 `communications.read` 分开；运维统计接口保留原 URL／授权，委托通知公开查询，不复制统计 SQL。后台查询不修改用户读取状态，也不返回 payload、dedupe key、私信内容或通知偏好。新能力只登记，不静默授予既有非 root 角色。
+
+举报待处理集合由 Safety 定义并经 Public 给工作台汇总，列表状态组与待办口径一致。文件渠道和事件 ID 的定位先进入 Validate/Resource/SDK 契约再接页面，不从前端绕过字段白名单。升级计划诊断复用现有单计划接口与持久状态机，不另建迁移或备份面板；主题文件操作需要真实审计与失败结果，不能用数据库事务声称回滚文件系统。具体施工及验证记录见[补全清单](ADMIN-COMPLETION-IMPLEMENTATION-2026-11-27.md)。
+
 ## 验证门禁
 
 管理端改动至少运行：
