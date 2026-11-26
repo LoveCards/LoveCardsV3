@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { mkdtemp, readFile, realpath, rm } from 'node:fs/promises'
 import net from 'node:net'
 import os from 'node:os'
@@ -167,7 +168,11 @@ const { binary: php } = resolveSupportedPhp()
 const temporaryRoot = await mkdtemp(path.join(os.tmpdir(), 'lovecards-admin-e2e-'))
 const instanceRoot = path.join(temporaryRoot, 'instance')
 const adminRoot = path.join(root, 'apps/admin')
-const nuxtCli = path.join(adminRoot, 'node_modules/nuxt/bin/nuxt.mjs')
+// 按 workspace 解析依赖，兼容 npm 将 Nuxt 提升到根 node_modules 的安装结果。
+const adminRequire = createRequire(path.join(adminRoot, 'package.json'))
+const nuxtCli = path.join(path.dirname(adminRequire.resolve('nuxt/package.json')), 'bin/nuxt.mjs')
+// Vue 的依赖类型解析需要保留 workspace 上下文；单独目录仍与常驻 dev 隔离。
+const nuxtBuildRoot = await mkdtemp(path.join(adminRoot, '.nuxt-e2e-'))
 const bundledOpenSsl = path.join(path.dirname(php), 'extras', 'ssl', 'openssl.cnf')
 const openSslConfig = process.env.OPENSSL_CONF || (existsSync(bundledOpenSsl) ? bundledOpenSsl : '')
 const databaseEnv = {
@@ -265,7 +270,7 @@ try {
   // E2E terminal open after every assertion has passed.
   admin = start(process.execPath, [nuxtCli, 'dev', '--host', '127.0.0.1', '--port', String(adminPort)], {
     LOVECARDS_E2E_ISOLATED: '1',
-    LOVECARDS_E2E_NUXT_BUILD_DIR: path.join(temporaryRoot, 'nuxt'),
+    LOVECARDS_E2E_NUXT_BUILD_DIR: nuxtBuildRoot,
     LOVECARDS_DEV_BACKEND_ORIGIN: `http://127.0.0.1:${backendPort}`,
     NUXT_PUBLIC_API_BASE: '/api',
     NUXT_API_PROXY_TARGET: `http://127.0.0.1:${backendPort}/api`,
@@ -310,6 +315,12 @@ try {
     }
   }
   try {
+    const resolvedAdmin = await realpath(adminRoot)
+    const resolvedBuild = await realpath(nuxtBuildRoot)
+    if (path.dirname(resolvedBuild) !== resolvedAdmin || !path.basename(resolvedBuild).startsWith('.nuxt-e2e-')) {
+      throw new Error('Refusing to remove unrecognized Nuxt E2E directory')
+    }
+    await rm(resolvedBuild, { recursive: true, force: true })
     const temp = await realpath(os.tmpdir())
     const resolved = await realpath(temporaryRoot)
     if (resolved !== temp && resolved.startsWith(`${temp}${path.sep}`)) {
