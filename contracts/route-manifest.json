@@ -1,6 +1,6 @@
 {
   "source": "thinkphp-runtime-route-registry",
-  "routeCount": 209,
+  "routeCount": 211,
   "routes": [
     {
       "path": "/admin/cards/:id",
@@ -1608,6 +1608,83 @@
       "source": "apps/backend/app/api/route"
     },
     {
+      "path": "/admin/notifications",
+      "method": "GET",
+      "name": "notifications.listManaged",
+      "controller": "Platform.Notifications",
+      "action": "index",
+      "meta": {
+        "name": "站内通知",
+        "group": "站内通知",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\AdminNotificationQueryValidate",
+          "scene": "list"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\AdminNotificationResource",
+          "shape": "paginated",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/notifications/:id",
+      "method": "GET",
+      "name": "notifications.getManaged",
+      "controller": "Platform.Notifications",
+      "action": "get",
+      "meta": {
+        "name": "站内通知详情",
+        "group": "站内通知",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.read",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": null,
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\AdminNotificationResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
       "path": "/admin/operations/deliveries",
       "method": "GET",
       "name": "operations.deliveries",
@@ -2244,7 +2321,7 @@
       "contract": {
         "request": {
           "validate": "app\\modules\\Operations\\Administration\\Transport\\Api\\AdminValidate",
-          "scene": "pagination"
+          "scene": "reportList"
         },
         "response": {
           "resource": "app\\modules\\Platform\\Safety\\Transport\\Api\\AdminReportResource",

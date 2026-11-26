@@ -3,7 +3,7 @@ import type * as ApiTypes from '../../types'
 
 /** Generated from contracts/openapi.json. Do not edit manually. */
 export class Files extends BaseResource {
-  listManaged(params?: { page?: number; list_rows?: number; search_keys?: unknown[]; search_like?: number; search_value?: string; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; status?: number; upload_status?: number; scene?: string; ref_type?: string; ref_id?: number }): Promise<ApiTypes.ListResult<ApiTypes.LCFile>> {
+  listManaged(params?: { page?: number; list_rows?: number; search_keys?: unknown[]; search_like?: number; search_value?: string; order_desc?: boolean; order_key?: string; show_deleted?: number; tag_id?: number; status?: number; upload_status?: number; scene?: string; ref_type?: string; ref_id?: number; channel_slug?: string }): Promise<ApiTypes.ListResult<ApiTypes.LCFile>> {
     return this._get<ApiTypes.ListResult<ApiTypes.LCFile>>("/admin/files", params)
   }
   deleteManaged(id: number): Promise<void> {

@@ -30,7 +30,7 @@ export class Operations extends BaseResource {
   eventHandlers(): Promise<ApiTypes.OperationsEventHandler[]> {
     return this._get<ApiTypes.OperationsEventHandler[]>("/admin/operations/event-handlers")
   }
-  events(params?: { page?: number; list_rows?: number; event_type?: string; queue_name?: string }): Promise<ApiTypes.ListResult<ApiTypes.OperationsEvent>> {
+  events(params?: { page?: number; list_rows?: number; event_id?: number; event_type?: string; queue_name?: string }): Promise<ApiTypes.ListResult<ApiTypes.OperationsEvent>> {
     return this._get<ApiTypes.ListResult<ApiTypes.OperationsEvent>>("/admin/operations/events", params)
   }
   migrations(): Promise<ApiTypes.OperationsMigration[]> {

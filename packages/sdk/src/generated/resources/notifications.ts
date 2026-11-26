@@ -3,6 +3,12 @@ import type * as ApiTypes from '../../types'
 
 /** Generated from contracts/openapi.json. Do not edit manually. */
 export class Notifications extends BaseResource {
+  listManaged(params?: { page?: number; list_rows?: number; recipient_id?: number; type?: string; read_state?: string; from?: string; to?: string }): Promise<ApiTypes.ListResult<ApiTypes.AdminNotification>> {
+    return this._get<ApiTypes.ListResult<ApiTypes.AdminNotification>>("/admin/notifications", params)
+  }
+  getManaged(id: number): Promise<ApiTypes.AdminNotification> {
+    return this._get<ApiTypes.AdminNotification>(`/admin/notifications/${id}`)
+  }
   list(params?: { cursor?: string; limit?: number; unread_only?: boolean; type?: "social.followed" | "message" | "content.card_liked" | "content.comment_liked" | "library.saved" | "content.commented" | "content.replied" | "content.mentioned" | "system.notice" | "system.security" | "system.moderation"; category?: ApiTypes.NotificationListCategory }): Promise<ApiTypes.NotificationCursorPage> {
     return this._get<ApiTypes.NotificationCursorPage>("/me/notifications", params)
   }

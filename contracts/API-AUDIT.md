@@ -1,6 +1,6 @@
 # API Contract Audit
 
-- Routes inspected: 209
+- Routes inspected: 211
 - P0: 0
 - P1: 0
 - P2: 0
@@ -49,6 +49,8 @@
 | GET | `/admin/files/:id/usage` | `files.usage` | grants:admin.access:global,files.usage.read:global | no | AdminFileUsageResource::make | — |
 | POST | `/admin/files/batch` | `files.batchManaged` | grants:admin.access:global | yes | createNoContent | — |
 | DELETE | `/admin/files/expired` | `files.cleanup` | grants:admin.access:global,files.cleanup:global | yes | ApiResource::make | — |
+| GET | `/admin/notifications` | `notifications.listManaged` | grants:admin.access:global,notifications.read:global | yes | AdminNotificationResource::paginate | — |
+| GET | `/admin/notifications/:id` | `notifications.getManaged` | grants:admin.access:global,notifications.read:global | no | AdminNotificationResource::make | — |
 | GET | `/admin/operations/deliveries` | `operations.deliveries` | grants:admin.access:global,communications.read:global | yes | AdminDeliveryResource::paginate | — |
 | GET | `/admin/operations/deliveries/:id` | `operations.delivery` | grants:admin.access:global,communications.read:global | no | AdminDeliveryResource::make | — |
 | POST | `/admin/operations/deliveries/:id/retry` | `operations.retryDelivery` | grants:admin.access:global,operations.retry:global | no | createNoContent | — |
