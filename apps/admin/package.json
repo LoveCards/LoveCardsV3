@@ -25,7 +25,7 @@
     "nuxt": "4.6.4",
     "pinia": "3.0.3",
     "vue": "3.5.45",
-    "vue-chartjs": "5.3.6",
+    "vue-chartjs": "5.3.2",
     "vue-draggable-plus": "0.6.1",
     "vue-router": "5.5.1",
     "vuetify-notifier": "2.0.19",
