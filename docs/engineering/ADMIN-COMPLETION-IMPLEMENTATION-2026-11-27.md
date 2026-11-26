@@ -63,13 +63,20 @@ FINISH：unreviewed and undocumented is unfinished; this build ends with the fin
 - 真实管理端路由组首轮 65/70；5 个失败分别为旧详情断言、旧编辑按钮断言、等待时限和举报来源参数丢失。修正后定向复跑 7/7（包含这 5 条与相关别名），不以重试掩盖已知失败。
 - 常驻 dev `20089` 登录入口返回 HTTP 200。真实通知读取已核对列表/聚合一致、无私密字段，读取前后 `read_at` 不变；变更类回归均在一次性环境或全量 mock 中执行。
 
-## dev 数据库增量与未改动的历史账本
+## dev 实例定位与数据库发布记录
 
-预检发现 `20261112000001` 起 15 项历史迁移未登记，其中包含需独立批准的 Contract；本轮不执行这些历史迁移，也不伪造完成记录。用户于 2026-11-27 明确选择“仅在 dev 应用本次两项增量，记录开发补丁并保留旧账本”。
+本次发布核对纠正了两套开发配置混淆：`20089` 是管理端 Nuxt，实际请求转发至 `6001`；后端经 `ReleaseBootstrap` 读取 `/www/wwwroot/testtt_chizg_cn/.lovecards-dev-main-instance/current`，数据库来自该实例的持久配置 `shared/config/database.json`，实际库为 `dev_lc2_v3_20261115`。工作区文件存在不代表 Web 正在运行它；后续验收必须同时核对实例、Release 响应头和实际数据连接。
 
-在生命周期互斥保护下，仅执行 `20261127000001.sql` 的幂等扩展：登记 `notifications.read`（risk 2）和建立 `idx_notifications_created(created_at,id)`。SQL SHA-256 为 `39e1c87457897414832a62b26682a4ac11f4ba6d8554217c060ccc78c3b780a1`。前后核对 `schema_migrations`、`system_upgrade_steps` 与 `role_grants` 的行数及内容哈希完全一致；不为任何非 root 角色增加授权。
+最初按旧工作区 `.env` 检查的是另一套库 `dev_lc2_chizg_cn`，其中有 15 项历史账本缺口。用户明确批准只应用两项 dev 增量后，已在该旧库登记能力、增加索引，并证明旧账本与角色授权完全不变；该记录保留以说明实际操作，不将它当作 `20089` 的发布证据，也不伪造那 15 项历史迁移完成。
 
-这是用户批准的 **dev 补丁**，不宣称正式历史升级链已完成；未来受控升级仍须单独治理旧账本。本轮前向迁移保持幂等，可在正式升级顺序恢复后再次验证并执行。部署回执、前后快照、检查日志和截图归档于服务器 `/root/lovecards-dev-evidence/2026-11-27-admin-completion`，仓库不收录登录凭据、临时数据库或截图中的会话。
+实际服务库原有 65 项账本完整，因此最终通过既有签名升级流程发布，未采用绕过 MigrationPlanner 或手动修改 active 指针的方式：
+
+- 以正在服务的 `dev-main-r19-password-recovery-20261126` 为底稿，合入本轮提交的后端差异；`BaseController`、运维路由、安装 schema 使用三方合并。当前 Release 的密码找回、注册等其他功能完整保留，未以较旧工作区整体覆盖。
+- 使用已受信任的 dev 签名密钥构建 `dev-main-r20-admin-completion-20261127`。签名包包含 2808 个文件；所有本次合并的 PHP 文件语法通过。
+- 升级计划 `upgrade-20261126200015-bd06c40f4c7d2003` 完成验签、备份、增量迁移、激活和最终健康验证。只新增 `20261127000001`，账本由 65 至 66，既有历史记录保持完整；没有新增待批准的破坏性 Contract。新 Release 的正常定时消费回执就绪后，健康步骤继续通过，最终状态 `completed`，无未完成计划。
+- 实际库已具备 `notifications.read`（risk 2）与 `idx_notifications_created(created_at,id)`，该能力的持久授权行仍为 0；root 使用动态目录，其他角色需显式授权。真实通知查询前后读取状态一致，私密字段未返回。
+
+迁移 SQL SHA-256 为 `39e1c87457897414832a62b26682a4ac11f4ba6d8554217c060ccc78c3b780a1`。管理页入口 HTTP 200，新只读 API 未登录返回正常 401，后端健康响应确认 r20。部署回执、三方合并清单、检查日志、签名包和截图归档于服务器 `/root/lovecards-dev-evidence/2026-11-27-admin-completion`；仓库不收录密钥、登录凭据、临时数据库或会话截图。
 
 ## 复审结论与复杂度
 
