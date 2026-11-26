@@ -41,54 +41,10 @@ test('keyboard users can skip directly to the main content', async ({ page }) =>
   await expect(page.locator('#admin-main-content')).toBeFocused()
 })
 
-test('workbench sections keep their reading order on a narrow screen', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('./apps/dashboard', { waitUntil: 'domcontentloaded' })
-  await expect(page.getByRole('heading', { name: '我的待办' })).toBeVisible()
-
-  const sections = await page.locator('main section[aria-labelledby]').evaluateAll((elements) => elements.map((element) => ({
-    id: element.getAttribute('aria-labelledby'),
-    top: element.getBoundingClientRect().top,
-  })))
-  const ids = sections.map((section) => section.id)
-  expect(ids.indexOf('tasks-title')).toBeLessThan(ids.indexOf('responsibility-title'))
-  if (ids.includes('runtime-title')) {
-    expect(ids.indexOf('runtime-title')).toBeLessThan(ids.indexOf('responsibility-title'))
-  }
-  if (ids.includes('notifications-title')) {
-    expect(ids.indexOf('responsibility-title')).toBeLessThan(ids.indexOf('notifications-title'))
-  }
-  expect(sections.map((section) => section.top)).toEqual([...sections.map((section) => section.top)].sort((a, b) => a - b))
-})
-
-test('workbench uses a main column and a secondary column on desktop, then stacks on mobile', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 })
-  await page.goto('./apps/dashboard', { waitUntil: 'domcontentloaded' })
-  const tasks = page.locator('.workbench-tasks')
-  const responsibility = page.locator('.workbench-responsibility')
-  await expect(tasks).toBeVisible()
-  await expect(responsibility).toBeVisible()
-  const desktopTasks = await tasks.boundingBox()
-  const desktopResponsibility = await responsibility.boundingBox()
-  expect(desktopTasks).not.toBeNull()
-  expect(desktopResponsibility).not.toBeNull()
-  expect(desktopTasks!.x + desktopTasks!.width).toBeLessThan(desktopResponsibility!.x)
-
-  await page.setViewportSize({ width: 390, height: 844 })
-  await expect.poll(() => page.evaluate(() => {
-    const tasks = document.querySelector('.workbench-tasks')?.getBoundingClientRect()
-    const responsibility = document.querySelector('.workbench-responsibility')?.getBoundingClientRect()
-    return Boolean(tasks && responsibility
-      && tasks.width > 0 && tasks.height > 0
-      && responsibility.width > 0 && responsibility.height > 0
-      && Math.abs(tasks.x - responsibility.x) <= 1
-      && responsibility.y > tasks.y)
-  })).toBe(true)
-})
-
 test('workbench keeps secondary links concise until expanded', async ({ page }) => {
   await page.goto('./apps/dashboard', { waitUntil: 'domcontentloaded' })
-  const responsibility = page.locator('.workbench-responsibility')
+  await page.getByRole('button', { name: '职责、通知与最近变更' }).click()
+  const responsibility = page.locator('section[aria-labelledby="responsibility-title"]')
   const expand = responsibility.getByRole('button', { name: /展开其余 .* 个入口/ })
   await expect(expand).toBeVisible()
   await expect(responsibility.locator('.v-list-item')).toHaveCount(3)
@@ -96,7 +52,6 @@ test('workbench keeps secondary links concise until expanded', async ({ page }) 
   await expect(responsibility.locator('.v-list-item')).not.toHaveCount(3)
   await expect(responsibility.getByRole('button', { name: '收起入口' })).toBeVisible()
 })
-
 test('list and configuration pages keep their own consistent reading widths', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('./apps/content/cards', { waitUntil: 'domcontentloaded' })
