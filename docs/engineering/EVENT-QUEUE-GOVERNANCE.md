@@ -14,7 +14,7 @@
 
 | 队列 | 治理责任模块 | 任务分类 | 当前使用 | 允许执行模式 | 主要依赖 |
 | --- | --- | --- | --- | --- | --- |
-| `notifications` | Platform/Notifications | 短事务型业务副作用，生成或更新站内通知 | 关注、点赞、评论、提及、系统通知 | `request_safe` | MySQL |
+| `notifications` | Platform/Notifications | 短事务型业务副作用，生成或更新站内通知 | 关注、点赞、评论、提及、系统通知及每批最多 100 人的通知续批 | `request_safe` | MySQL |
 | `realtime` | Platform/Eventing | 不携带业务正文的浏览器主动提示，以及信号资格判断 | 新通知、新私信、已读变化、信息流变化 | `daemon_required` | MySQL、Redis、Realtime Gateway |
 | `storage` | Platform/Files | 文件或对象存储生命周期操作 | 文件清理 | `daemon_required` | MySQL、Storage Driver |
 

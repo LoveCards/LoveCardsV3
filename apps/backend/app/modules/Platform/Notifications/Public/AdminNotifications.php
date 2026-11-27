@@ -8,16 +8,6 @@ use app\modules\Platform\Notifications\Service\AdminNotificationQueries;
 /** 管理端通知元数据及运维统计的统一读取入口。 */
 final class AdminNotifications
 {
-    public static function paginate(array $params = []): array
-    {
-        return app(AdminNotificationQueries::class)->paginate($params);
-    }
-
-    public static function get(int $id): ?array
-    {
-        return app(AdminNotificationQueries::class)->get($id);
-    }
-
     public static function stats(): array
     {
         return app(AdminNotificationQueries::class)->stats();

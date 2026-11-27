@@ -1027,36 +1027,30 @@ await test('GET /admin/operations/notifications → operations.notificationStats
   return r
 })
 
-await test('admin notification metadata is paginated and reading detail preserves read state', async () => {
-  const list = await adminClient.notifications.listManaged({ page: 1, list_rows: 20 })
-  assertShape(list, ['data', 'pagination'], 'Managed notifications must be paginated')
-  assert(Array.isArray(list.data), 'Managed notification data must be a list')
-  for (const row of list.data) {
-    assertShape(row, ['id', 'type', 'type_label', 'recipient_id', 'actor_id', 'resource_type', 'resource_id', 'created_at', 'read_at'])
-    for (const key of ['payload', 'dedupe_key', 'preferences', 'body']) assert(!(key in row), `Managed notifications must not expose ${key}`)
-  }
-  if (list.data.length) {
-    const before = list.data[0]
-    const detail = await adminClient.notifications.getManaged(before.id)
-    const after = await adminClient.notifications.getManaged(before.id)
-    assert(detail.id === before.id && after.read_at === before.read_at, 'Admin detail reads must not mark notifications read')
-  }
-  return list
+await test('system notice previews freeze selected recipients and replay safely', async () => {
+  const current = await adminClient.users.me()
+  const input = { request_key: 'sdk-preview-' + Date.now(), audience: 'selected', recipient_ids: [current.id],
+    message: 'SDK isolated system notice preview', severity: 'info' }
+  const before = await adminClient.operations.notificationStats()
+  const batch = await adminClient.notifications.prepareBatch(input)
+  assert(batch.status === 'prepared' && batch.confirmed_at === null, 'Preview must not publish')
+  assert(batch.recipient_count === 1 && batch.recipient_ids[0] === current.id, 'Recipient snapshot mismatch')
+  const repeated = await adminClient.notifications.prepareBatch(input)
+  assert(repeated.id === batch.id, 'Same request must return the same preview')
+  const recovery = await adminClient.notifications.latestBatch({ request_key: input.request_key })
+  assert(recovery.batch?.id === batch.id, 'Read-only request-key recovery must locate preview')
+  await assertApiError(() => adminClient.notifications.prepareBatch({ ...input, message: 'Different content' }), 409)
+  const after = await adminClient.operations.notificationStats()
+  assert(after.total === before.total, 'Preparing a preview must not generate notifications')
+  return batch
 })
 
-await test('admin notification filters reject invalid values with structured 422', async () => {
-  for (const query of [{ recipient_id: 0 }, { read_state: 'other' }, { type: 'x'.repeat(65) },
-    { page: 0 }, { from: '2026-02-30 12:00:00' }, { from: '2026-11-27 12:00:00', to: '2026-11-27 12:00:00' }]) {
-    await assertApiError(() => adminClient.notifications.listManaged(query), 422)
-  }
-  await assertApiError(() => adminClient.notifications.getManaged('9'.repeat(30)), 404)
-  return assertApiError(() => adminClient.notifications.getManaged(2147483647), 404)
-})
-
-await test('admin notification metadata denies ordinary users and visitors', async () => {
+await test('system notice publishing denies ordinary users and visitors', async () => {
   for (const client of [userClient, guestClient]) {
-    await assertApiError(() => client.notifications.listManaged(), 403)
-    await assertApiError(() => client.notifications.getManaged(1), 403)
+    await assertApiError(() => client.notifications.prepareBatch({ request_key: 'denied-preview', audience: 'selected',
+      recipient_ids: [1], message: 'This request must never publish' }), 403)
+    await assertApiError(() => client.notifications.getBatch(1), 403)
+    await assertApiError(() => client.notifications.latestBatch(), 403)
   }
 })
 

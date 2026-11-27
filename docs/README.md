@@ -59,3 +59,5 @@ dev 实际部署、测试证据和人工验收步骤见 [2026-11-12 dev 验收�
 
 - [系统配置与共享基础设施](engineering/CONFIGURATION.md)：Config 原子版本与 Redis 管理边界。
 - [数据库权威来源与留存治理](engineering/DATABASE-GOVERNANCE-2026-11-11.md)：旧表退役阻断条件与审计。
+
+- [系统通知统计与发布基线](engineering/SYSTEM-NOTICE-PUBLISHING-2026-11-27.md)：概览、冻结预览、受权发布、有界续批、回执和幂等恢复。

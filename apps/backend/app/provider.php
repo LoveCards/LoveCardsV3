@@ -155,6 +155,7 @@ return [
     AdminReportRepository::class => ThinkDbAdminReportRepository::class,
     NotificationRepository::class => ThinkOrmNotificationRepository::class,
     SystemNoticeIssuer::class => SystemNotifications::class,
+    \app\modules\Platform\Notifications\Contract\SystemNoticeBatchRepository::class => \app\modules\Platform\Notifications\Infrastructure\ThinkDbSystemNoticeBatchRepository::class,
     MessagingRepository::class => ThinkDbMessagingRepository::class,
     MessagePermission::class => SafetyMessagePermission::class,
     MessageNotifier::class => NotificationMessageNotifier::class,

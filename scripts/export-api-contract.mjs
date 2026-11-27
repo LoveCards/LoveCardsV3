@@ -72,7 +72,9 @@ function resourceType(route) {
   const base = short.replace(/Resource$/, '')
   const map = { Card: 'Card', CardCreated: 'CreateResult', Comment: 'Comment', CommentCreated: 'CreateResult', Tag: 'Tag', User: 'User', Profile: 'CurrentUser', PublicUserProfile: 'PublicUserProfile', SocialRelation: 'SocialRelation', CurrentUserSession: 'CurrentUserSession', EmailCaptcha: 'EmailCaptchaResult', PrivacyPreferences: 'PrivacyPreferences', BlockedUserCursorPage: 'BlockedUserCursorPage', MentionCandidate: 'MentionCandidate', Role: 'Role', Grant: 'Grant', Permission: 'CapabilityItem', Like: 'Like', LikeCount: '{ likes: number }', File: 'LCFile', DirectUpload: 'DirectUploadResult', Auth: 'LoginResult', AuthPolicy: 'AuthPolicy', Session: 'SessionState', Theme: 'ThemeItem', Config: 'ConfigData', Dashboard: 'DashboardData', System: 'SystemUpdateInfo', Sender: 'SenderMeta', Storage: 'StorageMeta', Captcha: 'CaptchaMeta', CaptchaChallenge: 'CaptchaChallenge', CursorPage: 'CursorPage', NotificationItem: 'NotificationItem', NotificationCursorPage: 'NotificationCursorPage', NotificationUnread: 'NotificationUnread', NotificationPreferences: 'NotificationPreferences', AdminOverview: 'OperationsOverview', AdminMigration: 'OperationsMigration', AdminRuntime: 'OperationsRuntimeStatus', AdminDelivery: 'OperationsDelivery', AdminAuditLog: 'OperationsAuditLog', AdminNotificationStats: 'OperationsNotificationStats', AdminCommunityInsights: 'OperationsCommunityInsights', AdminUpgradePlan: 'OperationsUpgradePlan', AdminReport: 'AdminReport', AdminSecurity: 'UserSecurityOverview', AdminSession: 'UserSession', AdminRecoveryChallenge: 'RecoveryChallenge', AdminFileUsage: 'FileUsage' }
   map.CardMediaAccess = 'CardMediaAccess'
-  map.AdminNotification = 'AdminNotification'
+  map.SystemNoticeBatch = 'SystemNoticeBatch'
+  map.SystemNoticeRecipient = 'SystemNoticeRecipient'
+  map.SystemNoticeLatestBatch = 'SystemNoticeLatestBatch'
   map.AdminRuntimeConfig = 'RuntimeCommunicationSnapshot'
   map.AdminEventConsumption = 'EventConsumptionSnapshot'
   map.AdminDeliverySummary = 'OperationsDeliverySummary'

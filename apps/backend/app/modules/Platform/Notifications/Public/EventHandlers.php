@@ -62,6 +62,14 @@ final class EventHandlers
                 new \app\modules\Platform\Notifications\Infrastructure\ContentMentionsAddedNotificationHandler()
             ),
             new HandlerRegistration(
+                'system.notice.batch.chunk.queued',
+                1,
+                'notifications.system-notice-batch',
+                'notifications',
+                ExecutionMode::REQUEST_SAFE,
+                new \app\modules\Platform\Notifications\Infrastructure\SystemNoticeBatchHandler()
+            ),
+            new HandlerRegistration(
                 'system.notification.issued',
                 1,
                 'notifications.system-notification-issued',

@@ -93,7 +93,15 @@ Route::group('admin/operations', function () use ($access, $response, $request) 
         ->setOption('meta', ['name' => '重试事件投递', 'group' => '运维', 'access' => $access('operations.retry')]);
     Route::get('notifications', 'Platform.Administration/notificationStats')->name('operations.notificationStats')
         ->setOption('contract', ['request' => null, 'response' => $response(AdminNotificationStatsResource::class)])
-        ->setOption('meta', ['name' => '通知统计', 'group' => '运维', 'access' => $access('communications.read')]);
+        ->setOption('meta', ['name' => '通知统计', 'group' => '运维', 'access' => [
+            'auth' => 'required',
+            'allOf' => [['capability' => 'admin.access', 'scope' => Scope::GLOBAL]],
+            'anyOf' => [
+                ['capability' => 'communications.read', 'scope' => Scope::GLOBAL],
+                ['capability' => 'notifications.read', 'scope' => Scope::GLOBAL],
+                ['capability' => 'notifications.publish', 'scope' => Scope::GLOBAL],
+            ],
+        ]]);
     Route::get('upgrades', 'Platform.Administration/upgrades')->name('operations.upgrades')
         ->setOption('contract', ['request' => $request('upgradeList'), 'response' => $response(AdminUpgradePlanResource::class, 'collection')])
         ->setOption('meta', ['name' => '系统升级计划', 'group' => '运维', 'access' => $access('operations.read')]);

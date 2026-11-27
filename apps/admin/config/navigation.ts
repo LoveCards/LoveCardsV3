@@ -368,13 +368,18 @@ const notificationRecords = item({
   path: '/apps/operations/notifications',
   canonicalPath: '/apps/operations/notifications',
   title: '站内通知',
-  searchAliases: ['通知记录', '通知查询'],
+  searchAliases: ['通知统计', '系统通知', '发布通知'],
   icon: 'mdi-bell-outline',
   domain: 'system',
   section: '站内通知',
   parentRoute: '/apps/operations/notifications',
-  grants: [{ capability: 'notifications.read', scope: 'global' }],
-  actionCapabilities: [],
+  grants: [],
+  grantSets: [
+    [{ capability: 'notifications.read', scope: 'global' }],
+    [{ capability: 'communications.read', scope: 'global' }],
+    [{ capability: 'notifications.publish', scope: 'global' }],
+  ],
+  actionCapabilities: ['notifications.publish', 'notifications.broadcast'],
   riskLevel: 'sensitive',
 })
 

@@ -15,6 +15,7 @@ $assert = static function (bool $condition, string $message): void {
 $registrations = array_values(array_filter(
     (\app\EventHandlers::create())->catalog(),
     static fn(array $row): bool => $row['queue_name'] === 'notifications'
+        && $row['handler_key'] !== \app\modules\Platform\Notifications\Domain\SystemNoticeBatch::CHUNK_HANDLER
 ));
 $eventTypes = array_column($registrations, 'event_type');
 $assert(count($eventTypes) === 7 && count(array_unique($eventTypes)) === 7, 'current notification events must have unique event types');

@@ -170,7 +170,6 @@ const adminOperations = [
   ['operations.deliveries', 'communications.read', 'deliveryList', 'paginated', 200],
   ['operations.deliverySummary', 'communications.read', null, 'item', 200],
   ['operations.retryDelivery', 'operations.retry', null, 'void', 204],
-  ['operations.notificationStats', 'communications.read', null, 'item', 200],
   ['operations.auditLogs', 'audit.read', 'list', 'paginated', 200],
   ['reports.listManaged', 'reports.read', 'reportList', 'paginated', 200],
   ['reports.getManaged', 'reports.read', null, 'item', 200],
@@ -200,6 +199,15 @@ for (const [operationId, capability, scene, shape, status] of adminOperations) {
   if (scene === null) assert.equal(route.contract.request, null, `${operationId} must not accept request input`)
   else assert.equal(route.contract.request.scene, scene, `${operationId} request validation scene`)
 }
+
+// 统计保留原通信权限，同时允许独立统计读取和受权发布者，不开放逐条收件内容。
+const notificationStatsAccess = routeManifest.routes.find(item => item.name === 'operations.notificationStats').meta.access
+assert.deepEqual(notificationStatsAccess.allOf, [{ capability: 'admin.access', scope: 'global' }])
+assert.deepEqual(notificationStatsAccess.anyOf, [
+  { capability: 'communications.read', scope: 'global' },
+  { capability: 'notifications.read', scope: 'global' },
+  { capability: 'notifications.publish', scope: 'global' },
+])
 
 // 导航到既有列表时，精确查询条件必须在正式契约内，且不能泄漏到用户侧 API。
 const managementQueries = loadBackendContractMetadata(process.cwd())

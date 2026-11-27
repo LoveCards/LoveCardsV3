@@ -177,7 +177,7 @@ class BaseController
                 throw ApiException::validation(is_array($errors) ? $errors : ['request' => (string) $errors]);
             }
             if ($ValidateClass === \app\modules\Operations\Administration\Transport\Api\AdminAuditQueryValidate::class
-                || $ValidateClass === \app\modules\Platform\Notifications\Transport\Api\AdminNotificationQueryValidate::class) {
+                || $ValidateClass === \app\modules\Platform\Notifications\Transport\Api\SystemNoticeBatchValidate::class) {
                 throw ApiException::validation(is_array($errors) ? $errors : ['request' => (string) $errors]);
             }
             throw ApiException::badRequest('参数错误', ApiException::CODE_PARAM_INVALID, $errors);

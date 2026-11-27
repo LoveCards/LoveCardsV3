@@ -94,7 +94,7 @@
 
 ## 6. 发布、事务与幂等
 
-系统通知必须通过 `SystemNoticeIssuer` 发布 `system.notification.issued`，普通业务模块不得直接写 `notifications` 表。互动通知必须通过 `DomainEventBus` 发布所属业务事实，由 Notifications Handler 投影；前端不得创建通知或调用“触发通知”接口。
+系统通知必须通过 `SystemNoticeIssuer` 发布 `system.notification.issued`，普通业务模块不得直接写 `notifications` 表。互动通知必须通过 `DomainEventBus` 发布所属业务事实，由 Notifications Handler 投影；普通业务前端不得创建通知或调用“触发通知”接口。受权管理端可提交系统通告发布命令；后端先持久化冻结批次及收件快照、记录审计，再经 SystemNoticeIssuer 签发，不能把客户端正文直接当作可信系统事实。
 
 必须遵守：
 
@@ -147,7 +147,7 @@
 
 后端负责：触发判断、收件人解析、状态可见性、去重、actor 装配、资源状态和安全 `action_url`。
 
-SDK 负责：暴露通知列表、未读数、已读操作和稳定字段类型，不增加业务触发方法。
+SDK 负责：暴露用户自身列表、未读数、已读操作与稳定字段类型；受权管理端 prepare/confirm/retry 属于持久发布用例，不提供普通客户端通用触发方法。
 
 通知列表与未读/批量已读查询可以使用 `NotificationListCategory`；其中 `engagement` 只是服务端联合筛选值，不能出现在 `NotificationItem.category` 中。联合列表必须由服务端按 `created_at DESC, id DESC` 使用不透明游标分页，前端不得分别请求后拼接或推算未读总数。省略分类的未读与批量已读保持全局语义。
 
@@ -202,3 +202,7 @@ SDK 负责：暴露通知列表、未读数、已读操作和稳定字段类型�
 当前已经接入并作为回归基线的场景：关注、私信、卡片/评论点赞、卡片收藏、评论、回复、卡片/评论 @提及、卡片/评论审核通过、举报终态、密码找回成功、管理员改单个或全部 Session、管理员修改密码/联系方式/角色，以及用户账号状态治理。
 
 新设备检测、全站公告和更细粒度的内容治理结果只有在对应业务事实、权限入口与持久化 revision/批次存在后接入；现有卡片/评论 toggle 在补齐显式审核决定和稳定 moderation revision 前不得用当前时间伪造通知幂等键，也不能由前端或临时代码模拟。
+
+## 13. 受权管理端系统通告发布（2026-11-27）
+
+手动通告固定 system.notice，支持指定、多选和全站正式账号；prepare 只冻结预览，confirm 才提交发布事实与审计。全站额外要求 notifications.broadcast，非 root 不自动获得权限。系统 actor 为 null，真实发布者在批次和审计中。重试携带代次与原因；已生成不代表已读。统计页撤下普通收件明细，保留本人发送回执；完整规范见 [发布基线](SYSTEM-NOTICE-PUBLISHING-2026-11-27.md)。

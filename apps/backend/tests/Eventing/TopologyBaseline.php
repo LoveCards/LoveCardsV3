@@ -31,8 +31,16 @@ $assertThrows = static function (callable $callback, string $message): void {
 };
 
 $registry = \app\EventHandlers::create();
-$assert($registry->catalogHash() === '905a15da233afefb98bd8c8524b189e73846449e650e6611956be25de3de3f11', 'composition migration must preserve the signed catalog exactly');
-$assert(count($registry->catalog()) === 13, 'composition must include every owning module');
+$legacyRegistrations = [];
+foreach ($registry->catalog() as $entry) {
+    if ($entry['handler_key'] !== \app\modules\Platform\Notifications\Domain\SystemNoticeBatch::CHUNK_HANDLER) {
+        $legacyRegistrations[] = $registry->find($entry['handler_key']);
+    }
+}
+$assert((new HandlerRegistry($legacyRegistrations))->catalogHash() === '905a15da233afefb98bd8c8524b189e73846449e650e6611956be25de3de3f11', 'publication addition must preserve every pre-existing signed handler definition');
+$assert(count($registry->catalog()) === 14, 'composition must include the governed publication chunk handler');
+$publication = $registry->find(\app\modules\Platform\Notifications\Domain\SystemNoticeBatch::CHUNK_HANDLER);
+$assert($publication !== null && $publication->queueName() === 'notifications' && $publication->executionMode() === ExecutionMode::REQUEST_SAFE, 'publication chunks must use the existing short notification queue');
 $assert(QueueCatalog::names() === ['notifications', 'realtime', 'storage'], 'queue catalog must enumerate the governed queues');
 $assert(QueueCatalog::definitions()['realtime']['dependencies'] === ['mysql', 'redis', 'realtime-gateway'], 'realtime queue must declare its transport dependencies');
 $assertThrows(

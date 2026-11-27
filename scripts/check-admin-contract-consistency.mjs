@@ -5,7 +5,7 @@ const root = process.cwd()
 const failures = []
 const fail = (message) => failures.push(message)
 // 敏感查询允许显式分配，但不随菜单/API 补全扩大既有普通管理角色的默认权限。
-const explicitAdminGrants = new Set(['notifications.read:global'])
+const explicitAdminGrants = new Set(['notifications.read:global', 'notifications.publish:global', 'notifications.broadcast:global'])
 
 async function read(file) {
   return fs.readFile(path.join(root, file), 'utf8')

@@ -27,6 +27,14 @@ final class SystemNotificationIssuedHandler implements EventHandler
             throw new \UnexpectedValueException('系统通知收件人与 aggregate_key 不一致');
         }
 
-        Notifications::create($notice->notificationIntent());
+        app(\app\shared\Transaction\TransactionManager::class)->run(function () use ($notice, $context): void {
+            $batches = app(\app\modules\Platform\Notifications\Contract\SystemNoticeBatchRepository::class);
+            $projection = $batches->lockProjection($context->eventId());
+            if ($projection !== null && $projection['projected_at'] !== null) return;
+            // 冻结后账号变成访客或被注销时跳过；不能因读取快照延长其收件资格。
+            $eligible = $projection === null || \app\modules\Platform\User\Public\NotificationRecipients::eligible($notice->recipientId());
+            $notificationId = $eligible ? Notifications::create($notice->notificationIntent()) : 0;
+            $batches->completeProjection($context->eventId(), $notificationId);
+        });
     }
 }

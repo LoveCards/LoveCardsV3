@@ -104,7 +104,7 @@
             <v-btn v-if="responsibilityLinks.length > responsibilityPreviewLimit" variant="text" :aria-expanded="showAllResponsibilities" @click="showAllResponsibilities = !showAllResponsibilities">{{ showAllResponsibilities ? '收起入口' : `展开其余 ${responsibilityLinks.length - responsibilityPreviewLimit} 个入口` }}</v-btn>
             <p v-if="!responsibilityLinks.length" class="text-body-2 text-medium-emphasis">当前角色尚未获得业务模块入口，请联系超级管理员核对权限。</p>
           </section>
-          <section v-if="canReadCommunications" class="mt-6" aria-labelledby="notifications-title"><div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-3"><h2 id="notifications-title" class="text-subtitle-1 font-weight-bold">站内通知统计</h2><v-btn v-if="canReadNotifications" to="/apps/operations/notifications" variant="text" append-icon="mdi-arrow-right">查看通知记录</v-btn></div><AdminAsyncState :loading="auxiliaryLoading && !notificationStats" :error="notificationsError" @retry="loadAuxiliaryData"><dl v-if="notificationStats" class="workbench-runtime-counts"><div><dt>通知总量</dt><dd>{{ formatNumber(notificationStats.total) }}</dd></div><div><dt>未读通知</dt><dd>{{ formatNumber(notificationStats.unread) }}</dd></div><div><dt>覆盖用户</dt><dd>{{ formatNumber(notificationStats.recipients) }}</dd></div></dl></AdminAsyncState></section>
+          <section v-if="canReadNotificationStats" class="mt-6" aria-labelledby="notifications-title"><div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-3"><h2 id="notifications-title" class="text-subtitle-1 font-weight-bold">站内通知统计</h2><v-btn v-if="canReadNotifications" to="/apps/operations/notifications" variant="text" append-icon="mdi-arrow-right">通知概览</v-btn></div><AdminAsyncState :loading="auxiliaryLoading && !notificationStats" :error="notificationsError" @retry="loadAuxiliaryData"><dl v-if="notificationStats" class="workbench-runtime-counts"><div><dt>通知总量</dt><dd>{{ formatNumber(notificationStats.total) }}</dd></div><div><dt>未读通知</dt><dd>{{ formatNumber(notificationStats.unread) }}</dd></div><div><dt>覆盖用户</dt><dd>{{ formatNumber(notificationStats.recipients) }}</dd></div></dl></AdminAsyncState></section>
           <section v-if="canReadAudit" class="mt-6" aria-labelledby="changes-title"><div class="d-flex flex-wrap align-center justify-space-between ga-2 mb-3"><h2 id="changes-title" class="text-subtitle-1 font-weight-bold">最近变更</h2><v-btn to="/apps/operations/audit" variant="text" append-icon="mdi-arrow-right">查看审计日志</v-btn></div><AdminAsyncState :loading="auxiliaryLoading" :error="auditError" :empty="!recentChanges.length" empty-title="暂无近期变更" @retry="loadAuxiliaryData"><v-list lines="two"><v-list-item v-for="change in recentChanges" :key="change.id" :to="`/apps/operations/audit/${change.id}`" :title="change.action" :subtitle="`操作者 ${change.actor_id ? `#${change.actor_id}` : '系统或匿名'} · ${change.resource_type || '未关联资源'} ${change.resource_id || ''} · ${change.created_at}`" append-icon="mdi-chevron-right" /></v-list></AdminAsyncState></section>
           <section v-if="dashboard?.notice.length" class="mt-6" aria-labelledby="notice-title"><h2 id="notice-title" class="text-subtitle-1 font-weight-bold mb-3">产品公告</h2><v-list lines="two"><v-list-item v-for="notice in dashboard.notice" :key="`${notice.date}-${notice.title}`" :href="notice.url || undefined" target="_blank" rel="noopener noreferrer" :title="notice.title" :subtitle="`${notice.content} · ${notice.date}`" /></v-list></section>
         </v-expansion-panel-text>
@@ -144,7 +144,8 @@ const showAllResponsibilities = ref(false)
 const responsibilityPreviewLimit = 3
 const canReadOperations = computed(() => userStore.hasGrant('operations.read', 'global'))
 const canReadCommunications = computed(() => userStore.hasGrant('communications.read', 'global'))
-const canReadNotifications = computed(() => userStore.hasGrant('notifications.read', 'global'))
+const canReadNotificationStats = computed(() => userStore.hasGrant('notifications.read', 'global') || canReadCommunications.value)
+const canReadNotifications = computed(() => userStore.canAccessPath('/apps/operations/notifications'))
 const canReadAudit = computed(() => userStore.hasGrant('audit.read', 'global'))
 const loading = computed(() => refreshing.value || dashboardStore.loading || runtimeLoading.value)
 const sectionOrder = computed(() => width.value <= 680 ? ['issues', 'overview', 'runtime'] : ['overview', 'runtime', 'issues'])
@@ -261,7 +262,7 @@ async function loadAuxiliaryData() {
   if (auxiliaryLoading.value) return
   auxiliaryLoading.value = true
   await Promise.all([
-    canReadCommunications.value ? (async () => { notificationsError.value = null; try { notificationStats.value = await client.operations.notificationStats() } catch (error) { notificationsError.value = errorMessage(error, '无法加载通知统计。') } })() : Promise.resolve(),
+    canReadNotificationStats.value ? (async () => { notificationsError.value = null; try { notificationStats.value = await client.operations.notificationStats() } catch (error) { notificationsError.value = errorMessage(error, '无法加载通知统计。') } })() : Promise.resolve(),
     canReadAudit.value ? (async () => { auditError.value = null; try { recentChanges.value = (await client.operations.auditLogs({ page: 1, list_rows: 5 })).data } catch (error) { auditError.value = errorMessage(error, '无法加载最近变更。') } })() : Promise.resolve(),
   ])
   auxiliaryLoading.value = false

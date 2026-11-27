@@ -105,15 +105,30 @@ export interface CommunicationSettingsSnapshot {
   }
 }
 
-/** 管理端通知记录只读元数据；未知存储类型仍会返回。 */
-export interface AdminNotification {
+
+// 管理端发布用例只返回本人批次，不暴露普通用户收件明细。
+export interface SystemNoticeRecipient { id: number; username: string }
+export interface SystemNoticeBatch {
   id: number
-  type: string
-  type_label: string
-  recipient_id: number
-  actor_id: number | null
-  resource_type: string | null
-  resource_id: string | null
-  read_at: string | null
+  request_key: string
+  generation: number
+  audience: 'selected' | 'all'
+  recipient_ids: number[]
+  recipients: SystemNoticeRecipient[]
+  message: string
+  action_url: string | null
+  severity: 'info' | 'warning'
+  status: 'prepared' | 'queued' | 'processing' | 'completed' | 'partial_failure' | 'failed'
+  recipient_count: number
+  generated_count: number
+  skipped_count: number
+  pending_count: number
+  failed_count: number
   created_at: string
+  confirmed_at: string | null
+  completed_at: string | null
+  can_confirm: boolean
+  can_retry: boolean
+  diagnostic_event_id: number | null
 }
+export interface SystemNoticeLatestBatch { batch: SystemNoticeBatch | null }

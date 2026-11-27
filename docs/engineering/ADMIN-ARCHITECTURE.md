@@ -108,7 +108,7 @@ SDK hook / Page -> useAdminNotifier -> notificationStore -> NotificationNotifier
 
 ## 2026-11-27 管理任务补全边界
 
-通知记录读取由 `Platform/Notifications` 拥有，Host 调用模块 Public，后台列表与单条响应仅包含通知元数据。`notifications.read@global` 与现有 `communications.read` 分开；运维统计接口保留原 URL／授权，委托通知公开查询，不复制统计 SQL。后台查询不修改用户读取状态，也不返回 payload、dedupe key、私信内容或通知偏好。新能力只登记，不静默授予既有非 root 角色。
+通知统计与受权系统通告发布由 Platform/Notifications 拥有，Host 仅调用 Public。统计保留原接口形状，允许 communications.read 或 notifications.read；发布需 notifications.publish，全站另需 notifications.broadcast。后台不提供普通用户逐条收件明细；本人批次冻结正文与名单，确认后经现有事件链有界投递，回执只读核对。发布与重试需要审计，不静默授予既有非 root 角色权限。详见 [发布基线](SYSTEM-NOTICE-PUBLISHING-2026-11-27.md)。
 
 举报待处理集合由 Safety 定义并经 Public 给工作台汇总，列表状态组与待办口径一致。文件渠道和事件 ID 的定位先进入 Validate/Resource/SDK 契约再接页面，不从前端绕过字段白名单。升级计划诊断复用现有单计划接口与持久状态机，不另建迁移或备份面板；主题文件操作需要真实审计与失败结果，不能用数据库事务声称回滚文件系统。具体施工及验证记录见[补全清单](ADMIN-COMPLETION-IMPLEMENTATION-2026-11-27.md)。
 
