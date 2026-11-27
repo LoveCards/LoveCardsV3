@@ -3,11 +3,23 @@ import type * as ApiTypes from '../../types'
 
 /** Generated from contracts/openapi.json. Do not edit manually. */
 export class Notifications extends BaseResource {
-  listManaged(params?: { page?: number; list_rows?: number; recipient_id?: number; type?: string; read_state?: string; from?: string; to?: string }): Promise<ApiTypes.ListResult<ApiTypes.AdminNotification>> {
-    return this._get<ApiTypes.ListResult<ApiTypes.AdminNotification>>("/admin/notifications", params)
+  prepareBatch(data: { request_key: string; audience: string; recipient_ids?: number[]; message: string; action_url?: string; severity?: string }): Promise<ApiTypes.SystemNoticeBatch> {
+    return this._post<ApiTypes.SystemNoticeBatch>("/admin/notifications/batches", data)
   }
-  getManaged(id: number): Promise<ApiTypes.AdminNotification> {
-    return this._get<ApiTypes.AdminNotification>(`/admin/notifications/${id}`)
+  getBatch(id: number): Promise<ApiTypes.SystemNoticeBatch> {
+    return this._get<ApiTypes.SystemNoticeBatch>(`/admin/notifications/batches/${id}`)
+  }
+  confirmBatch(id: number, data?: Record<string, unknown>): Promise<ApiTypes.SystemNoticeBatch> {
+    return this._post<ApiTypes.SystemNoticeBatch>(`/admin/notifications/batches/${id}/confirm`, data)
+  }
+  retryBatch(id: number, data: { expected_generation: number; reason: string }): Promise<ApiTypes.SystemNoticeBatch> {
+    return this._post<ApiTypes.SystemNoticeBatch>(`/admin/notifications/batches/${id}/retry`, data)
+  }
+  latestBatch(params?: { request_key?: string }): Promise<ApiTypes.SystemNoticeLatestBatch> {
+    return this._get<ApiTypes.SystemNoticeLatestBatch>("/admin/notifications/batches/latest", params)
+  }
+  recipientCandidates(params: { query: string; limit?: number }): Promise<ApiTypes.SystemNoticeRecipient[]> {
+    return this._get<ApiTypes.SystemNoticeRecipient[]>("/admin/notifications/recipients", params)
   }
   list(params?: { cursor?: string; limit?: number; unread_only?: boolean; type?: "social.followed" | "message" | "content.card_liked" | "content.comment_liked" | "library.saved" | "content.commented" | "content.replied" | "content.mentioned" | "system.notice" | "system.security" | "system.moderation"; category?: ApiTypes.NotificationListCategory }): Promise<ApiTypes.NotificationCursorPage> {
     return this._get<ApiTypes.NotificationCursorPage>("/me/notifications", params)

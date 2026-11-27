@@ -1,6 +1,6 @@
 {
   "source": "thinkphp-runtime-route-registry",
-  "routeCount": 211,
+  "routeCount": 215,
   "routes": [
     {
       "path": "/admin/cards/:id",
@@ -1608,13 +1608,13 @@
       "source": "apps/backend/app/api/route"
     },
     {
-      "path": "/admin/notifications",
+      "path": "/admin/notifications/batches/:id",
       "method": "GET",
-      "name": "notifications.listManaged",
+      "name": "notifications.getBatch",
       "controller": "Platform.Notifications",
-      "action": "index",
+      "action": "getBatch",
       "meta": {
-        "name": "站内通知",
+        "name": "我的系统通知批次回执",
         "group": "站内通知",
         "access": {
           "auth": "required",
@@ -1624,47 +1624,7 @@
               "scope": "global"
             },
             {
-              "capability": "notifications.read",
-              "scope": "global"
-            }
-          ]
-        }
-      },
-      "middleware": [
-        "app\\api\\middleware\\JwtAuthCheck",
-        "app\\api\\middleware\\PermissionCheck"
-      ],
-      "contract": {
-        "request": {
-          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\AdminNotificationQueryValidate",
-          "scene": "list"
-        },
-        "response": {
-          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\AdminNotificationResource",
-          "shape": "paginated",
-          "status": 200
-        }
-      },
-      "source": "apps/backend/app/api/route"
-    },
-    {
-      "path": "/admin/notifications/:id",
-      "method": "GET",
-      "name": "notifications.getManaged",
-      "controller": "Platform.Notifications",
-      "action": "get",
-      "meta": {
-        "name": "站内通知详情",
-        "group": "站内通知",
-        "access": {
-          "auth": "required",
-          "allOf": [
-            {
-              "capability": "admin.access",
-              "scope": "global"
-            },
-            {
-              "capability": "notifications.read",
+              "capability": "notifications.publish",
               "scope": "global"
             }
           ]
@@ -1677,8 +1637,88 @@
       "contract": {
         "request": null,
         "response": {
-          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\AdminNotificationResource",
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchResource",
           "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/notifications/batches/latest",
+      "method": "GET",
+      "name": "notifications.latestBatch",
+      "controller": "Platform.Notifications",
+      "action": "latestBatch",
+      "meta": {
+        "name": "我的最近系统通知批次",
+        "group": "站内通知",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate",
+          "scene": "latest"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeLatestBatchResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/notifications/recipients",
+      "method": "GET",
+      "name": "notifications.recipientCandidates",
+      "controller": "Platform.Notifications",
+      "action": "recipientCandidates",
+      "meta": {
+        "name": "系统通知收件人搜索",
+        "group": "站内通知",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate",
+          "scene": "candidates"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeRecipientResource",
+          "shape": "collection",
           "status": 200
         }
       },
@@ -1964,9 +2004,19 @@
             {
               "capability": "admin.access",
               "scope": "global"
-            },
+            }
+          ],
+          "anyOf": [
             {
               "capability": "communications.read",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.read",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
               "scope": "global"
             }
           ]
@@ -5143,6 +5193,126 @@
           "resource": null,
           "shape": "void",
           "status": 204
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/notifications/batches",
+      "method": "POST",
+      "name": "notifications.prepareBatch",
+      "controller": "Platform.Notifications",
+      "action": "prepareBatch",
+      "meta": {
+        "name": "准备系统通知预览",
+        "group": "站内通知",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate",
+          "scene": "prepare"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchResource",
+          "shape": "item",
+          "status": 201
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/notifications/batches/:id/confirm",
+      "method": "POST",
+      "name": "notifications.confirmBatch",
+      "controller": "Platform.Notifications",
+      "action": "confirmBatch",
+      "meta": {
+        "name": "确认发布系统通知",
+        "group": "站内通知",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate",
+          "scene": "confirm"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchResource",
+          "shape": "item",
+          "status": 202
+        }
+      },
+      "source": "apps/backend/app/api/route"
+    },
+    {
+      "path": "/admin/notifications/batches/:id/retry",
+      "method": "POST",
+      "name": "notifications.retryBatch",
+      "controller": "Platform.Notifications",
+      "action": "retryBatch",
+      "meta": {
+        "name": "重试系统通知失败任务",
+        "group": "站内通知",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "app\\api\\middleware\\JwtAuthCheck",
+        "app\\api\\middleware\\PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate",
+          "scene": "retry"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchResource",
+          "shape": "item",
+          "status": 202
         }
       },
       "source": "apps/backend/app/api/route"

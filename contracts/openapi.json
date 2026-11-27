@@ -5706,15 +5706,15 @@
         ]
       }
     },
-    "/admin/notifications": {
-      "get": {
-        "operationId": "notifications.listManaged",
+    "/admin/notifications/batches": {
+      "post": {
+        "operationId": "notifications.prepareBatch",
         "tags": [
           "站内通知"
         ],
-        "summary": "站内通知",
-        "description": "站内通知",
-        "x-controller": "Platform.Notifications/index",
+        "summary": "准备系统通知预览",
+        "description": "准备系统通知预览",
+        "x-controller": "Platform.Notifications/prepareBatch",
         "x-access": {
           "auth": "required",
           "allOf": [
@@ -5723,39 +5723,1094 @@
               "scope": "global"
             },
             {
-              "capability": "notifications.read",
+              "capability": "notifications.publish",
               "scope": "global"
             }
           ]
         },
         "x-capabilities": [
           "admin.access",
-          "notifications.read"
+          "notifications.publish"
         ],
         "x-public": false,
         "x-middleware": [
           "JwtAuthCheck",
           "PermissionCheck"
         ],
-        "x-resource": "AdminNotificationResource",
-        "x-response-shape": "paginated",
+        "x-resource": "SystemNoticeBatchResource",
+        "x-response-shape": "item",
         "x-validators": [
-          "app\\modules\\Platform\\Notifications\\Transport\\Api\\AdminNotificationQueryValidate"
+          "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
         ],
-        "x-validator-scene": "list",
+        "x-validator-scene": "prepare",
         "x-contract-source": "backend",
         "x-validation-rules": {
-          "app\\modules\\Platform\\Notifications\\Transport\\Api\\AdminNotificationQueryValidate": {
-            "page": "optionalInteger:1000000",
-            "list_rows": "optionalInteger:100",
-            "recipient_id": "optionalInteger:2147483647",
-            "type": "storedType",
-            "read_state": "readState",
-            "from": "storageTimestamp",
-            "to": [
-              "storageTimestamp",
-              "rangeEnd"
-            ]
+          "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate": {
+            "request_key": "requestKey",
+            "audience": "require|in:selected,all",
+            "recipient_ids": "recipientIds",
+            "message": "require|noticeMessage",
+            "action_url": "internalPath",
+            "severity": "noticeSeverity",
+            "query": "require|searchText",
+            "limit": "candidateLimit",
+            "expected_generation": "require|generationNumber",
+            "reason": "require|retryReason"
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "request_key",
+                        "generation",
+                        "audience",
+                        "recipient_ids",
+                        "recipients",
+                        "message",
+                        "action_url",
+                        "severity",
+                        "status",
+                        "recipient_count",
+                        "generated_count",
+                        "skipped_count",
+                        "pending_count",
+                        "failed_count",
+                        "created_at",
+                        "confirmed_at",
+                        "completed_at",
+                        "can_confirm",
+                        "can_retry",
+                        "diagnostic_event_id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "request_key": {
+                          "type": "string"
+                        },
+                        "generation": {
+                          "type": "integer"
+                        },
+                        "audience": {
+                          "type": "string",
+                          "enum": [
+                            "selected",
+                            "all"
+                          ]
+                        },
+                        "recipient_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer"
+                          }
+                        },
+                        "recipients": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "id",
+                              "username"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "username": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "action_url": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "severity": {
+                          "type": "string",
+                          "enum": [
+                            "info",
+                            "warning"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "prepared",
+                            "queued",
+                            "processing",
+                            "completed",
+                            "partial_failure",
+                            "failed"
+                          ]
+                        },
+                        "recipient_count": {
+                          "type": "integer"
+                        },
+                        "generated_count": {
+                          "type": "integer"
+                        },
+                        "skipped_count": {
+                          "type": "integer"
+                        },
+                        "pending_count": {
+                          "type": "integer"
+                        },
+                        "failed_count": {
+                          "type": "integer"
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "confirmed_at": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "completed_at": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "can_confirm": {
+                          "type": "boolean"
+                        },
+                        "can_retry": {
+                          "type": "boolean"
+                        },
+                        "diagnostic_event_id": {
+                          "type": "integer",
+                          "nullable": true
+                        }
+                      },
+                      "x-typescript-type": "SystemNoticeBatch"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "request_key",
+                  "audience",
+                  "message"
+                ],
+                "properties": {
+                  "request_key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$"
+                  },
+                  "audience": {
+                    "type": "string",
+                    "enum": [
+                      "selected",
+                      "all"
+                    ]
+                  },
+                  "recipient_ids": {
+                    "type": "array",
+                    "maxItems": 200,
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 2147483647
+                    }
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4096,
+                    "description": "纯文本；正文、路径与级别编码后的通知 payload 总计不超过 4096 字节"
+                  },
+                  "action_url": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 2048
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "info",
+                      "warning"
+                    ],
+                    "default": "info"
+                  }
+                },
+                "x-typescript-params": "data: { request_key: string; audience: string; recipient_ids?: number[]; message: string; action_url?: string; severity?: string }",
+                "x-validators": [
+                  "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
+                ],
+                "x-validator-scene": "prepare"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/notifications/batches/:id": {
+      "get": {
+        "operationId": "notifications.getBatch",
+        "tags": [
+          "站内通知"
+        ],
+        "summary": "我的系统通知批次回执",
+        "description": "我的系统通知批次回执",
+        "x-controller": "Platform.Notifications/getBatch",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "notifications.publish"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "SystemNoticeBatchResource",
+        "x-response-shape": "item",
+        "x-validators": [],
+        "x-validator-scene": null,
+        "x-contract-source": "backend",
+        "x-validation-rules": {},
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "request_key",
+                        "generation",
+                        "audience",
+                        "recipient_ids",
+                        "recipients",
+                        "message",
+                        "action_url",
+                        "severity",
+                        "status",
+                        "recipient_count",
+                        "generated_count",
+                        "skipped_count",
+                        "pending_count",
+                        "failed_count",
+                        "created_at",
+                        "confirmed_at",
+                        "completed_at",
+                        "can_confirm",
+                        "can_retry",
+                        "diagnostic_event_id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "request_key": {
+                          "type": "string"
+                        },
+                        "generation": {
+                          "type": "integer"
+                        },
+                        "audience": {
+                          "type": "string",
+                          "enum": [
+                            "selected",
+                            "all"
+                          ]
+                        },
+                        "recipient_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer"
+                          }
+                        },
+                        "recipients": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "id",
+                              "username"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "username": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "action_url": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "severity": {
+                          "type": "string",
+                          "enum": [
+                            "info",
+                            "warning"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "prepared",
+                            "queued",
+                            "processing",
+                            "completed",
+                            "partial_failure",
+                            "failed"
+                          ]
+                        },
+                        "recipient_count": {
+                          "type": "integer"
+                        },
+                        "generated_count": {
+                          "type": "integer"
+                        },
+                        "skipped_count": {
+                          "type": "integer"
+                        },
+                        "pending_count": {
+                          "type": "integer"
+                        },
+                        "failed_count": {
+                          "type": "integer"
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "confirmed_at": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "completed_at": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "can_confirm": {
+                          "type": "boolean"
+                        },
+                        "can_retry": {
+                          "type": "boolean"
+                        },
+                        "diagnostic_event_id": {
+                          "type": "integer",
+                          "nullable": true
+                        }
+                      },
+                      "x-typescript-type": "SystemNoticeBatch"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ]
+      }
+    },
+    "/admin/notifications/batches/:id/confirm": {
+      "post": {
+        "operationId": "notifications.confirmBatch",
+        "tags": [
+          "站内通知"
+        ],
+        "summary": "确认发布系统通知",
+        "description": "确认发布系统通知",
+        "x-controller": "Platform.Notifications/confirmBatch",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "notifications.publish"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "SystemNoticeBatchResource",
+        "x-response-shape": "item",
+        "x-validators": [
+          "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
+        ],
+        "x-validator-scene": "confirm",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate": {
+            "request_key": "requestKey",
+            "audience": "require|in:selected,all",
+            "recipient_ids": "recipientIds",
+            "message": "require|noticeMessage",
+            "action_url": "internalPath",
+            "severity": "noticeSeverity",
+            "query": "require|searchText",
+            "limit": "candidateLimit",
+            "expected_generation": "require|generationNumber",
+            "reason": "require|retryReason"
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "request_key",
+                        "generation",
+                        "audience",
+                        "recipient_ids",
+                        "recipients",
+                        "message",
+                        "action_url",
+                        "severity",
+                        "status",
+                        "recipient_count",
+                        "generated_count",
+                        "skipped_count",
+                        "pending_count",
+                        "failed_count",
+                        "created_at",
+                        "confirmed_at",
+                        "completed_at",
+                        "can_confirm",
+                        "can_retry",
+                        "diagnostic_event_id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "request_key": {
+                          "type": "string"
+                        },
+                        "generation": {
+                          "type": "integer"
+                        },
+                        "audience": {
+                          "type": "string",
+                          "enum": [
+                            "selected",
+                            "all"
+                          ]
+                        },
+                        "recipient_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer"
+                          }
+                        },
+                        "recipients": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "id",
+                              "username"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "username": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "action_url": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "severity": {
+                          "type": "string",
+                          "enum": [
+                            "info",
+                            "warning"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "prepared",
+                            "queued",
+                            "processing",
+                            "completed",
+                            "partial_failure",
+                            "failed"
+                          ]
+                        },
+                        "recipient_count": {
+                          "type": "integer"
+                        },
+                        "generated_count": {
+                          "type": "integer"
+                        },
+                        "skipped_count": {
+                          "type": "integer"
+                        },
+                        "pending_count": {
+                          "type": "integer"
+                        },
+                        "failed_count": {
+                          "type": "integer"
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "confirmed_at": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "completed_at": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "can_confirm": {
+                          "type": "boolean"
+                        },
+                        "can_retry": {
+                          "type": "boolean"
+                        },
+                        "diagnostic_event_id": {
+                          "type": "integer",
+                          "nullable": true
+                        }
+                      },
+                      "x-typescript-type": "SystemNoticeBatch"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": [],
+                "x-typescript-params": "data?: Record<string, unknown>",
+                "x-path-params": [
+                  "id"
+                ],
+                "x-validators": [
+                  "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
+                ],
+                "x-validator-scene": "confirm"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/notifications/batches/:id/retry": {
+      "post": {
+        "operationId": "notifications.retryBatch",
+        "tags": [
+          "站内通知"
+        ],
+        "summary": "重试系统通知失败任务",
+        "description": "重试系统通知失败任务",
+        "x-controller": "Platform.Notifications/retryBatch",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "notifications.publish"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "SystemNoticeBatchResource",
+        "x-response-shape": "item",
+        "x-validators": [
+          "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
+        ],
+        "x-validator-scene": "retry",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate": {
+            "request_key": "requestKey",
+            "audience": "require|in:selected,all",
+            "recipient_ids": "recipientIds",
+            "message": "require|noticeMessage",
+            "action_url": "internalPath",
+            "severity": "noticeSeverity",
+            "query": "require|searchText",
+            "limit": "candidateLimit",
+            "expected_generation": "require|generationNumber",
+            "reason": "require|retryReason"
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string",
+                      "format": "date-time"
+                    },
+                    "data": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "id",
+                        "request_key",
+                        "generation",
+                        "audience",
+                        "recipient_ids",
+                        "recipients",
+                        "message",
+                        "action_url",
+                        "severity",
+                        "status",
+                        "recipient_count",
+                        "generated_count",
+                        "skipped_count",
+                        "pending_count",
+                        "failed_count",
+                        "created_at",
+                        "confirmed_at",
+                        "completed_at",
+                        "can_confirm",
+                        "can_retry",
+                        "diagnostic_event_id"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "integer"
+                        },
+                        "request_key": {
+                          "type": "string"
+                        },
+                        "generation": {
+                          "type": "integer"
+                        },
+                        "audience": {
+                          "type": "string",
+                          "enum": [
+                            "selected",
+                            "all"
+                          ]
+                        },
+                        "recipient_ids": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer"
+                          }
+                        },
+                        "recipients": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "id",
+                              "username"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "integer"
+                              },
+                              "username": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "action_url": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "severity": {
+                          "type": "string",
+                          "enum": [
+                            "info",
+                            "warning"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "prepared",
+                            "queued",
+                            "processing",
+                            "completed",
+                            "partial_failure",
+                            "failed"
+                          ]
+                        },
+                        "recipient_count": {
+                          "type": "integer"
+                        },
+                        "generated_count": {
+                          "type": "integer"
+                        },
+                        "skipped_count": {
+                          "type": "integer"
+                        },
+                        "pending_count": {
+                          "type": "integer"
+                        },
+                        "failed_count": {
+                          "type": "integer"
+                        },
+                        "created_at": {
+                          "type": "string"
+                        },
+                        "confirmed_at": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "completed_at": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "can_confirm": {
+                          "type": "boolean"
+                        },
+                        "can_retry": {
+                          "type": "boolean"
+                        },
+                        "diagnostic_event_id": {
+                          "type": "integer",
+                          "nullable": true
+                        }
+                      },
+                      "x-typescript-type": "SystemNoticeBatch"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "data",
+                    "timestamp"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "API error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "expected_generation",
+                  "reason"
+                ],
+                "properties": {
+                  "expected_generation": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 2147483647
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  }
+                },
+                "x-typescript-params": "data: { expected_generation: number; reason: string }",
+                "x-path-params": [
+                  "id"
+                ],
+                "x-validators": [
+                  "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
+                ],
+                "x-validator-scene": "retry"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/notifications/batches/latest": {
+      "get": {
+        "operationId": "notifications.latestBatch",
+        "tags": [
+          "站内通知"
+        ],
+        "summary": "我的最近系统通知批次",
+        "description": "我的最近系统通知批次",
+        "x-controller": "Platform.Notifications/latestBatch",
+        "x-access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
+              "scope": "global"
+            }
+          ]
+        },
+        "x-capabilities": [
+          "admin.access",
+          "notifications.publish"
+        ],
+        "x-public": false,
+        "x-middleware": [
+          "JwtAuthCheck",
+          "PermissionCheck"
+        ],
+        "x-resource": "SystemNoticeLatestBatchResource",
+        "x-response-shape": "item",
+        "x-validators": [
+          "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
+        ],
+        "x-validator-scene": "latest",
+        "x-contract-source": "backend",
+        "x-validation-rules": {
+          "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate": {
+            "request_key": "requestKey",
+            "audience": "require|in:selected,all",
+            "recipient_ids": "recipientIds",
+            "message": "require|noticeMessage",
+            "action_url": "internalPath",
+            "severity": "noticeSeverity",
+            "query": "require|searchText",
+            "limit": "candidateLimit",
+            "expected_generation": "require|generationNumber",
+            "reason": "require|retryReason"
           }
         },
         "responses": {
@@ -5777,59 +6832,146 @@
                       "format": "date-time"
                     },
                     "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "additionalProperties": false,
-                        "required": [
-                          "id",
-                          "type",
-                          "type_label",
-                          "recipient_id",
-                          "actor_id",
-                          "resource_type",
-                          "resource_id",
-                          "read_at",
-                          "created_at"
-                        ],
-                        "properties": {
-                          "id": {
-                            "type": "integer"
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "batch"
+                      ],
+                      "properties": {
+                        "batch": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "required": [
+                            "id",
+                            "request_key",
+                            "generation",
+                            "audience",
+                            "recipient_ids",
+                            "recipients",
+                            "message",
+                            "action_url",
+                            "severity",
+                            "status",
+                            "recipient_count",
+                            "generated_count",
+                            "skipped_count",
+                            "pending_count",
+                            "failed_count",
+                            "created_at",
+                            "confirmed_at",
+                            "completed_at",
+                            "can_confirm",
+                            "can_retry",
+                            "diagnostic_event_id"
+                          ],
+                          "properties": {
+                            "id": {
+                              "type": "integer"
+                            },
+                            "request_key": {
+                              "type": "string"
+                            },
+                            "generation": {
+                              "type": "integer"
+                            },
+                            "audience": {
+                              "type": "string",
+                              "enum": [
+                                "selected",
+                                "all"
+                              ]
+                            },
+                            "recipient_ids": {
+                              "type": "array",
+                              "items": {
+                                "type": "integer"
+                              }
+                            },
+                            "recipients": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": false,
+                                "required": [
+                                  "id",
+                                  "username"
+                                ],
+                                "properties": {
+                                  "id": {
+                                    "type": "integer"
+                                  },
+                                  "username": {
+                                    "type": "string"
+                                  }
+                                }
+                              }
+                            },
+                            "message": {
+                              "type": "string"
+                            },
+                            "action_url": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "severity": {
+                              "type": "string",
+                              "enum": [
+                                "info",
+                                "warning"
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "prepared",
+                                "queued",
+                                "processing",
+                                "completed",
+                                "partial_failure",
+                                "failed"
+                              ]
+                            },
+                            "recipient_count": {
+                              "type": "integer"
+                            },
+                            "generated_count": {
+                              "type": "integer"
+                            },
+                            "skipped_count": {
+                              "type": "integer"
+                            },
+                            "pending_count": {
+                              "type": "integer"
+                            },
+                            "failed_count": {
+                              "type": "integer"
+                            },
+                            "created_at": {
+                              "type": "string"
+                            },
+                            "confirmed_at": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "completed_at": {
+                              "type": "string",
+                              "nullable": true
+                            },
+                            "can_confirm": {
+                              "type": "boolean"
+                            },
+                            "can_retry": {
+                              "type": "boolean"
+                            },
+                            "diagnostic_event_id": {
+                              "type": "integer",
+                              "nullable": true
+                            }
                           },
-                          "type": {
-                            "type": "string"
-                          },
-                          "type_label": {
-                            "type": "string"
-                          },
-                          "recipient_id": {
-                            "type": "integer"
-                          },
-                          "actor_id": {
-                            "type": "integer",
-                            "nullable": true
-                          },
-                          "resource_type": {
-                            "type": "string",
-                            "nullable": true
-                          },
-                          "resource_id": {
-                            "type": "string",
-                            "nullable": true
-                          },
-                          "read_at": {
-                            "type": "string",
-                            "nullable": true
-                          },
-                          "created_at": {
-                            "type": "string"
-                          }
+                          "nullable": true
                         }
                       },
-                      "x-typescript-type": "ListResult<AdminNotification>"
-                    },
-                    "pagination": {
-                      "$ref": "#/components/schemas/PaginationInfo"
+                      "x-typescript-type": "SystemNoticeLatestBatch"
                     }
                   },
                   "required": [
@@ -5866,66 +7008,32 @@
               "type": "object",
               "additionalProperties": false,
               "properties": {
-                "page": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 1000000,
-                  "default": 1
-                },
-                "list_rows": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 100,
-                  "default": 20
-                },
-                "recipient_id": {
-                  "type": "integer",
-                  "minimum": 1,
-                  "maximum": 2147483647
-                },
-                "type": {
+                "request_key": {
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 64,
-                  "description": "按存储类型精确筛选，支持未知历史值；省略时包含所有类型"
-                },
-                "read_state": {
-                  "type": "string",
-                  "enum": [
-                    "read",
-                    "unread"
-                  ]
-                },
-                "from": {
-                  "type": "string",
-                  "pattern": "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$",
-                  "description": "服务端保存时间，含边界；不进行时区转换"
-                },
-                "to": {
-                  "type": "string",
-                  "pattern": "^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$",
-                  "description": "服务端保存时间，不含边界；必须晚于 from"
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,63}$"
                 }
               },
-              "x-typescript-params": "params?: { page?: number; list_rows?: number; recipient_id?: number; type?: string; read_state?: string; from?: string; to?: string }",
+              "x-typescript-params": "params?: { request_key?: string }",
               "x-validators": [
-                "app\\modules\\Platform\\Notifications\\Transport\\Api\\AdminNotificationQueryValidate"
+                "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
               ],
-              "x-validator-scene": "list"
+              "x-validator-scene": "latest"
             }
           }
         ]
       }
     },
-    "/admin/notifications/:id": {
+    "/admin/notifications/recipients": {
       "get": {
-        "operationId": "notifications.getManaged",
+        "operationId": "notifications.recipientCandidates",
         "tags": [
           "站内通知"
         ],
-        "summary": "站内通知详情",
-        "description": "站内通知详情",
-        "x-controller": "Platform.Notifications/get",
+        "summary": "系统通知收件人搜索",
+        "description": "系统通知收件人搜索",
+        "x-controller": "Platform.Notifications/recipientCandidates",
         "x-access": {
           "auth": "required",
           "allOf": [
@@ -5934,26 +7042,41 @@
               "scope": "global"
             },
             {
-              "capability": "notifications.read",
+              "capability": "notifications.publish",
               "scope": "global"
             }
           ]
         },
         "x-capabilities": [
           "admin.access",
-          "notifications.read"
+          "notifications.publish"
         ],
         "x-public": false,
         "x-middleware": [
           "JwtAuthCheck",
           "PermissionCheck"
         ],
-        "x-resource": "AdminNotificationResource",
-        "x-response-shape": "item",
-        "x-validators": [],
-        "x-validator-scene": null,
+        "x-resource": "SystemNoticeRecipientResource",
+        "x-response-shape": "collection",
+        "x-validators": [
+          "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
+        ],
+        "x-validator-scene": "candidates",
         "x-contract-source": "backend",
-        "x-validation-rules": {},
+        "x-validation-rules": {
+          "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate": {
+            "request_key": "requestKey",
+            "audience": "require|in:selected,all",
+            "recipient_ids": "recipientIds",
+            "message": "require|noticeMessage",
+            "action_url": "internalPath",
+            "severity": "noticeSeverity",
+            "query": "require|searchText",
+            "limit": "candidateLimit",
+            "expected_generation": "require|generationNumber",
+            "reason": "require|retryReason"
+          }
+        },
         "responses": {
           "200": {
             "description": "Success",
@@ -5973,53 +7096,24 @@
                       "format": "date-time"
                     },
                     "data": {
-                      "type": "object",
-                      "additionalProperties": false,
-                      "required": [
-                        "id",
-                        "type",
-                        "type_label",
-                        "recipient_id",
-                        "actor_id",
-                        "resource_type",
-                        "resource_id",
-                        "read_at",
-                        "created_at"
-                      ],
-                      "properties": {
-                        "id": {
-                          "type": "integer"
-                        },
-                        "type": {
-                          "type": "string"
-                        },
-                        "type_label": {
-                          "type": "string"
-                        },
-                        "recipient_id": {
-                          "type": "integer"
-                        },
-                        "actor_id": {
-                          "type": "integer",
-                          "nullable": true
-                        },
-                        "resource_type": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "resource_id": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "read_at": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "created_at": {
-                          "type": "string"
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "id",
+                          "username"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "integer"
+                          },
+                          "username": {
+                            "type": "string"
+                          }
                         }
                       },
-                      "x-typescript-type": "AdminNotification"
+                      "x-typescript-type": "SystemNoticeRecipient[]"
                     }
                   },
                   "required": [
@@ -6049,11 +7143,33 @@
         ],
         "parameters": [
           {
-            "name": "id",
-            "in": "path",
+            "name": "query",
+            "in": "query",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "query"
+              ],
+              "properties": {
+                "query": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "limit": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 20,
+                  "default": 20
+                }
+              },
+              "x-typescript-params": "params: { query: string; limit?: number }",
+              "x-validators": [
+                "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
+              ],
+              "x-validator-scene": "candidates"
             }
           }
         ]
@@ -7601,16 +8717,28 @@
             {
               "capability": "admin.access",
               "scope": "global"
-            },
+            }
+          ],
+          "anyOf": [
             {
               "capability": "communications.read",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.read",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
               "scope": "global"
             }
           ]
         },
         "x-capabilities": [
           "admin.access",
-          "communications.read"
+          "communications.read",
+          "notifications.read",
+          "notifications.publish"
         ],
         "x-public": false,
         "x-middleware": [
@@ -27077,6 +28205,16 @@
                           "type": "boolean"
                         },
                         "review_new_tags": {
+                          "type": "boolean"
+                        },
+                        "tag_limit": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "can_create_new": {
+                          "type": "boolean"
+                        },
+                        "requires_review": {
                           "type": "boolean"
                         }
                       },

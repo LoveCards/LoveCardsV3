@@ -1,6 +1,6 @@
 # API Contract Audit
 
-- Routes inspected: 211
+- Routes inspected: 215
 - P0: 0
 - P1: 0
 - P2: 0
@@ -49,8 +49,12 @@
 | GET | `/admin/files/:id/usage` | `files.usage` | grants:admin.access:global,files.usage.read:global | no | AdminFileUsageResource::make | — |
 | POST | `/admin/files/batch` | `files.batchManaged` | grants:admin.access:global | yes | createNoContent | — |
 | DELETE | `/admin/files/expired` | `files.cleanup` | grants:admin.access:global,files.cleanup:global | yes | ApiResource::make | — |
-| GET | `/admin/notifications` | `notifications.listManaged` | grants:admin.access:global,notifications.read:global | yes | AdminNotificationResource::paginate | — |
-| GET | `/admin/notifications/:id` | `notifications.getManaged` | grants:admin.access:global,notifications.read:global | no | AdminNotificationResource::make | — |
+| POST | `/admin/notifications/batches` | `notifications.prepareBatch` | grants:admin.access:global,notifications.publish:global | yes | SystemNoticeBatchResource::make | — |
+| GET | `/admin/notifications/batches/:id` | `notifications.getBatch` | grants:admin.access:global,notifications.publish:global | no | SystemNoticeBatchResource::make | — |
+| POST | `/admin/notifications/batches/:id/confirm` | `notifications.confirmBatch` | grants:admin.access:global,notifications.publish:global | yes | SystemNoticeBatchResource::make | — |
+| POST | `/admin/notifications/batches/:id/retry` | `notifications.retryBatch` | grants:admin.access:global,notifications.publish:global | yes | SystemNoticeBatchResource::make | — |
+| GET | `/admin/notifications/batches/latest` | `notifications.latestBatch` | grants:admin.access:global,notifications.publish:global | yes | SystemNoticeLatestBatchResource::make | — |
+| GET | `/admin/notifications/recipients` | `notifications.recipientCandidates` | grants:admin.access:global,notifications.publish:global | yes | SystemNoticeRecipientResource::collection | — |
 | GET | `/admin/operations/deliveries` | `operations.deliveries` | grants:admin.access:global,communications.read:global | yes | AdminDeliveryResource::paginate | — |
 | GET | `/admin/operations/deliveries/:id` | `operations.delivery` | grants:admin.access:global,communications.read:global | no | AdminDeliveryResource::make | — |
 | POST | `/admin/operations/deliveries/:id/retry` | `operations.retryDelivery` | grants:admin.access:global,operations.retry:global | no | createNoContent | — |
@@ -61,7 +65,7 @@
 | GET | `/admin/operations/events` | `operations.events` | grants:admin.access:global,communications.read:global | yes | AdminEventResource::paginate | — |
 | GET | `/admin/operations/migrations` | `operations.migrations` | grants:admin.access:global,operations.read:global | no | AdminMigrationResource::collection | — |
 | POST | `/admin/operations/migrations/run` | `operations.runMigrations` | grants:admin.access:global,operations.migrate:global | yes | AdminMigrationResource::collection | — |
-| GET | `/admin/operations/notifications` | `operations.notificationStats` | grants:admin.access:global,communications.read:global | no | AdminNotificationStatsResource::make | — |
+| GET | `/admin/operations/notifications` | `operations.notificationStats` | grants:admin.access:global,communications.read:global,notifications.read:global,notifications.publish:global | no | AdminNotificationStatsResource::make | — |
 | GET | `/admin/operations/overview` | `operations.overview` | grants:admin.access:global,operations.read:global | no | AdminOverviewResource::make | — |
 | GET | `/admin/operations/runtime` | `operations.runtime` | grants:admin.access:global,operations.read:global | no | AdminRuntimeResource::make | — |
 | GET | `/admin/operations/runtime/config` | `operations.runtimeConfig` | grants:admin.access:global,operations.read:global | no | AdminRuntimeConfigResource::make | — |

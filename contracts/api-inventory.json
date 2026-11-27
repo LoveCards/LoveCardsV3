@@ -1,5 +1,5 @@
 {
-  "routeCount": 211,
+  "routeCount": 215,
   "summary": {},
   "routes": [
     {
@@ -2994,13 +2994,13 @@
       }
     },
     {
-      "path": "/admin/notifications",
-      "method": "GET",
-      "name": "notifications.listManaged",
+      "path": "/admin/notifications/batches",
+      "method": "POST",
+      "name": "notifications.prepareBatch",
       "controller": "Platform.Notifications",
-      "action": "index",
+      "action": "prepareBatch",
       "meta": {
-        "name": "站内通知",
+        "name": "准备系统通知预览",
         "group": "站内通知",
         "access": {
           "auth": "required",
@@ -3010,7 +3010,7 @@
               "scope": "global"
             },
             {
-              "capability": "notifications.read",
+              "capability": "notifications.publish",
               "scope": "global"
             }
           ]
@@ -3022,13 +3022,13 @@
       ],
       "contract": {
         "request": {
-          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\AdminNotificationQueryValidate",
-          "scene": "list"
+          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate",
+          "scene": "prepare"
         },
         "response": {
-          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\AdminNotificationResource",
-          "shape": "paginated",
-          "status": 200
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchResource",
+          "shape": "item",
+          "status": 201
         }
       },
       "source": "apps/backend/app/api/route",
@@ -3039,15 +3039,15 @@
       "missingController": false,
       "validates": true,
       "responses": [
-        "createOk"
+        "createCreated"
       ],
       "resources": [
-        "AdminNotificationResource::paginate"
+        "SystemNoticeBatchResource::make"
       ],
       "validators": [
-        "app\\modules\\Platform\\Notifications\\Transport\\Api\\AdminNotificationQueryValidate"
+        "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
       ],
-      "validatorScene": "list",
+      "validatorScene": "prepare",
       "hasApiResponse": true,
       "multipleSuccessShapes": false,
       "requestInspection": {
@@ -3064,20 +3064,20 @@
       "usesRawResponse": false,
       "issues": [],
       "response": {
-        "status": 200,
-        "shape": "paginated",
-        "resource": "AdminNotificationResource",
-        "operation": "paginate"
+        "status": 201,
+        "shape": "item",
+        "resource": "SystemNoticeBatchResource",
+        "operation": "make"
       }
     },
     {
-      "path": "/admin/notifications/:id",
+      "path": "/admin/notifications/batches/:id",
       "method": "GET",
-      "name": "notifications.getManaged",
+      "name": "notifications.getBatch",
       "controller": "Platform.Notifications",
-      "action": "get",
+      "action": "getBatch",
       "meta": {
-        "name": "站内通知详情",
+        "name": "我的系统通知批次回执",
         "group": "站内通知",
         "access": {
           "auth": "required",
@@ -3087,7 +3087,7 @@
               "scope": "global"
             },
             {
-              "capability": "notifications.read",
+              "capability": "notifications.publish",
               "scope": "global"
             }
           ]
@@ -3100,7 +3100,7 @@
       "contract": {
         "request": null,
         "response": {
-          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\AdminNotificationResource",
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchResource",
           "shape": "item",
           "status": 200
         }
@@ -3116,7 +3116,7 @@
         "createOk"
       ],
       "resources": [
-        "AdminNotificationResource::make"
+        "SystemNoticeBatchResource::make"
       ],
       "validators": [],
       "validatorScene": null,
@@ -3138,8 +3138,321 @@
       "response": {
         "status": 200,
         "shape": "item",
-        "resource": "AdminNotificationResource",
+        "resource": "SystemNoticeBatchResource",
         "operation": "make"
+      }
+    },
+    {
+      "path": "/admin/notifications/batches/:id/confirm",
+      "method": "POST",
+      "name": "notifications.confirmBatch",
+      "controller": "Platform.Notifications",
+      "action": "confirmBatch",
+      "meta": {
+        "name": "确认发布系统通知",
+        "group": "站内通知",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate",
+          "scene": "confirm"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchResource",
+          "shape": "item",
+          "status": 202
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Notifications.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "SystemNoticeBatchResource::make"
+      ],
+      "validators": [
+        "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
+      ],
+      "validatorScene": "confirm",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 202,
+        "shape": "item",
+        "resource": "SystemNoticeBatchResource",
+        "operation": "make"
+      }
+    },
+    {
+      "path": "/admin/notifications/batches/:id/retry",
+      "method": "POST",
+      "name": "notifications.retryBatch",
+      "controller": "Platform.Notifications",
+      "action": "retryBatch",
+      "meta": {
+        "name": "重试系统通知失败任务",
+        "group": "站内通知",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate",
+          "scene": "retry"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchResource",
+          "shape": "item",
+          "status": 202
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Notifications.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "SystemNoticeBatchResource::make"
+      ],
+      "validators": [
+        "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
+      ],
+      "validatorScene": "retry",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 202,
+        "shape": "item",
+        "resource": "SystemNoticeBatchResource",
+        "operation": "make"
+      }
+    },
+    {
+      "path": "/admin/notifications/batches/latest",
+      "method": "GET",
+      "name": "notifications.latestBatch",
+      "controller": "Platform.Notifications",
+      "action": "latestBatch",
+      "meta": {
+        "name": "我的最近系统通知批次",
+        "group": "站内通知",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate",
+          "scene": "latest"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeLatestBatchResource",
+          "shape": "item",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Notifications.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "SystemNoticeLatestBatchResource::make"
+      ],
+      "validators": [
+        "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
+      ],
+      "validatorScene": "latest",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [
+          "request_key"
+        ],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "item",
+        "resource": "SystemNoticeLatestBatchResource",
+        "operation": "make"
+      }
+    },
+    {
+      "path": "/admin/notifications/recipients",
+      "method": "GET",
+      "name": "notifications.recipientCandidates",
+      "controller": "Platform.Notifications",
+      "action": "recipientCandidates",
+      "meta": {
+        "name": "系统通知收件人搜索",
+        "group": "站内通知",
+        "access": {
+          "auth": "required",
+          "allOf": [
+            {
+              "capability": "admin.access",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
+              "scope": "global"
+            }
+          ]
+        }
+      },
+      "middleware": [
+        "JwtAuthCheck",
+        "PermissionCheck"
+      ],
+      "contract": {
+        "request": {
+          "validate": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate",
+          "scene": "candidates"
+        },
+        "response": {
+          "resource": "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeRecipientResource",
+          "shape": "collection",
+          "status": 200
+        }
+      },
+      "source": "apps/backend/app/api/route",
+      "file": "apps/backend/app/api/route",
+      "hasContract": true,
+      "contractSource": "backend",
+      "controllerFile": "apps/backend/app/api/controller/Platform/Notifications.php",
+      "missingController": false,
+      "validates": true,
+      "responses": [
+        "createOk"
+      ],
+      "resources": [
+        "SystemNoticeRecipientResource::collection"
+      ],
+      "validators": [
+        "app\\modules\\Platform\\Notifications\\Transport\\Api\\SystemNoticeBatchValidate"
+      ],
+      "validatorScene": "candidates",
+      "hasApiResponse": true,
+      "multipleSuccessShapes": false,
+      "requestInspection": {
+        "missingAction": false,
+        "usesValidated": true,
+        "usesLegacyValidation": false,
+        "usesDirectInput": false,
+        "directInputKeys": [],
+        "fileKeys": [],
+        "accessedFields": [
+          "query",
+          "limit"
+        ],
+        "usesContractResponse": true,
+        "usesRawResponse": false
+      },
+      "usesRawResponse": false,
+      "issues": [],
+      "response": {
+        "status": 200,
+        "shape": "collection",
+        "resource": "SystemNoticeRecipientResource",
+        "operation": "collection"
       }
     },
     {
@@ -3898,9 +4211,19 @@
             {
               "capability": "admin.access",
               "scope": "global"
-            },
+            }
+          ],
+          "anyOf": [
             {
               "capability": "communications.read",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.read",
+              "scope": "global"
+            },
+            {
+              "capability": "notifications.publish",
               "scope": "global"
             }
           ]
